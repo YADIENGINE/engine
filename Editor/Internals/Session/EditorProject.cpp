@@ -5,7 +5,7 @@
 
 namespace {
 std::filesystem::path Resolve(const std::filesystem::path& root, const std::string& text) {
-    const auto path = std::filesystem::u8path(text);
+    const std::filesystem::path path(std::u8string(text.begin(), text.end()));
     return path.is_absolute() ? path : std::filesystem::absolute(root / path).lexically_normal();
 }
 ProcessCommand ReadCommand(const nlohmann::json& json, const std::filesystem::path& root) {
