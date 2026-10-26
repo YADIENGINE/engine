@@ -6,7 +6,7 @@ Oyunun kodu, editör önizlemeleri ve belgeleri oyunun reposunda kalır; Engine 
 ```text
 MyProject/                  (oyunun reposu)
   Engine/                   ← submodule: YDArcadeEngine
-    Docs/  Tools/  Templates/NewProject/  ...
+    EngineSetup.py  Docs/  Tools/  ...
   Game/                     oyun kaynakları + Assets/ (.cpp'ler kendiliğinden bulunur)
   Editor/                   projenin preview worker'ı (EngineEditor önizlemeleri; .cpp'ler kendiliğinden bulunur)
   CMakeLists.txt  CMakePresets.json
@@ -21,19 +21,25 @@ Include kökü `Engine/` klasörüdür (`#include "Runtime/Game.h"`); oyun kendi
 Gerekenler: Windows'ta VS 2022 Build Tools (C++ workload + "C++ CMake tools", Ninja onunla gelir), CMake 3.24+,
 Python 3.10+. İlk configure raylib, JSON ve test bağımlılıklarını `FetchContent` ile indirir.
 
+Proje klasörüne sadece Engine'i koyun; klasörün adı tam olarak `Engine` olmalı (GitHub zip'i `<repo>-main` adıyla
+açılır, yeniden adlandırın). Sonra Engine'in içinde kurulumu çalıştırın:
+
 ```powershell
-git init MyProject
-cd MyProject
-git submodule add <ydarcadeengine-url> Engine
-git config -f .gitmodules submodule.Engine.branch main
-Copy-Item -Recurse -Force Engine\Templates\NewProject\* .
+cd MyProject\Engine
+python EngineSetup.py              # proje adını sorar (varsayılan: klasörün adı)
+python EngineSetup.py --dry-run    # yazmadan ne oluşturacağını listeler
 ```
 
-Şablon (`.gitignore`, `.gitattributes` dahil) olduğu gibi çalışır; ad vermek için iki yeri aynı adla değiştirin:
-`CMakeLists.txt`'teki `project(MyProject ...)` ve `Project.json`'daki `"name"`. Exe, Release paketi ve editör
-worker'ı (`<ad>Preview`) bu addan türer.
+`EngineSetup.py` `Tools/ProjectTemplate/`'i bir üst klasöre yazar: `CMakeLists.txt`, `CMakePresets.json`,
+`Project.json`, `p.py`, `editor.py`, `.gitignore`, `.gitattributes`, `Game/Assets/`, `Editor/`. Proje adı
+`project(...)` ve `Project.json` `"name"` alanına yazılır; exe, Release paketi ve editör worker'ı (`<ad>Preview`) bu
+addan türer. Ad harfle başlar, sadece harf/rakam/`_` içerir. Var olan dosyaların üzerine yazmaz (atladıklarını
+listeler); kökte `Project.json` varsa proje kurulmuş sayılır ve hiçbir şey yapmaz. Sonunda eksik araçları
+(Python, CMake, Visual Studio C++ araçları, Ninja) bildirir. Git'e dokunmaz; Engine'i submodule olarak tutmak için
+aşağıdaki [git](#git) bölümüne bakın.
 
 ```powershell
+cd ..
 python p.py            # Debug derle + çalıştır
 python editor.py       # EngineEditor + projenin worker'ı
 python p.py --test     # headless testler (Engine testleri)
@@ -108,8 +114,24 @@ JSON'a sığmayan projeye özel iş `hooks` dosyasındaki bilinen fonksiyonlarda
 | `editor_cli.py` | `editor.py`: EngineEditor + worker derle ve aç |
 | `test_runner.py` | CTest'i koşup yapılandırılmış rapor yazar; çıkış kodu 0 başarı, 1 test hatası, 2 altyapı/seçim hatası |
 | `project_config.py` | `Project.json` ve hook yükleyici |
+| `project_setup.py` | `EngineSetup.py`: `ProjectTemplate/`'ten yeni proje kurar |
+| `ProjectTemplate/` | yeni projenin dosyaları; `@PROJECT_NAME@` adla değişir, `gitignore`/`gitattributes` noktalı yazılır |
 
 Araçların kendi testleri derleyici istemez: `Engine/Tools` içinde `python -m unittest discover -s Tests`.
+
+## Git
+
+`EngineSetup.py` git'e dokunmaz. Oyunu git'te tutup Engine'i submodule olarak bağlamak için, kurulumdan sonra proje
+kökünde:
+
+```powershell
+git init
+git submodule add <ydarcadeengine-url> Engine   # Engine/ zaten bu URL'nin klonuysa onu kaydeder
+git config -f .gitmodules submodule.Engine.branch main
+```
+
+Engine zip'ten geldiyse önce `Engine/`'i silip yukarıdaki `submodule add` ile yeniden alın; ya da Engine'i düz klasör
+olarak oyunla birlikte commit'leyin (o zaman güncellemeler elle kopyalanır).
 
 ## Engine'i güncellemek ve Engine'de çalışmak
 

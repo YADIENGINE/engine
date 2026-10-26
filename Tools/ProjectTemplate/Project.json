@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "name": "MyProject",
+  "name": "@PROJECT_NAME@",
   "game": {
     "buildDirectory": "build",
     "configurePreset": "desktop",

@@ -23,10 +23,12 @@ Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, 
 Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_add_editor_worker
 Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
 Docs/      Kullanım ve katkı belgeleri
-Tools/     buildenv.py (MSVC ortamı), build_cli.py (p.py), editor_cli.py (editor.py), test_runner.py, project_config.py
-Templates/NewProject/  Yeni oyun iskeleti (CMake, preset'ler, Project.json, sarmalayıcılar; Game/ ve Editor/ boş).
-           Kopyalanınca olduğu gibi derlenmeli: boş Game/ → Runtime/Starter/StarterGame.cpp, boş Editor/ →
-           Editor/Preview/StarterWorker.cpp. Örnek kod şablonda değil Docs/GettingStarted rehberlerinde.
+Tools/     buildenv.py (MSVC ortamı), build_cli.py (p.py), editor_cli.py (editor.py), test_runner.py, project_config.py,
+           project_setup.py (EngineSetup.py) + ProjectTemplate/ (yeni projenin dosyaları; @PROJECT_NAME@,
+           gitignore/gitattributes noktasız saklanır). Kurulan proje olduğu gibi derlenmeli: boş Game/ →
+           Runtime/Starter/StarterGame.cpp, boş Editor/ → Editor/Preview/StarterWorker.cpp. Örnek kod şablonda değil
+           Docs/GettingStarted rehberlerinde.
+EngineSetup.py  Engine'in üst klasörünü yeni proje olarak kurar (adı sorar, dosyaların üzerine yazmaz, git'e dokunmaz)
 ```
 
 ## Kurallar

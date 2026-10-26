@@ -15,14 +15,22 @@ GENERATOR = "Ninja Multi-Config"  # CMakePresets.json ile aynı; eski VS build k
 _VSWHERE = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
 
 
-def _vcvars() -> Path:
+def visual_studio() -> Path | None:
+    """C++ x64 araçları kurulu en yeni Visual Studio'nun kök klasörü; yoksa None."""
     if not _VSWHERE.exists():
-        sys.exit("vswhere.exe not found; install Visual Studio 2022 Build Tools (C++ workload)")
+        return None
     query = [str(_VSWHERE), "-latest", "-products", "*", "-requires",
              "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"]
     install = subprocess.run(query, capture_output=True, text=True).stdout.strip()
-    vcvars = Path(install) / "VC" / "Auxiliary" / "Build" / "vcvars64.bat"
-    if not install or not vcvars.exists():
+    return Path(install) if install else None
+
+
+def _vcvars() -> Path:
+    if not _VSWHERE.exists():
+        sys.exit("vswhere.exe not found; install Visual Studio 2022 Build Tools (C++ workload)")
+    install = visual_studio()
+    vcvars = install / "VC" / "Auxiliary" / "Build" / "vcvars64.bat" if install else None
+    if vcvars is None or not vcvars.exists():
         sys.exit("No Visual Studio installation with the C++ x64 toolset found")
     return vcvars
 

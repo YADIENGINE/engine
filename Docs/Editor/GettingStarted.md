@@ -2,12 +2,12 @@
 
 Önce [proje kurulumunu](../ProjectSetup.md) tamamlayın; [ilk oyun](../GettingStarted.md) gerekmez.
 Editör Windows masaüstünde çalışır. Projenin `Editor/` klasörü Engine ve Game klasörlerinin kardeşidir;
-include'larda `Editor/Api/...` Engine public başlıklarını ifade eder. Şablonun `Editor/` klasörü boştur;
+include'larda `Editor/Api/...` Engine public başlıklarını ifade eder. Kurulumun açtığı `Editor/` klasörü boştur;
 `python editor.py` o hâlde Engine'in starter worker'ıyla açılır (Engine → Starter önizlemesi).
 
 ## CMake hedefi
 
-Şablonun `CMakeLists.txt`'i `APP_BUILD_EDITOR` açıkken (editor.py bunu kendisi verir) `Editor/` altındaki her
+Projenin `CMakeLists.txt`'i `APP_BUILD_EDITOR` açıkken (editor.py bunu kendisi verir) `Editor/` altındaki her
 `.cpp`'yi bulur ve worker'ı kurar:
 
 ```cmake

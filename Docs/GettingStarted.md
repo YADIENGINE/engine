@@ -1,8 +1,8 @@
 # İlk oyun
 
-Projeyi önce [Proje kurulumu](ProjectSetup.md)'ndaki gibi açın: kökte `Engine/Templates/NewProject/` şablonunun
-kopyası ve `Engine/` submodule'ü. Şablonun `Game/` klasörü boştur; `python p.py` o hâlde Engine'in starter
-oyununu ("Game/ has no sources yet") açar. Bu rehber `Game/` altına ilk küçük oyunu yazar.
+Projeyi önce [Proje kurulumu](ProjectSetup.md)'ndaki gibi `python EngineSetup.py` ile kurun. Kurulumun açtığı
+`Game/` klasörü boştur; `python p.py` o hâlde Engine'in starter oyununu ("Game/ has no sources yet") açar.
+Bu rehber `Game/` altına ilk küçük oyunu yazar.
 
 ## Dosya yapısı
 

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 # Proje adı: burada ve Project.json "name" alanında aynı olmalı (exe, paket ve editör worker'ı bu addan türer).
-project(MyProject LANGUAGES C CXX)
+project(@PROJECT_NAME@ LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

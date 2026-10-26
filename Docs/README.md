@@ -2,12 +2,12 @@
 
 Bu klasör C++20 / raylib tabanlı engine (YDArcadeEngine) ile oyun geliştirenler içindir. Engine ayrı bir repodur;
 oyunlar onu `Engine/` submodule'ü olarak alır. Kaynak kod reponun kökünde, belgeler `Docs/`, build/editör/test
-araçları `Tools/`, yeni proje iskeleti `Templates/NewProject/` altındadır.
+araçları ve yeni proje şablonu `Tools/` altındadır; yeni proje `EngineSetup.py` ile kurulur.
 Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları oyunun kendi belgelerinde kalır.
 
 ## İlk adımlar
 
-0. [Proje kurulumu](ProjectSetup.md): submodule, şablon, `Project.json`, `p.py` / `editor.py`.
+0. [Proje kurulumu](ProjectSetup.md): `EngineSetup.py`, `Project.json`, `p.py` / `editor.py`, submodule.
 1. [İlk oyun](GettingStarted.md): CMake, fabrika, oyun ve ilk sahne.
 2. [Mimari](Architecture.md) ve [runtime](Runtime.md): sahiplik, lifecycle, zaman ve sahne geçişleri.
 3. [Grafik](Graphics/README.md), [input](Input.md), [ses](Audio.md) ve
