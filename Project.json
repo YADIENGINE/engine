@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "name": "Zortengine",
+  "tests": {
+    "buildDirectory": "build/tests",
+    "configurePreset": "tests",
+    "buildPreset": "tests-debug",
+    "testPreset": "tests-debug"
+  }
+}

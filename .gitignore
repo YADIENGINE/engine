@@ -1,0 +1,8 @@
+# Standalone engine build (Tools/build_cli.py --test)
+/build/
+__pycache__/
+
+# IDE
+.vs/
+.vscode/
+.idea/

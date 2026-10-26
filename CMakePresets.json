@@ -1,0 +1,27 @@
+{
+  "version": 5,
+  "configurePresets": [
+    {
+      "name": "tests",
+      "displayName": "Engine headless tests (Debug only)",
+      "description": "Standalone engine repository; needs the MSVC environment (vcvars64), Tools/build_cli.py sets it up",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build/tests",
+      "architecture": { "value": "x64", "strategy": "external" },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_CONFIGURATION_TYPES": "Debug",
+        "ENGINE_BUILD_RUNTIME": "OFF",
+        "ENGINE_BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "tests-debug", "configurePreset": "tests", "configuration": "Debug", "targets": ["EngineTestSuite"] }
+  ],
+  "testPresets": [
+    { "name": "tests-debug", "configurePreset": "tests", "configuration": "Debug",
+      "output": { "outputOnFailure": true }, "execution": { "noTestsAction": "error", "jobs": 8 } }
+  ]
+}

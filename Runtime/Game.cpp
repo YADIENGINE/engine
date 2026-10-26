@@ -1,0 +1,313 @@
+#include "Runtime/Game.h"
+#include <raylib.h>
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <cstdio>
+#include <limits>
+#include <stdexcept>
+#include <utility>
+#include "Platform/Platform.h"
+#include "Runtime/Scene.h"
+#include "Utilities/StartupTimer.h"
+#include "Graphics/Anim/Easing.h"
+#include "Graphics/Draw/DrawTime.h"
+#include "Graphics/Style/Theme.h"
+
+namespace {
+std::vector<std::filesystem::path> AssetManifest(const GameSettings& settings) {
+    auto assets = settings.assets;
+    for (const auto& effect : settings.audio.effects)
+        assets.push_back(effect.file);
+    for (const auto& music : settings.audio.music)
+        assets.push_back(music.file);
+    return assets;
+}
+constexpr const char* OptionsFile = "settings.json";
+constexpr std::int64_t MaxWindowSide = 1 << 15;
+
+// FPS sayacı: sol üst köşede koyu zemin üstünde küçük yazı.
+constexpr int FpsCounterX = 8;
+constexpr int FpsCounterY = 8;
+constexpr int FpsCounterFontSize = 20;
+constexpr int FpsCounterPadding = 6;
+constexpr float FpsCounterSmoothing = 0.1f; // Her karede iş süresinin yeni ölçüme yaklaşma oranı
+constexpr Color FpsCounterBackground{0, 0, 0, 170};
+constexpr Color FpsCounterText{120, 255, 160, 255};
+
+EffectLevel StoredLevel(std::int64_t stored) {
+    return stored >= 0 && stored <= static_cast<std::int64_t>(EffectLevel::Off) ? static_cast<EffectLevel>(stored)
+                                                                                : EffectLevel::Full;
+}
+} // namespace
+
+Game::Game(const GameSettings& settings)
+    : _renderer(settings.window, settings.canvasWidth, settings.canvasHeight, settings.background,
+                settings.canvasTextureFilter, settings.letterbox)
+    , _assetRoot(PrepareAssets(AssetManifest(settings)))
+    , _text(settings.font.empty() ? std::filesystem::path{} : _assetRoot / settings.font, settings.fontAtlasSizes,
+            settings.fontCodepoints, settings.fontTextureFilter)
+    , _audio(_assetRoot, settings.audioVolume)
+    , _applicationId(settings.applicationId)
+    , _saveSettings(settings.save)
+    , _options(SaveFilePath(settings.applicationId, OptionsFile))
+    , _defaultFpsLimit(settings.window.targetFps)
+    , _persistentOptions(settings.persistentOptions)
+    , _fixedWindow(settings.fixedWindow) {
+    SetTheme(settings.theme);            // Türeyen oyunun View üyeleri (UiButton) kurulurken tema etkin olmalı
+    _audio.BeginLoading(settings.audio); // Run'daki yükleme ekranı bitişini bekler
+    const StartupTimer timer(_persistentOptions ? "Options (load + apply)" : "Transient settings");
+    if (_persistentOptions) {
+        _options.Load();
+        ApplyOptions();
+    } else {
+        SetEffectQuality({});
+    }
+}
+Game::~Game() = default;
+void Game::Start() {}
+DeviceInput Game::ReadInput() { return _input.Read(_renderer); }
+void Game::CanvasReady(const Texture2D& texture) const { (void)texture; }
+void Game::DrawWindow() const {}
+void Game::HandleInput(const DeviceInput& input) {
+    if (_scene) _scene->ReadInput(input);
+}
+void Game::Update(float realSeconds) { (void)realSeconds; }
+float Game::FrameSeconds(float realSeconds) { return realSeconds; }
+double Game::DrawSeconds() const { return GetTime(); }
+void Game::Draw() const {}
+void Game::DrawLoading(float seconds, float outro) const {
+    (void)seconds;
+    (void)outro;
+}
+float Game::LoadingOutroSeconds(float loadSeconds) const {
+    (void)loadSeconds;
+    return 0.0f;
+}
+void Game::Stop() {}
+void Game::Suspend() {}
+void Game::Resume() {}
+
+void Game::SetFpsLimit(int fps) {
+    if (!_fixedWindow) _renderer.SetTargetFps(fps);
+    _options.Set(EngineOption::FpsLimit, fps);
+}
+int Game::FpsLimit() const {
+    const auto fps = _options.Get(EngineOption::FpsLimit, _defaultFpsLimit);
+    return fps < 0 || fps > std::numeric_limits<int>::max() ? _defaultFpsLimit : static_cast<int>(fps);
+}
+void Game::SetBorderlessFullscreen(bool enabled) {
+    if (!_fixedWindow) _renderer.SetBorderlessFullscreen(enabled);
+    _options.Set(EngineOption::BorderlessFullscreen, enabled ? 1 : 0);
+    // Pencereye dönünce seçili boyut yeniden uygulanır.
+    if (!enabled && !_fixedWindow) _renderer.SetWindowSize(WindowSize());
+}
+bool Game::BorderlessFullscreen() const { return _options.Get(EngineOption::BorderlessFullscreen, 0) == 1; }
+void Game::SetWindowSize(Vec2 size) {
+    if (size.x <= 0 || size.y <= 0) size = {};
+    if (!BorderlessFullscreen() && !_fixedWindow) _renderer.SetWindowSize(size);
+    _options.Set(EngineOption::WindowWidth, size.x);
+    _options.Set(EngineOption::WindowHeight, size.y);
+}
+Vec2 Game::WindowSize() const {
+    const auto width = _options.Get(EngineOption::WindowWidth, 0);
+    const auto height = _options.Get(EngineOption::WindowHeight, 0);
+    if (width <= 0 || height <= 0 || width > MaxWindowSide || height > MaxWindowSide) return {};
+    return {static_cast<int>(width), static_cast<int>(height)};
+}
+Vec2 Game::MonitorSize() const { return _renderer.MonitorSize(); }
+void Game::SetGraphics(const GraphicsSettings& graphics) {
+    _options.Set(EngineOption::RenderHeight, graphics.renderHeight);
+    _options.Set(EngineOption::VSync, graphics.vsync ? 1 : 0);
+    _options.Set(EngineOption::ShowFps, graphics.showFps ? 1 : 0);
+    _options.Set(EngineOption::Glow, static_cast<std::int64_t>(graphics.effects.glow));
+    _options.Set(EngineOption::ParticlePercent, graphics.effects.particlePercent);
+    _options.Set(EngineOption::Shake, static_cast<std::int64_t>(graphics.effects.shake));
+    _options.Set(EngineOption::SprintEffects, graphics.effects.sprintEffects ? 1 : 0);
+    _options.Set(EngineOption::Flashes, graphics.effects.flashes ? 1 : 0);
+    _options.Set(EngineOption::BackgroundEffects, graphics.effects.backgroundEffects ? 1 : 0);
+    ApplyGraphics();
+}
+GraphicsSettings Game::Graphics() const {
+    const auto renderHeight = _options.Get(EngineOption::RenderHeight, 0);
+    const auto particles = _options.Get(EngineOption::ParticlePercent, 100);
+    return {.renderHeight = renderHeight > 0 && renderHeight <= MaxWindowSide ? static_cast<int>(renderHeight) : 0,
+            .vsync = _options.Get(EngineOption::VSync, 0) == 1,
+            .showFps = _options.Get(EngineOption::ShowFps, 0) == 1,
+            .effects = {.glow = StoredLevel(_options.Get(EngineOption::Glow, 0)),
+                        .particlePercent = particles >= 0 && particles <= 100 ? static_cast<int>(particles) : 100,
+                        .shake = StoredLevel(_options.Get(EngineOption::Shake, 0)),
+                        .sprintEffects = _options.Get(EngineOption::SprintEffects, 1) == 1,
+                        .flashes = _options.Get(EngineOption::Flashes, 1) == 1,
+                        .backgroundEffects = _options.Get(EngineOption::BackgroundEffects, 1) == 1}};
+}
+void Game::ApplyGraphics() {
+    const GraphicsSettings graphics = Graphics();
+    _renderer.SetMaxRenderHeight(_fixedWindow ? 0 : graphics.renderHeight);
+    _renderer.SetVSync(graphics.vsync);
+    SetEffectQuality(graphics.effects);
+    _showFps = graphics.showFps;
+}
+
+void Game::ApplyOptions() {
+    _renderer.SetTargetFps(FpsLimit());
+    _renderer.SetBorderlessFullscreen(BorderlessFullscreen());
+    if (!BorderlessFullscreen()) _renderer.SetWindowSize(WindowSize());
+    ApplyGraphics();
+    _audio.LoadVolumeSettings(_options);
+}
+void Game::SaveOptions() {
+    if (!_persistentOptions) return;
+    _audio.StoreVolumeSettings(_options);
+    _options.Save();
+}
+
+std::filesystem::path Game::SavePath(const std::filesystem::path& filename) const {
+    return SaveFilePath(_applicationId, filename);
+}
+Persistence Game::CreatePersistence(const std::filesystem::path& filename, std::optional<SaveSettings> settings) const {
+    auto options = settings.value_or(_saveSettings);
+    if (options.encryption == SaveEncryptionMode::Encrypted) {
+        if (options.keys.file.empty()) options.keys.file = SavePath("keys/save.key");
+        if (options.keys.applicationId.empty()) options.keys.applicationId = _applicationId.string();
+    }
+    return Persistence(SavePath(filename), std::move(options));
+}
+
+void Game::RegisterScene(Scene& scene) {
+    if (std::ranges::find(_scenes, &scene) != _scenes.end()) throw std::logic_error("Scene already registered");
+    _scenes.push_back(&scene);
+}
+void Game::SetScene(Scene& scene, bool restart) {
+    if (std::ranges::find(_scenes, &scene) == _scenes.end()) throw std::logic_error("Scene is not registered");
+    _pendingScene = &scene;
+    _restartScene = restart;
+}
+void Game::CommitScene() {
+    if (!_pendingScene) return;
+    Scene* next = _pendingScene;
+    _pendingScene = nullptr;
+    const bool restart = std::exchange(_restartScene, false);
+    if (next == _scene && !restart) return;
+    if (_scene) _scene->Deactivate();
+    _scene = next;
+    _scene->Activate();
+    SaveOptions(); // Sahne geçişi tercihlerin kayıt noktasıdır (ör. Options ekranından çıkış)
+}
+void Game::Present() const {
+    SetDrawTime(DrawSeconds());
+    auto frame = _renderer.BeginFrame();
+    if (_scene) _scene->Render();
+    Draw();
+    if (_showFps) DrawFpsCounter();
+    frame.Complete([this](const Texture2D& texture) { CanvasReady(texture); }, [this] { DrawWindow(); });
+}
+void Game::DrawFpsCounter() const {
+    // Bekleme (FPS sınırı, VSync) hariç bu karenin işi; sayaç kendi çizimini ve kare sonu GPU teslimini saymaz.
+    const auto work = static_cast<float>(GetTime() - _frameStart);
+    _frameWorkSeconds += (work - _frameWorkSeconds) * FpsCounterSmoothing;
+    std::array<char, 48> label{};
+    std::snprintf(label.data(), label.size(), "%d FPS  %.1f ms", GetFPS(), _frameWorkSeconds * 1000.0f);
+    const int width = _text.Measure(label.data(), FpsCounterFontSize);
+    DrawRectangle(FpsCounterX - FpsCounterPadding, FpsCounterY - FpsCounterPadding, width + 2 * FpsCounterPadding,
+                  FpsCounterFontSize + 2 * FpsCounterPadding, FpsCounterBackground);
+    _text.Draw(label.data(), FpsCounterX, FpsCounterY, FpsCounterFontSize, FpsCounterText);
+}
+void Game::Shutdown() {
+    for (auto scene = _scenes.rbegin(); scene != _scenes.rend(); ++scene)
+        (*scene)->Shutdown();
+    _scene = nullptr;
+    _pendingScene = nullptr;
+}
+bool Game::ShowLoading() {
+    const StartupTimer timer("Loading screen");
+    const double start = GetTime();
+    std::optional<double> loadedAt;
+    while (!_quitRequested && !_renderer.ShouldClose()) {
+        const double now = GetTime();
+        if (!loadedAt && _audio.FinishLoading()) loadedAt = now;
+        float outro = 0.0f;
+        if (loadedAt) {
+            const float outroSeconds = LoadingOutroSeconds(static_cast<float>(*loadedAt - start));
+            const auto since = static_cast<float>(now - *loadedAt);
+            if (since >= outroSeconds) return true;
+            outro = Progress01(since, 0.0f, outroSeconds);
+        }
+        {
+            SetDrawTime(DrawSeconds());
+            auto frame = _renderer.BeginFrame();
+            if (_scene) _scene->Render();
+            DrawLoading(static_cast<float>(now - start), outro);
+            frame.Complete({}, [this] { DrawWindow(); });
+        }
+        RevealWindow();
+    }
+    return false;
+}
+void Game::RevealWindow() {
+    if (_revealed) return;
+    _revealed = true;
+    _renderer.RevealWindow(); // Pencere gizli açıldı; ilk kare hazır olunca görünür
+    StartupTimer::Mark("First frame");
+}
+void Game::Run() {
+    if (_ran) throw std::logic_error("A game can only run once");
+    _ran = true;
+    try {
+        StartupTimer::Mark("Game constructed");
+        {
+            const StartupTimer timer("Start + first scene");
+            Start();
+            CommitScene();
+        }
+        const bool loaded = ShowLoading();
+#ifdef __ANDROID__
+        bool wasFocused = IsWindowFocused();
+        bool resumeMusic = false;
+#endif
+        while (loaded && !_quitRequested && !_renderer.ShouldClose()) {
+#ifdef __ANDROID__
+            const bool focused = IsWindowFocused();
+            if (!focused) {
+                if (wasFocused) {
+                    resumeMusic = _audio.IsMusicPlaying();
+                    _audio.PauseMusic();
+                    Suspend();
+                    SaveOptions();
+                }
+                wasFocused = false;
+                Present(); // EndDrawing continues processing Android activity events.
+                continue;
+            }
+            const bool resumed = !wasFocused;
+            if (resumed) {
+                if (resumeMusic) _audio.ResumeMusic();
+                Resume();
+            }
+            wasFocused = true;
+#endif
+            _frameStart = GetTime();
+            const DeviceInput input = ReadInput();
+            HandleInput(input);
+            float realSeconds = GetFrameTime();
+#ifdef __ANDROID__
+            if (resumed || realSeconds > 0.25f) realSeconds = 0.0f;
+#endif
+            _audio.Update();
+            realSeconds = FrameSeconds(realSeconds);
+            Update(realSeconds);
+            CommitScene();
+            if (_scene && _scene->Clock() == TimeDomain::Real) _scene->Tick(realSeconds);
+            const float gameSeconds = _paused ? 0.0f : _timeScale.Advance(realSeconds);
+            if (_scene && _scene->Clock() == TimeDomain::Game) _scene->Tick(gameSeconds);
+            Present();
+            RevealWindow();
+        }
+        Stop(); // The project settles its run while scene data and services are still alive.
+        SaveOptions();
+    } catch (...) {
+        Shutdown();
+        throw;
+    }
+    Shutdown();
+}

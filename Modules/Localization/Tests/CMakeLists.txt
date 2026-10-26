@@ -1,0 +1,1 @@
+engine_tests(EngineLocalizationTests SOURCES LocalizationTests.cpp LINKS EngineLocalization)

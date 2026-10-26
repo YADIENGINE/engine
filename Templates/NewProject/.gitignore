@@ -1,0 +1,9 @@
+# Build
+build/
+Final/
+__pycache__/
+
+# IDE
+.vs/
+.vscode/
+.idea/
