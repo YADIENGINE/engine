@@ -81,7 +81,8 @@ std::optional<Vec2> ReadPoint(const nlohmann::json& json) {
     return Vec2{static_cast<int>(x), static_cast<int>(y)};
 }
 void ReadPoints(const nlohmann::json& json, std::vector<Vec2>& result) {
-    if (!json.is_array() || json.size() > 32) throw std::runtime_error("Input point capacity exceeded");
+    if (!json.is_array() || json.size() > PreviewMaxInputPoints)
+        throw std::runtime_error("Input point capacity exceeded");
     for (const auto& point : json) {
         const auto value = ReadPoint(point);
         if (!value) throw std::runtime_error("Null input point");
@@ -273,25 +274,28 @@ std::vector<PreviewDefinition> DecodePreviewCatalog(const nlohmann::json& json) 
     return result;
 }
 nlohmann::json EncodePreviewInput(const DeviceInput& input) {
-    auto taps = nlohmann::json::array();
+    auto presses = nlohmann::json::array();
     auto held = nlohmann::json::array();
-    for (Vec2 point : input.taps)
-        taps.push_back(Point(point));
-    for (Vec2 point : input.held)
+    auto touches = nlohmann::json::array();
+    for (Vec2 point : input.pressPoints)
+        presses.push_back(Point(point));
+    for (Vec2 point : input.heldPoints)
         held.push_back(Point(point));
+    for (const auto& touch : input.touches)
+        touches.push_back({{"id", touch.id}, {"position", Point(touch.position)}});
     return {{"cancelled", input.cancelled},
             {"pressed", input.keysPressed},
             {"down", input.keysDown},
-            {"shift", input.shiftHeld},
-            {"mouse", Point(input.mouse)},
-            {"pointer", Point(input.pointer)},
-            {"hover", Point(input.hover)},
+            {"mouse", Point(input.mousePosition)},
+            {"mousePress", Point(input.mousePress)},
+            {"mouseHover", Point(input.mouseHover)},
             {"mousePressed", input.mousePressed},
             {"mouseReleased", input.mouseReleased},
             {"mouseDown", input.mouseDown},
             {"wheel", input.wheel},
-            {"taps", taps},
-            {"held", held}};
+            {"pressPoints", presses},
+            {"heldPoints", held},
+            {"touches", touches}};
 }
 DeviceInput DecodePreviewInput(const nlohmann::json& json) {
     DeviceInput input;
@@ -305,16 +309,31 @@ DeviceInput DecodePreviewInput(const nlohmann::json& json) {
         input.keysPressed[i] = pressed[i].get<bool>();
         input.keysDown[i] = down[i].get<bool>();
     }
-    input.shiftHeld = json.at("shift").get<bool>();
-    input.mouse = ReadPoint(json.at("mouse"));
-    input.pointer = ReadPoint(json.at("pointer"));
-    input.hover = ReadPoint(json.at("hover"));
+    input.mousePosition = ReadPoint(json.at("mouse"));
+    input.mousePress = ReadPoint(json.at("mousePress"));
+    input.mouseHover = ReadPoint(json.at("mouseHover"));
     input.mousePressed = json.at("mousePressed").get<bool>();
     input.mouseReleased = json.at("mouseReleased").get<bool>();
     input.mouseDown = json.at("mouseDown").get<bool>();
     input.wheel = json.at("wheel").get<float>();
     if (!std::isfinite(input.wheel)) throw std::runtime_error("Invalid input wheel");
-    ReadPoints(json.at("taps"), input.taps);
-    ReadPoints(json.at("held"), input.held);
+    ReadPoints(json.at("pressPoints"), input.pressPoints);
+    ReadPoints(json.at("heldPoints"), input.heldPoints);
+    const auto& touches = json.at("touches");
+    if (!touches.is_array() || touches.size() > PreviewMaxInputPoints)
+        throw std::runtime_error("Input touch capacity exceeded");
+    std::set<int> touchIds;
+    for (const auto& touch : touches) {
+        const auto& id = touch.at("id");
+        if (!id.is_number_integer() ||
+            (id.is_number_unsigned() &&
+             id.get<std::uint64_t>() > static_cast<std::uint64_t>(std::numeric_limits<int>::max())))
+            throw std::runtime_error("Invalid input touch id");
+        const auto value = id.get<std::int64_t>();
+        if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max() ||
+            !touchIds.insert(static_cast<int>(value)).second)
+            throw std::runtime_error("Invalid or duplicate input touch id");
+        input.touches.push_back({static_cast<int>(value), ReadPoint(touch.at("position"))});
+    }
     return input;
 }

@@ -27,19 +27,19 @@ TEST_CASE("Editor.Viewport.LetterboxAndCoordinates", "[engine-editor]") {
 TEST_CASE("Editor.Input.OwnedDragReleaseAndFocus", "[engine-editor]") {
     PreviewInputRouter router;
     const auto viewport = FitPreviewViewport({}, {200.0f, 100.0f}, {400, 200});
-    DeviceInput down;
+    InputSample down;
     down.mousePressed = true;
     down.mouseDown = true;
     down.keysPressed[static_cast<std::size_t>(InputKey::Enter)] = true;
     down.keysDown = down.keysPressed;
     const auto pressed = router.Route(down, {50.0f, 50.0f}, viewport, true, true, false, false);
-    CHECK(pressed.pointer == Vec2{100, 100});
+    CHECK(pressed.mousePress == Vec2{100, 100});
     CHECK(pressed.Pressed(InputKey::Enter));
-    DeviceInput up;
+    InputSample up;
     up.mouseReleased = true;
     const auto released = router.Route(up, {500.0f, 500.0f}, viewport, true, false, true, true);
     CHECK(released.mouseReleased);
-    CHECK_FALSE(released.mouse);
+    CHECK_FALSE(released.mousePosition);
     const auto editor = router.Route(down, {50.0f, 50.0f}, viewport, true, false, true, true);
     CHECK_FALSE(editor.Pressed(InputKey::Enter));
     CHECK_FALSE(editor.mousePressed);
@@ -54,7 +54,7 @@ TEST_CASE("Editor.Input.OwnedDragReleaseAndFocus", "[engine-editor]") {
 TEST_CASE("Editor.Input.FocusCancellationDrainsHeldDevicesBeforeAcceptingANewPress", "[engine-editor]") {
     PreviewInputRouter router;
     const auto viewport = FitPreviewViewport({}, {200.0f, 100.0f}, {400, 200});
-    DeviceInput down;
+    InputSample down;
     down.mousePressed = down.mouseDown = true;
     down.keysDown[static_cast<std::size_t>(InputKey::Enter)] = true;
     (void)router.Route(down, {50, 50}, viewport, true, true, false, false);
@@ -77,15 +77,15 @@ TEST_CASE("Editor.Viewport.ZoomedImageUsesCanvasCoordinatesAndVisibleClip", "[en
     CHECK_FALSE(MapPreviewPoint(viewport, {99, 350}));
     CHECK_FALSE(MapPreviewPoint(viewport, {900, 350}));
     PreviewInputRouter router;
-    DeviceInput down;
+    InputSample down;
     down.mousePressed = true;
     down.mouseDown = true;
-    CHECK(router.Route(down, {500, 350}, viewport, true, true, false, false).pointer == Vec2{700, 425});
-    DeviceInput up;
+    CHECK(router.Route(down, {500, 350}, viewport, true, true, false, false).mousePress == Vec2{700, 425});
+    InputSample up;
     up.mouseReleased = true;
     const auto release = router.Route(up, {901, 350}, viewport, true, true, false, true);
     CHECK(release.mouseReleased);
-    CHECK_FALSE(release.mouse);
+    CHECK_FALSE(release.mousePosition);
 }
 
 TEST_CASE("Editor.Protocol.InspectionIsReadOnlyAndRejectsInvalidGeometryAndRows", "[engine-editor]") {
@@ -111,11 +111,13 @@ TEST_CASE("Editor.Input.SnapshotsPreserveEdges", "[engine-editor]") {
     DeviceInput down;
     down.mousePressed = true;
     down.mouseDown = true;
-    down.taps = {{20, 30}};
+    down.pressPoints = {{20, 30}};
+    down.touches = {{7, Vec2{20, 30}}};
     down.keysPressed[0] = true;
     down.keysDown[0] = true;
     DeviceInput up;
     up.mouseReleased = true;
+    up.touches = {{7, std::nullopt}};
     AccumulatePreviewInput(state, down);
     AccumulatePreviewInput(state, up);
     const auto frame = ConsumePreviewInput(state);
@@ -124,12 +126,78 @@ TEST_CASE("Editor.Input.SnapshotsPreserveEdges", "[engine-editor]") {
     CHECK_FALSE(frame.mouseDown);
     CHECK(frame.keysPressed[0]);
     CHECK_FALSE(frame.keysDown[0]);
-    REQUIRE(frame.taps.size() == 1);
-    CHECK(frame.taps.front() == Vec2{20, 30});
+    REQUIRE(frame.pressPoints.size() == 1);
+    CHECK(frame.pressPoints.front() == Vec2{20, 30});
+    REQUIRE(frame.touches.size() == 1);
+    CHECK(frame.touches.front().id == 7);
+    CHECK_FALSE(frame.touches.front().position);
     const auto next = ConsumePreviewInput(state);
     CHECK_FALSE(next.keysPressed[0]);
     CHECK_FALSE(next.mouseReleased);
-    CHECK(next.taps.empty());
+    CHECK(next.pressPoints.empty());
+}
+
+TEST_CASE("Editor.Input.ProtocolPreservesTouchIdentityAndRejectsAmbiguousContacts", "[engine-editor]") {
+    DeviceInput input;
+    input.keysDown[static_cast<std::size_t>(InputKey::RightShift)] = true;
+    input.mousePosition = Vec2{100, 120};
+    input.mousePress = Vec2{90, 110};
+    input.mouseHover = input.mousePosition;
+    input.mousePressed = true;
+    input.mouseReleased = true;
+    input.wheel = -0.5f;
+    input.pressPoints = {{90, 110}, {150, 160}};
+    input.heldPoints = {{160, 170}};
+    input.touches = {{7, std::nullopt}, {9, Vec2{160, 170}}};
+    const auto encoded = EncodePreviewInput(input);
+    const auto decoded = DecodePreviewInput(encoded);
+    CHECK(decoded.ShiftDown());
+    CHECK(decoded.mousePress == input.mousePress);
+    CHECK(decoded.mouseHover == input.mouseHover);
+    CHECK(decoded.mousePosition == input.mousePosition);
+    CHECK(decoded.mousePressed);
+    CHECK(decoded.mouseReleased);
+    CHECK(decoded.pressPoints == input.pressPoints);
+    CHECK(decoded.heldPoints == input.heldPoints);
+    REQUIRE(decoded.touches.size() == 2);
+    CHECK(decoded.touches[0].id == 7);
+    CHECK_FALSE(decoded.touches[0].position);
+    CHECK(decoded.touches[1].id == 9);
+    CHECK(decoded.touches[1].position == Vec2{160, 170});
+    auto invalid = encoded;
+    invalid["touches"][1]["id"] = 7;
+    CHECK_THROWS(DecodePreviewInput(invalid));
+    invalid = encoded;
+    invalid["touches"][0]["id"] = std::numeric_limits<std::uint64_t>::max();
+    CHECK_THROWS(DecodePreviewInput(invalid));
+    invalid = encoded;
+    invalid["pressed"].push_back(false);
+    CHECK_THROWS(DecodePreviewInput(invalid));
+}
+
+TEST_CASE("Editor.Input.TouchOwnershipUsesTheSameCanvasContractAsMouse", "[engine-editor]") {
+    PreviewInputRouter router;
+    const auto viewport = FitPreviewViewport({}, {200.0f, 100.0f}, {400, 200});
+    InputSample sample;
+    sample.touches = {{7, {50, 60}}};
+    auto input = router.Route(sample, {}, viewport, true, true, false, false);
+    REQUIRE(input.touches.size() == 1);
+    CHECK(input.touches.front().id == 7);
+    CHECK(input.touches.front().position == Vec2{100, 120});
+    REQUIRE(input.pressPoints.size() == 1);
+    CHECK(input.pressPoints.front() == Vec2{100, 120});
+    CHECK(router.OwnsPointer());
+    sample.touches[0].position = {250, 60};
+    input = router.Route(sample, {}, viewport, true, true, false, true);
+    REQUIRE(input.touches.size() == 1);
+    CHECK_FALSE(input.touches.front().position);
+    CHECK(input.pressPoints.empty());
+    (void)router.Route({}, {}, viewport, true, true, false, false);
+    CHECK_FALSE(router.OwnsPointer());
+    sample.touches = {{9, {250, 60}}};
+    CHECK(router.Route(sample, {}, viewport, true, true, false, false).touches.empty());
+    sample.touches[0].position = {50, 60};
+    CHECK(router.Route(sample, {}, viewport, true, true, false, false).touches.empty());
 }
 
 TEST_CASE("Editor.Input.CancellationDiscardsOldEdgesAndPrecedesNewInput", "[engine-editor]") {
@@ -137,7 +205,7 @@ TEST_CASE("Editor.Input.CancellationDiscardsOldEdgesAndPrecedesNewInput", "[engi
     DeviceInput old;
     old.keysPressed[0] = old.keysDown[0] = true;
     old.mousePressed = old.mouseDown = true;
-    old.taps = {{20, 30}};
+    old.pressPoints = {{20, 30}};
     AccumulatePreviewInput(state, old);
     const DeviceInput cancel{.cancelled = true};
     const auto decoded = DecodePreviewInput(EncodePreviewInput(cancel));
@@ -146,21 +214,21 @@ TEST_CASE("Editor.Input.CancellationDiscardsOldEdgesAndPrecedesNewInput", "[engi
     DeviceInput next;
     next.keysPressed[1] = next.keysDown[1] = true;
     next.mousePressed = next.mouseDown = true;
-    next.mouse = Vec2{40, 50};
-    next.taps = {{40, 50}};
+    next.mousePosition = Vec2{40, 50};
+    next.pressPoints = {{40, 50}};
     AccumulatePreviewInput(state, next);
     const auto barrier = ConsumePreviewInput(state);
     CHECK(barrier.cancelled);
     CHECK_FALSE(barrier.keysPressed[0]);
     CHECK_FALSE(barrier.keysPressed[1]);
-    CHECK(barrier.taps.empty());
+    CHECK(barrier.pressPoints.empty());
     const auto fresh = ConsumePreviewInput(state);
     CHECK_FALSE(fresh.cancelled);
     CHECK_FALSE(fresh.keysPressed[0]);
     CHECK(fresh.keysPressed[1]);
     CHECK(fresh.mousePressed);
-    REQUIRE(fresh.taps.size() == 1);
-    CHECK(fresh.taps.front() == Vec2{40, 50});
+    REQUIRE(fresh.pressPoints.size() == 1);
+    CHECK(fresh.pressPoints.front() == Vec2{40, 50});
     CHECK_FALSE(ConsumePreviewInput(state).keysPressed[1]);
 }
 

@@ -74,7 +74,6 @@ Game code that uses several components can include a focused umbrella header:
 | `Fx/FxImport.h` | FX stage, particle recipes, particles, floating text, rings, camera effects, overlays, speed lines, iris drawing |
 | `Graphics/Draw/GraphicsImport.h` | DrawUtils, Easing, Neon, TextRenderer, TextStyle |
 | `Runtime/RuntimeImport.h` | Game, GameSettings, GameObject, Scene |
-| `Input/InputImport.h` | DeviceInput, InputReader |
 
 These are explicit include lists, not effect registration or object creation. Add a new public
 component's header to the relevant umbrella and its `.cpp` to `Engine/CMakeLists.txt` when needed.
@@ -87,8 +86,9 @@ global names such as `Clamp` and `Lerp`.
 
 Specific headers remain supported and should be used inside Engine and by headless consumers.
 In particular, include `Fx/TimeScale.h`, `Fx/TransitionClock.h`, `Runtime/Scene.h`, or
-`Runtime/GameObject.h` directly when using only those components without raylib. InputImport itself
-does not require raylib. There is no global EngineImport header.
+`Runtime/GameObject.h` directly when using only those components without raylib. Input has explicit headless public
+headers (`Input.hpp`, `InputNavigation.hpp`, `DragPointer.hpp`, `CollectionPointer.hpp`); device sampling and gesture
+implementation stay private in `Input/Internals/`. See [Input](Input.md). There is no global EngineImport header.
 
 
 Detaylar: [runtime](Runtime.md), [grafik](Graphics/README.md), [modül seçimi](Modules/README.md).

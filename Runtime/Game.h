@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <optional>
 #include <vector>
 #include "Modules/Persistence/Persistence.hpp"
@@ -7,11 +8,12 @@
 #include "Fx/TimeScale.h"
 #include "Graphics/Render/Renderer.h"
 #include "Graphics/Draw/TextRenderer.h"
-#include "Input/InputReader.h"
+#include "Input/Input.hpp"
 #include "Runtime/GameSettings.h"
 #include "Runtime/GraphicsSettings.h"
 
 class Scene;
+class InputNormalizer;
 
 // Runtime owns the loop and services. A project's derived game supplies content and scenes.
 class Game {
@@ -98,7 +100,7 @@ private:
     std::filesystem::path _assetRoot;
     TextRenderer _text;
     AudioSystem _audio;
-    InputReader _input;
+    std::unique_ptr<InputNormalizer> _input;
     TimeScale _timeScale;
     std::filesystem::path _applicationId;
     SaveSettings _saveSettings;

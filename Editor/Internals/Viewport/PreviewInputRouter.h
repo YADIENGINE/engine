@@ -1,18 +1,21 @@
 #pragma once
 #include "Editor/Internals/Viewport/PreviewViewport.h"
-#include "Input/DeviceInput.h"
+#include "Input/Internals/InputNormalizer.h"
 
 class PreviewInputRouter {
 public:
     PreviewInputRouter();
-    [[nodiscard]] bool OwnsPointer() const { return _dragging; }
-    [[nodiscard]] DeviceInput Route(const DeviceInput& windowInput, Float2 mouse, const PreviewViewport& viewport,
+    [[nodiscard]] bool OwnsPointer() const { return _dragging || !_ownedTouches.empty(); }
+    [[nodiscard]] DeviceInput Route(const InputSample& windowInput, Float2 mouse, const PreviewViewport& viewport,
                                     bool windowFocused, bool viewportFocused, bool keyboardBlocked,
                                     bool pointerBlocked);
     // Cancels owned input; held devices must become neutral before routing resumes.
     [[nodiscard]] DeviceInput Clear();
 
 private:
+    InputNormalizer _normalizer;
+    std::vector<int> _touchIds;
+    std::vector<int> _ownedTouches;
     bool _dragging = false;
     bool _suppressUntilNeutral = false;
     std::optional<Vec2> _lastMouse;

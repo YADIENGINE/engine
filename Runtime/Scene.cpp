@@ -3,7 +3,7 @@
 #include <exception>
 #include <stdexcept>
 #include <utility>
-#include "Input/DeviceInput.h"
+#include "Input/Input.hpp"
 
 Scene::Scene(TimeDomain time)
     : _time(time) {

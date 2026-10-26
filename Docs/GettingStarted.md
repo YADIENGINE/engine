@@ -59,7 +59,7 @@ private:
 #include "MyScene.h"
 #include <raylib.h>
 #include <algorithm>
-#include "Input/InputFrame.h"
+#include "Input/InputNavigation.hpp"
 
 namespace {
 constexpr float StartX = 640.0f;
@@ -73,7 +73,7 @@ MyScene::MyScene()
     : Scene(TimeDomain::Game) {}
 MyScene::~MyScene() { ShutdownNoThrow(); }
 void MyScene::Enter() { _x = StartX; }
-void MyScene::HandleInput(const DeviceInput& input) { _direction = InputFrame(input).Horizontal(); }
+void MyScene::HandleInput(const DeviceInput& input) { _direction = InputNavigation(input).Horizontal(); }
 void MyScene::Update(float seconds) {
     _x = std::clamp(_x + static_cast<float>(_direction) * Speed * seconds, Radius, CanvasWidth - Radius);
     _direction = 0;
@@ -110,7 +110,7 @@ private:
 
 ```cpp
 #include "MyGame.h"
-#include "Input/InputFrame.h"
+#include "Input/InputNavigation.hpp"
 
 namespace {
 GameSettings Settings() {
@@ -129,7 +129,7 @@ MyGame::MyGame()
 }
 void MyGame::Start() { SetScene(_scene); }
 void MyGame::HandleInput(const DeviceInput& input) {
-    if (InputFrame(input).Back())
+    if (InputNavigation(input).Back())
         RequestQuit();
     else
         Game::HandleInput(input);

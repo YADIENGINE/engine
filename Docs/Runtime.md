@@ -36,7 +36,8 @@ Scenes are value members of the derived game; base engine services outlive those
 The frame order is device sampling → game input → audio/game real-time update → scene change → real-time
 scene update → scaled-time scene update → scene draw → game overlay draw → completed canvas → window presentation.
 `ReadInput()` defaults to normal device/canvas sampling and can supply external `DeviceInput` snapshots.
-`InputReader::Read()` samples window coordinates; its mapper overload and `Read(renderer)` share the same sampling.
+Device polling and window-coordinate samples are private to Runtime; public input uses logical canvas coordinates.
+The editor applies the same normalization with its own viewport mapping. See [Input](Input.md).
 `CanvasReady(const Texture2D&)` receives a borrowed completed canvas before presentation; retain no texture ownership.
 `DrawWindow()` draws after canvas presentation, inside the window drawing pass. `Renderer::Frame::Complete` invokes
 these callbacks explicitly; scoped-frame cleanup never invokes user callbacks. Neither hook changes scene ownership.
@@ -53,8 +54,8 @@ Cancellation may repeat across frames; hooks must be idempotent and clear held a
 The protected `Game::CancelInput()` also cancels local device input; games may call it when a visual
 transition starts. Cancellation is allowed inside an input callback; other lifecycle dispatch remains guarded.
 
-`InputReader::Cancel()` keeps sampling touch IDs while suppressing actions until every held key/contact
-has been released. External `ReadInput()` overrides own their focus/cancellation policy, so hidden preview
+Runtime keeps sampling touch IDs while suppressing actions until every held key/contact
+has been released and the neutral frame has been consumed. External `ReadInput()` overrides own their focus/cancellation policy, so hidden preview
 windows remain independent of OS focus. Pointer helpers accept canonical empty cancelled snapshots;
 forward one from InputCancelled to cancel and drain the old gesture without losing the next new press.
 

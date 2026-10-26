@@ -2,7 +2,8 @@
 
 ## Gameplay frameworks
 
-Header-only and headless (EngineCore). Each is templated on the game's own enum; Engine never names game types.
+Headless helpers (EngineCore). The gameplay frameworks are header-only and templated on the game's own enum;
+Engine never names game types. Input navigation is a compiled borrowed view.
 
 | Header | Use |
 | --- | --- |
@@ -13,7 +14,7 @@ Header-only and headless (EngineCore). Each is templated on the game's own enum;
 | `Utilities/WeightedPick.h` | `WeightedIndex(weights, rng)`: seed-stable `std::discrete_distribution` pick |
 | `Utilities/EnumTable.h` | `static_assert(RowsInIdOrder(rows))`: rows in enum order, one per value (`Id::Count` last) |
 | `Utilities/ChoiceList.h` | `StoredChoice` / `StepChoice` for settings lists (control scheme, FPS limit) |
-| `Input/InputFrame.h` | Semantic menu queries over `DeviceInput` (Confirm, Back, axes, tabs, click point) |
+| `Input/InputNavigation.hpp` | Borrowed semantic queries over `DeviceInput` (Confirm, Back, axes, tabs, press point) |
 
 ```cpp
 enum class Attribute { Speed, Luck, Count };

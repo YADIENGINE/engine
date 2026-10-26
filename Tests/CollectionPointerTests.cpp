@@ -1,6 +1,6 @@
 #include "Tests/Support/Diagnostics.h"
-#include "Input/CollectionPointer.h"
-#include "Input/DeviceInput.h"
+#include "Input/CollectionPointer.hpp"
+#include "Input/Input.hpp"
 
 namespace {
 constexpr Rect Area{100, 100, 200, 200};
@@ -17,14 +17,14 @@ TEST_CASE("Engine.CollectionPointer.ReleaseTapAndSyntheticMouseSuppression", "[e
     CHECK_FALSE(pointer.Update(Finger({155, 205})).tap);
     CHECK(pointer.Update({}).tap == Vec2{155, 205});
     DeviceInput mouse;
-    mouse.mouse = Vec2{155, 205};
+    mouse.mousePosition = Vec2{155, 205};
     mouse.mouseReleased = true;
-    mouse.hover = mouse.mouse;
+    mouse.mouseHover = mouse.mousePosition;
     CHECK_FALSE(pointer.Update(mouse).tap);
     CHECK_FALSE(pointer.Update(mouse).hover);
     (void)pointer.Update({});
     mouse.mouseReleased = false;
-    CHECK(pointer.Update(mouse).hover == mouse.mouse);
+    CHECK(pointer.Update(mouse).hover == mouse.mousePosition);
 }
 TEST_CASE("Engine.CollectionPointer.DragReturningToOriginNeverActivates", "[engine][input]") {
     CollectionPointer pointer(Area, 40);
@@ -45,10 +45,10 @@ TEST_CASE("Engine.CollectionPointer.PrimaryIdentityAndOutsideCancellation", "[en
     (void)pointer.Update(input);
     CHECK_FALSE(pointer.Update({}).tap);
 }
-TEST_CASE("Engine.CollectionPointer.ResetCancelsHeldContactAndItsRelease", "[engine][input]") {
+TEST_CASE("Engine.CollectionPointer.CancelDiscardsHeldContactAndItsRelease", "[engine][input]") {
     CollectionPointer pointer(Area, 40);
     (void)pointer.Update(Finger({150, 220}));
-    pointer.Reset();
+    pointer.Cancel();
     CHECK(pointer.Update(Finger({150, 100})).rows == 0);
     CHECK_FALSE(pointer.Update({}).tap);
     (void)pointer.Update(Finger({150, 220}));
@@ -57,16 +57,16 @@ TEST_CASE("Engine.CollectionPointer.ResetCancelsHeldContactAndItsRelease", "[eng
 TEST_CASE("Engine.CollectionPointer.MouseReleaseAndWheelArea", "[engine][input]") {
     CollectionPointer pointer(Area, 40);
     DeviceInput mouse;
-    mouse.mouse = Vec2{150, 200};
+    mouse.mousePosition = Vec2{150, 200};
     mouse.mousePressed = mouse.mouseDown = true;
     CHECK_FALSE(pointer.Update(mouse).tap);
     mouse.mousePressed = mouse.mouseDown = false;
     mouse.mouseReleased = true;
-    CHECK(pointer.Update(mouse).tap == mouse.mouse);
+    CHECK(pointer.Update(mouse).tap == mouse.mousePosition);
     mouse.mouseReleased = false;
     mouse.wheel = 1.0f;
     CHECK(pointer.Update(mouse).rows == -1);
-    mouse.mouse = Vec2{10, 10};
+    mouse.mousePosition = Vec2{10, 10};
     CHECK(pointer.Update(mouse).rows == 0);
 }
 
@@ -76,4 +76,27 @@ TEST_CASE("Engine.CollectionPointer.CancelledSnapshotDoesNotReleaseATap", "[engi
     CHECK_FALSE(pointer.Update(DeviceInput{.cancelled = true}).tap);
     (void)pointer.Update(Finger({155, 205}));
     CHECK(pointer.Update({}).tap == Vec2{155, 205});
+}
+
+TEST_CASE("Engine.CollectionPointer.LeavingCanvasCannotReactivateOnReentry", "[engine][input]") {
+    CollectionPointer pointer(Area, 40);
+    DeviceInput input;
+    input.mousePosition = Vec2{150, 200};
+    input.mousePressed = input.mouseDown = true;
+    (void)pointer.Update(input);
+    input.mousePressed = false;
+    input.mousePosition.reset();
+    CHECK(pointer.Update(input).cancelled);
+    input.mousePosition = Vec2{150, 200};
+    CHECK(pointer.Update(input).cancelled);
+    input.mouseDown = false;
+    input.mouseReleased = true;
+    CHECK_FALSE(pointer.Update(input).tap);
+    (void)pointer.Update({});
+    input.mousePressed = input.mouseDown = true;
+    input.mouseReleased = false;
+    (void)pointer.Update(input);
+    input.mousePressed = input.mouseDown = false;
+    input.mouseReleased = true;
+    CHECK(pointer.Update(input).tap == Vec2{150, 200});
 }

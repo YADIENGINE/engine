@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <vector>
 #include "Editor/Host/EditorEntryPoint.h"
+#include "Input/Internals/InputReader.h"
 #include "Platform/UserData.h"
 
 namespace {
@@ -44,8 +45,10 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     _observedFontSize = _fontSize;
 }
 EditorApplication::~EditorApplication() { Stop(); }
-DeviceInput EditorApplication::ReadInput() { return _windowReader.Read(); }
-void EditorApplication::HandleInput(const DeviceInput& input) { _windowInput = input; }
+DeviceInput EditorApplication::ReadInput() {
+    _windowInput = ReadInputDevices();
+    return {};
+}
 void EditorApplication::SavePreferences(bool force) {
     if (!_settings) return;
     if (_preferences != _observedPreferences || _fontSize != _observedFontSize) {

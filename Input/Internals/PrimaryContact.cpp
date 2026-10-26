@@ -1,63 +1,51 @@
-#include "Input/DragPointer.h"
+#include "Input/Internals/PrimaryContact.h"
 #include <algorithm>
 #include <cstdlib>
-#include "Input/DeviceInput.h"
 
-DragPointer::DragPointer(int threshold)
-    : _threshold(std::max(1, threshold)) {}
-
-void DragPointer::Begin(Vec2 point, DragPointerResult& result) {
+bool InputDragThresholdReached(Vec2 point, Vec2 origin, int threshold) {
+    return std::abs(point.x - origin.x) >= threshold || std::abs(point.y - origin.y) >= threshold;
+}
+void InputPrimaryContact::Begin(Vec2 point, InputContactFrame& result) {
     _origin = point;
     _last = point;
-    _dragged = false;
     result.pressed = point;
     result.position = point;
     result.origin = point;
 }
-
-void DragPointer::Track(Vec2 point, DragPointerResult& result) {
-    if (!_origin) return;
+void InputPrimaryContact::Track(Vec2 point, InputContactFrame& result) {
     _last = point;
-    if (std::abs(point.x - _origin->x) >= _threshold || std::abs(point.y - _origin->y) >= _threshold) _dragged = true;
     result.position = point;
     result.origin = _origin;
-    result.dragging = _dragged;
 }
-
-void DragPointer::Finish(DragPointerResult& result) {
-    if (!_origin || !_last) return;
+void InputPrimaryContact::Finish(InputContactFrame& result) {
     result.released = _last;
     result.origin = _origin;
-    result.dragging = _dragged;
-    result.tap = _last.has_value() && !_dragged;
+    result.position.reset();
     _origin.reset();
     _last.reset();
-    _dragged = false;
 }
-
-void DragPointer::Reset() {
+void InputPrimaryContact::Cancel() {
     _cancelled = true;
+    _touch.reset();
     _origin.reset();
     _last.reset();
-    _dragged = false;
+    _mouseActive = false;
     _suppressMouse = true;
 }
-
-DragPointerResult DragPointer::Update(const DeviceInput& input) {
-    DragPointerResult result;
-    if (input.cancelled) Reset();
+InputContactFrame InputPrimaryContact::Update(const DeviceInput& input) {
+    InputContactFrame result;
+    if (input.cancelled) Cancel();
     const bool quiet = input.touches.empty() && !input.mouseDown && !input.mousePressed && !input.mouseReleased;
     if (_cancelled) {
         result.cancelled = true;
         if (quiet) {
             _cancelled = false;
-            _touch.reset();
-            _mouseActive = false;
             _suppressMouse = false;
         }
         return result;
     }
     if (_touch) {
+        result.touch = true;
         const auto found = std::ranges::find_if(input.touches, [this](const InputTouch& t) { return t.id == *_touch; });
         if (found == input.touches.end()) {
             _touch.reset();
@@ -65,7 +53,7 @@ DragPointerResult DragPointer::Update(const DeviceInput& input) {
         } else if (found->position) {
             Track(*found->position, result);
         } else {
-            Reset();
+            Cancel();
             result.cancelled = true;
         }
         return result;
@@ -74,48 +62,44 @@ DragPointerResult DragPointer::Update(const DeviceInput& input) {
         if (quiet) _suppressMouse = false;
         return result;
     }
-    if (!input.touches.empty()) {
+    if (!_mouseActive && !input.touches.empty()) {
         const InputTouch& touch = input.touches.front();
         _touch = touch.id;
-        _mouseActive = false;
         _suppressMouse = true;
-        if (touch.position)
+        result.touch = true;
+        if (touch.position) {
             Begin(*touch.position, result);
-        else {
-            Reset();
+        } else {
+            Cancel();
             result.cancelled = true;
         }
         return result;
     }
-    if (input.mousePressed) {
-        if (!input.mouse) {
-            Reset();
+    if (!_mouseActive && input.mousePressed) {
+        const auto point = input.mousePress ? input.mousePress : input.mousePosition;
+        if (!point) {
+            Cancel();
             result.cancelled = true;
             return result;
         }
         _mouseActive = true;
-        Begin(*input.mouse, result);
-        if (!input.mouseReleased) return result;
+        Begin(*point, result);
     }
     if (_mouseActive) {
-        if (!input.mouse) {
-            Reset();
-            result.cancelled = true;
-            return result;
+        if (!input.mousePosition || (!input.mouseDown && !input.mouseReleased)) {
+            Cancel();
+            return InputContactFrame{.cancelled = true};
         }
-        Track(*input.mouse, result);
+        Track(*input.mousePosition, result);
         if (input.mouseReleased) {
             _mouseActive = false;
             Finish(result);
-            result.position.reset();
-        } else if (!input.mouseDown) {
-            Reset();
-            result = {};
-            result.cancelled = true;
-            return result;
+            // A touch that arrived during mouse ownership must not inherit that contact.
+            if (!input.touches.empty()) _suppressMouse = true;
         }
         return result;
     }
-    if (!input.mouseDown) result.hover = input.hover;
+    result.idle = !input.mouseDown && !input.mouseReleased;
+    if (result.idle) result.hover = input.mouseHover;
     return result;
 }

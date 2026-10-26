@@ -118,8 +118,12 @@ add_library(EngineCore STATIC
     Graphics/Draw/EffectQuality.cpp
     Graphics/Draw/GridViewport.cpp
     Graphics/Draw/TextLayout.cpp
-    Input/CollectionPointer.cpp
-    Input/DragPointer.cpp
+    Input/Internals/CollectionPointer.cpp
+    Input/Internals/DragPointer.cpp
+    Input/Internals/InputNavigation.cpp
+    Input/Internals/InputNormalizer.cpp
+    Input/Internals/InputSample.cpp
+    Input/Internals/PrimaryContact.cpp
     Menus/HeaderGridNavigation.cpp
     Menus/GridMenuSelection.cpp
     Options/GameOptions.cpp
@@ -221,7 +225,7 @@ add_library(Engine STATIC
     Graphics/Draw/TextRenderer.cpp
     Graphics/Render/UiRegion.cpp
     Graphics/Render/Window.cpp
-    Input/InputReader.cpp
+    Input/Internals/InputReader.cpp
     Platform/Platform.cpp
     Graphics/Style/Theme.cpp
     Graphics/Ui/Backdrop.cpp

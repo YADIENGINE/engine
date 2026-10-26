@@ -1,6 +1,6 @@
 #include <raylib.h>
 #include <memory>
-#include "Input/InputFrame.h"
+#include "Input/InputNavigation.hpp"
 #include "Runtime/EntryPoint.h"
 #include "Runtime/Game.h"
 
@@ -29,7 +29,7 @@ public:
 
 private:
     void HandleInput(const DeviceInput& input) override {
-        if (InputFrame(input).Back()) RequestQuit();
+        if (InputNavigation(input).Back()) RequestQuit();
     }
     void Draw() const override {
         constexpr int CenterX = CanvasWidth / 2;

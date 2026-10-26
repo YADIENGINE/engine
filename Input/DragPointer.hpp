@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <optional>
 #include "Utilities/Vec2.h"
 
@@ -20,20 +21,16 @@ struct DragPointerResult {
 class DragPointer {
 public:
     explicit DragPointer(int threshold);
+    ~DragPointer();
     [[nodiscard]] DragPointerResult Update(const DeviceInput& input);
     // Süren teması iptal eder; bırakılışı (ve sahte fare olayları) yok sayılır.
-    void Reset();
+    void Cancel();
 
 private:
-    void Begin(Vec2 point, DragPointerResult& result);
-    void Track(Vec2 point, DragPointerResult& result);
-    void Finish(DragPointerResult& result);
-    int _threshold;
-    std::optional<int> _touch;
-    std::optional<Vec2> _origin;
-    std::optional<Vec2> _last;
-    bool _dragged = false;
-    bool _mouseActive = false;
-    bool _suppressMouse = false;
-    bool _cancelled = false;
+    struct State;
+    std::unique_ptr<State> _state;
+
+public:
+    DragPointer(const DragPointer&) = delete;
+    DragPointer& operator=(const DragPointer&) = delete;
 };

@@ -11,6 +11,8 @@
 #include "Platform/Platform.h"
 #include "Runtime/Scene.h"
 #include "Utilities/StartupTimer.h"
+#include "Input/Internals/InputNormalizer.h"
+#include "Input/Internals/InputReader.h"
 #include "Graphics/Anim/Easing.h"
 #include "Graphics/Draw/DrawTime.h"
 #include "Graphics/Style/Theme.h"
@@ -50,6 +52,7 @@ Game::Game(const GameSettings& settings)
     , _text(settings.font.empty() ? std::filesystem::path{} : _assetRoot / settings.font, settings.fontAtlasSizes,
             settings.fontCodepoints, settings.fontTextureFilter)
     , _audio(_assetRoot, settings.audioVolume)
+    , _input(std::make_unique<InputNormalizer>())
     , _applicationId(settings.applicationId)
     , _saveSettings(settings.save)
     , _options(SaveFilePath(settings.applicationId, OptionsFile))
@@ -73,10 +76,12 @@ DeviceInput Game::ReadInput() {
     const bool focused = IsWindowFocused();
     if (!focused) {
         if (_inputFocused) CancelInput();
-        _input.Cancel();
+        _input->Cancel();
     }
     _inputFocused = focused;
-    return _input.Read(_renderer);
+    return _input->Read(ReadInputDevices(), [this](Float2 point) {
+        return _renderer.ToCanvas({static_cast<int>(point.x), static_cast<int>(point.y)});
+    });
 }
 void Game::CanvasReady(const Texture2D& texture) const { (void)texture; }
 void Game::DrawWindow() const {}
@@ -199,7 +204,7 @@ void Game::SetScene(Scene& scene, bool restart) {
     _restartScene = restart;
 }
 void Game::CancelInput() {
-    _input.Cancel();
+    _input->Cancel();
     if (_scene) _scene->CancelInput();
 }
 void Game::CommitScene() {
@@ -209,7 +214,7 @@ void Game::CommitScene() {
     const bool restart = std::exchange(_restartScene, false);
     if (next->IsShutdown()) throw std::logic_error("Cannot activate a scene after shutdown");
     if (next == _scene && !restart) return;
-    _input.Cancel();
+    _input->Cancel();
     if (_scene) _scene->Deactivate();
     _scene = next;
     _scene->Activate();

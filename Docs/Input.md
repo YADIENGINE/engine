@@ -1,14 +1,39 @@
 # Input and navigation
 
+## Public API ve sahiplik
+
+Input, Engine runtime altyapısıdır. Desteklenen public header'lar:
+
+| Header | Sözleşme |
+| --- | --- |
+| `Input/Input.hpp` | `DeviceInput`, `InputKey`, `InputTouch`; raylib'siz snapshot |
+| `Input/InputNavigation.hpp` | Snapshot'ı referansla okuyan `InputNavigation` |
+| `Input/DragPointer.hpp` | Serbest sürükleme ve bırakışta tap |
+| `Input/CollectionPointer.hpp` | Koleksiyon tap, hover ve satır kaydırma |
+
+Oyun ve projeye ait editör kodu yalnız bu header'ları kullanır. `Input/Internals/` desteklenen API değildir.
+Cihaz okuması, pencere koordinatları, normalizasyon ve ortak temas takipçisi burada kalır.
+Gesture sınıfları kendi durumlarını sahiplenir; kopyalanamazlar. Snapshot sade bir değer tipidir.
+Headless implementasyon `EngineCore`'dadır; yalnız raylib cihaz okuması `Engine` hedefine girer.
+
+`Game::ReadInput()` her host frame'inde cihazları bir kez okur, runtime'ın sağladığı canvas dönüşümüyle
+snapshot üretir. Geçiş sırasında da örnekleme sürer. Engine editörü aynı normalizasyonu viewport dönüşümü
+ve kendi odak/sahiplik kurallarıyla kullanır. Dış host'lar `ReadInput()` override'ından `DeviceInput` sağlayabilir.
+Public konumların tamamı mantıksal canvas koordinatıdır; canvas dışındaki touch'ın `id`'si korunur,
+`position` değeri boş olur. Sahne cihazları veya raylib input'unu yeniden okumaz.
+
 ## Fiziksel snapshot ve anlamsal sorgular
 
-`InputReader` raylib cihazlarını bir kez okur ve `DeviceInput` üretir.
-`Game::ReadInput()` varsayılanı renderer/canvas dönüşümünü uygular. Pencere koordinatıyla
-doğrudan `InputReader::Read()` kullanıyorsanız canvas mapping'ini kendiniz sağlayın.
-Editor host'u aynı sözleşmeye dışarıdan snapshot verebilir.
+`DeviceInput` key pressed/down durumlarını, fareyi, tekerleği ve kimlikli touch örneklerini taşır.
+`ShiftDown()` tuşlardan hesaplanır. `mousePosition` mevcut konumdur; `mousePress` uygun fare basışıdır;
+`mouseHover` yalnız fare hareketinde doludur ve sabit fare klavye seçimini geri çalmaz.
+`pressPoints` yeni başlayan temasları, `heldPoints` halen basılı temasları taşır. Touch varken ve onu izleyen
+sentetik fare olayları boşalana kadar bu birleşik listelere fare eklenmez; `mousePress`/`mouseHover` bastırılır.
+Canvas dışında başlayan parmağın içeri girmesi yeni basış oluşturmaz.
 
-`DeviceInput` fiziksel key pressed/down durumlarını, fareyi, tekerleği, taps/held ve kimlikli
-touch örneklerini taşır. `InputFrame(input)` bunun headless anlamsal adaptörüdür:
+`InputNavigation(input)` snapshot'ı kopyalamayan anlamsal adaptördür. Snapshot adaptörden uzun yaşamalıdır;
+callback'ler arasında adaptörü saklamayın. Geçici snapshot'tan adaptör oluşturmak derleme hatasıdır.
+`Device()` alttaki snapshot'ı const referansla verir; `PressPoints()`/`HeldPoints()` ödünç span döndürür.
 
 | Sorgu | Varsayılan |
 | --- | --- |
@@ -17,7 +42,9 @@ touch örneklerini taşır. `InputFrame(input)` bunun headless anlamsal adaptör
 | `Horizontal()`, `Vertical()` | WASD / ok basışı, -1 / 0 / 1 |
 | `TabStep()` | Q önceki; E / Tab sonraki |
 | `Pressed(Direction)` | O yöne ait WASD / ok basışı |
-| `ClickPoint()` | İlk touch tap, yoksa fare click |
+| `PressPoint()` | İlk uygun temas başlangıcı; bırakışta tap değildir |
+| `AnyPressed()`, `AnyHeld()` | Herhangi bir tuş basışı / basılı tuş veya temas |
+| `HoverPoint()`, `MousePosition()`, `Wheel()` | Fare hareketi / mevcut konum / tekerlek |
 
 Sürekli hareket için `Down(InputKey)`, bir kez tetiklenen eylem için `Pressed(InputKey)`
 kullanın. Oyuncu başına bağlar, rebind, onay sesleri ve oyun eylemleri oyunda tanımlanır.
@@ -26,8 +53,9 @@ Scene `HandleInput` override'ı snapshot alır; sahneler raylib'i tekrar okumaz.
 `DeviceInput::cancelled` normal bir bırakma değildir: bekleyen temas/eylem iptal edilir.
 Runtime bu snapshot'ı Scene `InputCancelled()` hook'una yönlendirir. Hook içinde pointer yardımcısına
 boş bir `DeviceInput{.cancelled = true}` verin ve yerel basış/sürükleme görünüşünü temizleyin.
-`Game::CancelInput()` sahneyi bildirir ve yerel reader'ı yeniden eşitler; `InputReader::Cancel()`
-touch kimliklerini örneklemeye devam ederek tüm basılı girdiler bırakılana kadar eylemleri bastırır.
+`Game::CancelInput()` sahneyi bildirir ve runtime'ın yerel normalizasyonunu yeniden eşitler.
+Touch kimlikleri örneklenmeye devam eder; tüm basılı girdiler bırakılana ve nötr frame tüketilene kadar
+yalnız cancelled snapshot üretilir. Dış host aynı odak/iptal sözleşmesini sağlamalıdır.
 
 ## Koleksiyon ve sürükle-bırak
 
@@ -37,7 +65,7 @@ frame. Its result contains a release `tap`, eligible `hover`, and signed `rows` 
 Touch movement emits rows while held. Crossing the movement threshold latches drag detection until release, including
 when the contact returns to its origin. The first touch ID owns the gesture; later contacts cannot inherit it.
 Touch also suppresses synthetic mouse events until all contacts and mouse buttons are quiet. Mouse taps activate on
-release; wheel input applies only over the grid. Call `Reset()` on departure and suspension, then continue supplying
+release; wheel input applies only over the grid. Call `Cancel()` for a local gesture cancellation, then continue supplying
 input frames on return so the cancelled contact can drain. Keyboard bindings, audio and confirmation remain in Game.
 
 `HeaderGridNavigation(count, {headerRowSize, ...})` owns `GridMenuSelection` plus focus across header rows, grid,
@@ -49,15 +77,30 @@ returns every header cursor to its first item without moving focus. Every header
 
 
 
-`Input/DragPointer.h` serbest sürükleme için `DragPointer(threshold)` sağlar.
+`Input/DragPointer.hpp` serbest sürükleme için `DragPointer(threshold)` sağlar.
 `Update(input)` sonucunda `pressed`, `position`, `origin`, `released`, `hover`,
 `dragging`, `tap` ve `cancelled` bulunur. Pozisyonlar canvas koordinatındadır.
 Eşik aşıldıktan sonra başlangıca dönmek hareketi tap'e dönüştürmez; birincil touch kimliği
 başka parmaklara devredilmez. Touch kaynaklı sentetik mouse olayları bastırılır.
-Odak/sahne kaybında `Reset()` çağırın ve iptal edilen temasın boşalması için sonraki
+Yerel iptalde `Cancel()` çağırın ve iptal edilen temasın boşalması için sonraki
 snapshot'ları vermeye devam edin. `released` tek başına tap anlamına gelmez.
 Canvas dışında başlayan veya dışına çıkan temas iptal edilir; son içerideki konumda tap/drop üretilmez.
 `cancelled` sonucunda tüketici bekleyen basışını ve sürükleme görünüşünü temizlemelidir.
+
+İki gesture aynı private temas takipçisini kendi instance'larında kullanır: birincil kimlik devredilmez,
+canvas dışına çıkış iptal olur ve sentetik fare bastırılır. `CollectionPointerResult` de `cancelled` bildirir.
+Eşik ve scroll politikası ilgili gesture'a aittir. `InputCancelled()` hook'undaki boş cancelled snapshot
+yerel teması temizleyip iptal sınırını aynı çağrıda tüketir; sonraki yeni basış kaybolmaz.
+
+## Editör aktarımı
+
+Editör protokolü v4 snapshot'ın tuşlarını, fare alanlarını, birleşik temas listelerini ve kimlikli touch'larını
+taşır; boş touch pozisyonu canvas dışı kimliği korur. Tekrarlı touch kimlikleri ve kapasite aşımı reddedilir.
+Worker biriktirmesinde basış/bırakış bayrakları korunur, `pressPoints` birikir, down/held/touch durumu en son
+snapshot'tan alınır. İptal eski eylemleri siler ve yeni eylemlerden önce ayrı bir sınır olarak teslim edilir.
+Bu aktarım bir snapshot birleştirmesidir; bütün fiziksel olayların sıralı günlüğü değildir.
+Protokol veya `InputKey` sırası değiştiğinde sürüm yükseltilir, editör ve worker birlikte yeniden derlenir.
+Backend tuş tablosu kimlikli satırlar ve `RowsInIdOrder` ile enum'a karşı denetlenir.
 
 ## Menü seçimi ve viewport
 

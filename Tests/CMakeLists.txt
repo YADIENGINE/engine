@@ -48,6 +48,7 @@ engine_tests(EngineTests
         GraphicsAnimationTests.cpp
         GridMenuTests.cpp
         GridViewportTests.cpp
+        InputTests.cpp
         LifecycleTests.cpp
         MathTests.cpp
         ObjectListSafetyTests.cpp

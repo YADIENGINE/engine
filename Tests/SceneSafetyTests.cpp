@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "Input/DeviceInput.h"
+#include "Input/Input.hpp"
 #include "Runtime/Scene.h"
 
 namespace {

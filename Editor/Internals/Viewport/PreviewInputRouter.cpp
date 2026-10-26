@@ -1,57 +1,71 @@
 #include "Editor/Internals/Viewport/PreviewInputRouter.h"
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
+#include <utility>
+#include "Editor/Internals/Protocol/PreviewProtocol.h"
 
 PreviewInputRouter::PreviewInputRouter() = default;
 DeviceInput PreviewInputRouter::Clear() {
-    DeviceInput input;
-    input.cancelled = true;
     _dragging = false;
     _suppressUntilNeutral = true;
     _lastMouse.reset();
-    return input;
+    _touchIds.clear();
+    _ownedTouches.clear();
+    _normalizer.Cancel();
+    return DeviceInput{.cancelled = true};
 }
-DeviceInput PreviewInputRouter::Route(const DeviceInput& windowInput, Float2 mouse, const PreviewViewport& viewport,
+DeviceInput PreviewInputRouter::Route(const InputSample& windowInput, Float2 mouse, const PreviewViewport& viewport,
                                       bool windowFocused, bool viewportFocused, bool keyboardBlocked,
                                       bool pointerBlocked) {
-    if (windowInput.cancelled || !windowFocused || viewport.size.x <= 0 || viewport.size.y <= 0 ||
-        viewport.canvas.x <= 0 || viewport.canvas.y <= 0)
+    if (!windowFocused || viewport.size.x <= 0 || viewport.size.y <= 0 || viewport.canvas.x <= 0 ||
+        viewport.canvas.y <= 0)
         return Clear();
+    const auto mapPoint = [&viewport](Float2 point) { return MapPreviewPoint(viewport, point); };
     if (_suppressUntilNeutral) {
-        const bool keyboardActive = std::ranges::any_of(windowInput.keysDown, [](bool down) { return down; }) ||
-                                    std::ranges::any_of(windowInput.keysPressed, [](bool pressed) { return pressed; });
-        _suppressUntilNeutral = keyboardActive || !windowInput.touches.empty() || windowInput.mouseDown ||
-                                windowInput.mousePressed || windowInput.mouseReleased;
-        return DeviceInput{.cancelled = true};
+        _suppressUntilNeutral = !IsInputNeutral(windowInput);
+        return _normalizer.Read(windowInput, mapPoint);
     }
-    DeviceInput result;
+    InputSample routed;
     if (viewportFocused && !keyboardBlocked) {
-        result.keysDown = windowInput.keysDown;
-        result.keysPressed = windowInput.keysPressed;
-        result.shiftHeld = windowInput.shiftHeld;
+        routed.keysDown = windowInput.keysDown;
+        routed.keysPressed = windowInput.keysPressed;
     }
-    const auto position = MapPreviewPoint(viewport, mouse);
+    const auto position = mapPoint(mouse);
+    routed.mousePosition = mouse;
     if (position && !pointerBlocked) {
-        result.mouse = position;
-        if (position != _lastMouse) result.hover = position;
-        result.wheel = windowInput.wheel;
+        routed.mouseMoved = position != _lastMouse;
+        routed.wheel = windowInput.wheel;
         if (windowInput.mousePressed) {
             _dragging = true;
-            result.mousePressed = true;
-            result.pointer = position;
-            result.taps.push_back(*position);
+            routed.mousePressed = true;
         }
     }
     if (_dragging) {
-        result.mouse = position;
-        result.mouseDown = windowInput.mouseDown;
+        routed.mouseDown = windowInput.mouseDown;
         if (windowInput.mouseReleased || !windowInput.mouseDown) {
-            result.mouseReleased = true;
+            routed.mouseReleased = true;
             _dragging = false;
         }
-        if (result.mouseDown && position) result.held.push_back(*position);
     }
+    std::vector<int> touchIds;
+    for (const auto& touch : windowInput.touches) {
+        touchIds.push_back(touch.id);
+        bool owned = std::ranges::find(_ownedTouches, touch.id) != _ownedTouches.end();
+        if (!owned && std::ranges::find(_touchIds, touch.id) == _touchIds.end() && !pointerBlocked &&
+            mapPoint(touch.position)) {
+            _ownedTouches.push_back(touch.id);
+            owned = true;
+        }
+        if (owned) routed.touches.push_back(touch);
+    }
+    std::erase_if(_ownedTouches, [&touchIds](int id) { return std::ranges::find(touchIds, id) == touchIds.end(); });
+    _touchIds = std::move(touchIds);
     _lastMouse = position;
+    auto result = _normalizer.Read(routed, mapPoint);
+    // A blocked viewport must not expose the editor's mouse position to scene hit tests.
+    if (!position || (pointerBlocked && !routed.mousePressed && !routed.mouseDown && !routed.mouseReleased))
+        result.mousePosition.reset();
     return result;
 }
 
@@ -60,20 +74,23 @@ void AccumulatePreviewInput(DeviceInput& state, const DeviceInput& incoming) {
         state = DeviceInput{.cancelled = true};
         return;
     }
+    if (state.pressPoints.size() + incoming.pressPoints.size() > PreviewMaxInputPoints)
+        throw std::runtime_error("Preview input edge capacity exceeded");
+    const float wheel = state.wheel + incoming.wheel;
+    if (!std::isfinite(wheel)) throw std::runtime_error("Invalid accumulated input wheel");
     for (std::size_t i = 0; i < state.keysPressed.size(); ++i)
         state.keysPressed[i] = state.keysPressed[i] || incoming.keysPressed[i];
     state.keysDown = incoming.keysDown;
-    state.shiftHeld = incoming.shiftHeld;
-    state.mouse = incoming.mouse;
+    state.mousePosition = incoming.mousePosition;
     state.mouseDown = incoming.mouseDown;
     state.mousePressed = state.mousePressed || incoming.mousePressed;
     state.mouseReleased = state.mouseReleased || incoming.mouseReleased;
-    if (incoming.pointer) state.pointer = incoming.pointer;
-    if (incoming.hover) state.hover = incoming.hover;
-    state.wheel += incoming.wheel;
-    state.held = incoming.held;
-    if (state.taps.size() + incoming.taps.size() > 32) throw std::runtime_error("Preview input edge capacity exceeded");
-    state.taps.insert(state.taps.end(), incoming.taps.begin(), incoming.taps.end());
+    if (incoming.mousePress) state.mousePress = incoming.mousePress;
+    if (incoming.mouseHover) state.mouseHover = incoming.mouseHover;
+    state.wheel = wheel;
+    state.heldPoints = incoming.heldPoints;
+    state.touches = incoming.touches;
+    state.pressPoints.insert(state.pressPoints.end(), incoming.pressPoints.begin(), incoming.pressPoints.end());
 }
 DeviceInput ConsumePreviewInput(DeviceInput& state) {
     // Deliver cancellation first; newer edges remain queued for the next worker frame.
@@ -85,9 +102,9 @@ DeviceInput ConsumePreviewInput(DeviceInput& state) {
     state.keysPressed.fill(false);
     state.mousePressed = false;
     state.mouseReleased = false;
-    state.pointer.reset();
-    state.hover.reset();
+    state.mousePress.reset();
+    state.mouseHover.reset();
     state.wheel = 0.0f;
-    state.taps.clear();
+    state.pressPoints.clear();
     return result;
 }

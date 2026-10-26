@@ -21,7 +21,9 @@ GL/font/ses kurulmaz. Önizleme açıldığında RunPreviewHost servisleri ve Pr
 kurar; Game::Run tek döngüdür. PreviewScene içerik instance'ını ObjectList ile yönetir.
 Reset instance'ı yeniler; Stop worker sürecini kapatır.
 Build & Refresh gerçek süreç çıkışını bekler ve yalnız tarifteki build komutunu çalıştırır.
-Input IPC protokolü v2, odak kaybı / pause / input süresi aşımını normal release yerine cancellation olarak taşır.
+Input IPC protokolü v4, odak kaybı / pause / input süresi aşımını normal release yerine cancellation olarak taşır.
+Public snapshot'ın kimlikli touch verisi ve canvas dışındaki boş pozisyonları da aktarılır. Host, private pencere
+örneklerini Input normalizer ile canvas'a dönüştürür; worker aynı public sözleşmeyi tüketir.
 İptalden önce birikmiş eylemler silinir; sonraki yeni basışlar iptal bildiriminin ardından teslim edilir.
 Host ve worker aynı protokol sürümüyle birlikte güncellenmelidir; proje tarifi sürümü değişmez.
 

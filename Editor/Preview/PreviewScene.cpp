@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
-#include "Input/DeviceInput.h"
+#include "Input/Input.hpp"
 
 PreviewScene::PreviewScene(Vec2 canvas, const TextRenderer& text, AudioSystem& audio,
                            std::function<void(const std::string&)> log)

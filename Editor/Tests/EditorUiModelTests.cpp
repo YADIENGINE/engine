@@ -131,7 +131,7 @@ TEST_CASE("Editor.Settings.ProjectIsolationAndCorruptFileRecovery", "[engine-edi
 
 TEST_CASE("Editor.Input.HiddenViewportCancelsOwnedInput", "[engine-editor]") {
     PreviewInputRouter router;
-    DeviceInput down;
+    InputSample down;
     down.mousePressed = down.mouseDown = true;
     down.keysDown[static_cast<std::size_t>(InputKey::Enter)] = true;
     const auto viewport = FitPreviewViewport({}, {200, 100}, {400, 200});

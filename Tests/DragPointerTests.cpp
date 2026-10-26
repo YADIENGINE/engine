@@ -1,6 +1,6 @@
 #include "Tests/Support/Diagnostics.h"
-#include "Input/DeviceInput.h"
-#include "Input/DragPointer.h"
+#include "Input/Input.hpp"
+#include "Input/DragPointer.hpp"
 
 namespace {
 constexpr int Threshold = 12;
@@ -11,7 +11,7 @@ DeviceInput Finger(Vec2 point, int id = 1) {
 }
 DeviceInput Mouse(Vec2 point, bool pressed, bool down, bool released) {
     DeviceInput input;
-    input.mouse = point;
+    input.mousePosition = point;
     input.mousePressed = pressed;
     input.mouseDown = down;
     input.mouseReleased = released;
@@ -38,7 +38,7 @@ TEST_CASE("Engine.DragPointer.MouseDragReportsOriginPositionAndRelease", "[engin
     CHECK_FALSE(result.position.has_value());
     // Sonraki frame boşta: hover geçer.
     DeviceInput idle;
-    idle.hover = Vec2{20, 20};
+    idle.mouseHover = Vec2{20, 20};
     CHECK(pointer.Update(idle).hover == Vec2{20, 20});
 }
 
@@ -66,10 +66,10 @@ TEST_CASE("Engine.DragPointer.SecondFingerDoesNotStealTheContact", "[engine][inp
     CHECK(pointer.Update(Finger({300, 300}, 4)).released == Vec2{90, 50});
 }
 
-TEST_CASE("Engine.DragPointer.ResetCancelsTheContactAndItsRelease", "[engine][input]") {
+TEST_CASE("Engine.DragPointer.CancelDiscardsTheContactAndItsRelease", "[engine][input]") {
     DragPointer pointer(Threshold);
     (void)pointer.Update(Mouse({100, 100}, true, true, false));
-    pointer.Reset();
+    pointer.Cancel();
     CHECK_FALSE(pointer.Update(Mouse({160, 100}, false, true, false)).position.has_value());
     CHECK_FALSE(pointer.Update(Mouse({160, 100}, false, false, true)).released.has_value());
     (void)pointer.Update({});
@@ -98,6 +98,30 @@ TEST_CASE("Engine.DragPointer.TouchStartingOutsideCannotBecomeATap", "[engine][i
     CHECK_FALSE(released.tap);
     CHECK_FALSE(released.released);
     CHECK(pointer.Update(Finger({50, 60})).pressed == Vec2{50, 60});
+}
+
+TEST_CASE("Engine.DragPointer.CoalescedMouseEdgesKeepThePressOrigin", "[engine][input]") {
+    DragPointer pointer(Threshold);
+    auto input = Mouse({200, 100}, true, false, true);
+    input.mousePress = Vec2{100, 100};
+    const auto result = pointer.Update(input);
+    CHECK(result.pressed == Vec2{100, 100});
+    CHECK(result.origin == Vec2{100, 100});
+    CHECK(result.released == Vec2{200, 100});
+    CHECK(result.dragging);
+    CHECK_FALSE(result.tap);
+}
+
+TEST_CASE("Engine.DragPointer.HeldCancellationCannotActivateOnRelease", "[engine][input]") {
+    DragPointer pointer(Threshold);
+    (void)pointer.Update(Finger({50, 60}, 7));
+    auto input = Finger({55, 65}, 7);
+    input.cancelled = true;
+    CHECK(pointer.Update(input).cancelled);
+    input.cancelled = false;
+    CHECK(pointer.Update(input).cancelled);
+    CHECK_FALSE(pointer.Update({}).tap);
+    CHECK(pointer.Update(Finger({100, 120}, 8)).pressed == Vec2{100, 120});
 }
 
 TEST_CASE("Engine.DragPointer.LeavingCanvasCancelsInsteadOfDroppingAtTheLastPosition", "[engine][input]") {
