@@ -1,4 +1,4 @@
-# Zortengine (C++20 / raylib 5.5)
+# YDArcadeEngine (C++20 / raylib 5.5)
 
 Oyundan bağımsız, taşınabilir altyapı. Ayrı repodur; oyunlar onu kökünde `Engine/` submodule'ü olarak alır.
 Kullanım belgeleri `Docs/` (giriş `Docs/README.md`, proje kurulumu `Docs/ProjectSetup.md`).

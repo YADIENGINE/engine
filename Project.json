@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "name": "Zortengine",
+  "name": "YDArcadeEngine",
   "tests": {
     "buildDirectory": "build/tests",
     "configurePreset": "tests",

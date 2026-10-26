@@ -1,4 +1,4 @@
-# Zortengine
+# YDArcadeEngine
 
 C++20 / raylib 5.5 oyun engine'i. Oyunlar bu repoyu kökünde `Engine/` submodule'ü olarak alır.
 

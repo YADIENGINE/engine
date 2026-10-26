@@ -55,7 +55,7 @@ std::string InvokeKeyBridge(const std::string& alias, std::string_view bytes, bo
         CheckJava(env);
         const auto loadClass = env->GetMethodID(loaderType, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
         CheckJava(env);
-        const auto className = env->NewStringUTF("org.zortengine.persistence.SaveKeyBridge");
+        const auto className = env->NewStringUTF("org.ydarcadeengine.persistence.SaveKeyBridge");
         CheckJava(env);
         const auto helper = static_cast<jclass>(env->CallObjectMethod(loader, loadClass, className));
         CheckJava(env);

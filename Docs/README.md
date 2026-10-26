@@ -1,6 +1,6 @@
 # Engine documentation
 
-Bu klasör C++20 / raylib tabanlı engine (Zortengine) ile oyun geliştirenler içindir. Engine ayrı bir repodur;
+Bu klasör C++20 / raylib tabanlı engine (YDArcadeEngine) ile oyun geliştirenler içindir. Engine ayrı bir repodur;
 oyunlar onu `Engine/` submodule'ü olarak alır. Kaynak kod reponun kökünde, belgeler `Docs/`, build/editör/test
 araçları `Tools/`, yeni proje iskeleti `Templates/NewProject/` altındadır.
 Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları oyunun kendi belgelerinde kalır.

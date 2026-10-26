@@ -1,11 +1,11 @@
 # Proje kurulumu
 
-Engine ayrı bir git reposudur (Zortengine) ve her oyun onu kökünde `Engine/` adıyla submodule olarak alır.
+Engine ayrı bir git reposudur (YDArcadeEngine) ve her oyun onu kökünde `Engine/` adıyla submodule olarak alır.
 Oyunun kodu, editör önizlemeleri ve belgeleri oyunun reposunda kalır; Engine reposu hiçbir oyunu görmez.
 
 ```text
 MyProject/                  (oyunun reposu)
-  Engine/                   ← submodule: Zortengine
+  Engine/                   ← submodule: YDArcadeEngine
     Docs/  Tools/  Templates/NewProject/  ...
   Game/                     oyun kaynakları + Assets/
   Editor/                   projenin preview worker'ı (EngineEditor önizlemeleri)
@@ -24,7 +24,7 @@ Python 3.10+. İlk configure raylib, JSON ve test bağımlılıklarını `FetchC
 ```powershell
 git init MyProject
 cd MyProject
-git submodule add <zortengine-url> Engine
+git submodule add <ydarcadeengine-url> Engine
 git config -f .gitmodules submodule.Engine.branch main
 ```
 
@@ -120,5 +120,5 @@ Araçların kendi testleri derleyici istemez: `Engine/Tools` içinde `python -m 
 
 Gradle projesi oyuna aittir. Engine'den iki yol gerekir: kök `CMakeLists.txt` (engine_add_game Android'de shared
 library kurar) ve kayıt anahtarı köprüsünün Java kaynağı
-`Engine/Modules/Persistence/Internals/Android/java` (`org.zortengine.persistence.SaveKeyBridge`).
+`Engine/Modules/Persistence/Internals/Android/java` (`org.ydarcadeengine.persistence.SaveKeyBridge`).
 Ayrıntı: [Asset ve platformlar](AssetsAndPlatforms.md).
