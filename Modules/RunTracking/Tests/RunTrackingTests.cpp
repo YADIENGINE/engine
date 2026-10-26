@@ -3,7 +3,7 @@
 #include <iterator>
 #include <limits>
 #include <stdexcept>
-#include "Tracking/RunStatisticsSys.h"
+#include "Modules/RunTracking/RunTracking.hpp"
 #include "Tests/Support/GzipInflate.h"
 #include "Tests/Support/TempDirectory.h"
 
@@ -14,14 +14,14 @@ std::string Read(const std::filesystem::path& path) {
 }
 std::string ReadJson(const std::filesystem::path& path) { return InflateGzip(Read(path)); }
 } // namespace
-TEST_CASE("RunStatistics.Persistence.EscapesJsonAndReplacesOneRecord", "[engine][run-statistics]") {
+TEST_CASE("RunTracking.Archive.EscapesJsonAndReplacesOneRecord", "[engine][run-tracking][run-statistics]") {
     TempDirectory temporary;
     JsonIO::Document record = JsonIO::Document::MakeObject();
     record["schema_version"] = 1;
     record["label"] = "quote\" slash\\\nTürkçe";
     record["choices"] = JsonIO::Document::Array{JsonIO::Document{}, true, 2, 1.25};
     record["wallet_eggs"] = 123;
-    RunStatisticsSys archive(temporary.Path() / "runs");
+    RunTracking archive(temporary.Path() / "runs");
     const auto file = archive.Write("run-1", record);
     CHECK(file.filename() == "run-1.json.gz");
     CHECK(ReadJson(file) == JsonIO::Serialize(record, {.format = JsonIO::Format::Compact}));
@@ -34,9 +34,10 @@ TEST_CASE("RunStatistics.Persistence.EscapesJsonAndReplacesOneRecord", "[engine]
     CHECK(std::distance(std::filesystem::directory_iterator(archive.Directory()),
                         std::filesystem::directory_iterator{}) == 1);
 }
-TEST_CASE("RunStatistics.Persistence.RejectsInvalidDataWithoutDamagingPriorRecord", "[engine][run-statistics]") {
+TEST_CASE("RunTracking.Archive.RejectsInvalidDataWithoutDamagingPriorRecord",
+          "[engine][run-tracking][run-statistics]") {
     TempDirectory temporary;
-    RunStatisticsSys archive(temporary.Path() / "runs");
+    RunTracking archive(temporary.Path() / "runs");
     const auto file = archive.Write("stable", JsonIO::Document::Object{{"score", 42}});
     const std::string previous = Read(file);
     CHECK_THROWS_AS(archive.Write("../escape", {}), std::invalid_argument);
@@ -44,5 +45,5 @@ TEST_CASE("RunStatistics.Persistence.RejectsInvalidDataWithoutDamagingPriorRecor
     CHECK(Read(file) == previous);
     CHECK(std::distance(std::filesystem::directory_iterator(archive.Directory()),
                         std::filesystem::directory_iterator{}) == 1);
-    CHECK_THROWS_AS(RunStatisticsSys(std::filesystem::path{}), std::invalid_argument);
+    CHECK_THROWS_AS(RunTracking(std::filesystem::path{}), std::invalid_argument);
 }

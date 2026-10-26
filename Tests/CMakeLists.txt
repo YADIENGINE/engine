@@ -51,7 +51,6 @@ engine_tests(EngineTests
         LifecycleTests.cpp
         MathTests.cpp
         ObjectListSafetyTests.cpp
-        RunStatisticsSysTests.cpp
         SceneSafetyTests.cpp
         ShatterTests.cpp
         TextLayoutTests.cpp

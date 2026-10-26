@@ -18,8 +18,8 @@ Test yazma kuralları `Docs/Contributing/Testing.md`; modül kuralları `Docs/Co
 ```
 Runtime/   Game, GameSettings, Scene, GameObject, ObjectList; ana döngü ve lifecycle; Main.cpp CreateGame() çağırır
 Graphics/  Render/ Draw/ Anim/ Icons/ Style/ Ui/ (görünüşün tamamı; renkler/stiller parametre)
-Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Tracking/ Utilities/
-Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, ScoreBoard ...); Modules/X/Tests/
+Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Utilities/
+Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, ScoreBoard, RunTracking ...); Modules/X/Tests/
 Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_add_editor_worker
 Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
 Docs/      Kullanım ve katkı belgeleri

@@ -1,4 +1,4 @@
-#include "Tracking/RunStatisticsSys.h"
+#include "Modules/RunTracking/RunTracking.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -22,11 +22,11 @@ std::tm Utc(std::time_t value) {
 }
 } // namespace
 
-RunStatisticsSys::RunStatisticsSys(std::filesystem::path directory) {
+RunTracking::RunTracking(std::filesystem::path directory) {
     if (directory.empty()) throw std::invalid_argument("Run statistics directory must not be empty");
     _directory = std::filesystem::absolute(std::move(directory));
 }
-std::filesystem::path RunStatisticsSys::Write(const std::string& runId, const JsonIO::Document& record) const {
+std::filesystem::path RunTracking::Write(const std::string& runId, const JsonIO::Document& record) const {
     if (runId.empty() || runId.size() > 120 || !std::all_of(runId.begin(), runId.end(), [](unsigned char ch) {
             return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '-' ||
                    ch == '_';
@@ -41,14 +41,14 @@ std::filesystem::path RunStatisticsSys::Write(const std::string& runId, const Js
                    .compression = JsonIO::Compression::Gzip});
     return destination;
 }
-std::string RunStatisticsSys::UtcNow() {
+std::string RunTracking::UtcNow() {
     const auto now = std::chrono::system_clock::now();
     const auto value = Utc(std::chrono::system_clock::to_time_t(now));
     std::ostringstream output;
     output << std::put_time(&value, "%Y-%m-%dT%H:%M:%SZ");
     return output.str();
 }
-std::string RunStatisticsSys::NewRunId() {
+std::string RunTracking::NewRunId() {
     static std::atomic<unsigned> sequence{0};
     static const auto processSalt = std::random_device{}(); // Independent of all gameplay RNGs.
     const auto now = std::chrono::system_clock::now();

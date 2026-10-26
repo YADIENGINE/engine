@@ -7,9 +7,6 @@ class Game;
 // Privileged observation is kept here, rather than in the observed classes.
 class EngineGodAccessor {
 public:
-    class RunStatistics {
-    public:
-        [[nodiscard]] static JsonIO::Document Context(const Game& game);
-        [[nodiscard]] static std::filesystem::path Directory(const Game& game);
-    };
+    [[nodiscard]] static JsonIO::Document Context(const Game& game);
+    [[nodiscard]] static std::filesystem::path Directory(const Game& game);
 };

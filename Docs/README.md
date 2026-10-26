@@ -24,7 +24,7 @@ Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları o
 | Font, Unicode, ölçüm ve satır düzeni | [Text](Graphics/Text.md) |
 | Tema, widget ve arka planlar | [Themes and UI](Graphics/ThemesAndUi.md) |
 | Parçacık, kamera, geçiş ve overlay | [Effects](Graphics/Effects.md) |
-| Genel JSON run arşivi | [Run statistics](RunStatistics.md) |
+| Genel JSON run arşivi | [RunTracking](Modules/RunTracking/README.md) |
 | Engine/modül testi yazmak | [Testing](Contributing/Testing.md) |
 | Yeni modül geliştirmek | [Module rules](Contributing/ModuleRules.md) |
 

@@ -60,6 +60,14 @@ target_link_libraries(EngineJsonIO PRIVATE EngineStorage Monocypher nlohmann_jso
 set_target_properties(EngineJsonIO PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_warnings(EngineJsonIO)
 
+# Opt-in, headless run archive; runtime observation is a separate optional bridge.
+add_library(EngineRunTracking STATIC EXCLUDE_FROM_ALL Modules/RunTracking/RunTracking.cpp)
+target_include_directories(EngineRunTracking PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(EngineRunTracking PUBLIC cxx_std_20)
+target_link_libraries(EngineRunTracking PUBLIC EngineJsonIO)
+set_target_properties(EngineRunTracking PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_warnings(EngineRunTracking)
+
 add_library(EnginePersistence STATIC
     Modules/Persistence/Persistence.cpp
     Modules/Persistence/Internals/State.cpp
@@ -115,7 +123,6 @@ add_library(EngineCore STATIC
     Menus/HeaderGridNavigation.cpp
     Menus/GridMenuSelection.cpp
     Options/GameOptions.cpp
-    Tracking/RunStatisticsSys.cpp
     Platform/UserData.cpp
     Runtime/GameObject.cpp
     Runtime/ObjectList.cpp
@@ -221,7 +228,6 @@ add_library(Engine STATIC
     Graphics/Ui/UiButton.cpp
     Graphics/Ui/UiDraw.cpp
     Runtime/Game.cpp
-    Runtime/EngineRunStatistics.cpp
 )
 target_link_libraries(Engine PUBLIC EngineCore raylib)
 set_target_properties(Engine PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
@@ -229,6 +235,13 @@ if(ANDROID)
     target_include_directories(Engine PRIVATE "${ANDROID_NDK}/sources/android/native_app_glue")
 endif()
 engine_warnings(Engine)
+
+add_library(EngineRunTrackingRuntime STATIC EXCLUDE_FROM_ALL
+    Modules/RunTracking/Internals/EngineGodAccessor.cpp
+)
+target_link_libraries(EngineRunTrackingRuntime PUBLIC EngineRunTracking PRIVATE Engine)
+set_target_properties(EngineRunTrackingRuntime PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_warnings(EngineRunTrackingRuntime)
 
 # A project supplies CreateGame, its source list, and an optional asset directory.
 # With no sources (a fresh project) the engine's starter game stands in until the first source is added.
