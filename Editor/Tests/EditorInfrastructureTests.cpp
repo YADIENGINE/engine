@@ -183,6 +183,7 @@ TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") 
     PreviewDefinition definition;
     definition.id = "test.preview";
     definition.name = "Test";
+    definition.categoryOrder = -1;
     definition.parameters = {{"type",
                               "Type",
                               PreviewParameterKind::Choice,
@@ -205,11 +206,14 @@ TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") 
     CHECK_FALSE(constructed);
     REQUIRE_FALSE(catalog.empty());
     CHECK(catalog.front().id == definition.id);
+    CHECK(catalog.front().categoryOrder == definition.categoryOrder);
     REQUIRE(catalog.front().parameters.size() == 2);
     CHECK(catalog.front().parameters.front().choiceButtons);
     CHECK(catalog.front().parameters.front().choiceButtonColumns == 2);
     CHECK(catalog.front().parameters.back().numericInput);
     auto legacy = EncodePreviewCatalog(registry.Entries());
+    legacy["entries"][0].erase("categoryOrder");
+    CHECK(DecodePreviewCatalog(legacy).front().categoryOrder == 0);
     legacy["entries"][0]["parameters"][0].erase("choiceButtons");
     CHECK_FALSE(DecodePreviewCatalog(legacy).front().parameters.front().choiceButtons);
     legacy["entries"][0]["parameters"][0].erase("choiceButtonColumns");

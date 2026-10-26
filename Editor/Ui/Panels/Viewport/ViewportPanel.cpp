@@ -65,7 +65,7 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
                            image.transferMs);
     }
     ImGui::Separator();
-    if (!snapshot.inspection.tables.empty()) {
+    if (snapshot.ready && !snapshot.inspection.tables.empty()) {
         const float tableHeight = snapshot.inspection.showImage ? ImGui::GetContentRegionAvail().y * 0.65f : 0.0f;
         ImGui::BeginChild("native-content", {0, tableHeight}, ImGuiChildFlags_Borders);
         if (ImGui::BeginTabBar("data-views")) {
@@ -144,18 +144,6 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
         result.focused = _focused;
     } else {
         _focused = false;
-        ImGui::Spacing();
-        ImGui::TextColored(EditorPhaseColor(snapshot.phase), "%s", EditorPhaseLabel(snapshot.phase));
-        ImGui::TextWrapped("%s", snapshot.status.c_str());
-        if (hasFrame)
-            ImGui::TextWrapped("Resize this panel to view the preview.");
-        else if (snapshot.ready)
-            ImGui::TextWrapped("Waiting for the first preview frame...");
-        else if (!snapshot.selected)
-            ImGui::TextWrapped("Choose a preview in Project, then open it to get started.");
-        if (!snapshot.ready && snapshot.capabilities.Can(EditorCommand::Open) && ImGui::Button("Open preview"))
-            actions.command(EditorCommand::Open);
-        if (ImGui::Button("Show Output")) result.showOutput = true;
     }
     return result;
 }

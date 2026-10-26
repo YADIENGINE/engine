@@ -205,6 +205,7 @@ nlohmann::json EncodePreviewCatalog(const std::vector<PreviewDefinition>& defini
         entries.push_back({{"id", definition.id},
                            {"name", definition.name},
                            {"category", definition.category},
+                           {"categoryOrder", definition.categoryOrder},
                            {"description", definition.description},
                            {"parameters", parameters},
                            {"actions", actions}});
@@ -221,6 +222,7 @@ std::vector<PreviewDefinition> DecodePreviewCatalog(const nlohmann::json& json) 
         definition.id = entry.at("id").get<std::string>();
         definition.name = entry.at("name").get<std::string>();
         definition.category = entry.at("category").get<std::string>();
+        definition.categoryOrder = entry.value("categoryOrder", 0);
         definition.description = entry.at("description").get<std::string>();
         if (definition.id.empty() || definition.name.empty() || !identifiers.insert(definition.id).second)
             throw std::runtime_error("Invalid catalog identifier");

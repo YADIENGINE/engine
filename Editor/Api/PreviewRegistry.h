@@ -14,6 +14,7 @@ struct PreviewDefinition {
     std::vector<PreviewParameter> parameters;
     std::vector<PreviewAction> actions;
     std::function<std::unique_ptr<EditorPreview>(const PreviewServices&, const PreviewParameters&)> create;
+    int categoryOrder = 0; // Lower values come first; use the same order for every entry in a category.
 };
 
 class PreviewRegistry {

@@ -18,7 +18,6 @@ struct EditorViewportInteraction {
     bool hovered = false;
     bool contentActive = false;
     bool toggleMaximize = false;
-    bool showOutput = false;
 };
 
 class ViewportPanel {

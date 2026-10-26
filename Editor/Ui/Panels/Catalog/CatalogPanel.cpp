@@ -17,14 +17,13 @@ void CatalogPanel::Entry(const PreviewDefinition& entry, const EditorSnapshot& s
     const bool selected = snapshot.selected && snapshot.selected->id == entry.id;
     const bool enabled = !snapshot.busy || (selected && snapshot.capabilities.Can(EditorCommand::Open));
     ImGui::BeginDisabled(!enabled);
-    const bool clicked = EditorWrappedSelectable(entry.name.c_str(), selected, ImGuiSelectableFlags_AllowDoubleClick);
-    const bool open = (clicked && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) ||
-                      (ImGui::IsItemFocused() && (ImGui::IsKeyPressed(ImGuiKey_Enter, false) ||
-                                                  ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false)));
+    const bool clicked = EditorWrappedSelectable(entry.name.c_str(), selected, ImGuiSelectableFlags_None);
+    const bool open = clicked || (ImGui::IsItemFocused() && (ImGui::IsKeyPressed(ImGuiKey_Enter, false) ||
+                                                             ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false)));
     EditorTooltip(entry.description.c_str());
-    if (enabled && (clicked || open)) {
+    if (enabled && open) {
         actions.select(entry.id);
-        if (open) actions.command(EditorCommand::Open);
+        actions.command(EditorCommand::Open);
     }
     ImGui::EndDisabled();
     ImGui::PopID();
@@ -59,7 +58,10 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
             return std::ranges::find(preferences.recent, a->id) < std::ranges::find(preferences.recent, b->id);
         });
     } else {
-        std::ranges::stable_sort(entries, [](const auto* a, const auto* b) { return a->category < b->category; });
+        std::ranges::stable_sort(entries, [](const auto* a, const auto* b) {
+            if (a->categoryOrder != b->categoryOrder) return a->categoryOrder < b->categoryOrder;
+            return a->category < b->category;
+        });
     }
     std::string category;
     bool expanded = true;

@@ -164,11 +164,6 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     }
     ImGui::PopStyleVar();
     if (result.interaction.toggleMaximize) _pendingToggle = true;
-    if (result.interaction.showOutput) {
-        if (_maximized) _pendingToggle = true;
-        preferences.Visible(EditorPanel::Output) = true;
-        _focusOutput = true;
-    }
     if (!_maximized && ImGui::GetIO().WantSaveIniSettings) CaptureLayout(preferences);
     return result;
 }

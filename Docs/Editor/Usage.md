@@ -4,11 +4,12 @@
 
 Editör açılırken Project ve View panelleri görünür ve sekmelerinde öndedir; kayıtlı dock yerleşimi korunur.
 
-- **Sol (Project):** arama, kategori, All / Favorites / Recent. İçerik çift tıklamayla ya da odaklanıp Enter ile açılır;
-  tek tıklama yalnız seçer. Yıldız favoriyi değiştirir. Recent son başarılı 10 açılışı tutar.
+- **Sol (Project):** arama, kategori, All / Favorites / Recent. İçerik tek tıklamayla ya da odaklanıp Enter ile açılır.
+  Yıldız favoriyi değiştirir. Recent son başarılı 10 açılışı tutar.
 - **Orta (View):** worker'ın gerçek görüntüsü. Fit tüm canvas'ı, Focus content içeriğin bildirdiği alanı,
   100% mantıksal ölçüyü gösterir. Zoom slider'ı veya Ctrl+tekerlek yakınlaştırır, orta tuşla sürükleme kaydırır.
   Ctrl basılı değilken tekerlek ürüne gider. Başlıktaki büyüt düğmesi / çift tıklama geçici odak modunu açar.
+  Önizleme durduğunda veya ilk kare beklenirken görüntü alanı boş ve karanlık kalır.
 - **Sağ (Inspector):** içeriğin kontrolleri gruplu; `*` varsayılandan farklı, `(pending)` yanıt bekleyen değeri
   gösterir. Default yalnız o kontrolü sıfırlar. Eylemler Actions altında. Live information grubu salt okunurdur.
   Choice kontrolleri aranabilir; seed gibi geniş tamsayılar doğrudan yazılabilir.
