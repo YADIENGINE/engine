@@ -114,7 +114,6 @@ JSON'a sığmayan projeye özel iş `hooks` dosyasındaki bilinen fonksiyonlarda
 | `editor_cli.py` | `editor.py`: EngineEditor + worker derle ve aç |
 | `test_runner.py` | CTest'i koşup yapılandırılmış rapor yazar; çıkış kodu 0 başarı, 1 test hatası, 2 altyapı/seçim hatası |
 | `project_config.py` | `Project.json` ve hook yükleyici |
-| `project_setup.py` | `EngineSetup.py`: `ProjectTemplate/`'ten yeni proje kurar |
 | `ProjectTemplate/` | yeni projenin dosyaları; `@PROJECT_NAME@` adla değişir, `gitignore`/`gitattributes` noktalı yazılır |
 
 Araçların kendi testleri derleyici istemez: `Engine/Tools` içinde `python -m unittest discover -s Tests`.

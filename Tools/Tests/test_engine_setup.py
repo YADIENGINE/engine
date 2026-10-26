@@ -1,14 +1,17 @@
-"""EngineSetup checks on a temporary folder; no compiler required.
+"""EngineSetup.py checks on a temporary folder; no compiler required.
 
 Run from the Tools folder: python -m unittest discover -s Tests
 """
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from project_setup import PLACEHOLDER, default_name, name_error, setup_project, template_files
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # Engine root, where EngineSetup.py lives
+
+from EngineSetup import PLACEHOLDER, default_name, name_error, setup_project, template_files  # noqa: E402
 
 
 class ProjectSetupTests(unittest.TestCase):

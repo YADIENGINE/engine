@@ -24,11 +24,12 @@ Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_ad
 Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
 Docs/      Kullanım ve katkı belgeleri
 Tools/     buildenv.py (MSVC ortamı), build_cli.py (p.py), editor_cli.py (editor.py), test_runner.py, project_config.py,
-           project_setup.py (EngineSetup.py) + ProjectTemplate/ (yeni projenin dosyaları; @PROJECT_NAME@,
+           ProjectTemplate/ (EngineSetup.py'nin kopyaladığı yeni proje dosyaları; @PROJECT_NAME@,
            gitignore/gitattributes noktasız saklanır). Kurulan proje olduğu gibi derlenmeli: boş Game/ →
            Runtime/Starter/StarterGame.cpp, boş Editor/ → Editor/Preview/StarterWorker.cpp. Örnek kod şablonda değil
            Docs/GettingStarted rehberlerinde.
-EngineSetup.py  Engine'in üst klasörünü yeni proje olarak kurar (adı sorar, dosyaların üzerine yazmaz, git'e dokunmaz)
+EngineSetup.py  Engine'in üst klasörünü yeni proje olarak kurar (adı sorar, dosyaların üzerine yazmaz, git'e dokunmaz).
+           Tek başına okunur: tüm mantık ve açıklaması içinde, sadece standart kütüphane; testi Tools/Tests/test_engine_setup.py
 ```
 
 ## Kurallar
