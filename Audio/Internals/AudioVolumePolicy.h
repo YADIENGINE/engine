@@ -1,10 +1,8 @@
 #pragma once
 #include <cstdint>
+#include "Audio/AudioSystem.hpp"
 
 class GameOptions;
-struct AudioVolumeSettings {
-    int steps = 4;
-};
 // Headless volume stepping and serialization into the engine's options; never writes a file itself.
 class AudioVolumePolicy {
 public:

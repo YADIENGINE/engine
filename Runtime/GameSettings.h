@@ -3,8 +3,7 @@
 #include <filesystem>
 #include <vector>
 #include "Graphics/Render/WindowSettings.h"
-#include "Audio/AudioCatalogDefinition.h"
-#include "Audio/AudioVolumePolicy.h"
+#include "Audio/AudioSystem.hpp"
 #include "Modules/Persistence/Persistence.hpp"
 #include "Graphics/Style/NeonArcadeTheme.h"
 

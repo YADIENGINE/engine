@@ -2,7 +2,7 @@
 #include <optional>
 #include <vector>
 #include "Modules/Persistence/Persistence.hpp"
-#include "Audio/AudioSystem.h"
+#include "Audio/AudioSystem.hpp"
 #include "Options/GameOptions.h"
 #include "Fx/TimeScale.h"
 #include "Graphics/Render/Renderer.h"

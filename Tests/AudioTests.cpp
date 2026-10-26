@@ -4,7 +4,8 @@
 #include <filesystem>
 #include <limits>
 #include <stdexcept>
-#include "Audio/AudioVolumePolicy.h"
+#include "Audio/AudioSystem.hpp"
+#include "Audio/Internals/AudioVolumePolicy.h"
 #include "Options/GameOptions.h"
 #include "Tests/Support/TempDirectory.h"
 
@@ -99,4 +100,58 @@ TEST_CASE("Engine.Audio.ConfigurableSteps", "[engine][audio][options]") {
     CHECK(policy.LoadMenuMusic(options) == Catch::Approx(0.2f));
     CHECK_THROWS_AS(AudioVolumePolicy(AudioVolumeSettings{.steps = 0}), std::invalid_argument);
     CHECK_THROWS_AS(AudioVolumePolicy(AudioVolumeSettings{.steps = 3}), std::invalid_argument);
+}
+
+TEST_CASE("Engine.Audio.CatalogValidationIsHeadlessAndIdsAreIndependent", "[engine][audio]") {
+    CHECK_NOTHROW(AudioSystem::ValidateCatalog({}));
+    const auto lastId = std::numeric_limits<std::size_t>::max();
+    AudioCatalog catalog{.effects = {{SoundId{lastId},
+                                      "Audio/not-installed.wav",
+                                      {.maxConcurrent = 1, .volume = 0.5f, .overflow = EffectOverflow::Skip}}},
+                         .music = {{MusicId{lastId}, "Audio/not-installed.ogg", MusicVolumeGroup::Menu}}};
+    CHECK_NOTHROW(AudioSystem::ValidateCatalog(catalog));
+}
+
+TEST_CASE("Engine.Audio.CatalogRejectsDuplicateIdsWithinEachResourceKind", "[engine][audio]") {
+    AudioCatalog catalog{.effects = {{SoundId{0}, "first.wav"}, {SoundId{0}, "second.wav"}}, .music = {}};
+    CHECK_THROWS_AS(AudioSystem::ValidateCatalog(catalog), std::invalid_argument);
+    catalog = {.effects = {}, .music = {{MusicId{0}, "first.ogg"}, {MusicId{0}, "second.ogg"}}};
+    CHECK_THROWS_AS(AudioSystem::ValidateCatalog(catalog), std::invalid_argument);
+}
+
+TEST_CASE("Engine.Audio.CatalogRejectsInvalidPathsAndSettings", "[engine][audio]") {
+    AudioCatalog catalog{.effects = {{SoundId{0}, "click.wav"}}, .music = {{MusicId{0}, "menu.ogg"}}};
+    const auto invalidPaths = {std::filesystem::path{}, std::filesystem::absolute("outside.wav"),
+                               std::filesystem::path{"../outside.wav"}, std::filesystem::path{"Audio/../outside.wav"}};
+    SECTION("Effect paths") {
+        for (const auto& path : invalidPaths) {
+            catalog.effects.front().file = path;
+            CHECK_THROWS_AS(AudioSystem::ValidateCatalog(catalog), std::invalid_argument);
+        }
+    }
+    SECTION("Music paths") {
+        for (const auto& path : invalidPaths) {
+            catalog.music.front().file = path;
+            CHECK_THROWS_AS(AudioSystem::ValidateCatalog(catalog), std::invalid_argument);
+        }
+    }
+    SECTION("No voices") {
+        catalog.effects.front().settings.maxConcurrent = 0;
+        CHECK_THROWS_AS(AudioSystem::ValidateCatalog(catalog), std::invalid_argument);
+    }
+    SECTION("Invalid gain") {
+        for (float volume :
+             {-0.1f, 1.1f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
+            catalog.effects.front().settings.volume = volume;
+            CHECK_THROWS_AS(AudioSystem::ValidateCatalog(catalog), std::invalid_argument);
+        }
+    }
+    SECTION("Invalid overflow policy") {
+        catalog.effects.front().settings.overflow = static_cast<EffectOverflow>(-1);
+        CHECK_THROWS_AS(AudioSystem::ValidateCatalog(catalog), std::invalid_argument);
+    }
+    SECTION("Invalid music group") {
+        catalog.music.front().volumeGroup = static_cast<MusicVolumeGroup>(-1);
+        CHECK_THROWS_AS(AudioSystem::ValidateCatalog(catalog), std::invalid_argument);
+    }
 }

@@ -17,6 +17,7 @@
 
 namespace {
 std::vector<std::filesystem::path> AssetManifest(const GameSettings& settings) {
+    AudioSystem::ValidateCatalog(settings.audio);
     auto assets = settings.assets;
     for (const auto& effect : settings.audio.effects)
         assets.push_back(effect.file);

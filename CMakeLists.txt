@@ -100,7 +100,8 @@ set_target_properties(EngineLocalization PROPERTIES POSITION_INDEPENDENT_CODE ON
 engine_warnings(EngineLocalization)
 
 add_library(EngineCore STATIC
-    Audio/AudioVolumePolicy.cpp
+    Audio/Internals/AudioVolumePolicy.cpp
+    Audio/Internals/Validation.cpp
     Fx/ShatterPattern.cpp
     Fx/TimeScale.cpp
     Fx/TransitionClock.cpp
@@ -182,6 +183,10 @@ engine_fetch_raylib()
 
 add_library(Engine STATIC
     Audio/AudioSystem.cpp
+    Audio/Internals/AudioDevice.cpp
+    Audio/Internals/AudioMusicStream.cpp
+    Audio/Internals/EffectVoices.cpp
+    Audio/Internals/State.cpp
     Fx/CameraEffects2D.cpp
     Fx/CameraShot.cpp
     Fx/FxStage.cpp
