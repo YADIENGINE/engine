@@ -57,7 +57,7 @@ bool EditorParameterWidget(const PreviewParameter& parameter, PreviewValue& valu
         auto number = std::get<std::int64_t>(value);
         const auto minimum = static_cast<std::int64_t>(parameter.minimum);
         const auto maximum = static_cast<std::int64_t>(parameter.maximum);
-        if (parameter.maximum - parameter.minimum > 10000.0) {
+        if (parameter.numericInput || parameter.maximum - parameter.minimum > 10000.0) {
             if (ImGui::InputScalar("##value", ImGuiDataType_S64, &number)) {
                 value = std::clamp(number, minimum, maximum);
                 return true;
@@ -73,6 +73,13 @@ bool EditorParameterWidget(const PreviewParameter& parameter, PreviewValue& valu
     }
     case PreviewParameterKind::Float: {
         double number = std::get<double>(value);
+        if (parameter.numericInput) {
+            if (ImGui::InputDouble("##value", &number, 0.0, 0.0, "%.3f")) {
+                value = std::clamp(number, parameter.minimum, parameter.maximum);
+                return true;
+            }
+            break;
+        }
         if (ImGui::SliderScalar("##value", ImGuiDataType_Double, &number, &parameter.minimum, &parameter.maximum,
                                 "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
             value = number;

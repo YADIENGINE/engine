@@ -194,7 +194,8 @@ nlohmann::json EncodePreviewCatalog(const std::vector<PreviewDefinition>& defini
                                   {"group", parameter.group},
                                   {"description", parameter.description},
                                   {"choiceButtons", parameter.choiceButtons},
-                                  {"choiceButtonColumns", parameter.choiceButtonColumns}});
+                                  {"choiceButtonColumns", parameter.choiceButtonColumns},
+                                  {"numericInput", parameter.numericInput}});
         auto actions = nlohmann::json::array();
         for (const auto& action : definition.actions)
             actions.push_back({{"id", action.id},
@@ -245,6 +246,7 @@ std::vector<PreviewDefinition> DecodePreviewCatalog(const nlohmann::json& json) 
             parameter.description = item.value("description", std::string{});
             parameter.choiceButtons = item.value("choiceButtons", false);
             parameter.choiceButtonColumns = item.value("choiceButtonColumns", 0);
+            parameter.numericInput = item.value("numericInput", false);
             if (!parameterIds.insert(parameter.id).second || !ValidatePreviewParameter(parameter).empty())
                 throw std::runtime_error("Invalid parameter metadata");
             definition.parameters.push_back(std::move(parameter));

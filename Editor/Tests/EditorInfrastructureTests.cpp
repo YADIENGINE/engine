@@ -193,6 +193,8 @@ TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") 
                               {"First", "Second"}}};
     definition.parameters.front().choiceButtons = true;
     definition.parameters.front().choiceButtonColumns = 2;
+    definition.parameters.push_back({"radius", "Radius", PreviewParameterKind::Float, 10.0, 1.0, 20.0});
+    definition.parameters.back().numericInput = true;
     definition.create = [&constructed](const PreviewServices&,
                                        const PreviewParameters&) -> std::unique_ptr<EditorPreview> {
         constructed = true;
@@ -203,14 +205,17 @@ TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") 
     CHECK_FALSE(constructed);
     REQUIRE_FALSE(catalog.empty());
     CHECK(catalog.front().id == definition.id);
-    REQUIRE(catalog.front().parameters.size() == 1);
+    REQUIRE(catalog.front().parameters.size() == 2);
     CHECK(catalog.front().parameters.front().choiceButtons);
     CHECK(catalog.front().parameters.front().choiceButtonColumns == 2);
+    CHECK(catalog.front().parameters.back().numericInput);
     auto legacy = EncodePreviewCatalog(registry.Entries());
     legacy["entries"][0]["parameters"][0].erase("choiceButtons");
     CHECK_FALSE(DecodePreviewCatalog(legacy).front().parameters.front().choiceButtons);
     legacy["entries"][0]["parameters"][0].erase("choiceButtonColumns");
     CHECK(DecodePreviewCatalog(legacy).front().parameters.front().choiceButtonColumns == 0);
+    legacy["entries"][0]["parameters"][1].erase("numericInput");
+    CHECK_FALSE(DecodePreviewCatalog(legacy).front().parameters.back().numericInput);
     CHECK_FALSE(catalog.front().create);
     CHECK_THROWS(registry.Add(definition));
 }
