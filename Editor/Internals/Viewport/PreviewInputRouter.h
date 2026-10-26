@@ -9,14 +9,15 @@ public:
     [[nodiscard]] DeviceInput Route(const DeviceInput& windowInput, Float2 mouse, const PreviewViewport& viewport,
                                     bool windowFocused, bool viewportFocused, bool keyboardBlocked,
                                     bool pointerBlocked);
-    // Delivers a release for an owned drag, then clears ownership.
+    // Cancels owned input; held devices must become neutral before routing resumes.
     [[nodiscard]] DeviceInput Clear();
 
 private:
     bool _dragging = false;
+    bool _suppressUntilNeutral = false;
     std::optional<Vec2> _lastMouse;
 };
 
-// Preserve press/release edges when several editor snapshots arrive in one worker frame.
+// Preserve edges and cancellation order when several editor snapshots arrive in one worker frame.
 void AccumulatePreviewInput(DeviceInput& state, const DeviceInput& incoming);
 [[nodiscard]] DeviceInput ConsumePreviewInput(DeviceInput& state);

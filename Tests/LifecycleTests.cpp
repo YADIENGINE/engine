@@ -40,7 +40,7 @@ public:
         , _child(log, "child") {
         AddObject(_child);
     }
-    ~ProbeScene() override { Shutdown(); }
+    ~ProbeScene() override { ShutdownNoThrow(); }
 
 private:
     void Start() override { _log.push_back("scene.start"); }

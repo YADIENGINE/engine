@@ -44,6 +44,7 @@ void CollectionPointer::Reset() {
 }
 CollectionPointerResult CollectionPointer::Update(const DeviceInput& input) {
     CollectionPointerResult result;
+    if (input.cancelled) Reset();
     const bool quiet = input.touches.empty() && !input.mouseDown && !input.mousePressed && !input.mouseReleased;
     if (_cancelled) {
         if (quiet) {

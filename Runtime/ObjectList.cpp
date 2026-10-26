@@ -1,9 +1,19 @@
 #include "Runtime/ObjectList.h"
+#include <cstdio>
+#include <exception>
 #include <stdexcept>
 #include <utility>
 
 ObjectList::ObjectList() = default;
-ObjectList::~ObjectList() { Stop(); }
+ObjectList::~ObjectList() {
+    try {
+        Stop();
+    } catch (const std::exception& error) {
+        std::fprintf(stderr, "ObjectList shutdown failed: %s\n", error.what());
+    } catch (...) {
+        std::fputs("ObjectList shutdown failed with an unknown exception\n", stderr);
+    }
+}
 
 void ObjectList::Add(GameObject& object) {
     if (_stopped) throw std::logic_error("Cannot register objects after shutdown");
@@ -37,22 +47,29 @@ void ObjectList::Clear() {
 }
 
 void ObjectList::Commit() {
-    if (_dispatching || _stopped) return;
+    // Start/Update keep the dispatch guard active through removal callbacks.
+    // Reserve before moving registrations so an allocation failure leaves them intact.
+    _entries.reserve(_entries.size() + _pending.size());
     // Stop callbacks may enqueue additions; keep those for the next dispatch.
-    auto incoming = std::move(_pending);
-    _pending.clear();
-    for (Entry& entry : incoming)
+    for (Entry& entry : _pending)
         _entries.push_back(std::move(entry));
-    const auto remove = [](Entry& entry) {
+    _pending.clear();
+    std::exception_ptr failure;
+    const auto remove = [&failure](Entry& entry) {
         if (!entry.removed) return false;
         entry.object->_list = nullptr;
         if (entry.object->_started && !entry.object->_stopped) {
             entry.object->_stopped = true;
-            entry.object->Stop();
+            try {
+                entry.object->Stop();
+            } catch (...) {
+                if (!failure) failure = std::current_exception();
+            }
         }
         return true;
     };
     std::erase_if(_entries, remove);
+    if (failure) std::rethrow_exception(failure);
 }
 
 void ObjectList::StartEnabled() {
@@ -67,9 +84,10 @@ void ObjectList::StartEnabled() {
 
 void ObjectList::Start() {
     if (_dispatching) throw std::logic_error("Cannot dispatch GameObjects recursively");
-    Commit();
+    if (_stopped) return;
     _dispatching = true;
     try {
+        Commit();
         StartEnabled();
     } catch (...) {
         _dispatching = false;
@@ -80,10 +98,10 @@ void ObjectList::Start() {
 
 void ObjectList::Update(float deltaSeconds) {
     if (_dispatching) throw std::logic_error("Cannot dispatch GameObjects recursively");
-    Commit();
     if (_stopped) return;
     _dispatching = true;
     try {
+        Commit();
         StartEnabled();
         if (deltaSeconds > 0.0f) {
             for (Entry& entry : _entries) {
@@ -100,24 +118,41 @@ void ObjectList::Update(float deltaSeconds) {
 }
 
 void ObjectList::Draw() const {
+    if (_dispatching) throw std::logic_error("Cannot dispatch GameObjects recursively");
     if (_stopped) return;
-    for (const Entry& entry : _entries) {
-        if (!entry.removed && entry.object->_enabled && entry.object->_started) entry.object->Draw();
+    _dispatching = true;
+    try {
+        for (const Entry& entry : _entries) {
+            if (!entry.removed && entry.object->_enabled && entry.object->_started) entry.object->Draw();
+        }
+    } catch (...) {
+        _dispatching = false;
+        throw;
     }
+    _dispatching = false;
 }
 
 void ObjectList::Stop() {
+    if (_dispatching) throw std::logic_error("Cannot dispatch GameObjects recursively");
     if (_stopped) return;
+    _dispatching = true;
     _stopped = true;
+    std::exception_ptr failure;
     for (auto i = _entries.rbegin(); i != _entries.rend(); ++i) {
         i->object->_list = nullptr;
         if (i->object->_started && !i->object->_stopped) {
             i->object->_stopped = true;
-            i->object->Stop();
+            try {
+                i->object->Stop();
+            } catch (...) {
+                if (!failure) failure = std::current_exception();
+            }
         }
     }
     for (Entry& entry : _pending)
         entry.object->_list = nullptr;
     _pending.clear();
     _entries.clear();
+    _dispatching = false;
+    if (failure) std::rethrow_exception(failure);
 }

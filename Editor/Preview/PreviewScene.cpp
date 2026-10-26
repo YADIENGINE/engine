@@ -2,12 +2,13 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
+#include "Input/DeviceInput.h"
 
 PreviewScene::PreviewScene(Vec2 canvas, const TextRenderer& text, AudioSystem& audio,
                            std::function<void(const std::string&)> log)
     : Scene(TimeDomain::Game)
     , _services{canvas, text, audio, std::move(log)} {}
-PreviewScene::~PreviewScene() { Shutdown(); }
+PreviewScene::~PreviewScene() { ShutdownNoThrow(); }
 void PreviewScene::Open(const PreviewDefinition& definition, const PreviewParameters& parameters) {
     _definition = &definition;
     std::vector<std::string> messages;
@@ -52,6 +53,11 @@ bool PreviewScene::CaptureParameters() {
 void PreviewScene::HandleInput(const DeviceInput& input) {
     if (_preview && _preview->Enabled()) _preview->HandleInput(input);
 }
+void PreviewScene::InputCancelled() {
+    DeviceInput input;
+    input.cancelled = true;
+    if (_preview) _preview->HandleInput(input);
+}
 void PreviewScene::Update(float deltaSeconds) {
     _seconds += deltaSeconds;
     _content.Update(deltaSeconds);
@@ -59,6 +65,6 @@ void PreviewScene::Update(float deltaSeconds) {
 void PreviewScene::Draw() const { _content.Draw(); }
 PreviewInspection PreviewScene::Inspect() const { return _preview ? _preview->Inspect() : PreviewInspection{}; }
 void PreviewScene::Stop() {
-    _content.Stop();
     _preview = nullptr;
+    _content.Stop();
 }

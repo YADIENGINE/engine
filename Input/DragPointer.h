@@ -12,10 +12,11 @@ struct DragPointerResult {
     std::optional<Vec2> hover;    // Basılı temas yokken farenin hover'ı
     bool dragging = false;        // Temas eşikten fazla kaydı (bittiği frame'de de true)
     bool tap = false;             // Temas eşiği aşmadan bitti
+    bool cancelled = false;       // Temas iptal edildi; activation/drop ve yerel sürükleme görünüşü temizlenir.
 };
 
 // Sürükle-bırak: tek birincil temasın başlangıcını, konumunu ve bitişini izler. Dokunuşun ürettiği sahte fare
-// olaylarını yok sayar; diğer parmaklar birincil teması bozmaz.
+// olaylarını yok sayar; diğer parmaklar birincil teması bozmaz. Canvas dışına çıkan temas iptal edilir.
 class DragPointer {
 public:
     explicit DragPointer(int threshold);

@@ -10,7 +10,7 @@ PreviewGame::PreviewGame(const GameSettings& settings, const PreviewRegistry& re
                 {}}) {
     RegisterScene(_preview.Scene());
 }
-PreviewGame::~PreviewGame() { _preview.Scene().Shutdown(); }
+PreviewGame::~PreviewGame() { _preview.Scene().ShutdownNoThrow(); }
 void PreviewGame::Start() { SetScene(_preview.Scene()); }
 DeviceInput PreviewGame::ReadInput() { return _preview.ReadInput(); }
 void PreviewGame::HandleInput(const DeviceInput& input) {

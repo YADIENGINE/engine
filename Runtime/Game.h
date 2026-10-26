@@ -23,6 +23,8 @@ protected:
     explicit Game(const GameSettings& settings);
     void RegisterScene(Scene& scene);
     void SetScene(Scene& scene, bool restart = false);
+    // Cancel the current scene's input and resynchronize local devices before accepting another press.
+    void CancelInput();
     void RequestQuit() { _quitRequested = true; }
     void SetPaused(bool paused) { _paused = paused; }
     [[nodiscard]] TimeScale& Time() { return _timeScale; }
@@ -114,7 +116,9 @@ private:
     bool _quitRequested = false;
     bool _paused = false;
     bool _ran = false;
+    bool _shutdownStarted = false;
     bool _revealed = false; // Gizli açılan pencere ilk kareden sonra gösterildi
+    bool _inputFocused = true;
 
 public:
     Game(const Game&) = delete;

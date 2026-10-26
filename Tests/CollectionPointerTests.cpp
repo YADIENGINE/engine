@@ -69,3 +69,11 @@ TEST_CASE("Engine.CollectionPointer.MouseReleaseAndWheelArea", "[engine][input]"
     mouse.mouse = Vec2{10, 10};
     CHECK(pointer.Update(mouse).rows == 0);
 }
+
+TEST_CASE("Engine.CollectionPointer.CancelledSnapshotDoesNotReleaseATap", "[engine][input]") {
+    CollectionPointer pointer(Area, 40);
+    (void)pointer.Update(Finger({150, 200}));
+    CHECK_FALSE(pointer.Update(DeviceInput{.cancelled = true}).tap);
+    (void)pointer.Update(Finger({155, 205}));
+    CHECK(pointer.Update({}).tap == Vec2{155, 205});
+}

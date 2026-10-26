@@ -129,7 +129,7 @@ TEST_CASE("Editor.Settings.ProjectIsolationAndCorruptFileRecovery", "[engine-edi
     CHECK(font == 100);
 }
 
-TEST_CASE("Editor.Input.HiddenViewportReleasesOwnedInput", "[engine-editor]") {
+TEST_CASE("Editor.Input.HiddenViewportCancelsOwnedInput", "[engine-editor]") {
     PreviewInputRouter router;
     DeviceInput down;
     down.mousePressed = down.mouseDown = true;
@@ -137,7 +137,8 @@ TEST_CASE("Editor.Input.HiddenViewportReleasesOwnedInput", "[engine-editor]") {
     const auto viewport = FitPreviewViewport({}, {200, 100}, {400, 200});
     (void)router.Route(down, {50, 50}, viewport, true, true, false, false);
     const auto hidden = router.Route(down, {50, 50}, {}, true, true, false, false);
-    CHECK(hidden.mouseReleased);
+    CHECK(hidden.cancelled);
+    CHECK_FALSE(hidden.mouseReleased);
     CHECK_FALSE(hidden.mouseDown);
     CHECK_FALSE(hidden.Down(InputKey::Enter));
     CHECK_FALSE(router.OwnsPointer());

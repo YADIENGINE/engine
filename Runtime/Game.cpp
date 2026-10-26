@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <exception>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -66,7 +67,16 @@ Game::Game(const GameSettings& settings)
 }
 Game::~Game() = default;
 void Game::Start() {}
-DeviceInput Game::ReadInput() { return _input.Read(_renderer); }
+DeviceInput Game::ReadInput() {
+    // External hosts override this method; their hidden windows do not own input focus.
+    const bool focused = IsWindowFocused();
+    if (!focused) {
+        if (_inputFocused) CancelInput();
+        _input.Cancel();
+    }
+    _inputFocused = focused;
+    return _input.Read(_renderer);
+}
 void Game::CanvasReady(const Texture2D& texture) const { (void)texture; }
 void Game::DrawWindow() const {}
 void Game::HandleInput(const DeviceInput& input) {
@@ -175,20 +185,30 @@ Persistence Game::CreatePersistence(const std::filesystem::path& filename, std::
 }
 
 void Game::RegisterScene(Scene& scene) {
+    if (_shutdownStarted) throw std::logic_error("Cannot register scenes during game shutdown");
     if (std::ranges::find(_scenes, &scene) != _scenes.end()) throw std::logic_error("Scene already registered");
+    if (scene.IsShutdown()) throw std::logic_error("Cannot register a scene after shutdown");
     _scenes.push_back(&scene);
 }
 void Game::SetScene(Scene& scene, bool restart) {
+    if (_shutdownStarted) throw std::logic_error("Cannot select scenes during game shutdown");
     if (std::ranges::find(_scenes, &scene) == _scenes.end()) throw std::logic_error("Scene is not registered");
+    if (scene.IsShutdown()) throw std::logic_error("Cannot select a scene after shutdown");
     _pendingScene = &scene;
     _restartScene = restart;
+}
+void Game::CancelInput() {
+    _input.Cancel();
+    if (_scene) _scene->CancelInput();
 }
 void Game::CommitScene() {
     if (!_pendingScene) return;
     Scene* next = _pendingScene;
     _pendingScene = nullptr;
     const bool restart = std::exchange(_restartScene, false);
+    if (next->IsShutdown()) throw std::logic_error("Cannot activate a scene after shutdown");
     if (next == _scene && !restart) return;
+    _input.Cancel();
     if (_scene) _scene->Deactivate();
     _scene = next;
     _scene->Activate();
@@ -214,10 +234,19 @@ void Game::DrawFpsCounter() const {
     _text.Draw(label.data(), FpsCounterX, FpsCounterY, FpsCounterFontSize, FpsCounterText);
 }
 void Game::Shutdown() {
-    for (auto scene = _scenes.rbegin(); scene != _scenes.rend(); ++scene)
-        (*scene)->Shutdown();
+    if (_shutdownStarted) return;
+    _shutdownStarted = true;
+    std::exception_ptr failure;
+    for (auto scene = _scenes.rbegin(); scene != _scenes.rend(); ++scene) {
+        try {
+            (*scene)->Shutdown();
+        } catch (...) {
+            if (!failure) failure = std::current_exception();
+        }
+    }
     _scene = nullptr;
     _pendingScene = nullptr;
+    if (failure) std::rethrow_exception(failure);
 }
 bool Game::ShowLoading() {
     const StartupTimer timer("Loading screen");
@@ -270,6 +299,7 @@ void Game::Run() {
             const bool focused = IsWindowFocused();
             if (!focused) {
                 if (wasFocused) {
+                    CancelInput();
                     resumeMusic = _audio.IsMusicPlaying();
                     _audio.PauseMusic();
                     Suspend();
@@ -288,7 +318,11 @@ void Game::Run() {
 #endif
             _frameStart = GetTime();
             const DeviceInput input = ReadInput();
-            HandleInput(input);
+            if (input.cancelled) {
+                if (_scene) _scene->ReadInput(input);
+            } else {
+                HandleInput(input);
+            }
             float realSeconds = GetFrameTime();
 #ifdef __ANDROID__
             if (resumed || realSeconds > 0.25f) realSeconds = 0.0f;
@@ -306,7 +340,13 @@ void Game::Run() {
         Stop(); // The project settles its run while scene data and services are still alive.
         SaveOptions();
     } catch (...) {
-        Shutdown();
+        try {
+            Shutdown();
+        } catch (const std::exception& error) {
+            std::fprintf(stderr, "Game shutdown failed while handling another error: %s\n", error.what());
+        } catch (...) {
+            std::fputs("Game shutdown failed while handling another error\n", stderr);
+        }
         throw;
     }
     Shutdown();

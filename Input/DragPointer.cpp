@@ -16,15 +16,16 @@ void DragPointer::Begin(Vec2 point, DragPointerResult& result) {
 }
 
 void DragPointer::Track(Vec2 point, DragPointerResult& result) {
+    if (!_origin) return;
     _last = point;
-    if (_origin && (std::abs(point.x - _origin->x) >= _threshold || std::abs(point.y - _origin->y) >= _threshold))
-        _dragged = true;
+    if (std::abs(point.x - _origin->x) >= _threshold || std::abs(point.y - _origin->y) >= _threshold) _dragged = true;
     result.position = point;
     result.origin = _origin;
     result.dragging = _dragged;
 }
 
 void DragPointer::Finish(DragPointerResult& result) {
+    if (!_origin || !_last) return;
     result.released = _last;
     result.origin = _origin;
     result.dragging = _dragged;
@@ -44,8 +45,10 @@ void DragPointer::Reset() {
 
 DragPointerResult DragPointer::Update(const DeviceInput& input) {
     DragPointerResult result;
+    if (input.cancelled) Reset();
     const bool quiet = input.touches.empty() && !input.mouseDown && !input.mousePressed && !input.mouseReleased;
     if (_cancelled) {
+        result.cancelled = true;
         if (quiet) {
             _cancelled = false;
             _touch.reset();
@@ -62,10 +65,8 @@ DragPointerResult DragPointer::Update(const DeviceInput& input) {
         } else if (found->position) {
             Track(*found->position, result);
         } else {
-            // Canvas dışına çıkan parmak: son konumda kalır.
-            result.position = _last;
-            result.origin = _origin;
-            result.dragging = _dragged;
+            Reset();
+            result.cancelled = true;
         }
         return result;
     }
@@ -80,24 +81,38 @@ DragPointerResult DragPointer::Update(const DeviceInput& input) {
         _suppressMouse = true;
         if (touch.position)
             Begin(*touch.position, result);
-        else
-            _origin.reset();
+        else {
+            Reset();
+            result.cancelled = true;
+        }
         return result;
     }
-    if (input.mousePressed && input.mouse) {
+    if (input.mousePressed) {
+        if (!input.mouse) {
+            Reset();
+            result.cancelled = true;
+            return result;
+        }
         _mouseActive = true;
         Begin(*input.mouse, result);
         if (!input.mouseReleased) return result;
     }
     if (_mouseActive) {
-        if (input.mouse) Track(*input.mouse, result);
+        if (!input.mouse) {
+            Reset();
+            result.cancelled = true;
+            return result;
+        }
+        Track(*input.mouse, result);
         if (input.mouseReleased) {
             _mouseActive = false;
             Finish(result);
             result.position.reset();
         } else if (!input.mouseDown) {
             Reset();
-            return {};
+            result = {};
+            result.cancelled = true;
+            return result;
         }
         return result;
     }

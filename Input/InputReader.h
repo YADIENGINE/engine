@@ -14,7 +14,10 @@ public:
     // Identity mapping samples window coordinates; external consumers can supply their own mapping.
     [[nodiscard]] DeviceInput Read();
     [[nodiscard]] DeviceInput Read(const std::function<std::optional<Vec2>(Vec2)>& mapPoint);
+    // Cihazı örneklemeye devam eder; tüm basılı girdiler bırakılana kadar yalnız cancelled snapshot verir.
+    void Cancel();
 
 private:
     std::vector<int> _touchIds; // Önceki frame'deki parmaklar
+    bool _suppressUntilNeutral = false;
 };

@@ -1,20 +1,29 @@
 #include "Editor/Internals/Viewport/PreviewInputRouter.h"
+#include <algorithm>
 #include <stdexcept>
 
 PreviewInputRouter::PreviewInputRouter() = default;
 DeviceInput PreviewInputRouter::Clear() {
     DeviceInput input;
-    input.mouseReleased = _dragging;
+    input.cancelled = true;
     _dragging = false;
+    _suppressUntilNeutral = true;
     _lastMouse.reset();
     return input;
 }
 DeviceInput PreviewInputRouter::Route(const DeviceInput& windowInput, Float2 mouse, const PreviewViewport& viewport,
                                       bool windowFocused, bool viewportFocused, bool keyboardBlocked,
                                       bool pointerBlocked) {
-    if (!windowFocused || viewport.size.x <= 0 || viewport.size.y <= 0 || viewport.canvas.x <= 0 ||
-        viewport.canvas.y <= 0)
+    if (windowInput.cancelled || !windowFocused || viewport.size.x <= 0 || viewport.size.y <= 0 ||
+        viewport.canvas.x <= 0 || viewport.canvas.y <= 0)
         return Clear();
+    if (_suppressUntilNeutral) {
+        const bool keyboardActive = std::ranges::any_of(windowInput.keysDown, [](bool down) { return down; }) ||
+                                    std::ranges::any_of(windowInput.keysPressed, [](bool pressed) { return pressed; });
+        _suppressUntilNeutral = keyboardActive || !windowInput.touches.empty() || windowInput.mouseDown ||
+                                windowInput.mousePressed || windowInput.mouseReleased;
+        return DeviceInput{.cancelled = true};
+    }
     DeviceInput result;
     if (viewportFocused && !keyboardBlocked) {
         result.keysDown = windowInput.keysDown;
@@ -47,6 +56,10 @@ DeviceInput PreviewInputRouter::Route(const DeviceInput& windowInput, Float2 mou
 }
 
 void AccumulatePreviewInput(DeviceInput& state, const DeviceInput& incoming) {
+    if (incoming.cancelled) {
+        state = DeviceInput{.cancelled = true};
+        return;
+    }
     for (std::size_t i = 0; i < state.keysPressed.size(); ++i)
         state.keysPressed[i] = state.keysPressed[i] || incoming.keysPressed[i];
     state.keysDown = incoming.keysDown;
@@ -63,6 +76,11 @@ void AccumulatePreviewInput(DeviceInput& state, const DeviceInput& incoming) {
     state.taps.insert(state.taps.end(), incoming.taps.begin(), incoming.taps.end());
 }
 DeviceInput ConsumePreviewInput(DeviceInput& state) {
+    // Deliver cancellation first; newer edges remain queued for the next worker frame.
+    if (state.cancelled) {
+        state.cancelled = false;
+        return DeviceInput{.cancelled = true};
+    }
     auto result = state;
     state.keysPressed.fill(false);
     state.mousePressed = false;

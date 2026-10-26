@@ -23,6 +23,12 @@ Sürekli hareket için `Down(InputKey)`, bir kez tetiklenen eylem için `Pressed
 kullanın. Oyuncu başına bağlar, rebind, onay sesleri ve oyun eylemleri oyunda tanımlanır.
 Scene `HandleInput` override'ı snapshot alır; sahneler raylib'i tekrar okumaz.
 
+`DeviceInput::cancelled` normal bir bırakma değildir: bekleyen temas/eylem iptal edilir.
+Runtime bu snapshot'ı Scene `InputCancelled()` hook'una yönlendirir. Hook içinde pointer yardımcısına
+boş bir `DeviceInput{.cancelled = true}` verin ve yerel basış/sürükleme görünüşünü temizleyin.
+`Game::CancelInput()` sahneyi bildirir ve yerel reader'ı yeniden eşitler; `InputReader::Cancel()`
+touch kimliklerini örneklemeye devam ederek tüm basılı girdiler bırakılana kadar eylemleri bastırır.
+
 ## Koleksiyon ve sürükle-bırak
 
 `CollectionPointer` and `HeaderGridNavigation` live in EngineCore. They contain no rendering or content policy.
@@ -45,11 +51,13 @@ returns every header cursor to its first item without moving focus. Every header
 
 `Input/DragPointer.h` serbest sürükleme için `DragPointer(threshold)` sağlar.
 `Update(input)` sonucunda `pressed`, `position`, `origin`, `released`, `hover`,
-`dragging` ve `tap` bulunur. Pozisyonlar canvas koordinatındadır.
+`dragging`, `tap` ve `cancelled` bulunur. Pozisyonlar canvas koordinatındadır.
 Eşik aşıldıktan sonra başlangıca dönmek hareketi tap'e dönüştürmez; birincil touch kimliği
 başka parmaklara devredilmez. Touch kaynaklı sentetik mouse olayları bastırılır.
 Odak/sahne kaybında `Reset()` çağırın ve iptal edilen temasın boşalması için sonraki
 snapshot'ları vermeye devam edin. `released` tek başına tap anlamına gelmez.
+Canvas dışında başlayan veya dışına çıkan temas iptal edilir; son içerideki konumda tap/drop üretilmez.
+`cancelled` sonucunda tüketici bekleyen basışını ve sürükleme görünüşünü temizlemelidir.
 
 ## Menü seçimi ve viewport
 

@@ -32,7 +32,7 @@ PreviewSession::PreviewSession(const GameSettings& settings, const PreviewRegist
     , _lastInput(std::chrono::steady_clock::now()) {
     _scene.SetApplicationCommand(_actions.application);
 }
-PreviewSession::~PreviewSession() { _scene.Shutdown(); }
+PreviewSession::~PreviewSession() { _scene.ShutdownNoThrow(); }
 float PreviewSession::Advance(float realSeconds) {
     if (_step) {
         _step = false;
@@ -85,6 +85,7 @@ void PreviewSession::Command(const PreviewMessage& message) {
     } else if (message.type == "pause") {
         _paused = message.data.at("paused").get<bool>();
         _inputState = {};
+        _inputState.cancelled = true;
         Reply(message, "state", {{"paused", _paused}});
     } else if (message.type == "playback") {
         const float speed = message.data.at("speed").get<float>();
@@ -122,9 +123,8 @@ DeviceInput PreviewSession::ReadInput() {
     if (_channel.Closed()) _actions.quit();
     constexpr auto InputLease = std::chrono::seconds(1);
     if (std::chrono::steady_clock::now() - _lastInput > InputLease) {
-        const bool release = _inputState.mouseDown;
         _inputState = {};
-        _inputState.mouseReleased = release;
+        _inputState.cancelled = true;
     }
     return ConsumePreviewInput(_inputState);
 }

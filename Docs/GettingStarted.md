@@ -71,7 +71,7 @@ constexpr float CanvasWidth = 1280.0f;
 
 MyScene::MyScene()
     : Scene(TimeDomain::Game) {}
-MyScene::~MyScene() { Shutdown(); }
+MyScene::~MyScene() { ShutdownNoThrow(); }
 void MyScene::Enter() { _x = StartX; }
 void MyScene::HandleInput(const DeviceInput& input) { _direction = InputFrame(input).Horizontal(); }
 void MyScene::Update(float seconds) {
@@ -147,7 +147,7 @@ std::unique_ptr<Game> CreateGame() { return std::make_unique<MyGame>(); }
 ```
 
 `applicationId` kullanıcı verisi klasörünün adıdır (ayarlar, kayıtlar); projeye özgü ve kalıcı seçin.
-Sahne oyunun değer üyesidir. `Shutdown()` somut sahne destructor'ında çağrılır;
+Sahne oyunun değer üyesidir. `ShutdownNoThrow()` somut sahne destructor'ında çağrılır;
 çocuk nesneler eklediğinizde de aynı sahiplik kuralı geçerlidir.
 
 ## Geliştiricinin derleyip denemesi

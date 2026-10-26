@@ -75,3 +75,55 @@ TEST_CASE("Engine.DragPointer.ResetCancelsTheContactAndItsRelease", "[engine][in
     (void)pointer.Update({});
     CHECK(pointer.Update(Mouse({10, 10}, true, true, false)).pressed == Vec2{10, 10});
 }
+
+TEST_CASE("Engine.DragPointer.CancelledSnapshotCannotActivateTheOwnedContact", "[engine][input]") {
+    DragPointer pointer(Threshold);
+    (void)pointer.Update(Mouse({100, 100}, true, true, false));
+    const auto cancelled = pointer.Update(DeviceInput{.cancelled = true});
+    CHECK(cancelled.cancelled);
+    CHECK_FALSE(cancelled.tap);
+    CHECK_FALSE(cancelled.released);
+    CHECK(pointer.Update(Mouse({20, 30}, true, true, false)).pressed == Vec2{20, 30});
+}
+
+TEST_CASE("Engine.DragPointer.TouchStartingOutsideCannotBecomeATap", "[engine][input]") {
+    DragPointer pointer(Threshold);
+    DeviceInput outside;
+    outside.touches.push_back({1, std::nullopt});
+    CHECK(pointer.Update(outside).cancelled);
+    const auto entered = pointer.Update(Finger({50, 60}));
+    CHECK_FALSE(entered.pressed);
+    CHECK_FALSE(entered.position);
+    const auto released = pointer.Update({});
+    CHECK_FALSE(released.tap);
+    CHECK_FALSE(released.released);
+    CHECK(pointer.Update(Finger({50, 60})).pressed == Vec2{50, 60});
+}
+
+TEST_CASE("Engine.DragPointer.LeavingCanvasCancelsInsteadOfDroppingAtTheLastPosition", "[engine][input]") {
+    DragPointer pointer(Threshold);
+    SECTION("Mouse") {
+        (void)pointer.Update(Mouse({100, 100}, true, true, false));
+        DeviceInput outside;
+        outside.mouseDown = true;
+        const auto cancelled = pointer.Update(outside);
+        CHECK(cancelled.cancelled);
+        CHECK_FALSE(cancelled.position);
+        outside.mouseDown = false;
+        outside.mouseReleased = true;
+        const auto released = pointer.Update(outside);
+        CHECK_FALSE(released.tap);
+        CHECK_FALSE(released.released);
+    }
+    SECTION("Touch cannot resume after reentering") {
+        (void)pointer.Update(Finger({100, 100}));
+        (void)pointer.Update(Finger({200, 100}));
+        DeviceInput outside;
+        outside.touches.push_back({1, std::nullopt});
+        CHECK(pointer.Update(outside).cancelled);
+        CHECK_FALSE(pointer.Update(Finger({200, 100})).position);
+        const auto released = pointer.Update({});
+        CHECK_FALSE(released.tap);
+        CHECK_FALSE(released.released);
+    }
+}

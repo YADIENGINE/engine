@@ -23,6 +23,7 @@ public:
     }
 
 protected:
+    void InputCancelled() override;
     void HandleInput(const DeviceInput& input) override;
     void Update(float deltaSeconds) override;
     void Draw() const override;

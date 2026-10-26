@@ -50,7 +50,9 @@ engine_tests(EngineTests
         GridViewportTests.cpp
         LifecycleTests.cpp
         MathTests.cpp
+        ObjectListSafetyTests.cpp
         RunStatisticsSysTests.cpp
+        SceneSafetyTests.cpp
         ShatterTests.cpp
         TextLayoutTests.cpp
         UiTransformTests.cpp

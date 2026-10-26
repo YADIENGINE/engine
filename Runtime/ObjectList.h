@@ -15,6 +15,7 @@ public:
     void Start();
     void Update(float deltaSeconds);
     void Draw() const;
+    // Completes cleanup before rethrowing the first Stop callback failure.
     void Stop();
 
 private:
@@ -28,7 +29,7 @@ private:
 
     std::vector<Entry> _entries;
     std::vector<Entry> _pending;
-    bool _dispatching = false;
+    mutable bool _dispatching = false;
     bool _stopped = false;
 
 public:

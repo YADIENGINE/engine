@@ -93,6 +93,8 @@ DeviceInput InputReader::Read() {
     return Read([](Vec2 point) { return std::optional{point}; });
 }
 
+void InputReader::Cancel() { _suppressUntilNeutral = true; }
+
 DeviceInput InputReader::Read(const std::function<std::optional<Vec2>(Vec2)>& mapPoint) {
     DeviceInput input;
     for (std::size_t i = 0; i < InputKeyCodes.size(); ++i) {
@@ -130,6 +132,13 @@ DeviceInput InputReader::Read(const std::function<std::optional<Vec2>(Vec2)>& ma
     if (input.held.empty()) {
         if (input.pointer) input.taps.push_back(*input.pointer);
         if (input.mouseDown && input.mouse) input.held.push_back(*input.mouse);
+    }
+    if (_suppressUntilNeutral) {
+        const bool keyboardActive = std::ranges::any_of(input.keysDown, [](bool down) { return down; }) ||
+                                    std::ranges::any_of(input.keysPressed, [](bool pressed) { return pressed; });
+        _suppressUntilNeutral =
+            keyboardActive || !input.touches.empty() || input.mouseDown || input.mousePressed || input.mouseReleased;
+        return DeviceInput{.cancelled = true};
     }
     return input;
 }

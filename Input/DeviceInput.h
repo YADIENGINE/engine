@@ -17,6 +17,8 @@ struct InputTouch {
 // Tek frame'in cihaz verisi (InputReader doldurur); ekranlar basma/bırakma ve jest kurallarını kendileri yorumlar.
 // Saf veri: raylib bilmez, testlerde elle kurulabilir.
 struct DeviceInput {
+    // Temas/odak kaybı: bu snapshot'taki eylemler işlenmez, bekleyen gesture'lar iptal edilir.
+    bool cancelled = false;
     std::array<bool, static_cast<std::size_t>(InputKey::Count)> keysPressed{};
     std::array<bool, static_cast<std::size_t>(InputKey::Count)> keysDown{};
     bool shiftHeld = false;

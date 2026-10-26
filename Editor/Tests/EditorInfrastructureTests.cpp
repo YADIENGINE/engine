@@ -45,9 +45,28 @@ TEST_CASE("Editor.Input.OwnedDragReleaseAndFocus", "[engine-editor]") {
     CHECK_FALSE(editor.mousePressed);
     (void)router.Route(down, {50.0f, 50.0f}, viewport, true, true, false, false);
     const auto unfocused = router.Route(down, {50.0f, 50.0f}, viewport, false, true, false, false);
-    CHECK(unfocused.mouseReleased);
+    CHECK(unfocused.cancelled);
+    CHECK_FALSE(unfocused.mouseReleased);
     CHECK_FALSE(unfocused.Down(InputKey::Enter));
     CHECK_FALSE(router.Clear().mouseReleased);
+}
+
+TEST_CASE("Editor.Input.FocusCancellationDrainsHeldDevicesBeforeAcceptingANewPress", "[engine-editor]") {
+    PreviewInputRouter router;
+    const auto viewport = FitPreviewViewport({}, {200.0f, 100.0f}, {400, 200});
+    DeviceInput down;
+    down.mousePressed = down.mouseDown = true;
+    down.keysDown[static_cast<std::size_t>(InputKey::Enter)] = true;
+    (void)router.Route(down, {50, 50}, viewport, true, true, false, false);
+    CHECK(router.Route(down, {50, 50}, viewport, false, true, false, false).cancelled);
+    const auto held = router.Route(down, {50, 50}, viewport, true, true, false, false);
+    CHECK(held.cancelled);
+    CHECK_FALSE(held.mousePressed);
+    CHECK_FALSE(held.Down(InputKey::Enter));
+    CHECK(router.Route({}, {50, 50}, viewport, true, true, false, false).cancelled);
+    const auto next = router.Route(down, {50, 50}, viewport, true, true, false, false);
+    CHECK_FALSE(next.cancelled);
+    CHECK(next.mousePressed);
 }
 
 TEST_CASE("Editor.Viewport.ZoomedImageUsesCanvasCoordinatesAndVisibleClip", "[engine-editor]") {
@@ -111,6 +130,38 @@ TEST_CASE("Editor.Input.SnapshotsPreserveEdges", "[engine-editor]") {
     CHECK_FALSE(next.keysPressed[0]);
     CHECK_FALSE(next.mouseReleased);
     CHECK(next.taps.empty());
+}
+
+TEST_CASE("Editor.Input.CancellationDiscardsOldEdgesAndPrecedesNewInput", "[engine-editor]") {
+    DeviceInput state;
+    DeviceInput old;
+    old.keysPressed[0] = old.keysDown[0] = true;
+    old.mousePressed = old.mouseDown = true;
+    old.taps = {{20, 30}};
+    AccumulatePreviewInput(state, old);
+    const DeviceInput cancel{.cancelled = true};
+    const auto decoded = DecodePreviewInput(EncodePreviewInput(cancel));
+    REQUIRE(decoded.cancelled);
+    AccumulatePreviewInput(state, decoded);
+    DeviceInput next;
+    next.keysPressed[1] = next.keysDown[1] = true;
+    next.mousePressed = next.mouseDown = true;
+    next.mouse = Vec2{40, 50};
+    next.taps = {{40, 50}};
+    AccumulatePreviewInput(state, next);
+    const auto barrier = ConsumePreviewInput(state);
+    CHECK(barrier.cancelled);
+    CHECK_FALSE(barrier.keysPressed[0]);
+    CHECK_FALSE(barrier.keysPressed[1]);
+    CHECK(barrier.taps.empty());
+    const auto fresh = ConsumePreviewInput(state);
+    CHECK_FALSE(fresh.cancelled);
+    CHECK_FALSE(fresh.keysPressed[0]);
+    CHECK(fresh.keysPressed[1]);
+    CHECK(fresh.mousePressed);
+    REQUIRE(fresh.taps.size() == 1);
+    CHECK(fresh.taps.front() == Vec2{40, 50});
+    CHECK_FALSE(ConsumePreviewInput(state).keysPressed[1]);
 }
 
 TEST_CASE("Editor.Protocol.FragmentationAndSessionIsolation", "[engine-editor]") {

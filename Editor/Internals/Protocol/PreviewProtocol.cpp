@@ -279,7 +279,8 @@ nlohmann::json EncodePreviewInput(const DeviceInput& input) {
         taps.push_back(Point(point));
     for (Vec2 point : input.held)
         held.push_back(Point(point));
-    return {{"pressed", input.keysPressed},
+    return {{"cancelled", input.cancelled},
+            {"pressed", input.keysPressed},
             {"down", input.keysDown},
             {"shift", input.shiftHeld},
             {"mouse", Point(input.mouse)},
@@ -294,6 +295,7 @@ nlohmann::json EncodePreviewInput(const DeviceInput& input) {
 }
 DeviceInput DecodePreviewInput(const nlohmann::json& json) {
     DeviceInput input;
+    input.cancelled = json.at("cancelled").get<bool>();
     const auto& pressed = json.at("pressed");
     const auto& down = json.at("down");
     if (!pressed.is_array() || !down.is_array() || pressed.size() != input.keysPressed.size() ||
