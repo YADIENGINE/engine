@@ -24,7 +24,9 @@ Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_ad
 Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
 Docs/      Kullanım ve katkı belgeleri
 Tools/     buildenv.py (MSVC ortamı), build_cli.py (p.py), editor_cli.py (editor.py), test_runner.py, project_config.py
-Templates/NewProject/  Yeni oyun iskeleti (CMake, preset'ler, Project.json, sarmalayıcılar, Game/, Editor/)
+Templates/NewProject/  Yeni oyun iskeleti (CMake, preset'ler, Project.json, sarmalayıcılar; Game/ ve Editor/ boş).
+           Kopyalanınca olduğu gibi derlenmeli: boş Game/ → Runtime/Starter/StarterGame.cpp, boş Editor/ →
+           Editor/Preview/StarterWorker.cpp. Örnek kod şablonda değil Docs/GettingStarted rehberlerinde.
 ```
 
 ## Kurallar

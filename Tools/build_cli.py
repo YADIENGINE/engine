@@ -127,7 +127,8 @@ def main(root: Path) -> None:
 
     run([tool("cmake"), "--build", "--preset", game["buildPresets"][config]], project.root, env)
 
-    exe = build_dir / config / (game["target"] + (".exe" if sys.platform == "win32" else ""))
+    target = game.get("target", project.name)
+    exe = build_dir / config / (target + (".exe" if sys.platform == "win32" else ""))
     if args.release:
         exe = package(project, exe)
 

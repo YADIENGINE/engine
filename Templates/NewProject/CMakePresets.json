@@ -12,8 +12,8 @@
         "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl",
         "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
-        "MYPROJECT_BUILD_GAME": "ON",
-        "MYPROJECT_BUILD_TESTS": "OFF"
+        "APP_BUILD_GAME": "ON",
+        "APP_BUILD_TESTS": "OFF"
       }
     },
     {
@@ -22,8 +22,8 @@
       "displayName": "Headless tests (Debug only)",
       "binaryDir": "${sourceDir}/build/tests",
       "cacheVariables": {
-        "MYPROJECT_BUILD_GAME": "OFF",
-        "MYPROJECT_BUILD_TESTS": "ON",
+        "APP_BUILD_GAME": "OFF",
+        "APP_BUILD_TESTS": "ON",
         "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
     }

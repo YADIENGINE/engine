@@ -226,8 +226,13 @@ endif()
 engine_warnings(Engine)
 
 # A project supplies CreateGame, its source list, and an optional asset directory.
+# With no sources (a fresh project) the engine's starter game stands in until the first source is added.
 function(engine_add_game target)
     cmake_parse_arguments(GAME "" "ASSETS" "SOURCES;LIBRARIES" ${ARGN})
+    if(NOT GAME_SOURCES)
+        message(STATUS "${target}: no game sources yet; building the engine starter game")
+        set(GAME_SOURCES "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Runtime/Starter/StarterGame.cpp")
+    endif()
     if(ANDROID)
         add_library(${target} SHARED ${GAME_SOURCES} "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Main.cpp")
         target_link_options(${target} PRIVATE "-Wl,-u,ANativeActivity_onCreate")

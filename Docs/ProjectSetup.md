@@ -7,8 +7,8 @@ Oyunun kodu, editör önizlemeleri ve belgeleri oyunun reposunda kalır; Engine 
 MyProject/                  (oyunun reposu)
   Engine/                   ← submodule: YDArcadeEngine
     Docs/  Tools/  Templates/NewProject/  ...
-  Game/                     oyun kaynakları + Assets/
-  Editor/                   projenin preview worker'ı (EngineEditor önizlemeleri)
+  Game/                     oyun kaynakları + Assets/ (.cpp'ler kendiliğinden bulunur)
+  Editor/                   projenin preview worker'ı (EngineEditor önizlemeleri; .cpp'ler kendiliğinden bulunur)
   CMakeLists.txt  CMakePresets.json
   Project.json              Engine/Tools'un okuduğu proje ayarı
   p.py  editor.py           Engine/Tools'a giden ince sarmalayıcılar
@@ -26,25 +26,30 @@ git init MyProject
 cd MyProject
 git submodule add <ydarcadeengine-url> Engine
 git config -f .gitmodules submodule.Engine.branch main
+Copy-Item -Recurse -Force Engine\Templates\NewProject\* .
 ```
 
-Sonra `Engine/Templates/NewProject/` içeriğini (gizli `.gitignore` dahil) proje köküne kopyalayın ve
-`MyProject` / `MYPROJECT_` adlarını kendi projenizinkiyle değiştirin: `CMakeLists.txt`, `CMakePresets.json`,
-`Project.json`, `Game/MyGame.cpp` (`applicationId`, pencere başlığı) ve `Editor/Main.cpp`.
+Şablon (`.gitignore`, `.gitattributes` dahil) olduğu gibi çalışır; ad vermek için iki yeri aynı adla değiştirin:
+`CMakeLists.txt`'teki `project(MyProject ...)` ve `Project.json`'daki `"name"`. Exe, Release paketi ve editör
+worker'ı (`<ad>Preview`) bu addan türer.
 
 ```powershell
 python p.py            # Debug derle + çalıştır
 python editor.py       # EngineEditor + projenin worker'ı
-python p.py --test     # headless testler
+python p.py --test     # headless testler (Engine testleri)
 ```
 
-Şablonun kodu [İlk oyun](GettingStarted.md) ve [İlk editör önizlemesi](Editor/GettingStarted.md) rehberlerinde
-adım adım anlatılır.
+`Game/` ve `Editor/` boş gelir (`Game/Assets/` ve `.gitkeep`). Boşken `engine_add_game` ve
+`engine_add_editor_worker` Engine'in starter oyununu ve starter worker'ını derler: oyun "Game/ has no sources yet"
+ekranını, editör Engine → Starter önizlemesini açar. İlk `.cpp` eklendiğinde CMake yeniden yapılandırır ve projenin
+kodu devreye girer: [İlk oyun](GettingStarted.md), [İlk editör önizlemesi](Editor/GettingStarted.md).
 
 ## Project.json
 
 Engine/Tools'un projeyi tanıdığı tek yer. Yollar proje köküne göredir; preset adları projenin
 `CMakePresets.json`'ındaki adlardır. Sadece kullanılan bölümler gerekir (ör. editörü olmayan projede `editor` yok).
+Aşağıdaki örnek bütün alanları gösterir; şablon `target`, `package.name` ve `editor.worker`'ı vermez, varsayılanlar
+`name`'den gelir.
 
 ```json
 {
@@ -65,18 +70,18 @@ Engine/Tools'un projeyi tanıdığı tek yer. Yollar proje köküne göredir; pr
   "editor": {
     "buildDirectory": "build/editor",
     "worker": "MyProjectPreview",
-    "cacheVariables": { "MYPROJECT_BUILD_GAME": "OFF", "MYPROJECT_BUILD_EDITOR": "ON" }
+    "cacheVariables": { "APP_BUILD_GAME": "OFF", "APP_BUILD_EDITOR": "ON" }
   }
 }
 ```
 
 | Alan | Kullanan | Anlamı |
 | --- | --- | --- |
-| `game.target` | `p.py` | `engine_add_game` hedefi; exe `buildDirectory/<Config>/<target>.exe` |
+| `game.target` | `p.py` | `engine_add_game` hedefi (varsayılan `name`); exe `buildDirectory/<Config>/<target>.exe` |
 | `game.buildDirectory` | `p.py` | configure preset'inin `binaryDir`'ı ile aynı olmalı |
-| `package` | `p.py --release` | `directory/name/` klasörü ve yanına ZIP: exe + `Assets` + `files` |
+| `package` | `p.py --release` | `directory/name/` (varsayılan `Final/<name>/`) ve yanına ZIP: exe + `Assets` + `files` |
 | `tests` | `p.py --test` | test preset'leri; sonuç `buildDirectory/reports/<run-id>/results.json` |
-| `editor.worker` | `editor.py` | `engine_add_editor_worker` hedefi |
+| `editor.worker` | `editor.py` | `engine_add_editor_worker` hedefi (varsayılan `<name>Preview`) |
 | `editor.cacheVariables` | `editor.py` | editör build'ine eklenen proje seçenekleri (oyunu kapatıp worker'ı açmak gibi) |
 | `hooks` | `p.py` | isteğe bağlı Python dosyası (aşağıda) |
 

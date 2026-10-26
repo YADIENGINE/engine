@@ -2,14 +2,12 @@
   "version": 1,
   "name": "MyProject",
   "game": {
-    "target": "MyProject",
     "buildDirectory": "build",
     "configurePreset": "desktop",
     "buildPresets": { "Debug": "debug", "Release": "release" }
   },
   "package": {
     "directory": "Final",
-    "name": "MyProject",
     "files": []
   },
   "tests": {
@@ -20,11 +18,10 @@
   },
   "editor": {
     "buildDirectory": "build/editor",
-    "worker": "MyProjectPreview",
     "cacheVariables": {
-      "MYPROJECT_BUILD_GAME": "OFF",
-      "MYPROJECT_BUILD_EDITOR": "ON",
-      "MYPROJECT_BUILD_TESTS": "OFF"
+      "APP_BUILD_GAME": "OFF",
+      "APP_BUILD_EDITOR": "ON",
+      "APP_BUILD_TESTS": "OFF"
     }
   }
 }

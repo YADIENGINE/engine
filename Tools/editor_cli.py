@@ -99,7 +99,7 @@ def launch(root: Path) -> None:
 
     config = "Release" if args.release else "Debug"
     run([cmake, "--build", str(build_dir), "--config", config,
-         "--target", "EngineEditor", settings["worker"]], env, project.root)
+         "--target", "EngineEditor", settings.get("worker", project.name + "Preview")], env, project.root)
     if args.build:
         return
 

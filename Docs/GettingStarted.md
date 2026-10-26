@@ -1,8 +1,8 @@
 # İlk oyun
 
-Projeyi önce [Proje kurulumu](ProjectSetup.md)'ndaki gibi açın: Engine `Engine/` submodule'ü, kökte
-`Engine/Templates/NewProject/` şablonunun kopyası. Bu rehber şablondaki küçük oyunu dosya dosya anlatır;
-kod şablonda durur, burada tekrar yazılmaz.
+Projeyi önce [Proje kurulumu](ProjectSetup.md)'ndaki gibi açın: kökte `Engine/Templates/NewProject/` şablonunun
+kopyası ve `Engine/` submodule'ü. Şablonun `Game/` klasörü boştur; `python p.py` o hâlde Engine'in starter
+oyununu ("Game/ has no sources yet") açar. Bu rehber `Game/` altına ilk küçük oyunu yazar.
 
 ## Dosya yapısı
 
@@ -20,39 +20,135 @@ MyProject/
 
 ## CMakeLists.txt
 
-Şablonun `CMakeLists.txt`'i üç seçenekle (`MYPROJECT_BUILD_GAME`, `_EDITOR`, `_TESTS`) Engine'in
-`ENGINE_BUILD_*` seçeneklerini `add_subdirectory(Engine)`'dan önce ayarlar, sonra oyunu kurar:
+Şablonun `CMakeLists.txt`'i değiştirilmez: `Game/` altındaki her `.cpp`'yi kendiliğinden bulur ve
+`engine_add_game(${PROJECT_NAME} SOURCES ... ASSETS Game/Assets)` ile oyunu kurar. Yeni dosya ekleyince bir sonraki
+build CMake'i yeniden yapılandırır; ilk `.cpp` geldiğinde starter oyunun yerini projenin kodu alır.
 
-```cmake
-engine_add_game(MyProject SOURCES Game/CreateGame.cpp Game/MyGame.cpp Game/MyScene.cpp
-    ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/Game/Assets")
-target_include_directories(MyProject PRIVATE Game)
-```
-
-`engine_add_game` Engine'in `Main.cpp` dosyasını ve Engine link'ini ekler.
+`engine_add_game` Engine'in `Main.cpp` dosyasını ve Engine link'ini ekler; `CreateGame()` fabrikası projenindir.
 Desteklenen argümanlar: `SOURCES`, ek hedefler için `LIBRARIES` (ör. `EngineLocalization`), masaüstünde exe
 yanına kopyalanacak klasör için `ASSETS`. Kendi `main` fonksiyonunuzu eklemeyin.
 Android'de aynı yardımcı executable yerine shared library oluşturur; Gradle paketlemesi projeye aittir.
-Engine'i iki kez `add_subdirectory` yapmayın.
 
-## İlk sahne: Game/MyScene.h, Game/MyScene.cpp
+## İlk sahne
 
-`MyScene` oyun saatiyle (`TimeDomain::Game`) çalışan bir `Scene`'dir: `Enter` başlangıç konumunu kurar,
-`HandleInput` yönü okur, `Update` daireyi hareket ettirir, `Draw` çizer. Destructor `Shutdown()` çağırır.
+`Game/MyScene.h`:
 
-`InputFrame(input).Horizontal()` bu frame basılan A/D veya ok tuşunu bildirir; tuş tekrarı olmayan tek basış
+```cpp
+#pragma once
+#include "Runtime/Scene.h"
+
+class MyScene final : public Scene {
+public:
+    MyScene();
+    ~MyScene() override;
+
+private:
+    void Enter() override;
+    void HandleInput(const DeviceInput& input) override;
+    void Update(float seconds) override;
+    void Draw() const override;
+
+    float _x = 640.0f;
+    int _direction = 0;
+};
+```
+
+`Game/MyScene.cpp`:
+
+```cpp
+#include "MyScene.h"
+#include <raylib.h>
+#include <algorithm>
+#include "Input/InputFrame.h"
+
+namespace {
+constexpr float StartX = 640.0f;
+constexpr float CenterY = 360.0f;
+constexpr float Speed = 240.0f;
+constexpr float Radius = 24.0f;
+constexpr float CanvasWidth = 1280.0f;
+} // namespace
+
+MyScene::MyScene()
+    : Scene(TimeDomain::Game) {}
+MyScene::~MyScene() { Shutdown(); }
+void MyScene::Enter() { _x = StartX; }
+void MyScene::HandleInput(const DeviceInput& input) { _direction = InputFrame(input).Horizontal(); }
+void MyScene::Update(float seconds) {
+    _x = std::clamp(_x + static_cast<float>(_direction) * Speed * seconds, Radius, CanvasWidth - Radius);
+    _direction = 0;
+}
+void MyScene::Draw() const { DrawCircleV({_x, CenterY}, Radius, ORANGE); }
+```
+
+`Horizontal()` bu frame basılan A/D veya ok tuşunu bildirir; tuş tekrarı olmayan tek basış
 hareketi gösterir. Basılı tutarak hareket için `DeviceInput::Down` sorgularını kullanın.
 Bu küçük örnek lifecycle'ı göstermek için state ve çizimi aynı sahnede tutar.
 Büyüyen oyunda saf model ve onu const okuyan View ayırın; görsel sabitleri View'da tutun.
 
-## Oyun ve giriş fabrikası: Game/MyGame.h, Game/MyGame.cpp, Game/CreateGame.cpp
+## Oyun ve giriş fabrikası
 
-`MyGame` `Game`'den türer; `GameSettings` (uygulama kimliği, pencere başlığı, canvas boyu) ctor'da verilir.
-Sahne oyunun değer üyesidir: ctor'da `RegisterScene`, `Start`'ta `SetScene`. `HandleInput` Escape/Back ile
-`RequestQuit` çağırır, gerisini `Game::HandleInput`'a bırakır. `CreateGame.cpp` Engine'in giriş noktasının
-çağırdığı `CreateGame()` fabrikasını tanımlar (`Runtime/EntryPoint.h`).
+`Game/MyGame.h`:
 
-`Shutdown()` somut sahne destructor'ında çağrılır; çocuk nesneler eklediğinizde de aynı sahiplik kuralı geçerlidir.
+```cpp
+#pragma once
+#include "MyScene.h"
+#include "Runtime/Game.h"
+
+class MyGame final : public Game {
+public:
+    MyGame();
+
+private:
+    void Start() override;
+    void HandleInput(const DeviceInput& input) override;
+    MyScene _scene;
+};
+```
+
+`Game/MyGame.cpp`:
+
+```cpp
+#include "MyGame.h"
+#include "Input/InputFrame.h"
+
+namespace {
+GameSettings Settings() {
+    GameSettings settings;
+    settings.applicationId = "MyProject";
+    settings.window.title = "My first game";
+    settings.canvasWidth = 1280;
+    settings.canvasHeight = 720;
+    return settings;
+}
+} // namespace
+
+MyGame::MyGame()
+    : Game(Settings()) {
+    RegisterScene(_scene);
+}
+void MyGame::Start() { SetScene(_scene); }
+void MyGame::HandleInput(const DeviceInput& input) {
+    if (InputFrame(input).Back())
+        RequestQuit();
+    else
+        Game::HandleInput(input);
+}
+```
+
+`Game/CreateGame.cpp`:
+
+```cpp
+#include <memory>
+#include "MyGame.h"
+#include "Runtime/EntryPoint.h"
+
+std::unique_ptr<Game> CreateGame() { return std::make_unique<MyGame>(); }
+```
+
+`applicationId` kullanıcı verisi klasörünün adıdır (ayarlar, kayıtlar); projeye özgü ve kalıcı seçin.
+Sahne oyunun değer üyesidir. `Shutdown()` somut sahne destructor'ında çağrılır;
+çocuk nesneler eklediğinizde de aynı sahiplik kuralı geçerlidir.
 
 ## Geliştiricinin derleyip denemesi
 
@@ -63,8 +159,7 @@ python p.py
 `p.py` MSVC ortamını kurar, `desktop` preset'iyle yapılandırır, Debug derler ve `build/Debug/MyProject.exe`'yi
 açar. Elle: Developer PowerShell'de `cmake --preset desktop` ve `cmake --build --preset debug`.
 
-Beklenen: canvas ortasında turuncu daire; A/D veya sol/sağ basışı hareket ettirir,
-Escape kapatır. Şablon bu belge güncellemesinde derlenmemiştir.
+Beklenen: canvas ortasında turuncu daire; A/D veya sol/sağ basışı hareket ettirir, Escape kapatır.
 
 Özel font/ses eklerken [asset rehberini](AssetsAndPlatforms.md), kalıcı veri eklerken
 [ayar ve kayıt rehberini](OptionsAndSaves.md) izleyin. Editör entegrasyonu

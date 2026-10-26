@@ -53,10 +53,15 @@ if(ENGINE_BUILD_EDITOR)
 
     # A project supplies its preview worker (own main via RunPreviewHost); EngineEditor finds it through the
     # EngineEditor.project.json recipe generated beside both executables.
+    # With no sources (a fresh project) the engine's starter worker stands in until the first source is added.
     function(engine_add_editor_worker target)
         cmake_parse_arguments(WORKER "" "NAME;ASSETS" "SOURCES;LIBRARIES" ${ARGN})
         if(NOT WORKER_NAME)
             set(WORKER_NAME "${PROJECT_NAME} previews")
+        endif()
+        if(NOT WORKER_SOURCES)
+            message(STATUS "${target}: no preview sources yet; building the engine starter worker")
+            set(WORKER_SOURCES "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Preview/StarterWorker.cpp")
         endif()
         add_executable(${target} ${WORKER_SOURCES})
         target_link_libraries(${target} PRIVATE EnginePreviewRuntime ${WORKER_LIBRARIES})
