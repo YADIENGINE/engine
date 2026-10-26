@@ -11,6 +11,9 @@
 namespace {
 constexpr float BaseFontSize = 13.0f;
 constexpr float MetadataFontSize = 11.0f;
+constexpr float ResetButtonSize = 18.0f;
+constexpr float DropdownPaddingY = 4.0f;
+constexpr float CheckboxPaddingY = 2.0f;
 constexpr float PropertyRowHeight = 33.0f;
 constexpr float SectionHeight = 26.0f;
 constexpr float SectionSpacing = 6.0f;
@@ -65,35 +68,41 @@ void InspectorPropertyRow(const char* label, const char* description, bool metad
     InspectorText(label, ImGui::GetContentRegionAvail().x);
     if (*description) EditorTooltip(description);
     ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-FLT_MIN);
 }
 const char* ApplyLabel(PreviewApplyMode apply) {
     switch (apply) {
-    case PreviewApplyMode::Immediate : return "Immediate";
+    case PreviewApplyMode::Immediate : return "";
     case PreviewApplyMode::NextAction: return "Next action";
     case PreviewApplyMode::OnReset   : return "Reset to apply";
     }
     return "";
 }
-bool InspectorPropertyMetadata(bool changed, bool pending, PreviewApplyMode apply) {
+bool InspectorResetButton(bool changed, bool pending) {
+    const float size = ResetButtonSize * InspectorScale();
+    const float offset = std::max(0.0f, (ImGui::GetFrameHeight() - size) * 0.5f);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offset);
     ImGui::PushFont(EditorInspectorLabelFont(), ImGui::GetStyle().FontSizeBase * MetadataFontSize / BaseFontSize);
-    const float padding = std::clamp((ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("Default").x) * 0.5f, 0.0f,
-                                     3.0f * InspectorScale());
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {padding, 0});
-    ImGui::PushStyleColor(ImGuiCol_Button, {0, 0, 0, 0});
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {0, 0});
     ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
     ImGui::BeginDisabled(!changed || pending);
-    const bool reset = ImGui::SmallButton("Default");
+    const bool reset = ImGui::Button("D", {size, size});
     ImGui::EndDisabled();
-    EditorTooltip("Restore this parameter's default value.");
-    ContinueEditorToolbar(ImGui::CalcTextSize(ApplyLabel(apply)).x);
-    ImGui::PushTextWrapPos(0);
-    ImGui::TextUnformatted(ApplyLabel(apply));
-    ImGui::PopTextWrapPos();
-    ImGui::PopStyleColor(2);
+    EditorTooltip("Default: restore this parameter's default value.");
+    ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     ImGui::PopFont();
     return reset;
+}
+void InspectorPropertyMetadata(PreviewApplyMode apply) {
+    const char* label = ApplyLabel(apply);
+    if (!*label) return;
+    ImGui::PushFont(EditorInspectorLabelFont(), ImGui::GetStyle().FontSizeBase * MetadataFontSize / BaseFontSize);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    ImGui::PushTextWrapPos(0);
+    ImGui::TextUnformatted(label);
+    ImGui::PopTextWrapPos();
+    ImGui::PopStyleColor();
+    ImGui::PopFont();
 }
 void InspectorAction(const PreviewAction& action, std::span<const std::string> disabled,
                      const std::function<void(const std::string&)>& execute) {
@@ -160,10 +169,13 @@ bool BeginInspectorProperties(const char* id) {
     const float width = ImGui::GetContentRegionAvail().x;
     // At high DPI / very narrow widths, give controls room and let labels truncate with tooltips.
     const float minimumControl = ImGui::GetFrameHeight() * 2 + ImGui::GetStyle().CellPadding.x * 2;
-    const float labelWidth = std::max(1.0f, std::min(width * LabelFraction, width - minimumControl));
+    const float resetWidth = ResetButtonSize * InspectorScale();
+    const float labelWidth = std::max(1.0f, std::min(width * LabelFraction, width - minimumControl - resetWidth -
+                                                                                ImGui::GetStyle().CellPadding.x * 2));
     const std::string tableId = std::string("##properties.") + id;
-    if (!ImGui::BeginTable(tableId.c_str(), 2, flags)) return false;
+    if (!ImGui::BeginTable(tableId.c_str(), 3, flags)) return false;
     ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, labelWidth);
+    ImGui::TableSetupColumn("Default", ImGuiTableColumnFlags_WidthFixed, resetWidth);
     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
     return true;
 }
@@ -172,24 +184,33 @@ bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& va
     const bool modified = value != parameter.initial;
     const std::string label = parameter.label + (modified ? " *" : "") + (pending ? " (pending)" : "");
     const std::string tooltip = label + (parameter.description.empty() ? "" : "\n" + parameter.description);
-    InspectorPropertyRow(label.c_str(), tooltip.c_str(), true);
+    const bool compact = parameter.kind == PreviewParameterKind::Boolean ||
+                         (parameter.kind == PreviewParameterKind::Choice && !parameter.choiceButtons);
+    if (compact) {
+        const float padding = parameter.kind == PreviewParameterKind::Boolean ? CheckboxPaddingY : DropdownPaddingY;
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {ImGui::GetStyle().FramePadding.x, padding * InspectorScale()});
+    }
+    InspectorPropertyRow(label.c_str(), tooltip.c_str(), parameter.apply != PreviewApplyMode::Immediate);
+    bool edited = InspectorResetButton(modified, pending);
+    if (edited) value = parameter.initial;
+    ImGui::TableSetColumnIndex(2);
+    ImGui::SetNextItemWidth(-FLT_MIN);
     const bool technical = parameter.kind == PreviewParameterKind::Integer ||
                            parameter.kind == PreviewParameterKind::Float ||
                            parameter.kind == PreviewParameterKind::Color;
     if (technical) ImGui::PushFont(EditorInspectorValueFont(), 0);
     if (modified) ImGui::PushStyleColor(ImGuiCol_Border, AccentSurface(ImGuiCol_Border, 0.35f));
-    bool edited = EditorParameterWidget(parameter, value);
+    edited = EditorParameterWidget(parameter, value) || edited;
     EditorTooltip(parameter.description.c_str());
     if (modified) ImGui::PopStyleColor();
     if (technical) ImGui::PopFont();
-    if (InspectorPropertyMetadata(modified, pending, parameter.apply)) {
-        value = parameter.initial;
-        edited = true;
-    }
+    InspectorPropertyMetadata(parameter.apply);
+    if (compact) ImGui::PopStyleVar();
     return edited;
 }
 void InspectorReadOnlyField(const PreviewReadout& value) {
     InspectorPropertyRow(value.label.c_str(), "", false);
+    ImGui::TableSetColumnIndex(2);
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetStyle().FramePadding.y);
     ImGui::PushFont(EditorInspectorValueFont(), 0);
     InspectorText(value.value.c_str(), ImGui::GetContentRegionAvail().x, true);
