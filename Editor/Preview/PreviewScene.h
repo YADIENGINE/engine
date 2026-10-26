@@ -1,7 +1,7 @@
 #pragma once
 #include <utility>
 #include "Editor/Api/PreviewRegistry.h"
-#include "Runtime/Scene.h"
+#include "Scene/Scene.h"
 
 class PreviewScene : public Scene {
 public:
@@ -33,6 +33,7 @@ private:
     // Objects (and their captured service references) die before services.
     double _seconds = 0.0;
     PreviewServices _services;
+    // Reset commits old content's destruction before calling the new factory, even while playback is paused.
     ObjectList _content;
     const PreviewDefinition* _definition = nullptr;
     EditorPreview* _preview = nullptr;

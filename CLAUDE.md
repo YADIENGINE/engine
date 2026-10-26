@@ -16,7 +16,9 @@ Test yazma kuralları `Docs/Contributing/Testing.md`; modül kuralları `Docs/Co
 
 ## Yapı
 ```
-Runtime/   Game, GameSettings, Scene, GameObject, ObjectList; ana döngü ve lifecycle; Main.cpp CreateGame() çağırır
+Runtime/   Game, GameSettings; ana döngü ve servisler; Main.cpp CreateGame() çağırır
+GameObjects/ GameObject, ObjectList; headless nesne lifecycle'ı ve isteğe bağlı sahiplik
+Scene/     Scene, SceneManager; headless sahne lifecycle'ı, seçimi ve kapanışı
 Graphics/  Render/ Draw/ Anim/ Icons/ Style/ Ui/ (görünüşün tamamı; renkler/stiller parametre)
 Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Utilities/
 Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, ScoreBoard, RunTracking ...); Modules/X/Tests/

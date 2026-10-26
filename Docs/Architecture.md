@@ -52,8 +52,12 @@ game needs a shape another game could use, it is added here (shape-named, style-
 
 ## Sahiplik ve bağımlılıklar
 
-- `Game`: renderer, font, input, ses, seçenekler ve saat; türeyen oyunun sahneleri değer üyedir.
-- `Scene`: kendi nesne listesi; modeller lifecycle'dan bağımsız kalabilir, View modeli const referansla okuyabilir.
+- `Runtime/Game`: renderer, font, input, ses, seçenekler ve saat; türeyen oyunun sahneleri değer üyedir.
+- `Scene/SceneManager`: sahnelerin referans kayıtları, etkin/bekleyen hedef, geçiş ve kapanış; headless.
+- `Scene/Scene`: kendi nesne listesi, gerçek zaman hook'u ve pause kararı; modeller lifecycle'dan bağımsız kalabilir.
+- `GameObjects/`: GameObject ve ObjectList; referans kaydı veya dinamik nesne sahipliğiyle sıralı lifecycle.
+- Bağımlılık yönü Runtime → Scene → GameObjects; SceneManager, Scene, GameObject ve ObjectList EngineCore'da,
+  Game ise raylib'li Engine hedefindedir.
 - `Graphics/Anim`, temel geometri ve gameplay yardımcıları headless kullanılabilir.
 - `Graphics/Draw` → Render/Anim; Icons → Draw; Fx → Draw/Render/Anim;
   Style → Draw/Fx stil tipleri; Ui → Style/Draw. Temayı yalnız üst seviye Ui okur.
@@ -85,8 +89,8 @@ and pointer gestures retain separate includes to keep these groups focused.
 global names such as `Clamp` and `Lerp`.
 
 Specific headers remain supported and should be used inside Engine and by headless consumers.
-In particular, include `Fx/TimeScale.h`, `Fx/TransitionClock.h`, `Runtime/Scene.h`, or
-`Runtime/GameObject.h` directly when using only those components without raylib. Input has explicit headless public
+In particular, include `Fx/TimeScale.h`, `Fx/TransitionClock.h`, `Scene/Scene.h`, or
+`GameObjects/GameObject.h` directly when using only those components without raylib. Input has explicit headless public
 headers (`Input.hpp`, `InputNavigation.hpp`, `DragPointer.hpp`, `CollectionPointer.hpp`); device sampling and gesture
 implementation stay private in `Input/Internals/`. See [Input](Input.md). There is no global EngineImport header.
 

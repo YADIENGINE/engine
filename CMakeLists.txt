@@ -113,6 +113,8 @@ add_library(EngineCore STATIC
     Fx/ShatterPattern.cpp
     Fx/TimeScale.cpp
     Fx/TransitionClock.cpp
+    GameObjects/GameObject.cpp
+    GameObjects/ObjectList.cpp
     Graphics/Anim/AnimatedCounter.cpp
     Graphics/Anim/ButtonAnim.cpp
     Graphics/Draw/EffectQuality.cpp
@@ -128,9 +130,8 @@ add_library(EngineCore STATIC
     Menus/GridMenuSelection.cpp
     Options/GameOptions.cpp
     Platform/UserData.cpp
-    Runtime/GameObject.cpp
-    Runtime/ObjectList.cpp
-    Runtime/Scene.cpp
+    Scene/Scene.cpp
+    Scene/SceneManager.cpp
     Utilities/StartupTimer.cpp
     Utilities/UiTransform.cpp
 )

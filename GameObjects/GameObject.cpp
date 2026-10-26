@@ -1,4 +1,4 @@
-#include "Runtime/GameObject.h"
+#include "GameObjects/GameObject.h"
 #include <cassert>
 
 GameObject::GameObject() = default;

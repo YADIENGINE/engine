@@ -35,7 +35,7 @@ Android'de aynı yardımcı executable yerine shared library oluşturur; Gradle 
 
 ```cpp
 #pragma once
-#include "Runtime/Scene.h"
+#include "Scene/Scene.h"
 
 class MyScene final : public Scene {
 public:

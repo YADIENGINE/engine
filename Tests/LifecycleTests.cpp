@@ -8,8 +8,8 @@
 #include <vector>
 #include "Fx/TimeScale.h"
 #include "Fx/TransitionClock.h"
-#include "Runtime/ObjectList.h"
-#include "Runtime/Scene.h"
+#include "GameObjects/ObjectList.h"
+#include "Scene/Scene.h"
 
 namespace {
 class Probe final : public GameObject {

@@ -52,7 +52,10 @@ engine_tests(EngineTests
         LifecycleTests.cpp
         MathTests.cpp
         ObjectListSafetyTests.cpp
+        SceneManagerTests.cpp
+        SceneObjectsTests.cpp
         SceneSafetyTests.cpp
+        SceneTimeTests.cpp
         ShatterTests.cpp
         TextLayoutTests.cpp
         UiTransformTests.cpp

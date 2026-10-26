@@ -1,4 +1,4 @@
-#include "Runtime/Scene.h"
+#include "Scene/Scene.h"
 #include <cstdio>
 #include <exception>
 #include <stdexcept>
@@ -10,6 +10,11 @@ Scene::Scene(TimeDomain time)
     _self.Add(*this);
 }
 void Scene::AddObject(GameObject& object) { _objects.Add(object); }
+GameObject& Scene::AddObject(std::unique_ptr<GameObject> object) { return _objects.Add(std::move(object)); }
+void Scene::RemoveObject(GameObject& object) { _objects.Remove(object); }
+void Scene::ClearObjects() { _objects.Clear(); }
+void Scene::UpdateReal(float realSeconds) { (void)realSeconds; }
+bool Scene::GameTimePaused() const { return false; }
 void Scene::Enter() {}
 void Scene::Exit() {}
 void Scene::HandleInput(const DeviceInput& input) { (void)input; }
@@ -104,6 +109,17 @@ void Scene::ReadInput(const DeviceInput& input) {
             CancelInputNow();
         else if (EnsureEntered())
             HandleInput(input);
+    } catch (...) {
+        _dispatching = false;
+        throw;
+    }
+    _dispatching = false;
+}
+void Scene::TickReal(float realSeconds) {
+    CheckDispatch();
+    _dispatching = true;
+    try {
+        if (EnsureEntered() && realSeconds > 0.0f) UpdateReal(realSeconds);
     } catch (...) {
         _dispatching = false;
         throw;

@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include "Runtime/ObjectList.h"
+#include "GameObjects/ObjectList.h"
 
 namespace {
 struct ObjectCalls {

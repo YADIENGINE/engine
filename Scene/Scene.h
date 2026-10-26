@@ -1,6 +1,7 @@
 #pragma once
-#include "Runtime/GameObject.h"
-#include "Runtime/ObjectList.h"
+#include <memory>
+#include "GameObjects/GameObject.h"
+#include "GameObjects/ObjectList.h"
 
 struct DeviceInput;
 enum class TimeDomain { Real, Game };
@@ -13,6 +14,8 @@ public:
     void Activate();
     void Deactivate();
     void ReadInput(const DeviceInput& input);
+    // Host-adjusted real time, before pause/scaled game time is evaluated. Does not update children.
+    void TickReal(float realSeconds);
     void Tick(float deltaSeconds);
     void Render() const;
     // Cancellation may be requested from an input callback; lifecycle dispatch remains non-reentrant.
@@ -21,9 +24,16 @@ public:
     // Concrete scene and host destructors use this while their members are still alive.
     void ShutdownNoThrow() noexcept;
     [[nodiscard]] bool IsShutdown() const { return _shutdown; }
+    // Evaluated after UpdateReal; application-level pause can independently freeze game time.
+    [[nodiscard]] virtual bool GameTimePaused() const;
 
 protected:
     void AddObject(GameObject& object);
+    GameObject& AddObject(std::unique_ptr<GameObject> object);
+    // Removal suppresses callbacks immediately; Stop/destruction wait for a dispatch or shutdown.
+    void RemoveObject(GameObject& object);
+    void ClearObjects();
+    virtual void UpdateReal(float realSeconds);
     virtual void Enter();
     virtual void Exit();
     virtual void HandleInput(const DeviceInput& input);

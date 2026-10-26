@@ -1,7 +1,7 @@
 #pragma once
 class ObjectList;
 
-// Lifecycle callbacks are dispatched by ObjectList; ownership stays with the scene or its owner.
+// Lifecycle-only object. ObjectList dispatches callbacks; registration and ownership are separate.
 class GameObject {
 public:
     virtual ~GameObject();

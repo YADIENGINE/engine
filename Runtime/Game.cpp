@@ -1,6 +1,5 @@
 #include "Runtime/Game.h"
 #include <raylib.h>
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -8,8 +7,9 @@
 #include <limits>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 #include "Platform/Platform.h"
-#include "Runtime/Scene.h"
+#include "Scene/Scene.h"
 #include "Utilities/StartupTimer.h"
 #include "Input/Internals/InputNormalizer.h"
 #include "Input/Internals/InputReader.h"
@@ -86,7 +86,7 @@ DeviceInput Game::ReadInput() {
 void Game::CanvasReady(const Texture2D& texture) const { (void)texture; }
 void Game::DrawWindow() const {}
 void Game::HandleInput(const DeviceInput& input) {
-    if (_scene) _scene->ReadInput(input);
+    if (Scene* scene = _sceneManager.Current()) scene->ReadInput(input);
 }
 void Game::Update(float realSeconds) { (void)realSeconds; }
 float Game::FrameSeconds(float realSeconds) { return realSeconds; }
@@ -190,40 +190,20 @@ Persistence Game::CreatePersistence(const std::filesystem::path& filename, std::
     return Persistence(SavePath(filename), std::move(options));
 }
 
-void Game::RegisterScene(Scene& scene) {
-    if (_shutdownStarted) throw std::logic_error("Cannot register scenes during game shutdown");
-    if (std::ranges::find(_scenes, &scene) != _scenes.end()) throw std::logic_error("Scene already registered");
-    if (scene.IsShutdown()) throw std::logic_error("Cannot register a scene after shutdown");
-    _scenes.push_back(&scene);
-}
-void Game::SetScene(Scene& scene, bool restart) {
-    if (_shutdownStarted) throw std::logic_error("Cannot select scenes during game shutdown");
-    if (std::ranges::find(_scenes, &scene) == _scenes.end()) throw std::logic_error("Scene is not registered");
-    if (scene.IsShutdown()) throw std::logic_error("Cannot select a scene after shutdown");
-    _pendingScene = &scene;
-    _restartScene = restart;
-}
+void Game::RegisterScene(Scene& scene) { _sceneManager.Register(scene); }
+void Game::SetScene(Scene& scene, bool restart) { _sceneManager.Request(scene, restart); }
 void Game::CancelInput() {
     _input->Cancel();
-    if (_scene) _scene->CancelInput();
+    if (Scene* scene = _sceneManager.Current()) scene->CancelInput();
 }
 void Game::CommitScene() {
-    if (!_pendingScene) return;
-    Scene* next = _pendingScene;
-    _pendingScene = nullptr;
-    const bool restart = std::exchange(_restartScene, false);
-    if (next->IsShutdown()) throw std::logic_error("Cannot activate a scene after shutdown");
-    if (next == _scene && !restart) return;
-    _input->Cancel();
-    if (_scene) _scene->Deactivate();
-    _scene = next;
-    _scene->Activate();
-    SaveOptions(); // Sahne geçişi tercihlerin kayıt noktasıdır (ör. Options ekranından çıkış)
+    if (_sceneManager.Commit([this] { _input->Cancel(); }))
+        SaveOptions(); // Sahne geçişi tercihlerin kayıt noktasıdır (ör. Options ekranından çıkış)
 }
 void Game::Present() const {
     SetDrawTime(DrawSeconds());
     auto frame = _renderer.BeginFrame();
-    if (_scene) _scene->Render();
+    if (const Scene* scene = _sceneManager.Current()) scene->Render();
     Draw();
     if (_showFps) DrawFpsCounter();
     frame.Complete([this](const Texture2D& texture) { CanvasReady(texture); }, [this] { DrawWindow(); });
@@ -238,21 +218,6 @@ void Game::DrawFpsCounter() const {
     DrawRectangle(FpsCounterX - FpsCounterPadding, FpsCounterY - FpsCounterPadding, width + 2 * FpsCounterPadding,
                   FpsCounterFontSize + 2 * FpsCounterPadding, FpsCounterBackground);
     _text.Draw(label.data(), FpsCounterX, FpsCounterY, FpsCounterFontSize, FpsCounterText);
-}
-void Game::Shutdown() {
-    if (_shutdownStarted) return;
-    _shutdownStarted = true;
-    std::exception_ptr failure;
-    for (auto scene = _scenes.rbegin(); scene != _scenes.rend(); ++scene) {
-        try {
-            (*scene)->Shutdown();
-        } catch (...) {
-            if (!failure) failure = std::current_exception();
-        }
-    }
-    _scene = nullptr;
-    _pendingScene = nullptr;
-    if (failure) std::rethrow_exception(failure);
 }
 bool Game::ShowLoading() {
     const StartupTimer timer("Loading screen");
@@ -271,7 +236,7 @@ bool Game::ShowLoading() {
         {
             SetDrawTime(DrawSeconds());
             auto frame = _renderer.BeginFrame();
-            if (_scene) _scene->Render();
+            if (const Scene* scene = _sceneManager.Current()) scene->Render();
             DrawLoading(static_cast<float>(now - start), outro);
             frame.Complete({}, [this] { DrawWindow(); });
         }
@@ -325,7 +290,7 @@ void Game::Run() {
             _frameStart = GetTime();
             const DeviceInput input = ReadInput();
             if (input.cancelled) {
-                if (_scene) _scene->ReadInput(input);
+                if (Scene* scene = _sceneManager.Current()) scene->ReadInput(input);
             } else {
                 HandleInput(input);
             }
@@ -337,9 +302,12 @@ void Game::Run() {
             realSeconds = FrameSeconds(realSeconds);
             Update(realSeconds);
             CommitScene();
-            if (_scene && _scene->Clock() == TimeDomain::Real) _scene->Tick(realSeconds);
-            const float gameSeconds = _paused ? 0.0f : _timeScale.Advance(realSeconds);
-            if (_scene && _scene->Clock() == TimeDomain::Game) _scene->Tick(gameSeconds);
+            Scene* scene = _sceneManager.Current();
+            if (scene) scene->TickReal(realSeconds);
+            if (scene && scene->Clock() == TimeDomain::Real) scene->Tick(realSeconds);
+            const bool paused = _paused || (scene && scene->Enabled() && scene->GameTimePaused());
+            const float gameSeconds = paused ? 0.0f : _timeScale.Advance(realSeconds);
+            if (scene && scene->Clock() == TimeDomain::Game) scene->Tick(gameSeconds);
             Present();
             RevealWindow();
         }
@@ -347,7 +315,7 @@ void Game::Run() {
         SaveOptions();
     } catch (...) {
         try {
-            Shutdown();
+            _sceneManager.Shutdown();
         } catch (const std::exception& error) {
             std::fprintf(stderr, "Game shutdown failed while handling another error: %s\n", error.what());
         } catch (...) {
@@ -355,5 +323,5 @@ void Game::Run() {
         }
         throw;
     }
-    Shutdown();
+    _sceneManager.Shutdown();
 }

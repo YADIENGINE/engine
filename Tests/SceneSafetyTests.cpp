@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include "Input/Input.hpp"
-#include "Runtime/Scene.h"
+#include "Scene/Scene.h"
 
 namespace {
 class SceneSafetyChild final : public GameObject {

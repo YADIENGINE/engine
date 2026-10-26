@@ -2,7 +2,7 @@
 #include <string>
 #include "Editor/Api/PreviewParameter.h"
 #include "Editor/Api/PreviewInspection.h"
-#include "Runtime/GameObject.h"
+#include "GameObjects/GameObject.h"
 
 struct DeviceInput;
 

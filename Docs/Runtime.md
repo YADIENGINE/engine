@@ -2,6 +2,9 @@
 
 ## Lifecycle
 
+The headless lifecycle types live in `GameObjects/GameObject.h`, `GameObjects/ObjectList.h`,
+`Scene/Scene.h` and `Scene/SceneManager.h`. `Runtime/Game.h` connects them to application services.
+
 `GameObject` supplies overridable `Start`, `Update(float)`, `Draw() const`, and `Stop` hooks.
 `ObjectList` calls `Start` once before an enabled object's first update/draw, skips disabled objects,
 and calls `Stop` once on removal or shutdown. A stopped object is finished; create a new object to
@@ -16,7 +19,13 @@ entries even if a callback throws, then rethrows the first failure. Destructors 
 to stderr without propagating them. Debug builds assert if an object dies while still registered.
 
 `Scene` is a `GameObject` with its own object list, input handler, and `Enter`/`Exit` hooks. Register
-value members with `AddObject`. The scene's `Start` runs once; `Enter`/`Exit` run on every visit.
+value members with `AddObject(GameObject&)`, or transfer ownership with
+`AddObject(std::unique_ptr<GameObject>)`. `RemoveObject` and `ClearObjects` immediately suppress further
+callbacks, then stop/destroy removed children at the next list dispatch or shutdown. Clearing children
+does not shut down the scene itself. A reference remains the caller's responsibility until removal
+is committed; a reference returned for an owned object is invalid after its destruction.
+An inactive/disabled scene defers removal until its next eligible dispatch or shutdown.
+The scene's `Start` runs once; `Enter`/`Exit` run on every visit.
 Children update before the scene's update and draw before its draw, allowing presentation to advance
 before the scene emits new simulation events. Scenes choose `TimeDomain::Real` or `TimeDomain::Game`.
 Disabled scenes skip input/update/draw for the entire scene. `SetScene` queues a change; activation
@@ -33,16 +42,26 @@ rethrowing the first failure; `ShutdownNoThrow()` reports that failure without t
 runtime exception if cleanup also fails. Shutdown scenes cannot be selected or activated again.
 Scenes are value members of the derived game; base engine services outlive those members.
 
-The frame order is device sampling → game input → audio/game real-time update → scene change → real-time
-scene update → scaled-time scene update → scene draw → game overlay draw → completed canvas → window presentation.
+`SceneManager` borrows registered scenes and owns the current/pending selection. `Request` only queues
+a target; the last request before a commit wins. `Commit` consumes that request and returns whether
+a change occurred. Its `beforeChange` callback runs before departure, only for an actual change;
+Game uses it to cancel physical input and saves options after successful activation. A request made
+during Exit/Enter waits for a later commit. A same-scene request is a no-op unless restart is true.
+Shutdown visits scenes in reverse registration order, completes cleanup before rethrowing the first
+failure, and rejects further registrations/selections. The manager's destructor does not dereference
+borrowed scenes; the application must call Shutdown while they are alive, as Game::Run does.
+
+The frame order is device sampling → game input → audio/game real-time update → scene change →
+`Scene::UpdateReal` → normal real-domain scene tick → pause/scaled-time calculation → normal game-domain
+scene tick → scene draw → game overlay draw → completed canvas → window presentation.
 `ReadInput()` defaults to normal device/canvas sampling and can supply external `DeviceInput` snapshots.
 Device polling and window-coordinate samples are private to Runtime; public input uses logical canvas coordinates.
 The editor applies the same normalization with its own viewport mapping. See [Input](Input.md).
 `CanvasReady(const Texture2D&)` receives a borrowed completed canvas before presentation; retain no texture ownership.
 `DrawWindow()` draws after canvas presentation, inside the window drawing pass. `Renderer::Frame::Complete` invokes
 these callbacks explicitly; scoped-frame cleanup never invokes user callbacks. Neither hook changes scene ownership.
-`SetPaused` freezes game time; `Time()` handles hitstop and slow motion. Real-time screens and game
-overlays keep advancing. Android focus loss pauses music, calls `Suspend`, processes activity events
+`SetPaused` or the active enabled scene's `GameTimePaused()` freezes game time; `Time()` handles hitstop and slow motion.
+Real-time screens and game overlays keep advancing. Android focus loss pauses music, calls `Suspend`, processes activity events
 without simulation, and discards the resumed frame's elapsed time before calling `Resume`.
 
 ## Input cancellation
@@ -73,11 +92,23 @@ Varsayılan giriş noktası başlangıç istisnalarını raporlar; içerik hook'
 
 `Game::HandleInput` varsayılan olarak aktif sahneye yönlendirir. Override ediyorsanız
 sahne girdisini korumak için uygun noktada `Game::HandleInput(input)` çağırın.
-`Game::Update` gerçek zaman alır; sahne `TimeDomain::Real` veya `Game` seçer.
-`SetPaused` oyun zamanını durdurur; gerçek zamanlı menüleri durdurmak için ayrı politika gerekir.
+`Game::Update` gerçek zaman alır; sahne normal `Update(float)` ve çocuk update'leri için
+`TimeDomain::Real` veya `Game` seçer. Sahnenin `UpdateReal(float)` hook'u seçilen alandan bağımsız
+olarak önce çalışır; çocukların normal update'lerini çağırmaz. Varsayılanı boştur.
+`TickReal` diğer sahne dispatch'leri gibi yeniden girişe karşı korumalıdır ve sadece etkin/enabled sahnede çalışır.
+Sıfır süre başlangıç/giriş işlerini tamamlayabilir, fakat UpdateReal callback'ini ilerletmez.
+
+`GameTimePaused()` varsayılan false'tur; pause state'ini sahiplenen sahne bunu override eder.
+Karar UpdateReal sonrasında okunur: kapanış animasyonu o karede biterse oyun tick'i aynı karede devam edebilir.
+Game'in `SetPaused` kararı bununla OR edilir; örneğin arka plandaki duraklatılmış oyun başka bir ekrandayken
+uygulama ortak oyun saatini dondurabilir. Pause sürerken TimeScale.Advance çağrılmaz; hitstop/slow motion
+süreleri de korunur. Gerçek zamanlı menüleri durdurmak için ayrı politika gerekir.
 `Time()` hitstop/slow motion uygular. `FrameSeconds` host'un frame süresini, `DrawSeconds`
 sunum saatini özelleştirir. Dekoratif View çizimleri [DrawTime](Graphics/Effects.md) kullanır.
+UpdateReal da FrameSeconds dönüşümünden sonraki süreyi alır; preview pause/speed/single-step bu hook'a uygulanır.
 
 `SetScene` doğrudan callback ortasında sahne yıkmaz; geçişi kuyruğa alır.
 `SetScene(scene, true)` aynı sahneye tekrar giriş sağlar. Reset gereken model/View durumu
 `Enter` içinde açıkça temizlenmelidir; `Start` tekrar çağrılmaz.
+Geçiş commit'i Game.Update sonrasındadır; sahne callback'inde istenen bir değişim sonraki frame'in
+commit'ine kalabilir. Sahiplenilen çocuklar da sahneden çıkarken korunur; kalıcı kaldırma veya shutdown'da yok edilirler.

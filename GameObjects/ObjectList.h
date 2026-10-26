@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include "Runtime/GameObject.h"
+#include "GameObjects/GameObject.h"
 
 // Ordered lifecycle dispatch. New entries begin on the next dispatch; removed entries stop before destruction.
 class ObjectList {

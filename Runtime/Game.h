@@ -1,7 +1,6 @@
 #pragma once
 #include <memory>
 #include <optional>
-#include <vector>
 #include "Modules/Persistence/Persistence.hpp"
 #include "Audio/AudioSystem.hpp"
 #include "Options/GameOptions.h"
@@ -11,6 +10,7 @@
 #include "Input/Input.hpp"
 #include "Runtime/GameSettings.h"
 #include "Runtime/GraphicsSettings.h"
+#include "Scene/SceneManager.h"
 
 class Scene;
 class InputNormalizer;
@@ -28,6 +28,7 @@ protected:
     // Cancel the current scene's input and resynchronize local devices before accepting another press.
     void CancelInput();
     void RequestQuit() { _quitRequested = true; }
+    // Application pause supplements the current scene's GameTimePaused request.
     void SetPaused(bool paused) { _paused = paused; }
     [[nodiscard]] TimeScale& Time() { return _timeScale; }
     [[nodiscard]] AudioSystem& Audio() { return _audio; }
@@ -90,7 +91,6 @@ private:
     bool ShowLoading();
     void RevealWindow();
     void Present() const;
-    void Shutdown();
     void ApplyOptions();
     void ApplyGraphics();
     void DrawFpsCounter() const;
@@ -111,14 +111,10 @@ private:
     bool _showFps = false;
     double _frameStart = 0.0;               // Karenin başı (GetTime); FPS sayacının iş süresi buradan ölçülür
     mutable float _frameWorkSeconds = 0.0f; // Güncelleme + çizim süresi (bekleme hariç), yumuşatılmış
-    std::vector<Scene*> _scenes;
-    Scene* _scene = nullptr;
-    Scene* _pendingScene = nullptr;
-    bool _restartScene = false;
+    SceneManager _sceneManager;
     bool _quitRequested = false;
     bool _paused = false;
     bool _ran = false;
-    bool _shutdownStarted = false;
     bool _revealed = false; // Gizli açılan pencere ilk kareden sonra gösterildi
     bool _inputFocused = true;
 
