@@ -21,6 +21,14 @@ The texture is vertically flipped: layer point `(x, y)` is UV `(x / width, 1 - y
 (tumbling) pieces still draw with back-face culling enabled; `FillTriangle` and `FillQuad` (split along a-c) also
 accept either winding.
 
+`Graphics/Draw/GlowBatch.h` draws consecutive radial glows in one additive blend scope. Create a local
+`GlowBatch` with alpha blending active and call `Draw(center, radius, color)` for each glow. It keeps the
+same gradient geometry and submission order as `DrawGlow`, without a queue or per-glow blend changes.
+The first enabled glow opens additive blending; destruction returns to alpha. An empty batch, or one
+with glow quality Off, does not change blend state. End the batch scope before any other drawing or
+blend, camera, scissor or render-target change; batches must not overlap. Keep standalone `DrawGlow`
+where alpha drawings are interleaved, so their composition order is preserved.
+
 Shared view math is header-only and headless, so games need no local copies:
 
 | Header | Helpers |

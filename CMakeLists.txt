@@ -217,6 +217,7 @@ add_library(Engine STATIC
     Graphics/Render/Canvas.cpp
     Graphics/Draw/DrawUtils.cpp
     Graphics/Draw/DrawTime.cpp
+    Graphics/Draw/GlowBatch.cpp
     Graphics/Draw/ParticleDraw.cpp
     Graphics/Draw/Neon.cpp
     Graphics/Render/RenderLayer.cpp

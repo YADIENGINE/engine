@@ -26,6 +26,7 @@ void DrawStar(Vector2 center, float outerRadius, Color color);
 // Altı üstünden geniş yumurta; 'height' toplam yükseklik. Sol üstte 'shine' renginde parlama.
 void DrawEgg(Vector2 center, float height, Color color, Color shine);
 // Merkezden dışa sönen yumuşak ışık (additive blend). Parıltı kapalıysa (EffectQuality) çizilmez.
+// Araya başka çizim girmeyen çoklu parıltı için Graphics/Draw/GlowBatch.h kullanılır.
 void DrawGlow(Vector2 center, float radius, Color color);
 // Üçgen ve dörtgen (a-b-c-d sırayla, a-c köşegeninden iki üçgen); sarım yönü fark etmez (raylib sadece saat yönünün
 // tersini çizer).
