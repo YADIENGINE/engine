@@ -33,7 +33,12 @@ std::string EditorSettingsStore::Load(const std::string& project, EditorPreferen
         if (!projects.is_object()) throw std::runtime_error("Invalid project preferences");
         if (const auto found = projects.find(project); found != projects.end()) {
             const auto& value = *found;
-            loaded.visible = value.value("visible", loaded.visible);
+            if (value.contains("visible")) {
+                const auto& visible = value.at("visible");
+                if (!visible.is_array()) throw std::runtime_error("Invalid panel visibility");
+                for (std::size_t i = 0; i < std::min(visible.size(), loaded.visible.size()); ++i)
+                    loaded.visible[i] = visible.at(i).get<bool>();
+            }
             loaded.docking = value.value("docking", std::string{});
             loaded.favorites = value.value("favorites", std::vector<std::string>{});
             loaded.recent = value.value("recent", std::vector<std::string>{});

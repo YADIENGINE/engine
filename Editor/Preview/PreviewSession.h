@@ -5,6 +5,7 @@
 #include "Editor/Internals/Platform/Windows/SharedFrames.h"
 #include "Editor/Preview/PreviewScene.h"
 #include "Runtime/GameSettings.h"
+#include "Editor/Preview/PreviewProfiler.h"
 
 struct PreviewSessionActions {
     std::function<void()> quit;
@@ -16,13 +17,14 @@ struct PreviewSessionActions {
 // Transport and preview lifecycle, reusable by a project's actual Game without another window or loop.
 class PreviewSession {
 public:
-    PreviewSession(const GameSettings& settings, const PreviewRegistry& registry, ControlChannel& channel,
+    PreviewSession(Game& game, const GameSettings& settings, const PreviewRegistry& registry, ControlChannel& channel,
                    const std::string& session, const TextRenderer& text, AudioSystem& audio,
                    PreviewSessionActions actions);
     ~PreviewSession();
     [[nodiscard]] PreviewScene& Scene() { return _scene; }
     [[nodiscard]] const PreviewScene& Scene() const { return _scene; }
     [[nodiscard]] DeviceInput ReadInput();
+    void PrepareFrame();
     void Capture();
     void CanvasReady(const Texture2D& texture) const;
     void Stop();
@@ -37,6 +39,7 @@ private:
     mutable SharedFrames _frames;
     PreviewSessionActions _actions;
     PreviewScene _scene;
+    mutable PreviewProfiler _profiler;
     DeviceInput _inputState;
     std::chrono::steady_clock::time_point _lastInput;
     std::uint64_t _generation = 0, _openRequest = 0;

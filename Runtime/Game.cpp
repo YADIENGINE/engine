@@ -59,6 +59,7 @@ Game::Game(const GameSettings& settings)
     , _defaultFpsLimit(settings.window.targetFps)
     , _persistentOptions(settings.persistentOptions)
     , _fixedWindow(settings.fixedWindow) {
+    _frameExecution.fpsLimit = settings.window.targetFps;
     SetTheme(settings.theme);            // Türeyen oyunun View üyeleri (UiButton) kurulurken tema etkin olmalı
     _audio.BeginLoading(settings.audio); // Run'daki yükleme ekranı bitişini bekler
     const StartupTimer timer(_persistentOptions ? "Options (load + apply)" : "Transient settings");
@@ -71,6 +72,7 @@ Game::Game(const GameSettings& settings)
 }
 Game::~Game() = default;
 void Game::Start() {}
+void Game::PrepareFrame() {}
 DeviceInput Game::ReadInput() {
     // External hosts override this method; their hidden windows do not own input focus.
     const bool focused = IsWindowFocused();
@@ -105,7 +107,10 @@ void Game::Suspend() {}
 void Game::Resume() {}
 
 void Game::SetFpsLimit(int fps) {
-    if (!_fixedWindow) _renderer.SetTargetFps(fps);
+    if (!_fixedWindow) {
+        _renderer.SetTargetFps(fps);
+        _frameExecution.fpsLimit = fps;
+    }
     _options.Set(EngineOption::FpsLimit, fps);
 }
 int Game::FpsLimit() const {
@@ -161,12 +166,14 @@ void Game::ApplyGraphics() {
     const GraphicsSettings graphics = Graphics();
     _renderer.SetMaxRenderHeight(_fixedWindow ? 0 : graphics.renderHeight);
     _renderer.SetVSync(graphics.vsync);
+    _frameExecution.vsync = graphics.vsync;
     SetEffectQuality(graphics.effects);
     _showFps = graphics.showFps;
 }
 
 void Game::ApplyOptions() {
     _renderer.SetTargetFps(FpsLimit());
+    _frameExecution.fpsLimit = FpsLimit();
     _renderer.SetBorderlessFullscreen(BorderlessFullscreen());
     if (!BorderlessFullscreen()) _renderer.SetWindowSize(WindowSize());
     ApplyGraphics();
@@ -207,6 +214,13 @@ void Game::Present() const {
     Draw();
     if (_showFps) DrawFpsCounter();
     frame.Complete([this](const Texture2D& texture) { CanvasReady(texture); }, [this] { DrawWindow(); });
+}
+void Game::ConfigureFrameExecution(const FrameExecutionSettings& settings) {
+    if (settings.fpsLimit < 0) throw std::invalid_argument("Invalid frame limit");
+    _frameExecution = settings;
+    _renderer.SetTargetFps(settings.fpsLimit);
+    _renderer.SetVSync(settings.vsync);
+    _renderer.SetExecutionOptions(settings.drawing);
 }
 void Game::DrawFpsCounter() const {
     // Bekleme (FPS sınırı, VSync) hariç bu karenin işi; sayaç kendi çizimini ve kare sonu GPU teslimini saymaz.
@@ -287,28 +301,47 @@ void Game::Run() {
             }
             wasFocused = true;
 #endif
+            PrepareFrame();
+            if (_quitRequested) break;
             _frameStart = GetTime();
+            FrameObserver* observer = _frameObserver;
+            if (observer) {
+                observer->BeginFrame();
+                observer->BeginRegion(FrameRegion::Input);
+            }
             const DeviceInput input = ReadInput();
             if (input.cancelled) {
                 if (Scene* scene = _sceneManager.Current()) scene->ReadInput(input);
             } else {
                 HandleInput(input);
             }
+            if (observer) observer->EndRegion(FrameRegion::Input);
             float realSeconds = GetFrameTime();
 #ifdef __ANDROID__
             if (resumed || realSeconds > 0.25f) realSeconds = 0.0f;
 #endif
+            if (observer) observer->BeginRegion(FrameRegion::Audio);
             _audio.Update();
+            if (observer) {
+                observer->EndRegion(FrameRegion::Audio);
+                observer->BeginRegion(FrameRegion::Application);
+            }
             realSeconds = FrameSeconds(realSeconds);
             Update(realSeconds);
             CommitScene();
+            if (observer) {
+                observer->EndRegion(FrameRegion::Application);
+                observer->BeginRegion(FrameRegion::Scene);
+            }
             Scene* scene = _sceneManager.Current();
             if (scene) scene->TickReal(realSeconds);
             if (scene && scene->Clock() == TimeDomain::Real) scene->Tick(realSeconds);
             const bool paused = _paused || (scene && scene->Enabled() && scene->GameTimePaused());
             const float gameSeconds = paused ? 0.0f : _timeScale.Advance(realSeconds);
             if (scene && scene->Clock() == TimeDomain::Game) scene->Tick(gameSeconds);
+            if (observer) observer->EndRegion(FrameRegion::Scene);
             Present();
+            if (observer) observer->EndFrame();
             RevealWindow();
         }
         Stop(); // The project settles its run while scene data and services are still alive.

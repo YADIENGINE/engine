@@ -10,6 +10,7 @@ Core oyuncu seçenekleri için Persistence/JsonIO kullanır; diğer modüller oy
 | [Localization](Localization/README.md) / EngineLocalization | Dil kataloğu, fallback, placeholder ve sayı biçimleme |
 | [ScoreBoard](ScoreBoard/README.md) / EngineScoreBoard | Skor geçmişi, sıralama ve oyuna ait doğrulama |
 | [RunTracking](RunTracking/README.md) / EngineRunTracking (+ EngineRunTrackingRuntime) | Başsız gzip JSON koşu arşivi; isteğe bağlı application bağlamı |
+| [Profiler](Profiler/README.md) / EngineProfiler (+ EngineProfilerRuntime) | Opt-in CPU/GPU ölçümü, kare istatistikleri ve performans karşılaştırmaları |
 | [Version](Version/README.md) / EngineVersion | Kurulu sürüm değişimi ve patch-note sorguları |
 | [Steam](Steam/README.md) / EngineSteam | Başlatma/hesap tespiti; mevcut backend sınırları README'de |
 

@@ -80,7 +80,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Windows")) {
-        constexpr std::array Names{"Project", "View", "Inspector", "Output"};
+        constexpr std::array Names{"Project", "View", "Inspector", "Output", "Profiler"};
         const auto unread = snapshot.diagnostics.UnreadErrors();
         for (std::size_t i = 0; i < Names.size(); ++i) {
             const auto label = i == static_cast<std::size_t>(EditorPanel::Output) && unread

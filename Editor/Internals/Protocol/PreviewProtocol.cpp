@@ -1,4 +1,5 @@
 #include "Editor/Internals/Protocol/PreviewProtocol.h"
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <set>
@@ -210,6 +211,15 @@ nlohmann::json EncodePreviewCatalog(const std::vector<PreviewDefinition>& defini
                            {"description", definition.description},
                            {"parameters", parameters},
                            {"actions", actions}});
+        if (definition.benchmark) {
+            auto variants = nlohmann::json::array();
+            for (const auto& variant : definition.benchmark->variants)
+                variants.push_back({{"name", variant.name},
+                                    {"batch", variant.execution.glowBatching == GlowBatching::Batched},
+                                    {"parameters", EncodePreviewParameters(variant.parameters)}});
+            entries.back()["benchmark"] = {
+                {"id", definition.benchmark->id}, {"version", definition.benchmark->version}, {"variants", variants}};
+        }
     }
     return {{"entries", entries}};
 }
@@ -227,6 +237,24 @@ std::vector<PreviewDefinition> DecodePreviewCatalog(const nlohmann::json& json) 
         definition.description = entry.at("description").get<std::string>();
         if (definition.id.empty() || definition.name.empty() || !identifiers.insert(definition.id).second)
             throw std::runtime_error("Invalid catalog identifier");
+        if (entry.contains("benchmark")) {
+            const auto& benchmark = entry.at("benchmark");
+            PreviewBenchmark value;
+            value.id = benchmark.at("id").get<std::string>();
+            value.version = benchmark.at("version").get<int>();
+            if (value.id.empty() || value.id.size() > 256 || value.version < 1 || benchmark.at("variants").size() != 2)
+                throw std::runtime_error("Invalid benchmark metadata");
+            for (std::size_t i = 0; i < value.variants.size(); ++i) {
+                const auto& item = benchmark.at("variants").at(i);
+                value.variants[i].name = item.at("name").get<std::string>();
+                value.variants[i].execution.glowBatching =
+                    item.at("batch").get<bool>() ? GlowBatching::Batched : GlowBatching::Individual;
+                value.variants[i].parameters = DecodePreviewParameters(item.at("parameters"));
+                if (value.variants[i].name.empty() || value.variants[i].name.size() > 1024)
+                    throw std::runtime_error("Invalid benchmark variant name");
+            }
+            definition.benchmark = std::move(value);
+        }
         std::set<std::string> parameterIds;
         if (!entry.at("parameters").is_array() || entry.at("parameters").size() > 128)
             throw std::runtime_error("Invalid parameter list/capacity");
@@ -268,6 +296,16 @@ std::vector<PreviewDefinition> DecodePreviewCatalog(const nlohmann::json& json) 
                 throw std::runtime_error("Multiple primary actions in preview metadata");
             hasPrimaryAction = hasPrimaryAction || action.primary;
             definition.actions.push_back(std::move(action));
+        }
+        if (definition.benchmark) {
+            const auto& variants = definition.benchmark->variants;
+            if (variants[0].name == variants[1].name) throw std::runtime_error("Duplicate benchmark variant name");
+            for (const auto& variant : variants)
+                for (const auto& [id, value] : variant.parameters) {
+                    const auto parameter = std::ranges::find(definition.parameters, id, &PreviewParameter::id);
+                    if (parameter == definition.parameters.end() || !ValidatePreviewValue(*parameter, value).empty())
+                        throw std::runtime_error("Invalid benchmark parameter override");
+                }
         }
         result.push_back(std::move(definition));
     }

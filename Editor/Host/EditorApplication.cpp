@@ -66,6 +66,16 @@ void EditorApplication::Update(float realSeconds) {
     (void)realSeconds;
     if (_quit) RequestQuit();
     _controller.Tick();
+    if (_controller.Snapshot().profiler.busy && !_beforeBenchmark) {
+        _beforeBenchmark = FrameExecution();
+        auto execution = *_beforeBenchmark;
+        execution.fpsLimit = 10;
+        execution.vsync = false;
+        ConfigureFrameExecution(execution);
+    } else if (!_controller.Snapshot().profiler.busy && _beforeBenchmark) {
+        ConfigureFrameExecution(*_beforeBenchmark);
+        _beforeBenchmark.reset();
+    }
     if (auto opened = _controller.TakeOpenedPreview()) _preferences.Opened(*opened);
     SavePreferences(false);
 }
@@ -78,9 +88,14 @@ void EditorApplication::Stop() {
 }
 void EditorApplication::DrawWindow() const {
     if (auto frame = _controller.TakeFrame()) {
+        const bool timed = _controller.Snapshot().profiler.liveEnabled;
+        const auto transferStarted = timed ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         if (!_display.Upload(frame->width, frame->height, frame->rgba, _controller.Generation(), frame->sequence,
                              (PreviewTimestamp() - frame->capturedAt) * 1000))
             _controller.Log("Could not create the preview texture.", EditorLogLevel::Error);
+        if (timed)
+            _controller.HostTransfer(
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - transferStarted).count());
     }
     _ui.BeginFrame(_fontSize);
     // Defer mutations until all panels have consumed the same borrowed snapshot.
@@ -110,6 +125,9 @@ void EditorApplication::DrawWindow() const {
         [&] { commands.emplace_back([this] { _controller.AcknowledgeOutput(); }); },
         [&](double speed, bool step) {
             commands.emplace_back([this, speed, step] { _controller.Playback(speed, step); });
+        },
+        [&](EditorProfilerCommand command, Profiler::Recipe recipe, const std::string& file) {
+            commands.emplace_back([this, command, recipe, file] { _controller.Profile(command, recipe, file); });
         }};
     const auto result = _workspace.Draw(_controller.Snapshot(), actions, _display.Image(), _preferences, _fontSize);
     _quit = result.quit;

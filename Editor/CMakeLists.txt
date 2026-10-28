@@ -16,13 +16,15 @@ add_library(EngineEditorSupport STATIC
     Internals/Protocol/PreviewMessageReader.cpp
     Internals/Session/EditorProject.cpp
     Internals/Session/RefreshState.cpp
+    Internals/Session/ProfilerSession.cpp
+    Internals/Session/BenchmarkState.cpp
     Internals/Viewport/PreviewViewport.cpp
     Internals/Viewport/PreviewInputRouter.cpp
     Internals/Diagnostics/EditorDiagnostics.cpp
     Internals/Settings/EditorPreferences.cpp
     Internals/Settings/EditorSettingsStore.cpp
 )
-target_link_libraries(EngineEditorSupport PUBLIC EngineEditorApi nlohmann_json::nlohmann_json PRIVATE EngineStorage)
+target_link_libraries(EngineEditorSupport PUBLIC EngineEditorApi EngineProfiler nlohmann_json::nlohmann_json PRIVATE EngineStorage)
 engine_warnings(EngineEditorSupport)
 if(WIN32)
     target_sources(EngineEditorSupport PRIVATE
@@ -41,8 +43,9 @@ set(editor_output "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
 if(ENGINE_BUILD_EDITOR)
     # Engine itself is defined later by the parent; the dependency resolves at generation time.
     add_library(EnginePreviewRuntime STATIC EXCLUDE_FROM_ALL
-        Preview/PreviewScene.cpp Preview/PreviewGame.cpp Preview/PreviewSession.cpp Preview/PreviewHost.cpp)
-    target_link_libraries(EnginePreviewRuntime PUBLIC Engine EngineEditorApi EngineEditorSupport)
+        Preview/PreviewScene.cpp Preview/PreviewGame.cpp Preview/PreviewSession.cpp Preview/PreviewHost.cpp
+        Preview/PreviewProfiler.cpp Preview/GlowBenchmark.cpp)
+    target_link_libraries(EnginePreviewRuntime PUBLIC Engine EngineEditorApi EngineEditorSupport EngineProfilerRuntime)
     engine_warnings(EnginePreviewRuntime)
 
     function(engine_editor_escape_json result value)
@@ -125,10 +128,11 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Panels/Viewport/ViewportPanel.cpp
         Ui/Panels/Inspector/InspectorPanel.cpp
         Ui/Panels/Output/OutputPanel.cpp)
+    target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)
     target_link_libraries(EngineEditorUi PUBLIC EngineEditorImGui EngineEditorSupport)
     engine_warnings(EngineEditorUi)
     add_executable(EngineEditor WIN32 Host/Main.cpp Host/EditorApplication.cpp Host/EditorUiContext.cpp
-        Host/PreviewDisplay.cpp Application/EditorController.cpp)
+        Host/PreviewDisplay.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp)
     # Resolve raylib's CloseWindow/ShowCursor before the transitive user32 import library.
     target_link_libraries(EngineEditor PRIVATE Engine EngineEditorSupport EngineEditorUi raylib shell32)
     target_compile_definitions(EngineEditor PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)

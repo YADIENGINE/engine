@@ -9,6 +9,7 @@ Normal oyun, Android ve headless hedefler editör/ImGui bağımlılığı almaz.
 3. [Önizleme tasarlamak](CreatingPreviews.md).
 4. [Public API ve proje dosyası](Api.md).
 5. [Mimari](Architecture.md) ve [kontroller](Testing.md).
+6. [Profiler: canlı ölçüm, benchmark ve önce/sonra karşılaştırma](Profiler.md).
 
 `ENGINE_BUILD_EDITOR=ON` ve `ENGINE_BUILD_RUNTIME=ON` Windows editör hedeflerini açar;
 varsayılanı kapalıdır. `ENGINE_BUILD_EDITOR_TESTS` bağımsız headless altyapı testlerini açar.

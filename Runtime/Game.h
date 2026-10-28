@@ -10,6 +10,8 @@
 #include "Input/Input.hpp"
 #include "Runtime/GameSettings.h"
 #include "Runtime/GraphicsSettings.h"
+#include "Runtime/FrameExecutionSettings.h"
+#include "Utilities/FrameObserver.h"
 #include "Scene/SceneManager.h"
 
 class Scene;
@@ -20,6 +22,14 @@ class Game {
 public:
     virtual ~Game();
     void Run();
+    // Development hosts may borrow frame instrumentation and temporarily override execution without saving options.
+    void ObserveFrames(FrameObserver* observer) {
+        _frameObserver = observer;
+        _renderer.SetObserver(observer);
+    }
+    [[nodiscard]] FrameObserver* FrameInstrumentation() const { return _frameObserver; }
+    [[nodiscard]] FrameExecutionSettings FrameExecution() const { return _frameExecution; }
+    void ConfigureFrameExecution(const FrameExecutionSettings& settings);
 
 protected:
     explicit Game(const GameSettings& settings);
@@ -63,6 +73,8 @@ protected:
                                                 std::optional<SaveSettings> settings = std::nullopt) const;
 
     virtual void Start();
+    // Host commands and workload resets happen between frames, before instrumentation starts.
+    virtual void PrepareFrame();
     [[nodiscard]] virtual DeviceInput ReadInput();
     virtual void HandleInput(const DeviceInput& input);
     virtual void Update(float realSeconds);
@@ -117,6 +129,8 @@ private:
     bool _ran = false;
     bool _revealed = false; // Gizli açılan pencere ilk kareden sonra gösterildi
     bool _inputFocused = true;
+    FrameObserver* _frameObserver = nullptr;
+    FrameExecutionSettings _frameExecution;
 
 public:
     Game(const Game&) = delete;

@@ -4,9 +4,13 @@
 #include <set>
 #include "Editor/Api/PreviewRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
+#include "Editor/Internals/Session/ProfilerSession.h"
 
 enum class EditorCommand { Open, Stop, Pause, Reset, Refresh, Cancel, Count };
 enum class EditorPhase { ReadingCatalog, Starting, Ready, Paused, Stopping, Building, Stopped, Error };
+// clang-format off
+enum class EditorProfilerCommand { Enable, Disable, Start, Cancel, SaveBaseline, CompareBaseline, ExportJson, ExportMarkdown, GlowFull, GlowReduced, GlowOff };
+// clang-format on
 
 struct EditorCapabilities {
     std::array<bool, static_cast<std::size_t>(EditorCommand::Count)> enabled{};
@@ -35,6 +39,8 @@ struct EditorSnapshot {
     double publishMs = 0.0;
     PreviewInspection inspection;
     double playbackSpeed = 1.0;
+    ProfilerSessionSnapshot profiler;
+    double hostTransferMs = 0.0;
 };
 
 // References/callbacks are borrowed for the current UI frame; panels never retain session data.
@@ -46,4 +52,5 @@ struct EditorUiActions {
     std::function<void()> clearOutput;
     std::function<void()> acknowledgeOutput;
     std::function<void(double, bool)> playback;
+    std::function<void(EditorProfilerCommand, Profiler::Recipe, const std::string&)> profiler;
 };

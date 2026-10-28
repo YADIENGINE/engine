@@ -7,6 +7,7 @@
 #include "Graphics/Anim/Easing.h"
 #include "Graphics/Draw/EffectQuality.h"
 #include "Graphics/Render/RenderTargetStack.h"
+#include "Graphics/Render/RenderExecutionContext.h"
 
 namespace {
 constexpr float StarInnerRatio = 0.45f;
@@ -106,6 +107,8 @@ void DrawEgg(Vector2 center, float height, Color color, Color shine) {
 
 void DrawGlow(Vector2 center, float radius, Color color) {
     if (CurrentEffectQuality().glow == EffectLevel::Off) return;
+    RenderExecutionContext::Count(RenderCounter::Glows, 1);
+    RenderExecutionContext::Count(RenderCounter::GlowBlendRequests, 2);
     BeginBlendMode(BLEND_ADDITIVE);
     DrawCircleGradient(static_cast<int>(center.x), static_cast<int>(center.y), radius, color, Fade(color, 0.0f));
     EndBlendMode();

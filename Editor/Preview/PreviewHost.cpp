@@ -8,6 +8,7 @@
 #include <thread>
 #include "Editor/Internals/Platform/Windows/ControlChannel.h"
 #include "Editor/Preview/PreviewGame.h"
+#include "Editor/Preview/GlowBenchmark.h"
 
 int RunPreviewHost(int argc, char** argv, const std::function<void(PreviewRegistry&)>& registerPreviews,
                    GameSettings settings, PreviewApplicationFactory createApplication) {
@@ -25,6 +26,7 @@ int RunPreviewHost(int argc, char** argv, const std::function<void(PreviewRegist
                 throw std::runtime_error("Unsupported preview argument: " + argument);
         }
         PreviewRegistry registry;
+        registry.Add(GlowBenchmarkDefinition());
         registerPreviews(registry); // Metadata and factories only: no GL/assets/instances.
         channel = std::make_unique<ControlChannel>(session, false);
         channel->Send({{}, 0, 0, "catalog", EncodePreviewCatalog(registry.Entries())});

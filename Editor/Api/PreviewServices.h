@@ -6,6 +6,7 @@
 
 class AudioSystem;
 class TextRenderer;
+class Profiler;
 
 // References outlive the preview. Never retain these services after Stop/destruction.
 // Presentation time is the engine draw clock (DrawTime), which the preview host pauses and scales.
@@ -15,4 +16,5 @@ struct PreviewServices {
     AudioSystem& audio;
     std::function<void(const std::string&)> log;
     std::function<std::string(const std::string&, const PreviewParameters&)> applicationCommand;
+    Profiler* profiler = nullptr;
 };

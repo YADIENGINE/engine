@@ -5,10 +5,10 @@
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
 
 inline constexpr std::array EditorFontSizes{75, 100, 125, 150};
-enum class EditorPanel { Catalog, Viewport, Inspector, Output, Count };
+enum class EditorPanel { Catalog, Viewport, Inspector, Output, Profiler, Count };
 
 struct EditorPreferences {
-    std::array<bool, static_cast<std::size_t>(EditorPanel::Count)> visible{true, true, true, true};
+    std::array<bool, static_cast<std::size_t>(EditorPanel::Count)> visible{true, true, true, true, false};
     std::string docking;
     std::vector<std::string> favorites;
     std::vector<std::string> recent;

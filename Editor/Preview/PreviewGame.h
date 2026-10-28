@@ -10,6 +10,7 @@ public:
 
 protected:
     void Start() override;
+    void PrepareFrame() override;
     DeviceInput ReadInput() override;
     void HandleInput(const DeviceInput& input) override;
     float FrameSeconds(float seconds) override;

@@ -3,7 +3,7 @@
 PreviewGame::PreviewGame(const GameSettings& settings, const PreviewRegistry& registry, ControlChannel& channel,
                          const std::string& session)
     : Game(settings)
-    , _preview(settings, registry, channel, session, Text(), Audio(),
+    , _preview(*this, settings, registry, channel, session, Text(), Audio(),
                {[this] { RequestQuit(); },
                 [this] { Time().Clear(); },
                 [this](PreviewScene& scene) { SetScene(scene); },
@@ -12,6 +12,7 @@ PreviewGame::PreviewGame(const GameSettings& settings, const PreviewRegistry& re
 }
 PreviewGame::~PreviewGame() { _preview.Scene().ShutdownNoThrow(); }
 void PreviewGame::Start() { SetScene(_preview.Scene()); }
+void PreviewGame::PrepareFrame() { _preview.PrepareFrame(); }
 DeviceInput PreviewGame::ReadInput() { return _preview.ReadInput(); }
 void PreviewGame::HandleInput(const DeviceInput& input) {
     Game::HandleInput(input);

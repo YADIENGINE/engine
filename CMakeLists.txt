@@ -141,6 +141,26 @@ set_target_properties(EngineCore PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXT
 target_link_libraries(EngineCore PUBLIC EnginePersistence PRIVATE EngineStorage)
 engine_warnings(EngineCore)
 
+# Opt-in: headless profiler statistics and reports, independent of the runtime/editor.
+add_library(EngineProfiler STATIC EXCLUDE_FROM_ALL
+    Modules/Profiler/Profiler.cpp Modules/Profiler/Internals/Reports.cpp)
+target_include_directories(EngineProfiler PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(EngineProfiler PUBLIC cxx_std_20)
+target_link_libraries(EngineProfiler PUBLIC EngineJsonIO)
+set_target_properties(EngineProfiler PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_warnings(EngineProfiler)
+
+# Opt-in runtime bridge; normal games need not link it.
+if(ENGINE_BUILD_RUNTIME)
+    add_library(EngineProfilerRuntime STATIC EXCLUDE_FROM_ALL
+        Modules/Profiler/Internals/RuntimeBinding.cpp Modules/Profiler/Internals/GpuTimer.cpp)
+    target_link_libraries(EngineProfilerRuntime PUBLIC EngineProfiler Engine)
+    if(WIN32)
+        target_link_libraries(EngineProfilerRuntime PRIVATE opengl32 advapi32)
+    endif()
+    engine_warnings(EngineProfilerRuntime)
+endif()
+
 # Opt-in: only consumers of EngineVersion compile installed-version tracking.
 add_library(EngineVersion STATIC EXCLUDE_FROM_ALL Modules/Version/Version.cpp)
 target_include_directories(EngineVersion PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -222,6 +242,7 @@ add_library(Engine STATIC
     Graphics/Draw/Neon.cpp
     Graphics/Render/RenderLayer.cpp
     Graphics/Render/RenderTargetStack.cpp
+    Graphics/Render/RenderExecutionContext.cpp
     Graphics/Render/ShadowMask.cpp
     Graphics/Render/Renderer.cpp
     Graphics/Draw/TextRenderer.cpp

@@ -59,7 +59,7 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
     }
     result.toggleMaximize = Toolbar(snapshot, actions, maximized);
     if (metrics && snapshot.ready) {
-        ImGui::TextWrapped("%dx%d | #%llu | %.1f FPS", image.width, image.height,
+        ImGui::TextWrapped("%dx%d | #%llu | %.1f Stream FPS", image.width, image.height,
                            static_cast<unsigned long long>(image.sequence), snapshot.streamFps);
         ImGui::TextWrapped("Readback %.1f | publish %.1f | transfer %.1f ms", snapshot.captureMs, snapshot.publishMs,
                            image.transferMs);

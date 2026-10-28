@@ -14,6 +14,21 @@ void PreviewRegistry::Add(PreviewDefinition definition) {
             throw std::invalid_argument("Invalid preview parameter: " + parameter.id);
     }
     std::set<std::string> actions;
+    if (definition.benchmark) {
+        if (definition.benchmark->id.empty() || definition.benchmark->id.size() > 256 ||
+            definition.benchmark->version < 1)
+            throw std::invalid_argument("Invalid benchmark identity/version");
+        std::set<std::string> variants;
+        for (const auto& variant : definition.benchmark->variants) {
+            if (variant.name.empty() || variant.name.size() > 1024 || !variants.insert(variant.name).second)
+                throw std::invalid_argument("Invalid benchmark variant name");
+            for (const auto& [id, value] : variant.parameters) {
+                const auto parameter = std::ranges::find(definition.parameters, id, &PreviewParameter::id);
+                if (parameter == definition.parameters.end() || !ValidatePreviewValue(*parameter, value).empty())
+                    throw std::invalid_argument("Invalid benchmark parameter override");
+            }
+        }
+    }
     bool hasPrimaryAction = false;
     for (const auto& action : definition.actions) {
         if (action.id.empty() || !actions.insert(action.id).second)

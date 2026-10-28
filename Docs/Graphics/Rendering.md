@@ -29,6 +29,13 @@ with glow quality Off, does not change blend state. End the batch scope before a
 blend, camera, scissor or render-target change; batches must not overlap. Keep standalone `DrawGlow`
 where alpha drawings are interleaved, so their composition order is preserved.
 
+`RenderExecutionOptions` is a transient Renderer-owned frame policy. Its default Batched glow mode uses
+the scope above; Individual routes each batch submission through DrawGlow for controlled A/B comparisons.
+The scoped execution context follows nested render layers and optionally reports glow/blend requests to
+the borrowed FrameObserver. These counters are helper requests, not total GPU draw calls. Player graphics
+preferences are separate. Development hosts use Game::ConfigureFrameExecution to save/restore this policy,
+the FPS limit and VSync without writing preferences. [Profiler](../Editor/Profiler.md) uses this contract.
+
 Shared view math is header-only and headless, so games need no local copies:
 
 | Header | Helpers |

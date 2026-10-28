@@ -19,9 +19,9 @@ struct CapturedImage {
 };
 } // namespace
 
-PreviewSession::PreviewSession(const GameSettings& settings, const PreviewRegistry& registry, ControlChannel& channel,
-                               const std::string& session, const TextRenderer& text, AudioSystem& audio,
-                               PreviewSessionActions actions)
+PreviewSession::PreviewSession(Game& game, const GameSettings& settings, const PreviewRegistry& registry,
+                               ControlChannel& channel, const std::string& session, const TextRenderer& text,
+                               AudioSystem& audio, PreviewSessionActions actions)
     : _registry(registry)
     , _channel(channel)
     , _canvas{settings.canvasWidth, settings.canvasHeight}
@@ -29,11 +29,23 @@ PreviewSession::PreviewSession(const GameSettings& settings, const PreviewRegist
     , _actions(std::move(actions))
     , _scene(_canvas, text, audio,
              [this](const std::string& text) { _channel.Send({{}, _generation, 0, "log", {{"text", text}}}); })
+    , _profiler(game, _scene, channel, _canvas,
+                [this] {
+                    _actions.reset();
+                    _actions.activate(_scene);
+                })
     , _lastInput(std::chrono::steady_clock::now()) {
     _scene.SetApplicationCommand(_actions.application);
 }
-PreviewSession::~PreviewSession() { _scene.ShutdownNoThrow(); }
+PreviewSession::~PreviewSession() {
+    try {
+        _profiler.Cancel(false, false);
+    } catch (...) {
+    }
+    _scene.ShutdownNoThrow();
+}
 float PreviewSession::Advance(float realSeconds) {
+    if (_profiler.Busy()) return _profiler.Advance();
     if (_step) {
         _step = false;
         return 1.0f / 60.0f;
@@ -54,6 +66,7 @@ void PreviewSession::Command(const PreviewMessage& message) {
         const auto* definition = _registry.Find(message.data.at("id").get<std::string>());
         if (!definition) throw std::runtime_error("Selected preview is missing from the new catalog");
         _generation = message.generation;
+        _profiler.Reset(_generation);
         _inputState = {};
         _statsStartedAt = 0.0;
         _publishedFrames = 0;
@@ -66,8 +79,13 @@ void PreviewSession::Command(const PreviewMessage& message) {
         return;
     }
     if (message.type == "reset") {
+        if (_profiler.Busy()) {
+            Reply(message, "rejected", {{"text", "Cancel the benchmark before resetting"}});
+            return;
+        }
         if (message.generation <= _generation || !_scene.HasContent()) return;
         _generation = message.generation;
+        _profiler.Reset(_generation);
         _inputState = {};
         _statsStartedAt = 0.0;
         _publishedFrames = 0;
@@ -79,6 +97,20 @@ void PreviewSession::Command(const PreviewMessage& message) {
         return;
     }
     if (message.generation != _generation || !_scene.HasContent()) return;
+    if (message.type == "profiler") {
+        try {
+            _profiler.Command(message);
+        } catch (const std::exception& error) {
+            Reply(message, "rejected", {{"text", error.what()}});
+        }
+        _inputState = {};
+        _inputState.cancelled = true;
+        return;
+    }
+    if (_profiler.Busy()) {
+        if (message.type != "input") Reply(message, "rejected", {{"text", "Benchmark controls are locked"}});
+        return;
+    }
     if (message.type == "input") {
         AccumulatePreviewInput(_inputState, DecodePreviewInput(message.data));
         _lastInput = std::chrono::steady_clock::now();
@@ -117,10 +149,18 @@ void PreviewSession::Command(const PreviewMessage& message) {
         Reply(message, "rejected", {{"text", "Unsupported preview command: " + message.type}});
     }
 }
-DeviceInput PreviewSession::ReadInput() {
+void PreviewSession::PrepareFrame() {
     for (const auto& message : _channel.Poll())
         Command(message);
     if (_channel.Closed()) _actions.quit();
+    _profiler.Tick(_generation);
+}
+DeviceInput PreviewSession::ReadInput() {
+    if (_profiler.Busy()) {
+        DeviceInput cancelled;
+        cancelled.cancelled = true;
+        return cancelled;
+    }
     constexpr auto InputLease = std::chrono::seconds(1);
     if (std::chrono::steady_clock::now() - _lastInput > InputLease) {
         _inputState = {};
@@ -129,11 +169,13 @@ DeviceInput PreviewSession::ReadInput() {
     return ConsumePreviewInput(_inputState);
 }
 void PreviewSession::Capture() {
+    if (_profiler.Busy()) return;
     if (_scene.CaptureParameters())
         _channel.Send(
             {{}, _generation, 0, "parameters", {{"parameters", EncodePreviewParameters(_scene.Parameters())}}});
 }
 void PreviewSession::CanvasReady(const Texture2D& texture) const {
+    if (_profiler.Busy()) return;
     if (!_scene.HasContent()) return;
     if (texture.width > PreviewMaxFrameWidth || texture.height > PreviewMaxFrameHeight)
         throw std::runtime_error("Preview canvas exceeds the bounded frame transport");
@@ -179,6 +221,7 @@ void PreviewSession::CanvasReady(const Texture2D& texture) const {
     }
 }
 void PreviewSession::Stop() {
+    _profiler.Cancel(false, false);
     _scene.Shutdown();
     if (!_channel.Closed()) {
         _channel.Send({{}, _generation, 0, "stopped", nlohmann::json::object()});

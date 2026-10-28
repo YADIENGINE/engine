@@ -39,4 +39,5 @@ private:
     bool _dirty = false;
     mutable bool _quit = false;
     bool _stopped = false;
+    std::optional<FrameExecutionSettings> _beforeBenchmark;
 };

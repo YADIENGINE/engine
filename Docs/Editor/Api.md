@@ -40,6 +40,11 @@ Kurallar:
 - `Stop` ve destructor istisna atmaz. Fabrika / hook hataları worker'ı sonlandırabilir; editör hatayı ve çıkış
   kodunu gösterir.
 
+`PreviewDefinition::benchmark` isteğe bağlı, tekrarlanabilir bir iş yükü sözleşmesidir. Kalıcı kimlik/sürüm,
+iki varyantın adları, geçici render politikaları ve parametre farklarını taşır. Tanım yoksa önizleme yalnız
+canlı ölçüme uygundur. `PreviewServices::profiler`, özel CPU scope/sayaç kaydı için ödünç modül referansıdır;
+işlem yalnız `Modules/Profiler/Profiler.hpp` üzerinden yapılır. [Profiler rehberi](Profiler.md).
+
 ## Parametre ve eylem sözleşmesi
 
 `PreviewValue`: `int64_t`, `double`, `bool`, normalize `PreviewColor` ya da seçenek metni (`std::string`).

@@ -21,7 +21,8 @@ GL/font/ses kurulmaz. Önizleme açıldığında RunPreviewHost servisleri ve Pr
 kurar; Game::Run tek döngüdür. PreviewScene içerik instance'ını ObjectList ile yönetir.
 Reset instance'ı yeniler; Stop worker sürecini kapatır.
 Build & Refresh gerçek süreç çıkışını bekler ve yalnız tarifteki build komutunu çalıştırır.
-Input IPC protokolü v4, odak kaybı / pause / input süresi aşımını normal release yerine cancellation olarak taşır.
+IPC protokolü v5, odak kaybı / pause / input süresi aşımını normal release yerine cancellation olarak taşır.
+Profiler mesajları generation/capture kimliği taşır; sınırlı parçalar tamamlanmadan kayıt yayımlanmaz.
 Public snapshot'ın kimlikli touch verisi ve canvas dışındaki boş pozisyonları da aktarılır. Host, private pencere
 örneklerini Input normalizer ile canvas'a dönüştürür; worker aynı public sözleşmeyi tüketir.
 İptalden önce birikmiş eylemler silinir; sonraki yeni basışlar iptal bildiriminin ardından teslim edilir.
@@ -66,6 +67,10 @@ Host ve worker aynı protokol sürümüyle birlikte güncellenmelidir; proje tar
   `UserDataDirectory()/EngineEditor/preferences.json` altında atomik saklanır (yerleşim, favoriler, geçmiş, Output).
 - Yeni panel kendi klasöründe değer bileşenidir; Workspace görünürlük / docking bağlantısını kurar. Yeni süreç
   komutunun kullanılabilirliği Application'da tanımlanır; menü ve toolbar aynı sözleşmeyi kullanır.
+
+Profiler paneli Live / Benchmarks / Compare sunar. Headless modül ve isteğe bağlı runtime observer editörden
+bağımsızdır. Worker ölçümde görüntü aktarımını durdurur; host 10 Hz'e iner. FPS/VSync/render politikası ölçüm
+oturumuna aittir ve sonra geri yüklenir. Ayrıntılar: [Profiler](Profiler.md).
 
 
 Proje adı ve build dizini editör tercihlerini ayırır. Worker options geçicidir.

@@ -21,6 +21,8 @@ public:
     void Action(const std::string& id);
     void Playback(double speed, bool step);
     void Input(const DeviceInput& input);
+    void Profile(EditorProfilerCommand command, const Profiler::Recipe& recipe, const std::string& file);
+    void HostTransfer(double ms) { _hostTransferMs = ms; }
     void Log(const std::string& text, EditorLogLevel level = EditorLogLevel::Info,
              EditorLogSource source = EditorLogSource::Editor);
     void Execute(EditorCommand command);
@@ -43,10 +45,12 @@ private:
     void Cancel();
     [[nodiscard]] const PreviewDefinition* Selected() const;
     [[nodiscard]] bool CanOpen() const {
-        return _project && Selected() && !_buildActive && !_refresh.Busy() && (!_workerActive || _ready || _stopping);
+        return !_profiler.Snapshot().busy && _project && Selected() && !_buildActive && !_refresh.Busy() &&
+               (!_workerActive || _ready || _stopping);
     }
     [[nodiscard]] bool Busy() const {
-        return _buildActive || _refresh.Busy() || _stopping || (_workerActive && !_ready && !_catalogOnly);
+        return _profiler.Snapshot().busy || _buildActive || _refresh.Busy() || _stopping ||
+               (_workerActive && !_ready && !_catalogOnly);
     }
     void LaunchWorker(bool catalogOnly);
     void RequestStop(AfterStop after);
@@ -96,4 +100,7 @@ private:
     bool _failed = false;
     bool _cancelBuild = false;
     double _playbackSpeed = 1.0;
+    ProfilerSession _profiler;
+    std::uint64_t _profilerRequest = 0;
+    double _hostTransferMs = 0;
 };

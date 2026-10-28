@@ -7,6 +7,7 @@ constexpr const char* CatalogWindow = "Project###editor.catalog";
 constexpr const char* PreviewWindow = "View###editor.viewport";
 constexpr const char* InspectorWindow = "Inspector###editor.inspector";
 constexpr const char* OutputWindow = "Output###editor.output";
+constexpr const char* ProfilerWindow = "Profiler###editor.profiler";
 constexpr float CatalogWidthInFonts = 18.0f;
 constexpr float InspectorWidthInFonts = 24.0f;
 constexpr float PanelMinWidthInFonts = 12.0f;
@@ -69,6 +70,7 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset) {
         ImGui::DockBuilderDockWindow(PreviewWindow, center);
         ImGui::DockBuilderDockWindow(InspectorWindow, right);
         ImGui::DockBuilderDockWindow(OutputWindow, bottom);
+        ImGui::DockBuilderDockWindow(ProfilerWindow, bottom);
         ImGui::DockBuilderFinish(dock);
     }
     ImGui::DockSpace(dock, {}, _maximized ? ImGuiDockNodeFlags_KeepAliveOnly : ImGuiDockNodeFlags_None);
@@ -154,6 +156,14 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             }
             if (ImGui::Begin(OutputWindow, &preferences.Visible(EditorPanel::Output), PanelFlags))
                 _output.Draw(snapshot, actions, preferences);
+            ImGui::End();
+        }
+        if (preferences.Visible(EditorPanel::Profiler)) {
+            const auto* output = ImGui::FindWindowByName(OutputWindow);
+            ImGui::SetNextWindowDockID(output ? output->DockId : 0, ImGuiCond_FirstUseEver);
+            if (!oldVisibility[static_cast<std::size_t>(EditorPanel::Profiler)]) ImGui::SetNextWindowFocus();
+            if (ImGui::Begin(ProfilerWindow, &preferences.Visible(EditorPanel::Profiler), PanelFlags))
+                _profiler.Draw(snapshot, actions);
             ImGui::End();
         }
         if (opening) {

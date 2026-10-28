@@ -36,3 +36,12 @@ Gerçek pencere/input/görsel kontrolleri kullanıcı yapar; yalnız değişen b
 4. Stop / Open / Restart / Reset tekrarlarında editör PID'i sabit; eski görüntü canlı sayılmıyor.
 5. Derleme hatası, eksik exe, worker çökmesi, build iptali ve editör kapanışı: orphan süreç kalmıyor.
 6. Options'taki FPS ve readback / publish / transfer ölçüleri kaydediliyor.
+
+## Profiler
+
+Headless modül testleri `[profiler]` etiketiyle istatistikler, scope nesting, eksik GPU örneği, sınırlar,
+rapor IO ve karşılaştırma koşullarını doğrular. Editor testlerinde warmup/measurement ayrımı, A/B tekrar
+sırası, iptal, yürütme ayarı snapshot/restorasyonu, benchmark metadata round-trip ve stale generation/capture
+mesajları kontrol edilir. Testler gerçek GL/FPS sonucu sabitlemez.
+Bu testleri derleme/çalıştırma geliştiriciye aittir. Runtime ayar restorasyonu ve GPU backend'i için
+[Profiler manuel kabul listesi](Profiler.md#manual-acceptance) kullanılır.

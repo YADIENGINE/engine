@@ -1,0 +1,1 @@
+engine_tests(EngineProfilerTests SOURCES ProfilerTests.cpp LINKS EngineProfiler)

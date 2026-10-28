@@ -4,6 +4,9 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
+#include <sstream>
+#include "Platform/UserData.h"
+#include "Platform/FileStorage.h"
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
 
 EditorController::EditorController(const std::filesystem::path& projectFile) {
@@ -24,6 +27,7 @@ EditorController::EditorController(const std::filesystem::path& projectFile) {
 }
 EditorController::~EditorController() { Shutdown(); }
 void EditorController::Playback(double speed, bool step) {
+    if (_profiler.Snapshot().busy) return;
     if (!_ready || !std::isfinite(speed) || speed < 0.1 || speed > 4.0 || (step && !_paused)) return;
     Send("playback", {{"speed", speed}, {"step", step}});
 }
@@ -39,6 +43,10 @@ EditorSnapshot EditorController::Snapshot() const {
     EditorCapabilities capabilities;
     capabilities.enabled = {CanOpen(), _workerActive || _buildActive,   _ready,
                             _ready,    _project.has_value() && !Busy(), Busy()};
+    if (_profiler.Snapshot().busy) {
+        capabilities.enabled[static_cast<std::size_t>(EditorCommand::Pause)] = false;
+        capabilities.enabled[static_cast<std::size_t>(EditorCommand::Reset)] = false;
+    }
     return {_catalog,
             Selected(),
             _displayed,
@@ -56,7 +64,9 @@ EditorSnapshot EditorController::Snapshot() const {
             _captureMilliseconds,
             _publishMilliseconds,
             _inspection,
-            _playbackSpeed};
+            _playbackSpeed,
+            _profiler.Snapshot(),
+            _hostTransferMs};
 }
 void EditorController::Execute(EditorCommand command) {
     if (!Snapshot().capabilities.Can(command)) return;
@@ -86,6 +96,7 @@ void EditorController::Invalidate() {
     _playbackSpeed = 1.0;
     _ready = false;
     ++_generation;
+    _profiler.Reset(_generation);
     _nextFrame.reset();
     _captureMilliseconds = 0.0;
     _publishMilliseconds = 0.0;
@@ -227,6 +238,10 @@ void EditorController::StartBuild() {
     Log("Build started after preview process exit.");
 }
 void EditorController::Cancel() {
+    if (_profiler.Snapshot().busy) {
+        Profile(EditorProfilerCommand::Cancel, {}, {});
+        return;
+    }
     try {
         _afterStop = AfterStop::None;
         if (_buildActive) {
@@ -267,6 +282,7 @@ void EditorController::Parameter(const std::string& id, const PreviewValue& valu
     }
 }
 void EditorController::Action(const std::string& id) {
+    if (_profiler.Snapshot().busy) return;
     if (!_ready) return;
     try {
         Send("action", {{"id", id}});
@@ -275,6 +291,7 @@ void EditorController::Action(const std::string& id) {
     }
 }
 void EditorController::Input(const DeviceInput& input) {
+    if (_profiler.Snapshot().busy) return;
     if (!_ready) return;
     try {
         Send("input", EncodePreviewInput(input));
@@ -308,6 +325,10 @@ void EditorController::Receive(const PreviewMessage& message) {
         return;
     }
     if (message.generation != _generation || _stopping) return;
+    if (message.type.starts_with("profiler-")) {
+        _profiler.Receive(message);
+        return;
+    }
     if (message.type == "ready") {
         const auto& canvas = message.data.at("canvas");
         _canvas = {canvas.at(0).get<int>(), canvas.at(1).get<int>()};
@@ -317,6 +338,7 @@ void EditorController::Receive(const PreviewMessage& message) {
         _displayed = _accepted[_selected];
         _paused = message.data.at("paused").get<bool>();
         _ready = true;
+        if (_profiler.Snapshot().liveEnabled) Send("profiler", {{"operation", "enable"}, {"enabled", true}});
         _status = "Preview ready";
         _phase = EditorPhase::Ready;
         if (_recordOpen) _openedPreview = _selected;
@@ -360,6 +382,7 @@ void EditorController::Receive(const PreviewMessage& message) {
     }
 }
 void EditorController::WorkerExited(unsigned long code) {
+    _profiler.Disconnected();
     for (const auto& line : _worker.DrainOutput())
         Log(line, EditorLogLevel::Info, EditorLogSource::Worker);
     const auto after = std::exchange(_afterStop, AfterStop::None);

@@ -4,6 +4,7 @@
 #include <optional>
 #include "Graphics/Render/Canvas.h"
 #include "Graphics/Render/Window.h"
+#include "Graphics/Render/RenderExecutionContext.h"
 
 // Render altyapısı: pencere ve canvas'ın sahibidir, frame'leri yönetir.
 // Neyin çizileceğini bilmez; her nesne kendi View'ı ile Frame içinde çizer.
@@ -19,11 +20,14 @@ public:
 
     private:
         friend class Renderer;
-        Frame(const Window& window, Canvas& canvas, Color background, Color letterbox);
+        Frame(const Window& window, Canvas& canvas, Color background, Color letterbox,
+              const RenderExecutionOptions& options, FrameObserver* observer);
 
         const Window& _window;
         const Canvas& _canvas;
         Color _letterbox;
+        RenderExecutionContext _execution;
+        FrameObserver* _observer;
         bool _canvasOpen = true;
         bool _windowOpen = false;
         bool _completed = false;
@@ -41,6 +45,8 @@ public:
 
     [[nodiscard]] bool ShouldClose() const;
     [[nodiscard]] Frame BeginFrame() const;
+    void SetObserver(FrameObserver* observer) { _observer = observer; }
+    void SetExecutionOptions(const RenderExecutionOptions& options) { _execution = options; }
     [[nodiscard]] std::optional<Vec2> ToCanvas(Vec2 windowPoint) const;
     void RevealWindow() { _window.Show(); }
     void SetTargetFps(int fps) { _window.SetTargetFps(fps); }
@@ -57,6 +63,8 @@ private:
     mutable Canvas _canvas; // Her frame başında pencere boyutuna göre yeniden açılabilir (Canvas::Fit)
     Color _background;
     Color _letterbox;
+    RenderExecutionOptions _execution;
+    FrameObserver* _observer = nullptr;
 
 public:
     Renderer(const Renderer&) = delete;

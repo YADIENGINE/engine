@@ -3,9 +3,23 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <array>
+#include <optional>
+#include "Graphics/Render/RenderExecutionOptions.h"
 #include "Editor/Api/EditorPreview.h"
 #include "Editor/Api/PreviewServices.h"
 
+struct PreviewBenchmarkVariant {
+    std::string name;
+    RenderExecutionOptions execution;
+    PreviewParameters parameters;
+};
+struct PreviewBenchmark {
+    std::string id;
+    int version = 1;
+    std::array<PreviewBenchmarkVariant, 2> variants{
+        {{"Individual", {GlowBatching::Individual}, {}}, {"Batched", {GlowBatching::Batched}, {}}}};
+};
 struct PreviewDefinition {
     std::string id;
     std::string name;
@@ -15,6 +29,7 @@ struct PreviewDefinition {
     std::vector<PreviewAction> actions;
     std::function<std::unique_ptr<EditorPreview>(const PreviewServices&, const PreviewParameters&)> create;
     int categoryOrder = 0; // Lower values come first; use the same order for every entry in a category.
+    std::optional<PreviewBenchmark> benchmark;
 };
 
 class PreviewRegistry {

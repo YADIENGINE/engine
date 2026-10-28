@@ -1,10 +1,14 @@
 #include "Graphics/Render/Renderer.h"
 #include <raylib.h>
 
-Renderer::Frame::Frame(const Window& window, Canvas& canvas, Color background, Color letterbox)
+Renderer::Frame::Frame(const Window& window, Canvas& canvas, Color background, Color letterbox,
+                       const RenderExecutionOptions& options, FrameObserver* observer)
     : _window(window)
     , _canvas(canvas)
-    , _letterbox(letterbox) {
+    , _letterbox(letterbox)
+    , _execution(options, observer)
+    , _observer(observer) {
+    if (_observer) _observer->BeginRegion(FrameRegion::Canvas);
     canvas.Fit(_window.Width(), _window.Height());
     _canvas.Begin();
     ClearBackground(background);
@@ -26,15 +30,26 @@ void Renderer::Frame::Complete(const std::function<void(const Texture2D&)>& canv
                                const std::function<void()>& windowDraw) {
     if (_completed) return;
     _canvas.End();
+    if (_observer) _observer->EndRegion(FrameRegion::Canvas);
     _canvasOpen = false;
     _completed = true;
+    if (_observer) _observer->BeginRegion(FrameRegion::PreviewBridge);
     if (canvasReady) canvasReady(_canvas.Texture());
+    if (_observer) {
+        _observer->EndRegion(FrameRegion::PreviewBridge);
+        _observer->BeginRegion(FrameRegion::Present);
+    }
     BeginDrawing();
     _windowOpen = true;
     ClearBackground(_letterbox);
     _canvas.Present(_window.Width(), _window.Height());
     if (windowDraw) windowDraw();
+    if (_observer) {
+        _observer->EndRegion(FrameRegion::Present);
+        _observer->BeginRegion(FrameRegion::EndDrawing);
+    }
     EndDrawing();
+    if (_observer) _observer->EndRegion(FrameRegion::EndDrawing);
     _windowOpen = false;
 }
 
@@ -47,7 +62,9 @@ Renderer::Renderer(const WindowSettings& window, int canvasWidth, int canvasHeig
 
 bool Renderer::ShouldClose() const { return _window.ShouldClose(); }
 
-Renderer::Frame Renderer::BeginFrame() const { return Frame(_window, _canvas, _background, _letterbox); }
+Renderer::Frame Renderer::BeginFrame() const {
+    return Frame(_window, _canvas, _background, _letterbox, _execution, _observer);
+}
 
 std::optional<Vec2> Renderer::ToCanvas(Vec2 windowPoint) const {
     return _canvas.ToCanvas(windowPoint, _window.Width(), _window.Height());

@@ -11,6 +11,8 @@ public:
     void Open(const PreviewDefinition& definition, const PreviewParameters& parameters);
     void Reset();
     [[nodiscard]] bool HasContent() const { return _preview != nullptr; }
+    [[nodiscard]] const PreviewDefinition* Definition() const { return _definition; }
+    void SetProfiler(Profiler* profiler) { _services.profiler = profiler; }
     [[nodiscard]] const PreviewParameters& Parameters() const { return _parameters; }
     [[nodiscard]] std::string SetParameter(const std::string& id, const PreviewValue& value);
     [[nodiscard]] std::string Action(const std::string& id);
