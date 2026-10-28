@@ -70,8 +70,9 @@ EditorUiContext::EditorUiContext() {
     _baseStyle = ImGui::GetStyle();
     auto& io = ImGui::GetIO();
     io.IniFilename = nullptr;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_DockingEnable;
-    io.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    // Preview controls share the keyboard with ImGui; keep editor navigation mouse-driven.
+    io.ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_ViewportsEnable);
     io.ConfigWindowsMoveFromTitleBarOnly = true;
 }
 EditorUiContext::~EditorUiContext() { rlImGuiShutdown(); }

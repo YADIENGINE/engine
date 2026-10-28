@@ -18,10 +18,8 @@ void CatalogPanel::Entry(const PreviewDefinition& entry, const EditorSnapshot& s
     const bool enabled = !snapshot.busy || (selected && snapshot.capabilities.Can(EditorCommand::Open));
     ImGui::BeginDisabled(!enabled);
     const bool clicked = EditorWrappedSelectable(entry.name.c_str(), selected, ImGuiSelectableFlags_None);
-    const bool open = clicked || (ImGui::IsItemFocused() && (ImGui::IsKeyPressed(ImGuiKey_Enter, false) ||
-                                                             ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false)));
     EditorTooltip(entry.description.c_str());
-    if (enabled && open) {
+    if (enabled && clicked) {
         actions.select(entry.id);
         actions.command(EditorCommand::Open);
     }
