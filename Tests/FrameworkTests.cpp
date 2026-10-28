@@ -85,6 +85,29 @@ TEST_CASE("Engine.TimedEffectSet.AccumulatesTimedStacksPersistentAndExpires", "[
     CHECK_FALSE(effects.FirstTimed().has_value());
 }
 
+TEST_CASE("Engine.TimedEffectSet.RefreshPreservesStacksAndExcludesTheRequestedId", "[engine][gameplay]") {
+    TimedEffectSet<Effect> effects;
+    effects.AddTimed(Effect::Haste, 6.0f, 3);
+    effects.AddTimed(Effect::Haste, 4.0f, 3);
+    effects.AddTimed(Effect::Shield, 8.0f, 3);
+    effects.AddPersistent(Effect::Shield);
+    effects.Update(2.0f);
+    effects.RefreshTimed(Effect::Shield);
+    CHECK(effects.Active()[0].remaining == Approx(10.0f));
+    CHECK(effects.Active()[0].duration == Approx(10.0f));
+    CHECK(effects.Active()[0].stacks == 2);
+    CHECK(effects.Active()[1].remaining == Approx(6.0f));
+    CHECK_FALSE(effects.Active()[2].remaining);
+    effects.RefreshTimed(Effect::Shield);
+    CHECK(effects.Active()[0].remaining == Approx(10.0f));
+    effects.Update(6.0f); // Süreli Shield biter; kalıcı olan aynı kimlikle kalır.
+    effects.RefreshTimed();
+    REQUIRE(effects.Active().size() == 2);
+    CHECK(effects.Active()[0].remaining == Approx(10.0f));
+    CHECK(effects.Active()[0].stacks == 2);
+    CHECK_FALSE(effects.Active()[1].remaining);
+}
+
 TEST_CASE("Engine.TimedEffectSet.FirstTimedKeepsPickupOrderUntilExpiration", "[engine][gameplay]") {
     TimedEffectSet<Effect> effects;
     effects.AddPersistent(Effect::Shield);

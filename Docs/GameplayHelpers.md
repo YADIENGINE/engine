@@ -8,7 +8,7 @@ Engine never names game types. Input navigation is a compiled borrowed view.
 | Header | Use |
 | --- | --- |
 | `Gameplay/StatSheet.h` | `StatSheet<Id, Rules>`: value = (`Rules::Base` + ΣAdd + bonus) × ΠMultiply, then `Rules::Finalize` (clamps). `StatModifierOf<Id>`, `ModOp` |
-| `Gameplay/TimedEffectSet.h` | Re-added timed effects add their time and gain a stack (up to `maxStacks`), persistent ones are separate copies; `Update` reports expiry; `FirstTimed` |
+| `Gameplay/TimedEffectSet.h` | Re-added timed effects add their time and gain a stack (up to `maxStacks`), persistent ones are separate copies; `RefreshTimed` refills active timers with an optional excluded ID; `Update` reports expiry; `FirstTimed` |
 | `Progress/TieredProgress.h` | Tiered goals (achievements): tier / seen / carried progress, saved as `<key>.tier/seen/progress` with clamps |
 | `Fx/CollectFlights.h` | Pickup-to-counter flights; `Pending(kind)` keeps credit off a counter until arrival |
 | `Utilities/WeightedPick.h` | `WeightedIndex(weights, rng)`: seed-stable `std::discrete_distribution` pick |

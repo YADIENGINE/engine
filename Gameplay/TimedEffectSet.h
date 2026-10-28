@@ -30,6 +30,13 @@ public:
     // Kalıcı etki: her ekleme ayrı bir kopyadır, hiç bitmez.
     void AddPersistent(Id id) { _active.push_back({id, 0.0f, std::nullopt}); }
 
+    // Aktif süreli etkileri mevcut çubuklarının tam süresine doldurur; yığınlar ve kalıcı etkiler değişmez.
+    // 'except' verilirse o kimlik yenilenmez. Biten etkileri geri getirmez, süre eklemez.
+    void RefreshTimed(std::optional<Id> except = std::nullopt) {
+        for (auto& effect : _active)
+            if (effect.remaining && (!except || effect.id != *except)) *effect.remaining = effect.duration;
+    }
+
     // Süreleri ilerletir. Süresi dolan etki olduysa true döner.
     bool Update(float deltaSeconds) {
         for (auto& effect : _active)
