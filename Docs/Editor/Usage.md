@@ -23,18 +23,19 @@ Editör açılırken Project ve View panelleri görünür ve sekmelerinde önded
 
 ## Toolbar
 
-Open / Restart, Pause / Resume, Stop, Reset, Build & Refresh ve Cancel yalnız ikonla gösterilir. Her düğmenin adı,
+Open / Stop, Pause / Resume, Reset, Build & Refresh ve Cancel yalnız ikonla gösterilir. Her düğmenin adı,
 üzerinde 1 saniye bekleyince tooltip olarak açılır; başka düğmeye geçilince süre yeniden başlar.
 
 | Düğme | Anlamı |
 | --- | --- |
-| Open / Restart | Seçili içeriği kabul edilen tarifle yeni örnek olarak açar |
-| Stop | Worker'ı kapatır |
+| Open / Stop | Önizleme kapalıyken Open seçili içeriği açar; worker çalışırken aynı düğme Stop olur ve worker'ı kapatır. Derleme sırasında Stop derlemeyi iptal eder |
 | Pause / Resume | Update'i ve sunum saatini dondurur; çizim, parametreler, eylemler ve Reset kullanılabilir |
 | Step | Pause'dayken 1/60 s ilerletir |
 | Hız | 0.1×..4× |
 | Reset | Kabul edilen tariften yeni örnek kurar (saat 0'dan başlar) |
 | Build & Refresh | Worker'ı kapatıp yalnız worker hedefini derler, seçimi ve değerleri geri getirir |
+
+Reset önizlemeyi aynı worker sürecinde yeniden kurar. Worker sürecini yeniden başlatmak için Stop → Open kullanılır.
 
 Replay, Reset ve ürünün kendi Pause ekranı farklıdır: Replay içeriğin kendi sunumunu baştan oynatır, Reset örneği
 yeniden kurar, toolbar Pause zamanı durdurur.

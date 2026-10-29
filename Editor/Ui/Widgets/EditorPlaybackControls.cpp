@@ -22,10 +22,11 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         EditorGlyph glyph;
         const char* label;
     };
-    const std::array buttons{Button{EditorCommand::Open, EditorGlyph::Play, snapshot.ready ? "Restart" : "Open"},
+    const bool canStop = snapshot.capabilities.Can(EditorCommand::Stop);
+    const std::array buttons{Button{canStop ? EditorCommand::Stop : EditorCommand::Open,
+                                    canStop ? EditorGlyph::Stop : EditorGlyph::Play, canStop ? "Stop" : "Open"},
                              Button{EditorCommand::Pause, snapshot.paused ? EditorGlyph::Play : EditorGlyph::Pause,
                                     snapshot.paused ? "Resume" : "Pause"},
-                             Button{EditorCommand::Stop, EditorGlyph::Stop, "Stop"},
                              Button{EditorCommand::Reset, EditorGlyph::Reset, "Reset"},
                              Button{EditorCommand::Refresh, EditorGlyph::Build, "Build & Refresh"},
                              Button{EditorCommand::Cancel, EditorGlyph::Cancel, "Cancel"}};

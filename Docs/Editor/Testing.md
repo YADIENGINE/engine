@@ -33,7 +33,7 @@ Gerçek pencere/input/görsel kontrolleri kullanıcı yapar; yalnız değişen b
 1. Debug derle; uyarı / hata yok. İkinci görünür worker penceresi / konsolu yok.
 2. Görüntü merkez / köşe / kenar boşluğu tıklamaları; dışarı sürükleyip bırakma; panel, pencere ve DPI değişimi.
 3. Inspector'a yazarken klavye önizlemeye gitmiyor; alt-tab sonrası basılı girdi temizleniyor.
-4. Stop / Open / Restart / Reset tekrarlarında editör PID'i sabit; eski görüntü canlı sayılmıyor.
+4. Tek Open / Stop düğmesi önizleme açılınca (Pause dahil) Stop, kapandıktan sonra Open gösteriyor; açılışta Stop kullanılabiliyor. Stop / Open / Reset tekrarlarında editör PID'i sabit; eski görüntü canlı sayılmıyor.
 5. Derleme hatası, eksik exe, worker çökmesi, build iptali ve editör kapanışı: orphan süreç kalmıyor.
 6. Options'taki FPS ve readback / publish / transfer ölçüleri kaydediliyor.
 
