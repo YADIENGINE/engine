@@ -16,6 +16,32 @@ class SoundGenerator:
         self.rounding = rounding
         self._seed = seed
         self._rng = None
+        self._scope_key = None
+        self._scope_path = ()
+
+    @property
+    def seed_info(self):
+        """Effective integer seed and named path; None denotes an unrecorded root seed."""
+        from .Internals import seeding
+
+        return seeding.describe(self._seed, self._scope_path)
+
+    def _named_context(self, kind, name, variation):
+        from .Internals import seeding
+
+        key, digest, identity = seeding.child_key(self._seed, self._scope_key, kind, name, variation)
+        self._scope_key = key
+        child = SoundGenerator(self.sample_rate, rounding=self.rounding, seed=int.from_bytes(digest, "big"))
+        child._scope_path = self._scope_path + (identity,)
+        return child
+
+    def for_sound(self, name, *, variation=0):
+        """Fresh reproducible sound context, without consuming this context's RNG."""
+        return self._named_context("sound", name, variation)
+
+    def for_layer(self, name, *, variation=0):
+        """Fresh layer context; sibling draws and layer insertion order do not affect it."""
+        return self._named_context("layer", name, variation)
 
     @property
     def rng(self):
@@ -229,6 +255,55 @@ class SoundGenerator:
         from .Internals import wave_io
 
         wave_io.write_wav(path, samples, self.sample_rate, rounding, clip)
+
+    def analyze(self, samples, *, silence_dbfs=-60.0, frame_seconds=0.02, edge_dbfs=-40.0):
+        """Measure raw mono audio without changing it; return a JSON-safe report."""
+        from .Internals import analysis
+
+        report = analysis.analyze(samples, self.sample_rate, silence_dbfs, frame_seconds, edge_dbfs)
+        report["random"] = self.seed_info
+        return report
+
+    @staticmethod
+    def format_report(report):
+        """Readable summary for either an audio report or a named-layer report."""
+        from .Internals import reports
+
+        return reports.format_report(report)
+
+    @staticmethod
+    def write_report(path, report):
+        """Write .json and .txt siblings and return their paths."""
+        from .Internals import reports
+
+        return reports.write_report(path, report)
+
+    def layer(self, samples, *, at=0.0, gain=1.0):
+        """Snapshot a mono signal with placement, gain and this context's seed metadata."""
+        from .Internals import layers
+
+        return layers.layer(samples, self.sample_rate, at, gain, self.seed_info)
+
+    def mix_layers(self, layers, *, seconds=None):
+        """Mix a mapping of names to arrays or layer values; return a fresh mono array."""
+        from .Internals import layers as named_layers
+
+        return named_layers.render(self, layers, seconds)[0]
+
+    def analyze_layers(self, layers, *, seconds=None, silence_dbfs=-60.0, frame_seconds=0.02, edge_dbfs=-40.0):
+        """Measure the mix and each gain-applied, timeline-aligned layer."""
+        from .Internals import layers as named_layers
+
+        mix, stems, metadata = named_layers.render(self, layers, seconds)
+        options = dict(silence_dbfs=silence_dbfs, frame_seconds=frame_seconds, edge_dbfs=edge_dbfs)
+        return named_layers.analyze(self, mix, stems, metadata, options)
+
+    def export_layers(self, directory, layers, *, seconds=None, report=True):
+        """Export mix.wav, aligned layer WAVs and optional text/JSON analysis."""
+        from .Internals import layers as named_layers
+
+        mix, stems, metadata = named_layers.render(self, layers, seconds)
+        return named_layers.export(self, directory, mix, stems, metadata, report)
 
     @staticmethod
     def run(sounds, write, *, prefix="", names=None, validate=True):

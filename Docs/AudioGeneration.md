@@ -35,6 +35,8 @@ downloads recordings or installs dependencies.
 | --- | --- |
 | Import, `sample_count`, `run`, `saw_sample`, `lowpass_samples`, rounded WAV export | Python standard library |
 | Buffers, envelopes, harmonic sums, white noise, one-pole array filters, normalizing, saturation, ordinary WAV export | NumPy |
+| Signal analysis, named layers, mixing and stem export | NumPy |
+| Named seed contexts, report formatting and text/JSON report export | Python standard library |
 | Butterworth and swept filters, brown noise, textures, reverb, SciPy waveforms | NumPy + SciPy |
 | `read_source` | NumPy + SciPy + soundfile |
 
@@ -49,6 +51,7 @@ do not use this Python library.
 AudioGeneration/
     __init__.py                 supported import: SoundGenerator
     generator.py                public API and sample-rate/RNG context
+    contracts.py                returned data values (constructed via the facade)
     Internals/
         buffers.py              time, phase, layering, segments, normalization
         envelopes.py            amplitude shapes, fades, tail trimming
@@ -59,8 +62,13 @@ AudioGeneration/
         scalar.py               standard-library synthesis/filter primitives
         wave_io.py              PCM16 export and optional source decoding
         cli.py                  named-sound selection and progress messages
+        seeding.py              stable named sound/layer seed derivation
+        analysis.py             raw signal and per-frame spectral measurements
+        reports.py              text and strict JSON serialization
+        layers.py               named snapshots, aligned mixes and stem export
     Tests/
-        test_sound_generator.py public behavior tests
+        test_sound_generator.py existing synthesis/export behavior
+        test_authoring_workflow.py analysis, named layers and independent seeds
 ```
 
 Add supported operations to `SoundGenerator` and keep implementation in the
@@ -69,9 +77,10 @@ or third-party backends to access library operations. New categories can have
 their own internal file without changing the public import. Keep all game
 content outside the library; do not create game-specific presets here.
 
-This first extraction retains the existing algorithms, including their distinct
-rounding, filter and gain conventions. It does not add analysis, automatic
-mastering, improved oscillators or a recipe serialization format.
+Existing synthesis algorithms retain their distinct rounding, filter and gain
+conventions. Analysis, named layers and independent seed contexts are opt-in;
+they do not alter existing recipes. Automatic mastering, improved oscillators
+and a recipe serialization format are not provided.
 
 ## Buffer and ownership contract
 
@@ -83,8 +92,9 @@ Gain and peak values are linear amplitudes, not dB.
 `SoundGenerator(sample_rate=44100, rounding="round", seed=None)` owns a lazy RNG.
 `rounding="truncate"` preserves recipes that previously used `int(seconds * rate)`.
 `rng` exposes the same NumPy generator used by noise, textures and reverb so
-recipes can preserve their existing shared draw order. No independent per-sound
-seeding is applied. Reproducibility requires the same seed, calls and dependency
+recipes can preserve their existing shared draw order. Independent per-sound
+seeding is applied only when requested through `for_sound`/`for_layer`.
+Reproducibility requires the same seed, calls within each context and dependency
 versions; do not share a context between concurrent renders.
 
 Methods generally return new arrays. `mix_at` modifies and returns its target;
@@ -131,6 +141,15 @@ return new arrays. No method silently normalizes another operation's result.
 | `read_source(path)` | soundfile decode, channel mean, polyphase resampling to context rate, DC removal |
 | `write_wav(path, samples, rounding=False, clip=True)` | Mono PCM16; creates parent folders and overwrites the named file |
 | `run(sounds, write, prefix="", names=None, validate=True)` | Select names, call `write(name)` and print filenames; no automatic recipe invocation |
+| `for_sound(name, variation=0)`, `for_layer(name, variation=0)` | Fresh independently seeded child context; names are nonempty strings, variation is a nonnegative integer |
+| `seed_info` | Fresh dictionary with effective integer `seed` and named `scopes`; an unrecorded/noninteger root seed is reported as null |
+| `analyze(samples, silence_dbfs=-60, frame_seconds=0.02, edge_dbfs=-40)` | Raw signal and per-frame analysis as a JSON-safe dictionary |
+| `format_report(report)` | Human-readable audio or layer report; does not write files |
+| `write_report(path, report)` | Write `.json` and `.txt` siblings; return their paths |
+| `layer(samples, at=0, gain=1)` | Owned read-only sample snapshot, placement, gain and seed metadata |
+| `mix_layers(layers, seconds=None)` | Mix a name-to-array/layer mapping into a new mono array |
+| `analyze_layers(layers, seconds=None, silence_dbfs=-60, frame_seconds=0.02, edge_dbfs=-40)` | Analyze mix and aligned layer contributions, with placement and crop metadata |
+| `export_layers(directory, layers, seconds=None, report=True)` | Export the mix, aligned stems and optional text/JSON measurements; return file paths |
 
 Optional arguments after `*` in the Python signatures must be passed by keyword.
 `write_wav` normally clips and truncates NumPy values. `rounding=True` uses the
@@ -141,6 +160,110 @@ exception. `run` validates all names before writing, raising `SystemExit` with t
 choices; `validate=False` retains direct mapping-lookup behavior. By default it
 uses command-line names or, with no names, mapping insertion order. Supplying
 `names` overrides command-line selection.
+
+## Named seeds and layers
+
+```python
+import numpy as np
+
+root = SoundGenerator(sample_rate=44100, seed=42)
+sound = root.for_sound("Impact", variation=0)
+body = sound.for_layer("body")
+air = sound.for_layer("air")
+
+t = body.time_axis(0.5)
+body_samples = np.sin(2 * np.pi * 70 * t) * np.exp(-t / 0.08)
+air_samples = air.bandpass(air.noise(0.25), 800, 5000)
+layers = {
+    "body": body.layer(body_samples, gain=0.6),
+    "air": air.layer(air_samples, at=0.01, gain=0.2),
+}
+
+samples = sound.mix_layers(layers)
+report = sound.analyze_layers(layers)
+print(sound.format_report(report))
+paths = sound.export_layers(Path("Output") / "Impact", layers)
+```
+
+`for_sound` and `for_layer` derive their effective seeds from the parent seed,
+scope kind, exact case-sensitive UTF-8 name and variation using SHA-256. They do
+not consume the parent RNG or use Python's randomized `hash()`. Adding a sibling,
+changing generation order or generating one sound alone does not change another
+named context's random samples. Changing a scope name, ancestor or variation does.
+Store a context once while building a recipe: requesting the same context again
+returns a fresh stream starting at the same seed, rather than continuing it.
+
+Named scopes require an integer root seed or `None`. With `None`, scope entropy
+is chosen once per parent instance, so repeated lookups still match within that
+instance; new parent instances differ. The effective seed in `seed_info` can be
+passed to a new `SoundGenerator` to reproduce that context and its descendants.
+Existing direct `rng` use continues to accept NumPy's seed forms and retain its
+original call-order behavior. A seed alone does not record earlier draws; save
+the recipe, variation and dependency versions too.
+
+`layer()` captures samples and the originating context's seed metadata before
+later processing can mutate the input array. Returned `AudioLayer` values have
+`samples`, `sample_rate`, `at_seconds`, `gain` and `random` data fields; construct
+them through the facade. Raw arrays are accepted in the mapping as shorthand for
+a layer starting at zero with gain one and the mix context's seed metadata.
+Use explicitly scoped layer values when provenance matters.
+
+The default timeline ends at the last layer's end. `seconds` explicitly pads or
+crops it. Start times must be nonnegative, gains finite, and sample rates must
+match. Gains may be negative for polarity inversion. Mixes are not normalized,
+limited, faded or trimmed. Per-layer reports record original and retained sample
+counts so cropping is visible. An empty mapping is rejected; a named empty signal
+can still be inspected.
+
+`export_layers` writes `mix.wav`, `layers/001-<name>.wav`, etc., plus `analysis.json`
+and `analysis.txt` by default. Filenames are sanitized and numbered to avoid name
+collisions; returned path mappings retain the original names. Every stem has the
+same duration as the mix, including its placement silence and applied gain.
+Stems retain their relative levels. Quantization/clipping means exported integer
+stems need not sum exactly to the exported integer mix. Reports measure the raw
+floating signals before PCM conversion, making potential export clipping visible.
+NaN/Inf can be analyzed, but layered export rejects them before creating files.
+Existing `write_wav` behavior is unchanged. Output files are overwritten.
+
+## Analysis and reports
+
+`analyze` never modifies the input or adjusts its gain. The result contains:
+
+- Format, duration, peak/RMS amplitudes and dBFS, crest factor and DC offset.
+- Separate NaN/positive-Inf/negative-Inf counts and samples exceeding full scale.
+- Active time, first-to-last active span, leading/trailing silence using the
+  absolute `silence_dbfs` threshold. Active time counts only above-threshold
+  samples; the span includes gaps. An entirely silent signal has its full duration
+  as both leading and trailing silence; these are not disjoint intervals.
+- Start/end amplitudes and largest adjacent sample step. Edge warnings describe
+  possible boundary clicks, not a verified audible defect.
+- Hann-windowed spectral centroid (magnitude-weighted), power spectral flatness
+  and one-sided energy fractions: sub [0, 80), bass [80, 250), mid [250, 4000),
+  treble [4000, Nyquist] Hz. Low sample rates naturally leave upper bands empty.
+- Per-frame start, duration, peak, RMS and the same spectral measurements,
+  including the shorter final frame. Default frames are 20 ms; frequency
+  resolution depends on frame duration. Whole-signal metrics use the whole signal,
+  not an average of per-frame dB values.
+- Structured warnings (`code`, `message`) and the context's seed information.
+
+Silence has amplitude zero and undefined dBFS/crest/spectral values are JSON null.
+Empty signals retain format metadata but have no derived measurements. NaN/Inf
+signals expose invalid/clipping counts and warnings; derived metrics are null
+and frames omitted until those invalid values are fixed. Numeric overflow in an
+otherwise valid measurement also yields null. Reports use strict JSON without
+NaN or Infinity literals, and carry `schema_version: 1` and a `kind` of `audio` or
+`layers`. Text summaries are for scanning; JSON retains full numeric precision
+and per-frame data.
+
+`format_report` returns the summary without I/O. `write_report` replaces the
+supplied path's final suffix with `.json` and `.txt` and returns
+`{"json": Path(...), "text": Path(...)}`. `export_layers` additionally returns
+`{"mix": Path(...), "layers": {name: Path(...)}, "report": {...}}`; the `report`
+entry is omitted when `report=False`.
+
+These measurements describe signal structure, not artistic quality, perceived
+loudness or true peak. No LUFS estimator, reference comparison, automatic
+mastering, waveform plot or spectrogram image is included.
 
 ## Tests
 
