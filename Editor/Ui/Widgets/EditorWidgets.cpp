@@ -158,12 +158,19 @@ bool EditorSingleLineButton(const char* label) {
 }
 bool EditorWrappedSelectable(const char* label, bool selected, ImGuiSelectableFlags flags) {
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
-    const auto textSize = ImGui::CalcTextSize(label, nullptr, false, width);
+    const float inset = 6 * EditorUiScale();
+    const float textWidth = std::max(1.0f, width - inset);
+    const auto textSize = ImGui::CalcTextSize(label, nullptr, false, textWidth);
     const auto position = ImGui::GetCursorScreenPos();
     const float height = std::max(ImGui::GetFrameHeight(), textSize.y + 4 * EditorUiScale());
     ImGui::PushID(label);
     const bool pressed = ImGui::Selectable("##wrapped", selected, flags, {width, height});
-    DrawWrappedLabel(label, {position.x, position.y + (height - textSize.y) * 0.5f}, {width, textSize.y});
+    if (selected) {
+        const float thickness = 2 * EditorUiScale();
+        ImGui::GetWindowDrawList()->AddRectFilled(position, {position.x + thickness, position.y + height},
+                                                  ImGui::GetColorU32(ImGuiCol_CheckMark));
+    }
+    DrawWrappedLabel(label, {position.x + inset, position.y + (height - textSize.y) * 0.5f}, {textWidth, textSize.y});
     ImGui::PopID();
     return pressed;
 }

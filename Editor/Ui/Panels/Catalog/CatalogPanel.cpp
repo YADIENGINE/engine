@@ -8,7 +8,7 @@ void CatalogPanel::Entry(const PreviewDefinition& entry, const EditorSnapshot& s
                          EditorPreferences& preferences) {
     ImGui::PushID(entry.id.c_str());
     const bool favorite = preferences.IsFavorite(entry.id);
-    ImGui::PushStyleColor(ImGuiCol_Text, favorite ? ImGui::GetStyleColorVec4(ImGuiCol_CheckMark)
+    ImGui::PushStyleColor(ImGuiCol_Text, favorite ? EditorToneColor(EditorTone::Warning)
                                                   : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
     if (EditorIconButton("favorite", EditorGlyph::Star, favorite ? "Remove favorite" : "Add favorite", favorite))
         preferences.ToggleFavorite(entry.id);

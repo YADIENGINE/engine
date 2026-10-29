@@ -21,18 +21,21 @@ Gerçek pencere/input/görsel kontrolleri kullanıcı yapar; yalnız değişen b
    tooltip ile kısalıyor. Toolbar'ın ikincil eylemleri taşma menüsünde; yatay toolbar kaydırması yok.
 3. Ctrl+P Project aramasını, gizliyken de, açıp odaklıyor. Favori yıldızı içerik açmıyor; Recent yalnız başarılı
    açılışları sıralıyor. Boş arama / favori / geçmiş durumları anlamlı açıklama gösteriyor.
-4. Inspector arama / Modified only, açıklamalar, değişmiş değer işareti, Pending / ret ve tek alan sıfırlama;
+4. Inspector Search / Modified sayacı, `?` açıklaması, değişmiş değer işareti, Pending / ret ve tek alan sıfırlama;
    seçenek grupları tam genişliği kullanır. Paneli daraltınca Phase gibi üçlü seçenekler daha az sütuna iner;
-   normal kontroller etiketin altına geçer. Düğmelerin metni dikey harf sütunlarına dönüşmez.
-   OnReset için Reset. İçerik tanımındaki grup, primary ve disabled metadata'sı korunuyor.
+   normal kontroller etiketin altına geçer, checkbox sığdığında aynı satırda kalır. Düğmelerin metni dikey harf sütunlarına dönüşmez.
+   OnReset için Reset. Uygulama zamanı grup başına tek açıklama veya karışık grupta `*` tooltip'iyle gösterilir.
+   Değişmemiş alanın reset'i hover / klavye odağında görünür; yerleşim oynamaz. İleri gruplar önce kapalıdır,
+   arama / Modified eşleşmeleri açar. İçerik tanımındaki grup, primary ve disabled metadata'sı korunuyor.
 5. Output sayaçlı filtre / arama / Ctrl seçim / Copy seçili veya filtrelenmiş / Clear; yukarı kaydırınca takip
    duruyor. Kapalıyken hata sayacı görünüyor; açılınca doğru panel öne geliyor.
 6. Develop / Inspect / Profile arasında geçiş son özel düzeni silmiyor; Last custom layout geri getiriyor.
    Ctrl+J ve alt çubuk son aracı açıp kapatıyor. Yeniden açılışta tercihler dönüyor; büyütülmüş halde kapatmak
    önceki düzeni koruyor.
 7. Önizleme sekmesi gizliyken, başka panel arkasındayken veya menü açıkken ürüne input gitmiyor.
-8. Primary eylem tam genişlikte; ikincil eylemler yeterli genişlikte iki, dar panelde tek sütun. Uzun etiket /
-   seçenek ipuçları, sayı / renk düzenleme, bölüm açma / kapama ve sağa hizalı canlı değerler taşmıyor.
+8. Primary eylem tam genişlikte ve kaydırırken panelin altında sabit; ikincil eylemler yeterli genişlikte iki,
+   dar panelde tek sütun. Uzun etiket / seçenek ipuçları, sayı / renk düzenleme ve bölüm açma / kapama taşmıyor.
+   Canlı sayılar sağa hizalı, kısa durumlar rozetli, uzun açıklamalar satır sarıyor; child alanda yatay taşma yok.
 9. Ctrl+Shift+P ile paleti aç: arama, yukarı / aşağı, Enter, Escape, kapalı komut nedeni, panel / layout seçimi.
    F5 / F6 / F7 / Ctrl+R / Ctrl+Shift+B toolbar ve menüyle aynı kullanılabilirliği izliyor; metin / popup
    sırasında çalışmıyor ve ürüne sızmıyor.

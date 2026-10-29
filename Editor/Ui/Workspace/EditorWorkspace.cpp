@@ -279,7 +279,9 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             if ((_focusBottom && *_focusBottom == panel.id) || (_focusCatalog && panel.id == EditorPanel::Catalog))
                 ImGui::SetNextWindowFocus();
             if (ImGui::Begin(panel.window, &preferences.Visible(panel.id),
-                             flags | (panel.id == EditorPanel::Viewport ? ImGuiWindowFlags_NoScrollbar : 0))) {
+                             flags | (panel.id == EditorPanel::Viewport || panel.id == EditorPanel::Inspector
+                                          ? ImGuiWindowFlags_NoScrollbar
+                                          : 0))) {
                 if (panel.dock == EditorDockGroup::Bottom && ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows))
                     preferences.lastBottomPanel = panel.id;
                 switch (panel.id) {

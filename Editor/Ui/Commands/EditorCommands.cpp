@@ -15,6 +15,19 @@ EditorGlyph CommandGlyph(EditorCommand command, const EditorSnapshot& snapshot) 
     if (command == EditorCommand::Pause && snapshot.paused) return EditorGlyph::Play;
     return CommandInfo(command).glyph;
 }
+ImVec4 CommandColor(EditorCommand command, const EditorSnapshot& snapshot) {
+    switch (command) {
+    case EditorCommand::Open   : return EditorToneColor(EditorTone::Accent);
+    case EditorCommand::Stop   : return EditorToneColor(EditorTone::Error);
+    case EditorCommand::Pause  : return EditorToneColor(snapshot.paused ? EditorTone::Success : EditorTone::Warning);
+    case EditorCommand::Refresh: return EditorToneColor(EditorTone::Information);
+    case EditorCommand::Cancel : return EditorToneColor(EditorTone::Warning);
+    case EditorCommand::Reset  :
+    case EditorCommand::Step   :
+    case EditorCommand::Count  : return ImGui::GetStyleColorVec4(ImGuiCol_Text);
+    }
+    return {};
+}
 std::string CommandTooltip(EditorCommand command, const EditorSnapshot& snapshot) {
     std::string text = EditorCommandLabel(command, snapshot);
     if (const auto* shortcut = CommandShortcut(command, snapshot); shortcut && *shortcut) {
@@ -74,6 +87,7 @@ bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, 
                          bool showLabel) {
     ImGui::PushID(static_cast<int>(command));
     ImGui::BeginDisabled(!snapshot.capabilities.Can(command));
+    ImGui::PushStyleColor(ImGuiCol_Text, CommandColor(command, snapshot));
     const bool active = command == EditorCommand::Pause && snapshot.paused;
     const auto tooltip = CommandTooltip(command, snapshot);
     bool pressed = false;
@@ -87,6 +101,7 @@ bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, 
     } else {
         pressed = EditorIconButton("command", CommandGlyph(command, snapshot), tooltip.c_str(), active);
     }
+    ImGui::PopStyleColor();
     ImGui::EndDisabled();
     ImGui::PopID();
     if (pressed && actions.command) actions.command(command);

@@ -90,7 +90,10 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
     snapshot.ready = true;
     snapshot.inspection.disabledParameters = {"enabled"};
     snapshot.inspection.disabledActions = {"end"};
-    snapshot.inspection.values = {{"Wall charges", "0"}, {"Technical identifier", "a-long-technical-identifier"}};
+    snapshot.inspection.values = {
+        {"Wall charges", "0", PreviewReadoutKind::Number},
+        {"State", "Playing", PreviewReadoutKind::Status},
+        {"Note", "A longer explanation that must stay readable when the Inspector is narrow."}};
     int commands = 0;
     EditorUiActions actions;
     actions.parameter = [&](const std::string&, const PreviewValue&) { ++commands; };
@@ -99,17 +102,32 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
     for (const float scale : std::array{0.9375f, 1.25f, 2.5f}) {
         ImGui::GetStyle().FontScaleMain = scale;
         for (const float width : std::array{160.0f, 312.0f, 520.0f}) {
-            CAPTURE(scale, width);
-            // Resize, vertical-scrollbar appearance, then settled content extents.
-            for (int frame = 0; frame < 3; ++frame) {
-                ImGui::NewFrame();
-                ImGui::SetNextWindowPos({0, 0});
-                ImGui::SetNextWindowSize({width, 1500});
-                ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoCollapse);
-                panel.Draw(snapshot, actions);
-                if (frame == 2) CHECK(ImGui::GetScrollMaxX() == 0);
-                ImGui::End();
-                ImGui::Render();
+            for (const float height : std::array{420.0f, 1500.0f}) {
+                CAPTURE(scale, width, height);
+                float footerY = 0;
+                // Resize, vertical-scrollbar appearance, then settled content extents.
+                for (int frame = 0; frame < 3; ++frame) {
+                    ImGui::NewFrame();
+                    ImGui::SetNextWindowPos({0, 0});
+                    ImGui::SetNextWindowSize({width, height});
+                    ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoCollapse);
+                    panel.Draw(snapshot, actions);
+                    if (frame == 1) {
+                        footerY = ImGui::GetItemRectMin().y;
+                        io.AddMousePosEvent(width * 0.5f, footerY - ImGui::GetFrameHeight() * 2);
+                        io.AddMouseWheelEvent(0, -10);
+                    }
+                    if (frame == 2) {
+                        CHECK(ImGui::GetScrollMaxX() == 0);
+                        CHECK(ImGui::GetScrollMaxY() == 0);
+                        // The last item is the authored primary action, outside the scrolled child.
+                        CHECK(ImGui::GetItemRectMin().y == footerY);
+                        CHECK(ImGui::GetItemRectMin().y >= ImGui::GetWindowPos().y);
+                        CHECK(ImGui::GetItemRectMax().y <= ImGui::GetWindowPos().y + ImGui::GetWindowSize().y);
+                    }
+                    ImGui::End();
+                    ImGui::Render();
+                }
             }
         }
     }

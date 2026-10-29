@@ -19,7 +19,7 @@ nlohmann::json EncodePreviewInspection(const PreviewInspection& inspection) {
         result["focus"] = {f.x, f.y, f.width, f.height};
     }
     for (const auto& value : inspection.values)
-        result["values"].push_back({value.label, value.value});
+        result["values"].push_back({value.label, value.value, value.kind});
     for (const auto& table : inspection.tables)
         result["tables"].push_back({{"name", table.name}, {"columns", table.columns}, {"rows", table.rows}});
     return result;
@@ -35,8 +35,16 @@ PreviewInspection DecodePreviewInspection(const nlohmann::json& json) {
     }
     if (json.at("values").size() > 128 || json.at("tables").size() > 16)
         throw std::runtime_error("Preview inspection exceeds capacity");
-    for (const auto& value : json.at("values"))
-        result.values.push_back({value.at(0).get<std::string>(), value.at(1).get<std::string>()});
+    for (const auto& value : json.at("values")) {
+        if (!value.is_array() || value.size() < 2 || value.size() > 3 ||
+            (value.size() == 3 && !value.at(2).is_number_integer()))
+            throw std::runtime_error("Invalid preview readout");
+        const auto kind = value.size() > 2 ? value.at(2).get<std::uint64_t>() : 0;
+        if (kind > static_cast<std::uint64_t>(PreviewReadoutKind::Status))
+            throw std::runtime_error("Invalid preview readout kind");
+        result.values.push_back(
+            {value.at(0).get<std::string>(), value.at(1).get<std::string>(), static_cast<PreviewReadoutKind>(kind)});
+    }
     for (const auto& table : json.at("tables")) {
         PreviewTable decoded{table.at("name").get<std::string>(), table.at("columns").get<std::vector<std::string>>(),
                              table.at("rows").get<std::vector<std::vector<std::string>>>()};
@@ -197,7 +205,9 @@ nlohmann::json EncodePreviewCatalog(const std::vector<PreviewDefinition>& defini
                                   {"description", parameter.description},
                                   {"choiceButtons", parameter.choiceButtons},
                                   {"choiceButtonColumns", parameter.choiceButtonColumns},
-                                  {"numericInput", parameter.numericInput}});
+                                  {"numericInput", parameter.numericInput},
+                                  {"advanced", parameter.advanced},
+                                  {"applyAction", parameter.applyAction}});
         auto actions = nlohmann::json::array();
         for (const auto& action : definition.actions)
             actions.push_back({{"id", action.id},
@@ -278,6 +288,8 @@ std::vector<PreviewDefinition> DecodePreviewCatalog(const nlohmann::json& json) 
             parameter.choiceButtons = item.value("choiceButtons", false);
             parameter.choiceButtonColumns = item.value("choiceButtonColumns", 0);
             parameter.numericInput = item.value("numericInput", false);
+            parameter.advanced = item.value("advanced", false);
+            parameter.applyAction = item.value("applyAction", std::string{});
             if (!parameterIds.insert(parameter.id).second || !ValidatePreviewParameter(parameter).empty())
                 throw std::runtime_error("Invalid parameter metadata");
             definition.parameters.push_back(std::move(parameter));
@@ -297,6 +309,9 @@ std::vector<PreviewDefinition> DecodePreviewCatalog(const nlohmann::json& json) 
             hasPrimaryAction = hasPrimaryAction || action.primary;
             definition.actions.push_back(std::move(action));
         }
+        for (const auto& parameter : definition.parameters)
+            if (!parameter.applyAction.empty() && !actionIds.contains(parameter.applyAction))
+                throw std::runtime_error("Unknown parameter apply action");
         if (definition.benchmark) {
             const auto& variants = definition.benchmark->variants;
             if (variants[0].name == variants[1].name) throw std::runtime_error("Duplicate benchmark variant name");

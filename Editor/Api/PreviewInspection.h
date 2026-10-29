@@ -10,9 +10,12 @@ struct PreviewContentBounds {
     int height = 0;
     bool operator==(const PreviewContentBounds&) const = default;
 };
+enum class PreviewReadoutKind { Text, Number, Status };
+
 struct PreviewReadout {
     std::string label;
     std::string value;
+    PreviewReadoutKind kind = PreviewReadoutKind::Text;
     bool operator==(const PreviewReadout&) const = default;
 };
 struct PreviewTable {

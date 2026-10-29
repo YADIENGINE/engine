@@ -37,6 +37,9 @@ void PreviewRegistry::Add(PreviewDefinition definition) {
             throw std::invalid_argument("Preview actions may designate only one primary action");
         hasPrimaryAction = hasPrimaryAction || action.primary;
     }
+    for (const auto& parameter : definition.parameters)
+        if (!parameter.applyAction.empty() && !actions.contains(parameter.applyAction))
+            throw std::invalid_argument("Unknown parameter apply action: " + parameter.applyAction);
     _entries.push_back(std::move(definition));
 }
 const PreviewDefinition* PreviewRegistry::Find(const std::string& id) const {

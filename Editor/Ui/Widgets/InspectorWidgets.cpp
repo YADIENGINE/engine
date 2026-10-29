@@ -15,13 +15,13 @@ constexpr float ResetButtonSize = 20.0f;
 constexpr float DropdownPaddingY = 4.0f;
 constexpr float CheckboxPaddingY = 2.0f;
 constexpr float MaximumLabelWidth = 140.0f;
-constexpr float MinimumControlWidth = 140.0f;
-constexpr float DescriptionLines = 2.0f;
+constexpr float MinimumControlWidth = 96.0f;
+constexpr float LabelWidthFraction = 0.36f;
 
 float InspectorScale() { return ImGui::GetFontSize() / BaseFontSize; }
-ImVec4 AccentSurface(ImGuiCol surface, float amount) {
+ImVec4 AccentSurface(ImGuiCol surface, float amount, EditorTone tone = EditorTone::Accent) {
     const auto base = ImGui::GetStyleColorVec4(surface);
-    const auto accent = ImGui::GetStyleColorVec4(ImGuiCol_CheckMark);
+    const auto accent = EditorToneColor(tone);
     return {std::lerp(base.x, accent.x, amount), std::lerp(base.y, accent.y, amount),
             std::lerp(base.z, accent.z, amount), base.w};
 }
@@ -51,25 +51,25 @@ void InspectorText(const char* text, float width, bool rightAligned = false) {
                                         ImGui::GetColorU32(ImGuiCol_Text), display.c_str(), nullptr, 0, &clip);
     if (display != text) EditorTooltip(text);
 }
-void InspectorLabel(const char* label, const char* description, bool modified, float width) {
+void InspectorLabel(const char* label, const char* description, bool modified, float width, bool deferred = false) {
     const float scale = InspectorScale();
     const float markerWidth = std::min(8 * scale, std::max(0.0f, width - 1));
     const auto marker = ImGui::GetCursorScreenPos();
     if (modified && markerWidth >= 6 * scale)
         ImGui::GetWindowDrawList()->AddCircleFilled(
             {marker.x + 2 * scale, marker.y + ImGui::GetTextLineHeight() * 0.5f}, 2 * scale,
-            ImGui::GetColorU32(ImGuiCol_CheckMark));
+            ImGui::GetColorU32(EditorToneColor(EditorTone::Warning)));
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + markerWidth);
-    InspectorText(label, std::max(1.0f, width - markerWidth));
+    const float timingWidth = deferred ? std::min(ImGui::GetFontSize(), std::max(0.0f, width - markerWidth - 1)) : 0;
+    InspectorText(label, std::max(1.0f, width - markerWidth - timingWidth));
     if (*description) EditorTooltip(description);
-}
-const char* ApplyLabel(PreviewApplyMode apply) {
-    switch (apply) {
-    case PreviewApplyMode::Immediate : return "";
-    case PreviewApplyMode::NextAction: return "Next action";
-    case PreviewApplyMode::OnReset   : return "Reset to apply";
+    if (timingWidth > 0) {
+        ImGui::SameLine(0, 0);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        InspectorText("*", timingWidth);
+        ImGui::PopStyleColor();
+        EditorTooltip(description);
     }
-    return "";
 }
 bool InspectorResetButton(bool changed, bool pending, bool inlineRow) {
     const float size = ResetButtonSize * InspectorScale();
@@ -78,23 +78,24 @@ bool InspectorResetButton(bool changed, bool pending, bool inlineRow) {
     ImGui::PushFont(EditorFont(EditorFontRole::Ui), ImGui::GetStyle().FontSizeBase * MetadataFontSize / BaseFontSize);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {0, 0});
     ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-    ImGui::BeginDisabled(!changed || pending);
-    const bool reset = ImGui::Button(EditorGlyphText(EditorGlyph::Reset), {size, size});
+    if (!changed) ImGui::PushStyleColor(ImGuiCol_Button, {0, 0, 0, 0});
+    ImGui::BeginDisabled(pending);
+    const bool reset = ImGui::Button("##default", {size, size}) && changed;
+    if (changed || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || ImGui::IsItemFocused()) {
+        const auto position = ImGui::GetItemRectMin();
+        const char* glyph = EditorGlyphText(EditorGlyph::Reset);
+        const auto textSize = ImGui::CalcTextSize(glyph);
+        ImGui::GetWindowDrawList()->AddText(
+            {position.x + (size - textSize.x) * 0.5f, position.y + (size - textSize.y) * 0.5f},
+            ImGui::GetColorU32(ImGuiCol_Text), glyph);
+    }
     ImGui::EndDisabled();
+    if (!changed) ImGui::PopStyleColor();
     EditorTooltip("Default: restore this parameter's default value.");
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     ImGui::PopFont();
     return reset;
-}
-void InspectorPropertyMetadata(PreviewApplyMode apply) {
-    const char* label = ApplyLabel(apply);
-    if (!*label) return;
-    ImGui::PushFont(EditorFont(EditorFontRole::Ui), ImGui::GetStyle().FontSizeBase * MetadataFontSize / BaseFontSize);
-    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-    InspectorText(label, ImGui::GetContentRegionAvail().x);
-    ImGui::PopStyleColor();
-    ImGui::PopFont();
 }
 void InspectorAction(const PreviewAction& action, std::span<const std::string> disabled,
                      const std::function<void(const std::string&)>& execute) {
@@ -131,32 +132,36 @@ void EndInspectorStyle() {
     ImGui::PopStyleVar(6);
     ImGui::PopFont();
 }
-bool InspectorSection(const char* label, bool forceOpen) { return EditorSectionHeader(label, true, forceOpen); }
-bool BeginInspectorProperties(const char* id, float labelWidth) {
+bool InspectorSection(const char* label, bool forceOpen, bool defaultOpen) {
+    return EditorSectionHeader(label, defaultOpen, forceOpen);
+}
+bool BeginInspectorProperties(const char* id, float labelWidth, bool readOnly) {
     constexpr auto flags =
         ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_NoPadOuterX;
     const float width = ImGui::GetContentRegionAvail().x;
     const float scale = InspectorScale();
-    labelWidth = std::min(labelWidth, MaximumLabelWidth * scale);
-    const float resetWidth = ResetButtonSize * InspectorScale();
+    labelWidth = std::min({labelWidth, MaximumLabelWidth * scale, width * LabelWidthFraction});
+    const float resetWidth = readOnly ? 0 : ResetButtonSize * scale;
     const bool inlineRow =
         width >= labelWidth + resetWidth + MinimumControlWidth * scale + ImGui::GetStyle().CellPadding.x * 6;
     const std::string tableId = std::string("##properties.") + id;
-    if (!ImGui::BeginTable(tableId.c_str(), inlineRow ? 3 : 1, flags)) return false;
+    if (!ImGui::BeginTable(tableId.c_str(), inlineRow ? (readOnly ? 2 : 3) : 1, flags)) return false;
     if (inlineRow) {
         ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, std::max(1.0f, labelWidth));
         ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Default", ImGuiTableColumnFlags_WidthFixed, resetWidth);
+        if (!readOnly) ImGui::TableSetupColumn("Default", ImGuiTableColumnFlags_WidthFixed, resetWidth);
     } else {
         ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch);
     }
     return true;
 }
 void EndInspectorProperties() { ImGui::EndTable(); }
-bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& value, bool pending) {
+bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& value, bool pending,
+                             const char* applyHint) {
     const bool modified = value != parameter.initial;
     const std::string tooltip = parameter.label + (modified ? "\nModified from default." : "") +
-                                (parameter.description.empty() ? "" : "\n" + parameter.description);
+                                (parameter.description.empty() ? "" : "\n" + parameter.description) +
+                                (*applyHint ? "\n" + std::string(applyHint) : "");
     const bool compact = parameter.kind == PreviewParameterKind::Boolean ||
                          (parameter.kind == PreviewParameterKind::Choice && !parameter.choiceButtons);
     if (compact) {
@@ -166,6 +171,11 @@ bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& va
     // Choice grids are standalone full-width blocks; ordinary fields share their group's table.
     const bool choiceGrid = parameter.kind == PreviewParameterKind::Choice && parameter.choiceButtons;
     const bool inlineRow = !choiceGrid && ImGui::TableGetColumnCount() > 1;
+    const float resetSize = ResetButtonSize * InspectorScale();
+    const float gap = ImGui::GetStyle().ItemSpacing.x;
+    const bool inlineCheckbox =
+        !inlineRow && parameter.kind == PreviewParameterKind::Boolean &&
+        ImGui::GetContentRegionAvail().x >= resetSize + ImGui::GetFrameHeight() + gap * 2 + ImGui::GetFontSize();
     if (choiceGrid) {
         ImGui::BeginGroup();
     } else {
@@ -174,16 +184,18 @@ bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& va
     }
     if (inlineRow) {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetStyle().FramePadding.y);
-        InspectorLabel(parameter.label.c_str(), tooltip.c_str(), modified, ImGui::GetContentRegionAvail().x);
+        InspectorLabel(parameter.label.c_str(), tooltip.c_str(), modified, ImGui::GetContentRegionAvail().x,
+                       *applyHint != '\0');
         ImGui::TableSetColumnIndex(2);
     } else {
-        const float resetSize = ResetButtonSize * InspectorScale();
-        const float gap = ImGui::GetStyle().ItemSpacing.x;
-        const float labelWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - resetSize - gap);
-        InspectorLabel(parameter.label.c_str(), tooltip.c_str(), modified, labelWidth);
+        const float checkboxWidth = inlineCheckbox ? ImGui::GetFrameHeight() + gap : 0;
+        const float labelWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - resetSize - gap - checkboxWidth);
+        ImGui::AlignTextToFramePadding();
+        InspectorLabel(parameter.label.c_str(), tooltip.c_str(), modified, labelWidth, *applyHint != '\0');
         ImGui::SameLine(0, gap);
     }
-    bool edited = InspectorResetButton(modified, pending, inlineRow);
+    bool edited = false;
+    if (!inlineCheckbox) edited = InspectorResetButton(modified, pending, inlineRow);
     if (edited) value = parameter.initial;
     if (inlineRow) ImGui::TableSetColumnIndex(1);
     ImGui::SetNextItemWidth(-FLT_MIN);
@@ -193,20 +205,30 @@ bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& va
     if (technical) ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
     if (modified) {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, InspectorScale());
-        ImGui::PushStyleColor(ImGuiCol_Border, AccentSurface(ImGuiCol_Border, 0.35f));
+        ImGui::PushStyleColor(ImGuiCol_Border, AccentSurface(ImGuiCol_Border, 0.35f, EditorTone::Warning));
     }
+    const bool modifiedNumber =
+        modified && (parameter.kind == PreviewParameterKind::Integer || parameter.kind == PreviewParameterKind::Float);
+    if (modifiedNumber) ImGui::PushStyleColor(ImGuiCol_Text, EditorToneColor(EditorTone::Warning));
     edited = EditorParameterWidget(parameter, value) || edited;
-    EditorTooltip(parameter.description.c_str());
+    if (modifiedNumber) ImGui::PopStyleColor();
+    EditorTooltip(tooltip.c_str());
     if (modified) {
         ImGui::PopStyleColor();
         ImGui::PopStyleVar();
     }
     if (technical) ImGui::PopFont();
+    if (inlineCheckbox) {
+        ImGui::SameLine(0, gap);
+        if (InspectorResetButton(modified, pending, true)) {
+            value = parameter.initial;
+            edited = true;
+        }
+    }
     if (pending) {
         EditorStatusBadge("Pending", EditorPhaseColor(EditorPhase::Paused));
         EditorTooltip("Waiting for the preview to accept this value.");
     }
-    InspectorPropertyMetadata(parameter.apply);
     if (choiceGrid) ImGui::EndGroup();
     if (compact) ImGui::PopStyleVar();
     return edited;
@@ -216,35 +238,54 @@ void InspectorReadOnlyField(const PreviewReadout& value) {
     ImGui::TableSetColumnIndex(0);
     InspectorLabel(value.label.c_str(), "", false, ImGui::GetContentRegionAvail().x);
     if (ImGui::TableGetColumnCount() > 1) ImGui::TableSetColumnIndex(1);
-    ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
-    InspectorText(value.value.c_str(), ImGui::GetContentRegionAvail().x, true);
-    ImGui::PopFont();
+    switch (value.kind) {
+    case PreviewReadoutKind::Number:
+        ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
+        InspectorText(value.value.c_str(), ImGui::GetContentRegionAvail().x, true);
+        ImGui::PopFont();
+        break;
+    case PreviewReadoutKind::Status:
+        if (ImGui::CalcTextSize(value.value.c_str()).x + ImGui::GetStyle().FramePadding.x * 2 <=
+            ImGui::GetContentRegionAvail().x) {
+            EditorStatusBadge(value.value.c_str(), EditorToneColor(EditorTone::Information));
+            break;
+        }
+        [[fallthrough]];
+    case PreviewReadoutKind::Text:
+        ImGui::PushTextWrapPos(0);
+        ImGui::TextUnformatted(value.value.c_str());
+        ImGui::PopTextWrapPos();
+        break;
+    }
 }
 void InspectorSummary(const char* title, const char* text) {
-    if (*title) InspectorText(title, ImGui::GetContentRegionAvail().x);
-    if (!*text) return;
-    const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
-    const float lineHeight = ImGui::GetTextLineHeight();
-    const auto size = ImGui::CalcTextSize(text, nullptr, false, width);
-    const float height = std::min(size.y, lineHeight * DescriptionLines);
-    const auto position = ImGui::GetCursorScreenPos();
-    ImGui::Dummy({width, height});
-    const ImVec4 clip{position.x, position.y, position.x + width, position.y + height};
-    ImGui::GetWindowDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize(), position,
-                                        ImGui::GetColorU32(ImGuiCol_TextDisabled), text, nullptr, width, &clip);
-    if (size.y > height) {
-        const float suffixWidth = ImGui::CalcTextSize("...").x;
-        const ImVec2 suffix{position.x + std::max(0.0f, width - suffixWidth), position.y + height - lineHeight};
-        auto* draw = ImGui::GetWindowDrawList();
-        draw->AddRectFilled(suffix, {position.x + width, position.y + height}, ImGui::GetColorU32(ImGuiCol_WindowBg));
-        draw->AddText(suffix, ImGui::GetColorU32(ImGuiCol_TextDisabled), "...");
+    const float helpWidth = *text ? ImGui::GetFrameHeight() : 0;
+    const float gap = *text ? ImGui::GetStyle().ItemSpacing.x : 0;
+    const float titleSize = ImGui::GetStyle().FontSizeBase * 1.1f;
+    const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x - helpWidth - gap);
+    ImGui::PushFont(EditorFont(EditorFontRole::Ui), titleSize);
+    InspectorText(title, width);
+    ImGui::PopFont();
+    if (*text) {
+        ImGui::SameLine(0, gap);
+        if (ImGui::Button("?##description", {helpWidth, helpWidth})) ImGui::OpenPopup("##description");
+        EditorTooltip(text);
+        if (ImGui::BeginPopup("##description")) {
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 28);
+            ImGui::TextUnformatted(text);
+            ImGui::PopTextWrapPos();
+            ImGui::EndPopup();
+        }
     }
-    EditorTooltip(text);
+}
+void InspectorPrimaryAction(const PreviewAction& action, std::span<const std::string> disabled,
+                            const std::function<void(const std::string&)>& execute) {
+    InspectorAction(action, disabled, execute);
 }
 void InspectorActionGroup(std::span<const PreviewAction> actions, std::span<const std::string> disabled,
-                          const std::function<void(const std::string&)>& execute) {
+                          const std::function<void(const std::string&)>& execute, bool includePrimary) {
     const auto primary = std::ranges::find(actions, true, &PreviewAction::primary);
-    if (primary != actions.end()) InspectorAction(*primary, disabled, execute);
+    if (includePrimary && primary != actions.end()) InspectorAction(*primary, disabled, execute);
     if (actions.empty() || (actions.size() == 1 && primary != actions.end())) return;
     float minimumWidth = 0;
     for (const auto& action : actions)

@@ -7,6 +7,10 @@ constexpr float BaseFontSize = 14.0f;
 ImGuiContext* FontsContext = nullptr;
 ImFont* UiFont = nullptr;
 ImFont* TechnicalFont = nullptr;
+ImVec4 Rgb(int red, int green, int blue) {
+    return {static_cast<float>(red) / 255.0f, static_cast<float>(green) / 255.0f, static_cast<float>(blue) / 255.0f,
+            1.0f};
+}
 } // namespace
 
 void RegisterEditorFonts(ImFont* ui, ImFont* technical) {
@@ -52,68 +56,94 @@ void ApplyEditorTheme() {
     style.ScrollbarRounding = 6;
     style.GrabMinSize = 8;
     auto& colors = style.Colors;
-    colors[ImGuiCol_Text] = {230 / 255.0f, 233 / 255.0f, 239 / 255.0f, 1};
-    colors[ImGuiCol_TextDisabled] = {160 / 255.0f, 168 / 255.0f, 183 / 255.0f, 1};
-    colors[ImGuiCol_WindowBg] = {35 / 255.0f, 38 / 255.0f, 43 / 255.0f, 1};
-    colors[ImGuiCol_ChildBg] = {28 / 255.0f, 30 / 255.0f, 34 / 255.0f, 1};
-    colors[ImGuiCol_PopupBg] = {0.14f, 0.145f, 0.165f, 1};
-    colors[ImGuiCol_MenuBarBg] = {0.085f, 0.09f, 0.105f, 1};
-    colors[ImGuiCol_Border] = {54 / 255.0f, 59 / 255.0f, 68 / 255.0f, 1};
+    // Midnight Teal: layered blue-black surfaces and restrained semantic accents.
+    const auto base = Rgb(0x10, 0x15, 0x1d);
+    const auto panel = Rgb(0x19, 0x21, 0x2c);
+    const auto raised = Rgb(0x22, 0x2e, 0x3d);
+    const auto accent = Rgb(0x59, 0xd8, 0xc5);
+    colors[ImGuiCol_Text] = Rgb(0xe6, 0xed, 0xf5);
+    colors[ImGuiCol_TextDisabled] = Rgb(0x9a, 0xaa, 0xbd);
+    colors[ImGuiCol_WindowBg] = panel;
+    colors[ImGuiCol_ChildBg] = base;
+    colors[ImGuiCol_PopupBg] = raised;
+    colors[ImGuiCol_MenuBarBg] = base;
+    colors[ImGuiCol_Border] = Rgb(0x30, 0x40, 0x51);
     colors[ImGuiCol_BorderShadow] = {0, 0, 0, 0};
-    colors[ImGuiCol_FrameBg] = {42 / 255.0f, 46 / 255.0f, 52 / 255.0f, 1};
-    colors[ImGuiCol_FrameBgHovered] = {0.205f, 0.22f, 0.25f, 1};
-    colors[ImGuiCol_FrameBgActive] = {0.23f, 0.255f, 0.30f, 1};
-    colors[ImGuiCol_Button] = colors[ImGuiCol_FrameBg];
-    colors[ImGuiCol_ButtonHovered] = colors[ImGuiCol_FrameBgHovered];
-    colors[ImGuiCol_ButtonActive] = colors[ImGuiCol_FrameBgActive];
-    colors[ImGuiCol_Header] = {0.19f, 0.25f, 0.32f, 1};
-    colors[ImGuiCol_HeaderHovered] = {0.23f, 0.29f, 0.37f, 1};
-    colors[ImGuiCol_HeaderActive] = {0.25f, 0.33f, 0.43f, 1};
-    colors[ImGuiCol_CheckMark] = {106 / 255.0f, 169 / 255.0f, 255 / 255.0f, 1};
+    colors[ImGuiCol_FrameBg] = Rgb(0x12, 0x1b, 0x25);
+    colors[ImGuiCol_FrameBgHovered] = Rgb(0x23, 0x33, 0x43);
+    colors[ImGuiCol_FrameBgActive] = Rgb(0x29, 0x40, 0x4d);
+    colors[ImGuiCol_Button] = raised;
+    colors[ImGuiCol_ButtonHovered] = Rgb(0x2b, 0x3c, 0x4c);
+    colors[ImGuiCol_ButtonActive] = Rgb(0x30, 0x4b, 0x55);
+    colors[ImGuiCol_Header] = Rgb(0x20, 0x3d, 0x42);
+    colors[ImGuiCol_HeaderHovered] = Rgb(0x28, 0x4a, 0x50);
+    colors[ImGuiCol_HeaderActive] = Rgb(0x30, 0x59, 0x5d);
+    colors[ImGuiCol_CheckMark] = accent;
     colors[ImGuiCol_SliderGrab] = colors[ImGuiCol_CheckMark];
-    colors[ImGuiCol_SliderGrabActive] = {0.61f, 0.80f, 1, 1};
+    colors[ImGuiCol_SliderGrabActive] = Rgb(0x8a, 0xec, 0xdc);
+    colors[ImGuiCol_InputTextCursor] = accent;
     colors[ImGuiCol_TitleBg] = colors[ImGuiCol_MenuBarBg];
-    colors[ImGuiCol_TitleBgActive] = {0.13f, 0.14f, 0.16f, 1};
+    colors[ImGuiCol_TitleBgActive] = raised;
     colors[ImGuiCol_TitleBgCollapsed] = colors[ImGuiCol_TitleBg];
     colors[ImGuiCol_Tab] = colors[ImGuiCol_MenuBarBg];
-    colors[ImGuiCol_TabHovered] = colors[ImGuiCol_FrameBgHovered];
-    colors[ImGuiCol_TabSelected] = {0.16f, 0.175f, 0.20f, 1};
+    colors[ImGuiCol_TabHovered] = colors[ImGuiCol_Header];
+    colors[ImGuiCol_TabSelected] = panel;
     colors[ImGuiCol_TabSelectedOverline] = colors[ImGuiCol_CheckMark];
     colors[ImGuiCol_TabDimmed] = colors[ImGuiCol_Tab];
     colors[ImGuiCol_TabDimmedSelected] = colors[ImGuiCol_TabSelected];
-    colors[ImGuiCol_TabDimmedSelectedOverline] = {0.35f, 0.42f, 0.52f, 1};
-    colors[ImGuiCol_DockingPreview] = {0.44f, 0.69f, 0.96f, 0.35f};
+    colors[ImGuiCol_TabDimmedSelectedOverline] = Rgb(0x48, 0x5a, 0x6d);
+    colors[ImGuiCol_DockingPreview] = {accent.x, accent.y, accent.z, 0.25f};
     colors[ImGuiCol_DockingEmptyBg] = colors[ImGuiCol_ChildBg];
     colors[ImGuiCol_ScrollbarBg] = {0, 0, 0, 0};
-    colors[ImGuiCol_ScrollbarGrab] = {0.26f, 0.28f, 0.32f, 1};
-    colors[ImGuiCol_ScrollbarGrabHovered] = {0.35f, 0.38f, 0.43f, 1};
-    colors[ImGuiCol_ScrollbarGrabActive] = {0.44f, 0.47f, 0.53f, 1};
+    colors[ImGuiCol_ScrollbarGrab] = Rgb(0x35, 0x46, 0x58);
+    colors[ImGuiCol_ScrollbarGrabHovered] = Rgb(0x4b, 0x61, 0x76);
+    colors[ImGuiCol_ScrollbarGrabActive] = Rgb(0x60, 0x7a, 0x90);
     colors[ImGuiCol_Separator] = colors[ImGuiCol_Border];
     colors[ImGuiCol_SeparatorHovered] = colors[ImGuiCol_CheckMark];
     colors[ImGuiCol_SeparatorActive] = colors[ImGuiCol_CheckMark];
     colors[ImGuiCol_TableBorderStrong] = colors[ImGuiCol_Border];
-    colors[ImGuiCol_TableBorderLight] = {0.17f, 0.18f, 0.21f, 1};
-    colors[ImGuiCol_TableHeaderBg] = {0.14f, 0.15f, 0.175f, 1};
-    colors[ImGuiCol_TableRowBgAlt] = {1, 1, 1, 0.025f};
-    colors[ImGuiCol_TextSelectedBg] = {0.34f, 0.55f, 0.80f, 0.35f};
+    colors[ImGuiCol_TableBorderLight] = Rgb(0x25, 0x33, 0x42);
+    colors[ImGuiCol_TableHeaderBg] = raised;
+    colors[ImGuiCol_TableRowBgAlt] = {accent.x, accent.y, accent.z, 0.025f};
+    colors[ImGuiCol_TextSelectedBg] = {accent.x, accent.y, accent.z, 0.25f};
+    colors[ImGuiCol_TextLink] = EditorToneColor(EditorTone::Information);
+    colors[ImGuiCol_NavCursor] = accent;
+    colors[ImGuiCol_DragDropTarget] = accent;
+    colors[ImGuiCol_DragDropTargetBg] = {accent.x, accent.y, accent.z, 0.12f};
+    colors[ImGuiCol_TreeLines] = colors[ImGuiCol_Border];
+    colors[ImGuiCol_UnsavedMarker] = EditorToneColor(EditorTone::Warning);
+    colors[ImGuiCol_PlotLines] = accent;
+    colors[ImGuiCol_PlotLinesHovered] = colors[ImGuiCol_SliderGrabActive];
+    colors[ImGuiCol_PlotHistogram] = EditorToneColor(EditorTone::Information);
+    colors[ImGuiCol_PlotHistogramHovered] = EditorToneColor(EditorTone::Warning);
+}
+ImVec4 EditorToneColor(EditorTone tone) {
+    switch (tone) {
+    case EditorTone::Accent     : return ImGui::GetStyleColorVec4(ImGuiCol_CheckMark);
+    case EditorTone::Success    : return Rgb(0x80, 0xc9, 0x9b);
+    case EditorTone::Warning    : return Rgb(0xe8, 0xbc, 0x76);
+    case EditorTone::Error      : return Rgb(0xee, 0x89, 0x92);
+    case EditorTone::Information: return Rgb(0x83, 0xb8, 0xf2);
+    }
+    return {};
 }
 ImVec4 EditorPhaseColor(EditorPhase phase) {
     switch (phase) {
-    case EditorPhase::Ready         : return {0.43f, 0.78f, 0.61f, 1};
-    case EditorPhase::Error         : return {1, 0.42f, 0.42f, 1};
-    case EditorPhase::Paused        : return {1, 0.78f, 0.35f, 1};
+    case EditorPhase::Ready         : return EditorToneColor(EditorTone::Success);
+    case EditorPhase::Error         : return EditorToneColor(EditorTone::Error);
+    case EditorPhase::Paused        : return EditorToneColor(EditorTone::Warning);
     case EditorPhase::ReadingCatalog:
     case EditorPhase::Starting      :
     case EditorPhase::Stopping      :
-    case EditorPhase::Building      : return {0.50f, 0.73f, 1, 1};
-    case EditorPhase::Stopped       : return {0.49f, 0.56f, 0.65f, 1};
+    case EditorPhase::Building      : return EditorToneColor(EditorTone::Information);
+    case EditorPhase::Stopped       : return ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
     }
     return {};
 }
 ImVec4 EditorLevelColor(EditorLogLevel level) {
     if (level == EditorLogLevel::Error) return EditorPhaseColor(EditorPhase::Error);
     if (level == EditorLogLevel::Warning) return EditorPhaseColor(EditorPhase::Paused);
-    return ImGui::GetStyleColorVec4(ImGuiCol_Text);
+    return EditorToneColor(EditorTone::Information);
 }
 const char* EditorPhaseLabel(EditorPhase phase) {
     switch (phase) {

@@ -57,15 +57,21 @@ Host ve worker aynı protokol sürümüyle birlikte güncellenmelidir; proje tar
   teknik değerlerde Consolas; sistem fontu bulunamazsa gömülü font. `EditorFontRole` atlas sırasından bağımsız
   Ui / Technical erişimi sağlar. Varsayılan ölçek 1.25'tir; kullanıcı yüzdesi × varsayılan ölçek × DPI hem
   fontlara hem taban stile uygulanır (%100 önceki %125 boyutundadır).
-- `Ui/Style` nötr koyu yüzeyler, mavi vurgu, durum renkleri ve ortak ölçüleri; `Ui/Widgets/EditorWidgets`
+- `Ui/Style` lacivert alt tonlu koyu yüzeyler, turkuaz vurgu, `EditorTone` işlev renkleri ve ortak ölçüleri;
+  favori / değiştirilmiş değerler amber, başarı yeşil, bilgi mavi, hata mercan tonundadır.
+  `Ui/Widgets/EditorWidgets`
   bölüm başlığı, durum rozeti, seçim grubu ve boş durum sunumunu paylaşır. Ortak bileşenler dar genişlikte
   metni kısaltır / sarar; bilgi tooltip ile korunur.
 - `Ui/Widgets/InspectorWidgets` bütün önizlemelerin ortak Inspector sunumudur: sade açılır bölüm başlıkları,
-  ölçülmüş etiket / değer / sıfırlama sütunları; dar panelde üstte etiket, altta tam genişlikli kontrol.
+  panel genelinde ortak etiket / değer / sıfırlama sütunları; dar panelde üstte etiket, altta tam genişlikli kontrol,
+  sığan checkbox için tek satır. Değişmemiş alanlarda sıfırlama hover / odakta görünür; ayrılan yer değişmez.
   Seçenek grupları her genişlikte etiketin altında tam panel genişliğini kullanır. Sütun sayısı metin ölçüsüne
-  göre azalır; düğmeler tek satır kalır. Uygulama zamanı, monospace sayısal değerler ve salt okunur satırlar korunur.
+  göre azalır; düğmeler tek satır kalır. Uygulama zamanı grup başına özetlenir; karışık gruplarda işaret / tooltip kullanılır.
+  `PreviewReadoutKind` canlı sayıyı, durumu ve satır saran açıklamayı ayırır. Başlık açıklaması `?` altında,
+  küçük önizlemelerin araması açılır düğmededir. `advanced` gruplar ilk açılışta kapalıdır.
   Arama ve Modified only yalnız özellik sunumunu filtreler; authored grup, uygulama zamanı ve görünürlük
-  sözleşmesini değiştirmez. Eylemler açık `primary` metadata'sına göre yerleşir; ikincil eylemler yeterli
+  sözleşmesini değiştirmez. Açık `primary` metadata'sı ana eylemi sabit alt alana yerleştirir;
+  ayarlar ve canlı bilgiler ayrı child alanında kayar. İkincil eylemler yeterli
   genişlikte iki, dar panelde tek sütundur.
 - `Application/EditorController` süreç, IPC ve önizleme komutlarını yönetir. Paneller yalnız `EditorSnapshot` ve
   `EditorUiActions` bilir; UI komutları bütün paneller çizildikten sonra uygulanır.

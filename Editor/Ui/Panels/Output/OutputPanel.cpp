@@ -112,7 +112,6 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
                 const auto& entry = *visible[static_cast<std::size_t>(i)];
                 const auto id = std::to_string(entry.sequence);
                 ImGui::PushID(id.c_str());
-                ImGui::PushStyleColor(ImGuiCol_Text, EditorLevelColor(entry.level));
                 const auto line = DisplayLine(entry);
                 const auto position = ImGui::GetCursorScreenPos();
                 const float width =
@@ -126,9 +125,16 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
                     else
                         _selected.insert(entry.sequence);
                 }
-                ImGui::GetWindowDrawList()->AddText(position, ImGui::GetColorU32(ImGuiCol_Text), line.c_str());
+                const char* severity = line.c_str() + line.find('[');
+                const char* message = line.c_str() + line.size() - entry.text.size();
+                const float severityOffset = ImGui::CalcTextSize(line.c_str(), severity).x;
+                const float messageOffset = ImGui::CalcTextSize(line.c_str(), message).x;
+                auto* draw = ImGui::GetWindowDrawList();
+                draw->AddText(position, ImGui::GetColorU32(ImGuiCol_TextDisabled), line.c_str(), severity);
+                draw->AddText({position.x + severityOffset, position.y},
+                              ImGui::GetColorU32(EditorLevelColor(entry.level)), severity, message);
+                draw->AddText({position.x + messageOffset, position.y}, ImGui::GetColorU32(ImGuiCol_Text), message);
                 EditorTooltip(entry.text.c_str());
-                ImGui::PopStyleColor();
                 ImGui::PopID();
             }
         }

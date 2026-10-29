@@ -7,7 +7,8 @@
 std::string ValidatePreviewParameter(const PreviewParameter& parameter) {
     if (parameter.id.empty() || !std::isfinite(parameter.minimum) || !std::isfinite(parameter.maximum) ||
         parameter.minimum > parameter.maximum || parameter.choiceButtonColumns < 0 ||
-        parameter.choiceButtonColumns > 64)
+        parameter.choiceButtonColumns > 64 ||
+        (!parameter.applyAction.empty() && parameter.apply != PreviewApplyMode::NextAction))
         return "Invalid parameter metadata: " + parameter.id;
     if (parameter.kind == PreviewParameterKind::Integer) {
         const double lowest = static_cast<double>(std::numeric_limits<std::int64_t>::min());

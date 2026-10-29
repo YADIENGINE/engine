@@ -50,14 +50,18 @@ işlem yalnız `Modules/Profiler/Profiler.hpp` üzerinden yapılır. [Profiler r
 `PreviewValue`: `int64_t`, `double`, `bool`, normalize `PreviewColor` ya da seçenek metni (`std::string`).
 `PreviewParameter` tür, varsayılan, aralık / seçenek, uygulama zamanı, `group` ve `description` taşır. Sayılar sonlu
 ve aralık içinde, renk kanalları 0..1 olmalıdır. Değerler reddedilir, sessizce kırpılmaz.
+`advanced = true` olan alanlardan oluşan gruplar ilk açılışta kapalıdır; arama / Modified filtresi eşleşmeleri açar.
+`applyAction`, yalnız NextAction alanlarında tüketen eylemin kimliğini verebilir; kayıtlı bir eylem olmalıdır.
+Inspector ortak uygulama zamanını grupta bir kez, farklı zamanları alanın `*` işaretinde / tooltip'inde gösterir.
+Bu sunum bilgisi setter veya eylem yürütmez; değer değişikliği ile worker yanıtını bekleyen Pending ayrıdır.
 Choice parametresinde `choiceButtons = true`, seçenekleri Inspector'da açılır liste yerine seçili değeri vurgulayan,
 panel genişliğine göre bir veya iki sütuna yerleşen düğmeler olarak gösterir; varsayılanı `false`'tur.
 `choiceButtonColumns` pozitifse en çok belirtilen sütun sayısını kullanır; alan daraldığında okunabilir düğmeler için
 sütun sayısı azalır. Varsayılan `0`, bir veya iki sütun seçer.
 
 `PreviewAction` kimlik, etiket, açıklama ve isteğe bağlı `primary` (varsayılan `false`) taşır. En fazla bir eylem
-ana eylem olarak işaretlenebilir; listedeki konumu önemli değildir. Inspector onu tam genişlikte, diğerlerini
-uyarlanabilir iki sütunlu grupta gösterir. Ana eylem belirtilmesi zorunlu değildir; eski kataloglarda alan yoksa
+ana eylem olarak işaretlenebilir; listedeki konumu önemli değildir. Inspector onu tam genişlikte sabit alt alanda,
+diğerlerini kaydırılabilir içerikte uyarlanabilir iki sütunlu grupta gösterir. Ana eylem belirtilmesi zorunlu değildir; eski kataloglarda alan yoksa
 bütün eylemler ikincildir. Bu metadata eylem callback'lerini veya worker davranışını değiştirmez.
 
 | Uygulama zamanı | Worker | İçerik |
@@ -77,6 +81,8 @@ kaynak yazımı yoktur.
 `EditorPreview::Inspect()` salt okunur `PreviewInspection` döndürür: focus dikdörtgeni, etiket / değerler, tablo
 sekmeleri, gizli / etkisiz kontrol ve eylem kimlikleri, `showImage`. Tarife karışmaz; değiştiğinde en çok 10 Hz
 ayrı mesajla aktarılır. Genel UI proje kimliği bilmeden gösterir.
+`PreviewReadout::kind` varsayılan `Text` için sola hizalı ve satır saran metin, `Number` için sağa hizalı teknik
+font, `Status` için kısa rozet seçer. Sığmayan durum metni de satır sarar. Birimler biçimlenmiş değerin parçasıdır.
 
 ## Worker çalışma zamanı
 

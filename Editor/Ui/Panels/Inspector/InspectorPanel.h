@@ -11,4 +11,5 @@ private:
     std::array<char, 128> _search{};
     std::string _preview;
     bool _modifiedOnly = false;
+    bool _searchVisible = false;
 };

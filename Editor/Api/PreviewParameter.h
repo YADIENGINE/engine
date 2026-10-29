@@ -33,6 +33,8 @@ struct PreviewParameter {
     bool choiceButtons = false;
     int choiceButtonColumns = 0; // Zero selects responsive columns; positive values cap columns, shrinking to fit.
     bool numericInput = false;   // Use a text input instead of a slider for numeric parameters.
+    bool advanced = false;       // Groups containing only advanced fields start collapsed.
+    std::string applyAction;     // Optional NextAction consumer ID, used only for Inspector guidance.
 };
 
 struct PreviewAction {

@@ -13,12 +13,17 @@ gösterir; Output ve Profiler kapalıdır. Alt durum çubuğu bu araçları ve o
   Ctrl basılı değilken tekerlek ürüne gider. Büyüt düğmesi veya görünüm özetine çift tıklama geçici odak modunu açar.
   Kapalı, yüklenen veya hatalı önizlemelerde durum açıklaması ve uygulanabilen başlatma / yeniden deneme / iptal
   eylemi gösterilir. Playback yalnız global toolbar'dadır.
-- **Sağ (Inspector):** gruplu kontroller, özellik araması ve Modified only filtresi. Vurgu noktası varsayılandan
-  farklı değeri, Pending rozeti yanıt bekleyen değeri gösterir. Sıfırlama ikonu yalnız o kontrolü varsayılanına
-  döndürür. Eylemler Actions altında. Live information grubu salt okunurdur.
+- **Sağ (Inspector):** başlıktaki `?` açıklamayı tooltip veya tıklamayla açar. Özellik araması ve Modified sayacı
+  değişen alanları bulur; en fazla altı görünür alanda arama Search düğmesiyle açılır. Vurgu noktası varsayılandan
+  farklı değeri, Pending rozeti worker yanıtı bekleyen değeri gösterir; sonraki eylemde uygulanacak ayar anlamına gelmez.
+  Sıfırlama ikonu değişen alanlarda, diğerlerinde hover / klavye odağında görünür ve yalnız o alanı varsayılana döndürür.
+  Ana eylem panelin altında sabittir; ayarlar, ikincil Actions ve Live information kendi alanında kayar.
   Choice kontrolleri aranabilir; seed gibi geniş tamsayılar doğrudan yazılabilir.
   Seçenek düğmeleri etiketin hemen altında panelin tam genişliğini kullanır. Normal kontroller dar panelde
-  etiketin altına geçer; düğme ve alan adları harf harf sarılmak yerine kısalır, tam metin tooltip'te görünür.
+  etiketin altına geçer; checkbox sığdığında etiketle aynı satırda kalır. Normal alanlar ortak etiket sütununu kullanır;
+  düğme ve alan adları harf harf sarılmak yerine kısalır, tam metin tooltip'te görünür.
+  İleri ayar grupları ilk açılışta kapalıdır; arama ve Modified filtresi eşleşen grupları açar.
+  Canlı bilgilerde sayılar sağa hizalı teknik fontla, kısa durumlar rozetle, açıklamalar satır sararak gösterilir.
 - **Output:** zaman / kaynak / seviye; sayaçlı Info / Warning / Error filtreleri ve arama. Copy menüsü seçili ya da
   filtrelenmiş satırları kopyalar; Ctrl+tıklama çoklu seçim yapar. Follow ve Clear panel içindedir. Gizliyken gelen
   hatalar alt durum çubuğundaki Output sayacında görünür.
@@ -76,6 +81,8 @@ yeniden kurar, toolbar Pause zamanı durdurur.
 - **Immediate:** mevcut görünüşe hemen uygulanır.
 - **Next action:** bir sonraki Replay / Emit / Apply offer için hazırlanır.
 - **Reset to apply:** yeni örnek kurulurken kullanılır.
+- Uygulama zamanı aynı olan grupta tek açıklama gösterilir; içerik eylem bağlantısını bildirmişse Start / Replay gibi
+  gerçek düğme adı kullanılır. Karışık gruplarda `*` işaretli alanın tooltip'i uygulama zamanını açıklar.
 - Randomize ve içerik etkileşimlerinin değiştirdiği kontroller sağ panele geri yansır. Rastgele sonuçlar tarife
   (seed) yazılır; Reset aynı sonucu kurar.
 

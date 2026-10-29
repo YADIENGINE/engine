@@ -91,7 +91,9 @@ TEST_CASE("Editor.Viewport.ZoomedImageUsesCanvasCoordinatesAndVisibleClip", "[en
 TEST_CASE("Editor.Protocol.InspectionIsReadOnlyAndRejectsInvalidGeometryAndRows", "[engine-editor]") {
     PreviewInspection inspection;
     inspection.focus = PreviewContentBounds{320, 250, 960, 400};
-    inspection.values = {{"State", "Playing"}};
+    inspection.values = {{"State", "Playing", PreviewReadoutKind::Status},
+                         {"Count", "12", PreviewReadoutKind::Number},
+                         {"Note", "A description that can wrap over multiple lines."}};
     inspection.tables = {{"Schedule", {"World", "Boss"}, {{"5", "Sample"}}}};
     inspection.hiddenParameters = {"inactive"};
     inspection.disabledParameters = {"fixed"};
@@ -104,6 +106,14 @@ TEST_CASE("Editor.Protocol.InspectionIsReadOnlyAndRejectsInvalidGeometryAndRows"
     invalid = encoded;
     invalid["tables"][0]["rows"][0] = {"missing column"};
     CHECK_THROWS(DecodePreviewInspection(invalid));
+    invalid = encoded;
+    invalid["values"][0][2] = 99;
+    CHECK_THROWS(DecodePreviewInspection(invalid));
+    invalid["values"][0][2] = 1.5;
+    CHECK_THROWS(DecodePreviewInspection(invalid));
+    auto legacy = encoded;
+    legacy["values"][0].erase(legacy["values"][0].begin() + 2);
+    CHECK(DecodePreviewInspection(legacy).values.front().kind == PreviewReadoutKind::Text);
 }
 
 TEST_CASE("Editor.Input.SnapshotsPreserveEdges", "[engine-editor]") {
@@ -315,6 +325,10 @@ TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") 
     definition.parameters.front().choiceButtonColumns = 2;
     definition.parameters.push_back({"radius", "Radius", PreviewParameterKind::Float, 10.0, 1.0, 20.0});
     definition.parameters.back().numericInput = true;
+    definition.parameters.back().advanced = true;
+    definition.parameters.back().apply = PreviewApplyMode::NextAction;
+    definition.parameters.back().applyAction = "replay";
+    definition.actions = {{"replay", "Replay", "Apply the prepared values.", true}};
     definition.create = [&constructed](const PreviewServices&,
                                        const PreviewParameters&) -> std::unique_ptr<EditorPreview> {
         constructed = true;
@@ -330,6 +344,15 @@ TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") 
     CHECK(catalog.front().parameters.front().choiceButtons);
     CHECK(catalog.front().parameters.front().choiceButtonColumns == 2);
     CHECK(catalog.front().parameters.back().numericInput);
+    CHECK(catalog.front().parameters.back().advanced);
+    CHECK(catalog.front().parameters.back().applyAction == "replay");
+    CHECK(catalog.front().actions.front().primary);
+    auto invalid = EncodePreviewCatalog(registry.Entries());
+    invalid["entries"][0]["parameters"][1]["applyAction"] = "missing";
+    CHECK_THROWS(DecodePreviewCatalog(invalid));
+    invalid = EncodePreviewCatalog(registry.Entries());
+    invalid["entries"][0]["parameters"][1]["apply"] = PreviewApplyMode::Immediate;
+    CHECK_THROWS(DecodePreviewCatalog(invalid));
     auto legacy = EncodePreviewCatalog(registry.Entries());
     legacy["entries"][0].erase("categoryOrder");
     CHECK(DecodePreviewCatalog(legacy).front().categoryOrder == 0);
@@ -339,6 +362,11 @@ TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") 
     CHECK(DecodePreviewCatalog(legacy).front().parameters.front().choiceButtonColumns == 0);
     legacy["entries"][0]["parameters"][1].erase("numericInput");
     CHECK_FALSE(DecodePreviewCatalog(legacy).front().parameters.back().numericInput);
+    legacy["entries"][0]["parameters"][1].erase("advanced");
+    legacy["entries"][0]["parameters"][1].erase("applyAction");
+    const auto defaults = DecodePreviewCatalog(legacy);
+    CHECK_FALSE(defaults.front().parameters.back().advanced);
+    CHECK(defaults.front().parameters.back().applyAction.empty());
     CHECK_FALSE(catalog.front().create);
     CHECK_THROWS(registry.Add(definition));
 }
