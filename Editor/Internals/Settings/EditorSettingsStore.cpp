@@ -40,6 +40,26 @@ std::string EditorSettingsStore::Load(const std::string& project, EditorPreferen
                     loaded.visible[i] = visible.at(i).get<bool>();
             }
             loaded.docking = value.value("docking", std::string{});
+            const int layout =
+                value.value("layout", static_cast<int>(loaded.docking.empty() ? EditorWorkspaceLayout::Develop
+                                                                              : EditorWorkspaceLayout::Custom));
+            if (layout >= static_cast<int>(EditorWorkspaceLayout::Develop) &&
+                layout <= static_cast<int>(EditorWorkspaceLayout::Custom))
+                loaded.layout = static_cast<EditorWorkspaceLayout>(layout);
+            loaded.customDocking = value.value("customDocking", std::string{});
+            if (value.contains("customVisible")) {
+                const auto& visible = value.at("customVisible");
+                if (!visible.is_array()) throw std::runtime_error("Invalid custom panel visibility");
+                for (std::size_t i = 0; i < std::min(visible.size(), loaded.customVisible.size()); ++i)
+                    loaded.customVisible[i] = visible.at(i).get<bool>();
+            }
+            if (loaded.layout == EditorWorkspaceLayout::Custom && loaded.customDocking.empty()) {
+                loaded.customDocking = loaded.docking;
+                loaded.customVisible = loaded.visible;
+            }
+            const int bottom = value.value("lastBottomPanel", static_cast<int>(EditorPanel::Output));
+            loaded.lastBottomPanel =
+                bottom == static_cast<int>(EditorPanel::Profiler) ? EditorPanel::Profiler : EditorPanel::Output;
             loaded.favorites = value.value("favorites", std::vector<std::string>{});
             loaded.recent = value.value("recent", std::vector<std::string>{});
             ValidateIds(loaded.favorites, 2048);
@@ -71,6 +91,10 @@ std::string EditorSettingsStore::Save(const std::string& project, const EditorPr
         document["projects"][project] = {
             {"visible", preferences.visible},
             {"docking", preferences.docking},
+            {"layout", static_cast<int>(preferences.layout)},
+            {"customDocking", preferences.customDocking},
+            {"customVisible", preferences.customVisible},
+            {"lastBottomPanel", static_cast<int>(preferences.lastBottomPanel)},
             {"favorites", preferences.favorites},
             {"recent", preferences.recent},
             {"followOutput", preferences.followOutput},

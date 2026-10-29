@@ -6,7 +6,7 @@
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
 #include "Editor/Internals/Session/ProfilerSession.h"
 
-enum class EditorCommand { Open, Stop, Pause, Reset, Refresh, Cancel, Count };
+enum class EditorCommand { Open, Stop, Pause, Reset, Refresh, Cancel, Step, Count };
 enum class EditorPhase { ReadingCatalog, Starting, Ready, Paused, Stopping, Building, Stopped, Error };
 // clang-format off
 enum class EditorProfilerCommand { Enable, Disable, Start, Cancel, SaveBaseline, CompareBaseline, ExportJson, ExportMarkdown, GlowFull, GlowReduced, GlowOff };
@@ -14,9 +14,16 @@ enum class EditorProfilerCommand { Enable, Disable, Start, Cancel, SaveBaseline,
 
 struct EditorCapabilities {
     std::array<bool, static_cast<std::size_t>(EditorCommand::Count)> enabled{};
+    std::array<const char*, static_cast<std::size_t>(EditorCommand::Count)> disabledReasons{};
+    bool playbackEnabled = false;
+    const char* playbackDisabledReason = "Open a preview first.";
     [[nodiscard]] bool Can(EditorCommand command) const {
         const auto index = static_cast<std::size_t>(command);
         return index < enabled.size() && enabled[index];
+    }
+    [[nodiscard]] const char* Reason(EditorCommand command) const {
+        const auto index = static_cast<std::size_t>(command);
+        return index < disabledReasons.size() && disabledReasons[index] ? disabledReasons[index] : "";
     }
 };
 
@@ -41,6 +48,7 @@ struct EditorSnapshot {
     double playbackSpeed = 1.0;
     ProfilerSessionSnapshot profiler;
     double hostTransferMs = 0.0;
+    bool benchmarkCancelPending = false;
 };
 
 // References/callbacks are borrowed for the current UI frame; panels never retain session data.

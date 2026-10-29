@@ -8,11 +8,11 @@ void CatalogPanel::Entry(const PreviewDefinition& entry, const EditorSnapshot& s
                          EditorPreferences& preferences) {
     ImGui::PushID(entry.id.c_str());
     const bool favorite = preferences.IsFavorite(entry.id);
-    ImGui::PushStyleColor(ImGuiCol_Text, favorite ? EditorPhaseColor(EditorPhase::Paused)
+    ImGui::PushStyleColor(ImGuiCol_Text, favorite ? ImGui::GetStyleColorVec4(ImGuiCol_CheckMark)
                                                   : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-    if (ImGui::SmallButton(EditorGlyphText(EditorGlyph::Star))) preferences.ToggleFavorite(entry.id);
+    if (EditorIconButton("favorite", EditorGlyph::Star, favorite ? "Remove favorite" : "Add favorite", favorite))
+        preferences.ToggleFavorite(entry.id);
     ImGui::PopStyleColor();
-    EditorTooltip(favorite ? "Remove favorite" : "Add favorite");
     ImGui::SameLine();
     const bool selected = snapshot.selected && snapshot.selected->id == entry.id;
     const bool enabled = !snapshot.busy || (selected && snapshot.capabilities.Can(EditorCommand::Open));
@@ -29,16 +29,15 @@ void CatalogPanel::Entry(const PreviewDefinition& entry, const EditorSnapshot& s
 void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                         EditorPreferences& preferences) {
     ImGui::SetNextItemWidth(-1);
-    ImGui::InputTextWithHint("##search", "Search previews...", _search.data(), _search.size());
-    if (ImGui::BeginTabBar("views")) {
-        constexpr std::array Labels{"All", "Favorites", "Recent"};
-        for (int i = 0; i < static_cast<int>(Labels.size()); ++i) {
-            if (ImGui::BeginTabItem(Labels[static_cast<std::size_t>(i)])) {
-                _view = i;
-                ImGui::EndTabItem();
-            }
-        }
-        ImGui::EndTabBar();
+    if (_focusSearch) {
+        ImGui::SetKeyboardFocusHere();
+        _focusSearch = false;
+    }
+    ImGui::InputTextWithHint("##search", "Search previews (Ctrl+P)", _search.data(), _search.size());
+    constexpr std::array Labels{"All", "Favorites", "Recent"};
+    for (int i = 0; i < static_cast<int>(Labels.size()); ++i) {
+        if (i) ContinueEditorToolbar(Labels[static_cast<std::size_t>(i)]);
+        if (EditorSegment(Labels[static_cast<std::size_t>(i)], _view == i)) _view = i;
     }
     std::vector<const PreviewDefinition*> entries;
     const auto query = EditorSearchText(_search.data());
@@ -61,19 +60,42 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
             return a->category < b->category;
         });
     }
-    std::string category;
-    bool expanded = true;
-    bool first = true;
-    for (const auto* entry : entries) {
-        if (_view != 2 && (first || category != entry->category)) {
-            category = entry->category;
-            expanded = ImGui::CollapsingHeader(category.empty() ? "General" : category.c_str(),
-                                               ImGuiTreeNodeFlags_DefaultOpen);
-            first = false;
+    const float scale = EditorUiScale();
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4 * scale, 2 * scale});
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {4 * scale, 2 * scale});
+    if (ImGui::BeginChild("catalog-entries")) {
+        std::string category;
+        bool expanded = true;
+        bool first = true;
+        for (const auto* entry : entries) {
+            if (_view != 2 && (first || category != entry->category)) {
+                category = entry->category;
+                expanded = EditorSectionHeader(category.empty() ? "General" : category.c_str(), true, !query.empty());
+                first = false;
+            }
+            if (expanded) Entry(*entry, snapshot, actions, preferences);
         }
-        if (expanded) Entry(*entry, snapshot, actions, preferences);
+        if (entries.empty()) {
+            if (snapshot.catalog.empty()) {
+                EditorEmptyState("No previews available", "Check Output for details, or refresh the preview catalog.");
+                ImGui::BeginDisabled(!snapshot.capabilities.Can(EditorCommand::Refresh));
+                if (ImGui::Button("Build & refresh")) actions.command(EditorCommand::Refresh);
+                ImGui::EndDisabled();
+            } else {
+                const char* detail = !query.empty() ? "Try a different name, description, or category."
+                                     : _view == 1   ? "Star a preview to keep it here."
+                                                    : "Previews you open will appear here.";
+                EditorEmptyState(!query.empty() ? "No matching previews"
+                                 : _view == 1   ? "No favorites yet"
+                                                : "No recent previews",
+                                 detail);
+                if (ImGui::Button(!query.empty() ? "Clear search" : "Show all previews")) {
+                    _search.fill('\0');
+                    if (query.empty()) _view = 0;
+                }
+            }
+        }
     }
-    if (entries.empty())
-        ImGui::TextWrapped(snapshot.catalog.empty() ? "No catalog available. Check Output for details."
-                                                    : "No matching previews.");
+    ImGui::EndChild();
+    ImGui::PopStyleVar(2);
 }

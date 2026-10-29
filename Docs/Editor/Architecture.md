@@ -53,20 +53,41 @@ Host ve worker aynı protokol sürümüyle birlikte güncellenmelidir; proje tar
 
 - Host Game / ImGui yaşam döngüsünü, GPU görüntü köprüsünü ve input yönlendirmesini sahiplenir; ImGui bağlamı ve
   görüntü dokusu RAII ile GL bağlamı yaşarken temizlenir.
-- `EditorUiContext` font ve ölçekleme politikasının tek sahibidir (gömülü ProggyForever + Font Awesome; Inspector
-  etiketlerinde Windows Segoe UI, bulunamazsa gömülü font; kullanıcı yüzdesi × DPI).
+- `EditorUiContext` font ve ölçekleme politikasının tek sahibidir: arayüzde Windows Segoe UI + Font Awesome,
+  teknik değerlerde Consolas; sistem fontu bulunamazsa gömülü font. `EditorFontRole` atlas sırasından bağımsız
+  Ui / Technical erişimi sağlar. Varsayılan ölçek 1.25'tir; kullanıcı yüzdesi × varsayılan ölçek × DPI hem
+  fontlara hem taban stile uygulanır (%100 önceki %125 boyutundadır).
+- `Ui/Style` nötr koyu yüzeyler, mavi vurgu, durum renkleri ve ortak ölçüleri; `Ui/Widgets/EditorWidgets`
+  bölüm başlığı, durum rozeti, seçim grubu ve boş durum sunumunu paylaşır. Ortak bileşenler dar genişlikte
+  metni kısaltır / sarar; bilgi tooltip ile korunur.
 - `Ui/Widgets/InspectorWidgets` bütün önizlemelerin ortak Inspector sunumudur: sade açılır bölüm başlıkları,
-  %39 / %61 özellik sütunları, kontrol altında Default / uygulama zamanı, monospace sayısal değerler ve salt okunur
-  satırlar. Boyutlar font / DPI ile ölçeklenir; bu stil kapsamı diğer panelleri değiştirmez. Eylemler açık `primary`
-  metadata'sına göre yerleşir; ikincil eylemler yeterli genişlikte iki, dar panelde tek sütundur.
+  ölçülmüş etiket / değer / sıfırlama sütunları; dar panelde üstte etiket, altta tam genişlikli kontrol.
+  Seçenek grupları her genişlikte etiketin altında tam panel genişliğini kullanır. Sütun sayısı metin ölçüsüne
+  göre azalır; düğmeler tek satır kalır. Uygulama zamanı, monospace sayısal değerler ve salt okunur satırlar korunur.
+  Arama ve Modified only yalnız özellik sunumunu filtreler; authored grup, uygulama zamanı ve görünürlük
+  sözleşmesini değiştirmez. Eylemler açık `primary` metadata'sına göre yerleşir; ikincil eylemler yeterli
+  genişlikte iki, dar panelde tek sütundur.
 - `Application/EditorController` süreç, IPC ve önizleme komutlarını yönetir. Paneller yalnız `EditorSnapshot` ve
   `EditorUiActions` bilir; UI komutları bütün paneller çizildikten sonra uygulanır.
-- `Ui/Shell` menü / toolbar / durum çubuğu, `Ui/Workspace` docking ve geçici büyütme, `Ui/Panels` paneller,
-  `Ui/Style` tema / ikon, `Ui/Widgets` ortak kontroller. DockBuilder'ın internal API'si yalnız Workspace'te.
+- `Application/EditorCommandState` kullanılabilirlik ve engel nedenlerini tek yerde çözer. Host'a ait
+  `EditorCommand::Step` mevcut playback mesajını kullanır; public `Preview*` API'si ve worker protokolü değişmez.
+- `Ui/Commands` komut kimliği / etiket / ikon / kısayol tablosunu menü, toolbar ve komut paletiyle paylaşır.
+  Open / Stop / Cancel ana eylemi oturum durumundan türetilir. Kısayol ve paletin tükettiği girdi aynı karede
+  worker'a gönderilmez; popup ve metin düzenleme sırasında önizleme kontrol kısayolları engellenir.
+- `Ui/Shell` menü / global toolbar / durum çubuğunu; `Ui/Workspace` docking, panel kaydı, Develop / Inspect /
+  Profile düzenleri ve geçici büyütmeyi yönetir. Panel kimlikleri görünür başlıktan bağımsızdır; görünürlük ve
+  varsayılan dock konumu ortak `EditorPanelDefinition` tablosundadır. DockBuilder'ın internal API'si yalnız
+  Workspace'te kullanılır. Hazır düzene geçiş son özel düzeni korur; kayıtlı kullanıcı düzeni açılışta ezilmez.
+- `Ui/Panels` yerel araçları sahiplenir: View görünüm / zoom menüsü, Output tek Copy menüsü, Profiler gelişmiş
+  ölçüm ayarları ve Export menüsü. Output / Profiler varsayılan olarak kapalıdır; alt durum çubuğu görünürlük,
+  süreç durumu ve hata sayacını sunar.
 - `Internals/Diagnostics` ve `Internals/Settings` ImGui / raylib bilmez. Tercihler
-  `UserDataDirectory()/EngineEditor/preferences.json` altında atomik saklanır (yerleşim, favoriler, geçmiş, Output).
-- Yeni panel kendi klasöründe değer bileşenidir; Workspace görünürlük / docking bağlantısını kurar. Yeni süreç
-  komutunun kullanılabilirliği Application'da tanımlanır; menü ve toolbar aynı sözleşmeyi kullanır.
+  `UserDataDirectory()/EngineEditor/preferences.json` altında atomik saklanır (yerleşim, son özel düzen,
+  görünürlük, ölçek, favoriler, geçmiş, Output).
+- Yeni panel kendi klasöründe değer bileşenidir; ortak panel kaydına eklenir. Yeni süreç komutu Application'da
+  davranış / kullanılabilirlik, Ui/Commands'ta sunum bilgisi alır; menü, toolbar ve palet aynı sözleşmeyi kullanır.
+  Henüz desteklenmeyen yetenekler için boş servis veya kullanılmayan public API eklenmez; bağımlılıklar
+  [UI geliştirme listesinde](TODO.md) tutulur.
 
 Profiler paneli Live / Benchmarks / Compare sunar. Headless modül ve isteğe bağlı runtime observer editörden
 bağımsızdır. Worker ölçümde görüntü aktarımını durdurur; host 10 Hz'e iner. FPS/VSync/render politikası ölçüm

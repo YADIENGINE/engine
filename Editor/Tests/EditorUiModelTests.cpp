@@ -105,6 +105,10 @@ TEST_CASE("Editor.Settings.ProjectIsolationAndCorruptFileRecovery", "[engine-edi
     EditorPreferences a;
     a.Visible(EditorPanel::Output) = false;
     a.docking = "[Docking][Data]\n";
+    a.layout = EditorWorkspaceLayout::Custom;
+    a.customDocking = "[Window][Custom]\n";
+    a.customVisible[static_cast<std::size_t>(EditorPanel::Catalog)] = false;
+    a.lastBottomPanel = EditorPanel::Profiler;
     a.ToggleFavorite("sample");
     a.Opened("sample");
     a.outputFilter.search = "warning";
@@ -142,4 +146,24 @@ TEST_CASE("Editor.Input.HiddenViewportCancelsOwnedInput", "[engine-editor]") {
     CHECK_FALSE(hidden.mouseDown);
     CHECK_FALSE(hidden.Down(InputKey::Enter));
     CHECK_FALSE(router.OwnsPointer());
+}
+
+TEST_CASE("Editor.Input.EditorCommandCancelsHeldDevicesUntilNeutral", "[engine-editor]") {
+    PreviewInputRouter router;
+    const auto viewport = FitPreviewViewport({}, {200, 100}, {400, 200});
+    InputSample held;
+    held.mousePressed = held.mouseDown = true;
+    held.keysDown[static_cast<std::size_t>(InputKey::Enter)] = true;
+    (void)router.Route(held, {50, 50}, viewport, true, true, false, false);
+    REQUIRE(router.OwnsPointer());
+    CHECK(router.Clear().cancelled);
+    const auto suppressed = router.Route(held, {50, 50}, viewport, true, true, false, false);
+    CHECK_FALSE(suppressed.Down(InputKey::Enter));
+    CHECK_FALSE(suppressed.mouseDown);
+    CHECK_FALSE(router.OwnsPointer());
+    (void)router.Route({}, {50, 50}, viewport, true, true, false, false);
+    const auto fresh = router.Route(held, {50, 50}, viewport, true, true, false, false);
+    CHECK(fresh.Down(InputKey::Enter));
+    CHECK(fresh.mousePressed);
+    CHECK(router.OwnsPointer());
 }

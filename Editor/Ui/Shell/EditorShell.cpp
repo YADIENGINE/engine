@@ -1,18 +1,16 @@
 #include "Editor/Ui/Shell/EditorShell.h"
 #include <algorithm>
-#include <array>
 #include <string>
+#include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Style/EditorTheme.h"
+#include "Editor/Ui/Widgets/EditorPlaybackControls.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 
 namespace {
 constexpr ImGuiWindowFlags BarFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                                       ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
-                                      ImGuiWindowFlags_NoBringToFrontOnFocus;
-void CommandItem(const char* label, EditorCommand command, const EditorSnapshot& snapshot,
-                 const EditorUiActions& actions) {
-    if (ImGui::MenuItem(label, nullptr, false, snapshot.capabilities.Can(command))) actions.command(command);
-}
+                                      ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar |
+                                      ImGuiWindowFlags_NoScrollWithMouse;
 void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     const PreviewParameter* language = nullptr;
     if (snapshot.selected) {
@@ -34,10 +32,9 @@ void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions
     const auto found = snapshot.parameters.find(language->id);
     const auto* selected = found != snapshot.parameters.end() ? std::get_if<std::string>(&found->second) : nullptr;
     ImGui::BeginDisabled(!enabled);
-    for (const auto& choice : language->choices) {
+    for (const auto& choice : language->choices)
         if (ImGui::MenuItem(choice.c_str(), nullptr, selected && *selected == choice))
             actions.parameter(language->id, choice);
-    }
     ImGui::EndDisabled();
     if (snapshot.pending.contains(language->id)) ImGui::TextDisabled("Pending");
     if (snapshot.busy)
@@ -52,73 +49,101 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
     EditorShellResult result;
     if (!ImGui::BeginMainMenuBar()) return result;
     if (ImGui::BeginMenu("File")) {
-        CommandItem("Open selected preview", EditorCommand::Open, snapshot, actions);
-        ImGui::Separator();
-        CommandItem("Build & Refresh", EditorCommand::Refresh, snapshot, actions);
-        CommandItem("Cancel operation", EditorCommand::Cancel, snapshot, actions);
+        result.focusCatalog = ImGui::MenuItem("Find preview", "Ctrl+P");
+        EditorCommandMenuItem(EditorCommand::Open, snapshot, actions);
         ImGui::Separator();
         result.quit = ImGui::MenuItem("Exit");
         ImGui::EndMenu();
     }
-    if (ImGui::BeginMenu("Options")) {
+    if (ImGui::BeginMenu("Preview")) {
+        EditorCommandMenuItem(EditorPrimaryCommand(snapshot), snapshot, actions);
+        if (snapshot.profiler.busy) EditorCommandMenuItem(EditorCommand::Stop, snapshot, actions);
+        EditorCommandMenuItem(EditorCommand::Pause, snapshot, actions);
+        EditorCommandMenuItem(EditorCommand::Step, snapshot, actions);
+        EditorCommandMenuItem(EditorCommand::Reset, snapshot, actions);
+        ImGui::Separator();
         LanguageMenu(snapshot, actions);
-        ImGui::Separator();
-        ImGui::TextDisabled("Font size");
-        bool first = true;
-        for (const int percent : EditorFontSizes) {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(percent == fontSize ? ImGuiCol_HeaderActive
-                                                                                                : ImGuiCol_Button));
-            const auto label = std::to_string(percent) + "%";
-            if (!first) ContinueEditorToolbar(label.c_str());
-            if (ImGui::Button(label.c_str())) fontSize = percent;
-            ImGui::PopStyleColor();
-            first = false;
-        }
-        ImGui::Separator();
-        ImGui::MenuItem("Preview performance metrics", nullptr, &preferences.showMetrics);
-        ImGui::MenuItem("Follow output", nullptr, &preferences.followOutput);
         ImGui::EndMenu();
     }
-    if (ImGui::BeginMenu("Windows")) {
-        constexpr std::array Names{"Project", "View", "Inspector", "Output", "Profiler"};
-        const auto unread = snapshot.diagnostics.UnreadErrors();
-        for (std::size_t i = 0; i < Names.size(); ++i) {
-            const auto label = i == static_cast<std::size_t>(EditorPanel::Output) && unread
-                                   ? std::string(Names[i]) + " (" + std::to_string(unread) + " errors)"
-                                   : std::string(Names[i]);
-            ImGui::MenuItem(label.c_str(), nullptr, &preferences.visible[i]);
-        }
+    if (ImGui::BeginMenu("View")) {
+        for (const auto& panel : EditorPanels)
+            ImGui::MenuItem(panel.title, nullptr, &preferences.Visible(panel.id));
         ImGui::Separator();
         result.toggleMaximize = ImGui::MenuItem(maximized ? "Restore workspace" : "Focus preview");
-        result.restoreLayout = ImGui::MenuItem("Restore default layout");
+        result.toggleBottom = ImGui::MenuItem("Toggle bottom tools", "Ctrl+J");
+        if (ImGui::BeginMenu("Layout")) {
+            for (const auto& layout : EditorLayouts)
+                if (ImGui::MenuItem(layout.title, nullptr, preferences.layout == layout.id,
+                                    layout.id != EditorWorkspaceLayout::Custom || !preferences.customDocking.empty()))
+                    result.layout = layout.id;
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Interface scale")) {
+            for (const int percent : EditorFontSizes) {
+                const auto label = std::to_string(percent) + "%";
+                if (ImGui::MenuItem(label.c_str(), nullptr, fontSize == percent)) fontSize = percent;
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::MenuItem("Preview performance metrics", nullptr, &preferences.showMetrics);
         ImGui::EndMenu();
     }
-    if (snapshot.diagnostics.UnreadErrors()) {
-        ImGui::TextColored(EditorPhaseColor(EditorPhase::Error), "%zu errors", snapshot.diagnostics.UnreadErrors());
+    if (ImGui::BeginMenu("Tools")) {
+        EditorCommandMenuItem(EditorCommand::Refresh, snapshot, actions);
+        result.openCommands = ImGui::MenuItem("Command palette", "Ctrl+Shift+P");
+        ImGui::EndMenu();
     }
     ImGui::EndMainMenuBar();
     return result;
 }
-float EditorShell::Status(const EditorSnapshot& snapshot, ImVec2 position, float width) const {
-    const auto& style = ImGui::GetStyle();
-    const auto* phase = EditorPhaseLabel(snapshot.phase);
-    const auto status = "| " + snapshot.status;
-    const float contentWidth = std::max(1.0f, width - style.WindowPadding.x * 2);
-    const bool wrap =
-        ImGui::CalcTextSize(phase).x + style.ItemSpacing.x + ImGui::CalcTextSize(status.c_str()).x > contentWidth;
-    const float textHeight =
-        ImGui::GetTextLineHeight() +
-        (wrap ? style.ItemSpacing.y + ImGui::CalcTextSize(status.c_str(), nullptr, false, contentWidth).y : 0.0f);
-    const float height = std::max(ImGui::GetFrameHeight(), textHeight) + style.WindowPadding.y * 2;
+float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
+                           float width) const {
+    const float scale = EditorUiScale();
+    const float height = std::max(32.0f * scale, ImGui::GetFrameHeight() + 4.0f * scale);
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize({width, height});
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8.0f * scale, 2.0f * scale});
+    if (ImGui::Begin("Toolbar###editor.toolbar", nullptr, BarFlags)) DrawEditorPlaybackControls(snapshot, actions);
+    ImGui::End();
+    ImGui::PopStyleVar();
+    return height;
+}
+float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreferences& preferences, ImVec2 position,
+                          float width, EditorShellResult& result) const {
+    const float scale = EditorUiScale();
+    const float height = std::max(24.0f * scale, ImGui::GetTextLineHeight() + 8.0f * scale);
     ImGui::SetNextWindowPos({position.x, position.y - height});
     ImGui::SetNextWindowSize({width, height});
-    ImGui::Begin("Status###editor.status", nullptr, BarFlags);
-    ImGui::TextColored(EditorPhaseColor(snapshot.phase), "%s", phase);
-    if (!wrap) ImGui::SameLine();
-    ImGui::PushTextWrapPos(0);
-    ImGui::TextDisabled("%s", status.c_str());
-    ImGui::PopTextWrapPos();
-    EditorTooltip(snapshot.status.c_str());
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8.0f * scale, 2.0f * scale});
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {6.0f * scale, 2.0f * scale});
+    if (ImGui::Begin("Status###editor.status", nullptr, BarFlags)) {
+        const auto errors = snapshot.diagnostics.UnreadErrors();
+        const auto output =
+            (errors ? "Output (" + std::to_string(errors) + ")" : std::string("Output")) + "###editor.output-status";
+        if (EditorSegment(output.c_str(), preferences.visible[static_cast<std::size_t>(EditorPanel::Output)]))
+            result.bottomPanel = EditorPanel::Output;
+        if (errors) EditorTooltip("Unread errors. Open Output for details.");
+        ImGui::SameLine();
+        if (EditorSegment("Profiler", preferences.visible[static_cast<std::size_t>(EditorPanel::Profiler)]))
+            result.bottomPanel = EditorPanel::Profiler;
+        ImGui::SameLine();
+        const char* phase = snapshot.profiler.busy ? (snapshot.benchmarkCancelPending ? "Canceling benchmark"
+                                                                                      : snapshot.profiler.phase.c_str())
+                                                   : EditorPhaseLabel(snapshot.phase);
+        EditorStatusBadge(phase, EditorPhaseColor(snapshot.profiler.busy ? EditorPhase::Starting : snapshot.phase));
+        ImGui::SameLine();
+        const auto cursor = ImGui::GetCursorScreenPos();
+        const auto available = ImGui::GetContentRegionAvail();
+        if (available.x > ImGui::GetFontSize() * 3.0f) {
+            ImGui::InvisibleButton("status-detail", {available.x, ImGui::GetTextLineHeight()});
+            auto* draw = ImGui::GetWindowDrawList();
+            draw->PushClipRect(cursor, {cursor.x + available.x, cursor.y + ImGui::GetTextLineHeight()}, true);
+            draw->AddText(cursor, ImGui::GetColorU32(ImGuiCol_TextDisabled), snapshot.status.c_str());
+            draw->PopClipRect();
+            EditorTooltip(snapshot.status.c_str());
+        }
+    }
     ImGui::End();
+    ImGui::PopStyleVar(2);
     return height;
 }

@@ -24,6 +24,7 @@ void EditorController::Profile(EditorProfilerCommand command, const Profiler::Re
         if (command == EditorProfilerCommand::Start) {
             if (!_ready || Busy() || !Selected() || !Selected()->benchmark || !_pendingParameters.empty()) return;
             Profiler::ValidateRecipe(recipe);
+            _benchmarkCancelPending = false;
             const auto id = ++_profilerRequest;
             _profiler.Arm(id);
             Send("profiler", {{"operation", "start"},
@@ -34,7 +35,9 @@ void EditorController::Profile(EditorProfilerCommand command, const Profiler::Re
             return;
         }
         if (command == EditorProfilerCommand::Cancel) {
-            if (_ready) Send("profiler", {{"operation", "cancel"}, {"captureId", _profiler.Snapshot().captureId}});
+            if (!_ready || !_profiler.Snapshot().busy || _benchmarkCancelPending) return;
+            Send("profiler", {{"operation", "cancel"}, {"captureId", _profiler.Snapshot().captureId}});
+            _benchmarkCancelPending = true;
             return;
         }
         if (_profiler.Snapshot().busy) return;

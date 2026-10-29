@@ -31,7 +31,7 @@ struct PreviewParameter {
     std::string group;
     std::string description;
     bool choiceButtons = false;
-    int choiceButtonColumns = 0; // Zero selects responsive columns; positive values keep a fixed column count.
+    int choiceButtonColumns = 0; // Zero selects responsive columns; positive values cap columns, shrinking to fit.
     bool numericInput = false;   // Use a text input instead of a slider for numeric parameters.
 };
 

@@ -2,6 +2,9 @@
 #include <imgui.h>
 #include <algorithm>
 #include <array>
+#include <string>
+#include <string_view>
+#include "Editor/Ui/Style/EditorTheme.h"
 
 namespace {
 void DrawWrappedLabel(const char* label, ImVec2 position, ImVec2 size) {
@@ -9,15 +12,122 @@ void DrawWrappedLabel(const char* label, ImVec2 position, ImVec2 size) {
     ImGui::GetWindowDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize(), position,
                                         ImGui::GetColorU32(ImGuiCol_Text), label, nullptr, size.x, &clip);
 }
+std::string ClippedLabel(const char* label, float width) {
+    std::string display = label;
+    if (ImGui::CalcTextSize(label).x <= width) return display;
+    const float suffix = ImGui::CalcTextSize("...").x;
+    if (width < suffix) return {};
+    while (!display.empty() && ImGui::CalcTextSize(display.c_str()).x + suffix > width) {
+        auto end = display.size() - 1;
+        while (end > 0 && (static_cast<unsigned char>(display[end]) & 0xc0) == 0x80)
+            --end;
+        display.resize(end);
+    }
+    return display + "...";
+}
 } // namespace
 void EditorTooltip(const char* text) {
-    if (*text && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+    if (text && *text && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::BeginTooltip();
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 32);
         ImGui::TextUnformatted(text);
         ImGui::PopTextWrapPos();
         ImGui::EndTooltip();
     }
+}
+bool EditorSectionHeader(const char* label, bool defaultOpen, bool forceOpen) {
+    ImGui::PushFont(EditorFont(EditorFontRole::Ui), 0);
+    const float scale = EditorUiScale();
+    ImGui::Dummy({0, 4 * scale});
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4 * scale, 5 * scale});
+    ImGui::PushStyleColor(ImGuiCol_Header, {0, 0, 0, 0});
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered));
+    const auto display = ClippedLabel(label, ImGui::GetContentRegionAvail().x - ImGui::GetTreeNodeToLabelSpacing());
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_CollapsingHeader;
+    if (defaultOpen) flags |= ImGuiTreeNodeFlags_DefaultOpen;
+    if (forceOpen) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+    const bool expanded = ImGui::TreeNodeEx(label, flags, "%s", display.c_str());
+    if (display != label) EditorTooltip(label);
+    const auto start = ImGui::GetItemRectMin();
+    const auto end = ImGui::GetItemRectMax();
+    const float lineStart =
+        start.x + ImGui::GetTreeNodeToLabelSpacing() + ImGui::CalcTextSize(display.c_str()).x + 8 * scale;
+    if (lineStart < end.x - 4 * scale)
+        ImGui::GetWindowDrawList()->AddLine({lineStart, (start.y + end.y) * 0.5f},
+                                            {end.x - 4 * scale, (start.y + end.y) * 0.5f},
+                                            ImGui::GetColorU32(ImGuiCol_Separator));
+    ImGui::PopStyleColor(3);
+    ImGui::PopStyleVar();
+    ImGui::PopFont();
+    return expanded;
+}
+void EditorEmptyState(const char* title, const char* detail) {
+    ImGui::PushFont(EditorFont(EditorFontRole::Ui), 0);
+    ImGui::Dummy({0, 8 * EditorUiScale()});
+    ImGui::PushTextWrapPos(0);
+    ImGui::TextUnformatted(title);
+    if (*detail) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextUnformatted(detail);
+        ImGui::PopStyleColor();
+    }
+    ImGui::PopTextWrapPos();
+    ImGui::PopFont();
+}
+void EditorStatusBadge(const char* label, ImVec4 color) {
+    ImGui::PushFont(EditorFont(EditorFontRole::Ui), 0);
+    const float scale = EditorUiScale();
+    const ImVec2 padding{6 * scale, 3 * scale};
+    const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+    const auto display = ClippedLabel(label, std::max(1.0f, width - padding.x * 2));
+    const ImVec2 size{std::min(width, ImGui::CalcTextSize(display.c_str()).x + padding.x * 2),
+                      ImGui::GetTextLineHeight() + padding.y * 2};
+    const auto position = ImGui::GetCursorScreenPos();
+    ImGui::Dummy(size);
+    auto background = color;
+    background.w = 0.12f;
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->AddRectFilled(position, {position.x + size.x, position.y + size.y}, ImGui::GetColorU32(background),
+                        4 * scale);
+    draw->AddText({position.x + padding.x, position.y + padding.y}, ImGui::GetColorU32(color), display.c_str());
+    if (display != label) EditorTooltip(label);
+    ImGui::PopFont();
+}
+bool EditorSegment(const char* label, bool selected) {
+    ImGui::PushFont(EditorFont(EditorFontRole::Ui), 0);
+    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(selected ? ImGuiCol_Header : ImGuiCol_FrameBg));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(selected ? ImGuiCol_Text : ImGuiCol_TextDisabled));
+    const auto padding = ImGui::GetStyle().FramePadding;
+    const std::string_view fullLabel(label);
+    const std::string visibleLabel(fullLabel.substr(0, fullLabel.find("##")));
+    const float width = std::max(
+        1.0f, std::min(ImGui::GetContentRegionAvail().x, ImGui::CalcTextSize(visibleLabel.c_str()).x + padding.x * 2));
+    const auto display = ClippedLabel(visibleLabel.c_str(), std::max(1.0f, width - padding.x * 2));
+    ImGui::PushID(label);
+    const bool pressed = ImGui::Button("##segment", {width, ImGui::GetFrameHeight()});
+    const auto position = ImGui::GetItemRectMin();
+    DrawWrappedLabel(
+        display.c_str(),
+        {position.x + std::max(0.0f, (width - ImGui::CalcTextSize(display.c_str()).x) * 0.5f), position.y + padding.y},
+        {width, ImGui::GetTextLineHeight()});
+    if (display != visibleLabel) EditorTooltip(visibleLabel.c_str());
+    ImGui::PopID();
+    ImGui::PopStyleColor(2);
+    ImGui::PopFont();
+    return pressed;
+}
+bool EditorIconButton(const char* id, EditorGlyph glyph, const char* tooltip, bool selected) {
+    ImGui::PushID(id);
+    ImGui::PushFont(EditorFont(EditorFontRole::Ui), 0);
+    ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImGui::GetStyleColorVec4(ImGuiCol_Header) : ImVec4{0, 0, 0, 0});
+    const float size = ImGui::GetFrameHeight();
+    const bool pressed = ImGui::Button(EditorGlyphText(glyph), {size, size});
+    EditorTooltip(tooltip);
+    ImGui::PopStyleColor();
+    ImGui::PopFont();
+    ImGui::PopID();
+    return pressed;
 }
 void ContinueEditorToolbar(const char* label, bool separateGroup) {
     ContinueEditorToolbar(ImGui::CalcTextSize(label).x + ImGui::GetStyle().FramePadding.x * 2, separateGroup);
@@ -28,16 +138,21 @@ void ContinueEditorToolbar(float itemWidth, bool separateGroup) {
     const float right = ImGui::GetItemRectMax().x + spacing + itemWidth;
     if (right <= ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x) ImGui::SameLine(0, spacing);
 }
-bool EditorWrappedButton(const char* label) {
+bool EditorSingleLineButton(const char* label) {
     const auto padding = ImGui::GetStyle().FramePadding;
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
-    const float wrapWidth = std::max(1.0f, width - padding.x * 2);
-    const auto textSize = ImGui::CalcTextSize(label, nullptr, false, wrapWidth);
+    const std::string_view fullLabel(label);
+    const std::string visibleLabel(fullLabel.substr(0, fullLabel.find("##")));
+    const auto display = ClippedLabel(visibleLabel.c_str(), std::max(1.0f, width - padding.x * 2));
     ImGui::PushID(label);
-    const bool pressed = ImGui::Button("##wrapped", {width, textSize.y + padding.y * 2});
+    const bool pressed = ImGui::Button("##single-line", {width, ImGui::GetFrameHeight()});
     const auto position = ImGui::GetItemRectMin();
-    DrawWrappedLabel(label, {position.x + std::max(padding.x, (width - textSize.x) * 0.5f), position.y + padding.y},
-                     {wrapWidth, textSize.y});
+    const ImVec4 clip{position.x, position.y, position.x + width, position.y + ImGui::GetFrameHeight()};
+    ImGui::GetWindowDrawList()->AddText(
+        ImGui::GetFont(), ImGui::GetFontSize(),
+        {position.x + std::max(0.0f, (width - ImGui::CalcTextSize(display.c_str()).x) * 0.5f), position.y + padding.y},
+        ImGui::GetColorU32(ImGuiCol_Text), display.c_str(), nullptr, 0, &clip);
+    if (display != visibleLabel) EditorTooltip(visibleLabel.c_str());
     ImGui::PopID();
     return pressed;
 }
@@ -45,9 +160,10 @@ bool EditorWrappedSelectable(const char* label, bool selected, ImGuiSelectableFl
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
     const auto textSize = ImGui::CalcTextSize(label, nullptr, false, width);
     const auto position = ImGui::GetCursorScreenPos();
+    const float height = std::max(ImGui::GetFrameHeight(), textSize.y + 4 * EditorUiScale());
     ImGui::PushID(label);
-    const bool pressed = ImGui::Selectable("##wrapped", selected, flags, {width, textSize.y});
-    DrawWrappedLabel(label, position, {width, textSize.y});
+    const bool pressed = ImGui::Selectable("##wrapped", selected, flags, {width, height});
+    DrawWrappedLabel(label, {position.x, position.y + (height - textSize.y) * 0.5f}, {width, textSize.y});
     ImGui::PopID();
     return pressed;
 }
@@ -112,15 +228,14 @@ bool EditorParameterWidget(const PreviewParameter& parameter, PreviewValue& valu
     case PreviewParameterKind::Choice: {
         bool changed = false;
         if (parameter.choiceButtons) {
-            int columns = parameter.choiceButtonColumns;
-            if (columns == 0) {
-                const auto& style = ImGui::GetStyle();
-                float minimumWidth = 0.0f;
-                for (const auto& choice : parameter.choices)
-                    minimumWidth = std::max(minimumWidth, ImGui::CalcTextSize(choice.c_str()).x);
-                minimumWidth += style.FramePadding.x * 2 + style.CellPadding.x * 2;
-                columns = ImGui::GetContentRegionAvail().x >= minimumWidth * 2 ? 2 : 1;
-            }
+            const auto& style = ImGui::GetStyle();
+            float minimumWidth = 0.0f;
+            for (const auto& choice : parameter.choices)
+                minimumWidth = std::max(minimumWidth, ImGui::CalcTextSize(choice.c_str()).x);
+            minimumWidth += style.FramePadding.x * 2 + style.CellPadding.x * 2;
+            int columns = parameter.choiceButtonColumns > 0 ? parameter.choiceButtonColumns : 2;
+            while (columns > 1 && ImGui::GetContentRegionAvail().x < minimumWidth * static_cast<float>(columns))
+                --columns;
             if (ImGui::BeginTable("##choices", columns,
                                   ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoPadOuterX |
                                       ImGuiTableFlags_NoSavedSettings)) {
@@ -129,7 +244,7 @@ bool EditorParameterWidget(const PreviewParameter& parameter, PreviewValue& valu
                     const bool selected = choice == std::get<std::string>(value);
                     if (selected)
                         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-                    if (EditorWrappedButton(choice.c_str()) && !selected) {
+                    if (EditorSingleLineButton(choice.c_str()) && !selected) {
                         value = choice;
                         changed = true;
                     }

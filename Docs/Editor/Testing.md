@@ -15,27 +15,37 @@ Gerçek pencere/input/görsel kontrolleri kullanıcı yapar; yalnız değişen b
 
 ## Editör arayüzü
 
-1. Panelleri dock et / sekmede birleştir; kapatıp Windows menüsünden aç. Live preview'u büyüt / geri dön.
-2. %75 / %100 / %125 / %150 / %200 yazı boyutu ve monitör DPI değişimi; dar panellerde uzun adlar satıra bölünüyor.
-3. Favori yıldızı içerik açmıyor; Recent yalnız başarılı açılışları sıralıyor.
-4. Inspector grupları, açıklamalar, pending / ret ve Default; OnReset için Reset.
-5. Output filtre / arama / Ctrl seçim / kopyalama / temizleme; yukarı kaydırınca takip duruyor; gizliyken hata rozeti.
-6. Yeniden açılışta tercihler dönüyor; büyütülmüş halde kapatmak önceki düzeni koruyor.
+1. İlk tercihlerde Develop: Project / View / Inspector açık, Output / Profiler kapalı. Panelleri dock et / sekmede
+   birleştir; kapatıp View menüsünden aç. View menüsüyle Fit / Focus / 100%, zoom ve geçici büyüt / geri dön çalışıyor.
+2. %75 / %100 / %125 / %150 arayüz ölçeği ve monitör DPI değişimi; dar panellerde uzun adlar sarılıyor veya
+   tooltip ile kısalıyor. Toolbar'ın ikincil eylemleri taşma menüsünde; yatay toolbar kaydırması yok.
+3. Ctrl+P Project aramasını, gizliyken de, açıp odaklıyor. Favori yıldızı içerik açmıyor; Recent yalnız başarılı
+   açılışları sıralıyor. Boş arama / favori / geçmiş durumları anlamlı açıklama gösteriyor.
+4. Inspector arama / Modified only, açıklamalar, değişmiş değer işareti, Pending / ret ve tek alan sıfırlama;
+   seçenek grupları tam genişliği kullanır. Paneli daraltınca Phase gibi üçlü seçenekler daha az sütuna iner;
+   normal kontroller etiketin altına geçer. Düğmelerin metni dikey harf sütunlarına dönüşmez.
+   OnReset için Reset. İçerik tanımındaki grup, primary ve disabled metadata'sı korunuyor.
+5. Output sayaçlı filtre / arama / Ctrl seçim / Copy seçili veya filtrelenmiş / Clear; yukarı kaydırınca takip
+   duruyor. Kapalıyken hata sayacı görünüyor; açılınca doğru panel öne geliyor.
+6. Develop / Inspect / Profile arasında geçiş son özel düzeni silmiyor; Last custom layout geri getiriyor.
+   Ctrl+J ve alt çubuk son aracı açıp kapatıyor. Yeniden açılışta tercihler dönüyor; büyütülmüş halde kapatmak
+   önceki düzeni koruyor.
 7. Önizleme sekmesi gizliyken, başka panel arkasındayken veya menü açıkken ürüne input gitmiyor.
-8. Buff Visuals: Gain / refresh tam genişlikte; Replay / End effects ve Special action / Combine buffs çiftleri
-   altta. Daraltınca tek sütun; bütün eylemler ve disabled durumları korunuyor.
-9. Buff Visuals, Card Inspector, UI Buttons ve Game Flows: iki sütun hizası, uzun etiket / seçenek ipuçları,
-   sayı / renk düzenleme, klavye odağı, bölüm açma / kapama ve sağa hizalı canlı değerler. %75..%200 ve dar
-   Inspector'da taşma yok; Default ve uygulama zamanı kontrol sütununda okunuyor.
+8. Primary eylem tam genişlikte; ikincil eylemler yeterli genişlikte iki, dar panelde tek sütun. Uzun etiket /
+   seçenek ipuçları, sayı / renk düzenleme, bölüm açma / kapama ve sağa hizalı canlı değerler taşmıyor.
+9. Ctrl+Shift+P ile paleti aç: arama, yukarı / aşağı, Enter, Escape, kapalı komut nedeni, panel / layout seçimi.
+   F5 / F6 / F7 / Ctrl+R / Ctrl+Shift+B toolbar ve menüyle aynı kullanılabilirliği izliyor; metin / popup
+   sırasında çalışmıyor ve ürüne sızmıyor.
 
 ## Altyapı
 
 1. Debug derle; uyarı / hata yok. İkinci görünür worker penceresi / konsolu yok.
 2. Görüntü merkez / köşe / kenar boşluğu tıklamaları; dışarı sürükleyip bırakma; panel, pencere ve DPI değişimi.
 3. Inspector'a yazarken klavye önizlemeye gitmiyor; alt-tab sonrası basılı girdi temizleniyor.
-4. Tek Open / Stop düğmesi önizleme açılınca (Pause dahil) Stop, kapandıktan sonra Open gösteriyor; açılışta Stop kullanılabiliyor. Stop / Open / Reset tekrarlarında editör PID'i sabit; eski görüntü canlı sayılmıyor.
+4. Ana düğme kapalıyken Open, hazır / pause'dayken Stop, açılış / katalog / derleme / benchmark sırasında Cancel,
+   kapanırken devre dışı Stop gösteriyor. Stop / Open / Reset tekrarlarında editör PID'i sabit; eski görüntü canlı sayılmıyor.
 5. Derleme hatası, eksik exe, worker çökmesi, build iptali ve editör kapanışı: orphan süreç kalmıyor.
-6. Options'taki FPS ve readback / publish / transfer ölçüleri kaydediliyor.
+6. View içindeki performans ölçüsü tercihi kaydediliyor; FPS ve readback / publish / transfer değerleri görünüyor.
 
 ## Profiler
 
@@ -45,3 +55,4 @@ sırası, iptal, yürütme ayarı snapshot/restorasyonu, benchmark metadata roun
 mesajları kontrol edilir. Testler gerçek GL/FPS sonucu sabitlemez.
 Bu testleri derleme/çalıştırma geliştiriciye aittir. Runtime ayar restorasyonu ve GPU backend'i için
 [Profiler manuel kabul listesi](Profiler.md#manual-acceptance) kullanılır.
+UI kontrolünde Advanced benchmark settings, Glow override, tek Export menüsü ve benchmark iptali de seçilir.

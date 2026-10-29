@@ -100,33 +100,31 @@ void EditorApplication::DrawWindow() const {
     _ui.BeginFrame(_fontSize);
     // Defer mutations until all panels have consumed the same borrowed snapshot.
     std::vector<std::function<void()>> commands;
+    bool editorInput = false;
     const EditorUiActions actions{
         [&](EditorCommand command) {
-            commands.emplace_back([this, command] {
-                if (command != EditorCommand::Pause) {
-                    _controller.Input(_router.Clear());
-                    _workspace.ReleaseInput();
-                }
-                _controller.Execute(command);
-            });
+            editorInput = true;
+            commands.emplace_back([this, command] { _controller.Execute(command); });
         },
         [&](const std::string& id) {
-            commands.emplace_back([this, id] {
-                _controller.Input(_router.Clear());
-                _workspace.ReleaseInput();
-                _controller.Select(id);
-            });
+            editorInput = true;
+            commands.emplace_back([this, id] { _controller.Select(id); });
         },
         [&](const std::string& id, const PreviewValue& value) {
             commands.emplace_back([this, id, value] { _controller.Parameter(id, value); });
         },
-        [&](const std::string& id) { commands.emplace_back([this, id] { _controller.Action(id); }); },
+        [&](const std::string& id) {
+            editorInput = true;
+            commands.emplace_back([this, id] { _controller.Action(id); });
+        },
         [&] { commands.emplace_back([this] { _controller.ClearOutput(); }); },
         [&] { commands.emplace_back([this] { _controller.AcknowledgeOutput(); }); },
         [&](double speed, bool step) {
+            editorInput = true;
             commands.emplace_back([this, speed, step] { _controller.Playback(speed, step); });
         },
         [&](EditorProfilerCommand command, Profiler::Recipe recipe, const std::string& file) {
+            editorInput = true;
             commands.emplace_back([this, command, recipe, file] { _controller.Profile(command, recipe, file); });
         }};
     const auto result = _workspace.Draw(_controller.Snapshot(), actions, _display.Image(), _preferences, _fontSize);
@@ -138,7 +136,9 @@ void EditorApplication::DrawWindow() const {
     const bool pointerBlocked =
         popup || !result.interaction.hovered ||
         (ImGui::IsAnyItemActive() && !result.interaction.contentActive && !_router.OwnsPointer());
-    if (result.interaction.viewport.size.x <= 0 || result.interaction.viewport.size.y <= 0)
+    if (editorInput || result.cancelPreviewInput) _workspace.ReleaseInput();
+    if (editorInput || result.cancelPreviewInput || result.interaction.viewport.size.x <= 0 ||
+        result.interaction.viewport.size.y <= 0)
         _controller.Input(_router.Clear());
     else
         _controller.Input(_router.Route(_windowInput, {io.MousePos.x, io.MousePos.y}, result.interaction.viewport,

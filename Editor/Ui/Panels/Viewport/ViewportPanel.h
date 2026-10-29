@@ -27,7 +27,7 @@ public:
     void ReleaseFocus() { _focused = false; }
 
 private:
-    [[nodiscard]] bool Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool maximized);
+    [[nodiscard]] bool Toolbar(bool maximized);
     bool _focused = false;
     int _mode = 1;
     float _zoom = 1.0f;

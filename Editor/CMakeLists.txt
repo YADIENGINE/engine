@@ -12,6 +12,7 @@ target_link_libraries(EngineEditorApi PUBLIC EngineCore)
 engine_warnings(EngineEditorApi)
 
 add_library(EngineEditorSupport STATIC
+    Application/EditorCommandState.cpp
     Internals/Protocol/PreviewProtocol.cpp
     Internals/Protocol/PreviewMessageReader.cpp
     Internals/Session/EditorProject.cpp
@@ -118,6 +119,8 @@ if(ENGINE_BUILD_EDITOR)
     target_compile_definitions(EngineEditorImGui PRIVATE NO_FONT_AWESOME)
     target_link_libraries(EngineEditorImGui PRIVATE Engine)
     add_library(EngineEditorUi STATIC
+        Ui/Commands/EditorCommands.cpp
+        Ui/Commands/EditorCommandPalette.cpp
         Ui/Style/EditorTheme.cpp
         Ui/Widgets/EditorWidgets.cpp
         Ui/Widgets/InspectorWidgets.cpp

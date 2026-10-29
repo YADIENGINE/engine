@@ -5,6 +5,7 @@
 #include <thread>
 #include <utility>
 #include <sstream>
+#include "Editor/Application/EditorCommandState.h"
 #include "Platform/UserData.h"
 #include "Platform/FileStorage.h"
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
@@ -27,8 +28,10 @@ EditorController::EditorController(const std::filesystem::path& projectFile) {
 }
 EditorController::~EditorController() { Shutdown(); }
 void EditorController::Playback(double speed, bool step) {
-    if (_profiler.Snapshot().busy) return;
-    if (!_ready || !std::isfinite(speed) || speed < 0.1 || speed > 4.0 || (step && !_paused)) return;
+    const auto capabilities = Snapshot().capabilities;
+    if (!capabilities.playbackEnabled || (step && !capabilities.Can(EditorCommand::Step)) || !std::isfinite(speed) ||
+        speed < 0.1 || speed > 4.0)
+        return;
     Send("playback", {{"speed", speed}, {"step", step}});
 }
 void EditorController::Log(const std::string& text, EditorLogLevel level, EditorLogSource source) {
@@ -40,20 +43,18 @@ EditorSnapshot EditorController::Snapshot() const {
         (void)request;
         pending.insert(id);
     }
-    EditorCapabilities capabilities;
-    capabilities.enabled = {CanOpen(), _workerActive || _buildActive,   _ready,
-                            _ready,    _project.has_value() && !Busy(), Busy()};
-    if (_profiler.Snapshot().busy) {
-        capabilities.enabled[static_cast<std::size_t>(EditorCommand::Pause)] = false;
-        capabilities.enabled[static_cast<std::size_t>(EditorCommand::Reset)] = false;
-    }
+    const auto phase = _ready ? (_paused ? EditorPhase::Paused : EditorPhase::Ready) : _phase;
+    const bool benchmarkCancelPending = _benchmarkCancelPending && _profiler.Snapshot().busy;
+    const auto capabilities = ResolveEditorCapabilities({_project.has_value(), Selected() != nullptr, _workerActive,
+                                                         _buildActive, _refresh.Busy(), _stopping, _ready, _paused,
+                                                         _profiler.Snapshot().busy, phase, benchmarkCancelPending});
     return {_catalog,
             Selected(),
             _displayed,
             std::move(pending),
             _output,
             capabilities,
-            _ready ? (_paused ? EditorPhase::Paused : EditorPhase::Ready) : _phase,
+            phase,
             _status,
             _ready,
             _ready && _paused,
@@ -66,7 +67,8 @@ EditorSnapshot EditorController::Snapshot() const {
             _inspection,
             _playbackSpeed,
             _profiler.Snapshot(),
-            _hostTransferMs};
+            _hostTransferMs,
+            benchmarkCancelPending};
 }
 void EditorController::Execute(EditorCommand command) {
     if (!Snapshot().capabilities.Can(command)) return;
@@ -77,6 +79,7 @@ void EditorController::Execute(EditorCommand command) {
     case EditorCommand::Reset  : Reset(); break;
     case EditorCommand::Refresh: Refresh(); break;
     case EditorCommand::Cancel : Cancel(); break;
+    case EditorCommand::Step   : Playback(_playbackSpeed, true); break;
     case EditorCommand::Count  : break;
     }
 }
@@ -97,6 +100,7 @@ void EditorController::Invalidate() {
     _ready = false;
     ++_generation;
     _profiler.Reset(_generation);
+    _benchmarkCancelPending = false;
     _nextFrame.reset();
     _captureMilliseconds = 0.0;
     _publishMilliseconds = 0.0;
@@ -154,6 +158,10 @@ void EditorController::Open() {
     }
 }
 void EditorController::RequestStop(AfterStop after) {
+    if (_stopping) {
+        _afterStop = after;
+        return;
+    }
     _failed = false;
     Invalidate();
     _afterStop = after;

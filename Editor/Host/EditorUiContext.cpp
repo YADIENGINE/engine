@@ -12,36 +12,32 @@
 #include "Editor/Ui/Style/EditorTheme.h"
 
 namespace {
-constexpr float BaseFontSize = 13.0f;
-constexpr float BaseIconSize = 11.0f;
+constexpr float BaseFontSize = 14.0f;
+constexpr float BaseIconSize = 13.0f;
 constexpr float DefaultFontPercent = 100.0f;
-constexpr float DefaultFontScale = 1.25f;
+constexpr float DefaultInterfaceScale = 1.25f;
 
-void LoadInspectorLabelFont(ImFontAtlas& atlas) {
-    ImFontConfig labels;
-    labels.SizePixels = BaseFontSize;
-    labels.PixelSnapH = false;
-    // Segoe UI ships with Windows; no project-specific assets or extra font dependency.
+ImFont* LoadEditorSystemFont(ImFontAtlas& atlas, const wchar_t* fileName) {
+    ImFontConfig config;
+    config.SizePixels = BaseFontSize;
+    config.PixelSnapH = false;
+    // Use installed Windows fonts without bundling or depending on project assets.
     std::size_t length = 0;
     if (_wgetenv_s(&length, nullptr, 0, L"WINDIR") == 0 && length > 1) {
         std::wstring directory(length, L'\0');
         if (_wgetenv_s(&length, directory.data(), directory.size(), L"WINDIR") == 0) {
             directory.resize(length - 1);
-            const auto path = std::filesystem::path(directory) / "Fonts" / "segoeui.ttf";
+            const auto path = std::filesystem::path(directory) / "Fonts" / fileName;
             std::error_code error;
-            if (std::filesystem::is_regular_file(path, error) &&
-                atlas.AddFontFromFileTTF(path.string().c_str(), BaseFontSize, &labels))
-                return;
+            if (std::filesystem::is_regular_file(path, error))
+                if (auto* font = atlas.AddFontFromFileTTF(path.string().c_str(), BaseFontSize, &config)) return font;
         }
     }
-    atlas.AddFontDefaultVector(&labels);
+    return atlas.AddFontDefaultVector(&config);
 }
 void LoadEditorFonts(ImFontAtlas& atlas) {
     atlas.Clear();
-    ImFontConfig text;
-    text.SizePixels = BaseFontSize;
-    text.PixelSnapH = false;
-    atlas.AddFontDefaultVector(&text);
+    auto* ui = LoadEditorSystemFont(atlas, L"segoeui.ttf");
 
     static constexpr std::array<ImWchar, 3> IconRange{ICON_MIN_FA, ICON_MAX_FA, 0};
     ImFontConfig icons;
@@ -49,7 +45,8 @@ void LoadEditorFonts(ImFontAtlas& atlas) {
     icons.PixelSnapH = false;
     atlas.AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, static_cast<int>(fa_solid_900_compressed_size),
                                          BaseIconSize, &icons, IconRange.data());
-    LoadInspectorLabelFont(atlas);
+    auto* technical = LoadEditorSystemFont(atlas, L"consola.ttf");
+    RegisterEditorFonts(ui, technical);
 }
 void FilterFontTextures(const ImDrawList*, const ImDrawCmd*) {
     const auto* textures = ImGui::GetDrawData()->Textures;
@@ -75,10 +72,13 @@ EditorUiContext::EditorUiContext() {
     io.ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_ViewportsEnable);
     io.ConfigWindowsMoveFromTitleBarOnly = true;
 }
-EditorUiContext::~EditorUiContext() { rlImGuiShutdown(); }
+EditorUiContext::~EditorUiContext() {
+    ClearEditorFonts();
+    rlImGuiShutdown();
+}
 void EditorUiContext::BeginFrame(int fontSize) {
     const float dpi = std::max(1.0f, GetWindowScaleDPI().x);
-    const float fontScale = static_cast<float>(fontSize) / DefaultFontPercent * DefaultFontScale;
+    const float fontScale = static_cast<float>(fontSize) / DefaultFontPercent * DefaultInterfaceScale;
     const float scale = dpi * fontScale;
     auto& style = ImGui::GetStyle();
     if (scale != _scale) {

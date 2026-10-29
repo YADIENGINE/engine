@@ -3,12 +3,16 @@
 #include <algorithm>
 #include <cfloat>
 #include <string>
+#include "Editor/Ui/Commands/EditorCommands.h"
+#include "Editor/Ui/Style/EditorTheme.h"
+#include "Editor/Ui/Widgets/EditorWidgets.h"
 
 namespace {
 void StatisticsRow(const char* name, const Profiler::Statistics& stats) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(name);
+    ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
     for (const double value : {stats.mean, stats.median, stats.p95, stats.p99, stats.maximum}) {
         ImGui::TableNextColumn();
         if (stats.count)
@@ -16,11 +20,13 @@ void StatisticsRow(const char* name, const Profiler::Statistics& stats) {
         else
             ImGui::TextDisabled("Unavailable");
     }
+    ImGui::PopFont();
 }
 void Summary(const Profiler::Summary& summary) {
     ImGui::Text("Worker FPS %.1f | samples %zu | GPU samples %zu / %zu", summary.fps, summary.frame.count,
                 summary.gpu.count, summary.frame.count);
-    if (ImGui::BeginTable("durations", 6, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollX)) {
+    if (ImGui::BeginTable("durations", 6,
+                          ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_ScrollX)) {
         for (const auto* label : {"Metric (ms)", "Mean", "Median", "P95", "P99", "Max"})
             ImGui::TableSetupColumn(label);
         ImGui::TableHeadersRow();
@@ -40,7 +46,8 @@ void Comparison(const Profiler::Comparison& comparison) {
     else
         for (const auto& reason : comparison.reasons)
             ImGui::BulletText("%s", reason.c_str());
-    if (ImGui::BeginTable("comparison", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollX)) {
+    if (ImGui::BeginTable("comparison", 5,
+                          ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_ScrollX)) {
         ImGui::TableSetupColumn("Metric");
         ImGui::TableSetupColumn("A / baseline");
         ImGui::TableSetupColumn("B / current");
@@ -51,6 +58,7 @@ void Comparison(const Profiler::Comparison& comparison) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(label);
+            ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
             ImGui::TableNextColumn();
             ImGui::Text("%.3f", a);
             ImGui::TableNextColumn();
@@ -62,6 +70,7 @@ void Comparison(const Profiler::Comparison& comparison) {
                 ImGui::Text("%+.2f%%", (b - a) * 100.0 / a);
             else
                 ImGui::TextUnformatted("--");
+            ImGui::PopFont();
         };
         row("Worker FPS", comparison.baseline.fps, comparison.current.fps);
         row("Frame median ms", comparison.baseline.frame.median, comparison.current.frame.median);
@@ -85,10 +94,24 @@ void Comparison(const Profiler::Comparison& comparison) {
 } // namespace
 void ProfilerPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     if (!actions.profiler) return;
+    if (_glowGeneration != snapshot.generation) {
+        _glowGeneration = snapshot.generation;
+        _glow = -1;
+    }
     const auto& profiler = snapshot.profiler;
-    ImGui::Text("%s | %s", profiler.phase.c_str(),
-                profiler.gpuSupported ? "GPU timer supported" : "GPU unavailable / inactive");
-    if (!profiler.error.empty()) ImGui::TextWrapped("%s", profiler.error.c_str());
+    const auto phase = !profiler.error.empty() ? EditorPhase::Error
+                       : profiler.busy         ? EditorPhase::Building
+                       : snapshot.ready        ? EditorPhase::Ready
+                                               : EditorPhase::Stopped;
+    EditorStatusBadge(profiler.phase.c_str(), EditorPhaseColor(phase));
+    ContinueEditorToolbar("GPU timer supported");
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextDisabled("%s", profiler.gpuSupported ? "GPU timer supported" : "GPU unavailable / inactive");
+    if (!profiler.error.empty()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorLevelColor(EditorLogLevel::Error));
+        ImGui::TextWrapped("%s", profiler.error.c_str());
+        ImGui::PopStyleColor();
+    }
     if (ImGui::BeginTabBar("profiler-tabs")) {
         if (ImGui::BeginTabItem("Live")) {
             Live(snapshot, actions);
@@ -111,36 +134,49 @@ void ProfilerPanel::Live(const EditorSnapshot& snapshot, const EditorUiActions& 
     if (ImGui::Checkbox("Record live", &enabled))
         actions.profiler(enabled ? EditorProfilerCommand::Enable : EditorProfilerCommand::Disable, {}, {});
     ImGui::EndDisabled();
-    ImGui::Text("Stream FPS %.1f | readback %.2f | publish %.2f | host upload %.2f ms", snapshot.streamFps,
-                snapshot.captureMs, snapshot.publishMs, snapshot.hostTransferMs);
+    ImGui::TextWrapped("Stream FPS %.1f | readback %.2f | publish %.2f | host upload %.2f ms", snapshot.streamFps,
+                       snapshot.captureMs, snapshot.publishMs, snapshot.hostTransferMs);
     ImGui::TextWrapped("Live timing includes preview transport and the worker frame limit. Use Benchmarks for "
                        "controlled performance comparisons.");
-    if (snapshot.profiler.liveSummary) Summary(*snapshot.profiler.liveSummary);
+    if (snapshot.profiler.liveSummary)
+        Summary(*snapshot.profiler.liveSummary);
+    else
+        EditorEmptyState("No live samples", "Enable Record live while a preview is running to inspect timing.");
     if (snapshot.profiler.live) Frames(*snapshot.profiler.live);
 }
 void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     ImGui::BeginDisabled(snapshot.busy);
-    const char* selected = snapshot.selected ? snapshot.selected->name.c_str() : "Choose benchmark";
+    const char* selected =
+        snapshot.selected && snapshot.selected->benchmark ? snapshot.selected->name.c_str() : "Choose benchmark";
     if (ImGui::BeginCombo("Scenario", selected)) {
         for (const auto& entry : snapshot.catalog) {
             if (!entry.benchmark) continue;
-            if (ImGui::Selectable(entry.name.c_str(), snapshot.selected && entry.id == snapshot.selected->id))
+            if (ImGui::Selectable(entry.name.c_str(), snapshot.selected && entry.id == snapshot.selected->id)) {
                 actions.select(entry.id);
+                actions.command(EditorCommand::Open);
+            }
         }
         ImGui::EndCombo();
     }
-    ImGui::BeginDisabled(!snapshot.capabilities.Can(EditorCommand::Open));
-    if (ImGui::Button("Open scenario")) actions.command(EditorCommand::Open);
-    ImGui::EndDisabled();
-    ImGui::InputInt("Warmup frames", &_recipe.warmupFrames);
-    ImGui::InputInt("Measured frames", &_recipe.measureFrames);
-    ImGui::InputInt("Pairs", &_recipe.pairs);
+    if (EditorSectionHeader("Advanced benchmark settings", false)) {
+        ImGui::InputInt("Warmup frames", &_recipe.warmupFrames);
+        ImGui::InputInt("Measured frames", &_recipe.measureFrames);
+        ImGui::InputInt("Pairs", &_recipe.pairs);
+    }
     ImGui::BeginDisabled(!snapshot.ready);
-    if (ImGui::Button("Glow Full")) actions.profiler(EditorProfilerCommand::GlowFull, {}, {});
-    ImGui::SameLine();
-    if (ImGui::Button("Glow Reduced")) actions.profiler(EditorProfilerCommand::GlowReduced, {}, {});
-    ImGui::SameLine();
-    if (ImGui::Button("Glow Off")) actions.profiler(EditorProfilerCommand::GlowOff, {}, {});
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Glow override");
+    EditorTooltip("Apply a preview glow quality override. The highlight shows the last override requested here.");
+    constexpr std::array GlowLabels{"Full", "Reduced", "Off"};
+    constexpr std::array GlowCommands{EditorProfilerCommand::GlowFull, EditorProfilerCommand::GlowReduced,
+                                      EditorProfilerCommand::GlowOff};
+    for (int i = 0; i < static_cast<int>(GlowLabels.size()); ++i) {
+        ContinueEditorToolbar(GlowLabels[static_cast<std::size_t>(i)]);
+        if (EditorSegment(GlowLabels[static_cast<std::size_t>(i)], _glow == i)) {
+            _glow = i;
+            actions.profiler(GlowCommands[static_cast<std::size_t>(i)], {}, {});
+        }
+    }
     ImGui::EndDisabled();
     _recipe.warmupFrames = std::clamp(_recipe.warmupFrames, 0, 10000);
     _recipe.measureFrames = std::clamp(_recipe.measureFrames, 2, 10000);
@@ -155,7 +191,7 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
     if (snapshot.profiler.busy) {
         ImGui::Text("Run %zu / %zu | frame %zu / %zu", snapshot.profiler.run + 1, snapshot.profiler.runs,
                     snapshot.profiler.frame, snapshot.profiler.target);
-        if (ImGui::Button("Cancel benchmark")) actions.profiler(EditorProfilerCommand::Cancel, {}, {});
+        EditorCommandButton(EditorCommand::Cancel, snapshot, actions, true);
     }
     if (snapshot.profiler.variants) Comparison(*snapshot.profiler.variants);
     if (snapshot.profiler.result) {
@@ -191,7 +227,7 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
             }
         }
         if (ImGui::BeginTable("repeats", 6,
-                              ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollX)) {
+                              ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_ScrollX)) {
             for (const auto* label : {"Variant", "Repeat", "FPS", "Median ms", "P95 ms", "GPU mean ms"})
                 ImGui::TableSetupColumn(label);
             ImGui::TableHeadersRow();
@@ -225,9 +261,13 @@ void ProfilerPanel::Compare(const EditorSnapshot& snapshot, const EditorUiAction
     ImGui::BeginDisabled(snapshot.profiler.busy);
     ImGui::BeginDisabled(!snapshot.profiler.result);
     if (ImGui::Button("Save Baseline")) actions.profiler(EditorProfilerCommand::SaveBaseline, {}, _filename.data());
-    ImGui::SameLine();
-    if (ImGui::Button("Export JSON")) actions.profiler(EditorProfilerCommand::ExportJson, {}, _filename.data());
-    if (ImGui::Button("Export Markdown")) actions.profiler(EditorProfilerCommand::ExportMarkdown, {}, _filename.data());
+    ContinueEditorToolbar("Export");
+    if (ImGui::Button("Export")) ImGui::OpenPopup("export-report");
+    if (ImGui::BeginPopup("export-report")) {
+        if (ImGui::MenuItem("JSON")) actions.profiler(EditorProfilerCommand::ExportJson, {}, _filename.data());
+        if (ImGui::MenuItem("Markdown")) actions.profiler(EditorProfilerCommand::ExportMarkdown, {}, _filename.data());
+        ImGui::EndPopup();
+    }
     ImGui::EndDisabled();
     if (ImGui::Button("Compare with Baseline"))
         actions.profiler(EditorProfilerCommand::CompareBaseline, {}, _filename.data());
@@ -264,7 +304,7 @@ void ProfilerPanel::Frames(const Profiler::Capture& capture) {
         ImGui::Text("GPU %.3f ms", *frame.gpuMs);
     else
         ImGui::TextDisabled("GPU unavailable for this frame");
-    if (ImGui::BeginTable("selected-frame", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+    if (ImGui::BeginTable("selected-frame", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH)) {
         ImGui::TableSetupColumn("CPU scope");
         ImGui::TableSetupColumn("Inclusive ms");
         ImGui::TableSetupColumn("Self ms");

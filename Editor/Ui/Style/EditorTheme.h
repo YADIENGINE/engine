@@ -2,11 +2,14 @@
 #include <imgui.h>
 #include "Editor/Application/EditorPresentation.h"
 
-enum class EditorGlyph { Play, Pause, Stop, Reset, Build, Cancel, Star, Expand, Restore };
+enum class EditorGlyph { Play, Pause, Stop, Reset, Build, Cancel, Star, Expand, Restore, More, Clear, Step };
+enum class EditorFontRole { Ui, Technical };
 void ApplyEditorTheme();
-// The host keeps the existing technical font first and appends the Inspector label font.
-[[nodiscard]] ImFont* EditorInspectorLabelFont();
-[[nodiscard]] ImFont* EditorInspectorValueFont();
+// The single host owns these non-owning roles and clears them before its ImGui context is destroyed.
+void RegisterEditorFonts(ImFont* ui, ImFont* technical);
+void ClearEditorFonts();
+[[nodiscard]] ImFont* EditorFont(EditorFontRole role);
+[[nodiscard]] float EditorUiScale();
 [[nodiscard]] ImVec4 EditorPhaseColor(EditorPhase phase);
 [[nodiscard]] ImVec4 EditorLevelColor(EditorLogLevel level);
 [[nodiscard]] const char* EditorPhaseLabel(EditorPhase phase);

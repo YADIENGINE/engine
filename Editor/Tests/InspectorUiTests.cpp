@@ -4,6 +4,32 @@
 #include <memory>
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
 #include "Editor/Ui/Style/EditorTheme.h"
+#include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "Editor/Ui/Widgets/InspectorWidgets.h"
+
+TEST_CASE("Editor.FontRoles.FollowTheRegisteredContext", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> editor(ImGui::CreateContext(),
+                                                                                 ImGui::DestroyContext);
+    auto* ui = ImGui::GetIO().Fonts->AddFontDefaultVector();
+    auto* technical = ImGui::GetIO().Fonts->AddFontDefaultVector();
+    RegisterEditorFonts(ui, technical);
+    CHECK(EditorFont(EditorFontRole::Ui) == ui);
+    CHECK(EditorFont(EditorFontRole::Technical) == technical);
+    {
+        const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> fixture(ImGui::CreateContext(),
+                                                                                      ImGui::DestroyContext);
+        ImGui::SetCurrentContext(fixture.get());
+        auto& io = ImGui::GetIO();
+        io.FontDefault = io.Fonts->AddFontDefaultVector();
+        CHECK(EditorFont(EditorFontRole::Ui) == io.FontDefault);
+        CHECK(EditorFont(EditorFontRole::Technical) == io.FontDefault);
+        ClearEditorFonts();
+    }
+    ImGui::SetCurrentContext(editor.get());
+    CHECK(EditorFont(EditorFontRole::Technical) == technical);
+    ClearEditorFonts();
+    CHECK(EditorFont(EditorFontRole::Technical) == ui);
+}
 
 TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
@@ -12,8 +38,7 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
     io.IniFilename = nullptr;
     io.LogFilename = nullptr;
     io.DisplaySize = {1600, 1600};
-    io.Fonts->AddFontDefaultVector();
-    io.Fonts->AddFontDefaultVector();
+    io.FontDefault = io.Fonts->AddFontDefaultVector();
     unsigned char* pixels = nullptr;
     int atlasWidth = 0;
     int atlasHeight = 0;
@@ -43,6 +68,12 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
     buttons.label = "Type";
     buttons.choiceButtons = true;
     definition.parameters.push_back(buttons);
+    PreviewParameter phase{"phase", "Phase", PreviewParameterKind::Choice, std::string("Enter")};
+    phase.choices = {"Enter", "Phase 2", "Final"};
+    phase.choiceButtons = true;
+    phase.choiceButtonColumns = 3;
+    phase.apply = PreviewApplyMode::NextAction;
+    definition.parameters.push_back(phase);
     definition.actions = {{"replay", "Replay"},
                           {"end", "End effects"},
                           {"gain", "Gain / refresh", "", true},
@@ -64,8 +95,8 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
     EditorUiActions actions;
     actions.parameter = [&](const std::string&, const PreviewValue&) { ++commands; };
     actions.action = [&](const std::string&) { ++commands; };
-    const InspectorPanel panel;
-    for (const float scale : std::array{0.75f, 1.0f, 2.0f}) {
+    InspectorPanel panel;
+    for (const float scale : std::array{0.9375f, 1.25f, 2.5f}) {
         ImGui::GetStyle().FontScaleMain = scale;
         for (const float width : std::array{160.0f, 312.0f, 520.0f}) {
             CAPTURE(scale, width);
@@ -84,4 +115,54 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
     }
     CHECK(commands == 0);
     CHECK(parameters == before);
+}
+
+TEST_CASE("Editor.Inspector.NarrowControlsKeepReadableHeight", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {1200, 1600};
+    io.FontDefault = io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int atlasWidth = 0, atlasHeight = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &atlasWidth, &atlasHeight);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyEditorTheme();
+    PreviewParameter choices{"phase", "Phase", PreviewParameterKind::Choice, std::string("First phase")};
+    choices.choices = {"First phase", "Second phase", "Final phase"};
+    choices.choiceButtons = true;
+    choices.choiceButtonColumns = 3;
+    auto value = choices.initial;
+    const std::array actions{PreviewAction{"start", "Start the selected phase again", "", true}};
+    int commands = 0;
+    for (const float scale : std::array{0.9375f, 1.25f, 2.5f}) {
+        ImGui::GetStyle().FontScaleMain = scale;
+        for (const float width : std::array{160.0f, 320.0f}) {
+            CAPTURE(scale, width);
+            ImGui::NewFrame();
+            ImGui::SetNextWindowSize({width, 1500});
+            ImGui::Begin("Narrow controls", nullptr, ImGuiWindowFlags_NoCollapse);
+            BeginInspectorStyle();
+            const float line = ImGui::GetFrameHeightWithSpacing();
+            CHECK_FALSE(EditorSingleLineButton("A long action label that cannot fit in one narrow column"));
+            CHECK(ImGui::GetItemRectSize().y <= line);
+            CHECK_FALSE(EditorParameterWidget(choices, value));
+            // Three choices may occupy three rows; individual labels never add extra rows.
+            CHECK(ImGui::GetItemRectSize().y <=
+                  line * static_cast<float>(choices.choices.size()) + ImGui::GetStyle().CellPadding.y * 2);
+            const float before = ImGui::GetCursorPosY();
+            InspectorActionGroup(actions, {}, [&](const std::string&) { ++commands; });
+            CHECK(ImGui::GetCursorPosY() - before <= line);
+            InspectorSummary("A long preview title",
+                             "A long description with sufficient words to wrap through many lines in a narrow panel.");
+            CHECK(ImGui::GetItemRectSize().y <= ImGui::GetTextLineHeight() * 2);
+            EndInspectorStyle();
+            ImGui::End();
+            ImGui::Render();
+        }
+    }
+    CHECK(commands == 0);
+    CHECK(value == choices.initial);
 }

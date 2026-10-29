@@ -44,10 +44,7 @@ private:
     void Refresh();
     void Cancel();
     [[nodiscard]] const PreviewDefinition* Selected() const;
-    [[nodiscard]] bool CanOpen() const {
-        return !_profiler.Snapshot().busy && _project && Selected() && !_buildActive && !_refresh.Busy() &&
-               (!_workerActive || _ready || _stopping);
-    }
+    [[nodiscard]] bool CanOpen() const { return Snapshot().capabilities.Can(EditorCommand::Open); }
     [[nodiscard]] bool Busy() const {
         return _profiler.Snapshot().busy || _buildActive || _refresh.Busy() || _stopping ||
                (_workerActive && !_ready && !_catalogOnly);
@@ -102,5 +99,6 @@ private:
     double _playbackSpeed = 1.0;
     ProfilerSession _profiler;
     std::uint64_t _profilerRequest = 0;
+    bool _benchmarkCancelPending = false;
     double _hostTransferMs = 0;
 };

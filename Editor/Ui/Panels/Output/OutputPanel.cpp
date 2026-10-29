@@ -22,10 +22,14 @@ const char* LevelLabel(EditorLogLevel level) {
     }
     return "";
 }
-void FilterCheckbox(const char* label, bool& value) {
-    ContinueEditorToolbar(ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x +
-                          ImGui::CalcTextSize(label).x);
-    ImGui::Checkbox(label, &value);
+void SeverityFilter(EditorLogLevel level, std::size_t count, bool& value, bool sameLine) {
+    const std::string text = std::string(LevelLabel(level)) + " " + std::to_string(count);
+    const std::string label = text + "###severity";
+    if (sameLine) ContinueEditorToolbar(text.c_str());
+    ImGui::PushID(static_cast<int>(level));
+    if (EditorSegment(label.c_str(), value)) value = !value;
+    EditorTooltip(value ? "Hide this severity" : "Show this severity");
+    ImGui::PopID();
 }
 std::string DisplayLine(const EditorLogEntry& entry) {
     const auto time = std::chrono::system_clock::to_time_t(entry.time);
@@ -44,18 +48,20 @@ std::string DisplayLine(const EditorLogEntry& entry) {
 void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions, EditorPreferences& preferences) {
     auto& filter = preferences.outputFilter;
     if (!_initialized) {
-        std::ranges::copy(filter.search, _search.begin());
+        std::copy_n(filter.search.begin(), std::min(filter.search.size(), _search.size() - 1), _search.begin());
         _initialized = true;
     }
-    ImGui::Checkbox("Info", &filter.info);
-    FilterCheckbox("Warning", filter.warning);
-    FilterCheckbox("Error", filter.error);
-    FilterCheckbox("Follow", preferences.followOutput);
+    const auto& entries = snapshot.diagnostics.Entries();
+    std::array<std::size_t, 3> counts{};
+    for (const auto& entry : entries)
+        ++counts[static_cast<std::size_t>(entry.level)];
+    SeverityFilter(EditorLogLevel::Info, counts[0], filter.info, false);
+    SeverityFilter(EditorLogLevel::Warning, counts[1], filter.warning, true);
+    SeverityFilter(EditorLogLevel::Error, counts[2], filter.error, true);
     ImGui::SetNextItemWidth(-1);
     if (ImGui::InputTextWithHint("##search", "Search output...", _search.data(), _search.size()))
         filter.search = _search.data();
     std::vector<const EditorLogEntry*> visible;
-    const auto& entries = snapshot.diagnostics.Entries();
     std::erase_if(_selected, [&](auto id) {
         return std::ranges::none_of(entries, [id](const auto& e) { return e.sequence == id; });
     });
@@ -63,13 +69,15 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         if (!filter.Matches(entry)) continue;
         visible.push_back(&entry);
     }
-    const bool copyFiltered = ImGui::SmallButton("Copy filtered");
-    ContinueEditorToolbar("Copy selected");
     const bool hasSelection =
         std::ranges::any_of(visible, [&](const auto* entry) { return _selected.contains(entry->sequence); });
-    ImGui::BeginDisabled(!hasSelection);
-    const bool copySelected = ImGui::SmallButton("Copy selected");
-    ImGui::EndDisabled();
+    bool copyFiltered = false, copySelected = false;
+    if (ImGui::Button("Copy")) ImGui::OpenPopup("copy-output");
+    if (ImGui::BeginPopup("copy-output")) {
+        copySelected = ImGui::MenuItem("Selected lines", nullptr, false, hasSelection);
+        copyFiltered = ImGui::MenuItem("Filtered lines", nullptr, false, !visible.empty());
+        ImGui::EndPopup();
+    }
     if (copyFiltered || copySelected) {
         std::string text;
         for (const auto* entry : visible) {
@@ -77,14 +85,26 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         }
         ImGui::SetClipboardText(text.c_str());
     }
-    ContinueEditorToolbar("Clear");
-    if (ImGui::SmallButton("Clear")) {
+    ContinueEditorToolbar(ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x +
+                          ImGui::CalcTextSize("Follow").x);
+    ImGui::Checkbox("Follow", &preferences.followOutput);
+    EditorTooltip("Keep new output in view while scrolled to the bottom.");
+    ContinueEditorToolbar(ImGui::GetFrameHeight());
+    ImGui::BeginDisabled(entries.empty());
+    if (EditorIconButton("clear-output", EditorGlyph::Clear, "Clear output")) {
         actions.clearOutput();
         _selected.clear();
+        visible.clear();
     }
+    ImGui::EndDisabled();
     ImGui::Separator();
+    ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
     if (ImGui::BeginChild("lines", {}, ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar)) {
         const bool follow = preferences.followOutput && ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f;
+        if (visible.empty())
+            EditorEmptyState(entries.empty() ? "No output yet" : "No matching output",
+                             entries.empty() ? "Editor, preview, and build messages appear here."
+                                             : "Adjust the severity filters or search text.");
         ImGuiListClipper clipper;
         clipper.Begin(static_cast<int>(visible.size()));
         while (clipper.Step()) {
@@ -115,5 +135,6 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         if (follow) ImGui::SetScrollHereY(1);
     }
     ImGui::EndChild();
+    ImGui::PopFont();
     actions.acknowledgeOutput();
 }

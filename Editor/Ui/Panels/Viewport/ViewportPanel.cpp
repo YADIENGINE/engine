@@ -3,49 +3,45 @@
 #include <algorithm>
 #include <array>
 #include "Editor/Ui/Style/EditorTheme.h"
-#include "Editor/Ui/Widgets/EditorPlaybackControls.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 
-bool ViewportPanel::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool maximized) {
+bool ViewportPanel::Toolbar(bool maximized) {
     bool toggleMaximize = false;
     const auto& style = ImGui::GetStyle();
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {style.FramePadding.x * 0.6f, style.FramePadding.y * 0.5f});
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {style.ItemSpacing.x * 0.75f, style.ItemSpacing.y * 0.5f});
-    // Only this row scrolls horizontally; the canvas keeps the full panel width.
-    if (ImGui::BeginChild("preview-toolbar", {0, 0}, ImGuiChildFlags_AutoResizeY,
-                          ImGuiWindowFlags_HorizontalScrollbar)) {
-        DrawEditorPlaybackControls(snapshot, actions);
-        ImGui::SameLine();
-        const auto separator = ImGui::GetCursorScreenPos();
-        const float height = ImGui::GetFrameHeight();
-        ImGui::GetWindowDrawList()->AddLine({separator.x, separator.y + style.FramePadding.y},
-                                            {separator.x, separator.y + height - style.FramePadding.y},
-                                            ImGui::GetColorU32(ImGuiCol_Separator));
-        ImGui::Dummy({1, height});
-        constexpr std::array Modes{"Fit", "Focus content", "100%"};
+    constexpr std::array Modes{"Fit", "Focus content", "100%"};
+    if (ImGui::Button("View")) ImGui::OpenPopup("preview-view");
+    if (ImGui::BeginPopup("preview-view")) {
         for (int i = 0; i < 3; ++i) {
-            ImGui::SameLine();
-            if (ImGui::RadioButton(Modes[i], _mode == i)) {
+            if (ImGui::MenuItem(Modes[static_cast<std::size_t>(i)], nullptr, _mode == i)) {
                 _mode = i;
                 _pan = {};
                 _zoom = 1;
             }
         }
-        ImGui::SameLine();
+        ImGui::Separator();
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 10.0f);
         ImGui::SliderFloat("Zoom", &_zoom, 0.25f, 4.0f, "%.2fx");
         EditorTooltip("Middle-drag to pan; Ctrl+wheel to zoom. Product input uses the displayed image coordinates.");
-        ImGui::SameLine();
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted("View");
-        toggleMaximize = ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-        ImGui::SameLine();
-        const auto* expand = EditorGlyphText(maximized ? EditorGlyph::Restore : EditorGlyph::Expand);
-        if (ImGui::Button(expand)) toggleMaximize = true;
-        EditorTooltip(maximized ? "Restore workspace" : "Maximize preview (or double-click this heading)");
+        if (ImGui::MenuItem("Reset pan and zoom")) {
+            _pan = {};
+            _zoom = 1;
+        }
+        ImGui::EndPopup();
     }
-    ImGui::EndChild();
-    ImGui::PopStyleVar(2);
+    ImGui::SameLine();
+    const float maximizeWidth = ImGui::GetFrameHeight();
+    if (ImGui::GetContentRegionAvail().x > ImGui::GetFontSize() * 13.0f + maximizeWidth) {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("%s / %.0f%%", Modes[static_cast<std::size_t>(_mode)], _zoom * 100.0f);
+        toggleMaximize = ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+        EditorTooltip("Double-click to maximize or restore the preview.");
+        ImGui::SameLine();
+    }
+    const float gap = ImGui::GetContentRegionAvail().x - maximizeWidth;
+    if (gap > style.ItemSpacing.x) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + gap);
+    if (EditorIconButton("maximize-preview", maximized ? EditorGlyph::Restore : EditorGlyph::Expand,
+                         maximized ? "Restore workspace" : "Maximize preview"))
+        toggleMaximize = true;
     return toggleMaximize;
 }
 
@@ -57,12 +53,14 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
         _pan = {};
         _zoom = 1.0f;
     }
-    result.toggleMaximize = Toolbar(snapshot, actions, maximized);
+    result.toggleMaximize = Toolbar(maximized);
     if (metrics && snapshot.ready) {
+        ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
         ImGui::TextWrapped("%dx%d | #%llu | %.1f Stream FPS", image.width, image.height,
                            static_cast<unsigned long long>(image.sequence), snapshot.streamFps);
         ImGui::TextWrapped("Readback %.1f | publish %.1f | transfer %.1f ms", snapshot.captureMs, snapshot.publishMs,
                            image.transferMs);
+        ImGui::PopFont();
     }
     ImGui::Separator();
     if (snapshot.ready && !snapshot.inspection.tables.empty()) {
@@ -72,7 +70,7 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
             for (const auto& table : snapshot.inspection.tables) {
                 if (!ImGui::BeginTabItem(table.name.c_str())) continue;
                 if (ImGui::BeginTable(table.name.c_str(), static_cast<int>(table.columns.size()),
-                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollX |
+                                      ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollX |
                                           ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable)) {
                     for (const auto& column : table.columns)
                         ImGui::TableSetupColumn(column.c_str());
@@ -144,6 +142,22 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
         result.focused = _focused;
     } else {
         _focused = false;
+        if (!snapshot.selected) {
+            EditorEmptyState("Choose a preview", "Select an item from the Catalog to start a preview.");
+        } else if (snapshot.phase == EditorPhase::Error) {
+            EditorEmptyState("Preview unavailable", "See Output for details, then retry or build and refresh.");
+        } else if (snapshot.phase == EditorPhase::Stopped) {
+            EditorEmptyState("Preview stopped", "Start the selected preview when you are ready.");
+        } else {
+            EditorEmptyState(snapshot.ready ? "Waiting for a frame" : EditorPhaseLabel(snapshot.phase),
+                             snapshot.status.c_str());
+        }
+        if (snapshot.selected && snapshot.capabilities.Can(EditorCommand::Open)) {
+            if (ImGui::Button(snapshot.phase == EditorPhase::Error ? "Retry preview" : "Start preview"))
+                actions.command(EditorCommand::Open);
+        } else if (snapshot.capabilities.Can(EditorCommand::Cancel)) {
+            if (ImGui::Button("Cancel")) actions.command(EditorCommand::Cancel);
+        }
     }
     return result;
 }

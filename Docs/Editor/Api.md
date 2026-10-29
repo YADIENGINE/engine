@@ -52,7 +52,8 @@ işlem yalnız `Modules/Profiler/Profiler.hpp` üzerinden yapılır. [Profiler r
 ve aralık içinde, renk kanalları 0..1 olmalıdır. Değerler reddedilir, sessizce kırpılmaz.
 Choice parametresinde `choiceButtons = true`, seçenekleri Inspector'da açılır liste yerine seçili değeri vurgulayan,
 panel genişliğine göre bir veya iki sütuna yerleşen düğmeler olarak gösterir; varsayılanı `false`'tur.
-`choiceButtonColumns` pozitifse düğmeler belirtilen sabit sütun sayısını kullanır; varsayılan `0` uyarlanabilir düzendir.
+`choiceButtonColumns` pozitifse en çok belirtilen sütun sayısını kullanır; alan daraldığında okunabilir düğmeler için
+sütun sayısı azalır. Varsayılan `0`, bir veya iki sütun seçer.
 
 `PreviewAction` kimlik, etiket, açıklama ve isteğe bağlı `primary` (varsayılan `false`) taşır. En fazla bir eylem
 ana eylem olarak işaretlenebilir; listedeki konumu önemli değildir. Inspector onu tam genişlikte, diğerlerini
@@ -128,7 +129,7 @@ cmake --build build/engine-editor --config Debug --target EngineEditor
   oluşturur. Başlangıç / ilk kare zaman aşımı 30 s.
 - Görüntü: mutex korumalı iki paylaşımlı yuva, en çok 1920×1080 RGBA8. Canvas GPU'dan okunur, çevrilir, kopyalanır;
   editör kendi dokusuna yükler. Meşgul tampon beklenmez, eski kareler atlanabilir. Canvas boyutunu proje seçer
-  (ölçüler GameSettings ile verilir). Hedef: worker 30 FPS, editör 60 FPS; Options'taki ölçüler readback / publish / transfer sürelerini
+  (ölçüler GameSettings ile verilir). Hedef: worker 30 FPS, editör 60 FPS; View menüsündeki ölçüler readback / publish / transfer sürelerini
   gösterir (tam input→ekran gecikmesi değildir).
 - Protokol veya `InputKey` yerleşimi değişince editör ve worker birlikte derlenir; sürüm / tuş sayısı uyuşmazlığı
   hata olarak bildirilir.
