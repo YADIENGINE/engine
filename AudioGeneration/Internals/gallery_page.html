@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sound gallery</title>
+<style>
+:root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5f6b7d; --line: #d9dee6; --wave: #2f6fde;
+        --warn: #b4540c; color-scheme: light dark; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14171d; --card: #1d222b; --text: #e7ebf2; --muted: #9aa5b5; --line: #323a47; --wave: #6ea2ff;
+          --warn: #f0a050; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--text);
+       font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 980px; margin: 0 auto; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
+h1 { margin: 0 0 16px; font-size: 22px; }
+button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--card);
+         color: var(--text); cursor: pointer; }
+.sound { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.sound.playing { border-color: var(--wave); }
+.top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; }
+.name { font-weight: 600; font-size: 15px; }
+.stats { color: var(--muted); font-variant-numeric: tabular-nums; }
+.warn { color: var(--warn); margin-top: 4px; }
+canvas { display: block; width: 100%; height: 70px; margin-top: 10px; border-radius: 6px; cursor: pointer; }
+canvas.spectrum { height: 90px; }
+audio { width: 100%; margin-top: 8px; height: 32px; }
+</style>
+</head>
+<body>
+<main>
+  <header><h1 id="title"></h1><button id="play-all" type="button">Play all</button></header>
+  <div id="sounds"></div>
+</main>
+<script id="gallery-data" type="application/json">@@DATA@@</script>
+<script>
+"use strict";
+const data = JSON.parse(document.getElementById("gallery-data").textContent);
+document.title = data.title;
+document.getElementById("title").textContent = data.title;
+const list = document.getElementById("sounds");
+const fmt = (value, unit) => value === null ? "n/a" : value.toFixed(1) + " " + unit;
+const players = [];
+
+function color(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function drawWave(canvas, plots, progress) {
+  const ctx = canvas.getContext("2d"), w = canvas.width = canvas.clientWidth * devicePixelRatio,
+        h = canvas.height = canvas.clientHeight * devicePixelRatio, bins = plots.waveform;
+  ctx.fillStyle = color("--bg"); ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = color("--wave");
+  bins.forEach(([low, high], i) => {
+    const x = i / bins.length * w, top = (1 - Math.min(1, high)) * h / 2, bottom = (1 - Math.max(-1, low)) * h / 2;
+    ctx.globalAlpha = i / bins.length <= progress ? 1 : 0.55;
+    ctx.fillRect(x, top, Math.max(1, w / bins.length), Math.max(1, bottom - top));
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawSpectrum(canvas, plots) {
+  const ctx = canvas.getContext("2d"), w = canvas.width = canvas.clientWidth,
+        h = canvas.height = canvas.clientHeight, rows = plots.spectrogram;
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, w, h);
+  rows.forEach((column, x) => column.forEach((db, y) => {
+    const v = Math.max(0, Math.min(1, (db + 80) / 80));
+    ctx.fillStyle = `hsl(${250 - v * 220}, 90%, ${v * 60}%)`;
+    ctx.fillRect(x / rows.length * w, h - (y + 1) / column.length * h, w / rows.length + 1, h / column.length + 1);
+  }));
+}
+
+data.sounds.forEach(sound => {
+  const card = document.createElement("section");
+  card.className = "sound";
+  const top = document.createElement("div");
+  top.className = "top";
+  const name = document.createElement("span");
+  name.className = "name"; name.textContent = sound.name;
+  const stats = document.createElement("span");
+  stats.className = "stats";
+  stats.textContent = `${sound.duration.toFixed(2)} s · peak ${fmt(sound.peak_dbfs, "dBFS")} · ` +
+                      `RMS ${fmt(sound.rms_dbfs, "dBFS")} · ${fmt(sound.loudness_lufs, "LUFS")}`;
+  top.append(name, stats);
+  card.append(top);
+  sound.warnings.forEach(message => {
+    const line = document.createElement("div");
+    line.className = "warn"; line.textContent = "⚠ " + message;
+    card.append(line);
+  });
+  const wave = document.createElement("canvas");
+  const spectrum = document.createElement("canvas");
+  spectrum.className = "spectrum";
+  const audio = document.createElement("audio");
+  audio.controls = true; audio.preload = "auto"; audio.src = sound.audio;
+  card.append(wave, spectrum, audio);
+  list.append(card);
+  const redraw = () => drawWave(wave, sound.plots, audio.duration ? audio.currentTime / audio.duration : 0);
+  for (const canvas of [wave, spectrum]) {
+    canvas.addEventListener("click", event => {
+      const rect = canvas.getBoundingClientRect();
+      if (audio.duration) audio.currentTime = (event.clientX - rect.left) / rect.width * audio.duration;
+      audio.play();
+    });
+  }
+  audio.addEventListener("timeupdate", redraw);
+  audio.addEventListener("play", () => {
+    players.forEach(other => { if (other.audio !== audio) other.audio.pause(); });
+    card.classList.add("playing");
+  });
+  audio.addEventListener("pause", () => card.classList.remove("playing"));
+  players.push({audio, card, draw: () => { redraw(); drawSpectrum(spectrum, sound.plots); }});
+});
+
+const drawAll = () => players.forEach(player => player.draw());
+addEventListener("resize", drawAll);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+drawAll();
+
+document.getElementById("play-all").addEventListener("click", () => {
+  let index = 0;
+  const next = () => {
+    if (index >= players.length) return;
+    const {audio, card} = players[index++];
+    card.scrollIntoView({block: "nearest", behavior: "smooth"});
+    audio.currentTime = 0;
+    audio.addEventListener("ended", () => setTimeout(next, 350), {once: true});
+    audio.play();
+  };
+  next();
+});
+</script>
+</body>
+</html>

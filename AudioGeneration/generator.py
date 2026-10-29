@@ -1,367 +1,327 @@
 """The public facade for offline audio authoring; implementations live in Internals."""
 
+import re
+
+import numpy as np
+
+from .Internals import (analysis, comparison, curves, effects, filters, gallery, level, oscillators, reports,
+                        review, review_io, seeding, timeline, validation, wave_io)
+from .Internals.pack import SoundPack
+
+NOTE_PATTERN = re.compile(r"^([A-Ga-g])([#b]?)(-?\d+)$")
+NOTE_STEPS = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
+
 
 class SoundGenerator:
-    """Sample-rate context with an optional shared, lazily created NumPy RNG.
+    """Sample-rate context with its own seeded NumPy RNG.
 
-    Algorithms are explicit: Butterworth and one-pole filters, linear and
-    exponential envelopes, and rounded and truncated sample counts stay distinct.
-    Importing this class does not load optional authoring dependencies.
+    Signals are one-dimensional float arrays (mono). Times are seconds, frequencies Hz, gains linear.
+    Every operation validates its input and returns a new array; nothing is normalized implicitly.
+    Parameters that accept a "curve" take either a scalar or one value per output sample.
     """
 
-    def __init__(self, sample_rate=44100, *, rounding="round", seed=None):
-        if rounding not in ("round", "truncate"):
-            raise ValueError("rounding must be 'round' or 'truncate'")
-        self.sample_rate = sample_rate
-        self.rounding = rounding
-        self._seed = seed
-        self._rng = None
-        self._scope_key = None
+    def __init__(self, sample_rate=44100, *, seed=0):
+        self.sample_rate = validation.positive_integer(sample_rate, "sample_rate")
+        self._seed = seeding.root(seed)
         self._scope_path = ()
+        self._rng = None
+
+    # Seeds ------------------------------------------------------------------------------------------------------
+
+    @property
+    def seed(self):
+        return self._seed
 
     @property
     def seed_info(self):
-        """Effective integer seed and named path; None denotes an unrecorded root seed."""
-        from .Internals import seeding
-
+        """Effective integer seed plus the named scopes that produced it."""
         return seeding.describe(self._seed, self._scope_path)
 
-    def _named_context(self, kind, name, variation):
-        from .Internals import seeding
+    @property
+    def rng(self):
+        """This context's NumPy generator, for recipe-level random choices."""
+        if self._rng is None:
+            self._rng = np.random.default_rng(self._seed)
+        return self._rng
 
-        key, digest, identity = seeding.child_key(self._seed, self._scope_key, kind, name, variation)
-        self._scope_key = key
-        child = SoundGenerator(self.sample_rate, rounding=self.rounding, seed=int.from_bytes(digest, "big"))
+    def _named(self, kind, name, variation):
+        seed, identity = seeding.child(self._seed, kind, name, variation)
+        child = SoundGenerator(self.sample_rate, seed=seed)
         child._scope_path = self._scope_path + (identity,)
         return child
 
     def for_sound(self, name, *, variation=0):
-        """Fresh reproducible sound context, without consuming this context's RNG."""
-        return self._named_context("sound", name, variation)
+        """Fresh context seeded from (seed, name, variation); siblings and call order never affect it."""
+        return self._named("sound", name, variation)
 
     def for_layer(self, name, *, variation=0):
-        """Fresh layer context; sibling draws and layer insertion order do not affect it."""
-        return self._named_context("layer", name, variation)
+        """Fresh child context for one layer of a sound."""
+        return self._named("layer", name, variation)
 
-    @property
-    def rng(self):
-        if self._rng is None:
-            import numpy as np
-
-            self._rng = np.random.default_rng(self._seed)
-        return self._rng
+    # Time -------------------------------------------------------------------------------------------------------
 
     def sample_count(self, seconds):
-        value = seconds * self.sample_rate
-        return round(value) if self.rounding == "round" else int(value)
+        return round(validation.nonnegative(seconds, "seconds") * self.sample_rate)
+
+    def _count(self, seconds):
+        return None if seconds is None else self.sample_count(seconds)
 
     def time_axis(self, seconds):
-        from .Internals import buffers
+        return curves.time_axis(self.sample_count(seconds), self.sample_rate)
 
-        return buffers.time_axis(self.sample_count(seconds), self.sample_rate)
+    def silence(self, seconds):
+        return np.zeros(self.sample_count(seconds))
 
-    def phase_of(self, frequency):
-        from .Internals import buffers
+    # Control curves -----------------------------------------------------------------------------------------------
 
-        return buffers.phase_of(frequency, self.sample_rate)
+    def envelope(self, points, seconds=None, *, curve=1.0):
+        """Breakpoints [(seconds, value), ...]; curve < 1 moves fast first, > 1 slow first."""
+        end = seconds if seconds is not None else max(at for at, _ in points)
+        return curves.envelope(points, self.sample_count(end), self.sample_rate, curve)
 
-    def sweep_phase(self, t, start, end, seconds):
-        from .Internals import buffers
+    def contour(self, points, seconds=None):
+        """Breakpoints interpolated geometrically: natural for pitch, cutoff and other ratios."""
+        end = seconds if seconds is not None else max(at for at, _ in points)
+        return curves.contour(points, self.sample_count(end), self.sample_rate)
 
-        return buffers.sweep_phase(t, start, end, seconds, self.sample_rate)
+    def adsr(self, seconds, attack, decay, sustain, release, *, curve=1.0):
+        """Attack/decay/sustain/release ending at `seconds`; stages shrink proportionally if they do not fit."""
+        return curves.adsr(self.sample_count(seconds), self.sample_rate, attack, decay, sustain, release, curve)
 
-    def mix_at(self, target, sound, at, gain=1.0):
-        from .Internals import buffers
+    def decay(self, seconds, time_constant, *, attack=0.0):
+        """exp(-t / time_constant) after an optional linear attack."""
+        return curves.decay(self.sample_count(seconds), self.sample_rate, time_constant, attack)
 
-        return buffers.mix_at(target, sound, self.sample_count(at), gain)
+    def glide(self, start, end, seconds, time_constant):
+        """Exponential approach from start to end (pitch drops, cutoff falls)."""
+        return curves.glide(self.sample_count(seconds), self.sample_rate, start, end, time_constant)
+
+    def lfo(self, seconds, rate, *, shape="sine", phase=0.0):
+        """Naive control waveform in [-1, 1]: sine, triangle, square or saw; rate may be a curve."""
+        return curves.lfo(self.sample_count(seconds), self.sample_rate, rate, shape, phase)
+
+    def random_curve(self, seconds, rate, *, low=-1.0, high=1.0):
+        """Smooth (cosine-interpolated) random values, `rate` new targets per second."""
+        return curves.random_curve(self.rng, self.sample_count(seconds), self.sample_rate, rate, low, high)
+
+    def fade(self, samples, fade_in=0.0, fade_out=0.0, *, curve=1.0):
+        return curves.fade(samples, self.sample_count(fade_in), self.sample_count(fade_out), curve)
+
+    @staticmethod
+    def note(value):
+        """Hz of a MIDI number or a name such as "A4", "C#5", "Eb3" (A4 = 440 Hz)."""
+        if isinstance(value, str):
+            match = NOTE_PATTERN.match(value.strip())
+            if not match:
+                raise ValueError(f"Not a note name: {value!r}")
+            letter, accidental, octave = match.groups()
+            value = 12 * (int(octave) + 1) + NOTE_STEPS[letter.lower()] + {"#": 1, "b": -1, "": 0}[accidental]
+        return 440.0 * 2.0 ** ((validation.finite(value, "note") - 69) / 12)
+
+    # Sources ----------------------------------------------------------------------------------------------------
+
+    def phase(self, frequency, seconds=None, *, start=0.0):
+        """Integrate a Hz scalar/curve to radians, beginning exactly at `start`."""
+        return oscillators.phase(frequency, self._count(seconds), self.sample_rate, start)
+
+    def sine(self, frequency, seconds=None, *, phase=0.0):
+        return oscillators.sine(frequency, self._count(seconds), self.sample_rate, phase)
+
+    def saw(self, frequency, seconds=None, *, phase=0.0, max_harmonics=512):
+        """Band-limited rising saw (no aliasing for slow pitch movement)."""
+        return oscillators.additive(frequency, self._count(seconds), self.sample_rate, phase, max_harmonics, "saw")
+
+    def square(self, frequency, seconds=None, *, phase=0.0, max_harmonics=512):
+        return oscillators.additive(frequency, self._count(seconds), self.sample_rate, phase, max_harmonics,
+                                    "square")
+
+    def triangle(self, frequency, seconds=None, *, phase=0.0, max_harmonics=512):
+        return oscillators.additive(frequency, self._count(seconds), self.sample_rate, phase, max_harmonics,
+                                    "triangle")
+
+    def pulse(self, frequency, seconds=None, *, width=0.5, phase=0.0, max_harmonics=512):
+        """Band-limited DC-free pulse; `width` is the high fraction of each cycle."""
+        return oscillators.pulse(frequency, self._count(seconds), self.sample_rate, phase, width, max_harmonics)
+
+    def fm(self, frequency, seconds=None, *, ratio=1.0, index=1.0, phase=0.0):
+        """Two-operator FM: sin(carrier + index * sin(ratio * carrier)). Index/ratio may be curves."""
+        return oscillators.fm(frequency, self._count(seconds), self.sample_rate, ratio, index, phase)
+
+    def noise(self, seconds, *, color="white"):
+        """White (uniform), pink (1/f) or brown (1/f^2) noise with peak 1."""
+        return oscillators.noise(self.rng, self.sample_count(seconds), self.sample_rate, color)
+
+    def modal(self, seconds, frequency, ratios, decay, *, gains=None, falloff=0.5, attack=0.0005,
+              random_phase=True):
+        """Struck resonator bank (metal, glass, wood, bells): partial i rings at frequency * ratios[i].
+
+        `decay` is seconds per partial or one value shortened by (1 + falloff * i); gains default to 1 / (i + 1).
+        """
+        return oscillators.modal(self.rng, self.sample_count(seconds), self.sample_rate, frequency, ratios, decay,
+                                 gains, falloff, attack, random_phase)
+
+    def thump(self, seconds, start, end, *, sweep=0.03, decay=0.15, click=0.0):
+        """Pitch-dropping body hit (kick, heartbeat, impact) with an optional noise click."""
+        return oscillators.thump(self.rng, self.sample_count(seconds), self.sample_rate, start, end, sweep, decay,
+                                 click)
+
+    def pluck(self, frequency, seconds, *, decay=1.0, brightness=0.6):
+        """Karplus-Strong plucked string; `decay` is the time to -60 dB."""
+        return oscillators.pluck(self.rng, self.sample_count(seconds), self.sample_rate, frequency, decay,
+                                 brightness)
+
+    def scatter(self, seconds, density, grain, *, gain=None):
+        """Place round(density * seconds) grains at random onsets; `grain` is an array or a zero-argument callable."""
+        return timeline.scatter(self.rng, self.sample_count(seconds), self.sample_rate, density, grain, gain)
+
+    # Filters ----------------------------------------------------------------------------------------------------
+
+    def lowpass(self, samples, cutoff, *, order=2):
+        """Butterworth for a fixed cutoff; a cutoff curve uses smoothed state-variable stages."""
+        return filters.pass_filter(samples, cutoff, "lowpass", order, self.sample_rate)
+
+    def highpass(self, samples, cutoff, *, order=2):
+        return filters.pass_filter(samples, cutoff, "highpass", order, self.sample_rate)
+
+    def bandpass(self, samples, low, high, *, order=2):
+        """Fixed edges: Butterworth band-pass. Curves: `order` unity-peak resonant stages tracking the band."""
+        return filters.bandpass(samples, low, high, order, self.sample_rate)
+
+    def resonate(self, samples, center, *, q=4.0):
+        """Unity-peak resonant band (center and q may be curves)."""
+        return filters.resonate(samples, center, q, self.sample_rate)
+
+    def formants(self, samples, bands):
+        """Sum of resonant bands [(center Hz or curve, q, gain), ...] (voices, growls, vowels)."""
+        return filters.formants(samples, bands, self.sample_rate)
+
+    def dc_block(self, samples, cutoff=20.0):
+        return filters.dc_block(samples, cutoff, self.sample_rate)
+
+    # Effects ----------------------------------------------------------------------------------------------------
+
+    def saturate(self, samples, drive, *, oversample=4):
+        """tanh(x * drive) / tanh(drive), oversampled to limit aliasing; drive 0 is a bypass."""
+        return effects.saturate(samples, drive, oversample)
+
+    def bitcrush(self, samples, *, bits=None, rate=None):
+        """Quantize to `bits` and/or sample-and-hold at `rate` Hz."""
+        return effects.bitcrush(samples, bits, rate, self.sample_rate)
+
+    def delay(self, samples, time, *, feedback=0.4, mix=0.35, damp=None):
+        """Feedback echo every `time` seconds; `damp` low-passes each repeat. Output includes the tail."""
+        return effects.delay(samples, time, feedback, mix, damp, self.sample_rate)
+
+    def chorus(self, samples, *, rate=0.8, depth=0.003, delay=0.015, mix=0.5):
+        """Two modulated delay voices; short delay and depth give flanging."""
+        return effects.chorus(samples, rate, depth, delay, mix, self.sample_rate)
+
+    def reverb(self, samples, seconds=1.6, *, mix=0.25, damp=6000.0, predelay=0.012):
+        """Unit-energy noise-impulse room; output includes the tail."""
+        return effects.reverb(self.rng, samples, seconds, mix, damp, predelay, self.sample_rate)
+
+    def speed(self, samples, factor):
+        """Resample like a tape: factor 2 doubles pitch and halves duration."""
+        return effects.speed(samples, factor)
+
+    def follow(self, samples, *, attack=0.005, release=0.08):
+        """Envelope follower (for ducking, gating or driving a filter from another sound)."""
+        return effects.follow(samples, attack, release, self.sample_rate)
+
+    # Timeline ---------------------------------------------------------------------------------------------------
 
     def pad(self, samples, seconds):
-        from .Internals import buffers
-
-        return buffers.pad(samples, self.sample_count(seconds))
+        return timeline.pad(samples, self.sample_count(seconds))
 
     def segment(self, samples, seconds, start=0.0):
-        from .Internals import buffers
+        """Slice `seconds` from `start`, zero-padded when the source ends."""
+        return timeline.segment(samples, self.sample_count(seconds), self.sample_count(start))
 
-        return buffers.segment(samples, self.sample_count(seconds), self.sample_count(start))
+    def layer(self, samples, *, at=0.0, gain=1.0):
+        """Read-only snapshot with placement, gain and this context's seed metadata."""
+        return timeline.layer(samples, self.sample_rate, at, gain, self.seed_info)
 
-    def normalize(self, samples, peak, *, epsilon=1e-9, additive=False, divide_first=False):
-        """Divide by max(peak, epsilon), or by peak + epsilon if additive."""
-        from .Internals import buffers
+    def mix(self, layers, *, seconds=None):
+        """Sum layers: a list or name mapping of arrays, (at, samples[, gain]) tuples or layer values.
 
-        return buffers.normalize(samples, peak, epsilon, additive, divide_first)
+        Length is the last layer end unless `seconds` pads or crops it.
+        """
+        return timeline.render(self, layers, seconds)[0]
 
-    def linear_envelope(self, t, attack, release):
-        from .Internals import envelopes
+    # Level ------------------------------------------------------------------------------------------------------
 
-        return envelopes.linear(t, attack, release)
+    def normalize(self, samples, *, peak=None, lufs=None):
+        """Scale to a sample peak or an integrated loudness (exactly one); silence stays silent."""
+        return level.normalize(samples, peak, lufs, self.sample_rate)
 
-    def decay_envelope(self, t, attack, decay):
-        from .Internals import envelopes
+    def loudness(self, samples):
+        """Integrated loudness in LUFS (mono BS.1770, gated); None for silence."""
+        return level.loudness(samples, self.sample_rate)
 
-        return envelopes.exponential(t, attack, decay)
+    def trim(self, samples, *, threshold_dbfs=-60.0, window=0.01, hold=0.05, fade=0.01, minimum=0.0):
+        """Cut after the last energetic window, keeping `hold` and a final `fade`; gaps are preserved."""
+        return level.trim(samples, self.sample_rate, threshold_dbfs, window, hold, fade, minimum)
 
-    def attack_release(self, count, attack, release, curve=1.0):
-        from .Internals import envelopes
+    def finish(self, samples, *, peak=0.9, lufs=None, ceiling=0.98, dc=True, fade_in=0.0005, fade_out=0.01,
+               trim=-60.0):
+        """Export chain: DC block -> peak or LUFS -> tail trim -> edge fades -> peak ceiling.
 
-        return envelopes.attack_release(count, int(attack * self.sample_rate),
-                                        int(release * self.sample_rate), curve)
+        Pass `peak=None` with `lufs`; `trim=None` keeps the full length; `dc` may be a cutoff in Hz.
+        """
+        if lufs is not None and peak is not None:
+            raise ValueError("finish takes peak or lufs, not both")
+        return level.finish(samples, self.sample_rate, peak, lufs, ceiling, dc, fade_in, fade_out, trim)
 
-    def fade(self, samples, attack=0.0, release=0.0, *, curve=1.0, copy=False):
-        """Apply edge fades in place, unless copy=True. Times are seconds."""
-        from .Internals import envelopes
+    # Files and sets ---------------------------------------------------------------------------------------------
 
-        return envelopes.fade(samples, self.sample_count(attack), self.sample_count(release), curve, copy)
+    def load(self, path):
+        """Decode a WAV (or, with soundfile installed, other formats) as mono at this context's rate."""
+        return wave_io.load(path, self.sample_rate)[0]
 
-    def trim_tail(self, samples, floor=0.002):
-        from .Internals import envelopes
+    def write_wav(self, path, samples):
+        """Mono PCM16 (rounded, clipped to full scale); creates folders, overwrites the file."""
+        return wave_io.write_wav(path, samples, self.sample_rate)
 
-        return envelopes.trim_tail(samples, floor, int(0.01 * self.sample_rate))
+    def pack(self, output, *, prefix="", **finish):
+        """A named sound set writing <output>/<prefix><name>.wav; options are `finish` defaults."""
+        return SoundPack(self, output, prefix, finish)
 
-    def trim_tail_energy(self, samples, *, threshold_dbfs=-60.0, window_seconds=0.01,
-                         hold_seconds=0.05, fade_seconds=0.01, min_seconds=0.0, peak_guard_db=12.0):
-        """Trim after the last active RMS/peak window, retaining hold and release time."""
-        from .Internals import tails
-
-        return tails.trim_energy(samples, self.sample_rate, threshold_dbfs, window_seconds,
-                                 hold_seconds, fade_seconds, min_seconds, peak_guard_db)
-
-    def lowpass(self, samples, cutoff, order=2):
-        from .Internals import filters
-
-        return filters.butterworth(samples, cutoff, "lowpass", order, self.sample_rate)
-
-    def highpass(self, samples, cutoff, order=2):
-        from .Internals import filters
-
-        return filters.butterworth(samples, cutoff, "highpass", order, self.sample_rate)
-
-    def bandpass(self, samples, low, high, order=2):
-        from .Internals import filters
-
-        return filters.butterworth(samples, (low, high), "bandpass", order, self.sample_rate)
-
-    def one_pole_lowpass(self, samples, cutoff):
-        from .Internals import filters
-
-        return filters.one_pole(samples, cutoff, self.sample_rate)
-
-    def one_pole_highpass(self, samples, cutoff):
-        return samples - self.one_pole_lowpass(samples, cutoff)
-
-    def one_pole_bandpass(self, samples, low, high):
-        return self.one_pole_lowpass(self.one_pole_highpass(samples, low), high)
-
-    def lowpass_samples(self, samples, cutoff):
-        """Scalar/list one-pole algorithm; requires only the standard library."""
-        from .Internals import scalar
-
-        return scalar.lowpass(samples, cutoff, self.sample_rate)
-
-    def sweep_filter(self, samples, kind, cutoff, order=2, width=None, *, block_size=256):
-        from .Internals import filters
-
-        return filters.sweep_filter(samples, kind, cutoff, order, width, block_size, self.sample_rate)
-
-    def swept_filter(self, samples, cutoff_at, *, kind="lowpass", order=2, blocks=64):
-        """Overlap-add Hann windows; cutoff_at(seconds) returns Hz or a pair."""
-        from .Internals import filters
-
-        return filters.swept(samples, cutoff_at, kind, order, blocks, self.sample_rate)
-
-    def sweep_bandpass(self, samples, start, end, width, *, blocks=64):
-        from .Internals import filters
-
-        return filters.sweep_bandpass(samples, start, end, width, blocks, self.sample_rate)
-
-    def smooth_filter(self, samples, cutoff, *, kind="lowpass", q=2 ** -0.5, smoothing_seconds=0.005):
-        """Sample-wise TPT state-variable filter with smoothed log-Hz control."""
-        from .Internals import smooth_filters
-
-        return smooth_filters.smooth_filter(samples, cutoff, kind, q, smoothing_seconds, self.sample_rate)
-
-    def formant_voice(self, source, formants):
-        """Sum swept bands described by (center curve, width ratio, gain)."""
-        from .Internals import filters
-
-        return filters.formant_voice(source, formants, self.sample_rate)
-
-    def noise(self, seconds, count=None):
-        return self.rng.uniform(-1.0, 1.0, self.sample_count(seconds) if count is None else count)
-
-    def brown(self, seconds):
-        from .Internals import oscillators
-
-        return oscillators.brown(self.rng, self.sample_count(seconds))
-
-    def smooth_random(self, seconds, rate, low=0.0, high=1.0):
-        from .Internals import oscillators
-
-        return oscillators.smooth_random(self.rng, self.sample_count(seconds), seconds, rate, low, high)
-
-    def saw_phase(self, phase, harmonics=40):
-        """Fixed harmonic sum from phase; does not enforce a Nyquist limit."""
-        from .Internals import oscillators
-
-        return oscillators.saw_phase(phase, harmonics)
-
-    def saw(self, frequency, t, harmonics=24):
-        """Harmonic sum with the existing fixed-frequency Nyquist cutoff."""
-        from .Internals import oscillators
-
-        return oscillators.saw(frequency, t, harmonics, self.sample_rate)
-
-    def _bandlimited(self, frequency, seconds, phase, max_harmonics, square):
-        from .Internals import bandlimited
-        from .Internals.validation import nonnegative
-
-        count = self.sample_count(nonnegative(seconds, "seconds")) if seconds is not None else None
-        return bandlimited.oscillator(frequency, count, self.sample_rate, phase, max_harmonics, square)
-
-    def bandlimited_saw(self, frequency, seconds=None, *, phase=0.0, max_harmonics=512):
-        """Rising additive saw; scalar Hz plus seconds, or one Hz value per sample."""
-        return self._bandlimited(frequency, seconds, phase, max_harmonics, False)
-
-    def bandlimited_square(self, frequency, seconds=None, *, phase=0.0, max_harmonics=512):
-        """Odd-harmonic square with a smooth high-frequency partial cutoff."""
-        return self._bandlimited(frequency, seconds, phase, max_harmonics, True)
-
-    def saw_sample(self, phase, harmonics):
-        """Unscaled scalar harmonic sum; standard library only."""
-        from .Internals import scalar
-
-        return scalar.saw(phase, harmonics)
-
-    def pulse(self, t, frequency, width=0.3):
-        from .Internals import oscillators
-
-        return oscillators.pulse(t, frequency, width)
-
-    @staticmethod
-    def sawtooth(phase):
-        """Existing SciPy sawtooth; intentionally not band limited."""
-        from .Internals import oscillators
-
-        return oscillators.sawtooth(phase)
-
-    @staticmethod
-    def square(phase):
-        """Existing SciPy square wave; intentionally not band limited."""
-        from .Internals import oscillators
-
-        return oscillators.square(phase)
-
-    def crackles(self, seconds, per_second, decay, color_low, color_high, gain_curve=None):
-        from .Internals import textures
-
-        return textures.crackles(self.rng, seconds, per_second, decay, color_low, color_high,
-                                 gain_curve, self.sample_rate)
-
-    def pings(self, seconds, per_second, low, high, decay, gain_curve=None):
-        from .Internals import textures
-
-        return textures.pings(self.rng, seconds, per_second, low, high, decay, gain_curve, self.sample_rate)
-
-    def reverb(self, samples, seconds=1.6, mix=0.25, damp=3500.0, predelay=0.012):
-        from .Internals import effects
-
-        return effects.reverb(samples, self.rng, self.sample_count(seconds), seconds, mix, damp,
-                              self.sample_count(predelay), self.sample_rate)
-
-    def saturate(self, samples, drive, *, oversample=1):
-        from .Internals import effects
-
-        if oversample == 1:
-            return effects.saturate(samples, drive)
-        return effects.saturate_oversampled(samples, drive, oversample)
-
-    def read_source(self, path):
-        """Decode, downmix, resample and remove DC. Requires soundfile."""
-        from .Internals import wave_io
-
-        return wave_io.read_source(path, self.sample_rate)
-
-    def write_wav(self, path, samples, *, rounding=False, clip=True):
-        """Write mono PCM16; rounding=True preserves the scalar quantizer."""
-        from .Internals import wave_io
-
-        wave_io.write_wav(path, samples, self.sample_rate, rounding, clip)
+    # Inspection -------------------------------------------------------------------------------------------------
 
     def analyze(self, samples, *, silence_dbfs=-60.0, frame_seconds=0.02, edge_dbfs=-40.0):
         """Measure raw mono audio without changing it; return a JSON-safe report."""
-        from .Internals import analysis
-
         report = analysis.analyze(samples, self.sample_rate, silence_dbfs, frame_seconds, edge_dbfs)
         report["random"] = self.seed_info
         return report
 
     @staticmethod
     def format_report(report):
-        """Readable summary for either an audio report or a named-layer report."""
-        from .Internals import reports
-
+        """Readable summary of an audio, comparison or review report."""
         return reports.format_report(report)
 
     @staticmethod
     def write_report(path, report):
         """Write .json and .txt siblings and return their paths."""
-        from .Internals import reports
-
         return reports.write_report(path, report)
 
-    def layer(self, samples, *, at=0.0, gain=1.0):
-        """Snapshot a mono signal with placement, gain and this context's seed metadata."""
-        from .Internals import layers
-
-        return layers.layer(samples, self.sample_rate, at, gain, self.seed_info)
-
-    def mix_layers(self, layers, *, seconds=None):
-        """Mix a mapping of names to arrays or layer values; return a fresh mono array."""
-        from .Internals import layers as named_layers
-
-        return named_layers.render(self, layers, seconds)[0]
-
-    def analyze_layers(self, layers, *, seconds=None, silence_dbfs=-60.0, frame_seconds=0.02, edge_dbfs=-40.0):
-        """Measure the mix and each gain-applied, timeline-aligned layer."""
-        from .Internals import layers as named_layers
-
-        mix, stems, metadata = named_layers.render(self, layers, seconds)
-        options = dict(silence_dbfs=silence_dbfs, frame_seconds=frame_seconds, edge_dbfs=edge_dbfs)
-        return named_layers.analyze(self, mix, stems, metadata, options)
-
-    def export_layers(self, directory, layers, *, seconds=None, report=True):
-        """Export mix.wav, aligned layer WAVs and optional text/JSON analysis."""
-        from .Internals import layers as named_layers
-
-        mix, stems, metadata = named_layers.render(self, layers, seconds)
-        return named_layers.export(self, directory, mix, stems, metadata, report)
+    def export_gallery(self, path, sounds, *, title="Sound gallery"):
+        """Self-contained HTML listening page for {name: samples}, at true relative levels."""
+        return gallery.export(self, path, sounds, title)
 
     def review_clip(self, source=None, *, layers=None, seconds=None, parameters=None):
         """Capture a signal/file or layered recipe, with seed and JSON parameters."""
-        from .Internals import review_io
-
         return review_io.clip(self, source, layers, seconds, parameters)
 
     def compare(self, reference, candidate, *, focus="all", align=True, silence_dbfs=-60.0,
                 onset_relative_db=-40.0, frame_seconds=0.01):
         """Compare active envelopes/stages without altering, stretching or mastering signals."""
-        from .Internals import comparison
-
         return comparison.compare(self, reference, candidate, focus, align, silence_dbfs,
                                   onset_relative_db, frame_seconds)
 
     def export_review(self, directory, reference, variants, *, title="Sound reference review", focus="all",
                       align=True, match="rms", target_dbfs=-20.0, max_gain_db=12.0,
                       silence_dbfs=-60.0, onset_relative_db=-40.0, frame_seconds=0.01):
-        """Export an offline HTML A/B player, plots, reports, raw WAVs and aligned stem previews."""
-        from .Internals import review
-
+        """Export an offline HTML A/B player against a reference, with plots, reports and stems."""
         return review.export(self, directory, reference, variants, title, focus, align, match,
                              target_dbfs, max_gain_db, silence_dbfs, onset_relative_db, frame_seconds)
 
-    @staticmethod
-    def run(sounds, write, *, prefix="", names=None, validate=True):
-        """Select named sounds from argv (or names), call write(name), print filenames."""
-        from .Internals import cli
-
-        cli.run(sounds, write, prefix, names, validate)

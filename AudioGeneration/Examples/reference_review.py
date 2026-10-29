@@ -4,8 +4,6 @@ import argparse
 from pathlib import Path
 import sys
 
-import numpy as np
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from AudioGeneration import SoundGenerator
 
@@ -13,10 +11,8 @@ from AudioGeneration import SoundGenerator
 def impact(context, frequency, decay, air_gain):
     body = context.for_layer("body")
     air = context.for_layer("air")
-    t = body.time_axis(0.7)
-    tone = (np.sin(2 * np.pi * frequency * t) + 0.3 * np.sin(2 * np.pi * frequency * 2.7 * t))
-    tone *= body.decay_envelope(t, 0.001, decay)
-    noise = air.bandpass(air.noise(0.2), 800, 3000) * np.exp(-air.time_axis(0.2) / 0.025)
+    tone = body.modal(0.7, frequency, (1.0, 2.7), (decay, decay), gains=(1.0, 0.3), random_phase=False)
+    noise = air.bandpass(air.noise(0.2), 800, 3000) * air.decay(0.2, 0.025)
     return context.review_clip(layers={"Body": body.layer(tone, at=0.03, gain=0.55),
                                       "Air": air.layer(noise, at=0.03, gain=air_gain)},
                                parameters={"frequency_hz": frequency, "decay_seconds": decay, "air_gain": air_gain})

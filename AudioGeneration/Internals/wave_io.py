@@ -1,34 +1,60 @@
-"""Mono PCM16 export and optional source decoding."""
+"""PCM16 WAV encoding/writing and source loading (WAV via SciPy, other formats via soundfile)."""
 
-from array import array
+import io
+import math
 from pathlib import Path
 import wave
 
+import numpy as np
 
-def write_wav(path, samples, sample_rate, rounding, clip):
-    if rounding:
-        data = array("h", (round(max(-1.0, min(1.0, s)) * 32767) for s in samples))
-    else:
-        import numpy as np
+from .validation import mono
 
-        data = ((np.clip(samples, -1.0, 1.0) if clip else samples) * 32767.0).astype("<i2")
+
+def pcm16(samples, rate):
+    """Rounded, clipped mono PCM16 WAV bytes."""
+    data = np.rint(np.clip(mono(samples), -1.0, 1.0) * 32767.0).astype("<i2")
+    output = io.BytesIO()
+    with wave.open(output, "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(int(rate))
+        audio.writeframes(data.tobytes())
+    return output.getvalue()
+
+
+def write_wav(path, samples, rate):
+    payload = pcm16(samples, rate)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with wave.open(str(path), "wb") as output:
-        output.setnchannels(1)
-        output.setsampwidth(2)
-        output.setframerate(sample_rate)
-        output.writeframes(data.tobytes())
+    path.write_bytes(payload)
+    return path
 
 
-def read_source(path, sample_rate):
-    import numpy as np
-    from scipy.signal import resample_poly
-    import soundfile as sf
+def load(path, target_rate):
+    """Decode, downmix by channel mean and resample to the context rate. DC and level are untouched."""
+    path = Path(path)
+    if path.suffix.lower() == ".wav":
+        from scipy.io import wavfile
 
-    audio, rate = sf.read(path, always_2d=True)
-    audio = audio.mean(axis=1)
-    if rate != sample_rate:
-        divisor = np.gcd(rate, sample_rate)
-        audio = resample_poly(audio, sample_rate // divisor, rate // divisor)
-    return audio - audio.mean()
+        rate, audio = wavfile.read(path)
+        if audio.dtype.kind == "u":
+            audio = (audio.astype(float) - 128.0) / 128.0
+        elif audio.dtype.kind == "i":
+            audio = audio.astype(float) / float(2 ** (audio.dtype.itemsize * 8 - 1))
+        else:
+            audio = audio.astype(float)
+    else:
+        try:
+            import soundfile
+        except ImportError as error:
+            raise ImportError(f"Reading {path.suffix} files needs soundfile (pip install soundfile)") from error
+        audio, rate = soundfile.read(path, always_2d=True)
+    if audio.ndim == 2:
+        audio = audio.mean(axis=1)
+    audio = mono(audio, path.name)
+    if rate != target_rate and len(audio):
+        from scipy.signal import resample_poly
+
+        divisor = math.gcd(int(rate), int(target_rate))
+        audio = resample_poly(audio, int(target_rate) // divisor, int(rate) // divisor)
+    return audio, {"filename": path.name, "original_sample_rate": int(rate)}

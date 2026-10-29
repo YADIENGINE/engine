@@ -86,11 +86,7 @@ def export(generator, directory, reference, variants, title, focus, align, match
                            "plots": review_visuals.plots(clip.samples, rate)})
     page_data = {"title": title, "settings": session["settings"], "clips": page_clips,
                  "comparisons": comparisons}
-    serialized = json.dumps(review_io.browser_numbers(page_data), ensure_ascii=False,
-                            allow_nan=False, separators=(",", ":"))
-    # Embedded JSON is data, even when a label contains an HTML closing tag.
-    serialized = (serialized.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
-                  .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
+    serialized = review_io.embedded_json(page_data)
     assets = Path(__file__).parent
     html = (assets / "review_page.html").read_text(encoding="utf-8")
     html = html.replace("@@CSS@@", (assets / "review_page.css").read_text(encoding="utf-8"))

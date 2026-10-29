@@ -1,78 +1,123 @@
-"""Butterworth, one-pole and time-varying filters, kept as distinct algorithms."""
+"""Fixed Butterworth filters and per-sample state-variable filters for moving cutoffs.
+
+The SVF topology follows Andrew Simper (Cytomic), "SvfLinearTrapOptimised2.pdf"; cutoff curves are
+smoothed in log-Hz so sweeps stay click-free.
+"""
+
+import math
 
 import numpy as np
 
+from .validation import curve, mono, positive, positive_integer
 
-def butterworth(samples, cutoff, kind, order, sample_rate):
+SMOOTHING_SECONDS = 0.005
+
+
+def _fixed(value):
+    return np.ndim(value) == 0
+
+
+def butterworth(samples, cutoff, kind, order, rate):
     from scipy import signal
 
-    sos = signal.butter(order, cutoff, kind, fs=sample_rate, output="sos")
-    return signal.sosfilt(sos, samples)
+    order = positive_integer(order, "order")
+    nyquist = rate / 2
+    for value in np.atleast_1d(cutoff):
+        if not 0 < float(value) < nyquist:
+            raise ValueError("cutoff must be between 0 Hz and Nyquist")
+    if not len(samples):
+        return samples
+    return signal.sosfilt(signal.butter(order, cutoff, kind, fs=rate, output="sos"), samples)
 
 
-def one_pole(samples, cutoff, sample_rate):
-    cutoff = np.broadcast_to(np.asarray(cutoff, dtype=float), samples.shape)
-    alpha = 1.0 - np.exp(-2.0 * np.pi * cutoff / sample_rate)
-    out = np.empty_like(samples)
-    state = 0.0
-    for index, value in enumerate(samples):
-        state += alpha[index] * (value - state)
-        out[index] = state
-    return out
-
-
-def sweep_filter(samples, kind, cutoff, order, width, block_size, sample_rate):
+def _smoothed_log(cutoff, count, rate):
     from scipy import signal
 
-    cutoff = np.broadcast_to(np.asarray(cutoff, dtype=float), samples.shape)
-    out = np.empty_like(samples)
-    state = None
-    for start in range(0, len(samples), block_size):
-        end = min(start + block_size, len(samples))
-        center = float(np.clip(cutoff[start], 20.0, sample_rate * 0.45))
-        if kind == "band":
-            half = max(center * width / 2.0, 10.0)
-            sos = signal.butter(order, [max(center - half, 15.0), min(center + half, sample_rate * 0.47)],
-                                "band", fs=sample_rate, output="sos")
-        else:
-            sos = signal.butter(order, center, kind, fs=sample_rate, output="sos")
-        if state is None:
-            state = np.zeros((sos.shape[0], 2))
-        out[start:end], state = signal.sosfilt(sos, samples[start:end], zi=state)
-    return out
+    targets = np.log(cutoff)
+    alpha = -math.expm1(-1.0 / (SMOOTHING_SECONDS * rate))
+    smoothed, _ = signal.lfilter([alpha], [1.0, alpha - 1.0], targets, zi=[targets[0] * (1.0 - alpha)])
+    return np.exp(smoothed)
 
 
-def swept(samples, cutoff_at, kind, order, blocks, sample_rate):
-    from scipy import signal
-
-    size = len(samples) // blocks + 1
-    window = np.hanning(size * 2)
-    result = np.zeros_like(samples)
-    for block in range(blocks + 2):
-        start = (block - 1) * size
-        low, high = max(0, start), min(len(samples), start + size * 2)
-        if low >= high:
-            continue
-        sos = signal.butter(order, cutoff_at((start + size) / sample_rate), kind,
-                            fs=sample_rate, output="sos")
-        piece = signal.sosfilt(sos, samples[low:high])
-        result[low:high] += piece * window[low - start:high - start]
+def svf(samples, cutoff, kind, q, rate):
+    """One two-pole stage; cutoff and q may vary per sample. Band output has unity peak gain."""
+    count = len(samples)
+    cutoff = curve(cutoff, count, "cutoff", low=0.0, high=rate * 0.49)
+    q = curve(q, count, "q", low=0.0)
+    if not count:
+        return samples
+    if not np.all(cutoff == cutoff[0]):
+        cutoff = _smoothed_log(cutoff, count, rate)
+    damping = 1.0 / q
+    g = np.tan(np.pi * cutoff / rate)
+    a1 = 1.0 / (1.0 + g * (g + damping))
+    k = damping.tolist()
+    a2 = g * a1
+    a3 = g * a2
+    output = [0.0] * count
+    ic1 = ic2 = 0.0
+    mode = ("lowpass", "highpass", "bandpass").index(kind)
+    for index, (x, c1, c2, c3, d) in enumerate(zip(samples.tolist(), a1.tolist(), a2.tolist(), a3.tolist(), k)):
+        v3 = x - ic2
+        v1 = c1 * ic1 + c2 * v3
+        v2 = ic2 + c2 * ic1 + c3 * v3
+        ic1 = 2.0 * v1 - ic1
+        ic2 = 2.0 * v2 - ic2
+        output[index] = v2 if mode == 0 else (x - d * v1 - v2 if mode == 1 else d * v1)
+    result = np.array(output)
+    if not np.isfinite(result).all():
+        raise ValueError("Filter output overflowed; reduce input level or Q")
     return result
 
 
-def sweep_bandpass(samples, start, end, width, blocks, sample_rate):
-    seconds = len(samples) / sample_rate
-
-    def cutoff_at(at):
-        center = start * (end / start) ** min(max(at / seconds, 0.0), 1.0)
-        return center / width, center * width
-
-    return swept(samples, cutoff_at, "bandpass", 2, blocks, sample_rate)
+def _butterworth_qs(order):
+    if order % 2:
+        raise ValueError("a moving cutoff needs an even order (2, 4, 6 ...)")
+    return [1.0 / (2.0 * math.sin(math.pi * (2 * k - 1) / (2 * order))) for k in range(1, order // 2 + 1)]
 
 
-def formant_voice(source, formants, sample_rate):
-    out = np.zeros_like(source)
-    for center, width, gain in formants:
-        out += sweep_filter(source, "band", np.broadcast_to(center, source.shape),
-                            2, width, 256, sample_rate) * gain
-    return out
+def pass_filter(samples, cutoff, kind, order, rate):
+    samples = mono(samples)
+    if _fixed(cutoff):
+        return butterworth(samples, float(cutoff), kind, order, rate)
+    for q in _butterworth_qs(positive_integer(order, "order")):
+        samples = svf(samples, cutoff, kind, q, rate)
+    return samples
+
+
+def bandpass(samples, low, high, order, rate):
+    samples = mono(samples)
+    if _fixed(low) and _fixed(high):
+        if not float(low) < float(high):
+            raise ValueError("low must be below high")
+        return butterworth(samples, (float(low), float(high)), "bandpass", order, rate)
+    low = curve(low, len(samples), "low", low=0.0)
+    high = curve(high, len(samples), "high", low=0.0)
+    if np.any(low >= high):
+        raise ValueError("low must stay below high")
+    center = np.sqrt(low * high)
+    q = center / (high - low)
+    for _ in range(positive_integer(order, "order")):
+        samples = svf(samples, center, "bandpass", q, rate)
+    return samples
+
+
+def resonate(samples, center, q, rate):
+    return svf(mono(samples), center, "bandpass", q, rate)
+
+
+def formants(samples, bands, rate):
+    samples = mono(samples)
+    output = np.zeros_like(samples)
+    try:
+        bands = [(center, q, float(gain)) for center, q, gain in bands]
+    except (TypeError, ValueError) as error:
+        raise ValueError("formants needs (center Hz or curve, q, gain) triples") from error
+    for center, q, gain in bands:
+        output += gain * svf(samples, center, "bandpass", q, rate)
+    return output
+
+
+def dc_block(samples, cutoff, rate):
+    return butterworth(mono(samples), positive(cutoff, "cutoff"), "highpass", 1, rate)
+

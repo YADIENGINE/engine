@@ -83,6 +83,7 @@ def analyze(samples, sample_rate, silence_dbfs, frame_seconds, edge_dbfs):
         "rms_amplitude": None,
         "rms_dbfs": None,
         "crest_db": None,
+        "loudness_lufs": None,
         "dc_offset": None,
         "active_seconds": None,
         "active_span_seconds": None,
@@ -107,6 +108,12 @@ def analyze(samples, sample_rate, silence_dbfs, frame_seconds, edge_dbfs):
     report.update(peak_amplitude=peak, peak_dbfs=db(peak), rms_amplitude=energy, rms_dbfs=db(energy),
                   crest_db=20 * (math.log10(peak) - math.log10(energy)) if energy else None,
                   dc_offset=peak * float(np.mean(samples / peak)) if peak else 0.0)
+    if peak:
+        from .level import loudness
+
+        with np.errstate(over="ignore", invalid="ignore"):
+            value = loudness(samples, sample_rate)
+        report["loudness_lufs"] = value if value is not None and math.isfinite(value) else None
     active = np.flatnonzero(np.abs(samples) > 10 ** (silence_dbfs / 20.0))
     report["active_seconds"] = len(active) / sample_rate
     report["active_span_seconds"] = (int(active[-1] - active[0]) + 1) / sample_rate if len(active) else 0.0

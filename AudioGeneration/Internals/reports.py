@@ -12,7 +12,7 @@ def audio_lines(report):
     lines = [f"Duration: {report['duration_seconds']:.3f} s ({report['sample_count']} samples, "
              f"{report['sample_rate']} Hz)",
              f"Peak: {level(report['peak_dbfs'])} dBFS | RMS: {level(report['rms_dbfs'])} dBFS | "
-             f"Crest: {level(report['crest_db'])} dB",
+             f"Crest: {level(report['crest_db'])} dB | Loudness: {level(report['loudness_lufs'])} LUFS",
              f"Active: {level(report['active_seconds'])} s | Trailing silence: "
              f"{level(report['trailing_silence_seconds'])} s",
              f"DC offset: {report['dc_offset'] if report['dc_offset'] is not None else 'n/a'} | Samples exceeding full scale: "

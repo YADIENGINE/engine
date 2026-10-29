@@ -1,17 +1,15 @@
 """Review snapshots and audio encodings; original source files are never written."""
 
 import base64
-import io
 import json
-import math
 import os
 from pathlib import Path
-import wave
 
 import numpy as np
 
 from ..contracts import AudioReviewClip
-from .validation import finite_mono, positive_integer
+from .validation import mono, positive_integer
+from .wave_io import load, pcm16
 
 
 def json_copy(value):
@@ -29,37 +27,19 @@ def browser_numbers(value):
     return value
 
 
+def embedded_json(value):
+    """Compact JSON safe inside an HTML <script> element, with exact large integers for JavaScript."""
+    serialized = json.dumps(browser_numbers(value), ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+    # Embedded JSON is data, even when a label contains an HTML closing tag.
+    for character in "&<>\u2028\u2029":
+        serialized = serialized.replace(character, "\\u%04x" % ord(character))
+    return serialized
+
+
 def snapshot(samples):
-    samples = finite_mono(samples).copy()
+    samples = mono(samples)
     samples.setflags(write=False)
     return samples
-
-
-def load(path, target_rate):
-    path = Path(path)
-    if path.suffix.lower() == ".wav":
-        from scipy.io import wavfile
-
-        rate, audio = wavfile.read(path)
-        if audio.dtype.kind == "u":
-            audio = (audio.astype(float) - 128.0) / 128.0
-        elif audio.dtype.kind == "i":
-            audio = audio.astype(float) / float(2 ** (audio.dtype.itemsize * 8 - 1))
-        else:
-            audio = audio.astype(float)
-    else:
-        import soundfile as sf
-
-        audio, rate = sf.read(path, always_2d=True)
-    if audio.ndim == 2:
-        audio = audio.mean(axis=1)
-    audio = finite_mono(audio)
-    if rate != target_rate and len(audio):
-        from scipy.signal import resample_poly
-
-        divisor = math.gcd(int(rate), target_rate)
-        audio = resample_poly(audio, target_rate // divisor, int(rate) // divisor)
-    return audio, {"filename": path.name, "original_sample_rate": int(rate)}
 
 
 def clip(generator, source, layers, seconds, parameters):
@@ -74,7 +54,7 @@ def clip(generator, source, layers, seconds, parameters):
     stems, metadata, source_info = {}, {}, {}
     source_path = None
     if layers is not None:
-        from .layers import render
+        from .timeline import render
 
         samples, stems, metadata = render(generator, layers, seconds)
     else:
@@ -104,19 +84,13 @@ def pcm_preview(samples, sample_rate):
     peak = float(np.max(np.abs(samples))) if len(samples) else 0.0
     # Encode near full scale for precision; the player restores raw/matched gains.
     gain = min(1e12, 0.89 / peak) if peak > 1e-12 else (1e12 if peak else 1.0)
-    normalized = samples * gain
-    pcm = np.rint(np.clip(normalized, -1, 1) * 32767).astype("<i2")
     # Browsers cannot load a zero-frame WAV. A silent placeholder affects playback only.
-    if not len(pcm):
-        pcm = np.zeros(1, dtype="<i2")
-    output = io.BytesIO()
-    with wave.open(output, "wb") as audio:
-        audio.setnchannels(1)
-        audio.setsampwidth(2)
-        audio.setframerate(sample_rate)
-        audio.writeframes(pcm.tobytes())
-    payload = output.getvalue()
-    return payload, gain, "data:audio/wav;base64," + base64.b64encode(payload).decode("ascii")
+    payload = pcm16(samples * gain if len(samples) else np.zeros(1), sample_rate)
+    return payload, gain, data_uri(payload)
+
+
+def data_uri(payload):
+    return "data:audio/wav;base64," + base64.b64encode(payload).decode("ascii")
 
 
 def write_raw(path, samples, sample_rate):
