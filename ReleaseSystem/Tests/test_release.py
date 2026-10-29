@@ -1,6 +1,6 @@
 """release.py checks on temporary folders; no compiler required.
 
-Run from the Tools folder: python -m unittest discover -s Tests
+Run from the Engine root: python -m unittest discover -s ReleaseSystem/Tests
 """
 
 import json
@@ -11,18 +11,19 @@ import unittest
 import zipfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # Tools
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # ReleaseSystem
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "Tools"))  # project_config
 
 from project_config import Project  # noqa: E402
-from release import ENGINE, NOTICES_FILE, check_components, load_components, package  # noqa: E402
+from release import ENGINE, NOTICES_FILE, SYSTEM, check_components, load_components, package  # noqa: E402
 
 
 def copy_notices_engine(destination: Path) -> Path:
     """Notices.json, bileşen metinleri ve pin dosyalarının kopyası: denetimi gerçek Engine'e dokunmadan bozmak için."""
     manifest = load_components()
-    files = {Path("Distribution") / "Notices.json"}
+    files = {SYSTEM / "Notices.json"}
     for component in manifest["components"]:
-        files.add(Path("Distribution") / component["text"])
+        files.add(SYSTEM / component["text"])
         files.add(Path(component["pin"]["file"]))
     for relative in files:
         (destination / relative).parent.mkdir(parents=True, exist_ok=True)
@@ -72,16 +73,17 @@ class PackageTests(unittest.TestCase):
         self.exe.write_bytes(b"exe")
         (self.exe.parent / "Assets" / "Fonts").mkdir(parents=True)
         (self.exe.parent / "Assets" / "Fonts" / "OFL.txt").write_text("font license", encoding="utf-8")
-        (self.root / "Distribution").mkdir()
-        (self.root / "Distribution" / "GameNotices.txt").write_text("Font: see Assets/Fonts/OFL.txt.",
+        (self.root / "Game" / "Distribution").mkdir(parents=True)
+        (self.root / "Game" / "Distribution" / "GameNotices.txt").write_text("Font: see Assets/Fonts/OFL.txt.",
                                                                      encoding="utf-8")
-        (self.root / "Distribution" / "Credits.txt").write_text("credits", encoding="utf-8")
+        (self.root / "Game" / "Distribution" / "Credits.txt").write_text("credits", encoding="utf-8")
 
     def tearDown(self):
         self._directory.cleanup()
 
     def project(self, hooks: str | None = None, **release) -> Project:
-        settings = {"notices": "Distribution/GameNotices.txt", "files": ["Distribution/Credits.txt"], **release}
+        settings = {"notices": "Game/Distribution/GameNotices.txt", "files": ["Game/Distribution/Credits.txt"],
+                    **release}
         data = {"version": 1, "name": "MyGame", "release": settings}
         if hooks is not None:
             (self.root / "ProjectHooks.py").write_text(hooks, encoding="utf-8")
@@ -115,7 +117,7 @@ class PackageTests(unittest.TestCase):
         old.parent.mkdir(parents=True)
         old.write_text("old", encoding="utf-8")
         with self.assertRaises(SystemExit):
-            package(self.project(notices="Distribution/Missing.txt"), self.exe, self.root / "build")
+            package(self.project(notices="Game/Distribution/Missing.txt"), self.exe, self.root / "build")
         self.assertTrue(old.is_file())
 
     def test_missing_selected_asset_stops_before_touching_the_old_package(self):
@@ -128,9 +130,9 @@ class PackageTests(unittest.TestCase):
         self.assertTrue(old.is_file())
 
     def test_generated_notice_name_cannot_be_an_extra_file(self):
-        (self.root / "Distribution" / NOTICES_FILE).write_text("hand written", encoding="utf-8")
+        (self.root / "Game" / "Distribution" / NOTICES_FILE).write_text("hand written", encoding="utf-8")
         with self.assertRaises(SystemExit):
-            package(self.project(files=[f"Distribution/{NOTICES_FILE}"]), self.exe, self.root / "build")
+            package(self.project(files=[f"Game/Distribution/{NOTICES_FILE}"]), self.exe, self.root / "build")
 
 
 if __name__ == "__main__":

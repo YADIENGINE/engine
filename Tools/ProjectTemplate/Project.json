@@ -8,7 +8,7 @@
   },
   "release": {
     "directory": "Release",
-    "notices": "Distribution/GameNotices.txt",
+    "notices": "Game/Distribution/GameNotices.txt",
     "files": []
   },
   "tests": {

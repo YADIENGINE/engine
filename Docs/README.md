@@ -16,7 +16,7 @@ Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları o
    [gameplay yardımcıları](GameplayHelpers.md).
 5. [Editör](Editor/README.md): projeyi bağlama ve üretim çizimini önizleme.
 6. [Release paketi](Release.md): `p.py --release`, `Release/` düzeni ve üçüncü taraf bildirimleri. Oyuna dış
-   asset ya da kütüphane ekleyen her değişiklik `Distribution/` bildirimini de günceller.
+   asset ya da kütüphane ekleyen her değişiklik `Game/Distribution/` bildirimini de günceller.
 
 ## Konu dizini
 

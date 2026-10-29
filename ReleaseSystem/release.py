@@ -1,7 +1,7 @@
 """Release paketi: exe + seçili Assets + üretilmiş ThirdPartyNotices.txt + ek dosyalar, yanına ZIP.
 
 build_cli `p.py --release` ile çağırır; ayarlar Project.json `release` bölümünde (bkz. Docs/Release.md).
-Bildirimin Engine kısmı Engine/Distribution/Notices.json'daki bileşenlerden, oyun kısmı projenin `release.notices`
+Bildirimin Engine kısmı yanındaki Notices.json'daki bileşenlerden, oyun kısmı projenin `release.notices`
 dosyasından gelir. Bileşen sürümü Engine'deki pin'le ya da metni indirilen kaynağın lisansıyla uyuşmazsa
 paketleme durur.
 """
@@ -14,7 +14,8 @@ import textwrap
 from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[1]
-NOTICES = Path("Distribution") / "Notices.json"
+SYSTEM = Path("ReleaseSystem")  # Engine'e göre bu klasör; Notices.json ve ThirdParty/ burada
+NOTICES = SYSTEM / "Notices.json"
 NOTICES_FILE = "ThirdPartyNotices.txt"  # Paketin kökünde üretilen bildirim
 TITLE = "THIRD-PARTY NOTICES"
 PREAMBLE = (
@@ -39,7 +40,7 @@ def check_components(manifest: dict, engine: Path = ENGINE, deps: Path | None = 
     errors = []
     for component in manifest["components"]:
         name, version = component["name"], component["version"]
-        text_path = engine / "Distribution" / component["text"]
+        text_path = engine / SYSTEM / component["text"]
         if not text_path.is_file():
             errors.append(f"{name}: missing notice text {text_path}")
             continue
@@ -64,7 +65,7 @@ def section(title: str, body: str) -> str:
 
 
 def compose_notices(manifest: dict, game_name: str, game_text: str | None, engine: Path = ENGINE) -> str:
-    texts = [(engine / "Distribution" / c["text"]).read_text(encoding="utf-8").strip() for c in manifest["components"]]
+    texts = [(engine / SYSTEM / c["text"]).read_text(encoding="utf-8").strip() for c in manifest["components"]]
     parts = [f"{TITLE}\n{'=' * len(TITLE)}\n\n{PREAMBLE}\n",
              section("PART 1: ENGINE", textwrap.fill(manifest["intro"], 100) +"\n\n" + "\n\n".join(texts))]
     if game_text is not None:

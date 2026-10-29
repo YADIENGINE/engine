@@ -1,7 +1,8 @@
 # Release paketi ve üçüncü taraf bildirimleri
 
 `python p.py --release` (çalıştırmadan: `--release --build`) Release derler ve oyuncuya verilecek paketi kurar.
-İşi `Tools/release.py` yapar; ayarlar `Project.json` `release` bölümündedir. Her proje aynı düzeni üretir:
+İşi `Engine/ReleaseSystem/` yapar (`Tools/build_cli.py` onu çağırır); ayarlar `Project.json` `release`
+bölümündedir. Her proje aynı düzeni üretir:
 
 ```text
 Release/                     (git'e girmez; şablonun .gitignore'unda)
@@ -19,8 +20,8 @@ Release/                     (git'e girmez; şablonun .gitignore'unda)
 "release": {
   "directory": "Release",
   "name": "MyGame",
-  "notices": "Distribution/GameNotices.txt",
-  "files": ["Distribution/AudioCredits.txt"]
+  "notices": "Game/Distribution/GameNotices.txt",
+  "files": ["Game/Distribution/AudioCredits.txt"]
 }
 ```
 
@@ -35,7 +36,7 @@ Release/                     (git'e girmez; şablonun .gitignore'unda)
 
 ## Bildirim iki parçadır
 
-**Part 1: Engine** otomatik eklenir, oyun hiçbir şey yazmaz. Kaynağı `Engine/Distribution/`:
+**Part 1: Engine** otomatik eklenir, oyun hiçbir şey yazmaz. Kaynağı `Engine/ReleaseSystem/`:
 `Notices.json` bileşen listesi (ad, sürüm, metin dosyası, Engine'deki sürüm pin'i) ve `ThirdParty/*.txt` lisans
 metinleri. Engine ile derlenen her oyuna giren kütüphaneler buradadır (raylib ve içinde gelenler, JSON, şifreleme).
 Sadece editörde ya da testte kullanılan bağımlılıklar (ImGui, Catch2) oyuna girmediği için listelenmez.
@@ -43,11 +44,11 @@ Sadece editörde ya da testte kullanılan bağımlılıklar (ImGui, Catch2) oyun
 **Part 2: oyun** projenin `release.notices` dosyasıdır ve aynen eklenir. Oyunun kendi getirdiği her üçüncü taraf
 şey burada ya da buradan işaret edilen bir dosyada anılır.
 
-## Oyun tarafı: `Distribution/`
+## Oyun tarafı: `Game/Distribution/`
 
-Proje kökündeki `Distribution/` oyuncuya giden bildirim metinlerini tutar. `EngineSetup.py`
-`Distribution/GameNotices.txt`'i "henüz üçüncü taraf içerik yok" satırıyla kurar; ilk dış içerik
-eklendiğinde bu satır silinir.
+`Game/Distribution/` oyuncuya giden bildirim metinlerini tutar. `Game/Assets/`'in kardeşidir ama pakete kendiliğinden
+girmez; sadece `release.notices` ve `release.files` ile girer. `EngineSetup.py` `Game/Distribution/GameNotices.txt`'i
+"henüz üçüncü taraf içerik yok" satırıyla kurar; ilk dış içerik eklendiğinde bu satır silinir.
 
 | Dosya | İçerik |
 | --- | --- |
@@ -73,7 +74,7 @@ sayılmaz.
 | Projede üretilmiş içerik (kendi çizimin, `AudioGeneration` sesleri) | bildirim gerekmez; credits dosyası varsa "projede üretildi" diye ayrı tutulabilir |
 | Engine'in getirdiği bir şey | hiçbir şey; Part 1 Engine'indir |
 
-Lisansı ya da kaynağı belirsiz içerik pakete girmeden önce `Distribution/README.md`'de açık soru olarak yazılır.
+Lisansı ya da kaynağı belirsiz içerik pakete girmeden önce `Game/Distribution/README.md`'de açık soru olarak yazılır.
 Araç metinlerin varlığını denetler, oyun içeriğinin lisans uygunluğunu denetlemez.
 
 ### Giriş biçimi
@@ -103,19 +104,32 @@ Paketleme bir şey bulursa mevcut `Release/<name>/` klasörünü silmeden durur 
   güncellenmemiş) ya da metin dosyasının ilk satırı o sürümü anmıyor.
 - `build/_deps` varsa: kayıtlı metin indirilen kaynağın ana lisans dosyasını aynen içermiyor.
 
-Engine'in kendi denetimi derleyici istemez: `Engine/Tools` içinde `python -m unittest discover -s Tests`
+Engine'in kendi denetimi derleyici istemez: Engine kökünde `python -m unittest discover -s ReleaseSystem/Tests`
 (`test_release.py` gerçek pin'leri okur).
+
+## Engine'de nerede: `ReleaseSystem/`
+
+Release'le ilgili her şey tek klasördedir; sistem büyüyecekse (imza, sürüm damgası, mağaza depot'u, başka platform
+paketi) iş burada yapılır, `Tools/` sadece komut satırını bağlar.
+
+```text
+Engine/ReleaseSystem/
+  release.py        package(): denetim → paket klasörü → ThirdPartyNotices.txt → ZIP
+  Notices.json      Part 1 bileşen listesi: ad, sürüm, metin, sürüm pin'i, indirilen lisans dosyası
+  ThirdParty/*.txt  bileşen başına lisans metinleri
+  Tests/            Python unittest (derleyici istemez)
+```
 
 ## Engine bakımı: bağımlılık eklemek ya da yükseltmek
 
 Oyuna giren bir Engine bağımlılığı (`FetchContent`, vendor kaynak, kopyalanmış header) eklendiğinde ya da sürümü
 değiştiğinde:
 
-1. `Distribution/ThirdParty/<bileşen>.txt`: ilk satır `<ad> <sürüm> (<lisans>)`, sonra `Source:`, telif satırları ve
+1. `ReleaseSystem/ThirdParty/<bileşen>.txt`: ilk satır `<ad> <sürüm> (<lisans>)`, sonra `Source:`, telif satırları ve
    lisans metni; bileşenin içinde gelen alt kütüphaneler aynı dosyada kendi başlıklarıyla.
-2. `Distribution/Notices.json`: `name`, `version`, `text`, `pin` (`file` Engine'e göre yol, `contains`'te `{version}`
+2. `ReleaseSystem/Notices.json`: `name`, `version`, `text`, `pin` (`file` Engine'e göre yol, `contains`'te `{version}`
    sürümle değişir) ve FetchContent ile geliyorsa `upstreamLicense` (`_deps`'e göre yol).
 3. Modülün kendi `ThirdParty.md` geliştirici notu varsa onu da güncelle.
-4. `python -m unittest discover -s Tests` (Tools içinde).
+4. Engine kökünde `python -m unittest discover -s ReleaseSystem/Tests`.
 
 Editör ya da test bağımlılığı oyuna girmez; `Notices.json`'a yazılmaz.

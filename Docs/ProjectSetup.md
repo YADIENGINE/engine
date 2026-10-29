@@ -7,9 +7,9 @@ Oyunun kodu, editör önizlemeleri ve belgeleri oyunun reposunda kalır; Engine 
 MyProject/                  (oyunun reposu)
   Engine/                   ← submodule: YDArcadeEngine
     EngineSetup.py  Docs/  Tools/  ...
-  Game/                     oyun kaynakları + Assets/ (.cpp'ler kendiliğinden bulunur)
+  Game/                     oyun kaynakları + Assets/ (.cpp'ler kendiliğinden bulunur) + Distribution/ (oyuncuya
+                            giden bildirim metinleri: GameNotices.txt, credits; bkz. Release.md)
   Editor/                   projenin preview worker'ı (EngineEditor önizlemeleri; .cpp'ler kendiliğinden bulunur)
-  Distribution/             oyuncuya giden bildirim metinleri (GameNotices.txt, credits); bkz. Release.md
   CMakeLists.txt  CMakePresets.json
   Project.json              Engine/Tools'un okuduğu proje ayarı
   p.py  editor.py           Engine/Tools'a giden ince sarmalayıcılar
@@ -33,7 +33,7 @@ python EngineSetup.py --dry-run    # yazmadan ne oluşturacağını listeler
 
 `EngineSetup.py` `Tools/ProjectTemplate/`'i bir üst klasöre yazar: `CMakeLists.txt`, `CMakePresets.json`,
 `Project.json`, `p.py`, `editor.py`, `.gitignore`, `.gitattributes`, `Game/Assets/`, `Editor/`,
-`Distribution/GameNotices.txt`. Proje adı
+`Game/Distribution/GameNotices.txt`. Proje adı
 `project(...)` ve `Project.json` `"name"` alanına yazılır; exe, Release paketi ve editör worker'ı (`<ad>Preview`) bu
 addan türer. Ad harfle başlar, sadece harf/rakam/`_` içerir. Var olan dosyaların üzerine yazmaz (atladıklarını
 listeler); kökte `Project.json` varsa proje kurulmuş sayılır ve hiçbir şey yapmaz. Sonunda eksik araçları
@@ -72,7 +72,7 @@ Aşağıdaki örnek bütün alanları gösterir; şablon `target`, `release.name
   },
   "release": {
     "directory": "Release", "name": "MyProject",
-    "notices": "Distribution/GameNotices.txt", "files": ["Distribution/AudioCredits.txt"]
+    "notices": "Game/Distribution/GameNotices.txt", "files": ["Game/Distribution/AudioCredits.txt"]
   },
   "tests": {
     "buildDirectory": "build/tests",
@@ -115,8 +115,7 @@ JSON'a sığmayan projeye özel iş `hooks` dosyasındaki bilinen fonksiyonlarda
 | Dosya | İş |
 | --- | --- |
 | `buildenv.py` | MSVC ortamı (vcvars64); `build/.msvc-env.json`'da önbelleğe alınır, VS güncellenince yenilenir |
-| `build_cli.py` | `p.py`: derle, çalıştır, `--release` paketle, `--clean`, `--test` |
-| `release.py` | Release paketi ve `ThirdPartyNotices.txt` (Engine'in `Distribution/` + oyunun `release.notices`); [Release](Release.md) |
+| `build_cli.py` | `p.py`: derle, çalıştır, `--release` paketle (`Engine/ReleaseSystem/`, [Release](Release.md)), `--clean`, `--test` |
 | `editor_cli.py` | `editor.py`: EngineEditor + worker derle ve aç |
 | `test_runner.py` | CTest'i koşup yapılandırılmış rapor yazar; çıkış kodu 0 başarı, 1 test hatası, 2 altyapı/seçim hatası |
 | `project_config.py` | `Project.json` ve hook yükleyici |

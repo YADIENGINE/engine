@@ -1,4 +1,4 @@
-"""Engine projesini derler, çalıştırır, Release paketini kurar (release.py) ve testleri koşar.
+"""Engine projesini derler, çalıştırır, Release paketini kurar (ReleaseSystem/release.py) ve testleri koşar.
 
 Proje kökündeki p.py bu modülün main(root)'unu çağırır; ayarlar Project.json'dan (bkz. Docs/ProjectSetup.md).
 Engine reposunda doğrudan `python Tools/build_cli.py --test` Engine'in kendi testlerini koşar.
@@ -19,8 +19,10 @@ from pathlib import Path
 
 from buildenv import clear_stale_build, msvc_env, tool
 from project_config import Project
-from release import package
 from test_runner import run_tests
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ReleaseSystem"))
+from release import package  # noqa: E402
 
 CONFIGURE_STAMP = ".configured"  # Son başarılı configure; bkz. needs_configure
 
