@@ -226,9 +226,30 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         _pendingToggle = false;
     }
     const auto oldVisibility = preferences.visible;
-    auto menu = _shell.Menu(snapshot, actions, preferences, fontSize, _maximized);
     EditorWorkspaceResult result;
-    result.cancelPreviewInput = Shortcuts(snapshot, actions, menu);
+    if (_showFailedOutput) {
+        SetMaximized(false, preferences);
+        preferences.Visible(EditorPanel::Output) = true;
+        preferences.lastBottomPanel = EditorPanel::Output;
+        _focusBottom = EditorPanel::Output;
+        _output.ShowLastAttempt(snapshot.diagnostics.Attempt().id);
+        _viewport.ReleaseFocus();
+        _showFailedOutput = false;
+        result.cancelPreviewInput = true;
+    }
+    const auto& attempt = snapshot.diagnostics.Attempt();
+    const bool failed =
+        attempt.result == EditorBuildResult::BuildFailed || attempt.result == EditorBuildResult::RefreshFailed;
+    constexpr const char* FailurePopup = "Build & Refresh failed";
+    if (failed && attempt.id != _failureAttempt &&
+        !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel)) {
+        _failureAttempt = attempt.id;
+        ImGui::OpenPopup(FailurePopup);
+        _viewport.ReleaseFocus();
+        result.cancelPreviewInput = true;
+    }
+    auto menu = _shell.Menu(snapshot, actions, preferences, fontSize, _maximized);
+    result.cancelPreviewInput |= Shortcuts(snapshot, actions, menu);
     if (_palette.Draw(snapshot, actions, preferences, _maximized, menu)) {
         result.cancelPreviewInput = true;
         _viewport.ReleaseFocus();
@@ -324,6 +345,28 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         --_ignoreLayoutChanges;
     } else if (!_maximized && ImGui::GetIO().WantSaveIniSettings) {
         CaptureLayout(preferences);
+    }
+    ImGui::SetNextWindowSize({ImGui::GetFontSize() * 40, 0}, ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal(FailurePopup, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted(attempt.result == EditorBuildResult::RefreshFailed
+                                   ? "Build succeeded, refresh failed."
+                                   : "Build & Refresh could not complete.");
+        if (attempt.exitCode) ImGui::Text("Build exit code: %lu", *attempt.exitCode);
+        if (attempt.firstError) {
+            ImGui::Separator();
+            if (ImGui::BeginChild("failure-detail", {0, ImGui::GetTextLineHeightWithSpacing() * 6}))
+                ImGui::TextWrapped("%s", attempt.firstError->text.c_str());
+            ImGui::EndChild();
+        }
+        ImGui::Separator();
+        if (ImGui::Button("Show Output")) {
+            _showFailedOutput = true;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+        result.cancelPreviewInput = true;
     }
     if (result.cancelPreviewInput) _viewport.ReleaseFocus();
     return result;

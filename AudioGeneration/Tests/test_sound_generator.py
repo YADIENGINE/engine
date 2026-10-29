@@ -49,6 +49,10 @@ g = SoundGenerator(seed=7, rounding='truncate')
 t = g.time_axis(0.01)
 samples = g.one_pole_bandpass(g.noise(0.01) + g.saw(55, t), 100, 3000)
 samples = g.saturate(samples, 1.2)
+quality = g.bandlimited_saw(55, 0.01)
+quality = g.smooth_filter(quality, 1800)
+quality = g.trim_tail_energy(quality)
+assert np.isfinite(quality).all()
 assert np.isfinite(samples).all()
 assert 'scipy' not in sys.modules and 'soundfile' not in sys.modules
 """

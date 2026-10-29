@@ -128,7 +128,8 @@ std::vector<std::string> ChildProcess::DrainOutput() {
     constexpr std::size_t MaxLineBytes = 16 * 1024;
     std::array<char, 4096> buffer{};
     std::size_t consumed = 0;
-    while (consumed < MaxBytesPerPoll) {
+    // After exit, drain the entire pipe before Clear closes it (including bursts over 64 KB).
+    while (consumed < MaxBytesPerPoll || !Running()) {
         DWORD available = 0;
         if (!PeekNamedPipe(_output.Get(), nullptr, 0, nullptr, &available, nullptr) || !available) break;
         DWORD read = 0;
@@ -145,9 +146,9 @@ std::vector<std::string> ChildProcess::DrainOutput() {
             lines.push_back(std::move(line));
             _pendingOutput.erase(0, newline + 1);
         }
-        if (_pendingOutput.size() > MaxLineBytes) {
-            lines.push_back(_pendingOutput.substr(0, MaxLineBytes) + " [line truncated]");
-            _pendingOutput.clear();
+        while (_pendingOutput.size() > MaxLineBytes) {
+            lines.push_back(_pendingOutput.substr(0, MaxLineBytes));
+            _pendingOutput.erase(0, MaxLineBytes);
         }
     }
     if (!Running() && !_pendingOutput.empty()) lines.push_back(std::exchange(_pendingOutput, {}));

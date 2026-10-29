@@ -118,6 +118,14 @@ class SoundGenerator:
 
         return envelopes.trim_tail(samples, floor, int(0.01 * self.sample_rate))
 
+    def trim_tail_energy(self, samples, *, threshold_dbfs=-60.0, window_seconds=0.01,
+                         hold_seconds=0.05, fade_seconds=0.01, min_seconds=0.0, peak_guard_db=12.0):
+        """Trim after the last active RMS/peak window, retaining hold and release time."""
+        from .Internals import tails
+
+        return tails.trim_energy(samples, self.sample_rate, threshold_dbfs, window_seconds,
+                                 hold_seconds, fade_seconds, min_seconds, peak_guard_db)
+
     def lowpass(self, samples, cutoff, order=2):
         from .Internals import filters
 
@@ -166,6 +174,12 @@ class SoundGenerator:
 
         return filters.sweep_bandpass(samples, start, end, width, blocks, self.sample_rate)
 
+    def smooth_filter(self, samples, cutoff, *, kind="lowpass", q=2 ** -0.5, smoothing_seconds=0.005):
+        """Sample-wise TPT state-variable filter with smoothed log-Hz control."""
+        from .Internals import smooth_filters
+
+        return smooth_filters.smooth_filter(samples, cutoff, kind, q, smoothing_seconds, self.sample_rate)
+
     def formant_voice(self, source, formants):
         """Sum swept bands described by (center curve, width ratio, gain)."""
         from .Internals import filters
@@ -196,6 +210,21 @@ class SoundGenerator:
         from .Internals import oscillators
 
         return oscillators.saw(frequency, t, harmonics, self.sample_rate)
+
+    def _bandlimited(self, frequency, seconds, phase, max_harmonics, square):
+        from .Internals import bandlimited
+        from .Internals.validation import nonnegative
+
+        count = self.sample_count(nonnegative(seconds, "seconds")) if seconds is not None else None
+        return bandlimited.oscillator(frequency, count, self.sample_rate, phase, max_harmonics, square)
+
+    def bandlimited_saw(self, frequency, seconds=None, *, phase=0.0, max_harmonics=512):
+        """Rising additive saw; scalar Hz plus seconds, or one Hz value per sample."""
+        return self._bandlimited(frequency, seconds, phase, max_harmonics, False)
+
+    def bandlimited_square(self, frequency, seconds=None, *, phase=0.0, max_harmonics=512):
+        """Odd-harmonic square with a smooth high-frequency partial cutoff."""
+        return self._bandlimited(frequency, seconds, phase, max_harmonics, True)
 
     def saw_sample(self, phase, harmonics):
         """Unscaled scalar harmonic sum; standard library only."""
@@ -239,10 +268,12 @@ class SoundGenerator:
         return effects.reverb(samples, self.rng, self.sample_count(seconds), seconds, mix, damp,
                               self.sample_count(predelay), self.sample_rate)
 
-    def saturate(self, samples, drive):
+    def saturate(self, samples, drive, *, oversample=1):
         from .Internals import effects
 
-        return effects.saturate(samples, drive)
+        if oversample == 1:
+            return effects.saturate(samples, drive)
+        return effects.saturate_oversampled(samples, drive, oversample)
 
     def read_source(self, path):
         """Decode, downmix, resample and remove DC. Requires soundfile."""

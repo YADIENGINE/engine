@@ -27,8 +27,13 @@ Gerçek pencere/input/görsel kontrolleri kullanıcı yapar; yalnız değişen b
    OnReset için Reset. Uygulama zamanı grup başına tek açıklama veya karışık grupta `*` tooltip'iyle gösterilir.
    Değişmemiş alanın reset'i hover / klavye odağında görünür; yerleşim oynamaz. İleri gruplar önce kapalıdır,
    arama / Modified eşleşmeleri açar. İçerik tanımındaki grup, primary ve disabled metadata'sı korunuyor.
-5. Output sayaçlı filtre / arama / Ctrl seçim / Copy seçili veya filtrelenmiş / Clear; yukarı kaydırınca takip
-   duruyor. Kapalıyken hata sayacı görünüyor; açılınca doğru panel öne geliyor.
+5. Output Last Build Try / Full ayrımı, kapsama göre sayaç / arama / Copy Visible; tıklama / Ctrl seçim /
+   Shift aralığı / Ctrl+A / Ctrl+C / sağ tık kopyalama / çift tıklama metin ayrıntısı. Arama ve ayrıntıda
+   metin kopyalama korunuyor; yukarı kaydırınca veya seçim yapınca Follow duruyor. Clear yalnız Full
+   tamponunu siliyor; Open Log bütün oturum veya deneme çıktısını açıyor. Uzun çıktıda ilk hata korunuyor.
+   Başarısız build'de popup bir kez geliyor; Show Output kapalı veya büyütülmüş düzenden Output'a
+   dönüp ilk hatayı gösteriyor, eski arama ve kapalı Error filtresi hatayı gizlemiyor. İptalde popup yok;
+   başarılı derleme sonrası worker başlatma hatası ayrı anlatılıyor. Yeni deneme önceki denemeye karışmıyor.
 6. Develop / Inspect / Profile arasında geçiş son özel düzeni silmiyor; Last custom layout geri getiriyor.
    Ctrl+J ve alt çubuk son aracı açıp kapatıyor. Yeniden açılışta tercihler dönüyor; büyütülmüş halde kapatmak
    önceki düzeni koruyor.

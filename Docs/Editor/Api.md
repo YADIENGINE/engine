@@ -130,7 +130,10 @@ cmake --build build/engine-editor --config Debug --target EngineEditor
 
 - Kontrol: Windows named pipe (byte mode, `PIPE_NOWAIT`), 4 byte little-endian uzunluk + UTF-8 JSON. Mesaj en çok
   1 MiB; gönderim kuyruğu en çok 256 mesaj / 8 MiB; poll başına 64 KiB okuma / yazma bütçesi. Poll yalnız sahibi
-  olan thread'de yapılır. stdout / stderr ayrı pipe'tan okunur; Output son 1000 satırı tutar.
+  olan thread'de yapılır. Sürecin stdout / stderr çıktısı Output'a alınır; Full son 1000 satırı,
+  Last Build Try son denemenin 10000 satır / 8 MiB tamponunu ve ilk hatasını tutar. Tam oturum / deneme
+  logları build dizinindeki `editor-logs/` altındadır. Süreç çıkışında kalan çıktı 64 KiB poll sınırından
+  bağımsız tamamen okunur; tampon sınırları dosyaya yazılan çıktıyı kesmez.
 - Zarf: sürüm, oturum kimliği, içerik üretimi, istek kimliği, tür, veri. Reset yeni üretim, worker açılışı yeni oturum
   oluşturur. Başlangıç / ilk kare zaman aşımı 30 s.
 - Görüntü: mutex korumalı iki paylaşımlı yuva, en çok 1920×1080 RGBA8. Canvas GPU'dan okunur, çevrilir, kopyalanır;

@@ -61,4 +61,5 @@ struct EditorUiActions {
     std::function<void()> acknowledgeOutput;
     std::function<void(double, bool)> playback;
     std::function<void(EditorProfilerCommand, Profiler::Recipe, const std::string&)> profiler;
+    std::function<void(bool)> openOutputLog;
 };

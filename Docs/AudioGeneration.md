@@ -36,6 +36,8 @@ downloads recordings or installs dependencies.
 | Import, `sample_count`, `run`, `saw_sample`, `lowpass_samples`, rounded WAV export | Python standard library |
 | Buffers, envelopes, harmonic sums, white noise, one-pole array filters, normalizing, saturation, ordinary WAV export | NumPy |
 | Signal analysis, named layers, mixing and stem export | NumPy |
+| Additive bandlimited oscillators, `smooth_filter`, `trim_tail_energy` | NumPy |
+| `saturate(..., oversample=2/4/8/16)` | NumPy + SciPy |
 | Named seed contexts, report formatting and text/JSON report export | Python standard library |
 | Butterworth and swept filters, brown noise, textures, reverb, SciPy waveforms | NumPy + SciPy |
 | `read_source` | NumPy + SciPy + soundfile |
@@ -57,6 +59,10 @@ AudioGeneration/
         envelopes.py            amplitude shapes, fades, tail trimming
         filters.py              fixed and time-varying filters, formants
         oscillators.py          harmonic sums, noise helpers, pulse
+        bandlimited.py          guarded additive saw and square oscillators
+        smooth_filters.py       sample-wise trapezoidal state-variable filter
+        tails.py                RMS/peak-window trailing-energy detector
+        validation.py           shared quality-path input contracts
         textures.py             seeded crackles and pings
         effects.py              convolution room, saturation
         scalar.py               standard-library synthesis/filter primitives
@@ -69,6 +75,7 @@ AudioGeneration/
     Tests/
         test_sound_generator.py existing synthesis/export behavior
         test_authoring_workflow.py analysis, named layers and independent seeds
+        test_signal_quality.py  spectral rejection, filtering and tail behavior
 ```
 
 Add supported operations to `SoundGenerator` and keep implementation in the
@@ -78,8 +85,8 @@ their own internal file without changing the public import. Keep all game
 content outside the library; do not create game-specific presets here.
 
 Existing synthesis algorithms retain their distinct rounding, filter and gain
-conventions. Analysis, named layers and independent seed contexts are opt-in;
-they do not alter existing recipes. Automatic mastering, improved oscillators
+conventions. Analysis, named layers, independent seed contexts and quality
+processing are opt-in; they do not alter existing recipes. Automatic mastering
 and a recipe serialization format are not provided.
 
 ## Buffer and ownership contract
@@ -117,6 +124,7 @@ return new arrays. No method silently normalizes another operation's result.
 | `attack_release(count, attack, release, curve=1)` | Non-overlapping entrance/exit using truncated sample counts |
 | `fade(samples, attack=0, release=0, curve=1, copy=False)` | Independent edge ramps using context rounding; overlapping ramps multiply |
 | `trim_tail(samples, floor=0.002)` | Trim after the last above-floor sample, retaining a 10 ms fade |
+| `trim_tail_energy(samples, threshold_dbfs=-60, window_seconds=0.01, hold_seconds=0.05, fade_seconds=0.01, min_seconds=0, peak_guard_db=12)` | Trim after the last energetic window, retaining late reflections, hold and fade time |
 | `lowpass(samples, cutoff, order=2)`, `highpass(...)` | Butterworth SOS filtering |
 | `bandpass(samples, low, high, order=2)` | Butterworth SOS band-pass |
 | `one_pole_lowpass(samples, cutoff)` | Array one-pole filter; cutoff can vary per sample |
@@ -125,11 +133,14 @@ return new arrays. No method silently normalizes another operation's result.
 | `sweep_filter(samples, kind, cutoff, order=2, width=None, block_size=256)` | Block-updated SOS with carried state; `kind="band"` uses a relative width |
 | `swept_filter(samples, cutoff_at, kind="lowpass", order=2, blocks=64)` | Overlapping Hann-windowed filters; callback takes seconds and returns cutoff Hz or a pair |
 | `sweep_bandpass(samples, start, end, width, blocks=64)` | Exponential band-center sweep using the overlapping-window algorithm |
+| `smooth_filter(samples, cutoff, kind="lowpass", q=2**-0.5, smoothing_seconds=0.005)` | Sample-wise TPT state-variable filter with log-frequency smoothing |
 | `formant_voice(source, formants)` | Sum bands described by `(center curve, width ratio, gain)` |
 | `noise(seconds, count=None)` | Uniform noise in [-1, 1], using the context RNG |
 | `brown(seconds)` | Existing leaky-integrated Gaussian noise |
 | `smooth_random(seconds, rate, low=0, high=1)` | Linearly interpolated random control curve |
 | `saw(frequency, t, harmonics=24)` | Fixed-frequency harmonic sum with a Nyquist cutoff |
+| `bandlimited_saw(frequency, seconds=None, phase=0, max_harmonics=512)` | Rising additive saw, limiting and tapering upper partials |
+| `bandlimited_square(frequency, seconds=None, phase=0, max_harmonics=512)` | Additive square using only odd-numbered partials |
 | `saw_phase(phase, harmonics=40)` | Fixed harmonic sum from phase, without a Nyquist cutoff |
 | `saw_sample(phase, harmonics)` | Unscaled scalar harmonic sum |
 | `pulse(t, frequency, width=0.3)` | Existing soft pulse waveform |
@@ -137,7 +148,7 @@ return new arrays. No method silently normalizes another operation's result.
 | `crackles(seconds, per_second, decay, color_low, color_high, gain_curve=None)` | Filtered random short bursts; retains truncated sample sizing |
 | `pings(seconds, per_second, low, high, decay, gain_curve=None)` | Random resonant pings; retains truncated sample sizing |
 | `reverb(samples, seconds=1.6, mix=0.25, damp=3500, predelay=0.012)` | Noise-impulse convolution room with its complete tail |
-| `saturate(samples, drive)` | Existing normalized tanh saturation |
+| `saturate(samples, drive, oversample=1)` | Existing normalized tanh; optional filtered 2x/4x/8x/16x processing |
 | `read_source(path)` | soundfile decode, channel mean, polyphase resampling to context rate, DC removal |
 | `write_wav(path, samples, rounding=False, clip=True)` | Mono PCM16; creates parent folders and overwrites the named file |
 | `run(sounds, write, prefix="", names=None, validate=True)` | Select names, call `write(name)` and print filenames; no automatic recipe invocation |
@@ -264,6 +275,111 @@ entry is omitted when `report=False`.
 These measurements describe signal structure, not artistic quality, perceived
 loudness or true peak. No LUFS estimator, reference comparison, automatic
 mastering, waveform plot or spectrogram image is included.
+
+## Opt-in signal quality
+
+```python
+g = SoundGenerator(sample_rate=48000, seed=42).for_sound("Growl")
+t = g.time_axis(0.8)
+pitch = 100 + 70 * np.exp(-t / 0.15)
+voice = g.bandlimited_saw(pitch)
+voice *= g.decay_envelope(t, 0.005, 0.25)
+voice = g.saturate(voice, drive=3.0, oversample=4)
+cutoff = 300 + 2500 * np.exp(-t / 0.3)
+voice = g.smooth_filter(voice, cutoff, smoothing_seconds=0.005)
+voice = g.reverb(voice, seconds=1.2, mix=0.2)
+voice = g.trim_tail_energy(voice, threshold_dbfs=-65)
+print(g.format_report(g.analyze(voice)))
+g.write_wav(Path("Output") / "Growl.wav", voice)
+```
+
+These operations do not normalize or clip their floating output. Inspect the
+result before choosing export gain. New quality paths require finite real mono
+signals and valid finite controls. They return new arrays without mutating their
+inputs. Existing `saw`, `saw_phase`, `sawtooth`, `square`, `sweep_filter`,
+`swept_filter`, `trim_tail` and default `saturate` behavior remain unchanged.
+
+### Additive oscillators
+
+Supply scalar Hz plus `seconds`, or a one-dimensional Hz curve with one value
+per output sample. A curve determines its own length; if `seconds` is also given,
+its rounded/truncated sample count must match. Phase starts at the supplied
+`phase` in radians (wrapped modulo 2 pi) and advances using the previous sample's frequency. Frequency
+must stay strictly between zero and Nyquist. Empty curves return empty arrays.
+
+The saw is a rising Fourier saw; square uses positive sine terms at odd harmonics.
+Neither introduces a DC term. Higher partials taper with a cosine between 80%
+and 95% of Nyquist and are omitted above that range. The fundamental is retained
+below Nyquist even when it lies inside the guard region. This avoids hard
+partial switches during pitch sweeps and leaves a high-frequency guard band.
+`max_harmonics` is the largest harmonic number allowed, not the number of partials
+in a square wave; its default 512 bounds offline synthesis cost. Low notes can
+be made brighter at greater cost by increasing it.
+
+For constant pitch, only legal harmonics are synthesized, preventing the folded
+partials of a naive discontinuous waveform. Rapid FM or amplitude modulation can
+still generate sidebands; an instantaneous harmonic limit is not a guarantee of
+zero aliasing for arbitrary modulation. Do not repair an already aliased signal
+by merely replacing a later filter. Fourier truncation may overshoot amplitude
+one, and waveform polarity/phase differ from the legacy `saw` helper; these are
+explicit new oscillators rather than silent replacements.
+
+### Oversampled saturation
+
+`oversample=1` runs the original NumPy-only calculation exactly. Choose 2, 4, 8
+or 16 to use symmetric Kaiser-windowed FIR polyphase upsampling, apply normalized
+tanh at the elevated rate, and filter before downsampling. The FIR uses 64
+elevated-rate samples per factor on each side, Kaiser beta 8.6, and cutoff at
+94% of the output Nyquist frequency. This reserves a transition band and can
+attenuate content very close to Nyquist. Higher factors cost more CPU and reduce,
+but do not mathematically eliminate, nonlinear aliasing.
+
+Endpoint values are extended before filtering, and guards and filter delay are
+removed afterward. Returned sample count and timeline alignment match the input;
+no reverb tail is added. Filtering can create pre/post ringing around sharp
+transients. Empty and one-sample signals are supported; on this quality path,
+zero drive bypasses the operation and returns a copy. Drive must be nonnegative.
+No limiter, level matching or oversampling-dependent peak normalization is applied.
+
+Polyphase processing and custom symmetric FIR alignment follow the
+[SciPy resample_poly contract](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.resample_poly.html).
+
+### Smooth filter movement
+
+`smooth_filter` is a separate two-pole trapezoidal state-variable filter, not a
+smoothed wrapper around the existing Butterworth implementation. It updates each
+sample while retaining integrator state. Scalar cutoff or a matching per-sample
+Hz curve is accepted, with cutoff strictly between zero and `0.49 * sample_rate`.
+Choose `lowpass`, `highpass` or `bandpass`; Q is constant, positive and defaults
+to a Butterworth-like `1/sqrt(2)`. Band-pass gain at its center depends on Q.
+
+An exponential smoother operates on log Hz, producing frequency-ratio transitions
+with the given time constant in seconds. The first cutoff initializes the control
+state; `smoothing_seconds=0` follows the supplied curve immediately. Each call
+starts with zero filter integrator state, so process a complete offline clip in
+one call. It is not a streaming/chunk-state API. Fast control changes or high Q
+can still cause strong resonant output; no automatic gain correction is applied.
+
+The mathematical topology is derived from Andrew Simper's
+[trapezoidal state-variable filter paper](https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf),
+with sample-wise log-frequency smoothing added here.
+
+### Energy-aware tail trimming
+
+`trim_tail_energy` examines every non-overlapping RMS window across the complete
+clip. A window remains active when RMS exceeds `threshold_dbfs`, or its peak
+exceeds `threshold_dbfs + peak_guard_db`. The peak guard protects sparse short
+reflections that a longer RMS average could hide. It does not stop at the first
+quiet window, so gaps before later reflections remain intact.
+
+After the last active window, it retains `hold_seconds` plus `fade_seconds`,
+then applies a linear fade only to the final fade region. Duration never exceeds
+the supplied clip; if the original clip ends while still loud, the final fade
+necessarily affects that ending. All durations use rounded sample counts.
+The threshold is absolute dBFS, not relative to each clip's peak. Tune it for very
+quiet assets; nothing above the thresholds means an empty result unless
+`min_seconds` requests a minimum retained duration. Empty input stays empty.
+Original placement, leading silence and any internal gaps are preserved.
 
 ## Tests
 

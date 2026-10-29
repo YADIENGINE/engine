@@ -81,6 +81,94 @@ TEST_CASE("Editor.Diagnostics.BoundsFiltersAndUnreadErrors", "[engine-editor]") 
     CHECK(ClassifyBuildOutput("error count: 0") == EditorLogLevel::Info);
 }
 
+TEST_CASE("Editor.Diagnostics.AttemptsIncludeRefreshAndExcludeLaterRuntimeOutput", "[engine-editor]") {
+    EditorDiagnostics diagnostics;
+    diagnostics.Append("previous runtime output");
+    diagnostics.BeginAttempt();
+    const auto firstId = diagnostics.Attempt().id;
+    diagnostics.Append("stopping worker", EditorLogLevel::Info, EditorLogSource::Worker);
+    diagnostics.Append("compile complete", EditorLogLevel::Info, EditorLogSource::Build);
+    diagnostics.BuildExited(0);
+    CHECK(diagnostics.Attempt().result == EditorBuildResult::Running);
+    diagnostics.Append("preview startup failed", EditorLogLevel::Error);
+    diagnostics.FinishAttempt(EditorBuildResult::RefreshFailed);
+    const auto captured = diagnostics.AttemptEntries().size();
+    diagnostics.Append("later runtime output", EditorLogLevel::Error);
+    CHECK(diagnostics.AttemptEntries().size() == captured);
+    CHECK(diagnostics.Attempt().result == EditorBuildResult::RefreshFailed);
+    CHECK(diagnostics.Attempt().exitCode == 0);
+    REQUIRE(diagnostics.Attempt().firstError);
+    CHECK(diagnostics.Attempt().firstError->text == "preview startup failed");
+    CHECK(std::ranges::none_of(diagnostics.AttemptEntries(), [](const auto& entry) {
+        return entry.text == "previous runtime output" || entry.text == "later runtime output";
+    }));
+    diagnostics.BeginAttempt();
+    CHECK(diagnostics.Attempt().id > firstId);
+    CHECK_FALSE(diagnostics.Attempt().exitCode);
+    CHECK_FALSE(diagnostics.Attempt().firstError);
+    diagnostics.FinishAttempt(EditorBuildResult::Canceled);
+    diagnostics.FinishAttempt(EditorBuildResult::BuildFailed);
+    CHECK(diagnostics.Attempt().result == EditorBuildResult::Canceled);
+}
+
+TEST_CASE("Editor.Diagnostics.ArchivesSurviveBufferLimitsAndClear", "[engine-editor]") {
+    TempDirectory directory;
+    EditorDiagnostics diagnostics;
+    diagnostics.StartArchive(directory.Path() / "logs" / "session.log");
+    diagnostics.Append("before attempt");
+    diagnostics.BeginAttempt();
+    diagnostics.Append("first compile error", EditorLogLevel::Error, EditorLogSource::Build);
+    // Exceeds the attempt's byte budget and the Full view's line budget.
+    const std::string longLine(20 * 1024, 'x');
+    for (int i = 0; i < 1100; ++i)
+        diagnostics.Append(longLine);
+    diagnostics.Append("last compiler output");
+    diagnostics.BuildExited(1);
+    diagnostics.FinishAttempt(EditorBuildResult::BuildFailed);
+    REQUIRE(diagnostics.ArchiveError().empty());
+    CHECK(diagnostics.Attempt().truncated);
+    REQUIRE(diagnostics.Attempt().firstError);
+    CHECK(diagnostics.Attempt().firstError->text == "first compile error");
+    CHECK(diagnostics.AttemptEntries().front().sequence > diagnostics.Attempt().firstError->sequence);
+    diagnostics.Clear();
+    CHECK(diagnostics.Entries().empty());
+    CHECK_FALSE(diagnostics.AttemptEntries().empty());
+    diagnostics.Append("after attempt");
+    const auto session = ReadBinaryFile(diagnostics.ArchivePath(false));
+    const auto attempt = ReadBinaryFile(diagnostics.ArchivePath(true));
+    CHECK(session.find("before attempt") != std::string::npos);
+    CHECK(session.find("after attempt") != std::string::npos);
+    CHECK(attempt.find("before attempt") == std::string::npos);
+    CHECK(attempt.find("after attempt") == std::string::npos);
+    CHECK(attempt.find("first compile error") != std::string::npos);
+    CHECK(attempt.find(longLine) != std::string::npos);
+    CHECK(attempt.find("last compiler output") != std::string::npos);
+    const auto previousArchive = diagnostics.ArchivePath(true);
+    diagnostics.BeginAttempt();
+    CHECK(diagnostics.ArchivePath(true) != previousArchive);
+    CHECK(ReadBinaryFile(previousArchive) == attempt);
+}
+
+TEST_CASE("Editor.Diagnostics.ArchiveFailureKeepsBufferedFeedback", "[engine-editor]") {
+    TempDirectory directory;
+    const auto blocked = directory.Path() / "file";
+    (void)WriteBinaryFileAtomic(blocked, "not a directory");
+    EditorDiagnostics diagnostics;
+    diagnostics.StartArchive(blocked / "session.log");
+    CHECK_FALSE(diagnostics.ArchiveError().empty());
+    diagnostics.BeginAttempt();
+    diagnostics.Append("compiler failed", EditorLogLevel::Error);
+    diagnostics.BuildExited(2);
+    diagnostics.FinishAttempt(EditorBuildResult::BuildFailed);
+    REQUIRE(diagnostics.Attempt().firstError);
+    CHECK(diagnostics.Attempt().firstError->text == "compiler failed");
+    CHECK(diagnostics.Attempt().exitCode == 2);
+    CHECK_FALSE(diagnostics.Entries().empty());
+    CHECK(ClassifyBuildOutput("FAILED: target.obj") == EditorLogLevel::Error);
+    CHECK(ClassifyBuildOutput("file.cpp:4: error: missing symbol") == EditorLogLevel::Error);
+    CHECK(ClassifyBuildOutput("ninja: error: loading build.ninja") == EditorLogLevel::Error);
+}
+
 TEST_CASE("Editor.Preferences.FavoritesAndSuccessfulOpenHistory", "[engine-editor]") {
     EditorPreferences preferences;
     preferences.ToggleFavorite("a");

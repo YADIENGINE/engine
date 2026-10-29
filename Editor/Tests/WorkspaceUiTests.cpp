@@ -4,6 +4,57 @@
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
 
+TEST_CASE("Editor.Workspace.BuildFailurePopupIsOncePerFailedAttempt", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {1366, 768};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyEditorTheme();
+    const std::vector<PreviewDefinition> catalog;
+    const PreviewParameters parameters;
+    EditorDiagnostics diagnostics;
+    const std::string status;
+    EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Error, status};
+    EditorPreferences preferences;
+    EditorWorkspace workspace;
+    EditorUiActions actions;
+    int fontSize = 100;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        (void)workspace.Draw(snapshot, actions, {}, preferences, fontSize);
+        const bool popup = ImGui::IsPopupOpen("Build & Refresh failed");
+        ImGui::Render();
+        return popup;
+    };
+    CHECK_FALSE(frame());
+    diagnostics.BeginAttempt();
+    diagnostics.Append("compile error", EditorLogLevel::Error, EditorLogSource::Build);
+    diagnostics.BuildExited(1);
+    diagnostics.FinishAttempt(EditorBuildResult::BuildFailed);
+    CHECK(frame());
+    io.AddKeyEvent(ImGuiKey_Escape, true);
+    CHECK_FALSE(frame());
+    io.AddKeyEvent(ImGuiKey_Escape, false);
+    CHECK_FALSE(frame());
+    diagnostics.BeginAttempt();
+    diagnostics.FinishAttempt(EditorBuildResult::Canceled);
+    CHECK_FALSE(frame());
+    diagnostics.BeginAttempt();
+    diagnostics.BuildExited(0);
+    diagnostics.Append("startup error", EditorLogLevel::Error);
+    diagnostics.FinishAttempt(EditorBuildResult::RefreshFailed);
+    CHECK(frame());
+}
+
 TEST_CASE("Editor.Workspace.ShortcutsCancelPreviewInputAndPaletteOwnsKeys", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
                                                                                   ImGui::DestroyContext);

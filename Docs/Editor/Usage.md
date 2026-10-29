@@ -24,9 +24,19 @@ gösterir; Output ve Profiler kapalıdır. Alt durum çubuğu bu araçları ve o
   düğme ve alan adları harf harf sarılmak yerine kısalır, tam metin tooltip'te görünür.
   İleri ayar grupları ilk açılışta kapalıdır; arama ve Modified filtresi eşleşen grupları açar.
   Canlı bilgilerde sayılar sağa hizalı teknik fontla, kısa durumlar rozetle, açıklamalar satır sararak gösterilir.
-- **Output:** zaman / kaynak / seviye; sayaçlı Info / Warning / Error filtreleri ve arama. Copy menüsü seçili ya da
-  filtrelenmiş satırları kopyalar; Ctrl+tıklama çoklu seçim yapar. Follow ve Clear panel içindedir. Gizliyken gelen
-  hatalar alt durum çubuğundaki Output sayacında görünür.
+- **Output:** `Last Build Try` son Build & Refresh tıklamasından preview hazır olana, hata veya iptale kadar
+  olan çıktıyı; `Full` editör, worker ve bütün denemelerin son 1000 satırını gösterir. Son denemenin başlangıç
+  saati, süresi, sonucu ve build exit code'u görünür. Info / Warning / Error sayaçları, arama ve Copy Visible
+  seçili kapsama uygulanır. Tıklama tek satır, Ctrl+tıklama çoklu seçim, Shift+tıklama aralık seçimi yapar.
+  Satır alanı odaktayken Ctrl+A görünür satırları seçer, Ctrl+C seçimi kopyalar; sağ tıkta da Copy Selected /
+  Copy Visible vardır. Çift tıklama mesajı fareyle metin seçilebilen salt okunur ayrıntıda açar. Arama ve ayrıntı
+  metin alanlarında normal Ctrl+A / Ctrl+C çalışır. Follow, yukarı kaydırınca veya satır seçilince durur.
+  Clear yalnız Full tamponunu temizler; son deneme ve dosyalar korunur. `Open Log` seçili kapsamın tam dosyasını açar.
+  Dosyalar build dizinindeki `editor-logs/` altında oturum ve deneme başına saklanır; otomatik silinmez.
+  Son deneme tamponu 10000 satır / 8 MiB ile sınırlıdır; sınır aşılırsa ilk hata korunur ve tam dosyaya yönlendirme görünür.
+  Build hatası veya başarılı build sonrası refresh hatası bir kez popup açar; iptal popup açmaz. Show Output,
+  büyütülmüş preview'dan çıkıp Output'u öne getirir, Last Build Try'ı açar ve ilk hataya kaydırır. Bu görünümde
+  önceki arama/seviye tercihleri geçici olarak kaldırılır; kapsam değiştirilince kayıtlı tercihler geri gelir.
 - **Profiler:** Live / Benchmarks / Compare. Benchmark örneği seçildiğinde açılır; warmup / ölçüm kareleri / tekrar
   çiftleri Advanced benchmark settings altındadır. Glow override tek bir seçim grubudur; vurgu son istenen değeri
   gösterir. Compare içindeki Export menüsü JSON ve Markdown sunar. Ayrıntılar: [Profiler](Profiler.md).

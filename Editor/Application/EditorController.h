@@ -28,6 +28,7 @@ public:
     void Execute(EditorCommand command);
     void ClearOutput() { _output.Clear(); }
     void AcknowledgeOutput() { _output.Acknowledge(); }
+    void OpenOutputLog(bool attempt);
     [[nodiscard]] EditorSnapshot Snapshot() const;
     [[nodiscard]] std::string ProjectKey() const;
     [[nodiscard]] std::optional<std::string> TakeOpenedPreview();
@@ -55,6 +56,7 @@ private:
     void Receive(const PreviewMessage& message);
     void WorkerExited(unsigned long code);
     void Fail(const std::string& text);
+    void FinishFailedAttempt();
     void Send(const std::string& type, nlohmann::json data = nlohmann::json::object());
     void Invalidate();
     std::optional<EditorProject> _project;
@@ -71,6 +73,7 @@ private:
     std::map<std::uint64_t, std::string> _pendingParameters;
     std::map<std::string, std::uint64_t> _lastParameterRequest;
     EditorDiagnostics _output;
+    std::optional<EditorBuildResult> _attemptFailure;
     std::optional<std::string> _openedPreview;
     bool _recordOpen = false;
     std::optional<PreviewPixels> _nextFrame;

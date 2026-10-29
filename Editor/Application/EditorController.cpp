@@ -1,4 +1,6 @@
 #include "Editor/Application/EditorController.h"
+#include <windows.h>
+#include <shellapi.h>
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -13,7 +15,9 @@
 EditorController::EditorController(const std::filesystem::path& projectFile) {
     try {
         _project = ReadEditorProject(projectFile);
+        _output.StartArchive(_project->buildDirectory / "editor-logs" / (NewPreviewSession() + ".log"));
         Log("Project: " + _project->name);
+        if (!_output.ArchiveError().empty()) Log(_output.ArchiveError(), EditorLogLevel::Warning);
         if (std::filesystem::is_regular_file(_project->worker.executable))
             LaunchWorker(true);
         else {
@@ -36,6 +40,14 @@ void EditorController::Playback(double speed, bool step) {
 }
 void EditorController::Log(const std::string& text, EditorLogLevel level, EditorLogSource source) {
     _output.Append(text, level, source);
+}
+void EditorController::OpenOutputLog(bool attempt) {
+    const auto& file = _output.ArchivePath(attempt);
+    if (file.empty()) return;
+    const auto result =
+        reinterpret_cast<std::intptr_t>(ShellExecuteW(nullptr, L"open", file.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+    if (result <= 32)
+        Log("Could not open output log (Windows shell code " + std::to_string(result) + ").", EditorLogLevel::Error);
 }
 EditorSnapshot EditorController::Snapshot() const {
     std::set<std::string> pending;
@@ -228,6 +240,7 @@ void EditorController::Reset() {
 void EditorController::Refresh() {
     if (!_project || _refresh.Busy()) return;
     try {
+        _output.BeginAttempt();
         _refresh.Begin(_worker.Running());
         RequestStop(AfterStop::Build);
     } catch (const std::exception& error) {
@@ -259,6 +272,7 @@ void EditorController::Cancel() {
             _phase = EditorPhase::Stopping;
         } else {
             _refresh.Cancel();
+            _output.FinishAttempt(EditorBuildResult::Canceled);
             RequestStop(AfterStop::None);
         }
     } catch (const std::exception& error) {
@@ -351,7 +365,10 @@ void EditorController::Receive(const PreviewMessage& message) {
         _phase = EditorPhase::Ready;
         if (_recordOpen) _openedPreview = _selected;
         _recordOpen = false;
-        if (_refresh.Phase() == RefreshPhase::Starting) _refresh.Started();
+        if (_refresh.Phase() == RefreshPhase::Starting) {
+            _refresh.Started();
+            _output.FinishAttempt(EditorBuildResult::Succeeded);
+        }
     } else if (message.type == "parameters") {
         const auto values = DecodePreviewParameters(message.data.at("parameters"));
         const auto* definition = Selected();
@@ -414,11 +431,18 @@ void EditorController::WorkerExited(unsigned long code) {
     } else if (_catalogOnly && code == 0 && _gotCatalog) {
         _status = "Catalog ready; preview stopped";
         _phase = EditorPhase::Stopped;
-        if (_refresh.Phase() == RefreshPhase::Starting) _refresh.Started();
+        if (_refresh.Phase() == RefreshPhase::Starting) {
+            _refresh.Started();
+            _output.FinishAttempt(EditorBuildResult::Succeeded);
+        }
     } else if (code == 0 && !_catalogOnly) {
         _status = "Preview closed normally";
         _phase = EditorPhase::Stopped;
         Log(_status);
+        if (_refresh.Phase() == RefreshPhase::Starting) {
+            Log("Preview closed before becoming ready.", EditorLogLevel::Error);
+            _output.FinishAttempt(EditorBuildResult::RefreshFailed);
+        }
         _refresh.Cancel();
     } else {
         throw std::runtime_error("Preview process failed (exit " + std::to_string(code) + ")");
@@ -463,13 +487,15 @@ void EditorController::Tick() {
                 _buildActive = false;
                 _build.Clear();
                 _buildLease.reset();
+                _output.BuildExited(*code);
                 if (_cancelBuild) {
                     _refresh.Cancel();
                     if (!_failed) {
                         _status = "Build canceled";
                         _phase = EditorPhase::Stopped;
+                        Log("Build canceled");
+                        _output.FinishAttempt(EditorBuildResult::Canceled);
                     }
-                    Log("Build canceled");
                 } else {
                     _refresh.BuildFinished(*code == 0);
                     if (*code == 0) {
@@ -480,17 +506,32 @@ void EditorController::Tick() {
                         _phase = EditorPhase::Error;
                         Log("Build failed (exit " + std::to_string(*code) + ").", EditorLogLevel::Error,
                             EditorLogSource::Build);
+                        _output.FinishAttempt(EditorBuildResult::BuildFailed);
                     }
                 }
             }
         }
+        FinishFailedAttempt();
     } catch (const std::exception& error) {
         Fail(error.what());
     }
 }
 std::optional<PreviewPixels> EditorController::TakeFrame() { return std::exchange(_nextFrame, std::nullopt); }
+void EditorController::FinishFailedAttempt() {
+    if (!_attemptFailure || _worker.Running() || _build.Running()) return;
+    for (const auto& line : _worker.DrainOutput())
+        Log(line, EditorLogLevel::Info, EditorLogSource::Worker);
+    for (const auto& line : _build.DrainOutput())
+        Log(line, ClassifyBuildOutput(line), EditorLogSource::Build);
+    _output.FinishAttempt(*_attemptFailure);
+    _attemptFailure.reset();
+}
 void EditorController::Fail(const std::string& text) {
     Log(text, EditorLogLevel::Error);
+    const auto& attempt = _output.Attempt();
+    if (attempt.result == EditorBuildResult::Running)
+        _attemptFailure = attempt.exitCode && *attempt.exitCode == 0 ? EditorBuildResult::RefreshFailed
+                                                                     : EditorBuildResult::BuildFailed;
     _status = text;
     _phase = EditorPhase::Error;
     _failed = true;
@@ -506,6 +547,7 @@ void EditorController::Fail(const std::string& text) {
     } catch (const std::exception& error) {
         Log(error.what(), EditorLogLevel::Error);
     }
+    FinishFailedAttempt();
     if (!_build.Running()) {
         _build.Clear();
         _buildActive = false;

@@ -126,7 +126,8 @@ void EditorApplication::DrawWindow() const {
         [&](EditorProfilerCommand command, Profiler::Recipe recipe, const std::string& file) {
             editorInput = true;
             commands.emplace_back([this, command, recipe, file] { _controller.Profile(command, recipe, file); });
-        }};
+        },
+        [&](bool attempt) { commands.emplace_back([this, attempt] { _controller.OpenOutputLog(attempt); }); }};
     const auto result = _workspace.Draw(_controller.Snapshot(), actions, _display.Image(), _preferences, _fontSize);
     _quit = result.quit;
     const auto& io = ImGui::GetIO();

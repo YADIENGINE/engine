@@ -41,6 +41,8 @@ private:
     bool _pendingToggle = false;
     bool _focusCatalog = false;
     std::optional<EditorPanel> _focusBottom;
+    std::uint64_t _failureAttempt = 0;
+    bool _showFailedOutput = false;
     ImGuiID _centerDock = 0;
     int _ignoreLayoutChanges = 0;
     bool _resetDock = false;
