@@ -89,17 +89,24 @@ class SoundGenerator:
         """Attack/decay/sustain/release ending at `seconds`; stages shrink proportionally if they do not fit."""
         return curves.adsr(self.sample_count(seconds), self.sample_rate, attack, decay, sustain, release, curve)
 
-    def decay(self, seconds, time_constant, *, attack=0.0):
-        """exp(-t / time_constant) after an optional linear attack."""
-        return curves.decay(self.sample_count(seconds), self.sample_rate, time_constant, attack)
+    def decay(self, seconds, time_constant, *, attack=0.0, hold=0.0):
+        """Linear rise over `attack`, full level for `hold`, then exp(-t / time_constant)."""
+        return curves.decay(self.sample_count(seconds), self.sample_rate, time_constant, attack, hold)
+
+    def rise(self, seconds, time, *, curve=1.0):
+        """0 to 1 over `time`, then 1 until `seconds`; curve < 1 rises fast first, > 1 slow first."""
+        return curves.rise(self.sample_count(seconds), self.sample_rate, time, curve)
 
     def glide(self, start, end, seconds, time_constant):
         """Exponential approach from start to end (pitch drops, cutoff falls)."""
         return curves.glide(self.sample_count(seconds), self.sample_rate, start, end, time_constant)
 
-    def lfo(self, seconds, rate, *, shape="sine", phase=0.0):
-        """Naive control waveform in [-1, 1]: sine, triangle, square or saw; rate may be a curve."""
-        return curves.lfo(self.sample_count(seconds), self.sample_rate, rate, shape, phase)
+    def lfo(self, seconds, rate, *, shape="sine", phase=0.0, center=0.0, depth=1.0):
+        """center + depth * wave, wave in [-1, 1]: sine, triangle, square or saw; rate may be a curve.
+
+        Vibrato: pitch * g.lfo(s, 6, center=1, depth=0.02). Tremolo 0.5-1: g.lfo(s, 9, center=0.75, depth=0.25).
+        """
+        return curves.lfo(self.sample_count(seconds), self.sample_rate, rate, shape, phase, center, depth)
 
     def random_curve(self, seconds, rate, *, low=-1.0, high=1.0):
         """Smooth (cosine-interpolated) random values, `rate` new targets per second."""
@@ -158,13 +165,33 @@ class SoundGenerator:
         return oscillators.noise(self.rng, self.sample_count(seconds), self.sample_rate, color)
 
     def modal(self, seconds, frequency, ratios, decay, *, gains=None, falloff=0.5, attack=0.0005,
-              random_phase=True):
+              random_phase=True, spread=0.0, click=0.0):
         """Struck resonator bank (metal, glass, wood, bells): partial i rings at frequency * ratios[i].
 
         `decay` is seconds per partial or one value shortened by (1 + falloff * i); gains default to 1 / (i + 1).
+        `spread` detunes each partial randomly by up to +/- that fraction (every strike differs); `click` adds
+        the strike's contact noise at that gain.
         """
         return oscillators.modal(self.rng, self.sample_count(seconds), self.sample_rate, frequency, ratios, decay,
-                                 gains, falloff, attack, random_phase)
+                                 gains, falloff, attack, random_phase, spread, click)
+
+    def burst(self, seconds, decay, *, band=None, lowpass=None, highpass=None, attack=0.0, color="white"):
+        """Noise shaped by at most one filter and a decay: hits, clicks, breath, rumble tails.
+
+        `band` is (low, high) Hz (either may be a curve); `decay` is the time constant in seconds.
+        """
+        return oscillators.burst(self.rng, self.sample_count(seconds), self.sample_rate, lowpass, band, highpass,
+                                 decay, attack, color)
+
+    def crackle(self, seconds, grains, band, *, within=None, length=(0.004, 0.012), decay=0.003, gain=(0.3, 1.0),
+                envelope=None):
+        """`grains` short noise grains at random onsets, band-passed to `band` (fire, ice, gravel, sparks).
+
+        `within` is (start, end) seconds or a zero-argument callable returning an onset; `length` and `gain`
+        are (min, max) ranges per grain; `envelope` is a per-sample curve read at each onset.
+        """
+        return oscillators.crackle(self.rng, self.sample_count(seconds), self.sample_rate, grains, band, within,
+                                   length, decay, gain, envelope)
 
     def thump(self, seconds, start, end, *, sweep=0.03, decay=0.15, click=0.0):
         """Pitch-dropping body hit (kick, heartbeat, impact) with an optional noise click."""
@@ -189,9 +216,12 @@ class SoundGenerator:
     def highpass(self, samples, cutoff, *, order=2):
         return filters.pass_filter(samples, cutoff, "highpass", order, self.sample_rate)
 
-    def bandpass(self, samples, low, high, *, order=2):
-        """Fixed edges: Butterworth band-pass. Curves: `order` unity-peak resonant stages tracking the band."""
-        return filters.bandpass(samples, low, high, order, self.sample_rate)
+    def bandpass(self, samples, low=None, high=None, *, center=None, width=None, order=2):
+        """Band between `low` and `high`, or `center` / width .. `center` * width (width is a ratio above 1).
+
+        Fixed edges: Butterworth band-pass. Curves: `order` unity-peak resonant stages tracking the band.
+        """
+        return filters.bandpass(samples, low, high, order, self.sample_rate, center, width)
 
     def resonate(self, samples, center, *, q=4.0):
         """Unity-peak resonant band (center and q may be curves)."""

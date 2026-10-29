@@ -27,6 +27,14 @@ class FilterTests(unittest.TestCase):
         self.assertLess(rms(self.g.highpass(low, 2000)[5000:]), 0.01)
         band = self.g.bandpass(self.g.sine(1000.0, 0.5), 700, 1400)
         self.assertGreater(rms(band[5000:]), 0.6)
+        centered = self.g.bandpass(self.g.sine(1000.0, 0.5), center=1000, width=1.5)
+        self.assertGreater(rms(centered[5000:]), 0.6)
+        sweep = self.g.bandpass(self.g.noise(0.5), center=self.g.contour([(0, 500), (0.5, 4000)]), width=1.4)
+        self.assertEqual(len(sweep), round(0.5 * self.rate))
+        with self.assertRaises(ValueError):
+            self.g.bandpass(self.g.noise(0.1), 500, 900, center=700, width=1.2)
+        with self.assertRaises(ValueError):
+            self.g.bandpass(self.g.noise(0.1), center=700, width=0.5)
 
     def test_moving_cutoff_tracks_the_curve_without_clicks(self):
         tone = self.g.sine(3000.0, 1.0)

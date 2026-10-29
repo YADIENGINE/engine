@@ -68,6 +68,19 @@ class CurveTests(unittest.TestCase):
         self.assertTrue(np.all((curve >= 2.0) & (curve <= 3.0)))
         self.assertLess(np.abs(np.diff(curve)).max(), 0.1)
 
+    def test_decay_hold_rise_and_lfo_center(self):
+        held = self.g.decay(1.0, 0.1, attack=0.1, hold=0.2)
+        self.assertAlmostEqual(held[50], 0.5)
+        self.assertEqual(held[250], 1.0)
+        self.assertAlmostEqual(held[400], np.exp(-1.0), places=3)
+        ramp = self.g.rise(0.5, 0.2)
+        self.assertAlmostEqual(ramp[100], 0.5)
+        self.assertEqual(ramp[-1], 1.0)
+        self.assertEqual(len(ramp), 500)
+        vibrato = self.g.lfo(1.0, 5.0, center=1.0, depth=0.02)
+        self.assertAlmostEqual(vibrato.max(), 1.02, places=4)
+        self.assertAlmostEqual(vibrato.min(), 0.98, places=4)
+
     def test_fade_returns_a_new_array_with_silent_edges(self):
         source = np.ones(100)
         faded = self.g.fade(source, 0.01, 0.02)
@@ -149,6 +162,32 @@ class OscillatorTests(unittest.TestCase):
         self.assertLess(np.abs(bell[-1000:]).max(), np.abs(bell[:5000]).max() * 0.05)
         with self.assertRaises(ValueError):
             self.g.modal(0.1, 500.0, (1.0, 2.0), (0.1,))
+
+    def test_modal_spread_varies_each_strike_and_click_adds_contact_noise(self):
+        plain = self.g.modal(0.3, 800.0, (1.0, 2.4), 0.1, random_phase=False)
+        detuned = [self.g.modal(0.3, 800.0, (1.0, 2.4), 0.1, random_phase=False, spread=0.05) for _ in range(2)]
+        self.assertFalse(np.array_equal(detuned[0], detuned[1]))
+        self.assertAlmostEqual(dominant(detuned[0], self.rate), 800.0, delta=45)
+        clicked = self.g.modal(0.3, 800.0, (1.0, 2.4), 0.1, random_phase=False, click=0.8)
+        frequencies, magnitude = spectrum(clicked[:300], self.rate)
+        _, plain_magnitude = spectrum(plain[:300], self.rate)
+        high = frequencies > 3000
+        self.assertGreater(magnitude[high].sum(), 5 * plain_magnitude[high].sum())
+
+    def test_burst_and_crackle(self):
+        hit = self.g.burst(0.3, 0.02, band=(1000, 3000))
+        self.assertEqual(len(hit), round(0.3 * self.rate))
+        self.assertLess(np.abs(hit[-2000:]).max(), 0.01 * np.abs(hit[:2000]).max())
+        self.assertAlmostEqual(dominant(self.g.burst(1.0, 10.0, band=(1800, 2200)), self.rate), 2000, delta=300)
+        with self.assertRaises(ValueError):
+            self.g.burst(0.1, 0.01, lowpass=500, highpass=200)
+        sparks = self.g.crackle(1.0, 30, (2000, 8000), within=(0.2, 0.4))
+        self.assertLess(np.abs(sparks[:int(0.19 * self.rate)]).max(), 1e-3)
+        self.assertGreater(np.abs(sparks[int(0.2 * self.rate):int(0.42 * self.rate)]).max(), 0.05)
+        self.assertLess(np.abs(sparks[int(0.5 * self.rate):]).max(), 0.01)
+        self.assertEqual(np.abs(self.g.crackle(0.5, 0, (500, 900))).max(), 0.0)
+        late = self.g.crackle(0.05, 20, (500, 5000), within=lambda: 0.049, length=(0.02, 0.03))
+        self.assertEqual(len(late), round(0.05 * self.rate))
 
     def test_thump_falls_in_pitch_and_pluck_holds_its_pitch(self):
         hit = self.g.thump(0.5, 200.0, 50.0, sweep=0.02, decay=0.3)

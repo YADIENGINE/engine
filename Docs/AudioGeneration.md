@@ -32,9 +32,8 @@ PACK = SoundGenerator(44100).pack(OUT, prefix="Robot_", fade_out=0.02)
 
 @PACK.sound("Clank", peak=0.6)
 def clank(g):
-    ring = g.modal(0.8, 180.0, (1.0, 2.56, 5.4, 7.9), 0.5)
-    click = g.bandpass(g.noise(0.8), 2000, 9000) * g.decay(0.8, 0.006)
-    return g.reverb(ring + click * 0.8, 0.9, mix=0.2)
+    ring = g.modal(0.8, 180.0, (1.0, 2.56, 5.4, 7.9), 0.5, click=0.8)
+    return g.reverb(ring, 0.9, mix=0.2)
 
 
 @PACK.sound("Servo", lufs=-20)
@@ -109,9 +108,10 @@ parse as int, float or text. In the gallery, "Pick" one take per sound and "Down
 | `envelope(points, seconds=None, *, curve=1)` | `[(t, value), ...]`; holds the first/last value outside the points; `curve < 1` moves fast first, `> 1` slow first; repeated times make a jump |
 | `contour(points, seconds=None)` | Same breakpoints, interpolated geometrically: pitch, cutoff, ratios |
 | `adsr(seconds, attack, decay, sustain, release, *, curve=1)` | Ends at zero at `seconds`; stages shrink proportionally if they do not fit |
-| `decay(seconds, time_constant, *, attack=0)` | Linear attack then `exp(-t / time_constant)` |
+| `decay(seconds, time_constant, *, attack=0, hold=0)` | Linear rise over `attack`, full level for `hold`, then `exp(-t / time_constant)` |
+| `rise(seconds, time, *, curve=1)` | 0 to 1 over `time`, then 1 (fade-ins, swells, opening filters) |
 | `glide(start, end, seconds, time_constant)` | Exponential approach (pitch drops, closing filters) |
-| `lfo(seconds, rate, *, shape="sine", phase=0)` | `sine`, `triangle`, `square`, `saw` in [-1, 1]; `rate` may be a curve |
+| `lfo(seconds, rate, *, shape="sine", phase=0, center=0, depth=1)` | `center + depth * wave` with `sine`, `triangle`, `square` or `saw` in [-1, 1]; `rate` may be a curve. Vibrato: `pitch * g.lfo(s, 6, center=1, depth=0.02)` |
 | `random_curve(seconds, rate, *, low=-1, high=1)` | Smooth random targets, `rate` per second, never outside [low, high] |
 | `fade(samples, fade_in=0, fade_out=0, *, curve=1)` | Edge ramps that reach exactly zero |
 
@@ -126,9 +126,11 @@ parse as int, float or text. In the gallery, "Pick" one take per sound and "Down
 | `unison(frequency, seconds=None, *, wave="saw", voices=7, detune=20, max_harmonics=512)` | Detuned stack (supersaw): voices spread evenly over +/- `detune` cents with random phases, divided by sqrt(voices); `wave` is `sine`, `saw`, `square` or `triangle` |
 | `fm(frequency, seconds=None, *, ratio=1, index=1, phase=0)` | `sin(carrier + index * sin(ratio * carrier))`; index/ratio may be curves (bells, metal, growls) |
 | `noise(seconds, *, color="white")` | `white` (uniform), `pink` (1/f), `brown` (1/f²); peak 1 |
-| `modal(seconds, frequency, ratios, decay, *, gains=None, falloff=0.5, attack=0.0005, random_phase=True)` | Struck resonator bank: partial *i* at `frequency * ratios[i]`; `decay` per partial or one value divided by `1 + falloff * i`; gains default `1 / (i + 1)`; partials above Nyquist are skipped. Use `frequency=1` to give absolute Hz in `ratios` |
+| `modal(seconds, frequency, ratios, decay, *, gains=None, falloff=0.5, attack=0.0005, random_phase=True, spread=0, click=0)` | Struck resonator bank: partial *i* at `frequency * ratios[i]`; `decay` per partial or one value divided by `1 + falloff * i`; gains default `1 / (i + 1)`; partials above Nyquist are skipped. `spread` detunes every partial randomly by up to that fraction (each strike differs); `click` adds 6 ms contact noise above 2 kHz. Use `frequency=1` to give absolute Hz in `ratios` |
 | `thump(seconds, start, end, *, sweep=0.03, decay=0.15, click=0)` | Pitch-dropping sine hit (kick, heartbeat, impact) with optional noise click |
 | `pluck(frequency, seconds, *, decay=1, brightness=0.6)` | Karplus-Strong string; `decay` is time to -60 dB; a first-order all-pass supplies the fractional delay, so high notes stay in tune (20 Hz to a quarter of the sample rate) |
+| `burst(seconds, decay, *, band=None, lowpass=None, highpass=None, attack=0, color="white")` | Noise through at most one filter times `decay(seconds, decay, attack=...)`: clicks, hits, breath, rumble tails. `band` edges may be curves |
+| `crackle(seconds, grains, band, *, within=None, length=(0.004, 0.012), decay=0.003, gain=(0.3, 1), envelope=None)` | `grains` short noise grains, band-passed: fire, ice, gravel, sparks. `within` is `(start, end)` seconds or a zero-argument callable returning an onset (for skewed timing); `length`/`gain` are per-grain ranges; `envelope` is read at each onset |
 | `scatter(seconds, density, grain, *, gain=None)` | `round(density * seconds)` copies of `grain` (array or zero-argument callable) at random onsets; `gain` is a per-sample curve read at each onset; grains crossing the end are cropped |
 
 The additive oscillators fade each partial out between 80% and 95% of Nyquist, so pitch sweeps never switch
@@ -140,7 +142,7 @@ oscillator. Lower `max_harmonics` for a deliberately duller tone.
 | Method | Notes |
 | --- | --- |
 | `lowpass(samples, cutoff, *, order=2)`, `highpass(...)` | Fixed cutoff: Butterworth (SOS). Cutoff curve: cascaded state-variable stages with Butterworth Qs (even orders) |
-| `bandpass(samples, low, high, *, order=2)` | Fixed edges: Butterworth band-pass. Curve edges: `order` unity-peak resonant stages tracking center and width |
+| `bandpass(samples, low=None, high=None, *, center=None, width=None, order=2)` | Edges, or `center` with a `width` ratio above 1 (`center / width` .. `center * width`); any may be curves. Fixed edges: Butterworth band-pass. Curve edges: `order` unity-peak resonant stages tracking center and width |
 | `resonate(samples, center, *, q=4)` | Unity-peak resonant band; center and q may be curves |
 | `formants(samples, bands)` | Sum of `(center Hz or curve, q, gain)` bands: vowels, growls, roars |
 | `dc_block(samples, cutoff=20)` | First-order high-pass |

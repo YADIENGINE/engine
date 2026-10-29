@@ -85,8 +85,17 @@ def pass_filter(samples, cutoff, kind, order, rate):
     return samples
 
 
-def bandpass(samples, low, high, order, rate):
+def bandpass(samples, low, high, order, rate, center=None, width=None):
     samples = mono(samples)
+    if (center is None) != (width is None) or (center is not None and (low is not None or high is not None)):
+        raise ValueError("bandpass takes low and high, or center and width")
+    if center is not None:
+        width = positive(width, "width")
+        if width <= 1:
+            raise ValueError("width is a ratio above 1 (2 = one octave each side)")
+        low, high = np.divide(center, width), np.multiply(center, width)
+    elif low is None or high is None:
+        raise ValueError("bandpass takes low and high, or center and width")
     if _fixed(low) and _fixed(high):
         if not float(low) < float(high):
             raise ValueError("low must be below high")

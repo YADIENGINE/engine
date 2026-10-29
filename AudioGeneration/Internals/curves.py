@@ -64,12 +64,21 @@ def adsr(count, rate, attack, decay, sustain, release, shape):
     return envelope(points, count, rate, shape)
 
 
-def decay(count, rate, time_constant, attack):
+def decay(count, rate, time_constant, attack, hold):
+    """Linear rise over `attack`, full level for `hold`, then exp(-t / time_constant)."""
     time_constant = positive(time_constant, "time_constant")
-    attack = nonnegative(attack, "attack")
+    attack, hold = nonnegative(attack, "attack"), nonnegative(hold, "hold")
     t = time_axis(count, rate)
     rise = np.minimum(t / attack, 1.0) if attack else 1.0
-    return rise * np.exp(-t / time_constant)
+    return rise * np.exp(-np.maximum(t - attack - hold, 0.0) / time_constant)
+
+
+def rise(count, rate, seconds, shape):
+    """0 to 1 over `seconds`, then 1; shape < 1 rises fast first, > 1 slow first."""
+    seconds = nonnegative(seconds, "time")
+    if not seconds:
+        return np.ones(count)
+    return np.minimum(time_axis(count, rate) / seconds, 1.0) ** positive(shape, "curve")
 
 
 def glide(count, rate, start, end, time_constant):
@@ -78,18 +87,20 @@ def glide(count, rate, start, end, time_constant):
     return end + (start - end) * np.exp(-time_axis(count, rate) / time_constant)
 
 
-def lfo(count, rate, frequency, shape, phase):
+def lfo(count, rate, frequency, shape, phase, center, depth):
     choice(shape, "shape", ("sine", "triangle", "square", "saw"))
     frequency = curve(frequency, count, "rate")
     cycles = finite(phase, "phase") / (2 * math.pi) + np.concatenate([[0.0], np.cumsum(frequency[:-1])]) / rate
     cycles %= 1.0
     if shape == "sine":
-        return np.sin(2 * math.pi * cycles)
-    if shape == "triangle":
-        return 1.0 - 4.0 * np.abs(((cycles + 0.25) % 1.0) - 0.5)
-    if shape == "square":
-        return np.where(cycles < 0.5, 1.0, -1.0)
-    return 2.0 * cycles - 1.0
+        wave = np.sin(2 * math.pi * cycles)
+    elif shape == "triangle":
+        wave = 1.0 - 4.0 * np.abs(((cycles + 0.25) % 1.0) - 0.5)
+    elif shape == "square":
+        wave = np.where(cycles < 0.5, 1.0, -1.0)
+    else:
+        wave = 2.0 * cycles - 1.0
+    return finite(center, "center") + finite(depth, "depth") * wave
 
 
 def random_curve(rng, count, rate, frequency, low, high):

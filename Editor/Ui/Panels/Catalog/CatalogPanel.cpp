@@ -70,7 +70,7 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
         for (const auto* entry : entries) {
             if (_view != 2 && (first || category != entry->category)) {
                 category = entry->category;
-                expanded = EditorSectionHeader(category.empty() ? "General" : category.c_str(), true, !query.empty());
+                expanded = EditorSectionHeader(category.empty() ? "General" : category.c_str(), false, !query.empty());
                 first = false;
             }
             if (expanded) Entry(*entry, snapshot, actions, preferences);
