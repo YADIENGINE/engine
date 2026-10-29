@@ -9,7 +9,7 @@ import numpy as np
 
 from ..contracts import AudioReviewClip
 from .validation import mono, positive_integer
-from .wave_io import load, pcm16
+from .wave_io import load, pcm
 
 
 def json_copy(value):
@@ -85,7 +85,7 @@ def pcm_preview(samples, sample_rate):
     # Encode near full scale for precision; the player restores raw/matched gains.
     gain = min(1e12, 0.89 / peak) if peak > 1e-12 else (1e12 if peak else 1.0)
     # Browsers cannot load a zero-frame WAV. A silent placeholder affects playback only.
-    payload = pcm16(samples * gain if len(samples) else np.zeros(1), sample_rate)
+    payload = pcm(samples * gain if len(samples) else np.zeros(1), sample_rate)
     return payload, gain, data_uri(payload)
 
 

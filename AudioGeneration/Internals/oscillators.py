@@ -62,6 +62,21 @@ def pulse(frequency, count, rate, start, width, max_harmonics):
     return lagging - additive(frequency, count, rate, start, max_harmonics, "saw")
 
 
+def unison(rng, frequency, count, rate, wave, voices, detune, max_harmonics):
+    """Detuned stack (supersaw and friends): voices spread evenly over +/- `detune` cents, random phases."""
+    choice(wave, "wave", ("sine", *WAVES))
+    voices = positive_integer(voices, "voices")
+    detune = nonnegative(detune, "detune")
+    frequency, count = hz(frequency, count, rate)
+    output = np.zeros(count)
+    for cents in (np.linspace(-detune, detune, voices) if voices > 1 else [0.0]):
+        shifted = frequency * 2.0 ** (cents / 1200.0)
+        start = rng.uniform(0.0, 2.0 * math.pi)
+        output += (sine(shifted, None, rate, start) if wave == "sine" else
+                   additive(shifted, None, rate, start, max_harmonics, wave))
+    return output / math.sqrt(voices)
+
+
 def fm(frequency, count, rate, ratio, index, start):
     frequency, count = hz(frequency, count, rate)
     ratio = curve(ratio, count, "ratio", low=0.0)
@@ -122,25 +137,30 @@ def thump(rng, count, rate, start, end, sweep, decay, click):
 
 
 def pluck(rng, count, rate, frequency, decay, brightness):
-    """Karplus-Strong string: integer delay line plus the averager's half sample (pitch is quantized)."""
+    """Karplus-Strong string, tuned exactly with a first-order all-pass fractional delay."""
     frequency = positive(frequency, "frequency")
     decay = positive(decay, "decay")
     brightness = unit(brightness, "brightness")
-    period = max(2, round(rate / frequency - 0.5))
-    if period >= rate / 20:
-        raise ValueError("pluck frequency must be at least 20 Hz")
+    if frequency < 20 or frequency >= rate / 4:
+        raise ValueError("pluck frequency must be between 20 Hz and a quarter of the sample rate")
+    # Loop delay = period + 0.5 (two-point average) + fraction (all-pass), with the fraction in [0.1, 1.1).
+    total = rate / frequency - 0.5
+    period = int(math.floor(total - 0.1))
+    fraction = total - period
+    coefficient = (1.0 - fraction) / (1.0 + fraction)
     excitation = rng.uniform(-1.0, 1.0, period)
     excitation = brightness * excitation + (1.0 - brightness) * 0.5 * (excitation + np.roll(excitation, 1))
-    # Loop gain per period gives a -60 dB decay after `decay` seconds.
-    loop = 10.0 ** (-3.0 * period / (rate * decay))
-    output = np.zeros(max(count, period + 1))
-    output[:period] = excitation
-    output[period] = loop * 0.5 * (output[0] + output[period - 1])
-    position = period + 1
-    while position < len(output):
-        end = min(len(output), position + period)
-        output[position:end] = loop * 0.5 * (output[position - period:end - period] +
-                                             output[position - period - 1:end - period - 1])
-        position = end
-    output = output[:count]
+    # Loop gain per round trip gives a -60 dB decay after `decay` seconds.
+    loop = 10.0 ** (-3.0 * (rate / frequency) / (rate * decay))
+    line = excitation.tolist()
+    output = [0.0] * count
+    last = previous_in = previous_out = 0.0
+    for index in range(count):
+        value = line[index % period]
+        output[index] = value
+        averaged = loop * 0.5 * (value + last)
+        allpassed = coefficient * averaged + previous_in - coefficient * previous_out
+        last, previous_in, previous_out = value, averaged, allpassed
+        line[index % period] = allpassed
+    output = np.array(output)
     return output - np.mean(output) if count else output

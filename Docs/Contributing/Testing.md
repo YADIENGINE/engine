@@ -8,6 +8,7 @@ They never link the consuming game's core or include its source headers.
 | --- | --- | --- | --- |
 | EngineTests | Engine/Tests/*.cpp | EngineCore, EngineStorage | engine + subsystem |
 | Engine&lt;Module&gt;Tests | module Tests/*.cpp | module and declared dependencies | module tag |
+| AudioGeneration.* | AudioGeneration/Tests (Python unittest, Node) | none (Python 3.10+, NumPy, SciPy; Node for the player) | audio-generation |
 
 `EngineTestSupport` holds game-free helpers: TempDirectory, Diagnostics and GzipInflate.
 Include them as `Tests/Support/...`. The test inflater's

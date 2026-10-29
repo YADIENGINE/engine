@@ -54,16 +54,29 @@ python MakeRobotSounds.py Clank              # only the named sounds
 python MakeRobotSounds.py --check            # render and measure, write nothing
 python MakeRobotSounds.py --gallery set.html # also write a listening page for the rendered sounds
 python MakeRobotSounds.py --output Tmp       # write somewhere else (relative sound folders are kept)
-python MakeRobotSounds.py --list
+python MakeRobotSounds.py --list             # sounds and their tweakable parameters
+
+# Listen before overwriting: these never write audio files.
+python MakeRobotSounds.py --compare --gallery cmp.html                    # new take vs the file on disk (A/B)
+python MakeRobotSounds.py Clank --variations 4 --gallery pick.html       # seed variations 0..3
+python MakeRobotSounds.py Servo --set top=700,900,1200 --gallery pick.html   # one take per parameter value
 ```
+
+`--variations` and `--set` combine (every variation for every value; repeat `--set` for several parameters).
+`--set` reaches a recipe's keyword parameters that have defaults (`def servo(g, top=900): ...`), and values
+parse as int, float or text. In the gallery, "Pick" one take per sound and "Download selection" saves
+`selection.json` (`{"sound", "variation", "parameters"}` per pick); apply it by setting
+`@PACK.sound(..., variation=N)` and the parameter defaults in the recipe.
 
 - A recipe receives `g = root.for_sound(name)`: its random draws depend only on the root seed and the name, so
   rendering one sound, reordering or adding sounds never changes another sound.
-- `pack(output, prefix="", **finish)` sets defaults for every sound; `@pack.sound(name, **finish)` overrides them.
-  Giving a sound `lufs` clears the default `peak` (and vice versa). `output="sub/folder"` writes that sound into a
-  folder relative to the pack output.
+- `pack(output, prefix="", format="wav", bits=16, dither=False, **finish)` sets the file type (`wav`, `flac`,
+  `ogg`; see `save`) and finishing defaults; `@pack.sound(name, **finish, output=None, variation=0)` overrides
+  them per sound. Giving a sound `lufs` clears the default `peak` (and vice versa). `output="sub/folder"` writes
+  that sound into a folder relative to the pack output; `variation` picks a different seed for that sound.
 - The returned array is finished with `g.finish(...)` (below) before export, so recipes never normalize or fade
-  by hand. `pack.render(name)` returns the finished samples and `pack.write(name)` writes one file.
+  by hand. `pack.render(name, variation=None, parameters=None)` returns the finished samples,
+  `pack.write(name)` writes one file and `pack.parameters(name)` lists a recipe's keyword defaults.
 - Root seed defaults to `0`. Change it, or a sound name, or pass `variation=` to `for_sound`, to get new random
   material.
 
@@ -110,11 +123,12 @@ python MakeRobotSounds.py --list
 | `sine(frequency, seconds=None, *, phase=0)` | |
 | `saw`, `square`, `triangle(frequency, seconds=None, *, phase=0, max_harmonics=512)` | Band-limited additive (see below) |
 | `pulse(frequency, seconds=None, *, width=0.5, ...)` | Band-limited, DC-free; `width` is the high part of each cycle |
+| `unison(frequency, seconds=None, *, wave="saw", voices=7, detune=20, max_harmonics=512)` | Detuned stack (supersaw): voices spread evenly over +/- `detune` cents with random phases, divided by sqrt(voices); `wave` is `sine`, `saw`, `square` or `triangle` |
 | `fm(frequency, seconds=None, *, ratio=1, index=1, phase=0)` | `sin(carrier + index * sin(ratio * carrier))`; index/ratio may be curves (bells, metal, growls) |
 | `noise(seconds, *, color="white")` | `white` (uniform), `pink` (1/f), `brown` (1/f²); peak 1 |
 | `modal(seconds, frequency, ratios, decay, *, gains=None, falloff=0.5, attack=0.0005, random_phase=True)` | Struck resonator bank: partial *i* at `frequency * ratios[i]`; `decay` per partial or one value divided by `1 + falloff * i`; gains default `1 / (i + 1)`; partials above Nyquist are skipped. Use `frequency=1` to give absolute Hz in `ratios` |
 | `thump(seconds, start, end, *, sweep=0.03, decay=0.15, click=0)` | Pitch-dropping sine hit (kick, heartbeat, impact) with optional noise click |
-| `pluck(frequency, seconds, *, decay=1, brightness=0.6)` | Karplus-Strong string; `decay` is time to -60 dB; pitch is quantized to whole delay samples |
+| `pluck(frequency, seconds, *, decay=1, brightness=0.6)` | Karplus-Strong string; `decay` is time to -60 dB; a first-order all-pass supplies the fractional delay, so high notes stay in tune (20 Hz to a quarter of the sample rate) |
 | `scatter(seconds, density, grain, *, gain=None)` | `round(density * seconds)` copies of `grain` (array or zero-argument callable) at random onsets; `gain` is a per-sample curve read at each onset; grains crossing the end are cropped |
 
 The additive oscillators fade each partial out between 80% and 95% of Nyquist, so pitch sweeps never switch
@@ -130,6 +144,9 @@ oscillator. Lower `max_harmonics` for a deliberately duller tone.
 | `resonate(samples, center, *, q=4)` | Unity-peak resonant band; center and q may be curves |
 | `formants(samples, bands)` | Sum of `(center Hz or curve, q, gain)` bands: vowels, growls, roars |
 | `dc_block(samples, cutoff=20)` | First-order high-pass |
+| `bell(samples, frequency, gain_db, *, q=1)` | Peaking EQ (RBJ cookbook biquad); higher q is narrower |
+| `low_shelf(samples, frequency, gain_db, *, q=0.707)`, `high_shelf(...)` | Boost/cut below or above `frequency` |
+| `vowel(samples, shape, *, scale=1)` | F1-F3 formants of `"a"`, `"e"`, `"i"`, `"o"`, `"u"`, or `[(seconds, vowel), ...]` gliding in log-Hz; `scale < 1` sounds like a larger throat |
 
 Moving cutoffs use a trapezoidal state-variable filter (Andrew Simper, Cytomic,
 [SvfLinearTrapOptimised2](https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf)) updated every sample. The
@@ -143,13 +160,26 @@ input length plus their tail.
 
 | Method | Notes |
 | --- | --- |
-| `saturate(samples, drive, *, oversample=4)` | `tanh(x * drive) / tanh(drive)` (input 1 stays 1) at 1/2/4/8/16x with a Kaiser FIR; length and alignment unchanged; drive 0 bypasses |
+| `saturate(samples, drive, *, shape="tanh", bias=0, oversample=4)` | Waveshaper run at 1/2/4/8/16x with a Kaiser FIR (length and alignment unchanged): `tanh` soft, `clip` hard, `fold` sine wavefolder; `bias` makes it asymmetric (even harmonics, silence stays silent); inputs in [-1, 1] stay in [-1, 1] (symmetric tanh/clip map 1 to 1); drive 0 bypasses |
 | `bitcrush(samples, *, bits=None, rate=None)` | Quantize and/or sample-and-hold (arcade, radio, broken machines) |
 | `delay(samples, time, *, feedback=0.4, mix=0.35, damp=None)` | Repeats every `time`, each `feedback` quieter; `damp` low-passes each repeat; stops at -60 dB |
 | `chorus(samples, *, rate=0.8, depth=0.003, delay=0.015, mix=0.5)` | Two modulated delay voices; short delay/depth gives flanging |
-| `reverb(samples, seconds=1.6, *, mix=0.25, damp=6000, predelay=0.012)` | Noise-impulse room with unit energy: a steady input keeps its RMS in the wet signal |
+| `reverb(samples, seconds=1.6, *, mix=0.25, damp=6000, predelay=0.012, impulse=None)` | Unit-energy convolution: a steady input keeps its RMS in the wet signal. The synthetic room decays each octave band over `seconds / (1 + (center / damp)^2)`, so highs die first; `impulse` (samples or a file) uses a recorded response instead |
 | `speed(samples, factor)` | Tape-style resample: factor 2 is an octave up and half as long |
 | `follow(samples, *, attack=0.005, release=0.08)` | Envelope follower, for ducking or driving another parameter |
+| `stretch(samples, factor)` | WSOLA time stretch: duration × factor, pitch unchanged (40 ms frames, ±12 ms similarity search) |
+| `pitch_shift(samples, semitones)` | Pitch change with the same duration (stretch, then resample); best on tonal or textured material, transients soften |
+
+### Dynamics
+
+All work offline on a peak envelope and return the input length.
+
+| Method | Notes |
+| --- | --- |
+| `compress(samples, *, threshold_db=-18, ratio=4, attack=0.005, release=0.08, knee_db=6, makeup_db=0)` | Soft-knee downward compressor; no look-ahead, so the first milliseconds of a hit pass through |
+| `limit(samples, *, ceiling=0.98, lookahead=0.002, release=0.05)` | Brickwall: sample peaks never exceed `ceiling`; gain dips ahead of peaks and recovers over `release` |
+| `gate(samples, *, threshold_db=-50, attack=0.002, release=0.05, floor_db=-80)` | Falls to `floor_db` while the signal is below the threshold |
+| `shape_transients(samples, *, attack_db=6, sustain_db=0)` | Gain from a fast-vs-slow envelope: onsets get `attack_db`, the rest `sustain_db` |
 
 ### Timeline
 
@@ -158,6 +188,7 @@ input length plus their tail.
 | `mix(layers, *, seconds=None)` | List or `{name: ...}` of arrays, `(at, samples)` / `(at, samples, gain)` tuples or `layer` values; length is the last layer end unless `seconds` pads/crops; negative starts are rejected |
 | `layer(samples, *, at=0, gain=1)` | Read-only snapshot with placement and the context's seed metadata (for `review_clip` stems) |
 | `pad(samples, seconds)`, `segment(samples, seconds, start=0)` | Append silence; slice with zero padding past the end |
+| `loop(samples, crossfade)` | Seamless loop: the last `crossfade` seconds blend (equal power) into the start; the result is that much shorter and its end flows into its beginning |
 
 ### Level and export
 
@@ -167,9 +198,9 @@ input length plus their tail.
 | `loudness(samples)` | Integrated loudness, mono ITU-R BS.1770 (K-weighting, 400 ms blocks, absolute -70 and relative -10 LU gates); clips shorter than 400 ms are measured whole; `None` for silence |
 | `trim(samples, *, threshold_dbfs=-60, window=0.01, hold=0.05, fade=0.01, minimum=0)` | Cut after the last window whose RMS (or peak 12 dB lower) is above the threshold; earlier gaps and late reflections are kept |
 | `finish(samples, *, peak=0.9, lufs=None, ceiling=0.98, dc=True, fade_in=0.0005, fade_out=0.01, trim=-60)` | Export chain below |
-| `load(path)` | WAV via SciPy, other formats via soundfile; channel mean, resampled to the context rate; DC and level untouched |
-| `write_wav(path, samples)` | Mono PCM16, rounded and clipped; creates folders, overwrites; rejects NaN/Inf; returns the path |
-| `pack(output, *, prefix="", **finish)` | Sound set, see above |
+| `load(path)` | WAV (8/16/24/32-bit, float) via SciPy, other formats via soundfile; channel mean, resampled to the context rate; DC and level untouched |
+| `save(path, samples, *, bits=16, dither=False, quality=0.6)` | By suffix: `.wav` PCM 16/24 bit, `.flac` 16/24 bit, `.ogg` Vorbis (`quality` 0-1, higher is better). Clipped to full scale and rounded; `dither` adds seeded TPDF dither (±1 LSB) to WAV, useful for quiet 16-bit tails. Creates folders, overwrites, rejects NaN/Inf, returns the path; FLAC/OGG need soundfile |
+| `pack(output, *, prefix="", format="wav", bits=16, dither=False, **finish)` | Sound set, see above |
 
 `finish` runs: DC block (`dc=True` is 20 Hz, a number sets the cutoff, `False` skips) → level to `peak` or
 `lufs` → `trim` (threshold in dBFS of that level; `None` keeps the length) → edge fades → level again so the
@@ -186,7 +217,7 @@ exceed a level. LUFS here is an integrated measurement for authoring, not a true
 | --- | --- |
 | `analyze(samples, *, silence_dbfs=-60, frame_seconds=0.02, edge_dbfs=-40)` | JSON-safe report; never modifies the signal |
 | `format_report(report)`, `write_report(path, report)` | Text summary; `.json` + `.txt` siblings |
-| `export_gallery(path, sounds, *, title="Sound gallery")` | One self-contained HTML page for `{name: samples}`: player, waveform, spectrogram, peak/RMS/LUFS and warnings; sounds play at their true relative level; "Play all" |
+| `export_gallery(path, sounds, *, title="Sound gallery", current=None)` | One self-contained HTML page for `{name: samples}`: player, waveform, spectrogram, peak/RMS/LUFS and warnings; sounds play at their true relative level; "Play all". `current` (`{name: samples}`) adds a New/Current switch that keeps the playback position, plus duration/peak/LUFS differences |
 | `review_clip(source=None, *, layers=None, seconds=None, parameters=None)` | Snapshot an array, file or named layers with seed and JSON parameters |
 | `compare(reference, candidate, *, focus="all", ...)` | Active-region and attack/body/tail differences against a reference |
 | `export_review(directory, reference, variants, *, ...)` | Offline A/B listening session against a reference recording |
@@ -245,12 +276,14 @@ AudioGeneration/
         validation.py      shared input contracts (mono, curves, Hz ranges)
         seeding.py         named seed derivation
         curves.py          envelopes, contours, LFOs, random curves, fades
-        oscillators.py     band-limited waves, FM, noise colors, modal, thump, pluck
-        filters.py         Butterworth and per-sample state-variable filters, formants
-        effects.py         saturation, bitcrush, delay, chorus, reverb, speed, follower
-        timeline.py        layers, mix, pad, segment, scatter
+        oscillators.py     band-limited waves, unison, FM, noise colors, modal, thump, pluck
+        filters.py         Butterworth and per-sample state-variable filters, EQ, formants, vowels
+        effects.py         waveshaping/oversampling, bitcrush, delay, chorus, reverb, speed, follower
+        dynamics.py        compressor, limiter, gate, transient shaper
+        stretch.py         WSOLA time stretch and pitch shift
+        timeline.py        layers, mix, pad, segment, loop, scatter
         level.py           normalize, BS.1770 loudness, trim, finish
-        wave_io.py         PCM16 encoding/writing, source loading
+        wave_io.py         WAV/FLAC/OGG writing, PCM encoding, dither, source loading
         pack.py            SoundPack: recipes, finishing, command line, summaries
         gallery.py         gallery export (+ gallery_page.html)
         analysis.py        measurements; reports.py text/JSON reports
@@ -266,7 +299,9 @@ import `Internals`. Recipes that are specific to one game stay in that game's sc
 
 ## Tests
 
-From the Engine root:
+Both suites are registered with CTest under the label `audio-generation` (one test per Python suite, plus
+the player suite when Node is installed). The Python suites are registered only when the configuring Python has
+NumPy and SciPy. From a game: `python p.py --test --label audio-generation`. Directly, from the Engine root:
 
 ```sh
 python -B -m unittest discover -s AudioGeneration/Tests

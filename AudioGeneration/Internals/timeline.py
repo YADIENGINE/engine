@@ -18,6 +18,17 @@ def segment(samples, count, offset):
     return result
 
 
+def loop(samples, count):
+    """Seamless loop: the last `count` samples cross-fade (equal power) into the start; result is shorter by count."""
+    samples = mono(samples)
+    if not 0 < count < len(samples) / 2:
+        raise ValueError("crossfade must be positive and shorter than half the sound")
+    result = samples[:-count].copy()
+    angle = np.linspace(0.0, np.pi / 2, count, endpoint=False)
+    result[:count] = samples[:count] * np.sin(angle) + samples[-count:] * np.cos(angle)
+    return result
+
+
 def layer(samples, rate, at, gain, random):
     samples = mono(samples)
     samples.setflags(write=False)

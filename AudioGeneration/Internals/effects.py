@@ -1,4 +1,4 @@
-"""Saturation, bit crushing, echo, chorus, convolution room, playback speed and envelope following.
+"""Waveshaping, bit crushing, echo, chorus, convolution room, playback speed and envelope following.
 
 Wet/dry effects share one rule: output = dry * (1 - mix) + wet * mix.
 """
@@ -9,35 +9,59 @@ import math
 import numpy as np
 
 from .filters import butterworth
-from .validation import mono, nonnegative, positive, positive_integer, unit
+from .validation import choice, finite, mono, nonnegative, positive, positive_integer, unit
 
 OVERSAMPLING = (1, 2, 4, 8, 16)
 
 
-def _tanh(samples, drive):
-    return np.tanh(samples * drive) / math.tanh(drive)
+SHAPES = ("tanh", "clip", "fold")
 
 
-def saturate(samples, drive, oversample):
-    """Normalized tanh (input 1 maps to 1), run at an elevated rate to limit aliasing."""
+def _curve(shape, drive, bias):
+    """Transfer function with silence kept at zero, scaled so inputs in [-1, 1] stay in [-1, 1]."""
+    if shape == "fold":
+        # Sine wavefolder: drive past 1 folds peaks back instead of flattening them.
+        function = lambda x: np.sin(0.5 * math.pi * x)
+    elif shape == "tanh":
+        function = np.tanh
+    else:
+        function = lambda x: np.clip(x, -1.0, 1.0)
+    offset = float(function(drive * bias))
+    probe = function(drive * (np.linspace(-1.0, 1.0, 2001) + bias)) - offset
+    scale = float(np.max(np.abs(probe))) or 1.0
+    return lambda x: (function(drive * (x + bias)) - offset) / scale
+
+
+def oversampled(samples, function, factor):
+    """Apply a nonlinearity at `factor` times the rate (Kaiser FIR), keeping length and alignment."""
     from scipy import signal
 
-    samples = mono(samples)
-    drive = nonnegative(drive, "drive")
-    if oversample not in OVERSAMPLING:
+    if factor not in OVERSAMPLING:
         raise ValueError("oversample must be 1, 2, 4, 8 or 16")
-    if not len(samples) or not drive:
-        return samples
-    if oversample == 1 or len(samples) == 1:
-        return _tanh(samples, drive)
+    if factor == 1 or len(samples) < 2:
+        return function(samples)
     # Symmetric Kaiser FIR, transition band below the output Nyquist; edges padded then removed.
     half_span = 64
-    kernel = signal.firwin(2 * half_span * oversample + 1, 0.94 / oversample, window=("kaiser", 8.6))
+    kernel = signal.firwin(2 * half_span * factor + 1, 0.94 / factor, window=("kaiser", 8.6))
     padding = half_span * 2
     padded = np.pad(samples, (padding, padding), mode="edge")
-    elevated = signal.resample_poly(padded, oversample, 1, window=kernel)
-    restored = signal.resample_poly(_tanh(elevated, drive), 1, oversample, window=kernel)
+    elevated = signal.resample_poly(padded, factor, 1, window=kernel)
+    restored = signal.resample_poly(function(elevated), 1, factor, window=kernel)
     return restored[padding:padding + len(samples)].copy()
+
+
+def saturate(samples, drive, shape, bias, oversample):
+    """Waveshaper: soft (tanh), hard (clip) or folding; `bias` makes it asymmetric (even harmonics).
+
+    Symmetric tanh/clip map input 1 to 1; every curve keeps inputs in [-1, 1] within [-1, 1].
+    """
+    samples = mono(samples)
+    drive = nonnegative(drive, "drive")
+    choice(shape, "shape", SHAPES)
+    bias = finite(bias, "bias")
+    if not len(samples) or not drive:
+        return samples
+    return oversampled(samples, _curve(shape, drive, bias), oversample)
 
 
 def bitcrush(samples, bits, hold_rate, rate):
@@ -90,19 +114,46 @@ def chorus(samples, rate_hz, depth, base_delay, mix, rate):
     return _wet_dry(samples, wet, mix)
 
 
-def reverb(rng, samples, seconds, mix, damp, predelay, rate):
-    """Unit-energy noise room: a steady input keeps its RMS in the wet signal. Adds the tail."""
+# Octave bands for the room: (low edge, high edge) Hz; None is an open end.
+ROOM_BANDS = ((None, 177.0), (177.0, 354.0), (354.0, 707.0), (707.0, 1414.0), (1414.0, 2828.0),
+              (2828.0, 5657.0), (5657.0, 11314.0), (11314.0, None))
+
+
+def room_impulse(rng, seconds, damp, rate):
+    """Noise impulse whose bands decay separately: RT60 = seconds / (1 + (band center / damp)^2)."""
+    count = round(seconds * rate)
+    t = np.arange(count) / rate
+    noise = rng.normal(0.0, 1.0, count)
+    impulse = np.zeros(count)
+    for low, high in ROOM_BANDS:
+        if low is not None and low >= rate * 0.45:
+            break
+        high = None if high is not None and high >= rate * 0.45 else high
+        if low is None:
+            band, center = butterworth(noise, high, "lowpass", 4, rate), high / 2 ** 0.5
+        elif high is None:
+            band, center = butterworth(noise, low, "highpass", 4, rate), low * 2 ** 0.5
+        else:
+            band, center = butterworth(noise, (low, high), "bandpass", 2, rate), (low * high) ** 0.5
+        decay = seconds / (1.0 + (center / damp) ** 2)
+        impulse += band * np.exp(-t * 6.9 / decay)
+    return impulse
+
+
+def reverb(rng, samples, seconds, mix, damp, predelay, impulse, rate):
+    """Unit-energy convolution room (synthetic, or a supplied impulse response). Adds the tail."""
     from scipy import signal
 
     samples = mono(samples)
-    seconds, damp = positive(seconds, "seconds"), positive(damp, "damp")
-    count = round(seconds * rate)
-    t = np.arange(count) / rate
-    impulse = rng.normal(0.0, 1.0, count) * np.exp(-t * 6.9 / seconds)
-    impulse = butterworth(impulse, min(damp, rate * 0.45), "lowpass", 2, rate)
+    if impulse is None:
+        impulse = room_impulse(rng, positive(seconds, "seconds"), positive(damp, "damp"), rate)
+    else:
+        impulse = mono(impulse, "impulse")
     impulse = np.concatenate([np.zeros(round(nonnegative(predelay, "predelay") * rate)), impulse])
-    impulse /= np.sqrt(np.sum(impulse ** 2)) or 1.0
-    wet = signal.fftconvolve(samples, impulse) if len(samples) else samples
+    energy = math.sqrt(float(np.sum(impulse ** 2)))
+    if not energy:
+        raise ValueError("impulse response is silent")
+    wet = signal.fftconvolve(samples, impulse / energy) if len(samples) else samples
     return _wet_dry(samples, wet, mix)
 
 

@@ -1,4 +1,4 @@
-"""PCM16 WAV encoding/writing and source loading (WAV via SciPy, other formats via soundfile)."""
+"""Audio file writing (WAV, FLAC, OGG) and source loading (WAV via SciPy, other formats via soundfile)."""
 
 import io
 import math
@@ -10,23 +10,56 @@ import numpy as np
 from .validation import mono
 
 
-def pcm16(samples, rate):
-    """Rounded, clipped mono PCM16 WAV bytes."""
-    data = np.rint(np.clip(mono(samples), -1.0, 1.0) * 32767.0).astype("<i2")
+FORMATS = (".wav", ".ogg", ".flac")
+
+
+def pcm(samples, rate, bits=16, dither=None):
+    """Mono PCM WAV bytes (16 or 24 bit), rounded and clipped; `dither` is an RNG for TPDF dither."""
+    if bits not in (16, 24):
+        raise ValueError("bits must be 16 or 24")
+    scale = float(2 ** (bits - 1) - 1)
+    values = np.clip(mono(samples), -1.0, 1.0) * scale
+    if dither is not None:
+        # Triangular noise of +/- 1 LSB decorrelates quantization error from quiet tails.
+        values += dither.uniform(-0.5, 0.5, len(values)) + dither.uniform(-0.5, 0.5, len(values))
+    integers = np.clip(np.rint(values), -scale, scale).astype("<i4")
+    if bits == 16:
+        data = integers.astype("<i2").tobytes()
+    else:
+        data = integers.view(np.uint8).reshape(-1, 4)[:, :3].tobytes()
     output = io.BytesIO()
     with wave.open(output, "wb") as audio:
         audio.setnchannels(1)
-        audio.setsampwidth(2)
+        audio.setsampwidth(bits // 8)
         audio.setframerate(int(rate))
-        audio.writeframes(data.tobytes())
+        audio.writeframes(data)
     return output.getvalue()
 
 
-def write_wav(path, samples, rate):
-    payload = pcm16(samples, rate)
+def save(path, samples, rate, bits, dither, quality):
+    """Write by suffix: .wav (PCM 16/24), .flac (lossless 16/24) or .ogg (Vorbis, quality 0-1)."""
     path = Path(path)
+    suffix = path.suffix.lower()
+    if suffix not in FORMATS:
+        raise ValueError(f"Unsupported audio file type {path.suffix!r}; use {', '.join(FORMATS)}")
+    if not 0.0 <= float(quality) <= 1.0:
+        raise ValueError("quality must be between 0 and 1")
+    samples = mono(samples)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(payload)
+    if suffix == ".wav":
+        path.write_bytes(pcm(samples, rate, bits, dither))
+        return path
+    try:
+        import soundfile
+    except ImportError as error:
+        raise ImportError(f"Writing {suffix} files needs soundfile (pip install soundfile)") from error
+    if suffix == ".flac":
+        if bits not in (16, 24):
+            raise ValueError("bits must be 16 or 24")
+        soundfile.write(path, np.clip(samples, -1.0, 1.0), int(rate), format="FLAC", subtype=f"PCM_{bits}")
+    else:
+        soundfile.write(path, np.clip(samples, -1.0, 1.0), int(rate), format="OGG", subtype="VORBIS",
+                        compression_level=1.0 - float(quality))
     return path
 
 

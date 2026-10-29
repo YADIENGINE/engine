@@ -6,33 +6,47 @@
 <title>Sound gallery</title>
 <style>
 :root { --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5f6b7d; --line: #d9dee6; --wave: #2f6fde;
-        --warn: #b4540c; color-scheme: light dark; }
+        --old: #8a5cd6; --warn: #b4540c; --pick: #1f9d55; color-scheme: light dark; }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #14171d; --card: #1d222b; --text: #e7ebf2; --muted: #9aa5b5; --line: #323a47; --wave: #6ea2ff;
-          --warn: #f0a050; }
+          --old: #b48cff; --warn: #f0a050; --pick: #4cd38a; }
 }
 * { box-sizing: border-box; }
 body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--text);
        font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
 main { max-width: 980px; margin: 0 auto; }
-header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
-h1 { margin: 0 0 16px; font-size: 22px; }
+header { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between;
+         margin-bottom: 16px; }
+h1 { margin: 0; font-size: 22px; }
+h2 { margin: 22px 0 8px; font-size: 16px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
 button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--card);
          color: var(--text); cursor: pointer; }
+button.on { border-color: var(--wave); color: var(--wave); font-weight: 600; }
+button.on.old { border-color: var(--old); color: var(--old); }
 .sound { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
 .sound.playing { border-color: var(--wave); }
-.top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; }
-.name { font-weight: 600; font-size: 15px; }
-.stats { color: var(--muted); font-variant-numeric: tabular-nums; }
+.sound.picked { border-color: var(--pick); box-shadow: 0 0 0 1px var(--pick); }
+.top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.name { font-weight: 600; font-size: 15px; margin-right: auto; overflow-wrap: anywhere; }
+.stats { color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.stats b { color: var(--text); font-weight: 600; }
 .warn { color: var(--warn); margin-top: 4px; }
 canvas { display: block; width: 100%; height: 70px; margin-top: 10px; border-radius: 6px; cursor: pointer; }
 canvas.spectrum { height: 90px; }
 audio { width: 100%; margin-top: 8px; height: 32px; }
+label.pick { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 </style>
 </head>
 <body>
 <main>
-  <header><h1 id="title"></h1><button id="play-all" type="button">Play all</button></header>
+  <header>
+    <h1 id="title"></h1>
+    <div class="actions">
+      <button id="play-all" type="button">Play all</button>
+      <button id="save" type="button" hidden>Download selection</button>
+    </div>
+  </header>
   <div id="sounds"></div>
 </main>
 <script id="gallery-data" type="application/json">@@DATA@@</script>
@@ -43,15 +57,27 @@ document.title = data.title;
 document.getElementById("title").textContent = data.title;
 const list = document.getElementById("sounds");
 const fmt = (value, unit) => value === null ? "n/a" : value.toFixed(1) + " " + unit;
+const delta = (a, b, unit, digits = 1) => a === null || b === null ? "n/a" :
+  (a - b >= 0 ? "+" : "") + (a - b).toFixed(digits) + " " + unit;
+const groupSize = {};
+data.sounds.forEach(sound => { groupSize[sound.group] = (groupSize[sound.group] || 0) + 1; });
+const choosing = data.sounds.some(sound => sound.choice && groupSize[sound.group] > 1);
+const picks = {};
 const players = [];
 
 function color(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
 
-function drawWave(canvas, plots, progress) {
+function drawWave(canvas, plots, progress, tint) {
   const ctx = canvas.getContext("2d"), w = canvas.width = canvas.clientWidth * devicePixelRatio,
         h = canvas.height = canvas.clientHeight * devicePixelRatio, bins = plots.waveform;
   ctx.fillStyle = color("--bg"); ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = color("--wave");
+  ctx.fillStyle = color(tint);
   bins.forEach(([low, high], i) => {
     const x = i / bins.length * w, top = (1 - Math.min(1, high)) * h / 2, bottom = (1 - Math.max(-1, low)) * h / 2;
     ctx.globalAlpha = i / bins.length <= progress ? 1 : 0.55;
@@ -71,32 +97,76 @@ function drawSpectrum(canvas, plots) {
   }));
 }
 
+function stats(prefix, take) {
+  const line = element("div", "stats");
+  const strong = element("b", "", prefix);
+  line.append(strong, ` ${take.duration.toFixed(2)} s · peak ${fmt(take.peak_dbfs, "dBFS")} · ` +
+              `RMS ${fmt(take.rms_dbfs, "dBFS")} · ${fmt(take.loudness_lufs, "LUFS")}`);
+  return line;
+}
+
+let lastGroup = null;
 data.sounds.forEach(sound => {
-  const card = document.createElement("section");
-  card.className = "sound";
-  const top = document.createElement("div");
-  top.className = "top";
-  const name = document.createElement("span");
-  name.className = "name"; name.textContent = sound.name;
-  const stats = document.createElement("span");
-  stats.className = "stats";
-  stats.textContent = `${sound.duration.toFixed(2)} s · peak ${fmt(sound.peak_dbfs, "dBFS")} · ` +
-                      `RMS ${fmt(sound.rms_dbfs, "dBFS")} · ${fmt(sound.loudness_lufs, "LUFS")}`;
-  top.append(name, stats);
-  card.append(top);
-  sound.warnings.forEach(message => {
-    const line = document.createElement("div");
-    line.className = "warn"; line.textContent = "⚠ " + message;
-    card.append(line);
-  });
-  const wave = document.createElement("canvas");
-  const spectrum = document.createElement("canvas");
-  spectrum.className = "spectrum";
-  const audio = document.createElement("audio");
-  audio.controls = true; audio.preload = "auto"; audio.src = sound.audio;
+  if (groupSize[sound.group] > 1 && sound.group !== lastGroup) list.append(element("h2", "", sound.group));
+  lastGroup = sound.group;
+  const card = element("section", "sound");
+  const top = element("div", "top");
+  top.append(element("span", "name", sound.name));
+  const takes = {"new": sound.take, "current": sound.current};
+  let active = "new";
+  const toggles = {};
+  if (sound.current) {
+    for (const [key, text] of [["new", "New"], ["current", "Current"]]) {
+      toggles[key] = element("button", key === "current" ? "old" : "", text);
+      toggles[key].type = "button";
+      top.append(toggles[key]);
+    }
+  }
+  if (choosing && sound.choice && groupSize[sound.group] > 1) {
+    const pick = element("label", "pick");
+    const radio = element("input");
+    radio.type = "radio"; radio.name = "pick-" + sound.group;
+    radio.addEventListener("change", () => {
+      picks[sound.group] = sound.choice;
+      document.querySelectorAll(`[data-group="${CSS.escape(sound.group)}"]`)
+        .forEach(other => other.classList.toggle("picked", other === card));
+    });
+    pick.append(radio, "Pick");
+    top.append(pick);
+  }
+  card.dataset.group = sound.group;
+  card.append(top, stats("New", sound.take));
+  if (sound.current) {
+    card.append(stats("Current", sound.current));
+    card.append(element("div", "stats", "New − current: " +
+      `${delta(sound.take.duration, sound.current.duration, "s", 2)} · ` +
+      `peak ${delta(sound.take.peak_dbfs, sound.current.peak_dbfs, "dB")} · ` +
+      `${delta(sound.take.loudness_lufs, sound.current.loudness_lufs, "LU")}`));
+  }
+  sound.take.warnings.forEach(message => card.append(element("div", "warn", "⚠ " + message)));
+  const wave = element("canvas"), spectrum = element("canvas", "spectrum"), audio = element("audio");
+  audio.controls = true; audio.preload = "auto"; audio.src = sound.take.audio;
   card.append(wave, spectrum, audio);
   list.append(card);
-  const redraw = () => drawWave(wave, sound.plots, audio.duration ? audio.currentTime / audio.duration : 0);
+  const tint = () => active === "new" ? "--wave" : "--old";
+  const redraw = () => drawWave(wave, takes[active].plots, audio.duration ? audio.currentTime / audio.duration : 0,
+                                tint());
+  const draw = () => { redraw(); drawSpectrum(spectrum, takes[active].plots); };
+  const select = key => {
+    if (key === active) return;
+    // Keep the position and playing state, clamped to the shorter take.
+    const at = audio.currentTime, playing = !audio.paused;
+    active = key;
+    audio.src = takes[key].audio;
+    audio.addEventListener("loadedmetadata", () => {
+      audio.currentTime = Math.min(at, audio.duration || 0);
+      if (playing) audio.play();
+    }, {once: true});
+    Object.entries(toggles).forEach(([name, button]) => button.classList.toggle("on", name === key));
+    draw();
+  };
+  Object.entries(toggles).forEach(([key, button]) => button.addEventListener("click", () => select(key)));
+  if (toggles.new) toggles.new.classList.add("on");
   for (const canvas of [wave, spectrum]) {
     canvas.addEventListener("click", event => {
       const rect = canvas.getBoundingClientRect();
@@ -110,7 +180,7 @@ data.sounds.forEach(sound => {
     card.classList.add("playing");
   });
   audio.addEventListener("pause", () => card.classList.remove("playing"));
-  players.push({audio, card, draw: () => { redraw(); drawSpectrum(spectrum, sound.plots); }});
+  players.push({audio, card, draw});
 });
 
 const drawAll = () => players.forEach(player => player.draw());
@@ -129,6 +199,17 @@ document.getElementById("play-all").addEventListener("click", () => {
     audio.play();
   };
   next();
+});
+
+const save = document.getElementById("save");
+save.hidden = !choosing;
+save.addEventListener("click", () => {
+  const payload = JSON.stringify({title: data.title, choices: Object.values(picks)}, null, 2);
+  const link = element("a");
+  link.href = URL.createObjectURL(new Blob([payload], {type: "application/json"}));
+  link.download = "selection.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 });
 </script>
 </body>

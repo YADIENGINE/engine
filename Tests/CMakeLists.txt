@@ -62,6 +62,34 @@ engine_tests(EngineTests
     LINKS EngineCore EngineStorage
 )
 
+# Offline audio authoring (Python): one CTest per suite, label "audio-generation". Registered only when the
+# interpreter has NumPy and SciPy, so configuring without them does not fail; the review player suite needs Node.
+find_package(Python3 3.10 COMPONENTS Interpreter QUIET)
+set(audioGenerationRoot "${CMAKE_CURRENT_SOURCE_DIR}/..")
+if(Python3_Interpreter_FOUND)
+    execute_process(COMMAND "${Python3_EXECUTABLE}" -c "import numpy, scipy"
+        RESULT_VARIABLE audioGenerationDependencies OUTPUT_QUIET ERROR_QUIET)
+endif()
+if(Python3_Interpreter_FOUND AND audioGenerationDependencies EQUAL 0)
+    file(GLOB audioGenerationSuites CONFIGURE_DEPENDS "${audioGenerationRoot}/AudioGeneration/Tests/test_*.py")
+    foreach(suite IN LISTS audioGenerationSuites)
+        get_filename_component(suiteName "${suite}" NAME_WE)
+        add_test(NAME "AudioGeneration.${suiteName}"
+            COMMAND "${Python3_EXECUTABLE}" -B -m unittest discover -s AudioGeneration/Tests -p "${suiteName}.py"
+            WORKING_DIRECTORY "${audioGenerationRoot}")
+        set_tests_properties("AudioGeneration.${suiteName}" PROPERTIES LABELS "audio-generation" TIMEOUT 300)
+    endforeach()
+else()
+    message(STATUS "AudioGeneration tests skipped: Python 3.10+ with numpy and scipy not found")
+endif()
+find_program(NODE_EXECUTABLE node)
+if(NODE_EXECUTABLE)
+    add_test(NAME "AudioGeneration.review_player"
+        COMMAND "${NODE_EXECUTABLE}" --test AudioGeneration/Tests/review_player.test.cjs
+        WORKING_DIRECTORY "${audioGenerationRoot}")
+    set_tests_properties("AudioGeneration.review_player" PROPERTIES LABELS "audio-generation" TIMEOUT 60)
+endif()
+
 # Every module with a Tests/CMakeLists.txt registers its own executable via engine_tests.
 file(GLOB moduleTestLists CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../Modules/*/Tests/CMakeLists.txt")
 foreach(list IN LISTS moduleTestLists)

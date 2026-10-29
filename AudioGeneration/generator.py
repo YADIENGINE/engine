@@ -1,11 +1,12 @@
 """The public facade for offline audio authoring; implementations live in Internals."""
 
+from os import PathLike
 import re
 
 import numpy as np
 
-from .Internals import (analysis, comparison, curves, effects, filters, gallery, level, oscillators, reports,
-                        review, review_io, seeding, timeline, validation, wave_io)
+from .Internals import (analysis, comparison, curves, dynamics, effects, filters, gallery, level, oscillators,
+                        reports, review, review_io, seeding, stretch, timeline, validation, wave_io)
 from .Internals.pack import SoundPack
 
 NOTE_PATTERN = re.compile(r"^([A-Ga-g])([#b]?)(-?\d+)$")
@@ -143,6 +144,11 @@ class SoundGenerator:
         """Band-limited DC-free pulse; `width` is the high fraction of each cycle."""
         return oscillators.pulse(frequency, self._count(seconds), self.sample_rate, phase, width, max_harmonics)
 
+    def unison(self, frequency, seconds=None, *, wave="saw", voices=7, detune=20.0, max_harmonics=512):
+        """Detuned stack (supersaw): `voices` spread over +/- `detune` cents with random phases, RMS-balanced."""
+        return oscillators.unison(self.rng, frequency, self._count(seconds), self.sample_rate, wave, voices, detune,
+                                  max_harmonics)
+
     def fm(self, frequency, seconds=None, *, ratio=1.0, index=1.0, phase=0.0):
         """Two-operator FM: sin(carrier + index * sin(ratio * carrier)). Index/ratio may be curves."""
         return oscillators.fm(frequency, self._count(seconds), self.sample_rate, ratio, index, phase)
@@ -166,7 +172,7 @@ class SoundGenerator:
                                  click)
 
     def pluck(self, frequency, seconds, *, decay=1.0, brightness=0.6):
-        """Karplus-Strong plucked string; `decay` is the time to -60 dB."""
+        """Karplus-Strong plucked string, exactly tuned (all-pass fraction); `decay` is the time to -60 dB."""
         return oscillators.pluck(self.rng, self.sample_count(seconds), self.sample_rate, frequency, decay,
                                  brightness)
 
@@ -198,11 +204,34 @@ class SoundGenerator:
     def dc_block(self, samples, cutoff=20.0):
         return filters.dc_block(samples, cutoff, self.sample_rate)
 
+    def bell(self, samples, frequency, gain_db, *, q=1.0):
+        """Peaking EQ: boost or cut `gain_db` around `frequency`; higher q is narrower."""
+        return filters.equalize(samples, "bell", frequency, gain_db, q, self.sample_rate)
+
+    def low_shelf(self, samples, frequency, gain_db, *, q=0.707):
+        """Boost or cut everything below `frequency` by `gain_db`."""
+        return filters.equalize(samples, "low", frequency, gain_db, q, self.sample_rate)
+
+    def high_shelf(self, samples, frequency, gain_db, *, q=0.707):
+        """Boost or cut everything above `frequency` by `gain_db`."""
+        return filters.equalize(samples, "high", frequency, gain_db, q, self.sample_rate)
+
+    def vowel(self, samples, shape, *, scale=1.0):
+        """Vowel formants ("a", "e", "i", "o", "u") or [(seconds, vowel), ...] gliding between them.
+
+        `scale` multiplies the formant frequencies: below 1 sounds like a larger throat.
+        """
+        return filters.vowel(samples, shape, scale, self.sample_rate)
+
     # Effects ----------------------------------------------------------------------------------------------------
 
-    def saturate(self, samples, drive, *, oversample=4):
-        """tanh(x * drive) / tanh(drive), oversampled to limit aliasing; drive 0 is a bypass."""
-        return effects.saturate(samples, drive, oversample)
+    def saturate(self, samples, drive, *, shape="tanh", bias=0.0, oversample=4):
+        """Oversampled waveshaper: "tanh" (soft), "clip" (hard) or "fold" (sine wavefolder).
+
+        tanh and clip map input 1 to 1; `bias` shifts the curve for asymmetric, even-harmonic distortion
+        (silence stays silent); drive 0 is a bypass.
+        """
+        return effects.saturate(samples, drive, shape, bias, oversample)
 
     def bitcrush(self, samples, *, bits=None, rate=None):
         """Quantize to `bits` and/or sample-and-hold at `rate` Hz."""
@@ -216,9 +245,15 @@ class SoundGenerator:
         """Two modulated delay voices; short delay and depth give flanging."""
         return effects.chorus(samples, rate, depth, delay, mix, self.sample_rate)
 
-    def reverb(self, samples, seconds=1.6, *, mix=0.25, damp=6000.0, predelay=0.012):
-        """Unit-energy noise-impulse room; output includes the tail."""
-        return effects.reverb(self.rng, samples, seconds, mix, damp, predelay, self.sample_rate)
+    def reverb(self, samples, seconds=1.6, *, mix=0.25, damp=6000.0, predelay=0.012, impulse=None):
+        """Unit-energy convolution room; output includes the tail.
+
+        Synthetic room: octave bands decay over seconds / (1 + (f / damp)^2), so highs die first.
+        `impulse` (samples or a file path) convolves with a recorded response instead.
+        """
+        if isinstance(impulse, (str, PathLike)):
+            impulse = self.load(impulse)
+        return effects.reverb(self.rng, samples, seconds, mix, damp, predelay, impulse, self.sample_rate)
 
     def speed(self, samples, factor):
         """Resample like a tape: factor 2 doubles pitch and halves duration."""
@@ -227,6 +262,34 @@ class SoundGenerator:
     def follow(self, samples, *, attack=0.005, release=0.08):
         """Envelope follower (for ducking, gating or driving a filter from another sound)."""
         return effects.follow(samples, attack, release, self.sample_rate)
+
+    def stretch(self, samples, factor):
+        """Change duration without changing pitch (WSOLA): factor 2 is twice as long."""
+        return stretch.stretch(samples, factor, self.sample_rate)
+
+    def pitch_shift(self, samples, semitones):
+        """Change pitch without changing duration (stretch, then resample)."""
+        return stretch.pitch_shift(samples, semitones, self.sample_rate)
+
+    # Dynamics ---------------------------------------------------------------------------------------------------
+
+    def compress(self, samples, *, threshold_db=-18.0, ratio=4.0, attack=0.005, release=0.08, knee_db=6.0,
+                 makeup_db=0.0):
+        """Soft-knee downward compressor on the peak envelope."""
+        return dynamics.compress(samples, threshold_db, ratio, attack, release, knee_db, makeup_db,
+                                 self.sample_rate)
+
+    def limit(self, samples, *, ceiling=0.98, lookahead=0.002, release=0.05):
+        """Look-ahead brickwall limiter: sample peaks never exceed `ceiling`."""
+        return dynamics.limit(samples, ceiling, lookahead, release, self.sample_rate)
+
+    def gate(self, samples, *, threshold_db=-50.0, attack=0.002, release=0.05, floor_db=-80.0):
+        """Noise gate: below the threshold the signal falls to `floor_db`."""
+        return dynamics.gate(samples, threshold_db, attack, release, floor_db, self.sample_rate)
+
+    def shape_transients(self, samples, *, attack_db=6.0, sustain_db=0.0):
+        """Transient shaper: emphasize (or soften) onsets and sustain independently."""
+        return dynamics.shape_transients(samples, attack_db, sustain_db, self.sample_rate)
 
     # Timeline ---------------------------------------------------------------------------------------------------
 
@@ -240,6 +303,10 @@ class SoundGenerator:
     def layer(self, samples, *, at=0.0, gain=1.0):
         """Read-only snapshot with placement, gain and this context's seed metadata."""
         return timeline.layer(samples, self.sample_rate, at, gain, self.seed_info)
+
+    def loop(self, samples, crossfade):
+        """Seamless loop for drones and ambiences: the end cross-fades into the start (result is shorter)."""
+        return timeline.loop(samples, self.sample_count(crossfade))
 
     def mix(self, layers, *, seconds=None):
         """Sum layers: a list or name mapping of arrays, (at, samples[, gain]) tuples or layer values.
@@ -278,13 +345,17 @@ class SoundGenerator:
         """Decode a WAV (or, with soundfile installed, other formats) as mono at this context's rate."""
         return wave_io.load(path, self.sample_rate)[0]
 
-    def write_wav(self, path, samples):
-        """Mono PCM16 (rounded, clipped to full scale); creates folders, overwrites the file."""
-        return wave_io.write_wav(path, samples, self.sample_rate)
+    def save(self, path, samples, *, bits=16, dither=False, quality=0.6):
+        """Write mono audio by suffix: .wav (PCM 16/24 bit), .flac (16/24 bit) or .ogg (Vorbis, quality 0-1).
 
-    def pack(self, output, *, prefix="", **finish):
-        """A named sound set writing <output>/<prefix><name>.wav; options are `finish` defaults."""
-        return SoundPack(self, output, prefix, finish)
+        Samples are clipped to full scale; `dither` adds TPDF dither to WAV (seeded by this context).
+        Creates folders and overwrites the file; .flac/.ogg need soundfile.
+        """
+        return wave_io.save(path, samples, self.sample_rate, bits, self.rng if dither else None, quality)
+
+    def pack(self, output, *, prefix="", format="wav", bits=16, dither=False, **finish):
+        """A named sound set writing <output>/<prefix><name>.<format>; other options are `finish` defaults."""
+        return SoundPack(self, output, prefix, format, bits, dither, finish)
 
     # Inspection -------------------------------------------------------------------------------------------------
 
@@ -304,9 +375,12 @@ class SoundGenerator:
         """Write .json and .txt siblings and return their paths."""
         return reports.write_report(path, report)
 
-    def export_gallery(self, path, sounds, *, title="Sound gallery"):
-        """Self-contained HTML listening page for {name: samples}, at true relative levels."""
-        return gallery.export(self, path, sounds, title)
+    def export_gallery(self, path, sounds, *, title="Sound gallery", current=None):
+        """Self-contained HTML listening page for {name: samples}, at true relative levels.
+
+        `current` ({name: samples}, e.g. the files on disk) adds an A/B switch and level differences.
+        """
+        return gallery.export(self, path, gallery.entries_of(sounds, current), title)
 
     def review_clip(self, source=None, *, layers=None, seconds=None, parameters=None):
         """Capture a signal/file or layered recipe, with seed and JSON parameters."""

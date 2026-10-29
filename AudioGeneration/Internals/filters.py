@@ -8,7 +8,7 @@ import math
 
 import numpy as np
 
-from .validation import curve, mono, positive, positive_integer
+from .validation import curve, finite, mono, positive, positive_integer
 
 SMOOTHING_SECONDS = 0.005
 
@@ -121,3 +121,64 @@ def formants(samples, bands, rate):
 def dc_block(samples, cutoff, rate):
     return butterworth(mono(samples), positive(cutoff, "cutoff"), "highpass", 1, rate)
 
+
+
+def _rbj(kind, frequency, gain_db, q, rate):
+    """Audio EQ Cookbook (Robert Bristow-Johnson) peaking and shelving biquads as one SOS row."""
+    if not 0 < frequency < rate / 2:
+        raise ValueError("frequency must be between 0 Hz and Nyquist")
+    amplitude = 10.0 ** (gain_db / 40.0)
+    w = 2.0 * math.pi * frequency / rate
+    cos, alpha = math.cos(w), math.sin(w) / (2.0 * q)
+    if kind == "bell":
+        b = [1 + alpha * amplitude, -2 * cos, 1 - alpha * amplitude]
+        a = [1 + alpha / amplitude, -2 * cos, 1 - alpha / amplitude]
+    else:
+        root = 2.0 * math.sqrt(amplitude) * alpha
+        sign = 1.0 if kind == "low" else -1.0
+        b = [amplitude * ((amplitude + 1) - sign * (amplitude - 1) * cos + root),
+             sign * 2 * amplitude * ((amplitude - 1) - sign * (amplitude + 1) * cos),
+             amplitude * ((amplitude + 1) - sign * (amplitude - 1) * cos - root)]
+        a = [(amplitude + 1) + sign * (amplitude - 1) * cos + root,
+             -sign * 2 * ((amplitude - 1) + sign * (amplitude + 1) * cos),
+             (amplitude + 1) + sign * (amplitude - 1) * cos - root]
+    return np.array([[*(value / a[0] for value in b), 1.0, a[1] / a[0], a[2] / a[0]]])
+
+
+def equalize(samples, kind, frequency, gain_db, q, rate):
+    from scipy import signal
+
+    samples = mono(samples)
+    sos = _rbj(kind, positive(frequency, "frequency"), finite(gain_db, "gain_db"), positive(q, "q"), rate)
+    return signal.sosfilt(sos, samples) if len(samples) else samples
+
+
+# Average adult formants (Hz) and bandwidths (Hz) for F1-F3; relative gains fall with frequency.
+VOWELS = {"a": (730, 1090, 2440), "e": (530, 1840, 2480), "i": (270, 2290, 3010), "o": (570, 840, 2410),
+          "u": (300, 870, 2240)}
+VOWEL_BANDWIDTHS = (90.0, 110.0, 160.0)
+VOWEL_GAINS = (1.0, 0.5, 0.25)
+
+
+def vowel(samples, shape, scale, rate):
+    """Formant filter for one vowel or [(seconds, vowel), ...] moving between vowels (log-Hz)."""
+    samples = mono(samples)
+    scale = positive(scale, "scale")
+    if isinstance(shape, str):
+        shape = [(0.0, shape)]
+    try:
+        points = [(float(at), VOWELS[name]) for at, name in shape]
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"vowel takes one of {', '.join(VOWELS)} or [(seconds, vowel), ...]") from error
+    if not points:
+        raise ValueError("vowel needs at least one point")
+    t = np.arange(len(samples)) / rate
+    times = np.array([at for at, _ in points])
+    if times[0] < 0 or np.any(np.diff(times) < 0):
+        raise ValueError("vowel times must start at or after zero and never decrease")
+    bands = []
+    for index, (bandwidth, gain) in enumerate(zip(VOWEL_BANDWIDTHS, VOWEL_GAINS)):
+        center = np.exp(np.interp(t, times, np.log([hz[index] for _, hz in points]))) * scale
+        center = np.minimum(center, rate * 0.45)
+        bands.append((center, np.maximum(center / (bandwidth * scale), 0.5), gain))
+    return formants(samples, bands, rate)
