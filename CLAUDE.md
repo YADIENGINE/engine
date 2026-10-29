@@ -21,6 +21,8 @@ GameObjects/ GameObject, ObjectList; headless nesne lifecycle'ı ve isteğe bağ
 Scene/     Scene, SceneManager; headless sahne lifecycle'ı, seçimi ve kapanışı
 Graphics/  Render/ Draw/ Anim/ Icons/ Style/ Ui/ (görünüşün tamamı; renkler/stiller parametre)
 Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Utilities/
+AudioGeneration/ Çevrimdışı Python ses üretimi; tek public import AudioGeneration.SoundGenerator,
+           tarifler ve asset yolları çağırandadır. API ve genişletme: Docs/AudioGeneration.md.
 Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, ScoreBoard, RunTracking ...); Modules/X/Tests/
 Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_add_editor_worker
 Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
