@@ -116,37 +116,14 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
         ImGui::BeginDisabled(!snapshot.ready);
         for (const auto& group : groups) {
             bool advanced = true;
-            bool first = true;
-            bool mixedTiming = false;
-            std::string commonHint;
             for (const auto& parameter : selected.parameters) {
                 if (hidden(parameter.id) || !snapshot.parameters.contains(parameter.id) ||
                     (parameter.group.empty() ? "General" : parameter.group) != group)
                     continue;
                 advanced = advanced && parameter.advanced;
-                const auto hint = ApplyHint(parameter, selected.actions);
-                if (first)
-                    commonHint = hint;
-                else if (commonHint != hint)
-                    mixedTiming = true;
-                first = false;
             }
             if (!InspectorSection(group.c_str(), !query.empty() || _modifiedOnly, !advanced)) continue;
             ImGui::PushID(group.c_str());
-            const char* groupHint =
-                mixedTiming ? "* Application timing differs; hover marked fields for details." : commonHint.c_str();
-            const bool actionTiming =
-                !mixedTiming && std::ranges::any_of(selected.parameters, [&](const auto& parameter) {
-                    return (parameter.group.empty() ? "General" : parameter.group) == group &&
-                           parameter.apply == PreviewApplyMode::NextAction;
-                });
-            if (*groupHint && !actionTiming) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-                ImGui::PushTextWrapPos(0);
-                ImGui::TextUnformatted(groupHint);
-                ImGui::PopTextWrapPos();
-                ImGui::PopStyleColor();
-            }
             bool properties = false;
             for (const auto& parameter : selected.parameters) {
                 if (!matches(parameter)) continue;
@@ -165,7 +142,7 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
                 ImGui::PushID(parameter.id.c_str());
                 ImGui::BeginDisabled(disabled(parameter.id));
                 auto value = found->second;
-                const auto hint = mixedTiming || actionTiming ? ApplyHint(parameter, selected.actions) : std::string{};
+                const auto hint = ApplyHint(parameter, selected.actions);
                 if (InspectorParameterField(parameter, value, snapshot.pending.contains(parameter.id), hint.c_str()))
                     actions.parameter(parameter.id, value);
                 ImGui::EndDisabled();

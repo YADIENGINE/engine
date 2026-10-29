@@ -51,7 +51,7 @@ void InspectorText(const char* text, float width, bool rightAligned = false) {
                                         ImGui::GetColorU32(ImGuiCol_Text), display.c_str(), nullptr, 0, &clip);
     if (display != text) EditorTooltip(text);
 }
-void InspectorLabel(const char* label, const char* description, bool modified, float width, bool deferred = false) {
+void InspectorLabel(const char* label, const char* description, bool modified, float width) {
     const float scale = InspectorScale();
     const float markerWidth = std::min(8 * scale, std::max(0.0f, width - 1));
     const auto marker = ImGui::GetCursorScreenPos();
@@ -60,16 +60,8 @@ void InspectorLabel(const char* label, const char* description, bool modified, f
             {marker.x + 2 * scale, marker.y + ImGui::GetTextLineHeight() * 0.5f}, 2 * scale,
             ImGui::GetColorU32(EditorToneColor(EditorTone::Warning)));
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + markerWidth);
-    const float timingWidth = deferred ? std::min(ImGui::GetFontSize(), std::max(0.0f, width - markerWidth - 1)) : 0;
-    InspectorText(label, std::max(1.0f, width - markerWidth - timingWidth));
+    InspectorText(label, std::max(1.0f, width - markerWidth));
     if (*description) EditorTooltip(description);
-    if (timingWidth > 0) {
-        ImGui::SameLine(0, 0);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-        InspectorText("*", timingWidth);
-        ImGui::PopStyleColor();
-        EditorTooltip(description);
-    }
 }
 bool InspectorResetButton(bool changed, bool pending, bool inlineRow) {
     const float size = ResetButtonSize * InspectorScale();
@@ -160,8 +152,8 @@ bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& va
                              const char* applyHint) {
     const bool modified = value != parameter.initial;
     const std::string tooltip = parameter.label + (modified ? "\nModified from default." : "") +
-                                (parameter.description.empty() ? "" : "\n" + parameter.description) +
-                                (*applyHint ? "\n" + std::string(applyHint) : "");
+                                (parameter.description.empty() ? "" : "\n" + parameter.description);
+    const std::string labelTooltip = tooltip + (*applyHint ? "\n" + std::string(applyHint) : "");
     const bool compact = parameter.kind == PreviewParameterKind::Boolean ||
                          (parameter.kind == PreviewParameterKind::Choice && !parameter.choiceButtons);
     if (compact) {
@@ -184,14 +176,13 @@ bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& va
     }
     if (inlineRow) {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetStyle().FramePadding.y);
-        InspectorLabel(parameter.label.c_str(), tooltip.c_str(), modified, ImGui::GetContentRegionAvail().x,
-                       *applyHint != '\0');
+        InspectorLabel(parameter.label.c_str(), labelTooltip.c_str(), modified, ImGui::GetContentRegionAvail().x);
         ImGui::TableSetColumnIndex(2);
     } else {
         const float checkboxWidth = inlineCheckbox ? ImGui::GetFrameHeight() + gap : 0;
         const float labelWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - resetSize - gap - checkboxWidth);
         ImGui::AlignTextToFramePadding();
-        InspectorLabel(parameter.label.c_str(), tooltip.c_str(), modified, labelWidth, *applyHint != '\0');
+        InspectorLabel(parameter.label.c_str(), labelTooltip.c_str(), modified, labelWidth);
         ImGui::SameLine(0, gap);
     }
     bool edited = false;
