@@ -34,6 +34,28 @@ def audio_lines(report):
 def format_report(report):
     if report["kind"] == "audio":
         return "\n".join(audio_lines(report)) + "\n"
+    if report["kind"] == "comparison":
+        lines = [f"Reference comparison | Focus: {report['focus']}"]
+        for side in ("reference", "candidate"):
+            marks = report[side]["landmarks"]
+            lines.extend(["", side.title(), f"Detected onset: {level(marks['onset_seconds'])} s",
+                          *audio_lines(report[side]["raw"])])
+            if report[side]["source"]:
+                lines.append("Source: " + json.dumps(report[side]["source"], ensure_ascii=False))
+            if report[side]["parameters"]:
+                lines.append("Recipe parameters: " + json.dumps(report[side]["parameters"], ensure_ascii=False))
+        lines.extend(["", "Active-stage differences (candidate minus reference)"])
+        for metric in report["metrics"][report["focus"]].values():
+            lines.append(f"{metric['label']}: {level(metric['reference'])} -> {level(metric['candidate'])} "
+                         f"{metric['unit']} | delta {level(metric['delta'])}")
+        lines.extend(["", *[finding["message"] for finding in report["differences"]], "", *report["notes"]])
+        return "\n".join(lines) + "\n"
+    if report["kind"] == "review":
+        lines = [report["title"], "Local reference listening session",
+                 f"Raw playback common gain: {level(report['settings']['raw_gain_db'])} dB"]
+        for key, comparison in report["comparisons"].items():
+            lines.extend(["", report["clips"][key]["name"], format_report(comparison)])
+        return "\n".join(lines) + "\n"
     lines = ["Mix", *audio_lines(report["mix"])]
     for name, layer in report["layers"].items():
         lines.extend(["", f"Layer: {name} | At: {layer['at_seconds']:.3f} s | Gain: {layer['gain']:g}",

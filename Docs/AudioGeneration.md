@@ -38,6 +38,9 @@ downloads recordings or installs dependencies.
 | Signal analysis, named layers, mixing and stem export | NumPy |
 | Additive bandlimited oscillators, `smooth_filter`, `trim_tail_energy` | NumPy |
 | `saturate(..., oversample=2/4/8/16)` | NumPy + SciPy |
+| `review_clip` from arrays/layers, `compare`, review plots | NumPy |
+| WAV reference loading, rate conversion and `export_review` | NumPy + SciPy |
+| Non-WAV reference loading | NumPy + soundfile; SciPy if rate conversion is needed |
 | Named seed contexts, report formatting and text/JSON report export | Python standard library |
 | Butterworth and swept filters, brown noise, textures, reverb, SciPy waveforms | NumPy + SciPy |
 | `read_source` | NumPy + SciPy + soundfile |
@@ -63,6 +66,13 @@ AudioGeneration/
         smooth_filters.py       sample-wise trapezoidal state-variable filter
         tails.py                RMS/peak-window trailing-energy detector
         validation.py           shared quality-path input contracts
+        comparison.py           active-region alignment, stages and difference metrics
+        review_io.py            immutable review clips, source loading, preview/raw WAVs
+        review_visuals.py        bounded waveform/envelope/STFT data
+        review.py               local review session assembly and export
+        review_page.html        local listening interface
+        review_page.css         responsive layout and plots
+        review_page.js          A/B transport, level modes, solo and selection export
         textures.py             seeded crackles and pings
         effects.py              convolution room, saturation
         scalar.py               standard-library synthesis/filter primitives
@@ -76,6 +86,10 @@ AudioGeneration/
         test_sound_generator.py existing synthesis/export behavior
         test_authoring_workflow.py analysis, named layers and independent seeds
         test_signal_quality.py  spectral rejection, filtering and tail behavior
+        test_reference_review.py reference/stage metrics and portable export
+        review_player.test.cjs  player behavior in an in-memory DOM/media double
+    Examples/
+        reference_review.py    runnable synthetic listening session
 ```
 
 Add supported operations to `SoundGenerator` and keep implementation in the
@@ -161,6 +175,9 @@ return new arrays. No method silently normalizes another operation's result.
 | `mix_layers(layers, seconds=None)` | Mix a name-to-array/layer mapping into a new mono array |
 | `analyze_layers(layers, seconds=None, silence_dbfs=-60, frame_seconds=0.02, edge_dbfs=-40)` | Analyze mix and aligned layer contributions, with placement and crop metadata |
 | `export_layers(directory, layers, seconds=None, report=True)` | Export the mix, aligned stems and optional text/JSON measurements; return file paths |
+| `review_clip(source=None, layers=None, seconds=None, parameters=None)` | Snapshot an array, source file or named layers with seed/parameter metadata |
+| `compare(reference, candidate, focus="all", align=True, silence_dbfs=-60, onset_relative_db=-40, frame_seconds=0.01)` | Active-region and attack/body/tail differences, raw measurements and playback alignment offsets |
+| `export_review(directory, reference, variants, title="Sound reference review", focus="all", align=True, match="rms", target_dbfs=-20, max_gain_db=12, silence_dbfs=-60, onset_relative_db=-40, frame_seconds=0.01)` | Self-contained local HTML listening session, plots, strict JSON/text reports and raw/preview WAVs |
 
 Optional arguments after `*` in the Python signatures must be passed by keyword.
 `write_wav` normally clips and truncates NumPy values. `rounding=True` uses the
@@ -273,8 +290,8 @@ supplied path's final suffix with `.json` and `.txt` and returns
 entry is omitted when `report=False`.
 
 These measurements describe signal structure, not artistic quality, perceived
-loudness or true peak. No LUFS estimator, reference comparison, automatic
-mastering, waveform plot or spectrogram image is included.
+loudness or true peak. Reference review adds waveform and spectrogram views and
+factual differences; it does not add a LUFS estimator or automatic mastering.
 
 ## Opt-in signal quality
 
@@ -381,6 +398,196 @@ quiet assets; nothing above the thresholds means an empty result unless
 `min_seconds` requests a minimum retained duration. Empty input stays empty.
 Original placement, leading silence and any internal gaps are preserved.
 
+## Reference comparison and local A/B review
+
+```python
+g = SoundGenerator(sample_rate=48000, seed=42)
+sound = g.for_sound("Impact", variation=0)
+body = sound.for_layer("body")
+air = sound.for_layer("air")
+t = body.time_axis(0.5)
+tone = np.sin(2 * np.pi * 90 * t) * body.decay_envelope(t, 0.002, 0.12)
+noise = air.lowpass(air.noise(0.1), 3000) * np.exp(-air.time_axis(0.1) / 0.02)
+candidate = sound.review_clip(
+    layers={"body": body.layer(tone, gain=0.5), "air": air.layer(noise, gain=0.15)},
+    parameters={"frequency_hz": 90, "decay_seconds": 0.12},
+)
+
+# WAV decoding works without soundfile. Its sample rate is converted to 48 kHz.
+reference = g.review_clip(Path("References") / "MetalImpact.wav")
+report = g.compare(reference, candidate, focus="attack")
+print(g.format_report(report))
+g.write_report(Path("Output") / "impact-comparison", report)
+
+paths = g.export_review(
+    Path("Output") / "ImpactReview",
+    reference,
+    {"Heavy": candidate, "Alternative": other_candidate},
+    title="Impact alternatives",
+    match="rms",
+    target_dbfs=-20,
+)
+print(paths["html"])
+```
+
+The runnable example requires no recordings or game assets. From the Engine root:
+
+```sh
+python -B AudioGeneration/Examples/reference_review.py --output MyAudioReview
+```
+
+Open the resulting `index.html` directly. No web server, npm packages, internet
+connection or browser upload is required. The library never launches a browser.
+
+### Inputs and ownership
+
+`review_clip` accepts exactly one of `source` or `layers`. A source can be a real
+mono array/list or a local filename. Arrays use the context sample rate. Layered
+clips use existing layer placement/gain rules; `seconds` optionally pads/crops
+the layered timeline. All sample arrays and stems are copied into read-only
+snapshots. `parameters` must be a strict JSON object with string keys; metadata
+is copied too. Seeds/scopes come from the generating context and named layers.
+The snapshot is an `AudioReviewClip` data value; construct it only through the
+facade. Its public data fields are `samples`, `sample_rate`, `layers`,
+`layer_metadata`, `random`, `parameters` and `source`.
+
+WAV loading uses SciPy, handling integer PCM and floating WAV. Other formats are
+delegated to the installed soundfile decoder. Multichannel sources are downmixed
+by channel mean, then polyphase-resampled when necessary. Opposite-polarity
+channels can cancel in this downmix. Unlike `read_source`, review loading does
+not remove DC or normalize samples: raw level/offset differences must remain
+measurable. Source files are read only. Source metadata records the filename and
+original rate; a recording's seed is unknown and reported as null, not inferred
+from the current context. Review clips from another context rate are rejected;
+load source files through the desired rate context instead.
+
+`compare` and `export_review` accept review values, arrays or filenames directly.
+Use `review_clip` when capturing recipe parameters, layers and correct context
+provenance. No function renders an arbitrary recipe callback or guesses its
+parameter values.
+
+### Alignment, stage definitions and differences
+
+Onset detection uses a one-millisecond trailing RMS envelope. The threshold is
+the larger of the absolute silence floor and `onset_relative_db` below the clip's
+peak. Both defaults are explicit: -60 dBFS absolute and -40 dB relative. This
+makes a scaled copy's onset independent of its gain until the absolute floor
+becomes relevant. The first/last envelope values above the threshold define the
+active region. A quiet/empty signal has unavailable landmarks, not invented
+zero-valued matches. A one-millisecond envelope can blur very short transients;
+adjust thresholds for a reference with noise or a very soft entrance.
+
+Stages are derived separately for each sound:
+
+- `all`: detected active region, excluding leading and trailing silence.
+- `attack`: onset through the first 90% crossing of the dominant RMS-envelope
+  peak. The 10%-90% rise and time to the dominant peak are also reported.
+- `body`: after attack until 90% of active-region energy has accumulated.
+- `tail`: the remaining active region. The tail boundary is never before the
+  attack boundary, and a stage may legitimately be empty.
+
+Metrics are measured on raw samples before any listening gain. Each comparison
+contains original full-signal `raw` analyses and separate active/stage analyses.
+It reports duration, peak/RMS, crest, DC, spectral centroid/flatness and band
+energy differences for all stages. Differences are **candidate minus reference**;
+band differences use percentage points, not percent change. Empty stages and
+undefined levels retain JSON null. All-stage metrics additionally include rise
+and dominant-peak timing differences.
+
+`focus` selects the narrative/text-report stage; measurements for every stage
+remain available. `align` records playback offsets for detected onsets; it does
+not rewrite samples. Stage measurements always use their active regions, even
+when playback alignment is disabled. There is no cross-correlation-based
+character matching, transient-by-transient warping or time stretching.
+
+Readable findings flag differences of at least 5 ms, 0.5 dB, 50 Hz centroid,
+0.05 flatness, 0.01 DC amplitude or 5 band percentage points, as appropriate.
+These are scanning heuristics, not pass/fail tolerances or perceptual thresholds.
+No overall similarity score, artistic quality verdict or automatic recipe change
+is produced. Compare an attack to an attack or a tail to a tail instead of using
+a whole-signal spectrum as evidence that different materials sound the same.
+
+### Listening controls and level matching
+
+The HTML offers reference A / selected variant B, play/pause, restart, loop,
+seek, onset alignment, active-RMS/peak matching, original relative balance,
+per-clip +/-12 dB fine gain and common master volume. Switching A/B or solo tracks
+retains the current timeline position and playing/paused state. Switching to a
+shorter clip clamps to its end rather than stretching or wrapping it. The layer
+selector plays aligned, gain-applied stems. Stems inherit the parent mix's
+listening gain instead of being independently normalized, preserving their
+relative balance. Controls also work without starting playback.
+
+Keyboard: Space play/pause, A reference, B variant, arrows seek 100 ms, L loop.
+Shortcuts do not intercept typing or a focused control's native keyboard action.
+Click either plot to seek. Focus selection changes the difference table and
+highlights the selected mix's stage. Comparison rows always describe selected B
+against A, including while listening to A. Plots continue to show the full mix
+when soloing a layer; layer placement/seed metadata is available in the inspector.
+The raw peak/RMS cards and warnings follow the selected mix or isolated stem;
+the onset card still identifies the mix alignment anchor. Full stem analyses are
+included in the report alongside placement and seed metadata.
+
+Matching uses the active region's RMS or peak, not the full padded file, and
+targets `target_dbfs`. Upward gain is capped by `max_gain_db` (default 12, allowed
+0-60). A shared per-clip peak ceiling of 0.89 amplitude (about -1 dBFS) considers
+both the mix and its stems, so cancellation in a mix cannot hide an unsafe solo
+level. A peak/boost cap may prevent exact RMS equality; resulting levels and cap
+flags are recorded and shown. Fine gain obeys the same peak ceiling. This is
+sample-peak protection, not a true-peak limiter or a loudness estimator.
+
+Original-balance playback uses one common attenuation for the entire session,
+including stems, only when required by headroom. Original relative levels remain
+intact; that common gain is displayed and recorded. Preview PCM is stored close
+to full scale for precision, then the player's volume restores the desired raw
+or matched signal gain. Encoding gain is not mastering and does not alter the
+raw reports or downloads. The master volume affects listening only, not plots.
+
+“Save variant selection” downloads `listening-selection.json` with B's exact
+seed/scopes, parameters, chosen layer, matching/alignment/focus and fine-gain
+settings. Nothing is sent to a server or written back into the original session.
+Very large seeds/integers are decimal strings in the browser payload and saved
+selection to avoid JavaScript precision loss; the Python report keeps integer
+types. Reproduce the original recipe/variation using those seed values; playback
+settings do not modify the recipe itself. Unsaved player changes reset on reload.
+
+### Visuals and exported files
+
+Waveforms retain min/max per bin and an RMS envelope (up to 600 bins). A cyan
+reference overlays the selected mix on a common amplitude/time scale. The
+spectrogram uses Hann windows of up to 2048 samples, up to 180 time slices and
+96 log-frequency samples from 20 Hz (or a lower rate-appropriate minimum) to
+Nyquist. Colors represent interpolated magnitude dBFS after the selected listening
+gain, with the displayed scale -80 to 0 dBFS; color saturation is not a clipping
+measurement. These are bounded inspection views, not publication-ready spectra.
+
+```text
+MyAudioReview/
+    index.html                 embedded player, metadata, plots and preview audio
+    review.json                full raw/stage analyses, differences and gain metadata
+    review.txt                 readable comparison summaries
+    raw/                       float32 WAV snapshots, including mix peaks above 1
+    audio/                     peak-encoded PCM16 previews for portable playback
+```
+
+The HTML's listening/inspection interface works on its own without fetching files.
+Keep the whole directory when sharing, because raw WAV/report download links
+point to sibling files. There are no CDN fonts/scripts, fetch calls, analytics or
+external services. Source paths are not embedded; only source filenames/rates
+are exported. User labels/JSON metadata are escaped and treated as data.
+
+Raw float WAVs are decoded/downmixed/resampled snapshots, not byte-identical
+copies of the original recording container. Their peaks are not clipped to
+[-1, 1]. Empty originals remain empty in reports/raw files; a one-sample silent
+preview is used solely for browser decode compatibility. Non-finite signals and
+values outside float32 export range are rejected before writing a session.
+An output layout that would overwrite a source recording is rejected too.
+Existing session files at the chosen output paths are otherwise overwritten.
+
+Return value: `{"html": Path(...), "report": {"json": Path(...), "text": Path(...)},
+"audio": {track_id: {"raw": Path(...), "preview": Path(...)}}}`. Reference track
+ID is `reference`; variants and stems have numbered IDs independent of labels.
+
 ## Tests
 
 From the Engine repository root:
@@ -392,3 +599,13 @@ python -B -m unittest discover -s AudioGeneration/Tests
 These tests use temporary files, exercise only the public API and do not build
 or launch anything. They require NumPy and SciPy; source decoder tests can supply
 fixtures without requiring an external recording.
+
+Player contract tests use Node's standard test runner (no npm dependencies):
+
+```sh
+node --test AudioGeneration/Tests/review_player.test.cjs
+```
+
+These JavaScript tests use an in-memory DOM/media double to verify transport,
+gain, solo, saved selections and repeated canvas updates. They do not replace
+real-browser checks of audio decoding, sound output, responsiveness and plots.

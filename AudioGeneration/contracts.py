@@ -12,3 +12,17 @@ class AudioLayer:
     at_seconds: float
     gain: float
     random: dict
+
+
+@dataclass(frozen=True)
+class AudioReviewClip:
+    """Owned signal, aligned stems and provenance captured for an offline review."""
+
+    samples: object
+    sample_rate: int
+    layers: dict
+    layer_metadata: dict
+    random: dict
+    parameters: dict
+    source: dict
+    _source_path: object = None

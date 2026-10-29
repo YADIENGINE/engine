@@ -336,6 +336,29 @@ class SoundGenerator:
         mix, stems, metadata = named_layers.render(self, layers, seconds)
         return named_layers.export(self, directory, mix, stems, metadata, report)
 
+    def review_clip(self, source=None, *, layers=None, seconds=None, parameters=None):
+        """Capture a signal/file or layered recipe, with seed and JSON parameters."""
+        from .Internals import review_io
+
+        return review_io.clip(self, source, layers, seconds, parameters)
+
+    def compare(self, reference, candidate, *, focus="all", align=True, silence_dbfs=-60.0,
+                onset_relative_db=-40.0, frame_seconds=0.01):
+        """Compare active envelopes/stages without altering, stretching or mastering signals."""
+        from .Internals import comparison
+
+        return comparison.compare(self, reference, candidate, focus, align, silence_dbfs,
+                                  onset_relative_db, frame_seconds)
+
+    def export_review(self, directory, reference, variants, *, title="Sound reference review", focus="all",
+                      align=True, match="rms", target_dbfs=-20.0, max_gain_db=12.0,
+                      silence_dbfs=-60.0, onset_relative_db=-40.0, frame_seconds=0.01):
+        """Export an offline HTML A/B player, plots, reports, raw WAVs and aligned stem previews."""
+        from .Internals import review
+
+        return review.export(self, directory, reference, variants, title, focus, align, match,
+                             target_dbfs, max_gain_db, silence_dbfs, onset_relative_db, frame_seconds)
+
     @staticmethod
     def run(sounds, write, *, prefix="", names=None, validate=True):
         """Select named sounds from argv (or names), call write(name), print filenames."""

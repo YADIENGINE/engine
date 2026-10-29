@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sound reference review</title>
+  <style>@@CSS@@</style>
+</head>
+<body>
+  <header class="page-head">
+    <div><p class="eyebrow">AUDIO GENERATION / LOCAL REVIEW</p><h1 id="title">Sound reference review</h1>
+      <p class="intro">Listen, inspect, and compare. Original signals stay untouched.</p></div>
+    <div class="header-actions"><button id="save-selection">Save variant selection ↓</button>
+      <a class="download" href="review.json" download>Download measurements ↗</a></div>
+  </header>
+  <main>
+    <section class="transport panel" aria-label="Listening controls">
+      <div class="transport-top">
+        <button id="play" class="primary">▶ Play</button>
+        <button id="restart">↶ Restart</button>
+        <div class="ab-group" aria-label="A/B selection"><button id="pick-a" aria-pressed="true">A · Reference</button>
+          <button id="pick-b" aria-pressed="false">B · Variant</button></div>
+        <label class="inline"><input id="loop" type="checkbox"> Loop</label>
+        <label class="inline"><input id="align" type="checkbox" checked> Align starts</label>
+        <label class="volume">Volume <input id="volume" type="range" min="0" max="1" value="0.65" step="0.01" aria-label="Master volume"></label>
+      </div>
+      <div class="scrub"><output id="time">0.000 s</output><input id="seek" type="range" min="0" max="1" value="0" step="0.001" aria-label="Playback position"><span id="duration">0.000 s</span></div>
+      <div class="transport-bottom">
+        <label>Listening level <select id="match"><option value="raw">Original balance</option><option value="rms">Match active RMS</option><option value="peak">Match peak</option></select></label>
+        <label>Fine gain <input id="gain" type="range" min="-12" max="12" value="0" step="0.5" aria-label="Fine playback gain"><output id="gain-label">0 dB</output></label>
+        <button id="reset-gain">Reset gain</button><span id="gain-status" class="muted"></span>
+      </div>
+      <div class="transport-foot"><span id="now-playing">Reference · Mix</span><span>Space play/pause · A/B switch · ←/→ seek · L loop</span></div>
+      <p id="error" role="alert" hidden></p>
+    </section>
+    <div class="workspace">
+      <aside class="library" aria-label="Reference and variants"><p class="section-label">YOUR LISTENING SET</p><div id="clip-list"></div>
+        <p class="aside-note">A/B preserves the playhead. Alignment removes only detected leading silence during playback.</p></aside>
+      <div class="inspection">
+        <section class="panel details">
+          <div class="section-head"><div><p class="eyebrow">SELECTED SOUND</p><h2 id="selected-name">Reference</h2></div>
+            <label>Listen to <select id="solo" aria-label="Mix or isolated layer"></select></label></div>
+          <div class="stats" id="stats"></div>
+          <div id="warnings"></div>
+          <details><summary>Seed, recipe parameters &amp; layer placement</summary><pre id="provenance"></pre></details>
+          <p class="file-links"><a id="raw-download" download>Download original signal · float WAV</a><a href="review.txt" download>Text report</a></p>
+        </section>
+        <section class="panel plots">
+          <div class="section-head"><div><h2>Signal view</h2><p class="muted">Click a plot to seek. Mix plots remain visible while soloing layers.</p></div>
+            <label>Focus <select id="focus"><option value="all">Whole active sound</option><option value="attack">Attack</option><option value="body">Body</option><option value="tail">Tail</option></select></label></div>
+          <div class="legend"><span class="swatch selected"></span>Selected mix <span class="swatch reference"></span>Reference <span class="swatch envelope"></span>RMS envelope</div>
+          <canvas id="waveform" height="180" aria-label="Waveforms and RMS envelopes" role="img"></canvas>
+          <div class="plot-axis"><span id="plot-origin">0 s</span><span>Aligned time / seconds</span><span id="plot-end"></span></div>
+          <div class="plot-title">Selected mix · spectrogram <span class="muted">log frequency · dBFS after listening gain</span></div>
+          <canvas id="spectrogram" height="190" aria-label="Selected mix log-frequency spectrogram" role="img"></canvas>
+          <div class="plot-axis"><span id="freq-range"></span><span class="heat-key">−80 dBFS <i></i> 0 dBFS</span></div>
+        </section>
+        <section class="panel comparison">
+          <div class="section-head"><div><p class="eyebrow">B MINUS A</p><h2 id="compare-title">Measured differences</h2></div><span class="pill">Before playback gain</span></div>
+          <p class="muted">Stage metrics exclude detected leading/trailing silence. Stages follow each sound's own envelope; no time stretching is applied.</p>
+          <div class="table-scroll"><table><thead><tr><th>Measurement</th><th>Reference A</th><th>Variant B</th><th>Difference</th></tr></thead><tbody id="metric-rows"></tbody></table></div>
+          <ul id="findings" class="findings"></ul>
+          <p class="muted">Differences describe structure, not a quality score or a promise of perceptual similarity. Empty stages show “n/a”.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer>Offline listening session · No network requests, uploads, or automatic mastering.</footer>
+  <audio id="audio" preload="auto"></audio>
+  <script id="review-data" type="application/json">@@DATA@@</script>
+  <script>@@SCRIPT@@</script>
+</body>
+</html>
