@@ -5,8 +5,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "Graphics/Render/RenderTargetStack.h"
-#include "Utilities/StartupTimer.h"
+#include "Graphics/Render/Internals/RenderTargetStack.h"
+#include "Runtime/Internals/StartupTimer.h"
 #include "Utilities/Rect.h"
 
 namespace {

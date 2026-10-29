@@ -14,6 +14,7 @@ bir oyunun içinden `python p.py --test --label engine` (ya da modül etiketi: `
 Araçların kendi testleri derleyici istemez: `Tools` içinde `python -m unittest discover -s Tests`; release sistemi
 Engine kökünde `python -m unittest discover -s ReleaseSystem/Tests`.
 Test yazma kuralları `Docs/Contributing/Testing.md`; modül kuralları `Docs/Contributing/ModuleRules.md`.
+Include sınırı denetimi derleyicisiz: `python Tools/include_boundaries.py <proje kökü>` (CTest `Engine.IncludeBoundaries`).
 
 ## Yapı
 ```
@@ -31,6 +32,7 @@ Docs/      Kullanım ve katkı belgeleri
 ReleaseSystem/ Release paketi ve bildirimlerin tamamı (Docs/Release.md): release.py (p.py --release), Notices.json +
            ThirdParty/*.txt (her oyunun bildirimine giren Engine bağımlılıkları), Tests/; sistemi büyütmek burada
 Tools/     buildenv.py (MSVC ortamı), build_cli.py (p.py), editor_cli.py (editor.py), test_runner.py, project_config.py,
+           include_boundaries.py (Internals sınırı),
            ProjectTemplate/ (EngineSetup.py'nin kopyaladığı yeni proje dosyaları; @PROJECT_NAME@,
            gitignore/gitattributes noktasız saklanır). Kurulan proje olduğu gibi derlenmeli: boş Game/ →
            Runtime/Starter/StarterGame.cpp, boş Editor/ → Editor/Preview/StarterWorker.cpp. Örnek kod şablonda değil
@@ -57,4 +59,7 @@ EngineSetup.py  Engine'in üst klasörünü yeni proje olarak kurar (adı sorar,
 - Oyuna giren bağımlılık (FetchContent, vendor kaynak, kopyalanmış header) eklemek ya da sürümünü değiştirmek
   `ReleaseSystem/Notices.json` + `ThirdParty/*.txt` güncellemesiyle aynı committe olur (`Docs/Release.md` → Engine
   bakımı); yoksa her oyunun Release'i durur. Editör/test bağımlılıkları listelenmez.
+- Public / `Internals/` ayrımı (`Docs/Contributing/ApiBoundaries.md`): özel dosya kendi sisteminin `X/Internals/`'ında,
+  kökte `Internals/` yok. Çekirdek `X/Internals/` Engine-private (oyun include etmez); `Modules/X/Internals/` ve
+  `Editor/Internals/` sadece sahibine. Public header'ın include ettiği dosya Internals'a taşınmadan önce gizlenir.
 - Commit mesajları kısa, emir kipinde, İngilizce.

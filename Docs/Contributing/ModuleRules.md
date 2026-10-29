@@ -82,7 +82,7 @@ is acceptable; for example, other modules may use Persistence through its public
 API. Every such dependency must be justified and listed in the module's README.
 
 A module must never include or access another module's `Internals/` files or
-private implementation details. Circular module dependencies are not allowed.
+private implementation details ([API boundaries](ApiBoundaries.md); checked by `Tools/include_boundaries.py`). Circular module dependencies are not allowed.
 Engine modules must remain independent of `Game/` code and game-specific rules.
 
 ## 4. Focused responsibilities

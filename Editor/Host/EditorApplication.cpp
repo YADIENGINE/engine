@@ -3,7 +3,7 @@
 #include <vector>
 #include "Editor/Host/EditorEntryPoint.h"
 #include "Input/Internals/InputReader.h"
-#include "Platform/UserData.h"
+#include "Platform/Internals/UserData.h"
 
 namespace {
 constexpr double SettingsSaveDelay = 0.5;

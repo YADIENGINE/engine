@@ -1,7 +1,7 @@
 #include "Graphics/Render/UiRegion.h"
 #include <raymath.h>
 #include <rlgl.h>
-#include "Graphics/Render/RenderTargetStack.h"
+#include "Graphics/Render/Internals/RenderTargetStack.h"
 
 UiRegion::UiRegion(Rect source, Rect target)
     : _transform(source, target) {}

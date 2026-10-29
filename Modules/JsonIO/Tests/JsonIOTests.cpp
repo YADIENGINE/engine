@@ -5,7 +5,7 @@
 #include "Tests/Support/GzipInflate.h"
 #include "Tests/Support/TempDirectory.h"
 #include "Modules/JsonIO/JsonIO.hpp"
-#include "Platform/FileStorage.h"
+#include "Platform/Internals/FileStorage.h"
 
 namespace {
 using D = JsonIO::Document;

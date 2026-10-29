@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
-#include "Platform/FileStorage.h"
+#include "Platform/Internals/FileStorage.h"
 
 namespace {
 constexpr std::size_t MaxSettingsBytes = 4 * 1024 * 1024;

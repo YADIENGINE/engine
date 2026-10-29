@@ -8,9 +8,9 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
-#include "Platform/Platform.h"
+#include "Platform/Internals/ApplicationFiles.h"
 #include "Scene/Scene.h"
-#include "Utilities/StartupTimer.h"
+#include "Runtime/Internals/StartupTimer.h"
 #include "Input/Internals/InputNormalizer.h"
 #include "Input/Internals/InputReader.h"
 #include "Graphics/Anim/Easing.h"

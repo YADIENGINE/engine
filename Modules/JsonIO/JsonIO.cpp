@@ -2,8 +2,8 @@
 #include "Modules/JsonIO/Internals/EncryptedEnvelope.h"
 #include "Modules/JsonIO/Internals/GzipCodec.h"
 #include "Modules/JsonIO/Internals/JsonCodec.h"
-#include "Platform/FileStorage.h"
-#include "Platform/StorageError.h"
+#include "Platform/Internals/FileStorage.h"
+#include "Platform/Internals/StorageError.h"
 
 namespace {
 [[noreturn]] void Translate(const StorageError& error) {

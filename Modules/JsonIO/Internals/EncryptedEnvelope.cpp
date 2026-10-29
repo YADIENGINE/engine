@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <array>
 #include "Modules/JsonIO/Internals/CryptoCodec.h"
-#include "Platform/SecureRandom.h"
+#include "Platform/Internals/SecureRandom.h"
 
 namespace {
 constexpr std::string_view Magic = "ENGSAVE!";

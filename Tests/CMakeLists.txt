@@ -82,6 +82,15 @@ if(Python3_Interpreter_FOUND AND audioGenerationDependencies EQUAL 0)
 else()
     message(STATUS "AudioGeneration tests skipped: Python 3.10+ with numpy and scipy not found")
 endif()
+# Internals/ boundaries (Docs/Contributing/ApiBoundaries.md) over the whole source tree: the game's when Engine is
+# a submodule, Engine's own when built alone.
+if(Python3_Interpreter_FOUND)
+    add_test(NAME "Engine.IncludeBoundaries"
+        COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/../Tools/include_boundaries.py" "${CMAKE_SOURCE_DIR}")
+    set_tests_properties("Engine.IncludeBoundaries" PROPERTIES LABELS "engine" TIMEOUT 60)
+else()
+    message(STATUS "Include boundary check skipped: Python 3.10+ not found")
+endif()
 find_program(NODE_EXECUTABLE node)
 if(NODE_EXECUTABLE)
     add_test(NAME "AudioGeneration.review_player"

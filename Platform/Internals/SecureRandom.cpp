@@ -1,8 +1,8 @@
-#include "Platform/SecureRandom.h"
+#include "Platform/Internals/SecureRandom.h"
 #include <algorithm>
 #include <cerrno>
 #include <limits>
-#include "Platform/StorageError.h"
+#include "Platform/Internals/StorageError.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX

@@ -1,12 +1,12 @@
-#include "Platform/Platform.h"
+#include "Platform/Internals/ApplicationFiles.h"
 #include <raylib.h>
 #include <array>
 #include <fstream>
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include "Platform/UserData.h"
-#include "Utilities/StartupTimer.h"
+#include "Platform/Internals/UserData.h"
+#include "Runtime/Internals/StartupTimer.h"
 #ifdef __ANDROID__
 #include <android/asset_manager.h>
 #include <android_native_app_glue.h>

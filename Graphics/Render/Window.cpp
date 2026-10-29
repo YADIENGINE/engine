@@ -1,6 +1,6 @@
 #include "Graphics/Render/Window.h"
 #include <raylib.h>
-#include "Utilities/StartupTimer.h"
+#include "Runtime/Internals/StartupTimer.h"
 
 Window::Window(const WindowSettings& settings)
     : _visible(settings.visible) {

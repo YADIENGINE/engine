@@ -5,7 +5,7 @@
 #include "Editor/Internals/Protocol/PreviewProtocol.h"
 #include "Editor/Internals/Settings/EditorSettingsStore.h"
 #include "Editor/Internals/Viewport/PreviewInputRouter.h"
-#include "Platform/FileStorage.h"
+#include "Platform/Internals/FileStorage.h"
 #include "Tests/Support/TempDirectory.h"
 
 TEST_CASE("Editor.Catalog.PresentationMetadataIsOptional", "[engine-editor]") {

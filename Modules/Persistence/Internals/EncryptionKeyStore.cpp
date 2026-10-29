@@ -5,9 +5,9 @@
 #include <utility>
 #include "Modules/Persistence/Persistence.hpp"
 #include "Modules/Persistence/Internals/SensitiveMemory.h"
-#include "Platform/FileStorage.h"
-#include "Platform/StorageError.h"
-#include "Platform/SecureRandom.h"
+#include "Platform/Internals/FileStorage.h"
+#include "Platform/Internals/StorageError.h"
+#include "Platform/Internals/SecureRandom.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -107,7 +107,7 @@ EncryptionKey EncryptionKeyStore::Load(bool create) const {
             }
             WipeKeyMemory(raw.data(), raw.size());
             try {
-                WriteBinaryFileAtomic(_file, wrapped, true, false);
+                WriteBinaryFileAtomic(_file, wrapped, FileAccess::OwnerOnly, WriteMode::CreateNew);
             } catch (...) {
                 WipeKeyMemory(wrapped.data(), wrapped.size());
                 throw;

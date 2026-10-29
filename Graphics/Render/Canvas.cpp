@@ -1,7 +1,7 @@
 #include "Graphics/Render/Canvas.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Render/RenderTargetStack.h"
+#include "Graphics/Render/Internals/RenderTargetStack.h"
 
 Canvas::Canvas(int width, int height, TextureFilter filter)
     : _width(width)

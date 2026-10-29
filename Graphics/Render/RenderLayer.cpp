@@ -1,6 +1,6 @@
 #include "Graphics/Render/RenderLayer.h"
 #include <rlgl.h>
-#include "Graphics/Render/RenderTargetStack.h"
+#include "Graphics/Render/Internals/RenderTargetStack.h"
 
 RenderLayer::RenderLayer(int width, int height, TextureFilter filter)
     : _target(LoadRenderTexture(width, height)) {

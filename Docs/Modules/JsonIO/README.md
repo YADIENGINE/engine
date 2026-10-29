@@ -93,8 +93,8 @@ No schema, save version, fallback document, backup or recovery policy is applied
   Monocypher is vendored in `Internals/Monocypher/` as its own C99 CMake target.
 - `Internals/GzipCodec` adapts the vendored sdefl compressor (`Internals/sdefl.h`).
 - Versions and licenses of all third-party code: [ThirdParty](ThirdParty.md).
-- Shared `Platform/FileStorage`, `StorageError` and `SecureRandom` supply generic
-  OS file/nonce primitives. They have no dependency on either module or on Game.
+- Engine-private `Platform/Internals/FileStorage`, `StorageError` and `SecureRandom` supply generic
+  OS file/nonce primitives ([API boundaries](../../Contributing/ApiBoundaries.md)). They have no dependency on either module or on Game.
 - The `EngineJsonIO` CMake target exposes no third-party headers or types publicly.
 
 The facade has no instance, cache, registry or mutable global state. Independent

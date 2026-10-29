@@ -6,7 +6,7 @@
 #include <cstddef>
 #include "Graphics/Anim/Easing.h"
 #include "Graphics/Draw/EffectQuality.h"
-#include "Graphics/Render/RenderTargetStack.h"
+#include "Graphics/Render/Internals/RenderTargetStack.h"
 #include "Graphics/Render/RenderExecutionContext.h"
 
 namespace {

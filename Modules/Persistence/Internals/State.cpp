@@ -1,7 +1,7 @@
 #include "Modules/Persistence/Internals/State.h"
 #include <utility>
-#include "Platform/FileStorage.h"
-#include "Platform/StorageError.h"
+#include "Platform/Internals/FileStorage.h"
+#include "Platform/Internals/StorageError.h"
 
 namespace {
 constexpr std::int64_t SaveVersion = 2;

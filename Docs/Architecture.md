@@ -35,7 +35,7 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | Folder | Contents | Depends on |
 | --- | --- | --- |
 | `Graphics/Anim` | `Easing`, `SpringPoint`, `AnimatedCounter`, `ButtonAnim` (headless) | `Utilities` |
-| `Graphics/Render` | `Window`, `Canvas`, `Renderer`, `RenderLayer`, `RenderTargetStack`, `ShadowMask`, `UiRegion` | `Utilities` |
+| `Graphics/Render` | `Window`, `Canvas`, `Renderer`, `RenderLayer`, `ShadowMask`, `UiRegion` (`Internals/RenderTargetStack`) | `Utilities` |
 | `Graphics/Draw` | `DrawUtils`, `VectorMath`, `Neon`, `TextRenderer`, `TextLayout`, `BackgroundDraw`, `EffectQuality` | `Render`, `Anim` |
 | `Graphics/Icons` | Shared icon library: shape-named `Icon` + `DrawIcon` | `Draw` |
 | `Graphics/Style` | `Theme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |

@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string_view>
-#include "Platform/SecureRandom.h"
+#include "Platform/Internals/SecureRandom.h"
 
 std::wstring PreviewWide(const std::string& utf8) {
     if (utf8.empty()) return {};

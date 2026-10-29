@@ -3,7 +3,7 @@
 #include <string>
 #include <utility>
 #include "Audio/Internals/Validation.h"
-#include "Utilities/StartupTimer.h"
+#include "Runtime/Internals/StartupTimer.h"
 
 AudioSystem::State::State(std::filesystem::path assetRoot, AudioVolumeSettings volumeSettings)
     : _root(std::filesystem::absolute(std::move(assetRoot)))

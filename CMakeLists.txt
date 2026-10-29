@@ -36,7 +36,11 @@ FetchContent_Declare(nlohmann_json
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-add_library(EngineStorage STATIC Platform/FileStorage.cpp Platform/StorageError.cpp Platform/SecureRandom.cpp)
+add_library(EngineStorage STATIC
+    Platform/Internals/FileStorage.cpp
+    Platform/Internals/SecureRandom.cpp
+    Platform/Internals/StorageError.cpp
+)
 target_include_directories(EngineStorage PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineStorage PUBLIC cxx_std_20)
 set_target_properties(EngineStorage PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
@@ -129,10 +133,10 @@ add_library(EngineCore STATIC
     Menus/HeaderGridNavigation.cpp
     Menus/GridMenuSelection.cpp
     Options/GameOptions.cpp
-    Platform/UserData.cpp
+    Platform/Internals/UserData.cpp
+    Runtime/Internals/StartupTimer.cpp
     Scene/Scene.cpp
     Scene/SceneManager.cpp
-    Utilities/StartupTimer.cpp
     Utilities/UiTransform.cpp
 )
 target_include_directories(EngineCore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -241,7 +245,7 @@ add_library(Engine STATIC
     Graphics/Draw/ParticleDraw.cpp
     Graphics/Draw/Neon.cpp
     Graphics/Render/RenderLayer.cpp
-    Graphics/Render/RenderTargetStack.cpp
+    Graphics/Render/Internals/RenderTargetStack.cpp
     Graphics/Render/RenderExecutionContext.cpp
     Graphics/Render/ShadowMask.cpp
     Graphics/Render/Renderer.cpp
@@ -249,7 +253,7 @@ add_library(Engine STATIC
     Graphics/Render/UiRegion.cpp
     Graphics/Render/Window.cpp
     Input/Internals/InputReader.cpp
-    Platform/Platform.cpp
+    Platform/Internals/ApplicationFiles.cpp
     Graphics/Style/Theme.cpp
     Graphics/Ui/Backdrop.cpp
     Graphics/Ui/UiButton.cpp

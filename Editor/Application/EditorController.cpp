@@ -8,8 +8,8 @@
 #include <utility>
 #include <sstream>
 #include "Editor/Application/EditorCommandState.h"
-#include "Platform/UserData.h"
-#include "Platform/FileStorage.h"
+#include "Platform/Internals/UserData.h"
+#include "Platform/Internals/FileStorage.h"
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
 
 EditorController::EditorController(const std::filesystem::path& projectFile) {

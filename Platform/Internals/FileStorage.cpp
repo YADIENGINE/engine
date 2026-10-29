@@ -1,4 +1,4 @@
-#include "Platform/FileStorage.h"
+#include "Platform/Internals/FileStorage.h"
 #include <algorithm>
 #include <array>
 #include <cstdio>
@@ -6,8 +6,8 @@
 #include <fstream>
 #include <memory>
 #include <system_error>
-#include "Platform/StorageError.h"
-#include "Platform/SecureRandom.h"
+#include "Platform/Internals/StorageError.h"
+#include "Platform/Internals/SecureRandom.h"
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -52,7 +52,10 @@ std::string ReadBinaryFile(const std::filesystem::path& file, std::size_t maxByt
     return result;
 }
 
-bool WriteBinaryFileAtomic(const std::filesystem::path& file, std::string_view bytes, bool privateFile, bool replace) {
+bool WriteBinaryFileAtomic(const std::filesystem::path& file, std::string_view bytes, FileAccess access,
+                           WriteMode mode) {
+    const bool privateFile = access == FileAccess::OwnerOnly;
+    const bool replace = mode == WriteMode::Replace;
     const auto temporary = UniquePath(file, ".tmp.");
     try {
         const auto parent = file.parent_path();

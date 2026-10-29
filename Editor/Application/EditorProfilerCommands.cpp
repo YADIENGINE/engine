@@ -2,8 +2,8 @@
 #include <cctype>
 #include <sstream>
 #include <stdexcept>
-#include "Platform/FileStorage.h"
-#include "Platform/UserData.h"
+#include "Platform/Internals/FileStorage.h"
+#include "Platform/Internals/UserData.h"
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
 
 void EditorController::Profile(EditorProfilerCommand command, const Profiler::Recipe& recipe, const std::string& file) {

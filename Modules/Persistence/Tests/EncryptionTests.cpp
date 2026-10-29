@@ -3,7 +3,7 @@
 #include <limits>
 #include "Tests/Support/TempDirectory.h"
 #include "Modules/Persistence/Persistence.hpp"
-#include "Platform/FileStorage.h"
+#include "Platform/Internals/FileStorage.h"
 #ifndef _WIN32
 #include <sys/stat.h>
 #endif

@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <functional>
 #include "Tests/Support/TempDirectory.h"
-#include "Platform/FileStorage.h"
+#include "Platform/Internals/FileStorage.h"
 #include "Modules/Persistence/Persistence.hpp"
 
 namespace {

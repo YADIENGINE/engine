@@ -31,6 +31,7 @@ Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları o
 | Release paketi, lisans/credits bildirimleri | [Release](Release.md) |
 | Engine/modül testi yazmak | [Testing](Contributing/Testing.md) |
 | Yeni modül geliştirmek | [Module rules](Contributing/ModuleRules.md) |
+| Public API / `Internals/` ayrımı | [API boundaries](Contributing/ApiBoundaries.md) |
 
 Modül README'leri desteklenen API'yi, `Roadmap.md` dosyaları gelecekteki işleri anlatır.
 Editörün [geliştirme notları](Editor/Development/Roadmap.md) ve

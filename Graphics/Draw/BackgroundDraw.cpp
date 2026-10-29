@@ -3,7 +3,7 @@
 #include <cmath>
 #include <stdexcept>
 #include "Graphics/Draw/EffectQuality.h"
-#include "Graphics/Render/RenderTargetStack.h"
+#include "Graphics/Render/Internals/RenderTargetStack.h"
 
 namespace {
 // İnce çizgi piksel ızgarasına oturur: kesirli ölçekte 1 birimlik çizgiler 1 ve 2 piksel arasında oynamaz.

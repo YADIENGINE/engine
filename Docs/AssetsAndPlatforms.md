@@ -61,6 +61,8 @@ Persistence Android Keystore köprüsünün Java kaynağı ve manifest entegrasy
 [Persistence](Modules/Persistence/README.md) platform sınırlarını açıklar.
 Engine tek başına mağaza paketi/signing projesi sağlamaz.
 
-`SavePath(filename)` applicationId altında platform kullanıcı verisi yolunu üretir.
+`SavePath(filename)` applicationId altında platform kullanıcı verisi yolunu üretir. Asset hazırlama, kayıt yolu,
+dosya saklama ve güvenli rastgelelik `Platform/Internals/`'tadır (Engine-private); oyun bunlara `Game` ve
+Persistence/JsonIO üzerinden ulaşır.
 Android özel veri dizini uygulama kaldırılınca silinir. Kimlik veya şifreleme anahtarını
 değiştirmek mevcut kayda erişimi etkiler. Oyunun paketleme tercihleri Engine API'si değildir.
