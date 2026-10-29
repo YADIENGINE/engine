@@ -9,6 +9,7 @@ MyProject/                  (oyunun reposu)
     EngineSetup.py  Docs/  Tools/  ...
   Game/                     oyun kaynakları + Assets/ (.cpp'ler kendiliğinden bulunur)
   Editor/                   projenin preview worker'ı (EngineEditor önizlemeleri; .cpp'ler kendiliğinden bulunur)
+  Distribution/             oyuncuya giden bildirim metinleri (GameNotices.txt, credits); bkz. Release.md
   CMakeLists.txt  CMakePresets.json
   Project.json              Engine/Tools'un okuduğu proje ayarı
   p.py  editor.py           Engine/Tools'a giden ince sarmalayıcılar
@@ -31,7 +32,8 @@ python EngineSetup.py --dry-run    # yazmadan ne oluşturacağını listeler
 ```
 
 `EngineSetup.py` `Tools/ProjectTemplate/`'i bir üst klasöre yazar: `CMakeLists.txt`, `CMakePresets.json`,
-`Project.json`, `p.py`, `editor.py`, `.gitignore`, `.gitattributes`, `Game/Assets/`, `Editor/`. Proje adı
+`Project.json`, `p.py`, `editor.py`, `.gitignore`, `.gitattributes`, `Game/Assets/`, `Editor/`,
+`Distribution/GameNotices.txt`. Proje adı
 `project(...)` ve `Project.json` `"name"` alanına yazılır; exe, Release paketi ve editör worker'ı (`<ad>Preview`) bu
 addan türer. Ad harfle başlar, sadece harf/rakam/`_` içerir. Var olan dosyaların üzerine yazmaz (atladıklarını
 listeler); kökte `Project.json` varsa proje kurulmuş sayılır ve hiçbir şey yapmaz. Sonunda eksik araçları
@@ -54,7 +56,7 @@ kodu devreye girer: [İlk oyun](GettingStarted.md), [İlk editör önizlemesi](E
 
 Engine/Tools'un projeyi tanıdığı tek yer. Yollar proje köküne göredir; preset adları projenin
 `CMakePresets.json`'ındaki adlardır. Sadece kullanılan bölümler gerekir (ör. editörü olmayan projede `editor` yok).
-Aşağıdaki örnek bütün alanları gösterir; şablon `target`, `package.name` ve `editor.worker`'ı vermez, varsayılanlar
+Aşağıdaki örnek bütün alanları gösterir; şablon `target`, `release.name` ve `editor.worker`'ı vermez, varsayılanlar
 `name`'den gelir.
 
 ```json
@@ -68,7 +70,10 @@ Aşağıdaki örnek bütün alanları gösterir; şablon `target`, `package.name
     "configurePreset": "desktop",
     "buildPresets": { "Debug": "debug", "Release": "release" }
   },
-  "package": { "directory": "Final", "name": "MyProject", "files": ["Distribution/ThirdPartyNotices.txt"] },
+  "release": {
+    "directory": "Release", "name": "MyProject",
+    "notices": "Distribution/GameNotices.txt", "files": ["Distribution/AudioCredits.txt"]
+  },
   "tests": {
     "buildDirectory": "build/tests",
     "configurePreset": "tests", "buildPreset": "tests-debug", "testPreset": "tests-debug"
@@ -85,7 +90,7 @@ Aşağıdaki örnek bütün alanları gösterir; şablon `target`, `package.name
 | --- | --- | --- |
 | `game.target` | `p.py` | `engine_add_game` hedefi (varsayılan `name`); exe `buildDirectory/<Config>/<target>.exe` |
 | `game.buildDirectory` | `p.py` | configure preset'inin `binaryDir`'ı ile aynı olmalı |
-| `package` | `p.py --release` | `directory/name/` (varsayılan `Final/<name>/`) ve yanına ZIP: exe + `Assets` + `files` |
+| `release` | `p.py --release` | `directory/name/` (varsayılan `Release/<name>/`) ve yanına ZIP: exe + `Assets` + üretilen `ThirdPartyNotices.txt` + `files`; [Release](Release.md) |
 | `tests` | `p.py --test` | test preset'leri; sonuç `buildDirectory/reports/<run-id>/results.json` |
 | `editor.worker` | `editor.py` | `engine_add_editor_worker` hedefi (varsayılan `<name>Preview`) |
 | `editor.cacheVariables` | `editor.py` | editör build'ine eklenen proje seçenekleri (oyunu kapatıp worker'ı açmak gibi) |
@@ -111,6 +116,7 @@ JSON'a sığmayan projeye özel iş `hooks` dosyasındaki bilinen fonksiyonlarda
 | --- | --- |
 | `buildenv.py` | MSVC ortamı (vcvars64); `build/.msvc-env.json`'da önbelleğe alınır, VS güncellenince yenilenir |
 | `build_cli.py` | `p.py`: derle, çalıştır, `--release` paketle, `--clean`, `--test` |
+| `release.py` | Release paketi ve `ThirdPartyNotices.txt` (Engine'in `Distribution/` + oyunun `release.notices`); [Release](Release.md) |
 | `editor_cli.py` | `editor.py`: EngineEditor + worker derle ve aç |
 | `test_runner.py` | CTest'i koşup yapılandırılmış rapor yazar; çıkış kodu 0 başarı, 1 test hatası, 2 altyapı/seçim hatası |
 | `project_config.py` | `Project.json` ve hook yükleyici |

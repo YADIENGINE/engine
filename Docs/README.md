@@ -15,6 +15,8 @@ Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları o
 4. [Ayarlar ve kayıtlar](OptionsAndSaves.md), [modüller](Modules/README.md) ve
    [gameplay yardımcıları](GameplayHelpers.md).
 5. [Editör](Editor/README.md): projeyi bağlama ve üretim çizimini önizleme.
+6. [Release paketi](Release.md): `p.py --release`, `Release/` düzeni ve üçüncü taraf bildirimleri. Oyuna dış
+   asset ya da kütüphane ekleyen her değişiklik `Distribution/` bildirimini de günceller.
 
 ## Konu dizini
 
@@ -26,6 +28,7 @@ Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları o
 | Parçacık, kamera, geçiş ve overlay | [Effects](Graphics/Effects.md) |
 | Genel JSON run arşivi | [RunTracking](Modules/RunTracking/README.md) |
 | Python ile çevrimdışı ses üretimi | [Audio generation](AudioGeneration.md) |
+| Release paketi, lisans/credits bildirimleri | [Release](Release.md) |
 | Engine/modül testi yazmak | [Testing](Contributing/Testing.md) |
 | Yeni modül geliştirmek | [Module rules](Contributing/ModuleRules.md) |
 

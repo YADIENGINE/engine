@@ -1,4 +1,4 @@
-"""Engine projesini derler, çalıştırır, Release paketini kurar ve testleri koşar.
+"""Engine projesini derler, çalıştırır, Release paketini kurar (release.py) ve testleri koşar.
 
 Proje kökündeki p.py bu modülün main(root)'unu çağırır; ayarlar Project.json'dan (bkz. Docs/ProjectSetup.md).
 Engine reposunda doğrudan `python Tools/build_cli.py --test` Engine'in kendi testlerini koşar.
@@ -19,6 +19,7 @@ from pathlib import Path
 
 from buildenv import clear_stale_build, msvc_env, tool
 from project_config import Project
+from release import package
 from test_runner import run_tests
 
 CONFIGURE_STAMP = ".configured"  # Son başarılı configure; bkz. needs_configure
@@ -41,47 +42,6 @@ def needs_configure(root: Path, build_dir: Path) -> bool:
     if not stamp.exists():
         return True
     return (root / "CMakePresets.json").stat().st_mtime > stamp.stat().st_mtime
-
-
-def copy_entry(source: Path, destination: Path) -> None:
-    if not source.exists():
-        sys.exit(f"Missing package file: {source}")
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    if source.is_dir():
-        shutil.copytree(source, destination)
-    else:
-        shutil.copy2(source, destination)
-
-
-def package(project: Project, exe: Path) -> Path:
-    """Paket klasörünü (exe + Assets + ek dosyalar) ve yanına ZIP'i kurar. Assets'ten ne gireceğini projenin
-    `package_assets(root)` hook'u seçer (Assets'e göre yollar); hook yoksa Assets olduğu gibi kopyalanır."""
-    settings = project.section("package")
-    extras = [project.path(name) for name in settings.get("files", [])]
-    for extra in extras:
-        if not extra.is_file():
-            sys.exit(f"Missing package file: {extra}")
-    target = project.path(settings.get("directory", "Final")) / settings.get("name", project.name)
-    print(f"> package {target}", flush=True)
-    if target.exists():
-        shutil.rmtree(target)
-    target.mkdir(parents=True)
-
-    shutil.copy2(exe, target / exe.name)
-    for extra in extras:
-        shutil.copy2(extra, target / extra.name)
-    built_assets = exe.parent / "Assets"
-    if built_assets.is_dir():
-        select = project.hook("package_assets")
-        if select is None:
-            shutil.copytree(built_assets, target / "Assets")
-        else:
-            for name in select(project.root):
-                copy_entry(built_assets / name, target / "Assets" / name)
-
-    archive = shutil.make_archive(str(target), "zip", target.parent, target.name)
-    print(f"> {archive}", flush=True)
-    return target / exe.name
 
 
 def entry_command(root: Path) -> list[str]:
@@ -130,7 +90,7 @@ def main(root: Path) -> None:
     target = game.get("target", project.name)
     exe = build_dir / config / (target + (".exe" if sys.platform == "win32" else ""))
     if args.release:
-        exe = package(project, exe)
+        exe = package(project, exe, build_dir)
 
     if args.build:
         return

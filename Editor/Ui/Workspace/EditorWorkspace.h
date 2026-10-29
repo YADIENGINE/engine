@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "Editor/Ui/Commands/EditorCommandPalette.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
@@ -42,6 +43,7 @@ private:
     bool _focusCatalog = false;
     std::optional<EditorPanel> _focusBottom;
     std::uint64_t _failureAttempt = 0;
+    std::vector<char> _failureDetail;
     bool _showFailedOutput = false;
     ImGuiID _centerDock = 0;
     int _ignoreLayoutChanges = 0;

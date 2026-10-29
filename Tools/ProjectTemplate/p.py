@@ -2,7 +2,7 @@
 
 Kullanım:
     python p.py              Debug derle + çalıştır
-    python p.py --release    Release derle, Final/ paketini kur + çalıştır
+    python p.py --release    Release derle, Release/ paketini kur + çalıştır
     python p.py --build      Sadece derle, çalıştırma
     python p.py --clean      build/ klasörünü silip sıfırdan derle
     python p.py --test       Headless testler (--filter, --label, --list)

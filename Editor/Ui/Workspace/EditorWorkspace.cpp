@@ -244,6 +244,12 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     if (failed && attempt.id != _failureAttempt &&
         !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel)) {
         _failureAttempt = attempt.id;
+        std::string detail = attempt.result == EditorBuildResult::RefreshFailed ? "Build succeeded, refresh failed."
+                                                                                : "Build & Refresh could not complete.";
+        if (attempt.exitCode) detail += "\nBuild exit code: " + std::to_string(*attempt.exitCode);
+        if (attempt.firstError) detail += "\n\n" + attempt.firstError->text;
+        _failureDetail.assign(detail.begin(), detail.end());
+        _failureDetail.push_back(0);
         ImGui::OpenPopup(FailurePopup);
         _viewport.ReleaseFocus();
         result.cancelPreviewInput = true;
@@ -348,17 +354,12 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     }
     ImGui::SetNextWindowSize({ImGui::GetFontSize() * 40, 0}, ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal(FailurePopup, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextUnformatted(attempt.result == EditorBuildResult::RefreshFailed
-                                   ? "Build succeeded, refresh failed."
-                                   : "Build & Refresh could not complete.");
-        if (attempt.exitCode) ImGui::Text("Build exit code: %lu", *attempt.exitCode);
-        if (attempt.firstError) {
-            ImGui::Separator();
-            if (ImGui::BeginChild("failure-detail", {0, ImGui::GetTextLineHeightWithSpacing() * 6}))
-                ImGui::TextWrapped("%s", attempt.firstError->text.c_str());
-            ImGui::EndChild();
-        }
+        ImGui::TextWrapped("Select text with the mouse, then Ctrl+C. Ctrl+A selects all text.");
+        ImGui::InputTextMultiline("##failure-detail", _failureDetail.data(), _failureDetail.size(),
+                                  {-1, ImGui::GetTextLineHeightWithSpacing() * 8}, ImGuiInputTextFlags_ReadOnly);
         ImGui::Separator();
+        if (ImGui::Button("Copy")) ImGui::SetClipboardText(_failureDetail.data());
+        ImGui::SameLine();
         if (ImGui::Button("Show Output")) {
             _showFailedOutput = true;
             ImGui::CloseCurrentPopup();

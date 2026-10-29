@@ -6,8 +6,9 @@
     "configurePreset": "desktop",
     "buildPresets": { "Debug": "debug", "Release": "release" }
   },
-  "package": {
-    "directory": "Final",
+  "release": {
+    "directory": "Release",
+    "notices": "Distribution/GameNotices.txt",
     "files": []
   },
   "tests": {

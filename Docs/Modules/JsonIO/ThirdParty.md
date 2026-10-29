@@ -3,6 +3,9 @@
 All third-party code below is private to JsonIO; no type or header is exposed
 through `JsonIO.hpp` or the `EngineJsonIO` CMake target.
 
+This is the developer note. The notice text shipped with games lives in
+[`Distribution/`](../../../Distribution/Notices.json); see [Release](../../Release.md).
+
 - **nlohmann/json 3.12.0** ([release](https://github.com/nlohmann/json/releases/tag/v3.12.0)),
   MIT license, fetched by CMake. Its types are confined to `Internals/JsonCodec` and `Internals/JsonSax`.
 - **Monocypher 4.0.3**, vendored unmodified in `Engine/Modules/JsonIO/Internals/Monocypher/` with its

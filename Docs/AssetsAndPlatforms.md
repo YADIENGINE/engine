@@ -20,6 +20,8 @@ settings.audio.effects = {{SoundId{0}, "Audio/click.wav"}};
 Boş, mutlak veya `..` içeren manifest yolları reddedilir. Eksik dosya başlangıç hatasıdır.
 `font` boşsa yerleşik varsayılan font kullanılır.
 Engine manifest hazırlama, font ve ses yükleme sağlar; genel texture asset manager sağlamaz.
+Dışarıdan gelen (indirilen, lisanslı) her asset'in bildirimi `Distribution/`'a yazılır ve lisans dosyası
+pakete girer: [Release](Release.md).
 Texture'ı kullanan View kaynağı GL bağlamı yaşarken yükleyip bırakır.
 
 ## GameSettings referansı

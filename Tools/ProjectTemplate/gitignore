@@ -1,6 +1,6 @@
 # Build
 build/
-Final/
+Release/
 __pycache__/
 
 # IDE

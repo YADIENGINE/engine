@@ -34,7 +34,9 @@ gösterir; Output ve Profiler kapalıdır. Alt durum çubuğu bu araçları ve o
   Clear yalnız Full tamponunu temizler; son deneme ve dosyalar korunur. `Open Log` seçili kapsamın tam dosyasını açar.
   Dosyalar build dizinindeki `editor-logs/` altında oturum ve deneme başına saklanır; otomatik silinmez.
   Son deneme tamponu 10000 satır / 8 MiB ile sınırlıdır; sınır aşılırsa ilk hata korunur ve tam dosyaya yönlendirme görünür.
-  Build hatası veya başarılı build sonrası refresh hatası bir kez popup açar; iptal popup açmaz. Show Output,
+  Build hatası veya başarılı build sonrası refresh hatası bir kez popup açar; iptal popup açmaz. Popup'taki
+  salt okunur metin fareyle seçilip Ctrl+C ile kopyalanabilir; Ctrl+A tüm metni seçer. Copy düğmesi hata özeti,
+  varsa build exit code'u ve ilk hata mesajını birlikte kopyalar. Show Output,
   büyütülmüş preview'dan çıkıp Output'u öne getirir, Last Build Try'ı açar ve ilk hataya kaydırır. Bu görünümde
   önceki arama/seviye tercihleri geçici olarak kaldırılır; kapsam değiştirilince kayıtlı tercihler geri gelir.
 - **Profiler:** Live / Benchmarks / Compare. Benchmark örneği seçildiğinde açılır; warmup / ölçüm kareleri / tekrar
