@@ -31,7 +31,8 @@ Two things keep a header public even if no game includes it directly:
   public header (`GameSettings`, `FloatRange`, `ButtonAnim` ...) is public. Moving it would only hide the name,
   not the dependency.
 - **A public header includes it.** A header reachable through a public header is effectively public. Hide it
-  first: forward-declare it and own it through `std::unique_ptr` (the way `Game` holds `InputNormalizer`), or
+  first: forward-declare it and own it through `std::unique_ptr` (the way `Game` holds `Renderer`, `SceneManager` and
+  `InputNormalizer`), or
   move the include into the `.cpp`. Only then move the file.
 
 Development tooling (frame observers, execution overrides used by the editor and profiler) is public API for

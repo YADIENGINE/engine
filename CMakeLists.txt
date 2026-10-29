@@ -135,8 +135,8 @@ add_library(EngineCore STATIC
     Options/GameOptions.cpp
     Platform/Internals/UserData.cpp
     Runtime/Internals/StartupTimer.cpp
+    Scene/Internals/SceneManager.cpp
     Scene/Scene.cpp
-    Scene/SceneManager.cpp
     Utilities/UiTransform.cpp
 )
 target_include_directories(EngineCore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -238,7 +238,7 @@ add_library(Engine STATIC
     Fx/IrisTransition.cpp
     Graphics/Icons/Icons.cpp
     Graphics/Draw/BackgroundDraw.cpp
-    Graphics/Render/Canvas.cpp
+    Graphics/Render/Internals/Canvas.cpp
     Graphics/Draw/DrawUtils.cpp
     Graphics/Draw/DrawTime.cpp
     Graphics/Draw/GlowBatch.cpp
@@ -246,12 +246,12 @@ add_library(Engine STATIC
     Graphics/Draw/Neon.cpp
     Graphics/Render/RenderLayer.cpp
     Graphics/Render/Internals/RenderTargetStack.cpp
-    Graphics/Render/RenderExecutionContext.cpp
+    Graphics/Render/Internals/RenderExecutionContext.cpp
     Graphics/Render/ShadowMask.cpp
-    Graphics/Render/Renderer.cpp
+    Graphics/Render/Internals/Renderer.cpp
     Graphics/Draw/TextRenderer.cpp
     Graphics/Render/UiRegion.cpp
-    Graphics/Render/Window.cpp
+    Graphics/Render/Internals/Window.cpp
     Input/Internals/InputReader.cpp
     Platform/Internals/ApplicationFiles.cpp
     Graphics/Style/Theme.cpp

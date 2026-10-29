@@ -1,4 +1,4 @@
-#include "Graphics/Render/Canvas.h"
+#include "Graphics/Render/Internals/Canvas.h"
 #include <algorithm>
 #include <cmath>
 #include "Graphics/Render/Internals/RenderTargetStack.h"

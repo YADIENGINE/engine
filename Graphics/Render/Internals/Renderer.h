@@ -2,9 +2,9 @@
 #include <raylib.h>
 #include <functional>
 #include <optional>
-#include "Graphics/Render/Canvas.h"
-#include "Graphics/Render/Window.h"
-#include "Graphics/Render/RenderExecutionContext.h"
+#include "Graphics/Render/Internals/Canvas.h"
+#include "Graphics/Render/Internals/Window.h"
+#include "Graphics/Render/Internals/RenderExecutionContext.h"
 
 // Render altyapısı: pencere ve canvas'ın sahibidir, frame'leri yönetir.
 // Neyin çizileceğini bilmez; her nesne kendi View'ı ile Frame içinde çizer.

@@ -7,8 +7,8 @@ En-boy oranı korunur, dış alan `letterbox` rengiyle doldurulur.
 Piksel tabanlı raylib clipping yerine `BeginClip` veya UiRegion içinde `BeginUiClip` kullanın.
 
 `Game` renderer frame'ini açar; normal sahne/View kodu `BeginDrawing` veya
-`BeginTextureMode` ile ikinci bir ana frame açmaz. Bağımsız renderer kullanan araçlar
-`Graphics/Render/Renderer.h` içindeki RAII `Renderer::Frame` sözleşmesine uyar.
+`BeginTextureMode` ile ikinci bir ana frame açmaz. Pencere, canvas ve renderer Engine-private'tır
+(`Graphics/Render/Internals/`); Engine içinde onları kullanan kod RAII `Renderer::Frame` sözleşmesine uyar.
 `CanvasReady` tamamlanmış canvas'ı ödünç verir; texture sahipliği devredilmez.
 `DrawWindow` canvas sunumundan sonra pencere koordinatında çizim içindir.
 

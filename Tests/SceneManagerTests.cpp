@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 #include "Scene/Scene.h"
-#include "Scene/SceneManager.h"
+#include "Scene/Internals/SceneManager.h"
 
 namespace {
 class ManagedScene final : public Scene {

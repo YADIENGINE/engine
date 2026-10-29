@@ -20,8 +20,8 @@ Include sınırı denetimi derleyicisiz: `python Tools/include_boundaries.py <pr
 ```
 Runtime/   Game, GameSettings; ana döngü ve servisler; Main.cpp CreateGame() çağırır
 GameObjects/ GameObject, ObjectList; headless nesne lifecycle'ı ve isteğe bağlı sahiplik
-Scene/     Scene, SceneManager; headless sahne lifecycle'ı, seçimi ve kapanışı
-Graphics/  Render/ Draw/ Anim/ Icons/ Style/ Ui/ (görünüşün tamamı; renkler/stiller parametre)
+Scene/     Scene, Internals/SceneManager; headless sahne lifecycle'ı, seçimi ve kapanışı
+Graphics/  Render/ (Window/Canvas/Renderer Internals/'da) Draw/ Anim/ Icons/ Style/ Ui/ (görünüşün tamamı; renkler/stiller parametre)
 Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Utilities/
 AudioGeneration/ Çevrimdışı Python ses üretimi; tek public import AudioGeneration.SoundGenerator,
            tarifler ve asset yolları çağırandadır. API ve genişletme: Docs/AudioGeneration.md.

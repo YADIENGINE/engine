@@ -1,20 +1,22 @@
 #pragma once
+#include <raylib.h>
 #include <memory>
 #include <optional>
 #include "Modules/Persistence/Persistence.hpp"
 #include "Audio/AudioSystem.hpp"
 #include "Options/GameOptions.h"
 #include "Fx/TimeScale.h"
-#include "Graphics/Render/Renderer.h"
 #include "Graphics/Draw/TextRenderer.h"
 #include "Input/Input.hpp"
 #include "Runtime/GameSettings.h"
 #include "Runtime/GraphicsSettings.h"
 #include "Runtime/FrameExecutionSettings.h"
 #include "Utilities/FrameObserver.h"
-#include "Scene/SceneManager.h"
+#include "Utilities/Vec2.h"
 
 class Scene;
+class SceneManager;
+class Renderer;
 class InputNormalizer;
 
 // Runtime owns the loop and services. A project's derived game supplies content and scenes.
@@ -23,10 +25,7 @@ public:
     virtual ~Game();
     void Run();
     // Development hosts may borrow frame instrumentation and temporarily override execution without saving options.
-    void ObserveFrames(FrameObserver* observer) {
-        _frameObserver = observer;
-        _renderer.SetObserver(observer);
-    }
+    void ObserveFrames(FrameObserver* observer);
     [[nodiscard]] FrameObserver* FrameInstrumentation() const { return _frameObserver; }
     [[nodiscard]] FrameExecutionSettings FrameExecution() const { return _frameExecution; }
     void ConfigureFrameExecution(const FrameExecutionSettings& settings);
@@ -108,7 +107,8 @@ private:
     void DrawFpsCounter() const;
 
     // Context first, content/services afterwards; derived game members are destroyed before these resources.
-    Renderer _renderer;
+    // Renderer and SceneManager are engine internals (Graphics/Render/Internals, Scene/Internals).
+    std::unique_ptr<Renderer> _renderer;
     std::filesystem::path _assetRoot;
     TextRenderer _text;
     AudioSystem _audio;
@@ -123,7 +123,7 @@ private:
     bool _showFps = false;
     double _frameStart = 0.0;               // Karenin başı (GetTime); FPS sayacının iş süresi buradan ölçülür
     mutable float _frameWorkSeconds = 0.0f; // Güncelleme + çizim süresi (bekleme hariç), yumuşatılmış
-    SceneManager _sceneManager;
+    std::unique_ptr<SceneManager> _sceneManager;
     bool _quitRequested = false;
     bool _paused = false;
     bool _ran = false;

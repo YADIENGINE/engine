@@ -35,7 +35,7 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | Folder | Contents | Depends on |
 | --- | --- | --- |
 | `Graphics/Anim` | `Easing`, `SpringPoint`, `AnimatedCounter`, `ButtonAnim` (headless) | `Utilities` |
-| `Graphics/Render` | `Window`, `Canvas`, `Renderer`, `RenderLayer`, `ShadowMask`, `UiRegion` (`Internals/RenderTargetStack`) | `Utilities` |
+| `Graphics/Render` | `RenderLayer`, `ShadowMask`, `UiRegion`; `Internals/`: `Window`, `Canvas`, `Renderer`, `RenderTargetStack`, `RenderExecutionContext` | `Utilities` |
 | `Graphics/Draw` | `DrawUtils`, `VectorMath`, `Neon`, `TextRenderer`, `TextLayout`, `BackgroundDraw`, `EffectQuality` | `Render`, `Anim` |
 | `Graphics/Icons` | Shared icon library: shape-named `Icon` + `DrawIcon` | `Draw` |
 | `Graphics/Style` | `Theme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
@@ -53,7 +53,7 @@ game needs a shape another game could use, it is added here (shape-named, style-
 ## Sahiplik ve bağımlılıklar
 
 - `Runtime/Game`: renderer, font, input, ses, seçenekler ve saat; türeyen oyunun sahneleri değer üyedir.
-- `Scene/SceneManager`: sahnelerin referans kayıtları, etkin/bekleyen hedef, geçiş ve kapanış; headless.
+- `Scene/Internals/SceneManager` (Engine-private): sahnelerin referans kayıtları, etkin/bekleyen hedef, geçiş ve kapanış; headless.
 - `Scene/Scene`: kendi nesne listesi, gerçek zaman hook'u ve pause kararı; modeller lifecycle'dan bağımsız kalabilir.
 - `GameObjects/`: GameObject ve ObjectList; referans kaydı veya dinamik nesne sahipliğiyle sıralı lifecycle.
 - Bağımlılık yönü Runtime → Scene → GameObjects; SceneManager, Scene, GameObject ve ObjectList EngineCore'da,

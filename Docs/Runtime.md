@@ -3,7 +3,8 @@
 ## Lifecycle
 
 The headless lifecycle types live in `GameObjects/GameObject.h`, `GameObjects/ObjectList.h`,
-`Scene/Scene.h` and `Scene/SceneManager.h`. `Runtime/Game.h` connects them to application services.
+`Scene/Scene.h` and the engine-private `Scene/Internals/SceneManager.h`. `Runtime/Game.h` connects them to
+application services; games select scenes through `Game::RegisterScene` / `SetScene`.
 
 `GameObject` supplies overridable `Start`, `Update(float)`, `Draw() const`, and `Stop` hooks.
 `ObjectList` calls `Start` once before an enabled object's first update/draw, skips disabled objects,

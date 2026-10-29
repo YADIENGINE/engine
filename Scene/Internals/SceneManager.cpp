@@ -1,4 +1,4 @@
-#include "Scene/SceneManager.h"
+#include "Scene/Internals/SceneManager.h"
 #include <algorithm>
 #include <exception>
 #include <stdexcept>

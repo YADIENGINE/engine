@@ -1,7 +1,7 @@
 #include "Graphics/Draw/GlowBatch.h"
 #include "Graphics/Draw/EffectQuality.h"
 #include "Graphics/Draw/DrawUtils.h"
-#include "Graphics/Render/RenderExecutionContext.h"
+#include "Graphics/Render/Internals/RenderExecutionContext.h"
 
 GlowBatch::GlowBatch()
     : _individual(RenderExecutionContext::Glows() == GlowBatching::Individual) {}

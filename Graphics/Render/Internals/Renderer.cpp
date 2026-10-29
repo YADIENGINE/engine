@@ -1,4 +1,4 @@
-#include "Graphics/Render/Renderer.h"
+#include "Graphics/Render/Internals/Renderer.h"
 #include <raylib.h>
 
 Renderer::Frame::Frame(const Window& window, Canvas& canvas, Color background, Color letterbox,

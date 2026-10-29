@@ -1,4 +1,4 @@
-#include "Graphics/Render/Window.h"
+#include "Graphics/Render/Internals/Window.h"
 #include <raylib.h>
 #include "Runtime/Internals/StartupTimer.h"
 

@@ -7,7 +7,7 @@
 #include "Graphics/Anim/Easing.h"
 #include "Graphics/Draw/EffectQuality.h"
 #include "Graphics/Render/Internals/RenderTargetStack.h"
-#include "Graphics/Render/RenderExecutionContext.h"
+#include "Graphics/Render/Internals/RenderExecutionContext.h"
 
 namespace {
 constexpr float StarInnerRatio = 0.45f;
