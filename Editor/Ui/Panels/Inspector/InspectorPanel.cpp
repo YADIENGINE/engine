@@ -135,7 +135,12 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
             ImGui::PushID(group.c_str());
             const char* groupHint =
                 mixedTiming ? "* Application timing differs; hover marked fields for details." : commonHint.c_str();
-            if (*groupHint) {
+            const bool actionTiming =
+                !mixedTiming && std::ranges::any_of(selected.parameters, [&](const auto& parameter) {
+                    return (parameter.group.empty() ? "General" : parameter.group) == group &&
+                           parameter.apply == PreviewApplyMode::NextAction;
+                });
+            if (*groupHint && !actionTiming) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
                 ImGui::PushTextWrapPos(0);
                 ImGui::TextUnformatted(groupHint);
@@ -160,7 +165,7 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
                 ImGui::PushID(parameter.id.c_str());
                 ImGui::BeginDisabled(disabled(parameter.id));
                 auto value = found->second;
-                const auto hint = mixedTiming ? ApplyHint(parameter, selected.actions) : std::string{};
+                const auto hint = mixedTiming || actionTiming ? ApplyHint(parameter, selected.actions) : std::string{};
                 if (InspectorParameterField(parameter, value, snapshot.pending.contains(parameter.id), hint.c_str()))
                     actions.parameter(parameter.id, value);
                 ImGui::EndDisabled();

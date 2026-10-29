@@ -243,9 +243,13 @@ bool EditorParameterWidget(const PreviewParameter& parameter, PreviewValue& valu
             int columns = parameter.choiceButtonColumns > 0 ? parameter.choiceButtonColumns : 2;
             while (columns > 1 && ImGui::GetContentRegionAvail().x < minimumWidth * static_cast<float>(columns))
                 --columns;
+            const float width = parameter.choiceButtonColumns > 0 ? std::min(ImGui::GetContentRegionAvail().x,
+                                                                             minimumWidth * static_cast<float>(columns))
+                                                                  : 0.0f;
             if (ImGui::BeginTable("##choices", columns,
                                   ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoPadOuterX |
-                                      ImGuiTableFlags_NoSavedSettings)) {
+                                      ImGuiTableFlags_NoSavedSettings,
+                                  {width, 0})) {
                 for (const auto& choice : parameter.choices) {
                     ImGui::TableNextColumn();
                     const bool selected = choice == std::get<std::string>(value);
