@@ -303,7 +303,7 @@ import `Internals`. Recipes that are specific to one game stay in that game's sc
 
 Both suites are registered with CTest under the label `audio-generation` (one test per Python suite, plus
 the player suite when Node is installed). The Python suites are registered only when the configuring Python has
-NumPy and SciPy. From a game: `python p.py --test --label audio-generation`. Directly, from the Engine root:
+NumPy and SciPy. From a game: `python Engine test --label audio-generation`. Directly, from the Engine root:
 
 ```sh
 python -B -m unittest discover -s AudioGeneration/Tests

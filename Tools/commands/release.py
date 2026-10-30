@@ -1,18 +1,17 @@
-"""Release paketi: exe + seçili Assets + üretilmiş ThirdPartyNotices.txt + ek dosyalar, yanına ZIP.
+"""`release`: Release derlemesinden paket klasörü + yanına ZIP: exe, seçili Assets, ThirdPartyNotices.txt, ek dosyalar.
 
-build_cli `p.py --release` ile çağırır; ayarlar Project.json `release` bölümünde (bkz. Docs/Release.md).
-Bildirimin engine kısmı ThirdParty/notices.py'den (bileşenler ThirdParty/Notices.json), oyun kısmı projenin
-`release.notices` dosyasından gelir. Engine bildirimi güncel değilse paketleme durur.
+Ayarlar Project.json "release" bölümünde (bkz. Docs/Release.md). Bildirimin engine kısmı ThirdParty/notices.py'den,
+oyun kısmı projenin `release.notices` dosyasından gelir. Bir şey eksikse ya da engine bildirimi güncel değilse
+paketleme mevcut paketi silmeden durur. Sistem büyürse (imza, mağaza depot'u) bu modül alt pakete dönüşür.
 """
 
 import shutil
-import sys
 from pathlib import Path
 
-ENGINE = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ENGINE / "ThirdParty"))
+from ThirdParty.notices import check_components, compose_notices, load_components
 
-from notices import check_components, compose_notices, load_components  # noqa: E402
+from ..errors import EXIT_FAILED, ToolError
+from ..project import Project
 
 NOTICES_FILE = "ThirdPartyNotices.txt"  # Paketin kökünde üretilen bildirim
 
@@ -25,9 +24,9 @@ def copy_entry(source: Path, destination: Path) -> None:
         shutil.copy2(source, destination)
 
 
-def package(project, exe: Path) -> Path:
-    """Paket klasörünü kurar, yanına ZIP alır ve paketteki exe'yi döndürür. Bir şey eksik ya da bildirim eskiyse
-    mevcut paket silinmeden durur. Assets'ten ne gireceğini projenin `package_assets(root)` hook'u seçer."""
+def package(project: Project, exe: Path) -> Path:
+    """Paket klasörünü kurar, yanına ZIP alır ve paketteki exe'yi döndürür. Assets'ten ne gireceğini projenin
+    `package_assets(root)` hook'u seçer; hook yoksa Assets'in tamamı girer."""
     settings = project.section("release")
     name = settings.get("name", project.name)
     manifest = load_components()
@@ -45,7 +44,7 @@ def package(project, exe: Path) -> Path:
     errors += [f"Missing package file: {built_assets / entry}" for entry in assets
                if not (built_assets / entry).exists()]
     if errors:
-        sys.exit("Release stopped:\n  " + "\n  ".join(errors))
+        raise ToolError("Release stopped:\n  " + "\n  ".join(errors), EXIT_FAILED)
 
     game_text = project.path(notices).read_text(encoding="utf-8") if notices is not None else None
     target = project.path(settings.get("directory", "Release")) / name

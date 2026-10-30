@@ -18,11 +18,14 @@ Aşama 0 Hazırlık ──┬─► Aşama 1 Editör döngüsü ──┐
 - ~~Engine adı ve sürümü tek kaynakta: `EngineManifest.json`~~ yapıldı.
 - ~~Bağımlılıkların engine'e alınması~~ yapıldı: `ThirdParty/` (raylib, nlohmann_json, Monocypher, imgui, rlImGui,
   Catch2), `FetchContent` kalktı; lisans bildirimi ve denetimi de `ThirdParty/`'ye taşındı (D8).
-- **Araç sözleşmesi:** launcher'ın çağıracağı `Engine/Tools` giriş noktaları ve çıktıları (komutlar, seçenekler,
-  çıkış kodları, JSON sonuç) belgelenir ve sabitlenir (D7, D15). Bugünkü `build_cli.py` / `editor_cli.py` bunun
-  temelidir.
+- ~~Engine klasör düzeni~~ yapıldı: oyuna giren C++ `Core/` (include kökü), editör `Editor/`, Python araçları
+  `Tools/`, bağımlılıklar `ThirdParty/`; headless hedef `EngineHeadless` (eski `EngineCore`).
+- ~~Araç sözleşmesi~~ yapıldı (D7, D15): tek giriş noktası `python Engine <komut>` (`__main__.py` → `Tools/cli.py`);
+  `build`, `run`, `release`, `test`, `editor`, `new`, `info`, `check`; çıkış kodları 0 / 1 / 2;
+  `EngineManifest.json` `toolsContract: 1`; belge `Docs/ToolsContract.md`, sözleşme testi `Tools/Tests/test_cli.py`.
+  Projelerdeki `p.py` / `editor.py` ve `EngineSetup.py` kalktı (`new` komutu).
 
-**Sonuç:** çevrimdışı derlenen, launcher'a hazır engine. Snake etkilenmez.
+**Sonuç:** çevrimdışı derlenen, launcher'a hazır engine.
 
 ## Aşama 1: Editör döngüsü
 

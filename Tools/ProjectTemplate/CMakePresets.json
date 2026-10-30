@@ -4,7 +4,7 @@
     {
       "name": "desktop",
       "displayName": "Ninja + MSVC (x64)",
-      "description": "Needs the MSVC environment (vcvars64); p.py sets it up",
+      "description": "Needs the MSVC environment (vcvars64); python Engine sets it up",
       "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/build",
       "architecture": { "value": "x64", "strategy": "external" },

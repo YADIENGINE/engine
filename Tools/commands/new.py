@@ -1,40 +1,26 @@
-"""Engine ile yeni bir oyun projesi kurar.
+"""`new`: Engine'in üst klasörünü yeni bir oyun projesi olarak kurar.
 
-Kullanım
---------
-Proje klasörüne sadece Engine'i koyun (klasörün adı tam olarak "Engine" olmalı), sonra Engine'in içinde:
-
-    python EngineSetup.py              Proje adını sorar, proje dosyalarını bir üst klasöre yazar
-    python EngineSetup.py --dry-run    Hiçbir şey yazmadan neyin oluşturulacağını listeler
+Kullanım: proje klasörüne sadece Engine'i koyun (klasörün adı tam olarak "Engine"), sonra proje klasöründen
+`python Engine new [--name AD] [--dry-run]`. Ad verilmezse terminalde sorulur. Launcher aynı komutu `--name` ile
+soru sormadan çağırır.
 
 Ne yapar (sırayla)
-------------------
-1. Klasör adını denetler. Proje CMake'i `add_subdirectory(Engine)` der, p.py / editor.py `Engine/Tools`'u yükler;
-   bu yüzden ad "Engine" olmak zorunda. GitHub'dan zip indirilirse
-   klasör "<repo>-main" diye açılır; script o durumda durur ve yeniden adlandırmayı söyler (kendi içinden
-   çalıştığı için kendisi adlandıramaz).
-2. Proje kökü = Engine'in bir üst klasörü. Orada Project.json varsa proje zaten kurulmuştur; hiçbir şey yapmaz.
-3. Proje adını terminalde sorar (varsayılan: kök klasörün adı). Ad CMake hedefi ve exe adı olur.
-4. Tools/ProjectTemplate/ içindeki her dosyayı aynı göreli yolla proje köküne kopyalar:
-   - Dosyalardaki @PROJECT_NAME@ proje adıyla değişir (şu an CMakeLists.txt ve Project.json'da).
-   - "gitignore" / "gitattributes" hedefte ".gitignore" / ".gitattributes" olur. Şablonda noktasız durmalarının
-     sebebi: noktalı olsalar Engine reposunun kendi git ayarlarına karışırlardı.
+1. Klasör adını denetler. Proje CMake'i `add_subdirectory(Engine)` der ve komutlar `python Engine` ile çalışır; bu
+   yüzden ad "Engine" olmak zorunda. GitHub'dan zip indirilirse klasör "<repo>-main" diye açılır; komut o durumda
+   durur ve yeniden adlandırmayı söyler.
+2. Proje kökünde Project.json varsa proje zaten kurulmuştur; hiçbir şey yapmaz.
+3. Tools/ProjectTemplate/ içindeki her dosyayı aynı göreli yolla proje köküne kopyalar:
+   - Dosyalardaki @PROJECT_NAME@ proje adıyla değişir.
+   - "gitignore" / "gitattributes" hedefte ".gitignore" / ".gitattributes" olur; şablonda noktasız durmalarının
+     sebebi noktalı olsalar engine reposunun kendi git ayarlarına karışmalarıdır.
    - Hedefte aynı adlı dosya varsa ona dokunmaz, "Kept existing" diye listeler.
-5. Build için gerekli araçları denetler (Python, CMake, Visual Studio C++ araçları, Ninja) ve eksikleri yazar.
-6. Sonraki komutları yazar. Git'e dokunmaz (submodule bağlamak için Docs/ProjectSetup.md → Git).
+4. Build için gerekli araçları denetler (Python, CMake, Visual Studio C++ araçları, Ninja) ve eksikleri yazar.
+   Git'e dokunmaz.
 
-Değiştirmek isterseniz
-----------------------
-- Yeni projeye bir dosya eklemek/çıkarmak: Tools/ProjectTemplate/'e dosyayı koyun/silin; bu script'te değişiklik
-  gerekmez (klasörün tamamı kopyalanır). Proje adı geçecekse dosyaya @PROJECT_NAME@ yazın.
-- Noktalı adla yazılması gereken yeni bir dosya: RENAMES sözlüğüne ekleyin.
-- Ad kuralı: NAME_PATTERN. Araç sürümleri: MIN_PYTHON, MIN_CMAKE.
-- Bu dosya sadece Python standart kütüphanesini kullanır ve Tools/'taki modülleri import etmez; tek başına okunur.
-  Testleri: Tools/Tests/test_engine_setup.py (Tools içinde `python -m unittest discover -s Tests`).
+Yeni projeye dosya eklemek / çıkarmak için Tools/ProjectTemplate/'i değiştirmek yeter; noktalı adla yazılacak yeni
+bir dosya RENAMES'e eklenir.
 """
 
-import argparse
-import os
 import re
 import shutil
 import subprocess
@@ -42,20 +28,18 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# --- Ayarlar -----------------------------------------------------------------------------------------------------
+from ..errors import EXIT_OK, ToolError
+from ..msvc import NINJA_COMPONENT, visual_studio
+from ..project import PROJECT_FILE
 
-ENGINE = Path(__file__).resolve().parent  # Bu dosyanın bulunduğu Engine klasörü
-ENGINE_FOLDER = "Engine"  # Projede Engine klasörünün zorunlu adı (bkz. adım 1)
-TEMPLATE = ENGINE / "Tools" / "ProjectTemplate"  # Yeni projeye kopyalanan dosyalar
-PROJECT_FILE = "Project.json"  # Varlığı "proje kurulmuş" demektir; Tools/project_config.py de bu adı okur
-PLACEHOLDER = "@PROJECT_NAME@"  # Şablon dosyalarında proje adının yeri
+ENGINE_FOLDER = "Engine"  # Projede engine klasörünün zorunlu adı (bkz. adım 1)
+TEMPLATE = Path(__file__).resolve().parents[1] / "ProjectTemplate"
+PLACEHOLDER = "@PROJECT_NAME@"
 RENAMES = {"gitignore": ".gitignore", "gitattributes": ".gitattributes"}  # şablondaki ad → projedeki ad
 NAME_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,63}")  # Harfle başlar; harf, rakam, '_'; en çok 64 karakter
 FALLBACK_NAME = "MyGame"  # Klasör adından geçerli bir ad çıkmazsa önerilen ad
-MIN_PYTHON = (3, 10)  # Engine/Tools'un kullandığı söz dizimi (X | None) için
+MIN_PYTHON = (3, 10)
 MIN_CMAKE = (3, 24)  # Engine'in cmake_minimum_required'ı
-# Visual Studio'yu bulan Microsoft aracı; her VS kurulumuyla gelir.
-VSWHERE = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
 
 
 @dataclass
@@ -65,9 +49,6 @@ class SetupResult:
     root: Path
     created: list[Path] = field(default_factory=list)  # Yazılan (dry-run'da yazılacak) dosyalar
     skipped: list[Path] = field(default_factory=list)  # Zaten var olduğu için dokunulmayan dosyalar
-
-
-# --- Proje adı ---------------------------------------------------------------------------------------------------
 
 
 def name_error(name: str) -> str | None:
@@ -89,22 +70,20 @@ def ask_name(root: Path) -> str:
     while True:
         try:
             name = input(f"Project name [{suggestion}]: ").strip() or suggestion
-        except EOFError:  # Girdi yok (ör. boş bir pipe)
-            sys.exit("\nNo project name given")
+        except EOFError as error:  # Girdi yok (ör. boş bir pipe)
+            raise ToolError("No project name given; pass --name") from error
         if (error := name_error(name)) is None:
             return name
         print(f"  Invalid name: {error}")
 
 
-# --- Dosyaları yazmak --------------------------------------------------------------------------------------------
-
-
-def project_root(engine: Path) -> Path:
-    """Adım 1-2: Engine klasörünün adını denetler, proje kökünü (bir üst klasör) döner."""
+def check_target(engine: Path, root: Path) -> None:
+    """Adım 1-2: engine klasörünün adı doğru mu, proje zaten kurulmuş mu."""
     if engine.name != ENGINE_FOLDER:
-        sys.exit(f"This folder is named '{engine.name}'. Rename it to '{ENGINE_FOLDER}' (projects include it by that "
-                 f"name; a GitHub zip extracts as '<repo>-main') and run EngineSetup.py again.")
-    return engine.parent
+        raise ToolError(f"The engine folder is named '{engine.name}'. Rename it to '{ENGINE_FOLDER}' (projects include "
+                        f"it by that name; a GitHub zip extracts as '<repo>-main') and run the command again.")
+    if (root / PROJECT_FILE).exists():
+        raise ToolError(f"{root / PROJECT_FILE} already exists; this project is already set up")
 
 
 def template_files(template: Path = TEMPLATE) -> list[tuple[Path, Path]]:
@@ -117,14 +96,11 @@ def template_files(template: Path = TEMPLATE) -> list[tuple[Path, Path]]:
     return files
 
 
-def setup_project(engine: Path, name: str, dry_run: bool = False) -> SetupResult:
-    """Adım 4: şablonu proje köküne yazar. Var olan dosyalara dokunmaz; kurulmuş projeyi reddeder."""
-    root = project_root(engine)
+def setup_project(engine: Path, root: Path, name: str, dry_run: bool = False) -> SetupResult:
+    """Adım 3: şablonu proje köküne yazar. Var olan dosyalara dokunmaz; kurulmuş projeyi reddeder."""
+    check_target(engine, root)
     if (error := name_error(name)) is not None:
-        sys.exit(f"Invalid project name '{name}': {error}")
-    if (root / PROJECT_FILE).exists():
-        sys.exit(f"{root / PROJECT_FILE} already exists; this project is already set up")
-
+        raise ToolError(f"Invalid project name '{name}': {error}")
     result = SetupResult(root)
     for source, relative in template_files():
         destination = root / relative
@@ -140,21 +116,8 @@ def setup_project(engine: Path, name: str, dry_run: bool = False) -> SetupResult
     return result
 
 
-# --- Ortam denetimi ----------------------------------------------------------------------------------------------
-
-
-def visual_studio() -> Path | None:
-    """C++ x64 araçları kurulu en yeni Visual Studio'nun klasörü; yoksa None (Tools/buildenv.py de aynı sorguyu yapar)."""
-    if not VSWHERE.exists():
-        return None
-    query = [str(VSWHERE), "-latest", "-products", "*", "-requires",
-             "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"]
-    install = subprocess.run(query, capture_output=True, text=True).stdout.strip()
-    return Path(install) if install else None
-
-
 def environment_problems() -> list[str]:
-    """Adım 5: build'den önce eksik araçlar. Boş liste her şeyin hazır olduğunu gösterir; kurulumu engellemez."""
+    """Adım 4: build'den önce eksik araçlar. Boş liste her şeyin hazır olduğunu gösterir; kurulumu engellemez."""
     problems = []
     if sys.version_info < MIN_PYTHON:
         problems.append(f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ is required (this is {sys.version.split()[0]})")
@@ -172,35 +135,24 @@ def environment_problems() -> list[str]:
         install = visual_studio()
         if install is None:
             problems.append("Visual Studio 2022 (Build Tools) with the C++ workload not found")
-        # Ninja, VS'nin "C++ CMake tools for Windows" bileşeniyle bu klasöre gelir; p.py MSVC ortamından onu kullanır.
         elif not (install / "Common7" / "IDE" / "CommonExtensions" / "Microsoft" / "CMake" / "Ninja").is_dir():
-            problems.append("Ninja not found; add the 'C++ CMake tools for Windows' Visual Studio component")
+            problems.append(f"Ninja not found; add the {NINJA_COMPONENT} Visual Studio component")
     return problems
 
 
-# --- Giriş noktası -----------------------------------------------------------------------------------------------
-
-
-def main(engine: Path = ENGINE) -> None:
-    parser = argparse.ArgumentParser(description="Set up the folder above Engine/ as a new project.")
-    parser.add_argument("--dry-run", action="store_true", help="List what would be created without writing")
-    args = parser.parse_args()
-
-    # Adı sormadan önce erken çıkış: yanlış klasör adı ya da zaten kurulmuş proje.
-    root = project_root(engine)
-    if (root / PROJECT_FILE).exists():
-        sys.exit(f"{root / PROJECT_FILE} already exists; this project is already set up")
+def new(engine: Path, root: Path, name: str | None, dry_run: bool) -> int:
+    check_target(engine, root)  # Adı sormadan önce erken çıkış
     print(f"Project folder: {root}")
-    name = ask_name(root)
-    result = setup_project(engine, name, args.dry_run)
+    name = name if name is not None else ask_name(root)
+    result = setup_project(engine, root, name, dry_run)
 
-    verb = "Would create" if args.dry_run else "Created"
+    verb = "Would create" if dry_run else "Created"
     for relative in result.created:
         print(f"  {verb} {relative.as_posix()}")
     for relative in result.skipped:
         print(f"  Kept existing {relative.as_posix()}")
-    if args.dry_run:
-        return
+    if dry_run:
+        return EXIT_OK
 
     problems = environment_problems()
     if problems:
@@ -209,11 +161,8 @@ def main(engine: Path = ENGINE) -> None:
             print(f"  - {problem}")
     print(f"""
 '{name}' is ready. From {root}:
-  python p.py          build and run (an empty Game/ shows the engine starter screen)
-  python editor.py     EngineEditor with this project's previews
-  python p.py --test   headless tests
+  python Engine run      build and run (an empty Game/ shows the engine starter screen)
+  python Engine editor   the engine editor with this project's previews
+  python Engine test     headless tests
 First game: Engine/Docs/GettingStarted.md, previews: Engine/Docs/Editor/GettingStarted.md""")
-
-
-if __name__ == "__main__":
-    main()
+    return EXIT_OK

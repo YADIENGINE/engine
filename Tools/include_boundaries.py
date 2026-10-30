@@ -5,15 +5,15 @@
 - `Modules/X/Internals/`: sadece `Modules/X/` (testleri dahil).
 - `Editor/Internals/`: sadece Engine `Editor/`.
 
-Sadece Engine köküne göre çözülen ve Engine'de var olan `#include "..."` yolları denetlenir; projenin kendi
-`Internals/` klasörleri bu denetimin konusu değildir. Kullanım: python Engine/Tools/include_boundaries.py [proje kökü]
+Sadece engine'in include köklerine göre çözülen ve engine'de var olan `#include "..."` yolları denetlenir; projenin
+kendi `Internals/` klasörleri bu denetimin konusu değildir. Komut: `python Engine check` (CTest `Engine.IncludeBoundaries`).
 """
 
 import re
-import sys
 from pathlib import Path
 
-ENGINE_ROOT = Path(__file__).resolve().parents[1]
+from .manifest import ENGINE_ROOT
+
 CORE = "Core"  # Oyuna giren engine kodu; include kökü
 SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".inl"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
@@ -66,16 +66,3 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: includes "{match.group(1)}" (private to {owner[1]})')
     return found
-
-
-def main(argv: list[str]) -> int:
-    project_root = Path(argv[1]) if len(argv) > 1 else Path.cwd()
-    found = violations(project_root)
-    for violation in found:
-        print(violation)
-    print(f"Internals boundaries: {len(found)} violation(s)" if found else "Internals boundaries: OK")
-    return 1 if found else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))

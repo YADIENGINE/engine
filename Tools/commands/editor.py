@@ -1,24 +1,18 @@
-"""EngineEditor'ü ve projenin preview worker'ını derleyip editörü açar.
+"""`editor`: EngineEditor'ü ve projenin preview worker'ını derleyip editörü açar.
 
-Proje kökündeki editor.py bu modülün main(root)'unu çağırır; ayarlar Project.json "editor" bölümünden
-(bkz. Docs/ProjectSetup.md). Worker'ı ve EngineEditor.project.json tarifini projenin
-`engine_add_editor_worker` çağrısı kurar.
-
-Kullanım (editor.py üzerinden):
-    python editor.py              Debug derle + editörü aç
-    python editor.py --release    Release derle + editörü aç
-    python editor.py --build      Sadece derle, editörü açma
-    python editor.py --clean      Yalnız editör build klasörünü temizleyip yeniden derle + aç
+Ayarlar Project.json "editor" bölümünden (bkz. Docs/ProjectSetup.md). Worker'ı ve EngineEditor.project.json
+tarifini projenin `engine_add_editor_worker` çağrısı kurar. Editör build'i oyununkinden ayrı bir klasördedir.
 """
 
-import argparse
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-from buildenv import GENERATOR, msvc_env, tool
-from project_config import Project
+from ..cmake import read_cache, remove_build_dir, run
+from ..errors import EXIT_FAILED, EXIT_OK, ToolError
+from ..msvc import GENERATOR, msvc_env, tool
+from ..project import Project
+from .build import config_name
 
 # Editör build'inin her projede sabit seçenekleri; proje kendi seçeneklerini "cacheVariables" ile ekler.
 ENGINE_OPTIONS = {
@@ -31,89 +25,49 @@ ENGINE_OPTIONS = {
 PROJECT_RECIPE = "EngineEditor.project.json"  # engine_add_editor_worker üretir
 
 
-def run(command: list[str], env: dict[str, str], directory: Path) -> None:
-    print(f"> {subprocess.list2cmdline(command)}", flush=True)
-    subprocess.run(command, cwd=directory, env=env, check=True)
-
-
-def clean(root: Path, build_dir: Path) -> None:
-    if not build_dir.exists():
-        return
-    target = build_dir.resolve()
-    # Junction/symlink yoluyla workspace dışına veya başka bir build dizinine silme yapma.
-    if target != build_dir or not target.is_relative_to(root):
-        sys.exit(f"Refusing to clean redirected editor build directory: {target}")
-    print(f"> clean {target}", flush=True)
-    shutil.rmtree(target)
-
-
 def needs_configure(root: Path, build_dir: Path, options: dict[str, str]) -> bool:
-    cache_file = build_dir / "CMakeCache.txt"
-    if not cache_file.exists():
+    """Kurulu editör build'inin bu projeye ve MSVC'ye ait olduğunu denetler; araca ait seçenekler değiştiyse
+    yeniden configure ister. CMake kaynak değişikliklerini Ninja kendisi izler."""
+    cache = read_cache(build_dir)
+    if cache is None:
         return True
-    cache = {}
-    for line in cache_file.read_text(encoding="utf-8", errors="replace").splitlines():
-        if not line or line.startswith(("#", "//")) or "=" not in line:
-            continue
-        name, value = line.split("=", 1)
-        cache[name.split(":", 1)[0]] = value
-
     if cache.get("CMAKE_GENERATOR") != GENERATOR:
-        sys.exit(f"Editor build uses a different generator; rerun with --clean to recreate only {build_dir}")
+        raise ToolError(f"Editor build uses a different generator; rerun with --clean to recreate only {build_dir}")
     source = cache.get("CMAKE_HOME_DIRECTORY")
     if source is None or Path(source).resolve() != root:
-        sys.exit("Editor build uses a different source directory; rerun with --clean")
+        raise ToolError("Editor build uses a different source directory; rerun with --clean")
     for compiler in ("CMAKE_C_COMPILER", "CMAKE_CXX_COMPILER"):
         if Path(cache.get(compiler, "")).name.lower() not in ("cl", "cl.exe"):
-            sys.exit("Editor build uses a different compiler; rerun with --clean to use MSVC")
-
-    # CMake kaynak değişikliklerini Ninja kendisi izler; scriptin sahip olduğu seçenekleri burada denetle.
-    return not (build_dir / "build.ninja").exists() or any(
-        cache.get(name) != value for name, value in options.items()
-    )
+            raise ToolError("Editor build uses a different compiler; rerun with --clean to use MSVC")
+    return not (build_dir / "build.ninja").exists() or any(cache.get(name) != value for name, value in options.items())
 
 
-def launch(root: Path) -> None:
-    project = Project(root)
+def editor(project: Project, release: bool, build_only: bool, clean: bool) -> int:
+    if sys.platform != "win32":
+        raise ToolError("The engine editor currently supports Windows desktop only")
     settings = project.section("editor")
     build_dir = project.path(settings.get("buildDirectory", "build/editor"))
     options = ENGINE_OPTIONS | settings.get("cacheVariables", {})
 
-    parser = argparse.ArgumentParser(description="Engine editörünü derle ve aç; MSVC ortamını otomatik hazırlar.")
-    parser.add_argument("--release", action="store_true", help="Release modunda derle")
-    parser.add_argument("--build", action="store_true", help="Sadece derle, editörü açma")
-    parser.add_argument("--clean", action="store_true", help=f"Yalnız {build_dir.relative_to(project.root).as_posix()} klasörünü temizle")
-    args = parser.parse_args()
-    if sys.platform != "win32":
-        parser.error("Engine Editor currently supports Windows desktop only")
-
     cmake = tool("cmake")
     env = msvc_env(project.msvc_cache)
-    if args.clean:
-        clean(project.root, build_dir)
+    if clean:
+        remove_build_dir(build_dir, project.root)
     if needs_configure(project.root, build_dir, options):
         command = [cmake, "-S", str(project.root), "-B", str(build_dir), "-G", GENERATOR,
                    "-DCMAKE_C_COMPILER=cl", "-DCMAKE_CXX_COMPILER=cl"]
         command.extend(f"-D{name}={value}" for name, value in options.items())
-        run(command, env, project.root)
+        run(command, project.root, env)
 
-    config = "Release" if args.release else "Debug"
-    run([cmake, "--build", str(build_dir), "--config", config,
-         "--target", "EngineEditor", settings.get("worker", project.name + "Preview")], env, project.root)
-    if args.build:
-        return
+    config = config_name(release)
+    worker = settings.get("worker", project.name + "Preview")
+    run([cmake, "--build", str(build_dir), "--config", config, "--target", "EngineEditor", worker], project.root, env)
+    if build_only:
+        return EXIT_OK
 
     executable = build_dir / "Editor" / config / "EngineEditor.exe"
-    # Editörün kendi Build & Refresh alt süreçleri de MSVC/Ninja ortamını miras almalı.
-    run([str(executable), "--project", str(executable.parent / PROJECT_RECIPE)], env, executable.parent)
-
-
-def main(root: Path) -> None:
-    try:
-        launch(root)
-    except subprocess.CalledProcessError as error:
-        sys.exit(error.returncode)
-    except OSError as error:
-        sys.exit(f"Editor launcher failed: {error}")
-    except KeyboardInterrupt:
-        sys.exit(130)
+    print(f"> {executable}", flush=True)
+    # Editörün kendi Build & Refresh alt süreçleri de MSVC / Ninja ortamını miras alır.
+    code = subprocess.run([str(executable), "--project", str(executable.parent / PROJECT_RECIPE)],
+                          cwd=executable.parent, env=env).returncode
+    return EXIT_OK if code == 0 else EXIT_FAILED

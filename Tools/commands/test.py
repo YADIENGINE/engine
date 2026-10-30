@@ -1,11 +1,11 @@
-"""Build/run CTest and preserve structured results, including infrastructure failures.
+"""`test`: builds and runs the headless CTest suite and keeps structured results, including infrastructure failures.
 
 Presets and the build directory come from the project's Project.json "tests" section (see Docs/ProjectSetup.md).
+Every run writes `<build>/reports/<run-id>/results.json`; exit code 0 passed, 1 failed tests, 2 infrastructure.
 """
 
 import json
 import re
-import shutil
 import subprocess
 import time
 import uuid
@@ -13,7 +13,9 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
-from buildenv import clear_stale_build, msvc_env, tool
+from ..cmake import clear_stale_build, remove_build_dir
+from ..errors import EXIT_FAILED, EXIT_INFRA, EXIT_OK
+from ..msvc import msvc_env, tool
 
 
 def _execute(command: list[str], root: Path, log: Path, env: dict[str, str]) -> int:
@@ -55,34 +57,31 @@ def _read_junit(path: Path, command: list[str]) -> list[dict]:
         name = case.get("name", "<unnamed>")
         # Escape every character significant to CTest's regex engine.
         exact_filter = "^" + re.sub(r"([\\.^$|?*+()\[\]{}])", r"\\\1", name) + "$"
-        rerun = command + ["--test", "--filter", exact_filter]
+        rerun = command + ["--filter", exact_filter]
         results.append({
             "name": name, "status": status, "duration_seconds": float(case.get("time", "0")),
             "diagnostics": "\n".join(diagnostics), "rerun_argv": rerun,
-            "rerun_command": " ".join(command) + " --test --filter '" + exact_filter.replace("'", "''") + "'",
+            "rerun_command": " ".join(command) + " --filter '" + exact_filter.replace("'", "''") + "'",
         })
     return results
 
 
 def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, test_filter: str | None = None,
               list_only: bool = False, clean: bool = False, label: str | None = None) -> int:
-    """settings: Project.json "tests"; command: the launcher (e.g. ["python", "p.py"]) for recorded reruns."""
+    """settings: Project.json "tests"; command: this command as typed from the project root
+    (e.g. ["python", "Engine", "test"]), recorded with the selection for reruns."""
     started = time.monotonic()
     build = root / settings.get("buildDirectory", "build/tests")
-    if clean and build.exists():
-        # Never follow a redirected build directory outside the workspace.
-        if not build.resolve().is_relative_to(root.resolve()) or build.is_symlink():
-            print("Refusing to clean a test build outside the workspace.")
-            return 2
-        shutil.rmtree(build)
-    clear_stale_build(build)
+    if clean:
+        remove_build_dir(build, root)
+    clear_stale_build(build, root)
     env = msvc_env(msvc_cache)
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:8]
     report_dir = build / "reports" / run_id
     report_dir.mkdir(parents=True)
     report = {
         "schema_version": 1, "run_id": run_id,
-        "command": command + ["--test"]
+        "command": command
         + (["--filter", test_filter] if test_filter is not None else [])
         + (["--label", label] if label is not None else [])
         + (["--list"] if list_only else []) + (["--clean"] if clean else []),
@@ -90,7 +89,7 @@ def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, 
         "counts": {"total": 0, "passed": 0, "failed": 0, "skipped": 0},
         "duration_seconds": 0, "stages": [], "tests": [], "diagnostics": "",
     }
-    exit_code = 2
+    exit_code = EXIT_INFRA
 
     def execute(stage: str, command: list[str]) -> int:
         report["stage"] = stage
@@ -127,7 +126,7 @@ def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, 
             report["tests"] = [{"name": name, "status": "listed"} for name in names]
             report["counts"]["total"] = len(names)
             print("\n".join(names))
-            exit_code = 0
+            exit_code = EXIT_OK
             return exit_code
         code = execute("test", selection + ["--output-junit", str(report_dir / "junit.xml")])
         report["stage"] = "report"
@@ -143,7 +142,7 @@ def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, 
             raise ValueError(f"CTest exited {code} without reporting failed tests")
         report["status"] = "failed" if has_failures else "passed"
         report["stage"] = "complete"
-        exit_code = 1 if has_failures else 0
+        exit_code = EXIT_FAILED if has_failures else EXIT_OK
         return exit_code
     except (OSError, ValueError, KeyError, ET.ParseError) as error:
         report["status"] = "error"

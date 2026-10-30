@@ -1,20 +1,15 @@
-"""release.py checks on temporary folders; no compiler required. Notice checks: ThirdParty/Tests.
-
-Run from the Engine root: python -m unittest discover -s ReleaseSystem/Tests
-"""
+"""`release` packaging on temporary folders; no compiler required. Notice checks: ThirdParty/Tests."""
 
 import json
-import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # ReleaseSystem
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "Tools"))  # project_config
-
-from project_config import Project  # noqa: E402
-from release import NOTICES_FILE, load_components, package  # noqa: E402
+from ThirdParty.notices import load_components
+from Tools.commands.release import NOTICES_FILE, package
+from Tools.errors import ToolError
+from Tools.project import Project
 
 
 class PackageTests(unittest.TestCase):
@@ -69,7 +64,7 @@ class PackageTests(unittest.TestCase):
         old = self.root / "Release" / "MyGame" / "old.txt"
         old.parent.mkdir(parents=True)
         old.write_text("old", encoding="utf-8")
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(ToolError):
             package(self.project(notices="Game/Distribution/Missing.txt"), self.exe)
         self.assertTrue(old.is_file())
 
@@ -78,13 +73,13 @@ class PackageTests(unittest.TestCase):
         old.parent.mkdir(parents=True)
         old.write_text("old", encoding="utf-8")
         hooks = "def package_assets(root):\n    return ['Fonts', 'Audio/missing.ogg']\n"
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(ToolError):
             package(self.project(hooks), self.exe)
         self.assertTrue(old.is_file())
 
     def test_generated_notice_name_cannot_be_an_extra_file(self):
         (self.root / "Game" / "Distribution" / NOTICES_FILE).write_text("hand written", encoding="utf-8")
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(ToolError):
             package(self.project(files=[f"Game/Distribution/{NOTICES_FILE}"]), self.exe)
 
 

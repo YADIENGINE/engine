@@ -3,11 +3,11 @@
 Önce [proje kurulumunu](../ProjectSetup.md) tamamlayın; [ilk oyun](../GettingStarted.md) gerekmez.
 Editör Windows masaüstünde çalışır. Projenin `Editor/` klasörü Engine ve Game klasörlerinin kardeşidir;
 include'larda `Editor/Api/...` Engine public başlıklarını ifade eder. Kurulumun açtığı `Editor/` klasörü boştur;
-`python editor.py` o hâlde Engine'in starter worker'ıyla açılır (Engine → Starter önizlemesi).
+`python Engine editor` o hâlde Engine'in starter worker'ıyla açılır (Engine → Starter önizlemesi).
 
 ## CMake hedefi
 
-Projenin `CMakeLists.txt`'i `APP_BUILD_EDITOR` açıkken (editor.py bunu kendisi verir) `Editor/` altındaki her
+Projenin `CMakeLists.txt`'i `APP_BUILD_EDITOR` açıkken (`python Engine editor` bunu kendisi verir) `Editor/` altındaki her
 `.cpp`'yi bulur ve worker'ı kurar:
 
 ```cmake
@@ -113,10 +113,10 @@ asset klasörünü `ASSETS` ile worker exe yanına kopyalayın. Bu kopyalama oyu
 ## Geliştiricinin çalıştırması
 
 ```powershell
-python editor.py
+python Engine editor
 ```
 
-`editor.py` `Project.json` "editor" bölümündeki ayrı build klasörünü (şablonda `build/editor`) yapılandırır,
+`python Engine editor` `Project.json` "editor" bölümündeki ayrı build klasörünü (şablonda `build/editor`) yapılandırır,
 `EngineEditor` ve worker'ı derler, editörü `EngineEditor.project.json` ile açar.
 
 MyProject → Drawing → First preview açılır; Radius değişir; Pause parlama saatini dondurur;

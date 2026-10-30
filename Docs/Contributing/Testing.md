@@ -8,8 +8,10 @@ They never link the consuming game's core or include its source headers.
 | --- | --- | --- | --- |
 | EngineTests | Engine/Core/Tests/*.cpp | EngineHeadless, EngineStorage | engine + subsystem |
 | Engine&lt;Module&gt;Tests | module Tests/*.cpp | module and declared dependencies | module tag |
-| Engine.IncludeBoundaries | Tools/include_boundaries.py over the source tree ([API boundaries](ApiBoundaries.md)) | none (Python 3.10+) | engine |
-| AudioGeneration.* | AudioGeneration/Tests (Python unittest, Node) | none (Python 3.10+, NumPy, SciPy; Node for the player) | audio-generation |
+| Engine.IncludeBoundaries | `python Engine check` over the source tree ([API boundaries](ApiBoundaries.md)) | none (Python 3.10+) | engine |
+| Engine.Tools | Tools/Tests (Python unittest; command-line contract, [ToolsContract](../ToolsContract.md)) | none (Python 3.10+) | engine |
+| Engine.ThirdPartyNotices | ThirdParty/Tests (Python unittest; notice pins and licenses) | none (Python 3.10+) | engine |
+| AudioGeneration.* | Tools/AudioGeneration/Tests (Python unittest, Node) | none (Python 3.10+, NumPy, SciPy; Node for the player) | audio-generation |
 
 `EngineTestSupport` holds game-free helpers: TempDirectory, Diagnostics and GzipInflate.
 Include them as `Tests/Support/...`. The test inflater's
@@ -22,11 +24,11 @@ Include them as `Tests/Support/...`. The test inflater's
 `build/tests/reports/<run-id>/results.json`):
 
 ```powershell
-python Tools/build_cli.py --test
-python Tools/build_cli.py --test --label '^persistence$'
+python . test
+python . test --label '^persistence$'
 ```
 
-Inside a game project the project's `python p.py --test --label engine` builds the same suite through the game's
+Inside a game project the project's `python Engine test --label engine` builds the same suite through the game's
 test preset. Raw CMake commands, from a project root that has the engine at `Engine/`:
 
 ```powershell

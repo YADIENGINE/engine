@@ -1,13 +1,10 @@
-"""Internals sınırı denetiminin kuralları; derleyici gerekmez.
-
-Run from the Tools folder: python -m unittest discover -s Tests
-"""
+"""Internals sınırı denetiminin kuralları; derleyici gerekmez."""
 
 import tempfile
 import unittest
 from pathlib import Path
 
-from include_boundaries import violations
+from Tools.include_boundaries import violations
 
 HEADERS = ["Core/Input/Internals/Reader.h", "Core/Modules/Saves/Internals/State.h", "Editor/Internals/Session.h",
            "Core/Input/Input.hpp"]

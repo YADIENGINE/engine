@@ -54,7 +54,8 @@ engine_tests(EngineTests
 # Offline audio authoring (Python): one CTest per suite, label "audio-generation". Registered only when the
 # interpreter has NumPy and SciPy, so configuring without them does not fail; the review player suite needs Node.
 find_package(Python3 3.10 COMPONENTS Interpreter QUIET)
-set(audioGenerationRoot "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+set(engineRoot "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+set(audioGenerationRoot "${engineRoot}/Tools")
 if(Python3_Interpreter_FOUND)
     execute_process(COMMAND "${Python3_EXECUTABLE}" -c "import numpy, scipy"
         RESULT_VARIABLE audioGenerationDependencies OUTPUT_QUIET ERROR_QUIET)
@@ -72,13 +73,20 @@ else()
     message(STATUS "AudioGeneration tests skipped: Python 3.10+ with numpy and scipy not found")
 endif()
 # Internals/ boundaries (Docs/Contributing/ApiBoundaries.md) over the whole source tree: the game's when Engine is
-# a submodule, Engine's own when built alone.
+# a submodule, Engine's own when built alone. The engine's Python tools and notice checks need no compiler either.
 if(Python3_Interpreter_FOUND)
     add_test(NAME "Engine.IncludeBoundaries"
-        COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/include_boundaries.py" "${CMAKE_SOURCE_DIR}")
-    set_tests_properties("Engine.IncludeBoundaries" PROPERTIES LABELS "engine" TIMEOUT 60)
+        COMMAND "${Python3_EXECUTABLE}" -B "${engineRoot}" --project "${CMAKE_SOURCE_DIR}" check)
+    add_test(NAME "Engine.Tools"
+        COMMAND "${Python3_EXECUTABLE}" -B -m unittest discover -s Tools/Tests -t .
+        WORKING_DIRECTORY "${engineRoot}")
+    add_test(NAME "Engine.ThirdPartyNotices"
+        COMMAND "${Python3_EXECUTABLE}" -B -m unittest discover -s ThirdParty/Tests
+        WORKING_DIRECTORY "${engineRoot}")
+    set_tests_properties("Engine.IncludeBoundaries" "Engine.Tools" "Engine.ThirdPartyNotices"
+        PROPERTIES LABELS "engine" TIMEOUT 60)
 else()
-    message(STATUS "Include boundary check skipped: Python 3.10+ not found")
+    message(STATUS "Engine Python checks skipped: Python 3.10+ not found")
 endif()
 find_program(NODE_EXECUTABLE node)
 if(NODE_EXECUTABLE)

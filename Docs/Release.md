@@ -1,8 +1,7 @@
 # Release paketi ve üçüncü taraf bildirimleri
 
-`python p.py --release` (çalıştırmadan: `--release --build`) Release derler ve oyuncuya verilecek paketi kurar.
-İşi `Engine/ReleaseSystem/` yapar (`Tools/build_cli.py` onu çağırır); ayarlar `Project.json` `release`
-bölümündedir. Her proje aynı düzeni üretir:
+`python Engine release` Release derler ve oyuncuya verilecek paketi kurar. İşi `Engine/Tools/commands/release.py`
+yapar; ayarlar `Project.json` `release` bölümündedir. Her proje aynı düzeni üretir:
 
 ```text
 Release/                     (git'e girmez; şablonun .gitignore'unda)
@@ -47,7 +46,7 @@ Sadece editörde ya da testte kullanılan bağımlılıklar (ImGui, Catch2) oyun
 ## Oyun tarafı: `Game/Distribution/`
 
 `Game/Distribution/` oyuncuya giden bildirim metinlerini tutar. `Game/Assets/`'in kardeşidir ama pakete kendiliğinden
-girmez; sadece `release.notices` ve `release.files` ile girer. `EngineSetup.py` `Game/Distribution/GameNotices.txt`'i
+girmez; sadece `release.notices` ve `release.files` ile girer. `python Engine new` `Game/Distribution/GameNotices.txt`'i
 "henüz üçüncü taraf içerik yok" satırıyla kurar; ilk dış içerik eklendiğinde bu satır silinir.
 
 | Dosya | İçerik |
@@ -105,18 +104,17 @@ Paketleme bir şey bulursa mevcut `Release/<name>/` klasörünü silmeden durur 
 - Kayıtlı metin bileşenin `ThirdParty/` içindeki ana lisans dosyasını aynen içermiyor.
 
 Engine'in kendi denetimleri derleyici istemez, Engine kökünde: `python -m unittest discover -s ThirdParty/Tests`
-(gerçek pin'leri ve lisansları okur) ve `python -m unittest discover -s ReleaseSystem/Tests` (paketleme).
+(gerçek pin'leri ve lisansları okur) ve `python -m unittest discover -s Tools/Tests -t .` (paketleme dahil).
 
 ## Engine'de nerede
 
-Paketleme `ReleaseSystem/`'dedir; sistem büyüyecekse (imza, sürüm damgası, mağaza depot'u, başka platform paketi)
-iş burada yapılır, `Tools/` sadece komut satırını bağlar. Bağımlılıklar ve bildirimleri `ThirdParty/`'dedir
+Paketleme `Tools/commands/release.py`'dedir; sistem büyüyecekse (imza, sürüm damgası, mağaza depot'u, başka platform
+paketi) bu modül `Tools/commands/release/` alt paketine dönüşür. Bağımlılıklar ve bildirimleri `ThirdParty/`'dedir
 ([ThirdParty/README.md](../ThirdParty/README.md)).
 
 ```text
-Engine/ReleaseSystem/
-  release.py        package(): denetim → paket klasörü → ThirdPartyNotices.txt → ZIP
-  Tests/            Python unittest (derleyici istemez)
+Engine/Tools/commands/release.py   package(): denetim → paket klasörü → ThirdPartyNotices.txt → ZIP
+Engine/Tools/Tests/test_release.py
 Engine/ThirdParty/
   <bileşen>/        değiştirilmemiş kaynaklar
   Notices.json      Part 1 bileşen listesi: ad, sürüm, metin, sürüm pin'i, lisans dosyası

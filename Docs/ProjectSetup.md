@@ -6,14 +6,16 @@ Oyunun kodu, editör önizlemeleri ve belgeleri oyunun reposunda kalır; Engine 
 ```text
 MyProject/                  (oyunun reposu)
   Engine/                   ← submodule: engine reposu
-    Core/  Editor/  Docs/  Tools/  ThirdParty/  EngineSetup.py  ...
+    Core/  Editor/  Docs/  Tools/  ThirdParty/  __main__.py  ...
   Game/                     oyun kaynakları + Assets/ (.cpp'ler kendiliğinden bulunur) + Distribution/ (oyuncuya
                             giden bildirim metinleri: GameNotices.txt, credits; bkz. Release.md)
   Editor/                   projenin preview worker'ı (EngineEditor önizlemeleri; .cpp'ler kendiliğinden bulunur)
   CMakeLists.txt  CMakePresets.json
-  Project.json              Engine/Tools'un okuduğu proje ayarı
-  p.py  editor.py           Engine/Tools'a giden ince sarmalayıcılar
+  Project.json              engine araçlarının okuduğu proje ayarı
 ```
+
+Projenin kökünde engine'e ait betik yoktur; bütün komutlar proje kökünden `python Engine <komut>` ile çalışır
+(liste ve sözleşme: [ToolsContract](ToolsContract.md)).
 
 Include kökü `Engine/Core/` klasörüdür (`#include "Runtime/Game.h"`); editör API'si engine köküne göredir
 (`#include "Editor/Api/..."`). Oyun kendi kökünü (`Game/`) ayrıca ekler.
@@ -25,17 +27,18 @@ Python 3.10+. Bağımlılıklar (raylib, JSON, editör ve test kütüphaneleri) 
 derleme internet istemez.
 
 Proje klasörüne sadece Engine'i koyun; klasörün adı tam olarak `Engine` olmalı (GitHub zip'i `<repo>-main` adıyla
-açılır, yeniden adlandırın). Sonra Engine'in içinde kurulumu çalıştırın:
+açılır, yeniden adlandırın). Sonra proje klasöründen kurulumu çalıştırın:
 
 ```powershell
-cd MyProject\Engine
-python EngineSetup.py              # proje adını sorar (varsayılan: klasörün adı)
-python EngineSetup.py --dry-run    # yazmadan ne oluşturacağını listeler
+cd MyProject
+python Engine new                  # proje adını sorar (varsayılan: klasörün adı)
+python Engine new --name MyGame    # sormadan
+python Engine new --dry-run        # yazmadan ne oluşturacağını listeler
 ```
 
-`EngineSetup.py` `Tools/ProjectTemplate/`'i bir üst klasöre yazar: `CMakeLists.txt`, `CMakePresets.json`,
-`Project.json`, `p.py`, `editor.py`, `.gitignore`, `.gitattributes`, `Game/Assets/`, `Editor/`,
-`Game/Distribution/GameNotices.txt`. Proje adı
+`new` `Engine/Tools/ProjectTemplate/`'i proje klasörüne yazar: `CMakeLists.txt`, `CMakePresets.json`,
+`Project.json`, `.gitignore`, `.gitattributes`, `Game/Assets/`, `Editor/`, `Game/Distribution/GameNotices.txt`.
+Proje adı
 `project(...)` ve `Project.json` `"name"` alanına yazılır; exe, Release paketi ve editör worker'ı (`<ad>Preview`) bu
 addan türer. Ad harfle başlar, sadece harf/rakam/`_` içerir. Var olan dosyaların üzerine yazmaz (atladıklarını
 listeler); kökte `Project.json` varsa proje kurulmuş sayılır ve hiçbir şey yapmaz. Sonunda eksik araçları
@@ -43,10 +46,9 @@ listeler); kökte `Project.json` varsa proje kurulmuş sayılır ve hiçbir şey
 aşağıdaki [git](#git) bölümüne bakın.
 
 ```powershell
-cd ..
-python p.py            # Debug derle + çalıştır
-python editor.py       # EngineEditor + projenin worker'ı
-python p.py --test     # headless testler (Engine testleri)
+python Engine run       # Debug derle + çalıştır
+python Engine editor    # EngineEditor + projenin worker'ı
+python Engine test      # headless testler (Engine testleri)
 ```
 
 `Game/` ve `Editor/` boş gelir (`Game/Assets/` ve `.gitkeep`). Boşken `engine_add_game` ve
@@ -56,7 +58,7 @@ kodu devreye girer: [İlk oyun](GettingStarted.md), [İlk editör önizlemesi](E
 
 ## Project.json
 
-Engine/Tools'un projeyi tanıdığı tek yer. Yollar proje köküne göredir; preset adları projenin
+Engine araçlarının projeyi tanıdığı tek yer. Yollar proje köküne göredir; preset adları projenin
 `CMakePresets.json`'ındaki adlardır. Sadece kullanılan bölümler gerekir (ör. editörü olmayan projede `editor` yok).
 Aşağıdaki örnek bütün alanları gösterir; şablon `target`, `release.name` ve `editor.worker`'ı vermez, varsayılanlar
 `name`'den gelir.
@@ -90,15 +92,15 @@ Aşağıdaki örnek bütün alanları gösterir; şablon `target`, `release.name
 
 | Alan | Kullanan | Anlamı |
 | --- | --- | --- |
-| `game.target` | `p.py` | `engine_add_game` hedefi (varsayılan `name`); exe `buildDirectory/<Config>/<target>.exe` |
-| `game.buildDirectory` | `p.py` | configure preset'inin `binaryDir`'ı ile aynı olmalı |
-| `release` | `p.py --release` | `directory/name/` (varsayılan `Release/<name>/`) ve yanına ZIP: exe + `Assets` + üretilen `ThirdPartyNotices.txt` + `files`; [Release](Release.md) |
-| `tests` | `p.py --test` | test preset'leri; sonuç `buildDirectory/reports/<run-id>/results.json` |
-| `editor.worker` | `editor.py` | `engine_add_editor_worker` hedefi (varsayılan `<name>Preview`) |
-| `editor.cacheVariables` | `editor.py` | editör build'ine eklenen proje seçenekleri (oyunu kapatıp worker'ı açmak gibi) |
-| `hooks` | `p.py` | isteğe bağlı Python dosyası (aşağıda) |
+| `game.target` | `build`, `run` | `engine_add_game` hedefi (varsayılan `name`); exe `buildDirectory/<Config>/<target>.exe` |
+| `game.buildDirectory` | `build`, `run` | configure preset'inin `binaryDir`'ı ile aynı olmalı |
+| `release` | `release` | `directory/name/` (varsayılan `Release/<name>/`) ve yanına ZIP: exe + `Assets` + üretilen `ThirdPartyNotices.txt` + `files`; [Release](Release.md) |
+| `tests` | `test` | test preset'leri; sonuç `buildDirectory/reports/<run-id>/results.json` |
+| `editor.worker` | `editor` | `engine_add_editor_worker` hedefi (varsayılan `<name>Preview`) |
+| `editor.cacheVariables` | `editor` | editör build'ine eklenen proje seçenekleri (oyunu kapatıp worker'ı açmak gibi) |
+| `hooks` | `release` | isteğe bağlı Python dosyası (aşağıda) |
 
-`editor.py` `ENGINE_BUILD_RUNTIME/EDITOR=ON`, `ENGINE_BUILD_TESTS/EDITOR_TESTS=OFF` ve
+`editor` `ENGINE_BUILD_RUNTIME/EDITOR=ON`, `ENGINE_BUILD_TESTS/EDITOR_TESTS=OFF` ve
 `CMAKE_CONFIGURATION_TYPES=Debug;Release`'i kendisi verir. Editör ayrı build klasöründe yapılandırılır ve
 oyunun build'ine dokunmaz.
 
@@ -108,26 +110,29 @@ JSON'a sığmayan projeye özel iş `hooks` dosyasındaki bilinen fonksiyonlarda
 
 | Fonksiyon | Ne zaman | Dönüş |
 | --- | --- | --- |
-| `package_assets(root: Path) -> list[str]` | `p.py --release` | pakete girecek `Assets/`'e göre yollar (klasör ya da dosya); yoksa `Assets/` olduğu gibi kopyalanır |
+| `package_assets(root: Path) -> list[str]` | `python Engine release` | pakete girecek `Assets/`'e göre yollar (klasör ya da dosya); yoksa `Assets/` olduğu gibi kopyalanır |
 
 Örneğin bir oyun ses kataloğunu kaynak dosyasından okuyup sadece kullanılan sesleri pakete koyabilir.
 
 ## Araçlar (Engine/Tools)
 
-| Dosya | İş |
+Komutlar ve seçenekleri: [ToolsContract](ToolsContract.md). Python paketi, sadece standart kütüphane:
+
+| Modül | İş |
 | --- | --- |
-| `buildenv.py` | MSVC ortamı (vcvars64); `build/.msvc-env.json`'da önbelleğe alınır, VS güncellenince yenilenir |
-| `build_cli.py` | `p.py`: derle, çalıştır, `--release` paketle (`Engine/ReleaseSystem/`, [Release](Release.md)), `--clean`, `--test` |
-| `editor_cli.py` | `editor.py`: EngineEditor + worker derle ve aç |
-| `test_runner.py` | CTest'i koşup yapılandırılmış rapor yazar; çıkış kodu 0 başarı, 1 test hatası, 2 altyapı/seçim hatası |
-| `project_config.py` | `Project.json` ve hook yükleyici |
+| `cli.py` | `python Engine <komut>`: argümanlar, proje kökü, hata → çıkış kodu |
+| `project.py`, `manifest.py` | `Project.json` (hook yükleyici dahil), `EngineManifest.json` |
+| `msvc.py` | MSVC ortamı (vcvars64); `build/.msvc-env.json`'da önbelleğe alınır, VS güncellenince yenilenir |
+| `cmake.py` | komut çalıştırma, CMake önbelleği, build klasörünü güvenle silme |
+| `commands/` | `build.py` (build, run), `test.py` (yapılandırılmış rapor), `editor.py`, `release.py` ([Release](Release.md)), `new.py` |
+| `include_boundaries.py` | `check`: Internals sınırı ([API boundaries](Contributing/ApiBoundaries.md)) |
 | `ProjectTemplate/` | yeni projenin dosyaları; `@PROJECT_NAME@` adla değişir, `gitignore`/`gitattributes` noktalı yazılır |
 
-Araçların kendi testleri derleyici istemez: `Engine/Tools` içinde `python -m unittest discover -s Tests`.
+Araçların kendi testleri derleyici istemez: Engine kökünde `python -m unittest discover -s Tools/Tests -t .`.
 
 ## Git
 
-`EngineSetup.py` git'e dokunmaz. Oyunu git'te tutup Engine'i submodule olarak bağlamak için, kurulumdan sonra proje
+`new` git'e dokunmaz. Oyunu git'te tutup Engine'i submodule olarak bağlamak için, kurulumdan sonra proje
 kökünde:
 
 ```powershell
@@ -146,5 +151,5 @@ olarak oyunla birlikte commit'leyin (o zaman güncellemeler elle kopyalanır).
 - Engine'de değişiklik: önce `Engine/` içinde dalda (`git -C Engine switch main`) commit ve push, sonra oyunun
   reposunda pointer commit'i. Tek commit'te iki repoya birden yazılamaz; oyunun commit'i her zaman Engine'in
   push'lanmış bir commit'ini göstermelidir.
-- Engine'i tek başına (oyun olmadan) test etmek: Engine reposunun kökünde `python Tools/build_cli.py --test`
+- Engine'i tek başına (oyun olmadan) test etmek: Engine reposunun kökünde `python . test`
   (kendi `Project.json` ve `CMakePresets.json`'ı vardır; ayrıntı [Testing](Contributing/Testing.md)).

@@ -1,22 +1,17 @@
-"""EngineSetup.py checks on a temporary folder; no compiler required.
-
-Run from the Tools folder: python -m unittest discover -s Tests
-"""
+"""`new` on a temporary folder; no compiler required."""
 
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # Engine root, where EngineSetup.py lives
-
-from EngineSetup import PLACEHOLDER, default_name, name_error, setup_project, template_files  # noqa: E402
+from Tools.commands.new import PLACEHOLDER, default_name, name_error, setup_project, template_files
+from Tools.errors import ToolError
 
 
 class ProjectSetupTests(unittest.TestCase):
     def setUp(self):
-        self._directory = tempfile.TemporaryDirectory(prefix="EngineSetup-")
+        self._directory = tempfile.TemporaryDirectory(prefix="EngineNew-")
         self.root = Path(self._directory.name) / "Space Game"
         self.engine = self.root / "Engine"
         self.engine.mkdir(parents=True)
@@ -24,8 +19,11 @@ class ProjectSetupTests(unittest.TestCase):
     def tearDown(self):
         self._directory.cleanup()
 
+    def setup(self, name: str = "SpaceGame", **options):
+        return setup_project(self.engine, self.root, name, **options)
+
     def test_creates_every_template_file_with_the_name(self):
-        result = setup_project(self.engine, "SpaceGame")
+        result = self.setup()
         expected = {relative for _, relative in template_files()}
         self.assertEqual(set(result.created), expected)
         for relative in expected:
@@ -35,42 +33,46 @@ class ProjectSetupTests(unittest.TestCase):
         self.assertIn("project(SpaceGame ", (self.root / "CMakeLists.txt").read_text(encoding="utf-8"))
 
     def test_dotfiles_and_empty_folders(self):
-        setup_project(self.engine, "SpaceGame")
+        self.setup()
         self.assertTrue((self.root / ".gitignore").is_file())
         self.assertTrue((self.root / ".gitattributes").is_file())
         self.assertFalse((self.root / "gitignore").exists())
         self.assertTrue((self.root / "Game" / "Assets").is_dir())
         self.assertTrue((self.root / "Editor").is_dir())
 
+    def test_no_wrapper_scripts_in_the_project(self):
+        self.setup()
+        self.assertEqual(list(self.root.glob("*.py")), [])
+
     def test_existing_files_are_kept(self):
         (self.root / "CMakeLists.txt").write_text("mine", encoding="utf-8")
-        result = setup_project(self.engine, "SpaceGame")
+        result = self.setup()
         self.assertIn(Path("CMakeLists.txt"), result.skipped)
         self.assertEqual((self.root / "CMakeLists.txt").read_text(encoding="utf-8"), "mine")
 
     def test_set_up_project_is_refused(self):
-        setup_project(self.engine, "SpaceGame")
-        with self.assertRaises(SystemExit):
-            setup_project(self.engine, "Other")
+        self.setup()
+        with self.assertRaises(ToolError):
+            self.setup("Other")
 
     def test_dry_run_writes_nothing(self):
-        result = setup_project(self.engine, "SpaceGame", dry_run=True)
+        result = self.setup(dry_run=True)
         self.assertTrue(result.created)
         self.assertEqual([path.name for path in self.root.iterdir()], ["Engine"])
 
     def test_engine_folder_must_be_named_engine(self):
         renamed = self.root / "MyEngine-main"
         self.engine.rename(renamed)
-        with self.assertRaises(SystemExit):
-            setup_project(renamed, "SpaceGame")
+        with self.assertRaises(ToolError):
+            setup_project(renamed, self.root, "SpaceGame")
 
     def test_names(self):
         for valid in ("SpaceGame", "Game_2", "a"):
             self.assertIsNone(name_error(valid), valid)
         for invalid in ("", "2Game", "Space Game", "Oyun-1", "Çay", "x" * 65):
             self.assertIsNotNone(name_error(invalid), invalid)
-        with self.assertRaises(SystemExit):
-            setup_project(self.engine, "Space Game")
+        with self.assertRaises(ToolError):
+            self.setup("Space Game")
 
     def test_default_name_comes_from_the_folder(self):
         self.assertEqual(default_name(self.root), "SpaceGame")

@@ -1,14 +1,14 @@
 # İlk oyun
 
-Projeyi önce [Proje kurulumu](ProjectSetup.md)'ndaki gibi `python EngineSetup.py` ile kurun. Kurulumun açtığı
-`Game/` klasörü boştur; `python p.py` o hâlde Engine'in starter oyununu ("Game/ has no sources yet") açar.
+Projeyi önce [Proje kurulumu](ProjectSetup.md)'ndaki gibi `python Engine new` ile kurun. Kurulumun açtığı
+`Game/` klasörü boştur; `python Engine run` o hâlde Engine'in starter oyununu ("Game/ has no sources yet") açar.
 Bu rehber `Game/` altına ilk küçük oyunu yazar.
 
 ## Dosya yapısı
 
 ```text
 MyProject/
-  CMakeLists.txt  CMakePresets.json  Project.json  p.py  editor.py
+  CMakeLists.txt  CMakePresets.json  Project.json
   Engine/                   (submodule)
   Game/
     Assets/
@@ -152,10 +152,10 @@ Sahne oyunun değer üyesidir. `ShutdownNoThrow()` somut sahne destructor'ında 
 ## Geliştiricinin derleyip denemesi
 
 ```powershell
-python p.py
+python Engine run
 ```
 
-`p.py` MSVC ortamını kurar, `desktop` preset'iyle yapılandırır, Debug derler ve `build/Debug/MyProject.exe`'yi
+`python Engine run` MSVC ortamını kurar, `desktop` preset'iyle yapılandırır, Debug derler ve `build/Debug/MyProject.exe`'yi
 açar. Elle: Developer PowerShell'de `cmake --preset desktop` ve `cmake --build --preset debug`.
 
 Beklenen: canvas ortasında turuncu daire; A/D veya sol/sağ basışı hareket ettirir, Escape kapatır.

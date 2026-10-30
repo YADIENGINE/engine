@@ -4,7 +4,7 @@
     {
       "name": "tests",
       "displayName": "Engine headless tests (Debug only)",
-      "description": "Standalone engine repository; needs the MSVC environment (vcvars64), Tools/build_cli.py sets it up",
+      "description": "Standalone engine repository; needs the MSVC environment (vcvars64), python . sets it up",
       "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/build/tests",
       "architecture": { "value": "x64", "strategy": "external" },

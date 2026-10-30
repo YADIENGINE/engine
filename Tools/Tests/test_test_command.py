@@ -1,7 +1,4 @@
-"""Focused checks for the reporting/exit-code contract; no compiler required.
-
-Run from the Tools folder: python -m unittest discover -s Tests
-"""
+"""`test` reporting and exit-code contract; no compiler required."""
 
 import contextlib
 import io
@@ -11,11 +8,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from test_runner import run_tests
+from Tools.commands.test import run_tests
 
 SETTINGS = {"configurePreset": "tests", "buildPreset": "tests-debug", "testPreset": "tests-debug",
             "buildDirectory": "build/tests"}
-COMMAND = ["python", "p.py"]
+COMMAND = ["python", "Engine", "test"]
+MODULE = "Tools.commands.test"
 
 
 class RunnerTests(unittest.TestCase):
@@ -37,8 +35,8 @@ class RunnerTests(unittest.TestCase):
                     return test_code
                 return 0
 
-            with patch("test_runner._execute", side_effect=execute), patch("test_runner.msvc_env", return_value={}), \
-                    patch("test_runner.tool", side_effect=lambda name: name), contextlib.redirect_stdout(io.StringIO()):
+            with patch(f"{MODULE}._execute", side_effect=execute), patch(f"{MODULE}.msvc_env", return_value={}), \
+                    patch(f"{MODULE}.tool", side_effect=lambda name: name), contextlib.redirect_stdout(io.StringIO()):
                 code = run_tests(root, SETTINGS, COMMAND, root / "msvc-env.json", test_filter=test_filter, label=label,
                                  list_only=list_only)
             reports = list((root / "build/tests/reports").glob("*/results.json"))
@@ -62,7 +60,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(report["counts"]["passed"], 1)
         self.assertEqual(report["tests"][0]["rerun_argv"][-1], r"^Session\.Food$")
-        self.assertEqual(report["tests"][0]["rerun_command"], r"python p.py --test --filter '^Session\.Food$'")
+        self.assertEqual(report["tests"][0]["rerun_command"], r"python Engine test --filter '^Session\.Food$'")
 
     def test_failure_preserves_assertion_diagnostics(self):
         code, report = self.simulate(
@@ -104,7 +102,7 @@ class RunnerTests(unittest.TestCase):
         code, report = self.simulate(tests=names, junit=junit, label="^rewards$")
         self.assertEqual(code, 0)
         self.assertEqual(report["counts"]["passed"], len(names))
-        self.assertEqual(report["command"], ["python", "p.py", "--test", "--label", "^rewards$"])
+        self.assertEqual(report["command"], ["python", "Engine", "test", "--label", "^rewards$"])
         for stage in report["stages"]:
             if stage["name"] in ("discover", "test"):
                 command = stage["command"]

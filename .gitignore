@@ -1,4 +1,4 @@
-# Standalone engine build (Tools/build_cli.py --test)
+# Standalone engine build (python . test)
 /build/
 __pycache__/
 

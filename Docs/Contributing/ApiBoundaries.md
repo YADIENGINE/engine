@@ -47,8 +47,8 @@ A system with internals has a small public facade beside its `Internals/` folder
 
 `Tools/include_boundaries.py` checks every `#include "..."` in the source tree (the game project when the engine is
 a submodule) against the table above. It runs as the CTest `Engine.IncludeBoundaries` (label `engine`), so
-`python p.py --test --label engine` fails on a violation. Run it alone without a compiler:
+`python Engine test --label engine` fails on a violation. Run it alone without a compiler:
 
 ```powershell
-python Engine/Tools/include_boundaries.py .
+python Engine check .
 ```

@@ -1,0 +1,63 @@
+# Araç sözleşmesi
+
+Engine'in bütün araçları tek komut satırındadır. Launcher (ve her türlü otomasyon: AI ajanı, CI) engine'le sadece bu
+belgedeki komutlar üzerinden konuşur; launcher projenin kendi `Engine/`'indeki araçları çalıştırır, bu yüzden farklı
+engine sürümlü projeler yan yana çalışır. Bu belgede olmayan her şey (modül adları, iç fonksiyonlar, çıktı metinleri)
+serbestçe değişebilir.
+
+## Çağırma
+
+```powershell
+python Engine [--project KÖK] <komut> [seçenekler]      # proje kökünden
+python . [--project KÖK] <komut> [seçenekler]           # engine reposunun kökünden
+```
+
+`Engine` klasörü `__main__.py` taşıdığı için Python onu doğrudan çalıştırır. Python 3.10+, sadece standart kütüphane.
+Proje kökü: `--project` verilmişse o; yoksa engine'in üst klasörü (`Project.json` varsa), değilse engine'in kendisi.
+`--project` komuttan önce yazılır.
+
+## Komutlar
+
+| Komut | Seçenekler | İş |
+| --- | --- | --- |
+| `build` | `--release`, `--clean` | Oyunu derler (Debug; `--release` ile Release). `--clean` önce build klasörünü siler |
+| `run` | `--release` | Derler ve oyunu çalıştırır; oyun kapanınca döner |
+| `release` | | Release derler, `Release/<ad>/` paket klasörünü ve ZIP'i kurar ([Release](Release.md)) |
+| `test` | `--filter RE`, `--label RE`, `--list`, `--clean` | Headless testleri derler ve koşar; rapor `<tests.buildDirectory>/reports/<run-id>/results.json` |
+| `editor` | `--release`, `--build-only`, `--clean` | Editörü ve projenin önizleme worker'ını derler, editörü açar |
+| `new` | `--name AD`, `--dry-run` | Engine'in üst klasörünü yeni proje olarak kurar; `--name` yoksa adı sorar |
+| `info` | | Engine ve proje bilgisi, JSON (aşağıda) |
+| `check` | | Internals include sınırı ([API boundaries](Contributing/ApiBoundaries.md)) |
+
+Ayarlar `Project.json`'dadır ([ProjectSetup](ProjectSetup.md)).
+
+## `info` çıktısı
+
+```json
+{
+  "engine": { "name": "...", "version": "0.1.0", "root": "C:\\...\\MyGame\\Engine" },
+  "toolsContract": 1,
+  "project": { "name": "MyGame", "root": "C:\\...\\MyGame" }
+}
+```
+
+Proje kökünde `Project.json` yoksa `project` `null`'dır. Launcher bir projeyi açmadan önce `info`'yu çağırır ve
+`toolsContract`'ı denetler.
+
+## Çıkış kodları
+
+| Kod | Anlamı |
+| --- | --- |
+| 0 | Başarı |
+| 1 | Projenin işi başarısız: derleme hatası, başarısız test, release denetimi, oyun / editör hata koduyla kapandı, `check` ihlal buldu |
+| 2 | Kullanım ya da altyapı: yanlış argüman, eksik araç (MSVC, CMake, Ninja), bozuk `Project.json`, test raporu kurulamadı |
+| 130 | Ctrl+C ile kesildi |
+
+Hata mesajı stderr'e `error: ...` olarak yazılır.
+
+## Sözleşmeyi değiştirmek
+
+- Yeni komut, yeni seçenek ya da `info`'ya yeni alan eklemek sözleşmeyi bozmaz.
+- Komut / seçenek silmek ya da anlamını değiştirmek, çıkış kodlarını ya da `info` alanlarını değiştirmek sözleşmeyi
+  bozar: `EngineManifest.json` `toolsContract` bir artar ve bu belge aynı committe güncellenir.
+- Sözleşme testi: `Tools/Tests/test_cli.py` (komut ve seçenek listesi, `info`, çıkış kodları).

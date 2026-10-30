@@ -12,13 +12,16 @@ Kullanım belgeleri `Docs/` (giriş `Docs/README.md`, proje kurulumu `Docs/Proje
 (dalda) commit'lenir, sonra oyunun reposunda submodule pointer'ı commit'lenir.
 
 ## Build ve test
-Build almak kullanıcıya bırakılır. Testler: tek başına `python Tools/build_cli.py --test [--label X | --filter X]`
-(sonuç `build/tests/reports/<run-id>/results.json`; çıkış kodu 0 başarı, 1 test hatası, 2 altyapı hatası);
-bir oyunun içinden `python p.py --test --label engine` (ya da modül etiketi: `json-io`, `persistence` ...).
-Araçların kendi testleri derleyici istemez: `Tools` içinde `python -m unittest discover -s Tests`; Engine kökünde
-release sistemi `python -m unittest discover -s ReleaseSystem/Tests`, lisans bildirimleri `-s ThirdParty/Tests`.
+Build almak kullanıcıya bırakılır. Bütün araçlar tek komut satırındadır: proje kökünden `python Engine <komut>`
+(`build`, `run`, `release`, `test`, `editor`, `new`, `info`, `check`); engine reposunun kökünden `python . <komut>`.
+Komutlar, seçenekler ve çıkış kodları (0 başarı, 1 derleme/test hatası, 2 kullanım/altyapı) launcher ile sözleşmedir:
+`Docs/ToolsContract.md`; bozan değişiklik `EngineManifest.json` `toolsContract`'ı artırır.
+Testler: tek başına `python . test [--label X | --filter X]` (sonuç `build/tests/reports/<run-id>/results.json`);
+bir oyunun içinden `python Engine test --label engine` (ya da modül etiketi: `json-io`, `persistence` ...).
+Python testleri derleyici istemez, Engine kökünde: araçlar `python -m unittest discover -s Tools/Tests -t .`, lisans
+bildirimleri `python -m unittest discover -s ThirdParty/Tests` (ikisi de `engine` etiketiyle CTest'te).
 Test yazma kuralları `Docs/Contributing/Testing.md`; modül kuralları `Docs/Contributing/ModuleRules.md`.
-Include sınırı denetimi derleyicisiz: `python Tools/include_boundaries.py <proje kökü>` (CTest `Engine.IncludeBoundaries`).
+Include sınırı denetimi derleyicisiz: `python Engine check` (CTest `Engine.IncludeBoundaries`).
 
 ## Yapı
 ```
@@ -33,21 +36,24 @@ Core/      Oyuna giren engine kodu; include kökü (#include "Runtime/Game.h"). 
   Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
 Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_add_editor_worker. Oyuna girmez;
            include'ları engine köküne göre (#include "Editor/Api/...").
-AudioGeneration/ Çevrimdışı Python ses üretimi; tek public import AudioGeneration.SoundGenerator,
-           tarifler ve asset yolları çağırandadır. API ve genişletme: Docs/AudioGeneration.md.
 Docs/      Kullanım ve katkı belgeleri
-ReleaseSystem/ Release paketi (Docs/Release.md): release.py (p.py --release), Tests/; sistemi büyütmek burada
 ThirdParty/ Bütün dış bağımlılıkların değiştirilmemiş kaynakları (raylib, nlohmann_json, Monocypher, imgui, rlImGui,
            Catch2; FetchContent yok) + oyuna girenlerin lisans bildirimi: Notices.json, Notices/*.txt, notices.py, Tests/.
            Tarif ThirdParty/README.md. Catch2'yi test CMake'i engine_use_catch2() ile alır.
-Tools/     buildenv.py (MSVC ortamı), build_cli.py (p.py), editor_cli.py (editor.py), test_runner.py, project_config.py,
-           include_boundaries.py (Internals sınırı),
-           ProjectTemplate/ (EngineSetup.py'nin kopyaladığı yeni proje dosyaları; @PROJECT_NAME@,
-           gitignore/gitattributes noktasız saklanır). Kurulan proje olduğu gibi derlenmeli: boş Game/ →
-           Runtime/Starter/StarterGame.cpp, boş Editor/ → Editor/Preview/StarterWorker.cpp. Örnek kod şablonda değil
-           Docs/GettingStarted rehberlerinde.
-EngineSetup.py  Engine'in üst klasörünü yeni proje olarak kurar (adı sorar, dosyaların üzerine yazmaz, git'e dokunmaz).
-           Tek başına okunur: tüm mantık ve açıklaması içinde, sadece standart kütüphane; testi Tools/Tests/test_engine_setup.py
+Tools/     Python paketi, sadece standart kütüphane (Docs/ToolsContract.md):
+  cli.py       argparse alt komutları; sözleşmenin tek uygulaması
+  project.py manifest.py msvc.py cmake.py errors.py   Project.json, EngineManifest.json, MSVC ortamı, ortak CMake işleri,
+               çıkış kodları (ToolError)
+  commands/    build.py (build, run), test.py, editor.py, release.py (paket; büyürse alt paket), new.py (proje kurulumu)
+  include_boundaries.py   Internals sınırı (check)
+  AudioGeneration/  Çevrimdışı Python ses üretimi (NumPy / SciPy); tek public import AudioGeneration.SoundGenerator,
+               tarifler ve asset yolları çağırandadır. API ve genişletme: Docs/AudioGeneration.md.
+  ProjectTemplate/  `new`'in kopyaladığı proje dosyaları; @PROJECT_NAME@, gitignore/gitattributes noktasız saklanır.
+               Kurulan proje olduğu gibi derlenmeli: boş Game/ → Runtime/Starter/StarterGame.cpp, boş Editor/ →
+               Editor/Preview/StarterWorker.cpp. Örnek kod şablonda değil Docs/GettingStarted rehberlerinde.
+  Tests/       unittest (python -m unittest discover -s Tools/Tests -t .)
+__main__.py  `python Engine <komut>` → Tools.cli
+EngineManifest.json  Ad, sürüm, toolsContract, notlar
 ```
 
 ## Kurallar
