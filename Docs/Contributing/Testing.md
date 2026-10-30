@@ -1,12 +1,12 @@
 # Engine tests
 
-Headless Catch2 tests for game-independent code. Sources stay under `Engine/Tests/`
-and `Engine/Modules/<Module>/Tests/`; documentation lives here in the engine repository's `Docs/`.
+Headless Catch2 tests for game-independent code. Sources stay under `Engine/Core/Tests/`
+and `Engine/Core/Modules/<Module>/Tests/`; documentation lives here in the engine repository's `Docs/`.
 They never link the consuming game's core or include its source headers.
 
 | Executable | Sources | Links | Tags |
 | --- | --- | --- | --- |
-| EngineTests | Engine/Tests/*.cpp | EngineCore, EngineStorage | engine + subsystem |
+| EngineTests | Engine/Core/Tests/*.cpp | EngineHeadless, EngineStorage | engine + subsystem |
 | Engine&lt;Module&gt;Tests | module Tests/*.cpp | module and declared dependencies | module tag |
 | Engine.IncludeBoundaries | Tools/include_boundaries.py over the source tree ([API boundaries](ApiBoundaries.md)) | none (Python 3.10+) | engine |
 | AudioGeneration.* | AudioGeneration/Tests (Python unittest, Node) | none (Python 3.10+, NumPy, SciPy; Node for the player) | audio-generation |
@@ -44,9 +44,9 @@ Editor tests are separately opt-in: [Editor testing](../Editor/Testing.md).
 
 ## Adding tests
 
-- Engine: add a source to `engine_tests(EngineTests ...)` in `Engine/Tests/CMakeLists.txt`.
+- Engine: add a source to `engine_tests(EngineTests ...)` in `Engine/Core/Tests/CMakeLists.txt`.
   Name cases `Engine.<Area>.<Behavior>` and tag `[engine][<area>]`.
-- Module: create `Engine/Modules/<Module>/Tests/CMakeLists.txt` containing
+- Module: create `Engine/Core/Modules/<Module>/Tests/CMakeLists.txt` containing
   `engine_tests(Engine<Module>Tests SOURCES ... LINKS Engine<Module> ...)`.
   It is automatically discovered. Use module tags, e.g. `[persistence]`, rather than game tags.
 - Test modules through their sole public header; see [Module rules](ModuleRules.md).

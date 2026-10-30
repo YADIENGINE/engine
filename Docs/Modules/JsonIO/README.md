@@ -1,6 +1,6 @@
 # JsonIO
 
-Source/API include root: `Engine/Modules/JsonIO/`. Documentation and plans live here;
+Source/API include root: `Engine/Core/Modules/JsonIO/`. Documentation and plans live here;
 `Internals/` and `Tests/` paths below refer to the source module directory.
 
 Stateless JSON parsing, serialization, file reading and atomic writing, with optional

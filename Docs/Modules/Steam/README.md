@@ -1,6 +1,6 @@
 # Steam
 
-Source/API include root: `Engine/Modules/Steam/`. Documentation and plans live here;
+Source/API include root: `Engine/Core/Modules/Steam/`. Documentation and plans live here;
 `Internals/` and `Tests/` paths below refer to the source module directory.
 
 Opt-in, headless detection of the Steam client (whether Steam launched the game, which
@@ -78,7 +78,7 @@ Call all members on one thread (the game thread).
 ## Dependencies
 
 None besides the C++ standard library; on Windows it links `advapi32` for the registry.
-It does not use `EngineCore`, Persistence or raylib. Core does not depend on this module,
+It does not use `EngineHeadless`, Persistence or raylib. Core does not depend on this module,
 and the target is excluded from the default build unless a consumer or its tests select it.
 
 See `Tests/` for launch-variable parsing, machine-independent status invariants and

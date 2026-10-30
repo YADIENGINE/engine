@@ -6,7 +6,7 @@ Oyunun kodu, editör önizlemeleri ve belgeleri oyunun reposunda kalır; Engine 
 ```text
 MyProject/                  (oyunun reposu)
   Engine/                   ← submodule: engine reposu
-    EngineSetup.py  Docs/  Tools/  ...
+    Core/  Editor/  Docs/  Tools/  ThirdParty/  EngineSetup.py  ...
   Game/                     oyun kaynakları + Assets/ (.cpp'ler kendiliğinden bulunur) + Distribution/ (oyuncuya
                             giden bildirim metinleri: GameNotices.txt, credits; bkz. Release.md)
   Editor/                   projenin preview worker'ı (EngineEditor önizlemeleri; .cpp'ler kendiliğinden bulunur)
@@ -15,7 +15,8 @@ MyProject/                  (oyunun reposu)
   p.py  editor.py           Engine/Tools'a giden ince sarmalayıcılar
 ```
 
-Include kökü `Engine/` klasörüdür (`#include "Runtime/Game.h"`); oyun kendi kökünü (`Game/`) ayrıca ekler.
+Include kökü `Engine/Core/` klasörüdür (`#include "Runtime/Game.h"`); editör API'si engine köküne göredir
+(`#include "Editor/Api/..."`). Oyun kendi kökünü (`Game/`) ayrıca ekler.
 
 ## Yeni proje
 

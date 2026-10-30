@@ -8,7 +8,9 @@ if(ENGINE_BUILD_EDITOR)
 endif()
 
 add_library(EngineEditorApi STATIC Api/EditorPreview.cpp Api/PreviewParameter.cpp Api/PreviewRegistry.cpp)
-target_link_libraries(EngineEditorApi PUBLIC EngineCore)
+# Editör include'ları engine köküne göredir (#include "Editor/Api/..."); Core'unkiler Core'a göre.
+target_include_directories(EngineEditorApi PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
+target_link_libraries(EngineEditorApi PUBLIC EngineHeadless)
 engine_warnings(EngineEditorApi)
 
 add_library(EngineEditorSupport STATIC
@@ -42,7 +44,6 @@ endif()
 
 set(editor_output "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
 if(ENGINE_BUILD_EDITOR)
-    # Engine itself is defined later by the parent; the dependency resolves at generation time.
     add_library(EnginePreviewRuntime STATIC EXCLUDE_FROM_ALL
         Preview/PreviewScene.cpp Preview/PreviewGame.cpp Preview/PreviewSession.cpp Preview/PreviewHost.cpp
         Preview/PreviewProfiler.cpp Preview/GlowBenchmark.cpp)

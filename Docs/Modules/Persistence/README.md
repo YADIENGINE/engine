@@ -1,6 +1,6 @@
 # Persistence
 
-Source/API include root: `Engine/Modules/Persistence/`. Documentation and plans live here;
+Source/API include root: `Engine/Core/Modules/Persistence/`. Documentation and plans live here;
 `Internals/` and `Tests/` paths below refer to the source module directory.
 
 One owned, in-memory JSON value store per file, with explicit saving, platform-protected

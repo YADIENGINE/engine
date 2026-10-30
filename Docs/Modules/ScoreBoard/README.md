@@ -1,6 +1,6 @@
 # ScoreBoard
 
-Source/API include root: `Engine/Modules/ScoreBoard/`. Documentation and plans live here;
+Source/API include root: `Engine/Core/Modules/ScoreBoard/`. Documentation and plans live here;
 `Internals/` and `Tests/` paths below refer to the source module directory.
 
 One game-independent, locally persisted score history per board. The module owns
@@ -144,7 +144,7 @@ this module does not supply anti-cheat or online authentication.
 - C++20 standard library for owned values, ranking and timestamps. No other
   module's Internals are included. `EngineScoreBoard` publicly links
   `EnginePersistence`, which provides JsonIO transitively; it can be linked without
-  EngineCore or Game.
+  EngineHeadless or Game.
 
 `Tests/` registers `EngineScoreBoardTests` automatically when ENGINE_BUILD_TESTS is
 enabled, tagged `[scoreboard]`. Tests use temporary files and the public APIs of

@@ -76,3 +76,8 @@ yenilenir; `LNK1104` çakışmaları biter.
 
 - Ajan API'si (D5), sürüklenebilir uzamsal tuning (D11), flipbook / disk önbelleği (D10), otomatik güncelleme ve kod
   imzalama (D15), llvm-mingw (D8).
+- **Paylaşılan bağımlılık önbelleği** (derleme süresi dert olursa): kaynaklar `ThirdParty/`'de kalır; launcher ilk
+  derlenen bağımlılık kütüphanelerini (raylib, imgui, Catch2 ...) projeler arasında paylaşılan bir önbellekte
+  tutar. Anahtar: engine sürümü + bağımlılık + yapılandırma (Debug / Release, runtime) + derleyici sürümü. Yeni
+  proje ya da `--clean` bağımlılıkları yeniden derlemez. Hazır DLL / binary dağıtmanın yerine geçer: ABI ve runtime
+  uyumu her makinede yerel derlemeyle sağlanır, Release yine tek exe kalır, kaynak debugger ve AI için okunur.

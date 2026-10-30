@@ -11,7 +11,7 @@ It does not define gameplay rules, record fields, schema versions or run-end det
 - `EngineRunTrackingRuntime`: optional application-context bridge. Links `EngineRunTracking`
   and the runtime `Engine`; only this target compiles the private `EngineGodAccessor`.
 
-Both targets are excluded from the default build unless linked. Neither `EngineCore` nor
+Both targets are excluded from the default build unless linked. Neither `EngineHeadless` nor
 `Engine` links or starts tracking. Consumers include only `Modules/RunTracking/RunTracking.hpp`.
 
 ```cmake

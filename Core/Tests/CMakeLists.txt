@@ -1,4 +1,4 @@
-# Engine tests: one executable for EngineCore plus one per module (Modules/<Name>/Tests).
+# Engine tests: one executable for EngineHeadless plus one per module (Modules/<Name>/Tests).
 # Each executable links only what it tests, so a test that reaches Game or another
 # module fails to build. Game tests call engine_use_catch2() for the same Catch2.
 engine_use_catch2()
@@ -48,13 +48,13 @@ engine_tests(EngineTests
         ShatterTests.cpp
         TextLayoutTests.cpp
         UiTransformTests.cpp
-    LINKS EngineCore EngineStorage
+    LINKS EngineHeadless EngineStorage
 )
 
 # Offline audio authoring (Python): one CTest per suite, label "audio-generation". Registered only when the
 # interpreter has NumPy and SciPy, so configuring without them does not fail; the review player suite needs Node.
 find_package(Python3 3.10 COMPONENTS Interpreter QUIET)
-set(audioGenerationRoot "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set(audioGenerationRoot "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 if(Python3_Interpreter_FOUND)
     execute_process(COMMAND "${Python3_EXECUTABLE}" -c "import numpy, scipy"
         RESULT_VARIABLE audioGenerationDependencies OUTPUT_QUIET ERROR_QUIET)
@@ -75,7 +75,7 @@ endif()
 # a submodule, Engine's own when built alone.
 if(Python3_Interpreter_FOUND)
     add_test(NAME "Engine.IncludeBoundaries"
-        COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/../Tools/include_boundaries.py" "${CMAKE_SOURCE_DIR}")
+        COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/include_boundaries.py" "${CMAKE_SOURCE_DIR}")
     set_tests_properties("Engine.IncludeBoundaries" PROPERTIES LABELS "engine" TIMEOUT 60)
 else()
     message(STATUS "Include boundary check skipped: Python 3.10+ not found")

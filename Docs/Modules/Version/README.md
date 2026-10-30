@@ -1,6 +1,6 @@
 # Version
 
-Source/API include root: `Engine/Modules/Version/`. Documentation and plans live here;
+Source/API include root: `Engine/Core/Modules/Version/`. Documentation and plans live here;
 `Internals/` and `Tests/` paths below refer to the source module directory.
 
 Opt-in, headless tracking of the installed game version and queries over game-authored
@@ -57,7 +57,7 @@ titles, line formatting, localization, UI, and the choice of current version.
 
 ## Dependencies and storage
 
-`EngineVersion` depends on headless `EngineCore` for `GameOptions`, which uses
+`EngineVersion` depends on headless `EngineHeadless` for `GameOptions`, which uses
 Persistence. No raylib dependency. Core does not depend on this module. The target
 is excluded from the default build unless selected by a consumer or its tests.
 

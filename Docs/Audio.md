@@ -1,7 +1,7 @@
 # Audio
 
 Engine ses cihazını ve kaynakları sahiplenir; oyun neyin ne zaman çalacağını belirler.
-Tek public giriş [AudioSystem.hpp](../Audio/AudioSystem.hpp): servis, kimlikler, katalog ve ayarlar bu
+Tek public giriş [AudioSystem.hpp](../Core/Audio/AudioSystem.hpp): servis, kimlikler, katalog ve ayarlar bu
 header'dadır. Header raylib veya yükleme thread'i içermez. `Audio/Internals/` desteklenen API değildir;
 oyun ve editör yalnız public header'ı kullanır. Ses, Engine runtime servisidir; ayrı bir opt-in modül değildir.
 
@@ -111,7 +111,7 @@ oyun bunlar için ikinci bir settings anahtarı oluşturmaz. Eksik/geçersiz kay
 ## Bağımlılıklar ve doğrulama
 
 Backend raylib 5.5'tir ve `Engine` hedefinde kalır. Katalog doğrulaması ve private volume politikası
-`EngineCore`'da headless derlenir; public header tek başına raylib istemez.
+`EngineHeadless`'da headless derlenir; public header tek başına raylib istemez.
 Engine ses altyapısı hiçbir oyun kimliğini, asset yolunu veya çalma koreografisini bilmez.
 Headless ses testleri `[audio]` etiketi altındadır; gerçek çalma ve stream
 geliştiricinin manuel kontrolüdür.

@@ -17,7 +17,7 @@ has saves of its own; the core never exposes it for its own options.
 The structure below (one facade, `Internals/`, central documentation, tests) is a quality standard;
 it does not by itself make something a module.
 
-Every module in `Engine/Modules/` must follow these rules. They define a consistent
+Every module in `Engine/Core/Modules/` must follow these rules. They define a consistent
 structure, a clear public API, and strict implementation boundaries. Keep these
 rules in mind when creating, extending, or using a module.
 

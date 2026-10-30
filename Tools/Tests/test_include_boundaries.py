@@ -9,8 +9,8 @@ from pathlib import Path
 
 from include_boundaries import violations
 
-HEADERS = ["Input/Internals/Reader.h", "Modules/Saves/Internals/State.h", "Editor/Internals/Session.h",
-           "Input/Input.hpp"]
+HEADERS = ["Core/Input/Internals/Reader.h", "Core/Modules/Saves/Internals/State.h", "Editor/Internals/Session.h",
+           "Core/Input/Input.hpp"]
 
 
 class BoundaryTests(unittest.TestCase):
@@ -46,22 +46,22 @@ class BoundaryTests(unittest.TestCase):
         self.assertIn("private to Modules/Saves", found[1])
 
     def test_core_internals_are_shared_inside_engine(self):
-        self.write("Engine/Runtime/Game.cpp", '#include "Input/Internals/Reader.h"\n')
+        self.write("Engine/Core/Runtime/Game.cpp", '#include "Input/Internals/Reader.h"\n')
         self.write("Engine/Editor/Host/Host.cpp", '#include "Input/Internals/Reader.h"\n')
-        self.write("Engine/Modules/Saves/Saves.cpp", '#include "Input/Internals/Reader.h"\n')
+        self.write("Engine/Core/Modules/Saves/Saves.cpp", '#include "Input/Internals/Reader.h"\n')
         self.assertEqual(self.check(), [])
 
     def test_module_internals_stay_in_their_module(self):
-        self.write("Engine/Modules/Saves/Tests/StateTests.cpp", '#include "Modules/Saves/Internals/State.h"\n')
-        self.write("Engine/Modules/Other/Other.cpp", '#include "Modules/Saves/Internals/State.h"\n')
-        self.write("Engine/Runtime/Game.cpp", '#include "Modules/Saves/Internals/State.h"\n')
+        self.write("Engine/Core/Modules/Saves/Tests/StateTests.cpp", '#include "Modules/Saves/Internals/State.h"\n')
+        self.write("Engine/Core/Modules/Other/Other.cpp", '#include "Modules/Saves/Internals/State.h"\n')
+        self.write("Engine/Core/Runtime/Game.cpp", '#include "Modules/Saves/Internals/State.h"\n')
         found = self.check()
         self.assertEqual([entry.split(":")[0] for entry in found],
-                         ["Engine/Modules/Other/Other.cpp", "Engine/Runtime/Game.cpp"])
+                         ["Engine/Core/Modules/Other/Other.cpp", "Engine/Core/Runtime/Game.cpp"])
 
     def test_editor_internals_stay_in_editor(self):
         self.write("Engine/Editor/Ui/Panel.cpp", '#include "Editor/Internals/Session.h"\n')
-        self.write("Engine/Runtime/Game.cpp", '#include "Editor/Internals/Session.h"\n')
+        self.write("Engine/Core/Runtime/Game.cpp", '#include "Editor/Internals/Session.h"\n')
         found = self.check()
         self.assertEqual(len(found), 1)
         self.assertIn("private to Editor", found[0])

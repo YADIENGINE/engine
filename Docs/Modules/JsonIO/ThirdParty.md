@@ -20,8 +20,8 @@ This is the developer note. The notice text shipped with games lives in
   coexist with raylib's copy; no raylib headers or runtime are needed. The gzip
   header/CRC32/trailer follow [RFC 1952](https://www.rfc-editor.org/rfc/rfc1952).
 
-`Engine/Tests/Support/third_party/sinfl.h` is the matching inflater from
+`Engine/Core/Tests/Support/third_party/sinfl.h` is the matching inflater from
 [raylib 5.5](https://github.com/raysan5/raylib/blob/5.5/src/external/sinfl.h), used
-only by tests (`Engine/Tests/Support/GzipInflate`). It retains the same original license
+only by tests (`Engine/Core/Tests/Support/GzipInflate`). It retains the same original license
 notices and is not linked into the game. Its MSVC `_BitScanReverse` branch uses an
 `unsigned long` result instead of passing `unsigned int*`, so the header also compiles as C++.

@@ -41,7 +41,7 @@ thickness/size disables drawing. Views determine layer order. `GameSettings::can
 fonts and does not alter raylib's borrowed default font.
 
 
-`AnimatedCounter` also lives in EngineCore. Configure approach speed, punch duration and snap distance. `Update(target,
+`AnimatedCounter` also lives in EngineHeadless. Configure approach speed, punch duration and snap distance. `Update(target,
 dt)` approaches increases, snaps decreases, and decays the increase punch; zero speed snaps immediately. `Clear()`
 resets values while keeping tuning. The caller computes the eligible total, including deductions for pickups still
 in flight. Pass the desired time domain; there is no global clock or gameplay dependency.

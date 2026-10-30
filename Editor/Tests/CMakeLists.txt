@@ -1,7 +1,7 @@
 engine_use_catch2()
 add_executable(EngineEditorTests EditorInfrastructureTests.cpp EditorUiModelTests.cpp ProfilerEditorTests.cpp
     EditorCommandTests.cpp
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../Tests/Support/TempDirectory.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Tests/Support/TempDirectory.cpp")
 target_link_libraries(EngineEditorTests PRIVATE EngineEditorSupport Catch2::Catch2WithMain)
 if(TARGET EngineEditorUi)
     # ImGui-only frames: no window, GPU context, worker or game startup.

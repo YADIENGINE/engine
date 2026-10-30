@@ -7,7 +7,7 @@ Türeyen oyun içerik ve sahne yönlendirmesini sağlar; Engine ana döngü ve s
 
 | Module | Responsibility |
 | --- | --- |
-| `EngineCore` | Object lifecycle, scenes, scaled time, transition timing, grid selection/viewport, text layout, pointer gestures, player options (`GameOptions`) and run JSON storage, geometry, shatter patterns, UI transforms and [gameplay helpers](GameplayHelpers.md) |
+| `EngineHeadless` | Object lifecycle, scenes, scaled time, transition timing, grid selection/viewport, text layout, pointer gestures, player options (`GameOptions`) and run JSON storage, geometry, shatter patterns, UI transforms and [gameplay helpers](GameplayHelpers.md) |
 | `Engine` | Window/canvas, drawing, fonts, input sampling, audio, effects and iris drawing, asset preparation, application loop |
 | `EngineLocalization` | Standalone [Localization module](Modules/Localization/README.md): authored languages, native names, translation fallback, placeholders and number formatting |
 | `EngineScoreBoard` | Standalone [ScoreBoard module](Modules/ScoreBoard/README.md): game-defined validation, durable score history, top-N and per-player ranking |
@@ -24,7 +24,7 @@ measurements are independent of the window size.
 Set `ENGINE_BUILD_RUNTIME=OFF` to use the headless targets without fetching/linking raylib.
 
 The optional [Engine Editor](Editor/README.md) has independent, default-OFF targets. It uses the same runtime
-without adding editor or UI dependencies to Engine/EngineCore. Transient applications can set
+without adding editor or UI dependencies to Engine/EngineHeadless. Transient applications can set
 `GameSettings::persistentOptions=false` to use supplied window settings without loading/writing preferences.
 `WindowSettings::visible=false` keeps a graphics context hidden; `alwaysRun=true` keeps it ticking while minimized.
 
@@ -56,7 +56,7 @@ game needs a shape another game could use, it is added here (shape-named, style-
 - `Scene/Internals/SceneManager` (Engine-private): sahnelerin referans kayıtları, etkin/bekleyen hedef, geçiş ve kapanış; headless.
 - `Scene/Scene`: kendi nesne listesi, gerçek zaman hook'u ve pause kararı; modeller lifecycle'dan bağımsız kalabilir.
 - `GameObjects/`: GameObject ve ObjectList; referans kaydı veya dinamik nesne sahipliğiyle sıralı lifecycle.
-- Bağımlılık yönü Runtime → Scene → GameObjects; SceneManager, Scene, GameObject ve ObjectList EngineCore'da,
+- Bağımlılık yönü Runtime → Scene → GameObjects; SceneManager, Scene, GameObject ve ObjectList EngineHeadless'da,
   Game ise raylib'li Engine hedefindedir.
 - `Graphics/Anim`, temel geometri ve gameplay yardımcıları headless kullanılabilir.
 - `Graphics/Draw` → Render/Anim; Icons → Draw; Fx → Draw/Render/Anim;
@@ -65,7 +65,7 @@ game needs a shape another game could use, it is added here (shape-named, style-
 - GL kaynağı sahipleri pencere kurulduktan sonra oluşturulur ve pencere kapanmadan yok edilir.
   Kaynak sahibi üye, onu kullanan üyeden önce bildirilir.
 
-`EngineCore` seçenek depolamak için Persistence/JsonIO'ya bağımlıdır.
+`EngineHeadless` seçenek depolamak için Persistence/JsonIO'ya bağımlıdır.
 Modüllerin ayrı hedef olması CMake configure sırasında yalnız seçilen modüllerin tanımlandığı
 anlamına gelmez; mevcut CMake modül hedeflerini tanımlar, tüketici gerekli hedeflere link verir.
 

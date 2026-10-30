@@ -5,7 +5,7 @@ Kullanım belgeleri `Docs/` (giriş `Docs/README.md`, proje kurulumu `Docs/Proje
 
 **Engine'in adı sabit yazılmaz.** Ad ve sürümün tek kaynağı `EngineManifest.json`'dur (ad değişebilir). Belgelerde
 "engine" yazılır; komut / exe / klasör adlarında `<engine>` yer tutucusu kullanılır. Kod adı ve sürümü CMake'in
-`EngineCore`'a verdiği `ENGINE_NAME` / `ENGINE_VERSION` tanımlarından, Python araçları manifest'ten okur.
+`EngineHeadless`'a verdiği `ENGINE_NAME` / `ENGINE_VERSION` tanımlarından, Python araçları manifest'ten okur.
 
 **Bu repo hiçbir oyunu bilmez.** Oyun adı, oyun içeriği, oyun yolu (`Game/...`) ya da oyuna özel kural yazılmaz;
 örnekler `MyProject` / `MyGame` adlarıyla. Bir oyunun içinde çalışırken Engine değişikliği önce burada
@@ -22,16 +22,19 @@ Include sınırı denetimi derleyicisiz: `python Tools/include_boundaries.py <pr
 
 ## Yapı
 ```
-Runtime/   Game, GameSettings; ana döngü ve servisler; Main.cpp CreateGame() çağırır
-GameObjects/ GameObject, ObjectList; headless nesne lifecycle'ı ve isteğe bağlı sahiplik
-Scene/     Scene, Internals/SceneManager; headless sahne lifecycle'ı, seçimi ve kapanışı
-Graphics/  Render/ (Window/Canvas/Renderer Internals/'da) Draw/ Anim/ Icons/ Style/ Ui/ (görünüşün tamamı; renkler/stiller parametre)
-Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Utilities/
+Core/      Oyuna giren engine kodu; include kökü (#include "Runtime/Game.h"). Hedefler Core/CMakeLists.txt'te:
+           EngineHeadless (raylib'siz), Engine (raylib'li), modüller; engine_add_game.
+  Runtime/   Game, GameSettings; ana döngü ve servisler; Main.cpp CreateGame() çağırır
+  GameObjects/ GameObject, ObjectList; headless nesne lifecycle'ı ve isteğe bağlı sahiplik
+  Scene/     Scene, Internals/SceneManager; headless sahne lifecycle'ı, seçimi ve kapanışı
+  Graphics/  Render/ (Window/Canvas/Renderer Internals/'da) Draw/ Anim/ Icons/ Style/ Ui/ (görünüşün tamamı; renkler/stiller parametre)
+  Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Utilities/
+  Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, ScoreBoard, RunTracking ...); Modules/X/Tests/
+  Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
+Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_add_editor_worker. Oyuna girmez;
+           include'ları engine köküne göre (#include "Editor/Api/...").
 AudioGeneration/ Çevrimdışı Python ses üretimi; tek public import AudioGeneration.SoundGenerator,
            tarifler ve asset yolları çağırandadır. API ve genişletme: Docs/AudioGeneration.md.
-Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, ScoreBoard, RunTracking ...); Modules/X/Tests/
-Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_add_editor_worker
-Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
 Docs/      Kullanım ve katkı belgeleri
 ReleaseSystem/ Release paketi (Docs/Release.md): release.py (p.py --release), Tests/; sistemi büyütmek burada
 ThirdParty/ Bütün dış bağımlılıkların değiştirilmemiş kaynakları (raylib, nlohmann_json, Monocypher, imgui, rlImGui,
@@ -48,16 +51,16 @@ EngineSetup.py  Engine'in üst klasörünü yeni proje olarak kurar (adı sorar,
 ```
 
 ## Kurallar
-- CMake: `EngineCore` (headless) / `Engine` (raylib'li) ve modül hedefleri; oyun `engine_add_game`, editör worker'ı
+- CMake: `EngineHeadless` (headless) / `Engine` (raylib'li) ve modül hedefleri; oyun `engine_add_game`, editör worker'ı
   `engine_add_editor_worker` ile kurulur. Yeni `.cpp` ilgili hedefin listesine.
 - Bağımlılık yönleri (`Graphics/`): `Anim`, `Render` → `Utilities`; `Draw` → `Render` + `Anim`; `Icons` → `Draw`;
   `Fx` → `Draw` + `Render` + `Anim`; `Style` → `Draw` + `Fx` (sadece stil tipleri); `Ui` → `Style` + `Draw`.
   `Draw`, `Render` ve `Fx` temayı okumaz, stilleri ve saati parametre alır.
-- Headless kod (`EngineCore`, `Utilities/`, mantık yardımcıları) raylib include etmez. `InitWindow`/`CloseWindow`
+- Headless kod (`EngineHeadless`, `Utilities/`, mantık yardımcıları) raylib include etmez. `InitWindow`/`CloseWindow`
   sadece `Window`'da. Canvas koordinatları mantıksaldır; scissor `BeginClip` / `BeginUiClip`.
 - Yeni yardımcı yazmadan önce mevcutları kullan: `Easing.h`, `MathUtils.h`, `DrawUtils.h`, `Neon.h`, `VectorMath.h`.
 - Kod: C++20, `/W4` uyarısız; isimli namespace yok, `.cpp`'ye özel yardımcılar anonim namespace'te; her class kendi
-  `.h` + `.cpp`'sinde; `#pragma once`; include'lar Engine köküne göre (`../` yok), sıra: kendi header → üçüncü
+  `.h` + `.cpp`'sinde; `#pragma once`; include'lar `Core/`'a göre (editör: engine köküne göre; `../` yok), sıra: kendi header → üçüncü
   parti → std → proje. `new`/`delete` ve C dizisi yok, RAII. `enum class` tek satır. Tip/fonksiyon `PascalCase`,
   yerel `camelCase`, private üye `_camelCase`, `constexpr` sabit `PascalCase`. Getter'lar `[[nodiscard]] const`.
   Global isimler raylib ile çakışmaz. Format `.clang-format` (4 boşluk, 120 sütun), satır sonu LF.

@@ -14,7 +14,7 @@ Input, Engine runtime altyapısıdır. Desteklenen public header'lar:
 Oyun ve projeye ait editör kodu yalnız bu header'ları kullanır. `Input/Internals/` desteklenen API değildir.
 Cihaz okuması, pencere koordinatları, normalizasyon ve ortak temas takipçisi burada kalır.
 Gesture sınıfları kendi durumlarını sahiplenir; kopyalanamazlar. Snapshot sade bir değer tipidir.
-Headless implementasyon `EngineCore`'dadır; yalnız raylib cihaz okuması `Engine` hedefine girer.
+Headless implementasyon `EngineHeadless`'dadır; yalnız raylib cihaz okuması `Engine` hedefine girer.
 
 `Game::ReadInput()` her host frame'inde cihazları bir kez okur, runtime'ın sağladığı canvas dönüşümüyle
 snapshot üretir. Geçiş sırasında da örnekleme sürer. Engine editörü aynı normalizasyonu viewport dönüşümü
@@ -59,7 +59,7 @@ yalnız cancelled snapshot üretilir. Dış host aynı odak/iptal sözleşmesini
 
 ## Koleksiyon ve sürükle-bırak
 
-`CollectionPointer` and `HeaderGridNavigation` live in EngineCore. They contain no rendering or content policy.
+`CollectionPointer` and `HeaderGridNavigation` live in EngineHeadless. They contain no rendering or content policy.
 Create a pointer helper with the grid bounds and row-drag threshold, then call `Update(DeviceInput)` once per input
 frame. Its result contains a release `tap`, eligible `hover`, and signed `rows` (positive moves down the collection).
 Touch movement emits rows while held. Crossing the movement threshold latches drag detection until release, including

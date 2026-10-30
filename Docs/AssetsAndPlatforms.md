@@ -42,8 +42,8 @@ Texture'ı kullanan View kaynağı GL bağlamı yaşarken yükleyip bırakır.
 | `persistentOptions` | true; false iken oyuncu tercihleri okunup yazılmaz |
 | `fixedWindow` | false; host true seçerse seçenekler capture/pencere boyutunu değiştirmez |
 
-Kaynak sözleşmeleri: [GameSettings.h](../Runtime/GameSettings.h),
-[WindowSettings.h](../Graphics/Render/WindowSettings.h).
+Kaynak sözleşmeleri: [GameSettings.h](../Core/Runtime/GameSettings.h),
+[WindowSettings.h](../Core/Graphics/Render/WindowSettings.h).
 Pencere başlığı `const char*` olduğundan kalıcı string literal kullanmak en basitidir.
 Engine kullanıcı seçeneklerini yüklediğinde verilen başlangıç pencere ayarları değişebilir.
 

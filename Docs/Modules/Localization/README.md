@@ -1,6 +1,6 @@
 # Localization
 
-Source/API include root: `Engine/Modules/Localization/`. Documentation and plans live here;
+Source/API include root: `Engine/Core/Modules/Localization/`. Documentation and plans live here;
 `Internals/` and `Tests/` paths below refer to the source module directory.
 
 Immutable, headless translation catalogues with language selection, fallback, placeholders and number formatting.

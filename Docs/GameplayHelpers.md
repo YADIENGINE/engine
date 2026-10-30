@@ -2,7 +2,7 @@
 
 ## Gameplay frameworks
 
-Headless helpers (EngineCore). The gameplay frameworks are header-only and templated on the game's own enum;
+Headless helpers (EngineHeadless). The gameplay frameworks are header-only and templated on the game's own enum;
 Engine never names game types. Input navigation is a compiled borrowed view.
 
 | Header | Use |

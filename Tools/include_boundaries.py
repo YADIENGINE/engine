@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 ENGINE_ROOT = Path(__file__).resolve().parents[1]
+CORE = "Core"  # Oyuna giren engine kodu; include kökü
 SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".inl"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
 
@@ -33,16 +34,19 @@ def _sources(directory: Path):
             yield entry
 
 
-def _owner(include: str, engine_root: Path) -> Path | None:
-    """Internals başlığını include etmeye yetkili klasör; Engine'in Internals başlığı değilse None."""
+def _owner(include: str, engine_root: Path) -> tuple[Path, str] | None:
+    """Internals başlığını include etmeye yetkili klasör ve adı; Engine'in Internals başlığı değilse None.
+    Core başlıkları Core'a (`Runtime/...`, `Modules/...`), editörünkiler engine köküne göre çözülür (`Editor/...`)."""
     parts = Path(include).parts
-    if "Internals" not in parts or not (engine_root / include).is_file():
+    if "Internals" not in parts:
+        return None
+    if not any((root / include).is_file() for root in (engine_root / CORE, engine_root)):
         return None
     if parts[0] == "Modules" and len(parts) > 2:
-        return engine_root / "Modules" / parts[1]
+        return engine_root / CORE / "Modules" / parts[1], f"Modules/{parts[1]}"
     if parts[0] == "Editor":
-        return engine_root / "Editor"
-    return engine_root
+        return engine_root / "Editor", "Editor"
+    return engine_root, "Engine"
 
 
 def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]:
@@ -58,10 +62,9 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
             if not match:
                 continue
             owner = _owner(match.group(1), engine_root)
-            if owner is not None and not source.is_relative_to(owner):
+            if owner is not None and not source.is_relative_to(owner[0]):
                 where = source.relative_to(project_root).as_posix()
-                scope = owner.relative_to(engine_root).as_posix() if owner != engine_root else "Engine"
-                found.append(f'{where}:{number}: includes "{match.group(1)}" (private to {scope})')
+                found.append(f'{where}:{number}: includes "{match.group(1)}" (private to {owner[1]})')
     return found
 
 
