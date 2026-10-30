@@ -2,7 +2,7 @@
 
 Windows geliştirme aracı, gerçek üretim çizimini ayrı bir worker sürecinde önizler.
 Genel altyapı `Engine/Editor/` içindedir; oyun kataloğu ve worker adaptörü tüketici projededir.
-Normal oyun, Android ve headless hedefler editör/ImGui bağımlılığı almaz.
+Normal oyun ve headless hedefler editör/ImGui bağımlılığı almaz.
 
 1. [Projeye bağlamak ve ilk önizleme](GettingStarted.md).
 2. [Arayüz ve playback kullanımı](Usage.md).

@@ -36,7 +36,7 @@ semantics are described in [JsonIO](../JsonIO/README.md).
 SaveSettings settings{
     .encryption = SaveEncryptionMode::Encrypted,
     .keepBackup = true,
-    .keys = {.file = userData / "keys/save.key", .applicationId = "Example"}
+    .keys = {.file = userData / "keys/save.key"}
 };
 Persistence store(userData / "progress.json", settings);
 const auto result = store.Load();
@@ -50,8 +50,7 @@ store.Save();
 SaveSettings defaults to plaintext, a 1 MiB stored-file limit, no backup, and 128
 nested JSON containers (the persistence envelope consumes two). maxFileBytes must
 be positive; maxDepth must be at least two. All settings are owned copies.
-Encrypted stores require keys.file;
-Android also requires keys.applicationId. Multiple instances may specify the same
+Encrypted stores require keys.file. Multiple instances may specify the same
 key file without sharing an in-memory service.
 
 The JSON envelope remains `{"version":2,"values":{...}}`; existing integer records
@@ -112,10 +111,6 @@ writes create one only when absent; broken keys are never silently replaced.
 Temporary raw-key buffers are wiped after use. Plaintext paths never access keys.
 
 - Windows: the existing noninteractive user-scoped DPAPI protection is retained.
-- Android: private JNI/Java implementation uses the existing
-  `<applicationId>.engine.save.wrap.v1` Keystore alias. Runtime hosts must supply
-  NativeActivity/GetAndroidApp and package `Internals/Android/java`; the public API
-  contains no JNI/raylib types. Engine's runtime and the Android Gradle project do this.
 - Linux: owned, regular, nonsymlink raw-key file, 0600, with a 0700 key directory.
 
 ResetEncryptionKey invalidates **all** older encrypted records sharing that key,

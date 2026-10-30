@@ -38,7 +38,7 @@ callback'ler arasında adaptörü saklamayın. Geçici snapshot'tan adaptör olu
 | Sorgu | Varsayılan |
 | --- | --- |
 | `Confirm()` | Enter / Space basışı |
-| `Back()` | Escape / Android Back |
+| `Back()` | Escape |
 | `Horizontal()`, `Vertical()` | WASD / ok basışı, -1 / 0 / 1 |
 | `TabStep()` | Q önceki; E / Tab sonraki |
 | `Pressed(Direction)` | O yöne ait WASD / ok basışı |

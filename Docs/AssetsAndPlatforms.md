@@ -4,8 +4,6 @@
 
 Masaüstünde runtime exe yanındaki `Assets/` klasörünü kullanır; çalışma dizinine güvenmeyin.
 `engine_add_game(... ASSETS ".../Game/Assets")` bu klasörü build sonrasında kopyalar.
-Android'de Gradle aynı asset ağacını APK'ye paketler; Engine manifestteki dosyaları
-uygulamanın özel `Assets/` dizinine çıkarır.
 
 `GameSettings::assets` kullanılan dosyaların göreli yol listesidir.
 Audio katalog yolları otomatik eklenir; özel font yolunu açıkça listeleyin:
@@ -55,14 +53,10 @@ Windows masaüstü oyun ve Windows editörü farklı hedeflerdir; editör bağı
 Headless kullanım `ENGINE_BUILD_RUNTIME=OFF` ile raylib'i kapatır; JSON/Catch2 gibi
 etkin hedeflerin kendi bağımlılıkları devam eder.
 
-Android'de `engine_add_game` native shared library üretir. NativeActivity, Gradle/NDK,
-uygulama kimliği, manifest, launcher ikonları, SDK düzeyleri ve imzalama tüketici projede kurulur.
-Persistence Android Keystore köprüsünün Java kaynağı ve manifest entegrasyonu da paketlenmelidir;
-[Persistence](Modules/Persistence/README.md) platform sınırlarını açıklar.
-Engine tek başına mağaza paketi/signing projesi sağlamaz.
+`engine_add_game` masaüstü executable üretir; dağıtım paketi [Release](Release.md) akışıyla hazırlanır.
 
 `SavePath(filename)` applicationId altında platform kullanıcı verisi yolunu üretir. Asset hazırlama, kayıt yolu,
 dosya saklama ve güvenli rastgelelik `Platform/Internals/`'tadır (Engine-private); oyun bunlara `Game` ve
 Persistence/JsonIO üzerinden ulaşır.
-Android özel veri dizini uygulama kaldırılınca silinir. Kimlik veya şifreleme anahtarını
-değiştirmek mevcut kayda erişimi etkiler. Oyunun paketleme tercihleri Engine API'si değildir.
+Kimlik veya şifreleme anahtarını değiştirmek mevcut kayda erişimi etkiler.
+Oyunun paketleme tercihleri Engine API'si değildir.

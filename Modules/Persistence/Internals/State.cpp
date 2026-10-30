@@ -43,7 +43,7 @@ Persistence::State::State(std::filesystem::path file, SaveSettings settings)
     _file = Checked([&] { return std::filesystem::absolute(_file); });
     if (_settings.encryption == SaveEncryptionMode::Encrypted) {
         if (_settings.keys.file.empty()) throw std::invalid_argument("Encrypted persistence requires a key file");
-        _keys.emplace(CreatePersistenceKeyStore(_settings.keys));
+        _keys.emplace(_settings.keys.file);
     }
 }
 void Persistence::State::ValidateValues(const Document::Object& values) const {

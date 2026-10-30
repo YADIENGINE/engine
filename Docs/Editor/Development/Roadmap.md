@@ -5,7 +5,7 @@ Güncel API: [Api](../Api.md); üretim önizleme rehberi: [CreatingPreviews](../
 
 ## Mevcut sınırlar
 
-- UI ve worker süreçleri Windows masaüstüne özeldir; Android editör hedefi yoktur.
+- UI ve worker süreçleri Windows masaüstüne özeldir.
 - Görüntü aktarımı GPU readback ve iki paylaşımlı tampon kullanır; sıfır kopya değildir.
   En büyük canvas 1920×1080; meşgul tamponda eski kareler atlanabilir.
 - Durum tutan View'lar için rastgele zamana scrub yoktur; Pause, Reset ve Step kullanılır.

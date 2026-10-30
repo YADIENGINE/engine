@@ -107,12 +107,11 @@ Adım sayısı 100'ü bölen pozitif bir tamsayı olmalıdır; aksi durumda cons
 `SetMuted` geçici mute içindir; saklanan seviyeleri değiştirmez. Master ve mute kalıcı tercih değildir.
 Engine `audio.*` seçeneklerini yükler ve kayıt noktalarında saklar;
 oyun bunlar için ikinci bir settings anahtarı oluşturmaz. Eksik/geçersiz kayıtlı seviyeler ayrı ayrı %100'e döner.
-Android odak kaybı müziği duraklatır: [runtime](Runtime.md).
 
 ## Bağımlılıklar ve doğrulama
 
 Backend raylib 5.5'tir ve `Engine` hedefinde kalır. Katalog doğrulaması ve private volume politikası
 `EngineCore`'da headless derlenir; public header tek başına raylib istemez.
 Engine ses altyapısı hiçbir oyun kimliğini, asset yolunu veya çalma koreografisini bilmez.
-Headless ses testleri `[audio]` etiketi altındadır; gerçek çalma, stream ve Android yaşam döngüsü
+Headless ses testleri `[audio]` etiketi altındadır; gerçek çalma ve stream
 geliştiricinin manuel kontrolüdür.

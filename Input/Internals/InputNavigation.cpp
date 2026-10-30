@@ -5,7 +5,7 @@ InputNavigation::InputNavigation(const DeviceInput& input)
     : _input(input) {}
 
 bool InputNavigation::Confirm() const { return Pressed(InputKey::Enter) || Pressed(InputKey::Space); }
-bool InputNavigation::Back() const { return Pressed(InputKey::Escape) || Pressed(InputKey::Back); }
+bool InputNavigation::Back() const { return Pressed(InputKey::Escape); }
 bool InputNavigation::AnyPressed() const {
     return std::ranges::any_of(_input.keysPressed, [](bool pressed) { return pressed; });
 }

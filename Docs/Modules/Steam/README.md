@@ -72,7 +72,7 @@ Call all members on one thread (the game thread).
 
 - Windows: launch variables plus `HKCU\Software\Valve\Steam\ActiveProcess` (`pid`,
   `ActiveUser`). A stale `pid` left by a crashed client does not count as running.
-- Other platforms (Android, Linux, macOS): launch variables only; `clientRunning` and
+- Other desktop platforms (Linux, macOS): launch variables only; `clientRunning` and
   `account` stay empty.
 
 ## Dependencies

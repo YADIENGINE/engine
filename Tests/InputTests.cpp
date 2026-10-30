@@ -40,10 +40,8 @@ TEST_CASE("Engine.Input.NavigationMapsKeysAndBorrowsItsSnapshot", "[engine][inpu
     CHECK(navigation.Horizontal() == 1);
     input = Pressing({InputKey::Space});
     CHECK(navigation.Confirm());
-    for (const InputKey key : {InputKey::Back, InputKey::Escape}) {
-        input = Pressing({key});
-        CHECK(navigation.Back());
-    }
+    input = Pressing({InputKey::Escape});
+    CHECK(navigation.Back());
     input = Pressing({InputKey::Q});
     CHECK_FALSE(navigation.Back());
     CHECK(navigation.TabStep() == -1);

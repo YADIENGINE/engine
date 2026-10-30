@@ -16,7 +16,7 @@ application-defined version inside the JSON document.
 
 The caller supplies a 32-byte key for each encrypted read/write. The module never
 stores keys or decides which key belongs to a document. Plaintext operations never
-consult a key provider. Windows nonces use BCryptGenRandom; Linux/Android use
+consult a key provider. Windows nonces use BCryptGenRandom; Linux uses
 getrandom. Unsupported random providers fail explicitly.
 
 Changing the cryptography library while keeping this algorithm and wire format

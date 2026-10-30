@@ -27,7 +27,6 @@ build CMake'i yeniden yapılandırır; ilk `.cpp` geldiğinde starter oyunun yer
 `engine_add_game` Engine'in `Main.cpp` dosyasını ve Engine link'ini ekler; `CreateGame()` fabrikası projenindir.
 Desteklenen argümanlar: `SOURCES`, ek hedefler için `LIBRARIES` (ör. `EngineLocalization`), masaüstünde exe
 yanına kopyalanacak klasör için `ASSETS`. Kendi `main` fonksiyonunuzu eklemeyin.
-Android'de aynı yardımcı executable yerine shared library oluşturur; Gradle paketlemesi projeye aittir.
 
 ## İlk sahne
 

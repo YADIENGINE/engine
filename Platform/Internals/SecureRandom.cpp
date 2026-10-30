@@ -8,7 +8,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <bcrypt.h>
-#elif defined(__linux__) || defined(__ANDROID__)
+#elif defined(__linux__)
 #include <sys/random.h>
 #endif
 
@@ -21,7 +21,7 @@ void FillSecureRandom(std::span<std::uint8_t> bytes) {
             throw StorageError(StorageErrorCode::PlatformUnavailable, "System random generator failed");
         bytes = bytes.subspan(count);
     }
-#elif defined(__linux__) || defined(__ANDROID__)
+#elif defined(__linux__)
     while (!bytes.empty()) {
         const auto count = getrandom(bytes.data(), std::min(bytes.size(), std::size_t{256}), 0);
         if (count < 0 && errno == EINTR) continue;

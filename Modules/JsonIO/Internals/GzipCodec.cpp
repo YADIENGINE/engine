@@ -63,7 +63,7 @@ std::string GzipCodec::Encode(std::string_view text) {
         const int inputSize = static_cast<int>(text.size());
         const int bound = engine_sdefl_bound(inputSize);
         output.resize(HeaderSize + static_cast<std::size_t>(bound));
-        // The compressor state is too large for a Windows/Android stack frame.
+        // The compressor state is too large for a Windows stack frame.
         auto state = std::make_unique<sdefl>();
         const int size = engine_sdeflate(state.get(), output.data() + HeaderSize, text.data(), inputSize, 6);
         if (size <= 0 || size > bound) throw JsonIO::Error(JsonIO::ErrorCode::Io, "Could not compress JSON");

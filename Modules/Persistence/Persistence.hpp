@@ -28,8 +28,6 @@ private:
 
 struct SaveKeySettings {
     std::filesystem::path file;
-    // Required for Android's application-scoped wrapping alias; ignored on desktop.
-    std::string applicationId;
 };
 
 struct SaveSettings {

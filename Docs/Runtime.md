@@ -62,13 +62,12 @@ The editor applies the same normalization with its own viewport mapping. See [In
 `DrawWindow()` draws after canvas presentation, inside the window drawing pass. `Renderer::Frame::Complete` invokes
 these callbacks explicitly; scoped-frame cleanup never invokes user callbacks. Neither hook changes scene ownership.
 `SetPaused` or the active enabled scene's `GameTimePaused()` freezes game time; `Time()` handles hitstop and slow motion.
-Real-time screens and game overlays keep advancing. Android focus loss pauses music, calls `Suspend`, processes activity events
-without simulation, and discards the resumed frame's elapsed time before calling `Resume`.
+Real-time screens and game overlays keep advancing.
 
 ## Input cancellation
 
 `Scene::InputCancelled()` clears scene-local gestures and pending presses. Engine calls it on scene
-departure, local window focus loss, Android suspension and incoming `DeviceInput::cancelled` snapshots.
+departure, local window focus loss and incoming `DeviceInput::cancelled` snapshots.
 Such snapshots are cancellation barriers, not normal release events, and never reach action handlers.
 Cancellation may repeat across frames; hooks must be idempotent and clear held actions as well as gestures.
 The protected `Game::CancelInput()` also cancels local device input; games may call it when a visual

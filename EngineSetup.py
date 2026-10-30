@@ -9,8 +9,8 @@ Proje klasörüne sadece Engine'i koyun (klasörün adı tam olarak "Engine" olm
 
 Ne yapar (sırayla)
 ------------------
-1. Klasör adını denetler. Proje CMake'i `add_subdirectory(Engine)` der, p.py / editor.py `Engine/Tools`'u yükler,
-   Android Gradle `Engine/...` yollarını okur; bu yüzden ad "Engine" olmak zorunda. GitHub'dan zip indirilirse
+1. Klasör adını denetler. Proje CMake'i `add_subdirectory(Engine)` der, p.py / editor.py `Engine/Tools`'u yükler;
+   bu yüzden ad "Engine" olmak zorunda. GitHub'dan zip indirilirse
    klasör "<repo>-main" diye açılır; script o durumda durur ve yeniden adlandırmayı söyler (kendi içinden
    çalıştığı için kendisi adlandıramaz).
 2. Proje kökü = Engine'in bir üst klasörü. Orada Project.json varsa proje zaten kurulmuştur; hiçbir şey yapmaz.

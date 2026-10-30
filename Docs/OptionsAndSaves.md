@@ -9,7 +9,7 @@ not be tampered with belongs in an encrypted game save. Values are integers. `Ga
 unlimited), `SetBorderlessFullscreen` and graphics settings. A game that never changes them
 writes no file. The game writes its own keys through `Options().SetInt`; the namespaces of engine
 keys (`audio.`, `display.`, `graphics.`) are closed to game keys. Engine saves changes, and only changes,
-after every scene switch, after `Suspend()` and after `Stop()`; `SaveOptions()` writes immediately.
+after every scene switch and after `Stop()`; `SaveOptions()` writes immediately.
 `Options().LoadResult()` reports `Missing`, `Loaded`, `Recovered` (from `.bak`) or `Reset` (an
 unreadable file was archived and replaced) so the game can warn the player. Outdated
 storage formats are removed and reported as Missing, without a reset warning.

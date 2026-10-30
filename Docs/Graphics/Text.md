@@ -1,7 +1,7 @@
 # Text and fonts
 
 `Game::Text()` ortak `TextRenderer` servisidir. Boş `GameSettings::font` raylib varsayılan fontunu kullanır.
-Özel font asset köküne göre yoldur; Android'de çıkarılması için `settings.assets` listesine de ekleyin.
+Özel font asset köküne göre yoldur; başlangıçta doğrulanması için `settings.assets` listesine de ekleyin.
 İstenen Unicode glyph'lerini `fontCodepoints` ile verin; sadece çeviri metnini eklemek font kapsamını genişletmez.
 
 Önceden yüklenen `fontAtlasSizes` varsayılanı 40, 48, 56, 64, 80, 96, 120, 144'tür.

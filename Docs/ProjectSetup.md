@@ -146,10 +146,3 @@ olarak oyunla birlikte commit'leyin (o zaman güncellemeler elle kopyalanır).
   push'lanmış bir commit'ini göstermelidir.
 - Engine'i tek başına (oyun olmadan) test etmek: Engine reposunun kökünde `python Tools/build_cli.py --test`
   (kendi `Project.json` ve `CMakePresets.json`'ı vardır; ayrıntı [Testing](Contributing/Testing.md)).
-
-## Android
-
-Gradle projesi oyuna aittir. Engine'den iki yol gerekir: kök `CMakeLists.txt` (engine_add_game Android'de shared
-library kurar) ve kayıt anahtarı köprüsünün Java kaynağı
-`Engine/Modules/Persistence/Internals/Android/java` (`org.ydarcadeengine.persistence.SaveKeyBridge`).
-Ayrıntı: [Asset ve platformlar](AssetsAndPlatforms.md).

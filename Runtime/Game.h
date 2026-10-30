@@ -60,7 +60,7 @@ protected:
     [[nodiscard]] GraphicsSettings Graphics() const;
 
     // Tercih dosyası (settings.json) kurulumda yüklenir; ses, FPS, ekran ve grafik engine'indir. Oyun kendi
-    // anahtarlarını Options()'a yazar; engine sahne geçişinde, Suspend ve Stop'tan sonra değişiklikleri kaydeder.
+    // anahtarlarını Options()'a yazar; engine sahne geçişinde ve Stop'tan sonra değişiklikleri kaydeder.
     [[nodiscard]] GameOptions& Options() { return _options; }
     [[nodiscard]] const GameOptions& Options() const { return _options; }
     // Kayıt noktasını beklemeden yazar (ör. kapanmaya dayanması gereken bir seçim).
@@ -92,8 +92,6 @@ protected:
     // Yükleme bittikten sonra yükleme ekranının kapanma süresi; 'loadSeconds' yüklemenin sürdüğü süre.
     [[nodiscard]] virtual float LoadingOutroSeconds(float loadSeconds) const;
     virtual void Stop();
-    virtual void Suspend();
-    virtual void Resume();
 
 private:
     friend class EngineGodAccessor;

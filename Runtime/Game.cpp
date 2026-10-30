@@ -110,8 +110,6 @@ float Game::LoadingOutroSeconds(float loadSeconds) const {
     return 0.0f;
 }
 void Game::Stop() {}
-void Game::Suspend() {}
-void Game::Resume() {}
 
 void Game::SetFpsLimit(int fps) {
     if (!_fixedWindow) {
@@ -199,7 +197,6 @@ Persistence Game::CreatePersistence(const std::filesystem::path& filename, std::
     auto options = settings.value_or(_saveSettings);
     if (options.encryption == SaveEncryptionMode::Encrypted) {
         if (options.keys.file.empty()) options.keys.file = SavePath("keys/save.key");
-        if (options.keys.applicationId.empty()) options.keys.applicationId = _applicationId.string();
     }
     return Persistence(SavePath(filename), std::move(options));
 }
@@ -282,32 +279,7 @@ void Game::Run() {
             CommitScene();
         }
         const bool loaded = ShowLoading();
-#ifdef __ANDROID__
-        bool wasFocused = IsWindowFocused();
-        bool resumeMusic = false;
-#endif
         while (loaded && !_quitRequested && !_renderer->ShouldClose()) {
-#ifdef __ANDROID__
-            const bool focused = IsWindowFocused();
-            if (!focused) {
-                if (wasFocused) {
-                    CancelInput();
-                    resumeMusic = _audio.IsMusicPlaying();
-                    _audio.PauseMusic();
-                    Suspend();
-                    SaveOptions();
-                }
-                wasFocused = false;
-                Present(); // EndDrawing continues processing Android activity events.
-                continue;
-            }
-            const bool resumed = !wasFocused;
-            if (resumed) {
-                if (resumeMusic) _audio.ResumeMusic();
-                Resume();
-            }
-            wasFocused = true;
-#endif
             PrepareFrame();
             if (_quitRequested) break;
             _frameStart = GetTime();
@@ -324,9 +296,6 @@ void Game::Run() {
             }
             if (observer) observer->EndRegion(FrameRegion::Input);
             float realSeconds = GetFrameTime();
-#ifdef __ANDROID__
-            if (resumed || realSeconds > 0.25f) realSeconds = 0.0f;
-#endif
             if (observer) observer->BeginRegion(FrameRegion::Audio);
             _audio.Update();
             if (observer) {

@@ -2,6 +2,8 @@
 #include <array>
 #include <cstdio>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <utility>
 #include "Modules/Persistence/Persistence.hpp"
 #include "Modules/Persistence/Internals/SensitiveMemory.h"
@@ -13,7 +15,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <dpapi.h>
-#elif !defined(__ANDROID__)
+#else
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -21,7 +23,7 @@
 
 namespace {
 constexpr std::size_t KeyBytes = 32;
-#if defined(_WIN32) || defined(__ANDROID__)
+#ifdef _WIN32
 constexpr std::size_t MaxWrappedKeyBytes = 4096;
 #endif
 std::string DesktopWrap(std::string_view bytes, bool encrypt) {
@@ -45,17 +47,13 @@ std::string DesktopWrap(std::string_view bytes, bool encrypt) {
     };
     const std::unique_ptr<BYTE, decltype(release)> blob(output.pbData, release);
     return std::string(reinterpret_cast<const char*>(blob.get()), output.cbData);
-#elif defined(__ANDROID__)
-    (void)bytes;
-    (void)encrypt;
-    throw SaveError(SaveErrorCode::PlatformUnavailable, "Android Keystore bridge is required");
 #else
     (void)encrypt;
     return std::string(bytes);
 #endif
 }
 std::string ReadKey(const std::filesystem::path& file) {
-#if !defined(_WIN32) && !defined(__ANDROID__)
+#ifndef _WIN32
     const int descriptor = open(file.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
     if (descriptor < 0) throw SaveError(SaveErrorCode::Io, "Could not open encryption key");
     FILE* stream = fdopen(descriptor, "rb");
@@ -83,10 +81,8 @@ std::string ReadKey(const std::filesystem::path& file) {
 }
 } // namespace
 
-EncryptionKeyStore::EncryptionKeyStore(std::filesystem::path file, Wrapper wrapper, std::function<void()> reset)
-    : _file(std::move(file))
-    , _wrapper(wrapper ? std::move(wrapper) : DesktopWrap)
-    , _reset(std::move(reset)) {
+EncryptionKeyStore::EncryptionKeyStore(std::filesystem::path file)
+    : _file(std::move(file)) {
     if (_file.empty()) throw std::invalid_argument("Encryption key path must not be empty");
     _file = std::filesystem::absolute(_file);
 }
@@ -100,7 +96,7 @@ EncryptionKey EncryptionKeyStore::Load(bool create) const {
             WipeKeyMemory(random.data(), random.size());
             std::string wrapped;
             try {
-                wrapped = _wrapper(raw, true);
+                wrapped = DesktopWrap(raw, true);
             } catch (...) {
                 WipeKeyMemory(raw.data(), raw.size());
                 throw;
@@ -124,7 +120,7 @@ EncryptionKey EncryptionKeyStore::Load(bool create) const {
         }
         std::string raw;
         try {
-            raw = _wrapper(wrapped, false);
+            raw = DesktopWrap(wrapped, false);
         } catch (...) {
             WipeKeyMemory(wrapped.data(), wrapped.size());
             throw;
@@ -138,14 +134,7 @@ EncryptionKey EncryptionKeyStore::Load(bool create) const {
 void EncryptionKeyStore::Reset() const {
     try {
         if (std::filesystem::exists(_file)) (void)ArchiveInvalidFile(_file);
-        if (_reset) _reset();
     } catch (const std::filesystem::filesystem_error& error) {
         throw SaveError(SaveErrorCode::Io, error.what());
     }
 }
-
-#ifndef __ANDROID__
-EncryptionKeyStore CreatePersistenceKeyStore(const SaveKeySettings& settings) {
-    return EncryptionKeyStore(settings.file);
-}
-#endif

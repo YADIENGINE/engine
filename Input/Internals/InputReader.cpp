@@ -54,7 +54,6 @@ constexpr std::array InputKeyCodes{KeyCode{InputKey::A, KEY_A},
                                    KeyCode{InputKey::Enter, KEY_ENTER},
                                    KeyCode{InputKey::Space, KEY_SPACE},
                                    KeyCode{InputKey::Escape, KEY_ESCAPE},
-                                   KeyCode{InputKey::Back, KEY_BACK},
 
                                    KeyCode{InputKey::LeftShift, KEY_LEFT_SHIFT},
                                    KeyCode{InputKey::RightShift, KEY_RIGHT_SHIFT},
