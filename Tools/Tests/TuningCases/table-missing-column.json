@@ -1,0 +1,10 @@
+{
+  "t": {
+    "type": "table",
+    "columns": { "x": { "type": "int" }, "y": { "type": "int" } },
+    "rows": [
+      { "x": 1, "y": 2 },
+      { "x": 1 }
+    ]
+  }
+}

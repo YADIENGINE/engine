@@ -48,7 +48,8 @@ Uygulandı (2026-10-31). Ayrıntı: [Editor architecture](../Editor/Architecture
   `constexpr` (D2).
 - Editör: tuning değerlerini Inspector'da gösterme ve JSON'a geri yazma; desteklenen tipler (D11: uzamsal değerler
   sayı olarak).
-- Snake'te pilot: birkaç View sabiti ve bir `Config` dosyası. Snake'in tamamının göçü ayrı iş.
+- Göç yok: tuning yeni kod içindir; var olan projeler `constexpr` sabitlerinde kalır. Doğrulama engine testleri
+  ve `new` ile kurulan deneme projesiyle; kullanım `GettingStarted` rehberinde.
 
 **Sonuç:** değer ayarı derlemesiz ve kalıcı; editörde yapılan ayar git'te görünür.
 

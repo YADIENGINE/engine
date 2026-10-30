@@ -1,0 +1,27 @@
+{
+  "comment": "Shared by Tools/Tests/test_tuning.py and Core/Tests/TuningTests.cpp; line is the reported error line, null when valid.",
+  "cases": [
+    { "file": "valid-all-types.json", "line": null },
+    { "file": "valid-escapes.json", "line": null },
+    { "file": "trailing-comma.json", "line": 3 },
+    { "file": "duplicate-key.json", "line": 3 },
+    { "file": "unknown-type.json", "line": 2 },
+    { "file": "int-not-integer.json", "line": 3 },
+    { "file": "out-of-range.json", "line": 2 },
+    { "file": "list-element-out-of-range.json", "line": 4 },
+    { "file": "empty-list.json", "line": 2 },
+    { "file": "table-missing-column.json", "line": 7 },
+    { "file": "table-length-mismatch.json", "line": 7 },
+    { "file": "bad-color.json", "line": 2 },
+    { "file": "keyword-name.json", "line": 3 },
+    { "file": "bool-with-min.json", "line": 3 },
+    { "file": "empty-file.json", "line": 1 },
+    { "file": "range-reversed.json", "line": 2 },
+    { "file": "unknown-key.json", "line": 2 },
+    { "file": "needs-type.json", "line": 2 },
+    { "file": "not-camel-case.json", "line": 2 },
+    { "file": "leading-zero.json", "line": 2 },
+    { "file": "int-overflow.json", "line": 2 },
+    { "file": "comment.json", "line": 2 }
+  ]
+}

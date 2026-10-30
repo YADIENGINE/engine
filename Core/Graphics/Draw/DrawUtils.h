@@ -1,9 +1,11 @@
 #pragma once
 #include <raylib.h>
 #include <span>
+#include "Utilities/Color4.h"
 #include "Utilities/Rect.h"
 
 // View'ların ortak kullandığı küçük çizim yardımcıları (canvas koordinatlarında).
+[[nodiscard]] constexpr Color ToColor(Color4 color) { return {color.r, color.g, color.b, color.a}; }
 void FillRect(const Rect& rect, Color color);
 // Canvas koordinatında scissor (raylib'in BeginScissorMode'u piksel ister; canvas pencere çözünürlüğünde çizilir).
 // Kamerayı yok sayar; EndScissorMode ile kapanır.

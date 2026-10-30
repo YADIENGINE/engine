@@ -20,6 +20,7 @@ from .errors import EXIT_FAILED, EXIT_OK, ToolError
 from .include_boundaries import violations
 from .manifest import ENGINE_ROOT, load_manifest
 from .project import PROJECT_FILE, Project
+from .tuning.check import check_tuning
 
 INTERRUPTED = 130  # Ctrl+C; kabukların ortak kodu
 
@@ -69,7 +70,8 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--dry-run", action="store_true", help="list what would be created without writing")
 
     commands.add_parser("info", help="engine and project as JSON")
-    commands.add_parser("check", help="check the Internals/ include boundaries")
+    command = commands.add_parser("check", help="check the Internals/ include boundaries and the tuning files")
+    command.add_argument("--fix", action="store_true", help="rewrite valid tuning files in the canonical layout")
     return parser
 
 
@@ -114,7 +116,11 @@ def dispatch(args: argparse.Namespace) -> int:
             for violation in found:
                 print(violation)
             print(f"Internals boundaries: {len(found)} violation(s)" if found else "Internals boundaries: OK")
-            return EXIT_FAILED if found else EXIT_OK
+            problems, fixed = check_tuning(root, args.fix)
+            for line in problems + [f"{path}: rewritten in the canonical layout" for path in fixed]:
+                print(line)
+            print(f"Tuning files: {len(problems)} problem(s)" if problems else "Tuning files: OK")
+            return EXIT_FAILED if found or problems else EXIT_OK
     raise AssertionError(f"unhandled command {args.command}")
 
 

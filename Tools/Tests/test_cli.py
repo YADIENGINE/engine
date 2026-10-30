@@ -22,7 +22,7 @@ CONTRACT = {
     "refresh": [],
     "new": ["--name", "X", "--dry-run"],
     "info": [],
-    "check": [],
+    "check": ["--fix"],
 }
 
 

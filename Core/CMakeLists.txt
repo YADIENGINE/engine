@@ -97,14 +97,96 @@ add_library(EngineHeadless STATIC
     Runtime/Internals/StartupTimer.cpp
     Scene/Internals/SceneManager.cpp
     Scene/Scene.cpp
+    Tuning/Internals/TuningJson.cpp
+    Tuning/TuningFile.cpp
+    Tuning/TuningLive.cpp
     Utilities/UiTransform.cpp
 )
 target_include_directories(EngineHeadless PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineHeadless PUBLIC cxx_std_20)
 set_target_properties(EngineHeadless PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
-target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}")
+# Tuning değerleri geliştirme derlemelerinde dosyadan canlı okunur, Release yapılandırmalarında constexpr'dir (Docs/Tuning.md).
+target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}"
+    ENGINE_TUNING_LIVE=$<IF:$<CONFIG:Release,MinSizeRel,RelWithDebInfo>,0,1>)
 target_link_libraries(EngineHeadless PUBLIC EnginePersistence PRIVATE EngineStorage)
 engine_warnings(EngineHeadless)
+
+# engine_add_tuning(<target> ROOT <folder>): ROOT altındaki her *.tuning.json derleme sırasında
+# <build>/Tuning/<target>/<ROOT'a göre yol>.tuning.h üretir; o klasör hedefin PUBLIC include dizinidir, yani include
+# yazımı kaynak header'larla aynıdır. Dosyalar configure'da bulunur (CMake'e elle yazılmaz). Ayrıntı: Docs/Tuning.md.
+set(ENGINE_TUNING_GENERATOR_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." CACHE INTERNAL "Engine root for python -m Tools.tuning")
+function(engine_add_tuning target)
+    cmake_parse_arguments(PARSE_ARGV 1 TUNING "" "ROOT" "")
+    if(NOT TUNING_ROOT)
+        message(FATAL_ERROR "engine_add_tuning(${target}): ROOT <folder> is required")
+    endif()
+    cmake_path(ABSOLUTE_PATH TUNING_ROOT NORMALIZE)
+    _engine_schedule_tuning_manifest()
+    file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${TUNING_ROOT}/*.tuning.json")
+    if(NOT sources)
+        return()
+    endif()
+    find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+    file(GLOB generatorSources CONFIGURE_DEPENDS "${ENGINE_TUNING_GENERATOR_ROOT}/Tools/tuning/*.py")
+    set(outputRoot "${CMAKE_BINARY_DIR}/Tuning/${target}")
+    set(headers)
+    set(structs)
+    foreach(source IN LISTS sources)
+        cmake_path(RELATIVE_PATH source BASE_DIRECTORY "${TUNING_ROOT}" OUTPUT_VARIABLE relative)
+        string(REGEX REPLACE "\\.json$" ".h" relativeHeader "${relative}")
+        cmake_path(GET source FILENAME name)
+        if(name IN_LIST structs)
+            message(FATAL_ERROR "${target}: two tuning files are named ${name}; each target needs unique names "
+                "because the generated structs are global")
+        endif()
+        list(APPEND structs "${name}")
+        set(header "${outputRoot}/${relativeHeader}")
+        set(command "${Python3_EXECUTABLE}" -B -m Tools.tuning generate "${source}" "${header}")
+        if(NOT EXISTS "${header}")
+            # IntelliSense ilk derlemeden önce de bulsun; hata varsa derleme bildirir.
+            execute_process(COMMAND ${command} WORKING_DIRECTORY "${ENGINE_TUNING_GENERATOR_ROOT}"
+                OUTPUT_QUIET ERROR_QUIET)
+        endif()
+        add_custom_command(OUTPUT "${header}"
+            COMMAND ${command}
+            DEPENDS "${source}" ${generatorSources}
+            WORKING_DIRECTORY "${ENGINE_TUNING_GENERATOR_ROOT}"
+            COMMENT "Generating tuning header ${relativeHeader}"
+            VERBATIM)
+        list(APPEND headers "${header}")
+        set_property(GLOBAL APPEND PROPERTY ENGINE_TUNING_FILES "${target}|${source}")
+    endforeach()
+    target_sources(${target} PRIVATE ${headers})
+    target_include_directories(${target} PUBLIC "${outputRoot}")
+endfunction()
+
+# Editörün tuning paneli dosya listesini <build>/Tuning/TuningFiles.json'dan okur; configure sonunda bir kez yazılır.
+function(_engine_schedule_tuning_manifest)
+    get_property(scheduled GLOBAL PROPERTY ENGINE_TUNING_MANIFEST_SCHEDULED)
+    if(NOT scheduled)
+        set_property(GLOBAL PROPERTY ENGINE_TUNING_MANIFEST_SCHEDULED ON)
+        cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL _engine_write_tuning_manifest)
+    endif()
+endfunction()
+
+function(_engine_write_tuning_manifest)
+    get_property(files GLOBAL PROPERTY ENGINE_TUNING_FILES)
+    set(entries)
+    foreach(file IN LISTS files)
+        string(REPLACE "|" ";" parts "${file}")
+        list(GET parts 0 target)
+        list(GET parts 1 source)
+        string(REPLACE "\\" "\\\\" source "${source}")
+        string(REPLACE "\"" "\\\"" source "${source}")
+        list(APPEND entries "    { \"target\": \"${target}\", \"source\": \"${source}\" }")
+    endforeach()
+    list(JOIN entries ",\n" body)
+    if(body)
+        set(body "\n${body}\n  ")
+    endif()
+    file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/Tuning/TuningFiles.json"
+        CONTENT "{\n  \"version\": 1,\n  \"files\": [${body}]\n}\n" @ONLY)
+endfunction()
 
 # Opt-in: headless profiler statistics and reports, independent of the runtime/editor.
 add_library(EngineProfiler STATIC EXCLUDE_FROM_ALL

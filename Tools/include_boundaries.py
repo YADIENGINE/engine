@@ -19,7 +19,7 @@ SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".inl"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
 
 
-def _skipped(directory: Path) -> bool:
+def skipped_directory(directory: Path) -> bool:
     """Gizli klasörler, CMake build ağaçları, FetchContent kaynakları ve engine'in ThirdParty/'si taranmaz."""
     return (directory.name.startswith(".") or directory.name in ("_deps", "ThirdParty")
             or (directory / "CMakeCache.txt").exists())
@@ -28,7 +28,7 @@ def _skipped(directory: Path) -> bool:
 def _sources(directory: Path):
     for entry in sorted(directory.iterdir()):
         if entry.is_dir():
-            if not _skipped(entry):
+            if not skipped_directory(entry):
                 yield from _sources(entry)
         elif entry.suffix in SOURCE_SUFFIXES:
             yield entry

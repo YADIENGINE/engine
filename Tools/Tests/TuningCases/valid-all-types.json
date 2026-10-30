@@ -1,0 +1,14 @@
+{
+  "glowRadius": { "value": 12.5, "min": 0, "max": 40 },
+  "count": { "type": "int", "value": -3, "min": -10 },
+  "enabled": { "value": false },
+  "tint": { "type": "color", "value": "#ff408080" },
+  "offset": { "type": "vec2", "value": [1.5, -2e1] },
+  "spread": { "type": "range", "value": { "max": 3, "min": 1 } },
+  "steps": { "type": "float[]", "value": [0, 0.5, 1] },
+  "odds": {
+    "type": "table",
+    "columns": { "from": { "type": "int", "min": 1 }, "chances": { "type": "float[]", "min": 0, "max": 100 } },
+    "rows": [{ "chances": [70, 30], "from": 2 }, { "from": 5, "chances": [55, 45] }]
+  }
+}

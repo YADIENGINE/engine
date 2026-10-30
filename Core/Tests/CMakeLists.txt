@@ -47,9 +47,14 @@ engine_tests(EngineTests
         SceneTimeTests.cpp
         ShatterTests.cpp
         TextLayoutTests.cpp
+        TuningTests.cpp
         UiTransformTests.cpp
     LINKS EngineHeadless EngineStorage
 )
+engine_add_tuning(EngineTests ROOT Tuning)
+target_compile_definitions(EngineTests PRIVATE
+    ENGINE_TUNING_TEST_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Tuning/TestValues.tuning.json"
+    ENGINE_TUNING_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/Tests/TuningCases")
 
 # Offline audio authoring (Python): one CTest per suite, label "audio-generation". Registered only when the
 # interpreter has NumPy and SciPy, so configuring without them does not fail; the review player suite needs Node.
