@@ -7,7 +7,8 @@
 #include "Editor/Internals/Session/ProfilerSession.h"
 
 enum class EditorCommand { Open, Stop, Pause, Reset, Refresh, Cancel, Step, Count };
-enum class EditorPhase { ReadingCatalog, Starting, Ready, Paused, Stopping, Building, Stopped, Error };
+// The preview's phase. Building only while no preview runs; a running preview stays Ready / Paused while it builds.
+enum class EditorPhase { ReadingCatalog, Starting, Ready, Paused, Building, Stopped, Error };
 // clang-format off
 enum class EditorProfilerCommand { Enable, Disable, Start, Cancel, SaveBaseline, CompareBaseline, ExportJson, ExportMarkdown, GlowFull, GlowReduced, GlowOff };
 // clang-format on
@@ -39,6 +40,7 @@ struct EditorSnapshot {
     bool ready = false;
     bool paused = false;
     bool busy = false;
+    bool building = false; // Build & Refresh is building or starting the new build beside the running preview
     Vec2 canvas;
     std::uint64_t generation = 0;
     double streamFps = 0.0;

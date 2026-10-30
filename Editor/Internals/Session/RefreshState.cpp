@@ -1,24 +1,15 @@
 #include "Editor/Internals/Session/RefreshState.h"
 #include <stdexcept>
 
-RefreshState::RefreshState() = default;
-bool RefreshState::Busy() const {
-    return _phase == RefreshPhase::Stopping || _phase == RefreshPhase::Building || _phase == RefreshPhase::Starting;
-}
-void RefreshState::Begin(bool workerAlive) {
+void RefreshState::Begin() {
     if (Busy()) throw std::logic_error("A refresh is already in progress");
-    _phase = workerAlive ? RefreshPhase::Stopping : RefreshPhase::Building;
-}
-void RefreshState::WorkerExited() {
-    if (_phase != RefreshPhase::Stopping) throw std::logic_error("No worker exit is pending");
     _phase = RefreshPhase::Building;
 }
 void RefreshState::BuildFinished(bool success) {
-    if (_phase != RefreshPhase::Building) throw std::logic_error("Build started before worker exit");
-    _phase = success ? RefreshPhase::Starting : RefreshPhase::Failed;
+    if (_phase != RefreshPhase::Building) throw std::logic_error("No build is running");
+    _phase = success ? RefreshPhase::Starting : RefreshPhase::Idle;
 }
 void RefreshState::Started() {
-    if (_phase != RefreshPhase::Starting) throw std::logic_error("No preview restart is pending");
+    if (_phase != RefreshPhase::Starting) throw std::logic_error("No new preview is starting");
     _phase = RefreshPhase::Idle;
 }
-void RefreshState::Cancel() { _phase = RefreshPhase::Idle; }

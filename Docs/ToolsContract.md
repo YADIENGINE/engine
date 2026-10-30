@@ -25,6 +25,7 @@ Proje kökü: `--project` verilmişse o; yoksa engine'in üst klasörü (`Projec
 | `release` | | Release derler, `Release/<ad>/` paket klasörünü ve ZIP'i kurar ([Release](Release.md)) |
 | `test` | `--filter RE`, `--label RE`, `--list`, `--clean` | Headless testleri derler ve koşar; rapor `<tests.buildDirectory>/reports/<run-id>/results.json` |
 | `editor` | `--release`, `--build-only`, `--clean` | Editörü ve projenin önizleme worker'ını derler, editörü açar |
+| `refresh` | | Projenin açık editöründe Build & Refresh (sürüyorsa ona katılır); çıktısını akıtır, sonucuyla çıkar. Önizleme derleme boyunca açık kalır. Editör açık değilse 2 ([kontrol kapısı](Editor/Architecture.md#kontrol-kapısı)) |
 | `new` | `--name AD`, `--dry-run` | Engine'in üst klasörünü yeni proje olarak kurar; `--name` yoksa adı sorar |
 | `info` | | Engine ve proje bilgisi, JSON (aşağıda) |
 | `check` | | Internals include sınırı ([API boundaries](Contributing/ApiBoundaries.md)) |
@@ -49,7 +50,7 @@ Proje kökünde `Project.json` yoksa `project` `null`'dır. Launcher bir projeyi
 | Kod | Anlamı |
 | --- | --- |
 | 0 | Başarı |
-| 1 | Projenin işi başarısız: derleme hatası, başarısız test, release denetimi, oyun / editör hata koduyla kapandı, `check` ihlal buldu |
+| 1 | Projenin işi başarısız: derleme hatası, başarısız test, release denetimi, oyun / editör hata koduyla kapandı, `check` ihlal buldu, `refresh` başarısız ya da iptal edildi |
 | 2 | Kullanım ya da altyapı: yanlış argüman, eksik araç (MSVC, CMake, Ninja), bozuk `Project.json`, test raporu kurulamadı |
 | 130 | Ctrl+C ile kesildi |
 

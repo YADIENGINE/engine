@@ -17,8 +17,10 @@ add_library(EngineEditorSupport STATIC
     Application/EditorCommandState.cpp
     Internals/Protocol/PreviewProtocol.cpp
     Internals/Protocol/PreviewMessageReader.cpp
+    Internals/Protocol/EditorControlProtocol.cpp
     Internals/Session/EditorProject.cpp
     Internals/Session/RefreshState.cpp
+    Internals/Session/WorkerSnapshots.cpp
     Internals/Session/ProfilerSession.cpp
     Internals/Session/BenchmarkState.cpp
     Internals/Viewport/PreviewViewport.cpp
@@ -34,6 +36,7 @@ if(WIN32)
         Internals/Platform/Windows/BuildLease.cpp
         Internals/Platform/Windows/ChildProcess.cpp
         Internals/Platform/Windows/ControlChannel.cpp
+        Internals/Platform/Windows/EditorControlPipe.cpp
         Internals/Platform/Windows/NativeHandle.cpp
         Internals/Platform/Windows/SharedFrames.cpp
         Internals/Platform/Windows/WindowsText.cpp
@@ -130,7 +133,8 @@ if(ENGINE_BUILD_EDITOR)
     target_link_libraries(EngineEditorUi PUBLIC EngineEditorImGui EngineEditorSupport)
     engine_warnings(EngineEditorUi)
     add_executable(EngineEditor WIN32 Host/Main.cpp Host/EditorApplication.cpp Host/EditorUiContext.cpp
-        Host/PreviewDisplay.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp)
+        Host/PreviewDisplay.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp
+        Application/EditorControlService.cpp Application/PreviewBuild.cpp Application/PreviewWorker.cpp)
     # Resolve raylib's CloseWindow/ShowCursor before the transitive user32 import library.
     target_link_libraries(EngineEditor PRIVATE Engine EngineEditorSupport EngineEditorUi raylib shell32)
     target_compile_definitions(EngineEditor PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)

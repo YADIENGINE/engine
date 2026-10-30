@@ -61,14 +61,14 @@ taşma menüsüne alınır. Tooltip'ler ad, kısayol ve kullanılamıyorsa neden
 
 | Düğme | Anlamı |
 | --- | --- |
-| Open / Stop / Cancel | Kapalıyken seçili içeriği açar; hazır veya pause'dayken worker'ı kapatır; katalog okuma, açılış, derleme veya benchmark sırasında o işlemi iptal eder. Kapanış sürerken devre dışıdır |
+| Open / Stop / Cancel | Kapalıyken seçili içeriği açar; hazır veya pause'dayken önizlemeyi kapatır; katalog okuma, açılış, önizleme yokken derleme veya benchmark sırasında o işlemi iptal eder. Önizleme açıkken süren derleme komut paletindeki Cancel build ile iptal edilir |
 | Pause / Resume | Update'i ve sunum saatini dondurur; çizim, parametreler, eylemler ve Reset kullanılabilir |
 | Step | Pause'dayken 1/60 s ilerletir |
 | Hız | 0.1×..4× |
 | Reset | Kabul edilen tariften yeni örnek kurar (saat 0'dan başlar) |
-| Build & Refresh | Worker'ı kapatıp yalnız worker hedefini derler, seçimi ve değerleri geri getirir |
+| Build & Refresh | Worker hedefini derler; önizleme derleme boyunca çalışmaya devam eder. Başarılı build seçimi, değerleri, pause'u ve hızı alıp hazır olunca eskisinin yerine geçer; hata varsa önizleme değişmez. Terminalden: `python Engine refresh` |
 
-Reset önizlemeyi aynı worker sürecinde yeniden kurar. Worker sürecini yeniden başlatmak için Stop → Open kullanılır.
+Reset önizlemeyi aynı worker sürecinde yeniden kurar. Worker sürecini yeniden başlatmak için Open kullanılır.
 
 | Kısayol | Eylem |
 | --- | --- |

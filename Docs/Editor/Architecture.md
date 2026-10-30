@@ -19,14 +19,45 @@ Bağımlılık sürümleri ve IPC sınırları [API](Api.md) içindedir.
 Editör önce worker'ı catalog modunda başlatır; registry yalnız metadata verir,
 GL/font/ses kurulmaz. Önizleme açıldığında RunPreviewHost servisleri ve PreviewGame'i
 kurar; Game::Run tek döngüdür. PreviewScene içerik instance'ını ObjectList ile yönetir.
-Reset instance'ı yeniler; Stop worker sürecini kapatır.
-Build & Refresh gerçek süreç çıkışını bekler ve yalnız tarifteki build komutunu çalıştırır.
-IPC protokolü v5, odak kaybı / pause / input süresi aşımını normal release yerine cancellation olarak taşır.
+Reset instance'ı yeniler.
+
+- **Snapshot'lar** (`Internals/Session/WorkerSnapshots`): worker'lar build çıktısından değil, her başarılı build'in
+  değişmez kopyasından çalışır (`<worker>.live-<n>.exe`, çıktının yanında: Assets ve çalışma klasörü aynı çözülür).
+  Build hiçbir zaman çalışan bir exe'ye yazmaz; kullanılmayan kopyalar silinir. Debug sembolleri build çıktısındadır
+  ve en son snapshot'la eşleşir.
+- **Worker örnekleri** (`Application/PreviewWorker`): süreç + kendi oturumu (kontrol kanalı, kare aktarımı) +
+  başlangıç / kapanış süreleri. Aynı anda birden fazla olabilir: aktif önizleme, onun yerine geçecek olan ve
+  kapanmakta olan (retired) örnekler. Stop, Open ve önizleme değiştirmek eski örneği emekliye ayırır, beklemez;
+  emekli örnek 5 s içinde çıkmazsa süreç ağacı sonlandırılır.
+- **Build & Refresh** (`Internals/Session/RefreshState`, `Application/PreviewBuild`): çalışan önizleme derleme
+  boyunca kullanılmaya devam eder. Başarılı build snapshot'lanır; önizleme açıksa yeni örnek eskisinin yanında
+  aynı durumla başlar (`PreviewOpenState`: önizleme, parametreler, pause, hız; kamera host'tadır) ve hazır
+  olduğunda yerine geçer. Build ya da yeni örnek başarısızsa eski önizleme hiç durmaz. Önizleme açık değilse yeni
+  build'in kataloğu okunur. Yeni katalogda seçili önizleme yoksa katalog alınır, önizleme durur.
+- Sunum saati aktarılmaz: oyun durumu saatten türetilemez (sahne Update ile ilerler), Reset gibi baştan başlar.
+
+IPC protokolü v7, odak kaybı / pause / input süresi aşımını normal release yerine cancellation olarak taşır.
 Profiler mesajları generation/capture kimliği taşır; sınırlı parçalar tamamlanmadan kayıt yayımlanmaz.
 Public snapshot'ın kimlikli touch verisi ve canvas dışındaki boş pozisyonları da aktarılır. Host, private pencere
 örneklerini Input normalizer ile canvas'a dönüştürür; worker aynı public sözleşmeyi tüketir.
 İptalden önce birikmiş eylemler silinir; sonraki yeni basışlar iptal bildiriminin ardından teslim edilir.
 Host ve worker aynı protokol sürümüyle birlikte güncellenmelidir; proje tarifi sürümü değişmez.
+
+## Kontrol kapısı
+
+Araçlar açık bir editöre yerel bir named pipe üzerinden ulaşır (`Internals/Protocol/EditorControlProtocol`,
+`Internals/Platform/Windows/EditorControlPipe`, `Application/EditorControlService`). Editör çalışırken pipe'ın
+adını build dizinindeki `EngineEditor.control.json`'da duyurur (`version`, `pipe`, `pid`); kapanırken, dosya hâlâ
+kendisininse siler. Mesajlar satır başına bir JSON nesnesidir (UTF-8, `\n`); sürüm `EditorControlVersion` (1).
+İstemci bir istek gönderir ve `result` ya da `error` gelene kadar okur; aynı anda tek istemci bağlanır.
+
+| İstek | Yanıtlar |
+| --- | --- |
+| `{"version": 1, "command": "refresh"}` | Build & Refresh başlatır (sürüyorsa ona katılır); denemenin `{"type": "log", "level", "source", "text"}` satırları, sonra `{"type": "result", "result": "succeeded" \| "build-failed" \| "refresh-failed" \| "canceled"}` |
+| geçersiz / bilinmeyen | `{"type": "error", "text"}` |
+
+İstemcisi `python Engine refresh`'tir ([ToolsContract](../ToolsContract.md)). Launcher ve ajan API'si yeni komutları
+aynı kapıya ekler.
 
 ## Sunum saati ve playback
 

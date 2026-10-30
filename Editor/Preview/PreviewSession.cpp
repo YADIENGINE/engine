@@ -1,7 +1,6 @@
 #include "Editor/Preview/PreviewSession.h"
 #include <raylib.h>
 #include <span>
-#include <cmath>
 #include <utility>
 #include <stdexcept>
 #include "Editor/Internals/Viewport/PreviewInputRouter.h"
@@ -63,7 +62,8 @@ void PreviewSession::Command(const PreviewMessage& message) {
     if (message.type == "open") {
         if (!message.generation || message.generation <= _generation)
             throw std::runtime_error("Invalid open generation");
-        const auto* definition = _registry.Find(message.data.at("id").get<std::string>());
+        const auto state = DecodePreviewOpen(message.data);
+        const auto* definition = _registry.Find(state.id);
         if (!definition) throw std::runtime_error("Selected preview is missing from the new catalog");
         _generation = message.generation;
         _profiler.Reset(_generation);
@@ -72,8 +72,9 @@ void PreviewSession::Command(const PreviewMessage& message) {
         _publishedFrames = 0;
         _actions.reset();
         _actions.activate(_scene);
-        _scene.Open(*definition, DecodePreviewParameters(message.data.at("parameters")));
-        _paused = false;
+        _scene.Open(*definition, state.parameters);
+        _paused = state.paused;
+        _speed = static_cast<float>(state.speed);
         _openRequest = message.request;
         _readyPending = true;
         return;
@@ -120,12 +121,12 @@ void PreviewSession::Command(const PreviewMessage& message) {
         _inputState.cancelled = true;
         Reply(message, "state", {{"paused", _paused}});
     } else if (message.type == "playback") {
-        const float speed = message.data.at("speed").get<float>();
-        if (!std::isfinite(speed) || speed < 0.1f || speed > 4.0f) {
+        const double speed = message.data.at("speed").get<double>();
+        if (!ValidPlaybackSpeed(speed)) {
             Reply(message, "rejected", {{"text", "Invalid playback speed"}});
             return;
         }
-        _speed = speed;
+        _speed = static_cast<float>(speed);
         _step = _paused && message.data.value("step", false);
         Reply(message, "state", {{"paused", _paused}, {"speed", _speed}});
     } else if (message.type == "parameter") {
@@ -216,6 +217,7 @@ void PreviewSession::CanvasReady(const Texture2D& texture) const {
                        "ready",
                        {{"parameters", EncodePreviewParameters(_scene.Parameters())},
                         {"paused", _paused},
+                        {"speed", _speed},
                         {"canvas", nlohmann::json::array({_canvas.x, _canvas.y})}}});
         _readyPending = false;
     }

@@ -110,11 +110,12 @@ Proje CMake'i yapılandırmaya özel JSON tarifi üretir; başka tarif `EngineEd
 }
 ```
 
-Göreli yollar tarif dosyasına göredir; shell komut metni çalıştırılmaz. Build & Refresh: seçimi ve kabul edilen
-değerleri tutar → worker'a kapanış ister → gerçek süreç çıkışını bekler → yalnız tarifteki hedefi derler → başarıda
-yeni katalog / worker açar. Build hatasında worker açılmaz. Windows Job Object yalnız editörün başlattığı süreç
-ağacını sahiplenir; 5 s içinde çıkmayan worker sonlandırılır. Aynı build dizini editör oturumları arasında mutex ile
-korunur.
+Göreli yollar tarif dosyasına göredir; shell komut metni çalıştırılmaz. `worker.executable` build çıktısıdır;
+editör worker'ları onun snapshot kopyalarından başlatır. Build & Refresh: çalışan önizleme açık kalırken yalnız
+tarifteki hedefi derler → başarıda snapshot alır → yeni worker'ı aynı durumla eskisinin yanında başlatır → hazır
+olunca yerine geçirir ([Architecture](Architecture.md#worker-akışı)). Build hatasında önizleme değişmez. Windows Job
+Object yalnız editörün başlattığı süreç ağacını sahiplenir; 5 s içinde çıkmayan worker sonlandırılır. Aynı build
+dizini editör oturumları arasında mutex ile korunur.
 
 Genel editör Game olmadan derlenebilir:
 

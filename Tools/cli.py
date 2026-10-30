@@ -13,6 +13,7 @@ from pathlib import Path
 from .commands.build import build, run_game
 from .commands.editor import editor
 from .commands.new import new
+from .commands.refresh import refresh
 from .commands.release import package
 from .commands.test import run_tests
 from .errors import EXIT_FAILED, EXIT_OK, ToolError
@@ -61,6 +62,8 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--build-only", action="store_true", help="build without opening the editor")
     command.add_argument("--clean", action="store_true", help="delete the editor's build folder first")
 
+    commands.add_parser("refresh", help="Build & Refresh in the project's open editor; the preview stays live")
+
     command = commands.add_parser("new", help="set up the folder above Engine/ as a new project")
     command.add_argument("--name", help="project name (asked when omitted)")
     command.add_argument("--dry-run", action="store_true", help="list what would be created without writing")
@@ -98,6 +101,8 @@ def dispatch(args: argparse.Namespace) -> int:
                              project.msvc_cache, args.filter, args.list, args.clean, label=args.label)
         case "editor":
             return editor(Project(root), args.release, args.build_only, args.clean)
+        case "refresh":
+            return refresh(Project(root))
         case "new":
             return new(ENGINE_ROOT, args.project.resolve() if args.project else ENGINE_ROOT.parent, args.name,
                        args.dry_run)

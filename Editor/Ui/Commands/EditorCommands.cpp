@@ -58,14 +58,14 @@ const std::array<EditorCommandInfo, static_cast<std::size_t>(EditorCommand::Coun
 
 const char* EditorCommandLabel(EditorCommand command, const EditorSnapshot& snapshot) {
     if (command == EditorCommand::Pause) return snapshot.paused ? "Resume" : "Pause";
-    if (command == EditorCommand::Stop && snapshot.phase == EditorPhase::Stopping) return "Stopping...";
     if (command == EditorCommand::Stop && snapshot.profiler.busy) return "Stop preview";
+    if (command == EditorCommand::Refresh && snapshot.building) return "Building...";
     if (command == EditorCommand::Cancel) {
         if (snapshot.profiler.busy)
             return snapshot.benchmarkCancelPending ? "Canceling benchmark..." : "Cancel benchmark";
+        if (snapshot.building) return "Cancel build";
         if (snapshot.phase == EditorPhase::ReadingCatalog) return "Cancel loading";
         if (snapshot.phase == EditorPhase::Starting) return "Cancel starting";
-        if (snapshot.phase == EditorPhase::Building) return "Cancel build";
     }
     return CommandInfo(command).label;
 }

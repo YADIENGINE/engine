@@ -188,6 +188,22 @@ PreviewParameters DecodePreviewParameters(const nlohmann::json& json) {
         result.emplace(id, DecodePreviewValue(value));
     return result;
 }
+bool ValidPlaybackSpeed(double speed) {
+    return std::isfinite(speed) && speed >= PreviewMinPlaybackSpeed && speed <= PreviewMaxPlaybackSpeed;
+}
+nlohmann::json EncodePreviewOpen(const PreviewOpenState& state) {
+    return {{"id", state.id},
+            {"parameters", EncodePreviewParameters(state.parameters)},
+            {"paused", state.paused},
+            {"speed", state.speed}};
+}
+PreviewOpenState DecodePreviewOpen(const nlohmann::json& json) {
+    PreviewOpenState state{json.at("id").get<std::string>(), DecodePreviewParameters(json.at("parameters")),
+                           json.at("paused").get<bool>(), json.at("speed").get<double>()};
+    if (state.id.empty()) throw std::runtime_error("Missing preview id");
+    if (!ValidPlaybackSpeed(state.speed)) throw std::runtime_error("Invalid playback speed");
+    return state;
+}
 nlohmann::json EncodePreviewCatalog(const std::vector<PreviewDefinition>& definitions) {
     auto entries = nlohmann::json::array();
     for (const auto& definition : definitions) {

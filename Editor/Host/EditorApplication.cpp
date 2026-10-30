@@ -34,6 +34,11 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     : Game(EditorSettings())
     , _controller(projectFile) {
     try {
+        if (const auto& project = _controller.Project()) _control.emplace(project->buildDirectory);
+    } catch (const std::exception& error) {
+        _controller.Log(std::string("Control endpoint unavailable: ") + error.what(), EditorLogLevel::Warning);
+    }
+    try {
         _projectKey = _controller.ProjectKey();
         _settings.emplace(UserDataDirectory() / "EngineEditor" / "preferences.json");
         if (auto error = _settings->Load(_projectKey, _preferences, _fontSize); !error.empty())
@@ -66,6 +71,7 @@ void EditorApplication::Update(float realSeconds) {
     (void)realSeconds;
     if (_quit) RequestQuit();
     _controller.Tick();
+    if (_control) _control->Tick(_controller);
     if (_controller.Snapshot().profiler.busy && !_beforeBenchmark) {
         _beforeBenchmark = FrameExecution();
         auto execution = *_beforeBenchmark;
@@ -83,6 +89,7 @@ void EditorApplication::Stop() {
     if (_stopped) return;
     _workspace.CaptureLayout(_preferences);
     SavePreferences(true);
+    _control.reset();
     _controller.Shutdown();
     _stopped = true;
 }

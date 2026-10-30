@@ -19,6 +19,7 @@ CONTRACT = {
     "release": [],
     "test": ["--filter", "X", "--label", "X", "--list", "--clean"],
     "editor": ["--release", "--build-only", "--clean"],
+    "refresh": [],
     "new": ["--name", "X", "--dry-run"],
     "info": [],
     "check": [],

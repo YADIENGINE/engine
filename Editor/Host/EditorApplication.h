@@ -1,5 +1,6 @@
 #pragma once
 #include <optional>
+#include "Editor/Application/EditorControlService.h"
 #include "Editor/Application/EditorController.h"
 #include "Editor/Host/PreviewDisplay.h"
 #include "Editor/Host/EditorUiContext.h"
@@ -24,6 +25,7 @@ private:
     void SavePreferences(bool force);
     // All GPU/UI resources are owned after the base Game has created its window.
     mutable EditorController _controller;
+    std::optional<EditorControlService> _control; // Tools reach this editor through it (`python Engine refresh`)
     mutable EditorUiContext _ui;
     mutable PreviewDisplay _display;
     mutable EditorWorkspace _workspace;

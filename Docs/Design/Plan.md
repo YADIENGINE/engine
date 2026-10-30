@@ -29,13 +29,18 @@ Aşama 0 Hazırlık ──┬─► Aşama 1 Editör döngüsü ──┐
 
 ## Aşama 1: Editör döngüsü
 
-- **Yanına derle, sonra değiştir** (D9): eski worker derleme boyunca çalışır; başarılı derlemede yenisine geçilir,
-  durum geri gelir (seçim, parametreler, sunum saati, pause, kamera); hatada eski worker sürer.
-- **Editör derlemenin sahibi** (D6'nın editör tarafı): editör dışarıdan derleme / test komutu kabul eden yerel bir
-  kanal açar. İlk istemcisi bugünkü `p.py`'dir; launcher gelince `<engine>` aynı kanalı kullanır.
+Uygulandı (2026-10-31). Ayrıntı: [Editor architecture](../Editor/Architecture.md).
 
-**Sonuç:** Snake'te günlük iş hemen hızlanır: AI `p.py --build` dediğinde açık editör derler ve önizleme kesilmeden
-yenilenir; `LNK1104` çakışmaları biter.
+- ~~Yanına derle, sonra değiştir~~ (D9): worker'lar build'in snapshot kopyalarından çalışır; Build & Refresh
+  sırasında önizleme açık kalır, yeni build eskisinin yanında aynı durumla (önizleme, parametreler, pause, hız)
+  başlar ve hazır olunca yerine geçer; hata ya da iptalde eski önizleme sürer. Kamera zaten host'tadır. Sunum saati
+  bilerek aktarılmaz: sahne durumu Update ile ilerlediği için saatten yeniden kurulamaz.
+- ~~Editörün kontrol kapısı~~ (D6'nın editör tarafı): proje başına named pipe, build dizininde duyurulur, satır başına
+  JSON. İlk istemcisi `python Engine refresh`; launcher ve ajan API'si (D5) yeni komutları aynı kapıya ekler.
+- Bulgu: oyun (`build/`) ve editör (`build/<editör>`) ayrı klasörlerde derlendiği için `python Engine build` editörle
+  hiç çakışmıyordu; çakışma yalnız editörün kendi worker build'indeydi ve snapshot'larla bitti.
+
+**Sonuç:** kod değişince `python Engine refresh` (ya da Build & Refresh) önizlemeyi kesmeden yeniler.
 
 ## Aşama 2: Tuning
 

@@ -22,7 +22,10 @@ void EditorController::Profile(EditorProfilerCommand command, const Profiler::Re
             return;
         }
         if (command == EditorProfilerCommand::Start) {
-            if (!_ready || Busy() || !Selected() || !Selected()->benchmark || !_pendingParameters.empty()) return;
+            // A benchmark measures one worker: none while Build & Refresh may replace it.
+            if (!_ready || Busy() || _refresh.Busy() || !Selected() || !Selected()->benchmark ||
+                !_pendingParameters.empty())
+                return;
             Profiler::ValidateRecipe(recipe);
             _benchmarkCancelPending = false;
             const auto id = ++_profilerRequest;

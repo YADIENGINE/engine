@@ -134,7 +134,6 @@ ImVec4 EditorPhaseColor(EditorPhase phase) {
     case EditorPhase::Paused        : return EditorToneColor(EditorTone::Warning);
     case EditorPhase::ReadingCatalog:
     case EditorPhase::Starting      :
-    case EditorPhase::Stopping      :
     case EditorPhase::Building      : return EditorToneColor(EditorTone::Information);
     case EditorPhase::Stopped       : return ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
     }
@@ -151,7 +150,6 @@ const char* EditorPhaseLabel(EditorPhase phase) {
     case EditorPhase::Starting      : return "Starting";
     case EditorPhase::Ready         : return "Ready";
     case EditorPhase::Paused        : return "Paused";
-    case EditorPhase::Stopping      : return "Stopping";
     case EditorPhase::Building      : return "Building";
     case EditorPhase::Stopped       : return "Stopped";
     case EditorPhase::Error         : return "Error";

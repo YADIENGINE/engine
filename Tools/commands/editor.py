@@ -42,11 +42,16 @@ def needs_configure(root: Path, build_dir: Path, options: dict[str, str]) -> boo
     return not (build_dir / "build.ninja").exists() or any(cache.get(name) != value for name, value in options.items())
 
 
+def editor_build_dir(project: Project) -> Path:
+    """The editor's own build directory; the running editor also announces its control endpoint there."""
+    return project.path(project.section("editor").get("buildDirectory", "build/editor"))
+
+
 def editor(project: Project, release: bool, build_only: bool, clean: bool) -> int:
     if sys.platform != "win32":
         raise ToolError("The engine editor currently supports Windows desktop only")
     settings = project.section("editor")
-    build_dir = project.path(settings.get("buildDirectory", "build/editor"))
+    build_dir = editor_build_dir(project)
     options = ENGINE_OPTIONS | settings.get("cacheVariables", {})
 
     cmake = tool("cmake")

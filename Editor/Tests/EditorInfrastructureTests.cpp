@@ -1,11 +1,17 @@
 #include <catch2/catch_test_macros.hpp>
 #include <array>
+#include <fstream>
+#include <iterator>
 #include <limits>
 #include <memory>
+#include <string>
 #include "Editor/Api/PreviewRegistry.h"
+#include "Editor/Internals/Protocol/EditorControlProtocol.h"
 #include "Editor/Internals/Protocol/PreviewMessageReader.h"
 #include "Editor/Internals/Session/RefreshState.h"
+#include "Editor/Internals/Session/WorkerSnapshots.h"
 #include "Editor/Internals/Viewport/PreviewInputRouter.h"
+#include "Tests/Support/TempDirectory.h"
 #ifdef _WIN32
 #include "Editor/Internals/Platform/Windows/ControlChannel.h"
 #include "Editor/Internals/Platform/Windows/SharedFrames.h"
@@ -371,23 +377,101 @@ TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") 
     CHECK_THROWS(registry.Add(definition));
 }
 
-TEST_CASE("Editor.Refresh.BuildWaitsForWorkerExit", "[engine-editor]") {
+TEST_CASE("Editor.Refresh.BuildThenStartBesideTheRunningPreview", "[engine-editor]") {
     RefreshState state;
-    state.Begin(true);
-    CHECK(state.Phase() == RefreshPhase::Stopping);
     CHECK_THROWS(state.BuildFinished(true));
-    state.WorkerExited();
-    CHECK(state.Phase() == RefreshPhase::Building);
+    state.Begin();
+    CHECK(state.Building());
+    CHECK_THROWS(state.Begin());
+    CHECK_THROWS(state.Started());
     state.BuildFinished(false);
-    CHECK(state.Phase() == RefreshPhase::Failed);
-    state.Begin(false);
+    CHECK_FALSE(state.Busy()); // A failed build leaves the running preview as it was
+    state.Begin();
     state.BuildFinished(true);
     CHECK(state.Phase() == RefreshPhase::Starting);
+    CHECK_FALSE(state.Building());
     state.Started();
     CHECK_FALSE(state.Busy());
-    state.Begin(true);
+    state.Begin();
     state.Cancel();
     CHECK_FALSE(state.Busy());
+}
+
+TEST_CASE("Editor.Snapshots.WorkersRunFromCopiesOfTheBuild", "[engine-editor]") {
+    const TempDirectory directory;
+    ProcessCommand built;
+    built.executable = directory.Path() / "MyGamePreview.exe";
+    built.directory = directory.Path();
+    WorkerSnapshots snapshots(built);
+    CHECK_FALSE(snapshots.BuildAvailable());
+    CHECK_THROWS(snapshots.Capture());
+    CHECK_FALSE(snapshots.Current());
+
+    const auto write = [](const std::filesystem::path& file, const std::string& text) {
+        std::ofstream(file, std::ios::binary) << text;
+    };
+    const auto read = [](const std::filesystem::path& file) {
+        std::ifstream input(file, std::ios::binary);
+        return std::string(std::istreambuf_iterator<char>(input), {});
+    };
+    write(built.executable, "first");
+    snapshots.Capture();
+    const auto first = snapshots.Current()->executable;
+    CHECK(first != built.executable);
+    CHECK(first.parent_path() == built.executable.parent_path()); // Assets resolve as for the build output
+    CHECK(snapshots.Current()->directory == built.directory);
+    CHECK(read(first) == "first");
+
+    write(built.executable, "second"); // The next build overwrites only the output
+    snapshots.Capture();
+    const auto second = snapshots.Current()->executable;
+    CHECK(second != first);
+    CHECK(read(first) == "first");
+    CHECK(read(second) == "second");
+
+    write(directory.Path() / "Unrelated.live-3.exe", "other");
+    snapshots.Prune();
+    CHECK_FALSE(std::filesystem::exists(first));
+    CHECK(std::filesystem::exists(second));
+    CHECK(std::filesystem::exists(built.executable));
+    CHECK(std::filesystem::exists(directory.Path() / "Unrelated.live-3.exe"));
+}
+
+TEST_CASE("Editor.Control.RequestsRepliesAndAnnouncement", "[engine-editor]") {
+    CHECK(DecodeControlRequest(R"({"version": 1, "command": "refresh"})") == EditorControlCommand::Refresh);
+    CHECK_THROWS(DecodeControlRequest(R"({"version": 2, "command": "refresh"})"));
+    CHECK_THROWS(DecodeControlRequest(R"({"version": 1, "command": "format-disk"})"));
+    CHECK_THROWS(DecodeControlRequest("not json"));
+
+    const auto result = nlohmann::json::parse(EncodeControlResult(EditorBuildResult::BuildFailed));
+    CHECK(result.at("type") == "result");
+    CHECK(result.at("result") == "build-failed");
+    CHECK_THROWS(EncodeControlResult(EditorBuildResult::Running));
+    EditorLogEntry entry;
+    entry.level = EditorLogLevel::Error;
+    entry.source = EditorLogSource::Build;
+    entry.text = "Snake.cpp(12): error C2065";
+    const auto log = nlohmann::json::parse(EncodeControlLog(entry));
+    CHECK(log.at("level") == "error");
+    CHECK(log.at("source") == "build");
+    CHECK(log.at("text") == entry.text);
+    CHECK(EncodeControlLog(entry).find('\n') == std::string::npos); // One reply per line
+
+    const auto announcement = DecodeControlAnnouncement(EncodeControlAnnouncement({R"(\\.\pipe\x)", 42}));
+    CHECK(announcement.pipe == R"(\\.\pipe\x)");
+    CHECK(announcement.processId == 42);
+}
+
+TEST_CASE("Editor.Protocol.OpenStateRoundTripsAndRejectsInvalidSpeed", "[engine-editor]") {
+    const PreviewOpenState state{"drawing.circle", {{"radius", 24.0}}, true, 2.0};
+    const auto decoded = DecodePreviewOpen(EncodePreviewOpen(state));
+    CHECK(decoded.id == state.id);
+    CHECK(decoded.parameters == state.parameters);
+    CHECK(decoded.paused);
+    CHECK(decoded.speed == 2.0);
+    auto invalid = EncodePreviewOpen(state);
+    invalid["speed"] = PreviewMaxPlaybackSpeed * 2;
+    CHECK_THROWS(DecodePreviewOpen(invalid));
 }
 
 #ifdef _WIN32
