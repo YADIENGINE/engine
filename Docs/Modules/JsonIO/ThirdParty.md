@@ -4,13 +4,14 @@ All third-party code below is private to JsonIO; no type or header is exposed
 through `JsonIO.hpp` or the `EngineJsonIO` CMake target.
 
 This is the developer note. The notice text shipped with games lives in
-[`ReleaseSystem/`](../../../ReleaseSystem/Notices.json); see [Release](../../Release.md).
+[`ThirdParty/`](../../../ThirdParty/README.md); see [Release](../../Release.md).
 
 - **nlohmann/json 3.12.0** ([release](https://github.com/nlohmann/json/releases/tag/v3.12.0)),
-  MIT license, fetched by CMake. Its types are confined to `Internals/JsonCodec` and `Internals/JsonSax`.
-- **Monocypher 4.0.3**, vendored unmodified in `Engine/Modules/JsonIO/Internals/Monocypher/` with its
-  shipped [license](../../../Modules/JsonIO/Internals/Monocypher/LICENCE.md) and
-  [README](../../../Modules/JsonIO/Internals/Monocypher/README.md). Built as the separate C99 `Monocypher` target and
+  MIT license, vendored unmodified in `Engine/ThirdParty/nlohmann_json/`. Its types are confined to
+  `Internals/JsonCodec` and `Internals/JsonSax`.
+- **Monocypher 4.0.3**, vendored unmodified in `Engine/ThirdParty/Monocypher/` with its
+  shipped [license](../../../ThirdParty/Monocypher/LICENCE.md) and
+  [README](../../../ThirdParty/Monocypher/README.md). Built as the separate C99 `Monocypher` target and
   used only by `Internals/CryptoCodec`.
 - **sdefl** (Small Deflate by Micha Mettke), `Internals/sdefl.h`, copied without
   modifications from [raylib 5.5](https://github.com/raysan5/raylib/blob/5.5/src/external/sdefl.h).

@@ -16,7 +16,7 @@ görür ve kaba hataları (bozuk, taşmış, görünmüyor, yanlış zamanlama) 
 "son hali beğendim mi" kararına iner.
 
 ```sh
-yde render MyPreview --param glowRadius=18 --time 1.5 --out shot.png
+<engine> render MyPreview --param glowRadius=18 --time 1.5 --out shot.png
 ```
 
 | Komut | Ne yapar | Ajan ne kazanır |

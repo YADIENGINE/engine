@@ -42,8 +42,8 @@ ModuleName/
 - `ModuleName.cpp` implements the main class.
 - Documentation lives outside the module's source tree in the engine's `Docs/Modules/ModuleName/`.
   Keep supported API in `README.md`, planned work in `Roadmap.md`, and additional
-  format/reference guides beside them. Third-party source licenses remain with vendored code;
-  third-party code that ends up in a game is also listed in `ReleaseSystem/Notices.json` ([Release](../Release.md)).
+  format/reference guides beside them. Third-party sources live unmodified in the engine's `ThirdParty/` with their
+  licenses; code that ends up in a game is also listed in `ThirdParty/Notices.json` ([ThirdParty](../../ThirdParty/README.md)).
 - `Tests/` holds the module's Catch2 tests. Its `CMakeLists.txt` is one
   `engine_tests(Engine<ModuleName>Tests SOURCES ... LINKS Engine<ModuleName> ...)` call,
   discovered automatically when tests are enabled; it is never part of a production target.

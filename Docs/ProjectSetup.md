@@ -1,11 +1,11 @@
 # Proje kurulumu
 
-Engine ayrı bir git reposudur (YDArcadeEngine) ve her oyun onu kökünde `Engine/` adıyla submodule olarak alır.
+Engine ayrı bir git reposudur ve her oyun onu kökünde `Engine/` adıyla submodule olarak alır.
 Oyunun kodu, editör önizlemeleri ve belgeleri oyunun reposunda kalır; Engine reposu hiçbir oyunu görmez.
 
 ```text
 MyProject/                  (oyunun reposu)
-  Engine/                   ← submodule: YDArcadeEngine
+  Engine/                   ← submodule: engine reposu
     EngineSetup.py  Docs/  Tools/  ...
   Game/                     oyun kaynakları + Assets/ (.cpp'ler kendiliğinden bulunur) + Distribution/ (oyuncuya
                             giden bildirim metinleri: GameNotices.txt, credits; bkz. Release.md)
@@ -20,7 +20,8 @@ Include kökü `Engine/` klasörüdür (`#include "Runtime/Game.h"`); oyun kendi
 ## Yeni proje
 
 Gerekenler: Windows'ta VS 2022 Build Tools (C++ workload + "C++ CMake tools", Ninja onunla gelir), CMake 3.24+,
-Python 3.10+. İlk configure raylib, JSON ve test bağımlılıklarını `FetchContent` ile indirir.
+Python 3.10+. Bağımlılıklar (raylib, JSON, editör ve test kütüphaneleri) engine'in `ThirdParty/` klasöründe gelir;
+derleme internet istemez.
 
 Proje klasörüne sadece Engine'i koyun; klasörün adı tam olarak `Engine` olmalı (GitHub zip'i `<repo>-main` adıyla
 açılır, yeniden adlandırın). Sonra Engine'in içinde kurulumu çalıştırın:

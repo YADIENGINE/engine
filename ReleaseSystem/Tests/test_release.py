@@ -1,10 +1,9 @@
-"""release.py checks on temporary folders; no compiler required.
+"""release.py checks on temporary folders; no compiler required. Notice checks: ThirdParty/Tests.
 
 Run from the Engine root: python -m unittest discover -s ReleaseSystem/Tests
 """
 
 import json
-import shutil
 import sys
 import tempfile
 import unittest
@@ -15,53 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # ReleaseSystem
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "Tools"))  # project_config
 
 from project_config import Project  # noqa: E402
-from release import ENGINE, NOTICES_FILE, SYSTEM, check_components, load_components, package  # noqa: E402
-
-
-def copy_notices_engine(destination: Path) -> Path:
-    """Notices.json, bileşen metinleri ve pin dosyalarının kopyası: denetimi gerçek Engine'e dokunmadan bozmak için."""
-    manifest = load_components()
-    files = {SYSTEM / "Notices.json"}
-    for component in manifest["components"]:
-        files.add(SYSTEM / component["text"])
-        files.add(Path(component["pin"]["file"]))
-    for relative in files:
-        (destination / relative).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ENGINE / relative, destination / relative)
-    return destination
-
-
-class NoticeCheckTests(unittest.TestCase):
-    def setUp(self):
-        self._directory = tempfile.TemporaryDirectory(prefix="Release-")
-        self.temp = Path(self._directory.name)
-
-    def tearDown(self):
-        self._directory.cleanup()
-
-    def test_engine_notices_match_pinned_dependencies(self):
-        self.assertEqual(check_components(load_components()), [])
-
-    def test_changed_pin_is_reported(self):
-        engine = copy_notices_engine(self.temp / "Engine")
-        manifest = load_components(engine)
-        component = manifest["components"][0]
-        pin = engine / component["pin"]["file"]
-        pinned = component["pin"]["contains"].format(version=component["version"])
-        pin.write_text(pin.read_text(encoding="utf-8").replace(pinned, "changed"), encoding="utf-8")
-        errors = check_components(manifest, engine)
-        self.assertEqual(len(errors), 1)
-        self.assertIn(component["name"], errors[0])
-
-    def test_downloaded_license_must_appear_in_the_notice(self):
-        manifest = load_components()
-        component = next(c for c in manifest["components"] if "upstreamLicense" in c)
-        upstream = self.temp / "_deps" / component["upstreamLicense"]
-        upstream.parent.mkdir(parents=True)
-        upstream.write_text("A license text that the notice does not contain.", encoding="utf-8")
-        errors = check_components(manifest, deps=self.temp / "_deps")
-        self.assertEqual(len(errors), 1)
-        self.assertIn(component["name"], errors[0])
+from release import NOTICES_FILE, load_components, package  # noqa: E402
 
 
 class PackageTests(unittest.TestCase):
@@ -92,7 +45,7 @@ class PackageTests(unittest.TestCase):
         return Project(self.root)
 
     def test_builds_folder_and_zip_with_both_notice_parts(self):
-        exe = package(self.project(), self.exe, self.root / "build")
+        exe = package(self.project(), self.exe)
         target = self.root / "Release" / "MyGame"
         self.assertEqual(exe, target / "MyGame.exe")
         notices = (target / NOTICES_FILE).read_text(encoding="utf-8")
@@ -107,7 +60,7 @@ class PackageTests(unittest.TestCase):
             self.assertIn(f"MyGame/{NOTICES_FILE}", archive.namelist())
 
     def test_without_game_notices_only_the_engine_part_is_written(self):
-        package(self.project(notices=None), self.exe, self.root / "build")
+        package(self.project(notices=None), self.exe)
         notices = (self.root / "Release" / "MyGame" / NOTICES_FILE).read_text(encoding="utf-8")
         self.assertIn("PART 1: ENGINE", notices)
         self.assertNotIn("PART 2", notices)
@@ -117,7 +70,7 @@ class PackageTests(unittest.TestCase):
         old.parent.mkdir(parents=True)
         old.write_text("old", encoding="utf-8")
         with self.assertRaises(SystemExit):
-            package(self.project(notices="Game/Distribution/Missing.txt"), self.exe, self.root / "build")
+            package(self.project(notices="Game/Distribution/Missing.txt"), self.exe)
         self.assertTrue(old.is_file())
 
     def test_missing_selected_asset_stops_before_touching_the_old_package(self):
@@ -126,13 +79,13 @@ class PackageTests(unittest.TestCase):
         old.write_text("old", encoding="utf-8")
         hooks = "def package_assets(root):\n    return ['Fonts', 'Audio/missing.ogg']\n"
         with self.assertRaises(SystemExit):
-            package(self.project(hooks), self.exe, self.root / "build")
+            package(self.project(hooks), self.exe)
         self.assertTrue(old.is_file())
 
     def test_generated_notice_name_cannot_be_an_extra_file(self):
         (self.root / "Game" / "Distribution" / NOTICES_FILE).write_text("hand written", encoding="utf-8")
         with self.assertRaises(SystemExit):
-            package(self.project(files=[f"Game/Distribution/{NOTICES_FILE}"]), self.exe, self.root / "build")
+            package(self.project(files=[f"Game/Distribution/{NOTICES_FILE}"]), self.exe)
 
 
 if __name__ == "__main__":

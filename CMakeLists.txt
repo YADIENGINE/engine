@@ -21,20 +21,30 @@ function(engine_warnings target)
     endif()
 endfunction()
 
-# Pinned, unmodified Monocypher 4.0.3, private to JsonIO; upstream license is shipped beside the sources.
-add_library(Monocypher STATIC Modules/JsonIO/Internals/Monocypher/monocypher.c)
-target_include_directories(Monocypher PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Modules/JsonIO/Internals/Monocypher")
+# Bağımlılıklar değiştirilmeden engine içinde durur (ThirdParty/README.md); derleme internet istemez.
+set(ENGINE_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty" CACHE INTERNAL "Engine's vendored dependencies")
+
+# Catch2'yi bir kez kurar ve catch_discover_tests'i (Catch.cmake) çağıranın kapsamına açar.
+macro(engine_use_catch2)
+    if(NOT TARGET Catch2::Catch2WithMain)
+        set(CATCH_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+        set(CATCH_INSTALL_DOCS OFF CACHE BOOL "" FORCE)
+        set(CATCH_INSTALL_EXTRAS OFF CACHE BOOL "" FORCE)
+        add_subdirectory("${ENGINE_THIRD_PARTY_DIR}/Catch2" "${CMAKE_BINARY_DIR}/ThirdParty/Catch2" EXCLUDE_FROM_ALL)
+    endif()
+    list(APPEND CMAKE_MODULE_PATH "${ENGINE_THIRD_PARTY_DIR}/Catch2/extras")
+    include(Catch)
+endmacro()
+
+# Monocypher, private to JsonIO.
+add_library(Monocypher STATIC ThirdParty/Monocypher/monocypher.c)
+target_include_directories(Monocypher PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/Monocypher")
 set_target_properties(Monocypher PROPERTIES POSITION_INDEPENDENT_CODE ON C_STANDARD 99)
 
-include(FetchContent)
 set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 set(JSON_Install OFF CACHE BOOL "" FORCE)
 set(JSON_SystemInclude ON CACHE BOOL "" FORCE)
-FetchContent_Declare(nlohmann_json
-    URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-FetchContent_MakeAvailable(nlohmann_json)
+add_subdirectory(ThirdParty/nlohmann_json)
 
 add_library(EngineStorage STATIC
     Platform/Internals/FileStorage.cpp
@@ -138,6 +148,12 @@ add_library(EngineCore STATIC
 target_include_directories(EngineCore PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineCore PUBLIC cxx_std_20)
 set_target_properties(EngineCore PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+# Engine kimliği tek kaynaktan: EngineManifest.json. Ad ve sürüm koda sabit yazılmaz, ENGINE_NAME / ENGINE_VERSION okunur.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/EngineManifest.json")
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/EngineManifest.json" engineManifest)
+string(JSON engineName GET "${engineManifest}" name)
+string(JSON engineVersion GET "${engineManifest}" version)
+target_compile_definitions(EngineCore PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}")
 target_link_libraries(EngineCore PUBLIC EnginePersistence PRIVATE EngineStorage)
 engine_warnings(EngineCore)
 
@@ -195,19 +211,14 @@ endif()
 if(NOT ENGINE_BUILD_RUNTIME)
     return()
 endif()
-include(FetchContent)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(raylib
-    URL https://github.com/raysan5/raylib/archive/refs/tags/5.5.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-function(engine_fetch_raylib)
+function(engine_add_raylib)
     # raylib 5.5 declares a legacy minimum; apply modern compatibility only to that dependency.
     set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
-    FetchContent_MakeAvailable(raylib)
+    add_subdirectory(ThirdParty/raylib)
 endfunction()
-engine_fetch_raylib()
+engine_add_raylib()
 
 add_library(Engine STATIC
     Audio/AudioSystem.cpp

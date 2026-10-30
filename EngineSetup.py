@@ -1,4 +1,4 @@
-"""YDArcadeEngine ile yeni bir oyun projesi kurar.
+"""Engine ile yeni bir oyun projesi kurar.
 
 Kullanım
 --------

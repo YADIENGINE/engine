@@ -5,3 +5,11 @@
 *.wav binary
 *.ogg binary
 *.ttf binary
+*.ico binary
+
+# Bağımlılık kaynakları bayt bayt upstream'deki gibi saklanır (ThirdParty/README.md)
+/ThirdParty/raylib/** -text
+/ThirdParty/nlohmann_json/** -text
+/ThirdParty/imgui/** -text
+/ThirdParty/rlImGui/** -text
+/ThirdParty/Catch2/** -text

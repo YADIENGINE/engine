@@ -59,7 +59,7 @@ class ProjectSetupTests(unittest.TestCase):
         self.assertEqual([path.name for path in self.root.iterdir()], ["Engine"])
 
     def test_engine_folder_must_be_named_engine(self):
-        renamed = self.root / "YDArcadeEngine-main"
+        renamed = self.root / "MyEngine-main"
         self.engine.rename(renamed)
         with self.assertRaises(SystemExit):
             setup_project(renamed, "SpaceGame")

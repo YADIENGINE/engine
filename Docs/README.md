@@ -1,6 +1,7 @@
 # Engine documentation
 
-Bu klasör C++20 / raylib tabanlı engine (YDArcadeEngine) ile oyun geliştirenler içindir. Engine ayrı bir repodur;
+Bu klasör C++20 / raylib tabanlı engine ile oyun geliştirenler içindir. Engine'in adı ve sürümü
+`EngineManifest.json`'dadır; belgeler adı yazmaz. Engine ayrı bir repodur;
 oyunlar onu `Engine/` submodule'ü olarak alır. Kaynak kod reponun kökünde, belgeler `Docs/`, build/editör/test
 araçları ve yeni proje şablonu `Tools/` altındadır; yeni proje `EngineSetup.py` ile kurulur.
 Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları oyunun kendi belgelerinde kalır.

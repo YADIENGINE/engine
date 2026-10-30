@@ -1,7 +1,11 @@
-# YDArcadeEngine (C++20 / raylib 5.5)
+# Engine (C++20 / raylib 5.5)
 
 Oyundan bağımsız, taşınabilir altyapı. Ayrı repodur; oyunlar onu kökünde `Engine/` submodule'ü olarak alır.
 Kullanım belgeleri `Docs/` (giriş `Docs/README.md`, proje kurulumu `Docs/ProjectSetup.md`).
+
+**Engine'in adı sabit yazılmaz.** Ad ve sürümün tek kaynağı `EngineManifest.json`'dur (ad değişebilir). Belgelerde
+"engine" yazılır; komut / exe / klasör adlarında `<engine>` yer tutucusu kullanılır. Kod adı ve sürümü CMake'in
+`EngineCore`'a verdiği `ENGINE_NAME` / `ENGINE_VERSION` tanımlarından, Python araçları manifest'ten okur.
 
 **Bu repo hiçbir oyunu bilmez.** Oyun adı, oyun içeriği, oyun yolu (`Game/...`) ya da oyuna özel kural yazılmaz;
 örnekler `MyProject` / `MyGame` adlarıyla. Bir oyunun içinde çalışırken Engine değişikliği önce burada
@@ -11,8 +15,8 @@ Kullanım belgeleri `Docs/` (giriş `Docs/README.md`, proje kurulumu `Docs/Proje
 Build almak kullanıcıya bırakılır. Testler: tek başına `python Tools/build_cli.py --test [--label X | --filter X]`
 (sonuç `build/tests/reports/<run-id>/results.json`; çıkış kodu 0 başarı, 1 test hatası, 2 altyapı hatası);
 bir oyunun içinden `python p.py --test --label engine` (ya da modül etiketi: `json-io`, `persistence` ...).
-Araçların kendi testleri derleyici istemez: `Tools` içinde `python -m unittest discover -s Tests`; release sistemi
-Engine kökünde `python -m unittest discover -s ReleaseSystem/Tests`.
+Araçların kendi testleri derleyici istemez: `Tools` içinde `python -m unittest discover -s Tests`; Engine kökünde
+release sistemi `python -m unittest discover -s ReleaseSystem/Tests`, lisans bildirimleri `-s ThirdParty/Tests`.
 Test yazma kuralları `Docs/Contributing/Testing.md`; modül kuralları `Docs/Contributing/ModuleRules.md`.
 Include sınırı denetimi derleyicisiz: `python Tools/include_boundaries.py <proje kökü>` (CTest `Engine.IncludeBoundaries`).
 
@@ -29,8 +33,10 @@ Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, 
 Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_add_editor_worker
 Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
 Docs/      Kullanım ve katkı belgeleri
-ReleaseSystem/ Release paketi ve bildirimlerin tamamı (Docs/Release.md): release.py (p.py --release), Notices.json +
-           ThirdParty/*.txt (her oyunun bildirimine giren Engine bağımlılıkları), Tests/; sistemi büyütmek burada
+ReleaseSystem/ Release paketi (Docs/Release.md): release.py (p.py --release), Tests/; sistemi büyütmek burada
+ThirdParty/ Bütün dış bağımlılıkların değiştirilmemiş kaynakları (raylib, nlohmann_json, Monocypher, imgui, rlImGui,
+           Catch2; FetchContent yok) + oyuna girenlerin lisans bildirimi: Notices.json, Notices/*.txt, notices.py, Tests/.
+           Tarif ThirdParty/README.md. Catch2'yi test CMake'i engine_use_catch2() ile alır.
 Tools/     buildenv.py (MSVC ortamı), build_cli.py (p.py), editor_cli.py (editor.py), test_runner.py, project_config.py,
            include_boundaries.py (Internals sınırı),
            ProjectTemplate/ (EngineSetup.py'nin kopyaladığı yeni proje dosyaları; @PROJECT_NAME@,
@@ -56,9 +62,9 @@ EngineSetup.py  Engine'in üst klasörünü yeni proje olarak kurar (adı sorar,
   yerel `camelCase`, private üye `_camelCase`, `constexpr` sabit `PascalCase`. Getter'lar `[[nodiscard]] const`.
   Global isimler raylib ile çakışmaz. Format `.clang-format` (4 boşluk, 120 sütun), satır sonu LF.
 - Python araçları proje köküne ve `Project.json`'a göre çalışır; proje adı/yolu sabit yazılmaz.
-- Oyuna giren bağımlılık (FetchContent, vendor kaynak, kopyalanmış header) eklemek ya da sürümünü değiştirmek
-  `ReleaseSystem/Notices.json` + `ThirdParty/*.txt` güncellemesiyle aynı committe olur (`Docs/Release.md` → Engine
-  bakımı); yoksa her oyunun Release'i durur. Editör/test bağımlılıkları listelenmez.
+- Dış bağımlılık sadece `ThirdParty/`'ye, değiştirilmeden girer; `FetchContent` kullanılmaz. Oyuna giren bağımlılığı
+  eklemek ya da sürümünü değiştirmek `ThirdParty/Notices.json` + `Notices/*.txt` güncellemesiyle aynı committe olur
+  (`ThirdParty/README.md`); yoksa her oyunun Release'i durur. Editör/test bağımlılıkları listelenmez.
 - Public / `Internals/` ayrımı (`Docs/Contributing/ApiBoundaries.md`): özel dosya kendi sisteminin `X/Internals/`'ında,
   kökte `Internals/` yok. Çekirdek `X/Internals/` Engine-private (oyun include etmez); `Modules/X/Internals/` ve
   `Editor/Internals/` sadece sahibine. Public header'ın include ettiği dosya Internals'a taşınmadan önce gizlenir.

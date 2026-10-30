@@ -1,16 +1,4 @@
-include(FetchContent)
-if(NOT TARGET Catch2::Catch2WithMain)
-    set(CATCH_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-    set(CATCH_INSTALL_DOCS OFF CACHE BOOL "" FORCE)
-    set(CATCH_INSTALL_EXTRAS OFF CACHE BOOL "" FORCE)
-    FetchContent_Declare(Catch2
-        URL https://github.com/catchorg/Catch2/archive/refs/tags/v3.16.0.tar.gz
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
-    FetchContent_MakeAvailable(Catch2)
-endif()
-FetchContent_GetProperties(Catch2 SOURCE_DIR editor_catch_dir)
-list(APPEND CMAKE_MODULE_PATH "${editor_catch_dir}/extras")
-include(Catch)
+engine_use_catch2()
 add_executable(EngineEditorTests EditorInfrastructureTests.cpp EditorUiModelTests.cpp ProfilerEditorTests.cpp
     EditorCommandTests.cpp
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Tests/Support/TempDirectory.cpp")

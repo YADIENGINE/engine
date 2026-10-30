@@ -4,6 +4,10 @@ Bu klasör engine'in geleceğine ait mimari planıdır, bugünkü kullanımı an
 `Docs/` altındaki diğer belgelerdedir. Kararlar tartışılarak alınır ve burada kayda geçer; uygulanan karar
 ilgili kullanım belgesine taşınınca buradaki kayıt "uygulandı" olarak işaretlenir.
 
+**Ad:** engine'in adı henüz kesin değildir. Ad ve sürümün tek kaynağı `EngineManifest.json`'dur (şu an
+`YADIEN`, `0.1.0`). Belgelerde ad geçmez: düz metinde "engine", komut / exe / klasör adlarında `<engine>` /
+`<Engine>` yer tutucusu (ör. `<engine> build`, `%LOCALAPPDATA%\<Engine>`).
+
 ## Hedef
 
 Godot gibi tek exe olarak çalışan bir engine: exe açıldığında proje yöneticisidir (yeni proje kurma, var olanı
@@ -68,10 +72,10 @@ Durum: kabul edildi.
 | Engine'i düzenlemek | Yasak: salt okunur, AI için okunacak belge | Serbest; değişiklik engine reposuna push'lanır |
 | Güncelleme | Launcher kopyayı yeni sürümle değiştirir | `submodule update --remote` |
 
-- **Engine manifest'i:** kopya `Engine/` içinde bir manifest taşır: engine sürümü, engine commit'i, dosya özetleri.
-  Launcher bununla projenin sürümünü bilir, güncellemeyi temiz yapar ve salt okunur kuralını denetler (değişmiş
-  dosya varsa açılışta / derlemede uyarır, güncellemede üzerine yazılacak dosyaları gösterir).
-- Salt okunur kuralını şablonun ürettiği ajan belgesi (`CLAUDE.md` / `AGENTS.md`) AI'a da bildirir.
+- **Engine manifest'i:** `EngineManifest.json` (engine reposunda var: ad, sürüm, notlar). Kopyaya alınırken
+  içe aktarma betiği engine commit'ini ve dosya özetlerini ekler (D16). Launcher bununla projenin sürümünü bilir,
+  güncellemeyi temiz yapar ve salt okunur kuralını denetler (değişmiş dosya varsa açılışta / derlemede uyarır,
+  güncellemede üzerine yazılacak dosyaları gösterir).
 - Developer modundaki launcher submodule işlerini otomatikleştirir: yeni projede `git init` + submodule + ilk
   commit; "Engine'i güncelle"; "Engine değişikliklerini gönder" (engine'de commit + push, sonra projede pointer
   commit'i, detached HEAD düzeltmesi).
@@ -90,8 +94,8 @@ ana özelliklerden biri olarak v1'den sonraki ilk büyük iş alanıdır; v1 kar
 Ayrıntı: [Agent API](AgentApi.md). Durum: kabul edildi (ertelendi).
 
 ### D6. CLI: launcher exe aynı zamanda komut satırı aracıdır; editör açıksa derlemenin sahibi editördür
-**Karar:** Launcher exe argümanla çağrılınca pencere açmadan komut çalıştırır (`yde build`, `yde test`,
-`yde run`, `yde release` ...). Düğmeler ve komutlar aynı kodu çağırır; tek bir derleme mantığı vardır.
+**Karar:** Launcher exe argümanla çağrılınca pencere açmadan komut çalıştırır (`<engine> build`, `<engine> test`,
+`<engine> run`, `<engine> release` ...). Düğmeler ve komutlar aynı kodu çağırır; tek bir derleme mantığı vardır.
 - Komut önce projenin editörü açık mı diye bakar. **Açıksa** komutu editöre iletir: editör worker'ı durdurur,
   derler, worker'ı yeniden başlatır, sonucu terminale geri gönderir. **Kapalıysa** komut işi kendisi yapar.
 - Kaydedince otomatik derleyen dosya izleyicisi yoktur; derleme açık tetiktir (editör düğmesi ya da komut).
@@ -128,8 +132,8 @@ mantığı `Engine/Tools`'ta olduğu için (D7) bu kapı açık kalır. Şu an �
 **Bağımlılıklar engine içinde:** raylib, nlohmann_json, ImGui, rlImGui ve Catch2'nin kaynakları `FetchContent`
 ile internetten inmez, engine reposunda durur (ör. `Engine/ThirdParty/`). Derleme internet istemez, D4'teki
 engine kopyası kendi başına eksiksizdir, dış adresler kaybolsa da eski projeler derlenir. Bedeli engine
-reposunun ~20–30 MB büyümesidir. Lisans bildirimleri `ReleaseSystem/` kuralı ile aynı committe güncellenir.
-Durum: kabul edildi.
+reposunun ~20–30 MB büyümesidir. Durum: **uygulandı** (`ThirdParty/`, 24 MB; lisans bildirimi ve denetimi de
+oraya taşındı, ayrıntı `ThirdParty/README.md`).
 
 ### D9. Döngü hızı: hot reload yok, yanına derle sonra değiştir
 **Karar:**
@@ -171,12 +175,12 @@ Durum: kabul edildi (sürükleme ertelendi).
 ### D12. Hata ayıklama: dış debugger'a kolay bağlanma + metin çökme raporu
 **Karar:** Editör adım adım debugger yazmaz; durum inceleme (Inspection, Pause, Step, hız, Profiler) olduğu gibi
 kalır. Üç ek parça v1'e girer, **v1'in en son işleri** olarak:
-- **a) VS Code ayarları şablonda:** yeni proje `.vscode/tasks.json` (`yde build`) ve `launch.json` ("Oyunu
+- **a) VS Code ayarları şablonda:** yeni proje `.vscode/tasks.json` (`<engine> build`) ve `launch.json` ("Oyunu
   debugger ile başlat", "Worker'a bağlan") ile kurulur; F5 elle ayar istemez.
 - **b) "Debugger'ı bekle":** editörde anahtar; açıkken yeni worker başlar ve debugger bağlanana kadar bekler.
   Sebep: D9'da her derleme yeni worker (yeni süreç) açar ve ilk karedeki breakpoint kaçırılır.
 - **c) Metin çökme raporu:** worker / oyun çökünce yığın izi (fonksiyon, dosya, satır) DbgHelp ile yakalanır;
-  Output'a, bir dosyaya ve `yde build` / `yde test` çıktısına yazılır. AI çoğu çökmeyi debugger açmadan okur ve
+  Output'a, bir dosyaya ve `<engine> build` / `<engine> test` çıktısına yazılır. AI çoğu çökmeyi debugger açmadan okur ve
   düzeltir.
 
 **Neden:** Debugger'ı yeniden yazmak yerine var olan araçları bağlamak; çökmenin metin olarak görünmesi AI
@@ -193,17 +197,99 @@ odaklı iş akışının (goal 3) parçası. Durum: kabul edildi (v1 sonu).
   Herkes kendi AI'ından sorumludur; engine AI'a okunabilir kaynak ve belge sunar, ayar dosyası yazmaz.
 - **Git yok:** kullanıcı modunda launcher git'e hiç dokunmaz (init, commit, kutucuk yok); bu kullanıcının işidir.
   Developer modunda git D4'teki gibi.
-- `p.py` / `editor.py` şablondan kalkar; yerlerine `yde` komutu (D6 / D7). `.vscode/` D12 ile (v1 sonu) gelir.
+- `p.py` / `editor.py` şablondan kalkar; yerlerine `<engine>` komutu (D6 / D7). `.vscode/` D12 ile (v1 sonu) gelir.
 
 **Açık ayrıntılar:** engine reposunun kendi `CLAUDE.md`'si engine geliştirme kurallarıdır (engine'de commit,
 push ...); kullanıcı modundaki kopyaya girerse oradaki AI'ı yanıltır. Kopyadan çıkarılmalı. Developer modunda
 şablonun AI dosyası üretip üretmeyeceği. Durum: kabul edildi.
 
-## Açık sorular
+### D15. Launcher
+**Karar (yapı):** Launcher engine'den ayrı bir üründür ve en üst katmandır; engine sürümlerini içinde taşır:
+
+```
+Launcher/
+  Engines/
+    Engine1.0/ ...
+    Engine1.1/ ...
+```
+
+- Launcher derlenirken desteklenen engine sürümleri (genelde 2–3) içine paketlenir. `Engines/` sadece kopyalama
+  içindir: yeni proje kurmak ve kullanıcı modunda engine güncellemek (D4).
+- Oyun launcher'dan çalışmaz; her proje kendi `Engine/` kopyasından derlenir ve çalışır. Launcher güncellense ya da
+  eski bir sürümü artık taşımasa bile eski projeler kendi engine'leriyle açılır (D3 / D7).
+- Launcher ile proje arasındaki sözleşme (`Project.json` biçimi + `Engine/Tools` giriş noktaları) geriye uyumlu
+  kalır; değişirse `Project.json` `"version"` artar ve launcher eski sürümleri de okur.
+
+**Karar (ekranlar ve akış):** ilk ekran sade.
+
+| Ekran | İş |
+| --- | --- |
+| Projeler | Son açılanlar; Aç, Yeni, Var olanı ekle (`Project.json`'lu klasör), Listeden kaldır (diske dokunmaz). Satırda engine sürümü, mod, "Güncelleme var" rozeti |
+| Yeni proje | Ad, konum, engine sürümü (`Engines/`); developer modunda engine dalı / commit'i |
+| Sistem kontrolü | MSVC denetimi ve tek tuşla kurulum (D8); launcher'la gelen araçların doğrulanması; ilk açılışta otomatik |
+| Ayarlar | Mod (kullanıcı / developer), PATH'e ekle, arayüz ölçeği |
+
+- **Aç:** manifest denetimi (D4) → editör derlenmemişse ya da engine değiştiyse derle (ilerleme çubuğu) → editörü
+  başlat, launcher kapanır. Editör menüsünde "Proje listesine dön".
+- Engine güncellemesi her zaman kullanıcı onayıyla yapılır.
+- Launcher editörle aynı ImGui arayüz katmanını ve temayı kullanır; yeni UI sistemi yazılmaz.
+- **Developer modu kapısı:** engine reposuna GitHub erişimi. Submodule için bu izin zaten şarttır; ayrı şifre /
+  anahtar sistemi yok.
+
+**Karar (dağıtım ve kurulum):**
+- **Tek exe dağıtılır** (`<Engine>-<sürüm>.exe`, ~100–150 MB): launcher + gömülü paket (Python, CMake, Ninja,
+  `Engines/`).
+- **İlk çalıştırma kurulumdur:** paketi `%LOCALAPPDATA%\<Engine>\`'e çıkarır (yönetici izni istemez), masaüstüne
+  kısayol koyar (exe kopyası değil: tek exe, güncellemede ayrışmaz), isteğe bağlı `<engine>`'yi PATH'e ekler (varsayılan
+  açık), Windows "Uygulamalar" listesine kaydolur (kaldırma oradan), sonra launcher'ı ve Sistem kontrolünü açar.
+- **Kurulum klasörü:** `<engine>.exe`, `Tools/` (python, cmake, ninja), `Engines/`, `Settings.json` (proje listesi, mod,
+  tercihler). Ayarlar ekranında "Kurulum klasörünü aç".
+- **Projeler** varsayılan `Belgeler\<Engine> Projects\` altına; yeni proje ekranında değiştirilebilir.
+- **Güncelleme:** yeni sürümün exe'si var olan kurulumun üzerine kurar; proje listesi ve ayarlar korunur, `Engines/`
+  yeni sürümün desteklediklerle değişir. Desteği düşen sürümü kullanan projeler etkilenmez (kendi kopyaları var);
+  sadece o sürümle yeni proje kurulamaz. Otomatik güncelleme v1 sonrası.
+- Kod imzalama yok; SmartScreen uyarısı kabul edilir.
+
+Durum: kabul edildi.
+
+### D16. Sürümleme ve launcher reposu
+**Karar:**
+- **Numara `ANA.ARA.YAMA`:** YAMA hata düzeltmesi, ARA geriye uyumlu ekleme, ANA kırıcı değişiklik. Launcher'daki
+  klasörler `Engine<ANA.ARA>` adını taşır ve o serinin son yamasını içerir.
+- **Ayrı repolar:** engine ve launcher ayrı repolarda, ayrı geliştirilir. Bir engine sürümü stabil sayıldığında
+  launcher reposuna kopyalanır (`Engines/Engine<ANA.ARA>/`); launcher reposunda 2–3 sürüm durur. Engine launcher
+  reposunda geliştirilmez, kopyalar orada düzenlenmez. Exe'ler istendiğinde release olarak yayınlanır.
+- **Güncelleme notları engine manifest'indedir** (sürümün yanında); launcher güncellemeden önce gösterir. Ayrıntılı
+  tasarım sonra.
+- Developer modundaki projeler sürüm takip etmez, engine reposunun dalını takip eder.
+
+**Ertelenen:** sözleşmenin (kırıcı sayılan değişikliğin) tanımı; ilk yayının 1.0.0 mı 0.x mi olacağı.
+
+**Öneriler (uygulamada):**
+- **İçe aktarma betiği:** launcher reposunda tek bir betik engine reposundaki bir tag'i kopyalar: tag ve temiz
+  çalışma ağacı denetimi, engine geliştirme dosyalarının ayıklanması (`.git`, engine `CLAUDE.md` ...; D14),
+  manifest'in yazılması (sürüm, kaynak commit, dosya özetleri, notlar). Kopyanın kaynağı her zaman izlenebilir.
+- **Yama akışı:** eski bir seride hata düzeltmesi engine reposunda o sürümün tag'inden açılan bir dalda yapılır,
+  yeni yama tag'lenir ve tekrar içe aktarılır.
+- **Atlanan sürümlerin notları:** 1.1'den 1.3'e geçen kullanıcı 1.2'nin notlarını da görmeli; manifest notları
+  sürüm geçmişini birikimli taşır.
+- **Launcher'ın kendi derlemesi:** launcher UI'ı editörün ImGui katmanını kullandığı için (D15) kendini repodaki en
+  yeni engine kopyasına karşı derler; ayrı bir engine bağımlılığı gerekmez.
+- **Repo boyutu:** git aynı içerikli dosyaları bir kez saklar; sürümler arasında değişmeyen `ThirdParty/` ve
+  dosyalar yer kaplamaz, sadece değişen dosyalar büyütür.
+
+Durum: kabul edildi.
+
+## v1 iş sırası
+
+Kabul edildi: [Plan](Plan.md) (Aşama 0 hazırlık → 1 editör döngüsü → 2 tuning → 3 launcher MVP → 4 dağıtım;
+5 görsel asset'ler ayrı oturumda; 6 debug en son).
 
 ## Açık sorular
 
-Sırayla tartışılacak:
+Şu an açık soru yok. Kapanan ilk liste:
+
+Kapananlar:
 
 1. ~~Exe modeli~~ → [D3](#d3-exe-modeli-launcher--projeden-derlenen-editör).
 2. ~~Engine dağıtımı~~ → [D4](#d4-engine-dağıtımı-kullanıcı-modu-ve-developer-modu).

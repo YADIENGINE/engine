@@ -1,26 +1,26 @@
 {
-  "version": 1,
+  "version": 2,
   "intro": "Components linked into every game built with this engine. raylib's bundled libraries are listed conservatively, including optional file format readers that may not be linked into the executable.",
   "components": [
     {
       "name": "nlohmann/json",
       "version": "3.12.0",
-      "text": "ThirdParty/nlohmann-json.txt",
-      "pin": { "file": "CMakeLists.txt", "contains": "nlohmann/json/releases/download/v{version}/" },
-      "upstreamLicense": "nlohmann_json-src/LICENSE.MIT"
+      "text": "Notices/nlohmann-json.txt",
+      "pin": { "file": "nlohmann_json/CMakeLists.txt", "contains": "project(nlohmann_json VERSION {version} " },
+      "license": "nlohmann_json/LICENSE.MIT"
     },
     {
       "name": "Monocypher",
       "version": "4.0.3",
-      "text": "ThirdParty/monocypher.txt",
-      "pin": { "file": "Modules/JsonIO/Internals/Monocypher/README.md", "contains": "# Monocypher {version}" }
+      "text": "Notices/monocypher.txt",
+      "pin": { "file": "Monocypher/README.md", "contains": "# Monocypher {version}" }
     },
     {
       "name": "raylib",
       "version": "5.5",
-      "text": "ThirdParty/raylib.txt",
-      "pin": { "file": "CMakeLists.txt", "contains": "raysan5/raylib/archive/refs/tags/{version}.tar.gz" },
-      "upstreamLicense": "raylib-src/LICENSE"
+      "text": "Notices/raylib.txt",
+      "pin": { "file": "raylib/src/raylib.h", "contains": "#define RAYLIB_VERSION  \"{version}\"" },
+      "license": "raylib/LICENSE"
     }
   ]
 }

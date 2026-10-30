@@ -90,7 +90,7 @@ No schema, save version, fallback document, backup or recovery policy is applied
 - `Internals/CryptoCodec` adapts Monocypher 4.0.3. Its primitive interface is separate
   from `EncryptedEnvelope`, which owns the existing file format. A backend swap must
   preserve algorithm, nonce/tag sizes and associated-data semantics for compatibility.
-  Monocypher is vendored in `Internals/Monocypher/` as its own C99 CMake target.
+  Monocypher is vendored in the engine's `ThirdParty/Monocypher/` as its own C99 CMake target.
 - `Internals/GzipCodec` adapts the vendored sdefl compressor (`Internals/sdefl.h`).
 - Versions and licenses of all third-party code: [ThirdParty](ThirdParty.md).
 - Engine-private `Platform/Internals/FileStorage`, `StorageError` and `SecureRandom` supply generic

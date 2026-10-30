@@ -19,8 +19,9 @@ INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
 
 
 def _skipped(directory: Path) -> bool:
-    """Gizli klasörler, CMake build ağaçları ve FetchContent kaynakları taranmaz."""
-    return directory.name.startswith(".") or directory.name == "_deps" or (directory / "CMakeCache.txt").exists()
+    """Gizli klasörler, CMake build ağaçları, FetchContent kaynakları ve engine'in ThirdParty/'si taranmaz."""
+    return (directory.name.startswith(".") or directory.name in ("_deps", "ThirdParty")
+            or (directory / "CMakeCache.txt").exists())
 
 
 def _sources(directory: Path):

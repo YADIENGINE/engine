@@ -46,7 +46,7 @@ PreviewDefinition StarterDefinition() {
 
 int main(int argc, char** argv) {
     GameSettings settings;
-    settings.applicationId = "YDArcadeEngineStarterPreview";
+    settings.applicationId = ENGINE_NAME "StarterPreview";
     settings.canvasWidth = CanvasWidth;
     settings.canvasHeight = CanvasHeight;
     settings.persistentOptions = false;

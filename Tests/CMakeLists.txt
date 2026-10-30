@@ -1,18 +1,7 @@
 # Engine tests: one executable for EngineCore plus one per module (Modules/<Name>/Tests).
 # Each executable links only what it tests, so a test that reaches Game or another
-# module fails to build. Catch2 is declared here; consumers call FetchContent_MakeAvailable.
-include(FetchContent)
-set(CATCH_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-set(CATCH_INSTALL_DOCS OFF CACHE BOOL "" FORCE)
-set(CATCH_INSTALL_EXTRAS OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(Catch2
-    URL https://github.com/catchorg/Catch2/archive/refs/tags/v3.16.0.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    TIMEOUT 120
-)
-FetchContent_MakeAvailable(Catch2)
-list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
-include(Catch)
+# module fails to build. Game tests call engine_use_catch2() for the same Catch2.
+engine_use_catch2()
 
 # Game-free helpers shared by Engine, module and game tests.
 add_library(EngineTestSupport STATIC Support/GzipInflate.cpp Support/TempDirectory.cpp)

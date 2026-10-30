@@ -102,14 +102,8 @@ endif()
 
 
 if(ENGINE_BUILD_EDITOR)
-    include(FetchContent)
-    FetchContent_Declare(editor_imgui
-        URL https://github.com/ocornut/imgui/archive/refs/tags/v1.92.7-docking.tar.gz
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
-    FetchContent_Declare(editor_rlimgui
-        URL https://github.com/raylib-extras/rlImGui/archive/118221c8a532501a3c2c236b62950877cbefc2b4.tar.gz
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
-    FetchContent_MakeAvailable(editor_imgui editor_rlimgui)
+    set(editor_imgui_SOURCE_DIR "${ENGINE_THIRD_PARTY_DIR}/imgui")
+    set(editor_rlimgui_SOURCE_DIR "${ENGINE_THIRD_PARTY_DIR}/rlImGui")
     add_library(EngineEditorImGui STATIC
         "${editor_imgui_SOURCE_DIR}/imgui.cpp" "${editor_imgui_SOURCE_DIR}/imgui_draw.cpp"
         "${editor_imgui_SOURCE_DIR}/imgui_tables.cpp" "${editor_imgui_SOURCE_DIR}/imgui_widgets.cpp"

@@ -13,8 +13,8 @@ constexpr int LineGap = 64;
 
 GameSettings Settings() {
     GameSettings settings;
-    settings.applicationId = "YDArcadeEngineStarter";
-    settings.window.title = "YDArcadeEngine starter";
+    settings.applicationId = ENGINE_NAME "Starter";
+    settings.window.title = ENGINE_NAME " starter";
     settings.canvasWidth = CanvasWidth;
     settings.canvasHeight = CanvasHeight;
     settings.persistentOptions = false;

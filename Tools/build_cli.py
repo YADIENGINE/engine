@@ -92,7 +92,7 @@ def main(root: Path) -> None:
     target = game.get("target", project.name)
     exe = build_dir / config / (target + (".exe" if sys.platform == "win32" else ""))
     if args.release:
-        exe = package(project, exe, build_dir)
+        exe = package(project, exe)
 
     if args.build:
         return

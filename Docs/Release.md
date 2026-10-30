@@ -36,9 +36,9 @@ Release/                     (git'e girmez; şablonun .gitignore'unda)
 
 ## Bildirim iki parçadır
 
-**Part 1: Engine** otomatik eklenir, oyun hiçbir şey yazmaz. Kaynağı `Engine/ReleaseSystem/`:
-`Notices.json` bileşen listesi (ad, sürüm, metin dosyası, Engine'deki sürüm pin'i) ve `ThirdParty/*.txt` lisans
-metinleri. Engine ile derlenen her oyuna giren kütüphaneler buradadır (raylib ve içinde gelenler, JSON, şifreleme).
+**Part 1: Engine** otomatik eklenir, oyun hiçbir şey yazmaz. Kaynağı `Engine/ThirdParty/`:
+`Notices.json` bileşen listesi (ad, sürüm, metin dosyası, kaynaktaki sürüm pin'i, lisans dosyası) ve
+`Notices/*.txt` lisans metinleri; üreten kod `ThirdParty/notices.py`. Engine ile derlenen her oyuna giren kütüphaneler buradadır (raylib ve içinde gelenler, JSON, şifreleme).
 Sadece editörde ya da testte kullanılan bağımlılıklar (ImGui, Catch2) oyuna girmediği için listelenmez.
 
 **Part 2: oyun** projenin `release.notices` dosyasıdır ve aynen eklenir. Oyunun kendi getirdiği her üçüncü taraf
@@ -100,36 +100,33 @@ Paketleme bir şey bulursa mevcut `Release/<name>/` klasörünü silmeden durur 
 
 - `release.notices` ya da `release.files` dosyası, ya da `package_assets`'in seçtiği bir asset derlenmiş
   `Assets/`'te yok (yeni asset eklendi ama Release derlenmedi).
-- Engine bileşeninin `Notices.json`'daki sürümü Engine'deki pin'de yok (bağımlılık yükseltilmiş, bildirim
+- Engine bileşeninin `Notices.json`'daki sürümü kaynağındaki pin'de yok (bağımlılık yükseltilmiş, bildirim
   güncellenmemiş) ya da metin dosyasının ilk satırı o sürümü anmıyor.
-- `build/_deps` varsa: kayıtlı metin indirilen kaynağın ana lisans dosyasını aynen içermiyor.
+- Kayıtlı metin bileşenin `ThirdParty/` içindeki ana lisans dosyasını aynen içermiyor.
 
-Engine'in kendi denetimi derleyici istemez: Engine kökünde `python -m unittest discover -s ReleaseSystem/Tests`
-(`test_release.py` gerçek pin'leri okur).
+Engine'in kendi denetimleri derleyici istemez, Engine kökünde: `python -m unittest discover -s ThirdParty/Tests`
+(gerçek pin'leri ve lisansları okur) ve `python -m unittest discover -s ReleaseSystem/Tests` (paketleme).
 
-## Engine'de nerede: `ReleaseSystem/`
+## Engine'de nerede
 
-Release'le ilgili her şey tek klasördedir; sistem büyüyecekse (imza, sürüm damgası, mağaza depot'u, başka platform
-paketi) iş burada yapılır, `Tools/` sadece komut satırını bağlar.
+Paketleme `ReleaseSystem/`'dedir; sistem büyüyecekse (imza, sürüm damgası, mağaza depot'u, başka platform paketi)
+iş burada yapılır, `Tools/` sadece komut satırını bağlar. Bağımlılıklar ve bildirimleri `ThirdParty/`'dedir
+([ThirdParty/README.md](../ThirdParty/README.md)).
 
 ```text
 Engine/ReleaseSystem/
   release.py        package(): denetim → paket klasörü → ThirdPartyNotices.txt → ZIP
-  Notices.json      Part 1 bileşen listesi: ad, sürüm, metin, sürüm pin'i, indirilen lisans dosyası
-  ThirdParty/*.txt  bileşen başına lisans metinleri
   Tests/            Python unittest (derleyici istemez)
+Engine/ThirdParty/
+  <bileşen>/        değiştirilmemiş kaynaklar
+  Notices.json      Part 1 bileşen listesi: ad, sürüm, metin, sürüm pin'i, lisans dosyası
+  Notices/*.txt     bileşen başına lisans metinleri
+  notices.py        denetim + Part 1 metni
+  Tests/            Python unittest
 ```
 
 ## Engine bakımı: bağımlılık eklemek ya da yükseltmek
 
-Oyuna giren bir Engine bağımlılığı (`FetchContent`, vendor kaynak, kopyalanmış header) eklendiğinde ya da sürümü
-değiştiğinde:
-
-1. `ReleaseSystem/ThirdParty/<bileşen>.txt`: ilk satır `<ad> <sürüm> (<lisans>)`, sonra `Source:`, telif satırları ve
-   lisans metni; bileşenin içinde gelen alt kütüphaneler aynı dosyada kendi başlıklarıyla.
-2. `ReleaseSystem/Notices.json`: `name`, `version`, `text`, `pin` (`file` Engine'e göre yol, `contains`'te `{version}`
-   sürümle değişir) ve FetchContent ile geliyorsa `upstreamLicense` (`_deps`'e göre yol).
-3. Modülün kendi `ThirdParty.md` geliştirici notu varsa onu da güncelle.
-4. Engine kökünde `python -m unittest discover -s ReleaseSystem/Tests`.
-
-Editör ya da test bağımlılığı oyuna girmez; `Notices.json`'a yazılmaz.
+Tarif `ThirdParty/README.md`'dedir. Oyuna giren bir bağımlılık eklendiğinde ya da sürümü değiştiğinde aynı committe
+`Notices/<bileşen>.txt` ve `Notices.json` güncellenir. Editör ya da test bağımlılığı oyuna girmez; `Notices.json`'a
+yazılmaz.
