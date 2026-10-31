@@ -2,8 +2,8 @@
 #include <span>
 #include <vector>
 #include "Graphics/Gpu/Internals/GpuDevice.h"
-#include "Graphics/Post/PostSettings.hpp"
-#include "Graphics/Post/RenderQuality.hpp"
+#include "Graphics/Post/PostSettings.h"
+#include "Graphics/Post/RenderQuality.h"
 
 // Full-screen finish of the canvas: bloom from its emission attachment (a down / up sampling chain), then one compose
 // pass (colour + bloom, vignette, scanlines, chromatic aberration) into the image that is presented.

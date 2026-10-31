@@ -4,10 +4,10 @@
 #include <span>
 #include <string_view>
 #include <utility>
-#include "Graphics/Paint/PaintStyle.hpp"
-#include "Graphics/Post/PostSettings.hpp"
-#include "Graphics/Post/RenderQuality.hpp"
-#include "Graphics/Surface/TextureRef.hpp"
+#include "Graphics/Paint/PaintStyle.h"
+#include "Graphics/Post/PostSettings.h"
+#include "Graphics/Post/RenderQuality.h"
+#include "Graphics/Surface/TextureRef.h"
 #include "Utilities/Affine2.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"

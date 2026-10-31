@@ -1,7 +1,7 @@
 # Audio
 
 The engine owns the audio device and resources; the game decides what plays and when. The single public entry point is
-[AudioSystem.hpp](../Core/Audio/AudioSystem.hpp): the service, IDs, catalog, and settings are in this header. The header
+[AudioSystem.h](../Core/Audio/AudioSystem.h): the service, IDs, catalog, and settings are in this header. The header
 includes neither raylib nor the loading thread. `Audio/Internals/` is not supported API; games and editors use only the
 public header. Audio is an engine runtime service, not a separate opt-in module.
 
@@ -9,7 +9,7 @@ public header. Audio is an engine runtime service, not a separate opt-in module.
 
 ```cpp
 #include "Runtime/GameSettings.h"
-#include "Audio/AudioSystem.hpp"
+#include "Audio/AudioSystem.h"
 
 namespace {
 constexpr SoundId Click{0};

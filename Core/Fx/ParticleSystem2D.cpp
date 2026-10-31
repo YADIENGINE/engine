@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 namespace {
 bool ValidRange(FloatRange range) {

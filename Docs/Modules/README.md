@@ -1,6 +1,6 @@
 # Modules
 
-The game links the target it needs and uses only the module's public `<Module>.hpp` header. Core uses Persistence/JsonIO
+The game links the target it needs and uses only the module's public `<Module>.h` header. Core uses Persistence/JsonIO
 for player options; other modules are the game's choice.
 
 | Module / CMake target | Usage |

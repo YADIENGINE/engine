@@ -6,10 +6,10 @@ Input is engine runtime infrastructure. Supported public headers:
 
 | Header | Contract |
 | --- | --- |
-| `Input/Input.hpp` | `DeviceInput`, `InputKey`, `InputTouch`; raylib-free snapshot |
-| `Input/InputNavigation.hpp` | `InputNavigation` reading a snapshot by reference |
-| `Input/DragPointer.hpp` | Free dragging and tap on release |
-| `Input/CollectionPointer.hpp` | Collection tap, hover, and row scrolling |
+| `Input/Input.h` | `DeviceInput`, `InputKey`, `InputTouch`; raylib-free snapshot |
+| `Input/InputNavigation.h` | `InputNavigation` reading a snapshot by reference |
+| `Input/DragPointer.h` | Free dragging and tap on release |
+| `Input/CollectionPointer.h` | Collection tap, hover, and row scrolling |
 
 Games and project editor code use only these headers. `Input/Internals/` is not supported API. Device reading, window
 coordinates, normalization, and the shared contact tracker stay there. Gesture classes own their state and cannot be
@@ -75,7 +75,7 @@ header cursor to its first item without moving focus. Every header row must have
 
 
 
-`Input/DragPointer.hpp` provides `DragPointer(threshold)` for free dragging. The `Update(input)` result contains
+`Input/DragPointer.h` provides `DragPointer(threshold)` for free dragging. The `Update(input)` result contains
 `pressed`, `position`, `origin`, `released`, `hover`, `dragging`, `tap`, and `cancelled`. Positions use canvas
 coordinates. Returning to the origin after crossing the threshold does not turn the movement into a tap; the primary
 touch ID is not transferred to other fingers. Synthetic mouse events from touch are suppressed. For local cancellation,

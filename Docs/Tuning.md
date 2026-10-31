@@ -74,7 +74,7 @@ global). The game target in a project created by `python Engine new` already cal
 
 ```cpp
 #include "Effects/Glow.tuning.h"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 void GlowView::Draw(Painter& paint) const {
     const auto& tuning = Tuning<GlowTuning>();

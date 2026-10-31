@@ -4,7 +4,7 @@
 #include <stop_token>
 #include <thread>
 #include <unordered_map>
-#include "Audio/AudioSystem.hpp"
+#include "Audio/AudioSystem.h"
 #include "Audio/Internals/AudioDevice.h"
 #include "Audio/Internals/AudioMusicStream.h"
 #include "Audio/Internals/AudioVolumePolicy.h"

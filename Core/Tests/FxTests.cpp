@@ -7,7 +7,7 @@
 #include "Fx/FxStage.h"
 #include "Fx/IrisTransition.h"
 #include "Fx/ParticleSystem2D.h"
-#include "Graphics/Text/FontFace.hpp"
+#include "Graphics/Text/FontFace.h"
 #include "Tests/PaintHarness.h"
 
 using Catch::Approx;

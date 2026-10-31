@@ -28,7 +28,7 @@ Each module must have its own directory, named after the module:
 ```text
 ModuleName/
     Internals/
-    ModuleName.hpp
+    ModuleName.h
     ModuleName.cpp
     Tests/
         CMakeLists.txt
@@ -38,7 +38,7 @@ ModuleName/
 - `Internals/` contains private implementation files that consumers must not use directly.
 - `Docs/Modules/ModuleName/README.md` starts with a short module summary,
   followed by public API documentation, notes and examples.
-- `ModuleName.hpp` declares the module's main class and its public API.
+- `ModuleName.h` declares the module's main class and its public API.
 - `ModuleName.cpp` implements the main class.
 - Documentation lives outside the module's source tree in the engine's `Docs/Modules/ModuleName/`.
   Keep supported API in `README.md`, planned work in `Roadmap.md`, and additional
@@ -61,7 +61,7 @@ Docs/Modules/ModuleName/
 
 ## 2. One public entry point
 
-All supported API operations must be declared in `ModuleName.hpp`. The main
+All supported API operations must be declared in `ModuleName.h`. The main
 class's `public` members are the supported interface; its `private` members are
 implementation details that consumers do not need to know or access.
 
@@ -101,7 +101,7 @@ state.
 
 ## 6. A minimal, self-contained public header
 
-`ModuleName.hpp` must be usable without requiring consumers to include other
+`ModuleName.h` must be usable without requiring consumers to include other
 headers first. Keep implementation-only includes in `.cpp` files or `Internals/`
 and prefer forward declarations where practical. Internal types must not become
 part of the public contract.

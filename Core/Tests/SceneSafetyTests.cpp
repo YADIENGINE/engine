@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "Input/Input.hpp"
+#include "Input/Input.h"
 #include "Scene/Scene.h"
 #include "Tests/PaintHarness.h"
 

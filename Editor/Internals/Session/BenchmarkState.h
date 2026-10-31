@@ -1,6 +1,6 @@
 #pragma once
 #include <optional>
-#include "Modules/Profiler/Profiler.hpp"
+#include "Modules/Profiler/Profiler.h"
 #include "Runtime/FrameExecutionSettings.h"
 
 enum class BenchmarkPhase { Idle, Preparing, Warmup, Measuring, CollectingGpu, Completed, Cancelled };

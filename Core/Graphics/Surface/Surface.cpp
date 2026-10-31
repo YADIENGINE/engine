@@ -1,4 +1,4 @@
-#include "Graphics/Surface/Surface.hpp"
+#include "Graphics/Surface/Surface.h"
 #include <stdexcept>
 #include "Graphics/Surface/Internals/SurfaceState.h"
 #include "Graphics/Surface/Internals/TextureRefAccess.h"

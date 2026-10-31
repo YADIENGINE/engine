@@ -9,7 +9,7 @@
 #include <vector>
 #include "Graphics/Gpu/Internals/GpuTypes.h"
 #include "Graphics/Gpu/Internals/PaintVertex.h"
-#include "Graphics/Paint/PaintStyle.hpp"
+#include "Graphics/Paint/PaintStyle.h"
 #include "Utilities/Affine2.h"
 #include "Utilities/Color4.h"
 #include "Utilities/FloatRect.h"

@@ -1,4 +1,4 @@
-#include "Input/CollectionPointer.hpp"
+#include "Input/CollectionPointer.h"
 #include <algorithm>
 #include <cstdlib>
 #include "Input/Internals/PrimaryContact.h"

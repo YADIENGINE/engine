@@ -1,4 +1,4 @@
-#include "Modules/Version/Version.hpp"
+#include "Modules/Version/Version.h"
 #include <algorithm>
 #include <cstdint>
 #include <limits>

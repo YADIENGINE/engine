@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
 #include "Tests/Support/TempDirectory.h"
-#include "Modules/Persistence/Persistence.hpp"
+#include "Modules/Persistence/Persistence.h"
 
 TEST_CASE("Persistence.Values.GenericRoundTripCopiesNullAndLiteralKeys", "[persistence]") {
     TempDirectory temp;

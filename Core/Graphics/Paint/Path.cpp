@@ -1,4 +1,4 @@
-#include "Graphics/Paint/Path.hpp"
+#include "Graphics/Paint/Path.h"
 #include <algorithm>
 #include <cmath>
 #include "Utilities/MathUtils.h"

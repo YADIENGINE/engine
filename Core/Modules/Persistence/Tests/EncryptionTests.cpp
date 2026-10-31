@@ -2,7 +2,7 @@
 #include <functional>
 #include <limits>
 #include "Tests/Support/TempDirectory.h"
-#include "Modules/Persistence/Persistence.hpp"
+#include "Modules/Persistence/Persistence.h"
 #include "Platform/Internals/FileStorage.h"
 #ifndef _WIN32
 #include <sys/stat.h>

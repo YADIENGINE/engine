@@ -1,6 +1,6 @@
 #pragma once
 #include <optional>
-#include "Input/Input.hpp"
+#include "Input/Input.h"
 
 struct InputContactFrame {
     std::optional<Vec2> pressed;

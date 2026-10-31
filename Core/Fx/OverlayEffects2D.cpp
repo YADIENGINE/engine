@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <utility>
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 namespace {
 void ValidateTiming(float duration, float fade) {

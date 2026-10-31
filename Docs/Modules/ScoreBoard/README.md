@@ -5,7 +5,7 @@ Source/API include root: `Engine/Core/Modules/ScoreBoard/`. Documentation and pl
 
 One game-independent, locally persisted score history per board. The module owns
 validation dispatch, recording, ranking and storage. Include only
-`Modules/ScoreBoard/ScoreBoard.hpp`; link `EngineScoreBoard`. No runtime, raylib or
+`Modules/ScoreBoard/ScoreBoard.h`; link `EngineScoreBoard`. No runtime, raylib or
 Game dependency is required.
 
 ## Public API
@@ -48,7 +48,7 @@ after reopening. Wall-clock changes do not affect ranking. Queries return owned
 snapshots and do not perform IO or invoke the validator.
 
 ```cpp
-#include "Modules/ScoreBoard/ScoreBoard.hpp"
+#include "Modules/ScoreBoard/ScoreBoard.h"
 
 class ExampleBoard final : public ScoreBoard {
 public:

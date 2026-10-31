@@ -1,6 +1,6 @@
 #pragma once
 #include <string_view>
-#include "Graphics/Text/TextStyle.hpp"
+#include "Graphics/Text/TextStyle.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
 

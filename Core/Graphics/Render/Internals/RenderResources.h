@@ -5,7 +5,7 @@
 #include "Graphics/Gpu/Internals/GpuDevice.h"
 #include "Graphics/Paint/Internals/DrawList.h"
 #include "Graphics/Surface/Internals/SurfaceState.h"
-#include "Graphics/Surface/TextureRef.hpp"
+#include "Graphics/Surface/TextureRef.h"
 
 class Surface;
 

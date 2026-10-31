@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 #include "Utilities/MathUtils.h"
 
 GlitchEffects2D::GlitchEffects2D(const GlitchStyle& style)

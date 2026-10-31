@@ -7,7 +7,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Modules/Persistence/Persistence.hpp"
+#include "Modules/Persistence/Persistence.h"
 
 // One locally persisted board. Derive only to supply the game's validation policy.
 class ScoreBoard {

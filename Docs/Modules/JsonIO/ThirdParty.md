@@ -1,7 +1,7 @@
 # Third-party code
 
 All third-party code below is private to JsonIO; no type or header is exposed
-through `JsonIO.hpp` or the `EngineJsonIO` CMake target.
+through `JsonIO.h` or the `EngineJsonIO` CMake target.
 
 This is the developer note. The notice text shipped with games lives in
 [`ThirdParty/`](../../../ThirdParty/README.md); see [Release](../../Release.md).

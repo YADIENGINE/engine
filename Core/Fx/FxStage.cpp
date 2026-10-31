@@ -2,8 +2,8 @@
 #include <algorithm>
 #include <cmath>
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Draw/BackgroundDraw.hpp"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Draw/BackgroundDraw.h"
+#include "Graphics/Paint/Painter.h"
 
 FxStage::FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle& style)
     : _area(area)

@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include "Tests/Support/TempDirectory.h"
-#include "Modules/Persistence/Persistence.hpp"
+#include "Modules/Persistence/Persistence.h"
 
 namespace {
 void WriteFile(const std::filesystem::path& path, const std::string& text) {

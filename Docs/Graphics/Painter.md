@@ -10,7 +10,7 @@ Each `GameObject` draws in `Draw(Painter& paint) const`; `Scene::Render`, `Game:
 call.
 
 ```cpp
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 void ScoreView::Draw(Painter& paint) const {
     paint.RoundRect(_panel, 8.0f, {.fill = Rgb(0x141826), .stroke = {2.0f, Rgb(0x30e0ff)}});
@@ -144,12 +144,12 @@ draw text with the game's font:
 
 | Header | Contents |
 | --- | --- |
-| `Graphics/Draw/DrawUtils.hpp` | `DrawStar`, `DrawEgg`, `DrawDiamond`, `DrawRegularPolygon`, `DrawRotatedRect`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
-| `Graphics/Draw/Neon.hpp` | Explicit-style neon widgets and styles: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
-| `Graphics/Ui/UiDraw.hpp` | Themed widgets (`CurrentTheme().ui`): `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`, `DrawUiButton(Body)`, `DrawUiRoundButton`, `DrawUiKeyCap`, `DrawUiProgressBar` |
-| `Graphics/Draw/BackgroundDraw.hpp` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `DrawBackdrop*` with `BackdropStyle` |
-| `Graphics/Ui/Backdrop.hpp` | Theme background roles: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
-| `Graphics/Icons/Icons.hpp` | Shared icon set: `DrawIcon(paint, Icon::Star, center, size, {.color = gold})` |
+| `Graphics/Draw/DrawUtils.h` | `DrawStar`, `DrawEgg`, `DrawDiamond`, `DrawRegularPolygon`, `DrawRotatedRect`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
+| `Graphics/Draw/Neon.h` | Explicit-style neon widgets and styles: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
+| `Graphics/Ui/UiDraw.h` | Themed widgets (`CurrentTheme().ui`): `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`, `DrawUiButton(Body)`, `DrawUiRoundButton`, `DrawUiKeyCap`, `DrawUiProgressBar` |
+| `Graphics/Draw/BackgroundDraw.h` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `DrawBackdrop*` with `BackdropStyle` |
+| `Graphics/Ui/Backdrop.h` | Theme background roles: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
+| `Graphics/Icons/Icons.h` | Shared icon set: `DrawIcon(paint, Icon::Star, center, size, {.color = gold})` |
 | `Fx/*` | Effects (particles, floating text, rings, shockwaves, overlays, cameras, `FxStage`): [Effects](Effects.md) |
 
 The camera is `Utilities/CameraView.h` (`offset`, `target`, `rotation` in radians, `zoom`; `Transform()`, `ToScreen`,

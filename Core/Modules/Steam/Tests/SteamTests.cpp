@@ -3,7 +3,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
-#include "Modules/Steam/Steam.hpp"
+#include "Modules/Steam/Steam.h"
 
 namespace {
 std::optional<std::string> GetVariable(const char* name) {

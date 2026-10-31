@@ -1,12 +1,12 @@
-#include "Graphics/Icons/Icons.hpp"
+#include "Graphics/Icons/Icons.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <span>
 #include <utility>
-#include "Graphics/Draw/DrawUtils.hpp"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Draw/DrawUtils.h"
+#include "Graphics/Paint/Painter.h"
 #include "Utilities/FloatRect.h"
 #include "Utilities/MathUtils.h"
 

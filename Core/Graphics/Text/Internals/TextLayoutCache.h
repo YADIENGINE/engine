@@ -3,7 +3,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include "Graphics/Text/FontFace.hpp"
+#include "Graphics/Text/FontFace.h"
 
 // Layouts of strings drawn with Painter::Text, so a label drawn every frame is shaped once. Entries not drawn for a
 // while are dropped (EndFrame).

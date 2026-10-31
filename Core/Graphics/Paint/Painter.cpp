@@ -1,16 +1,16 @@
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <stdexcept>
 #include "Graphics/Paint/Internals/PaintContext.h"
 #include "Graphics/Paint/Internals/PaintShared.h"
-#include "Graphics/Paint/Path.hpp"
+#include "Graphics/Paint/Path.h"
 #include "Graphics/Render/Internals/FrameExecutor.h"
 #include "Graphics/Render/Internals/RenderResources.h"
 #include "Graphics/Surface/Internals/SurfaceState.h"
 #include "Graphics/Surface/Internals/TextureRefAccess.h"
-#include "Graphics/Surface/Surface.hpp"
+#include "Graphics/Surface/Surface.h"
 #include "Utilities/MathUtils.h"
 
 namespace {

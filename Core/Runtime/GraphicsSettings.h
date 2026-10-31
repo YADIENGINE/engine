@@ -1,6 +1,6 @@
 #pragma once
 #include "Fx/FxQuality.h"
-#include "Graphics/Post/RenderQuality.hpp"
+#include "Graphics/Post/RenderQuality.h"
 
 // The player's graphics choices; Game applies them and writes them to the options file.
 struct GraphicsSettings {

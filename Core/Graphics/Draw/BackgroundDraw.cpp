@@ -1,7 +1,7 @@
-#include "Graphics/Draw/BackgroundDraw.hpp"
+#include "Graphics/Draw/BackgroundDraw.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 void DrawGrid2D(Painter& paint, const FloatRect& bounds, float spacing, Float2 offset, Color4 color, float thickness) {
     if (!(spacing > 0.0f)) return paint.Reject("Grid spacing must be positive");

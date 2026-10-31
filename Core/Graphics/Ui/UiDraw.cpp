@@ -1,5 +1,5 @@
-#include "Graphics/Ui/UiDraw.hpp"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Ui/UiDraw.h"
+#include "Graphics/Paint/Painter.h"
 #include "Graphics/Style/Theme.h"
 
 namespace {

@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 ShockwaveEffects2D::ShockwaveEffects2D(const ShockwaveStyle& style)
     : _style(style) {}

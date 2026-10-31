@@ -1,4 +1,4 @@
-#include "Graphics/Ui/Backdrop.hpp"
+#include "Graphics/Ui/Backdrop.h"
 #include "Graphics/Style/Theme.h"
 
 const BackdropStyle& ThemeBackdrop(BackdropRole role) {

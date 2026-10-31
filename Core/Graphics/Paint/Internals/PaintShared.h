@@ -5,8 +5,8 @@
 #include <optional>
 #include <string_view>
 #include "Graphics/Paint/Internals/DrawList.h"
-#include "Graphics/Paint/PaintStyle.hpp"
-#include "Graphics/Post/RenderQuality.hpp"
+#include "Graphics/Paint/PaintStyle.h"
+#include "Graphics/Post/RenderQuality.h"
 #include "Utilities/Float2.h"
 
 // Small rules shared by the Painter's drawing files.

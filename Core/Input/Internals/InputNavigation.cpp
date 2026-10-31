@@ -1,4 +1,4 @@
-#include "Input/InputNavigation.hpp"
+#include "Input/InputNavigation.h"
 #include <algorithm>
 
 InputNavigation::InputNavigation(const DeviceInput& input)

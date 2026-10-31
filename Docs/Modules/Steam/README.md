@@ -10,7 +10,7 @@ Steam is absent. Games that do not use it have no runtime hooks, configuration f
 
 ## Public API
 
-Include `Modules/Steam/Steam.hpp` and link `EngineSteam`. `SteamStatus`, `SteamAccount`
+Include `Modules/Steam/Steam.h` and link `EngineSteam`. `SteamStatus`, `SteamAccount`
 and `SteamSource` are public value contracts.
 
 ```cpp

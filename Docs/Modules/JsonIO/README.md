@@ -4,7 +4,7 @@ Source/API include root: `Engine/Core/Modules/JsonIO/`. Documentation and plans 
 `Internals/` and `Tests/` paths below refer to the source module directory.
 
 Stateless JSON parsing, serialization, file reading and atomic writing, with optional
-authenticated encryption or write-only gzip compression. Include only `Modules/JsonIO/JsonIO.hpp`.
+authenticated encryption or write-only gzip compression. Include only `Modules/JsonIO/JsonIO.h`.
 
 ## Public API
 

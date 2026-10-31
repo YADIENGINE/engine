@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/Paint/PaintStyle.hpp"
+#include "Graphics/Paint/PaintStyle.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
 

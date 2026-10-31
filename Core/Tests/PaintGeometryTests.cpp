@@ -3,7 +3,7 @@
 #include <cmath>
 #include <vector>
 #include "Graphics/Paint/Internals/Tessellator.h"
-#include "Graphics/Paint/Path.hpp"
+#include "Graphics/Paint/Path.h"
 #include "Utilities/Affine2.h"
 #include "Utilities/Color4.h"
 #include "Utilities/FloatRect.h"

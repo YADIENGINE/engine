@@ -3,12 +3,12 @@
 #include <algorithm>
 #include <stdexcept>
 #include <vector>
-#include "Graphics/Draw/BackgroundDraw.hpp"
-#include "Graphics/Draw/DrawUtils.hpp"
-#include "Graphics/Draw/Neon.hpp"
-#include "Graphics/Icons/Icons.hpp"
-#include "Graphics/Text/FontFace.hpp"
-#include "Graphics/Text/TextStyle.hpp"
+#include "Graphics/Draw/BackgroundDraw.h"
+#include "Graphics/Draw/DrawUtils.h"
+#include "Graphics/Draw/Neon.h"
+#include "Graphics/Icons/Icons.h"
+#include "Graphics/Text/FontFace.h"
+#include "Graphics/Text/TextStyle.h"
 #include "Tests/PaintHarness.h"
 #include "Utilities/MathUtils.h"
 

@@ -3,8 +3,8 @@
 #include "Editor/Api/PreviewRegistry.h"
 #include "Editor/Api/PreviewServices.h"
 #include "Editor/Preview/PreviewHost.h"
-#include "Graphics/Paint/Painter.hpp"
-#include "Graphics/Text/TextStyle.hpp"
+#include "Graphics/Paint/Painter.h"
+#include "Graphics/Text/TextStyle.h"
 
 namespace {
 constexpr int CanvasWidth = 1280;

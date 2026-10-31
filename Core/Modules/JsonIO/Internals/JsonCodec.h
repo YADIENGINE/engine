@@ -1,5 +1,5 @@
 #pragma once
-#include "Modules/JsonIO/JsonIO.hpp"
+#include "Modules/JsonIO/JsonIO.h"
 
 // Replace this adapter's implementation to change the JSON library.
 class JsonCodec final {

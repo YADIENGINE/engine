@@ -32,7 +32,7 @@ Core/      Oyuna giren engine kodu; include kökü (#include "Runtime/Game.h"). 
   Scene/     Scene, Internals/SceneManager; headless sahne lifecycle'ı, seçimi ve kapanışı
   Graphics/  Çizim: Paint/ (Painter API), Text/ (FontFace), Surface/, Post/, Gpu/Internals/ (GpuDevice, GlDevice,
              NullDevice, Shaders/*.glsl), Render/ (RenderStats; Internals/: Window, Renderer, RenderPipeline),
-             Painter üstündeki yardımcılar Draw/ Icons/ Ui/ (.hpp), Style/ (tema), Anim/; Docs/Graphics/Painter.md.
+             Painter üstündeki yardımcılar Draw/ Icons/ Ui/ (.h), Style/ (tema), Anim/; Docs/Graphics/Painter.md.
              Bütün çizim Painter'ladır; raylib çizim API'si kullanılmaz.
   Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Utilities/
   Tuning/    *.tuning.json biçimi (TuningFile), canlı okuma (TuningLive, ENGINE_TUNING_LIVE), Tuning<T>(); Docs/Tuning.md
@@ -81,8 +81,8 @@ EngineManifest.json  Ad, sürüm, toolsContract, repo adresi, birikimli notlar (
   platform işi public, raylib'siz bir API ile açılır (`Platform/Shell.h`). `InitWindow`/`CloseWindow` sadece `Window`'da.
 - Çizim `Painter` ile, canvas koordinatları mantıksaldır; durum kapsamlarla (`paint.Clip`, `Transform`, `Target` ...),
   ekran dışı katman `Surface`. Tipler `Color4`, `Float2`, `FloatRect`; açılar radyan, saat yönünde.
-- Yeni yardımcı yazmadan önce mevcutları kullan: `Easing.h`, `MathUtils.h`, `Utilities/Float2.h`, `DrawUtils.hpp`,
-  `Neon.hpp`, `Ui/UiDraw.hpp`.
+- Yeni yardımcı yazmadan önce mevcutları kullan: `Easing.h`, `MathUtils.h`, `Utilities/Float2.h`, `DrawUtils.h`,
+  `Neon.h`, `Ui/UiDraw.h`.
 - Kod: C++20, `/W4` uyarısız; isimli namespace yok, `.cpp`'ye özel yardımcılar anonim namespace'te; her class kendi
   `.h` + `.cpp`'sinde; `#pragma once`; include'lar `Core/`'a göre (editör: engine köküne göre; `../` yok), sıra: kendi header → üçüncü
   parti → std → proje. `new`/`delete` ve C dizisi yok, RAII. `enum class` tek satır. Tip/fonksiyon `PascalCase`,
@@ -92,6 +92,7 @@ EngineManifest.json  Ad, sürüm, toolsContract, repo adresi, birikimli notlar (
 - Dış bağımlılık sadece `ThirdParty/`'ye, değiştirilmeden girer; `FetchContent` kullanılmaz. Oyuna giren bağımlılığı
   eklemek ya da sürümünü değiştirmek `ThirdParty/Notices.json` + `Notices/*.txt` güncellemesiyle aynı committe olur
   (`ThirdParty/README.md`); yoksa her oyunun Release'i durur. Editör/test bağımlılıkları listelenmez.
+- Public başlıkların tek uzantısı `.h`'dır.
 - Public / `Internals/` ayrımı (`Docs/Contributing/ApiBoundaries.md`): özel dosya kendi sisteminin `X/Internals/`'ında,
   kökte `Internals/` yok. Çekirdek `X/Internals/` Engine-private (oyun include etmez); `Modules/X/Internals/` ve
   `Editor/Internals/` sadece sahibine. Public header'ın include ettiği dosya Internals'a taşınmadan önce gizlenir.

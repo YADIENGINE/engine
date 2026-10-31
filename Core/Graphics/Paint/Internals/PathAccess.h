@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "Graphics/Paint/Path.hpp"
+#include "Graphics/Paint/Path.h"
 
 // Engine-side reading of a Path's verbs and points.
 struct PathAccess {

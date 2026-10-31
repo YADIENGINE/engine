@@ -1,7 +1,7 @@
 #pragma once
 #include <chrono>
 #include <functional>
-#include "Modules/Profiler/Profiler.hpp"
+#include "Modules/Profiler/Profiler.h"
 #include "Runtime/FrameExecutionSettings.h"
 #include "Editor/Api/PreviewRegistry.h"
 #include "Editor/Internals/Protocol/PreviewProtocol.h"

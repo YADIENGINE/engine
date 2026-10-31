@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "Modules/JsonIO/JsonIO.hpp"
+#include "Modules/JsonIO/JsonIO.h"
 
 class Game;
 

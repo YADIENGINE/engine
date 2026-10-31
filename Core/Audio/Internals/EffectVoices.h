@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <vector>
-#include "Audio/AudioSystem.hpp"
+#include "Audio/AudioSystem.h"
 
 // Owns the sample and its aliases. Aliases must be released before the source.
 class EffectVoices {

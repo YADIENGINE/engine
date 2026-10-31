@@ -44,7 +44,7 @@ Rules:
 `PreviewDefinition::benchmark` is an optional, repeatable workload contract. It carries stable identity/version, the
 names of two variants, and parameter differences. Without a definition, the preview supports only live measurement.
 `PreviewServices::profiler` is a borrowed module reference for recording custom CPU scopes/counters; use it only through
-`Modules/Profiler/Profiler.hpp`. [Profiler guide](Profiler.md).
+`Modules/Profiler/Profiler.h`. [Profiler guide](Profiler.md).
 
 ## Parameter and action contract
 

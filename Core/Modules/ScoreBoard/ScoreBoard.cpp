@@ -1,4 +1,4 @@
-#include "Modules/ScoreBoard/ScoreBoard.hpp"
+#include "Modules/ScoreBoard/ScoreBoard.h"
 #include "Modules/ScoreBoard/Internals/State.h"
 
 ScoreBoard::ScoreBoard(const Options& options)

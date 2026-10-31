@@ -1,4 +1,4 @@
-#include "Modules/Profiler/Profiler.hpp"
+#include "Modules/Profiler/Profiler.h"
 #include <algorithm>
 #include <cmath>
 #include <iomanip>

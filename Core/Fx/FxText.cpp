@@ -1,7 +1,7 @@
 #include "Fx/FxText.h"
 #include <algorithm>
-#include "Graphics/Paint/Painter.hpp"
-#include "Graphics/Text/FontFace.hpp"
+#include "Graphics/Paint/Painter.h"
+#include "Graphics/Text/FontFace.h"
 
 void DrawFxText(Painter& paint, std::string_view text, Float2 position, Color4 color, const FxTextStyle& style) {
     if (text.empty() || !(style.size > 0.0f) || color.a == 0) return;

@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
-#include "Input/Input.hpp"
+#include "Input/Input.h"
 
 PreviewScene::PreviewScene(Vec2 canvas, AudioSystem& audio, std::function<void(const std::string&)> log,
                            const FontFace* font)

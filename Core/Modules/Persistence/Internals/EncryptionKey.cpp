@@ -1,6 +1,6 @@
 #include "Modules/Persistence/Internals/EncryptionKey.h"
 #include <algorithm>
-#include "Modules/Persistence/Persistence.hpp"
+#include "Modules/Persistence/Persistence.h"
 #include "Modules/Persistence/Internals/SensitiveMemory.h"
 
 EncryptionKey::EncryptionKey(std::string bytes) {

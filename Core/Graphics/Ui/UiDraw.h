@@ -1,6 +1,6 @@
 #pragma once
 #include <string_view>
-#include "Graphics/Draw/Neon.hpp"
+#include "Graphics/Draw/Neon.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
 #include "Utilities/FloatRect.h"
@@ -10,7 +10,7 @@ struct TextStyle;
 
 // Themed widgets: styles come from the active theme (CurrentTheme().ui), animation time from Painter::Time(), text
 // from the game's font. For a one-off variant copy a style and call the explicit-style function
-// (Graphics/Draw/Neon.hpp: DrawNeon*, DrawArcadeButton ...); drawing with its own clock does the same.
+// (Graphics/Draw/Neon.h: DrawNeon*, DrawArcadeButton ...); drawing with its own clock does the same.
 void DrawUiFrame(Painter& paint, const FloatRect& rect, float notch, float thickness, Color4 color, float glow = 1.0f);
 // 'text' gives size, colour, alignment and fitting; the theme adds the neon halo.
 void DrawUiText(Painter& paint, std::string_view label, Float2 position, const TextStyle& text, float glow = 1.0f);

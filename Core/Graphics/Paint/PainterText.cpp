@@ -1,5 +1,5 @@
 // Painter's text drawing (the rest of Painter is in Painter.cpp).
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 #include <array>
 #include <cmath>
 #include <stdexcept>
@@ -7,7 +7,7 @@
 #include <string_view>
 #include "Graphics/Paint/Internals/PaintContext.h"
 #include "Graphics/Paint/Internals/PaintShared.h"
-#include "Graphics/Text/FontFace.hpp"
+#include "Graphics/Text/FontFace.h"
 #include "Graphics/Text/Internals/FontData.h"
 #include "Graphics/Text/Internals/GlyphCache.h"
 #include "Graphics/Text/Internals/TextLayoutCache.h"

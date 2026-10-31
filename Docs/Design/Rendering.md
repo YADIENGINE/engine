@@ -75,18 +75,18 @@ raylib'li `Engine` hedefindedir.
 ```
 Core/Utilities/        Float2 (+ işlemler), FloatRect, Affine2, Color4 (+ Mix, WithAlpha, Rgb) — headless matematik
 Core/Graphics/
-  Paint/               Painter.hpp (facade), ShapeStyle, LineStyle, Gradient, Path, PaintScopes
+  Paint/               Painter.h (facade), ShapeStyle, LineStyle, Gradient, Path, PaintScopes
     Internals/         DrawList, Batcher, Tessellator, Vertex, StateStack
-  Text/                FontFace.hpp, TextStyle, TextBlock (yerleşim sonucu)
+  Text/                FontFace.h, TextStyle, TextBlock (yerleşim sonucu)
     Internals/         GlyphCache, AtlasPacker, GlyphRasterizer (stb_truetype), Shaper
-  Surface/             Surface.hpp (offscreen çizim hedefi), StaticTexture, PixelBuffer, TextureRef
+  Surface/             Surface.h (offscreen çizim hedefi), StaticTexture, PixelBuffer, TextureRef
   Post/                PostSettings (bloom, vinyet, tarama, renk kayması), RenderQuality
-  Render/              (bugünkü) Window/Canvas/Renderer yeni sisteme geçer; RenderStats.hpp public
+  Render/              (bugünkü) Window/Canvas/Renderer yeni sisteme geçer; RenderStats.h public
     Internals/         Renderer, RenderPipeline, FrameExecutor, RenderResources
   Gpu/Internals/       GpuDevice, GpuTypes, GlDevice, NullDevice, Shaders/*.glsl (derlemede gömülür)
 ```
 
-Yeni public çizim başlıkları `.hpp` (ApiBoundaries: yeni facade'lar). Bu adlar kalıcıdır; eski çizim başlıkları
+Public çizim başlıkları `.h` kullanır (ApiBoundaries: tüm public başlıklar). Bu adlar kalıcıdır; eski çizim başlıkları
 ve uyumluluk altyapısı kaldırılmıştır.
 
 **Adlar:** raylib ile çakışan ad kullanılmaz (`Font`, `Image`, `Texture`, `Color`, `Rectangle`, `Camera2D`,
@@ -380,7 +380,7 @@ Yardımcılar ve tüketici View'ları taşındı; eski yol kaldırıldı. Sonrak
 **Tamamlandı: 2026-10-31 (madde 6 dahil).**
 
 - Painter sahneden View'a parametreyle akar; çizim callback'leri yalnız `Draw(Painter&)` biçimindedir.
-- Ortak yardımcılar `Painter&` ilk parametresiyle kalıcı `.hpp` başlıklarındadır ve GPU'suz test edilir.
+- Ortak yardımcılar `Painter&` ilk parametresiyle kalıcı `.h` başlıklarındadır ve GPU'suz test edilir.
 - Stil tipleri raylib'sizdir (`Color4`, `Float2`, `FloatRect`); metin halesi `TextStyle::glow` ile çizilir.
 - Geçici raylib renk/vektör dönüşümleri kaldırılmıştır. Kayıpsız `Rect` → `FloatRect` genişletmesi kalır.
 - Yüzeyler `Surface` + `paint.Target`, yerleşim `paint.Transform`, kesme `paint.Clip`, toplu saydamlık `paint.Group`

@@ -1,7 +1,7 @@
 #include "Editor/Preview/GlowBenchmark.h"
 #include <cmath>
 #include <random>
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 namespace {
 class GlowBenchmark final : public EditorPreview {

@@ -1,7 +1,7 @@
-#include "Graphics/Draw/ParticleDraw.hpp"
+#include "Graphics/Draw/ParticleDraw.h"
 #include <cmath>
-#include "Graphics/Draw/DrawUtils.hpp"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Draw/DrawUtils.h"
+#include "Graphics/Paint/Painter.h"
 #include "Utilities/Affine2.h"
 #include "Utilities/FloatRect.h"
 #include "Utilities/MathUtils.h"

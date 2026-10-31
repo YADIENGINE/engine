@@ -1,7 +1,7 @@
 #include <memory>
-#include "Graphics/Paint/Painter.hpp"
-#include "Graphics/Text/TextStyle.hpp"
-#include "Input/InputNavigation.hpp"
+#include "Graphics/Paint/Painter.h"
+#include "Graphics/Text/TextStyle.h"
+#include "Input/InputNavigation.h"
 #include "Runtime/EntryPoint.h"
 #include "Runtime/Game.h"
 

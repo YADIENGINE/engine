@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 #include "Platform/Internals/ApplicationFiles.h"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 #include "Graphics/Render/Internals/Renderer.h"
 #include "Scene/Internals/SceneManager.h"
 #include "Scene/Scene.h"
@@ -16,7 +16,7 @@
 #include "Input/Internals/InputNormalizer.h"
 #include "Input/Internals/InputReader.h"
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Text/TextStyle.hpp"
+#include "Graphics/Text/TextStyle.h"
 #include "Graphics/Style/Theme.h"
 #include "Tuning/TuningLive.h"
 

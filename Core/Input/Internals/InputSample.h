@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
 #include <vector>
-#include "Input/Input.hpp"
+#include "Input/Input.h"
 #include "Utilities/Float2.h"
 
 struct InputSampleTouch {

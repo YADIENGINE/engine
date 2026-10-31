@@ -9,7 +9,7 @@
 #include "Fx/CollectFlights.h"
 #include "Gameplay/StatSheet.h"
 #include "Gameplay/TimedEffectSet.h"
-#include "Modules/Persistence/Persistence.hpp"
+#include "Modules/Persistence/Persistence.h"
 #include "Progress/TieredProgress.h"
 #include "Utilities/ChoiceList.h"
 #include "Utilities/EnumTable.h"

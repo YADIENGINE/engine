@@ -1,6 +1,6 @@
 #pragma once
 #include "Graphics/Gpu/Internals/GpuTypes.h"
-#include "Graphics/Surface/TextureRef.hpp"
+#include "Graphics/Surface/TextureRef.h"
 
 // Engine-side construction and reading of TextureRef.
 struct TextureRefAccess {

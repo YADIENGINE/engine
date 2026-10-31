@@ -1,6 +1,6 @@
 #pragma once
 #include <memory>
-#include "Graphics/Surface/TextureRef.hpp"
+#include "Graphics/Surface/TextureRef.h"
 #include "Utilities/Float2.h"
 
 struct SurfaceOptions {

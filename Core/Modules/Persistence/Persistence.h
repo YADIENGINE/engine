@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include "Modules/JsonIO/JsonIO.hpp"
+#include "Modules/JsonIO/JsonIO.h"
 
 enum class SaveEncryptionMode { Plaintext, Encrypted };
 enum class SaveLoadResult { Missing, Loaded, Recovered };

@@ -5,8 +5,8 @@
 #include <memory>
 #include <span>
 #include <string_view>
-#include "Graphics/Text/TextBlock.hpp"
-#include "Graphics/Text/TextStyle.hpp"
+#include "Graphics/Text/TextBlock.h"
+#include "Graphics/Text/TextStyle.h"
 #include "Utilities/Float2.h"
 
 class FontData;

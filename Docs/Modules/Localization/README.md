@@ -4,7 +4,7 @@ Source/API include root: `Engine/Core/Modules/Localization/`. Documentation and 
 `Internals/` and `Tests/` paths below refer to the source module directory.
 
 Immutable, headless translation catalogues with language selection, fallback, placeholders and number formatting.
-Link `EngineLocalization` and include only `Modules/Localization/Localization.hpp`.
+Link `EngineLocalization` and include only `Modules/Localization/Localization.h`.
 Dependencies: C++20 standard library only; no Game, raylib, IO or other module dependencies.
 
 ## Public API
@@ -100,7 +100,7 @@ No game entity types, active selections or binding registry are stored in the mo
 ## Example
 
 ```cpp
-#include "Modules/Localization/Localization.hpp"
+#include "Modules/Localization/Localization.h"
 
 enum class Label { Play, Score, Count };
 constexpr std::array Languages{Localization::LanguageDefinition{Language::English, true, true},

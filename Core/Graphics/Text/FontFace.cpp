@@ -1,4 +1,4 @@
-#include "Graphics/Text/FontFace.hpp"
+#include "Graphics/Text/FontFace.h"
 #include <algorithm>
 #include <cmath>
 #include <fstream>

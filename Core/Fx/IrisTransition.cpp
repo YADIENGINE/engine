@@ -1,7 +1,7 @@
 #include "Fx/IrisTransition.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 namespace {
 constexpr float FullyCoveredRadius = 1.0f;

@@ -3,7 +3,7 @@
 #include <memory>
 #include <string_view>
 #include <vector>
-#include "Graphics/Text/FontFace.hpp"
+#include "Graphics/Text/FontFace.h"
 
 // A rasterized glyph: coverage (or distance) bytes, rows top to bottom, placed relative to the pen on the baseline.
 struct GlyphRaster {

@@ -41,8 +41,8 @@ tools, not internal; do not hide it from the editor.
 
 ## Facades
 
-A system with internals has a small public facade beside its `Internals/` folder (`Input/Input.hpp`,
-`Audio/AudioSystem.hpp`, `Modules/X/X.hpp`). New facades use `.hpp`; existing `.h` public headers keep their name.
+A system with internals has a small public facade beside its `Internals/` folder (`Input/Input.h`,
+`Audio/AudioSystem.h`, `Modules/X/X.h`). All public headers use the single `.h` extension.
 
 ## Enforcement
 

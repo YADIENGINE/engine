@@ -1,4 +1,4 @@
-#include "Modules/Profiler/Profiler.hpp"
+#include "Modules/Profiler/Profiler.h"
 #include "Modules/Profiler/Internals/RuntimeState.h"
 #include <algorithm>
 #include <array>

@@ -1,6 +1,6 @@
 #include "Graphics/Render/Internals/RenderResources.h"
 #include <cmath>
-#include "Graphics/Surface/Surface.hpp"
+#include "Graphics/Surface/Surface.h"
 
 namespace {
 constexpr int PoolIdleFrames = 120; // A pooled image unused this long is freed

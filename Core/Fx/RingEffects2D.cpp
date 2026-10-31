@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 void RingEffects2D::Emit(Float2 position, Color4 color, const RingStyle& style) {
     if (!std::isfinite(style.duration) || style.duration <= 0.0f || !std::isfinite(style.startRadius) ||

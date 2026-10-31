@@ -34,7 +34,7 @@ use the renderer's layout cache. Effects are `TextStyle::glow`, `outline`, `shad
 ## Localization
 
 Use the standalone [Localization module](../Modules/Localization/README.md), linked as `EngineLocalization`. Its public
-entry point is `Modules/Localization/Localization.hpp`. The module owns persisted language identities, native display
+entry point is `Modules/Localization/Localization.h`. The module owns persisted language identities, native display
 names, translation fallback, placeholders and number formatting. The consumer supplies language declarations, fallback
 and constexpr translation rows, then constructs an immutable catalogue.
 

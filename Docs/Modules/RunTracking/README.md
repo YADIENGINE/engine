@@ -12,7 +12,7 @@ It does not define gameplay rules, record fields, schema versions or run-end det
   and the runtime `Engine`; only this target compiles the private `EngineGodAccessor`.
 
 Both targets are excluded from the default build unless linked. Neither `EngineHeadless` nor
-`Engine` links or starts tracking. Consumers include only `Modules/RunTracking/RunTracking.hpp`.
+`Engine` links or starts tracking. Consumers include only `Modules/RunTracking/RunTracking.h`.
 
 ```cmake
 target_link_libraries(MyCore PUBLIC EngineRunTracking)
@@ -23,7 +23,7 @@ target_link_libraries(MyApplication PRIVATE EngineRunTrackingRuntime)
 ## Public API
 
 ```cpp
-#include "Modules/RunTracking/RunTracking.hpp"
+#include "Modules/RunTracking/RunTracking.h"
 
 RunTracking archive(directory);
 const auto runId = RunTracking::NewRunId(); // Once at run start; keep it for retries.

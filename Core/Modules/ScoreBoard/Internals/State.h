@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Modules/ScoreBoard/ScoreBoard.hpp"
+#include "Modules/ScoreBoard/ScoreBoard.h"
 
 class ScoreBoard::State final {
 public:

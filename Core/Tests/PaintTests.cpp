@@ -4,8 +4,8 @@
 #include <optional>
 #include <utility>
 #include <stdexcept>
-#include "Graphics/Paint/Path.hpp"
-#include "Graphics/Surface/Surface.hpp"
+#include "Graphics/Paint/Path.h"
+#include "Graphics/Surface/Surface.h"
 #include "Tests/PaintHarness.h"
 #include "Utilities/MathUtils.h"
 

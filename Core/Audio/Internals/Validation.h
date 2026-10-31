@@ -1,6 +1,6 @@
 #pragma once
 #include <filesystem>
-#include "Audio/AudioSystem.hpp"
+#include "Audio/AudioSystem.h"
 
 void ValidateAudioPath(const std::filesystem::path& file);
 void ValidateAudioVolume(float volume);

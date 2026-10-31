@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <limits>
-#include "Modules/Profiler/Profiler.hpp"
+#include "Modules/Profiler/Profiler.h"
 #include "Tests/Support/TempDirectory.h"
 
 namespace {

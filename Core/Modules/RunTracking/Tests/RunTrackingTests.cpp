@@ -3,7 +3,7 @@
 #include <iterator>
 #include <limits>
 #include <stdexcept>
-#include "Modules/RunTracking/RunTracking.hpp"
+#include "Modules/RunTracking/RunTracking.h"
 #include "Tests/Support/GzipInflate.h"
 #include "Tests/Support/TempDirectory.h"
 

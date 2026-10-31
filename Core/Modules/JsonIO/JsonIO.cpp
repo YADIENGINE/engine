@@ -1,4 +1,4 @@
-#include "Modules/JsonIO/JsonIO.hpp"
+#include "Modules/JsonIO/JsonIO.h"
 #include "Modules/JsonIO/Internals/EncryptedEnvelope.h"
 #include "Modules/JsonIO/Internals/GzipCodec.h"
 #include "Modules/JsonIO/Internals/JsonCodec.h"

@@ -1,5 +1,5 @@
 #pragma once
-#include "Modules/JsonIO/JsonIO.hpp"
+#include "Modules/JsonIO/JsonIO.h"
 
 class EncryptedEnvelope final {
 public:

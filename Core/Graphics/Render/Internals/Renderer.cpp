@@ -2,7 +2,7 @@
 #include <raylib.h>
 #include <rlgl.h>
 #include "Graphics/Gpu/Internals/GlDevice.h"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 namespace {
 // Native code (frame capture, rlImGui) draws through rlgl next. The device has restored GL's default bindings

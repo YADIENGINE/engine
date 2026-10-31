@@ -41,7 +41,7 @@ or telemetry writes.
 ## Version tracking
 
 Installed-version tracking is opt-in through the headless [Version module](Modules/Version/README.md). Link
-`EngineVersion`, include `Modules/Version/Version.hpp`, and call `Version::Check(Options(), currentVersion, callback)`
+`EngineVersion`, include `Modules/Version/Version.h`, and call `Version::Check(Options(), currentVersion, callback)`
 in the game's `Start()` after response targets are ready. The module owns detection and saving; the callback authors the
 game's response to an upgrade or downgrade. First launch records silently, and unchanged versions do no work. `Game` has
 no version inheritance, hooks, or configuration. Games that do not select the module never compile its implementation.
@@ -52,7 +52,7 @@ patch-note content and UI belong to the game.
 ## Steam
 
 Steam detection is opt-in through the headless [Steam module](Modules/Steam/README.md). Link `EngineSteam`, include
-`Modules/Steam/Steam.hpp`, and construct a `Steam` value where the game needs to know whether Steam launched it and
+`Modules/Steam/Steam.h`, and construct a `Steam` value where the game needs to know whether Steam launched it and
 which account is logged in. It probes once, never fails when Steam is absent, and needs no Steamworks SDK.
 `UnlockAchievement(apiName)` forwards the game's own achievements and is silently dropped while no Steam API is
 connected (always, until the planned Steamworks backend). `Game` has no Steam hooks; achievement design, save-path and

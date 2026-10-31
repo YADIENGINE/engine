@@ -1,5 +1,5 @@
 #pragma once
-#include "Modules/Localization/Localization.hpp"
+#include "Modules/Localization/Localization.h"
 
 // Module-private language presentation policy.
 struct LanguageInfo {

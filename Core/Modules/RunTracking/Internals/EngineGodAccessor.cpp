@@ -1,5 +1,5 @@
 #include "Modules/RunTracking/Internals/EngineGodAccessor.h"
-#include "Modules/RunTracking/RunTracking.hpp"
+#include "Modules/RunTracking/RunTracking.h"
 #include "Runtime/Game.h"
 
 JsonIO::Document EngineGodAccessor::Context(const Game& game) {

@@ -4,9 +4,9 @@
 #include <vector>
 #include "Graphics/Paint/Internals/DrawList.h"
 #include "Graphics/Paint/Internals/Tessellator.h"
-#include "Graphics/Paint/Painter.hpp"
-#include "Graphics/Post/PostSettings.hpp"
-#include "Graphics/Post/RenderQuality.hpp"
+#include "Graphics/Paint/Painter.h"
+#include "Graphics/Post/PostSettings.h"
+#include "Graphics/Post/RenderQuality.h"
 
 class FrameExecutor;
 class RenderResources;

@@ -3,7 +3,7 @@
 #include "Graphics/Gpu/Internals/NullDevice.h"
 #include "Graphics/Paint/Internals/DrawList.h"
 #include "Graphics/Paint/Internals/PaintContext.h"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 #include "Graphics/Render/Internals/FrameExecutor.h"
 #include "Graphics/Render/Internals/RenderResources.h"
 #include "Graphics/Text/Internals/GlyphCache.h"

@@ -1,8 +1,8 @@
 #include "Fx/PulseOverlay2D.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Draw/BackgroundDraw.hpp"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Draw/BackgroundDraw.h"
+#include "Graphics/Paint/Painter.h"
 
 PulseOverlay2D::PulseOverlay2D(const PulseOverlayStyle& style)
     : _style(style) {}

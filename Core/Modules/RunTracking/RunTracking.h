@@ -1,7 +1,7 @@
 #pragma once
 #include <filesystem>
 #include <string>
-#include "Modules/JsonIO/JsonIO.hpp"
+#include "Modules/JsonIO/JsonIO.h"
 
 class Game;
 

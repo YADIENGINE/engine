@@ -2,7 +2,7 @@
 #include <cmath>
 #include <stdexcept>
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 #include "Utilities/MathUtils.h"
 
 void DrawSpeedLines(Painter& paint, const FloatRect& bounds, float intensity, Color4 color, float timeSeconds,

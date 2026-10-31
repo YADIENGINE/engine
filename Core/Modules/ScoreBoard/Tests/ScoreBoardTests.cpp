@@ -1,4 +1,4 @@
-#include "Modules/ScoreBoard/ScoreBoard.hpp"
+#include "Modules/ScoreBoard/ScoreBoard.h"
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
 #include <stdexcept>

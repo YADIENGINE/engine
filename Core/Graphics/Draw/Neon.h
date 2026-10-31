@@ -8,7 +8,7 @@
 class Painter;
 struct TextStyle;
 
-// Neon widgets with explicit styles (the theme's are in CurrentTheme().ui; Graphics/Ui/UiDraw.hpp draws with them).
+// Neon widgets with explicit styles (the theme's are in CurrentTheme().ui; Graphics/Ui/UiDraw.h draws with them).
 // Glow follows Painter::Quality(): bands and halos weaken or disappear with the player's glow setting.
 
 // A glowing line: two translucent bands added around it (outer only at full glow quality), the line itself and an

@@ -1,7 +1,7 @@
 #pragma once
 #include <raylib.h>
 #include <filesystem>
-#include "Audio/AudioSystem.hpp"
+#include "Audio/AudioSystem.h"
 
 class AudioMusicStream {
 public:

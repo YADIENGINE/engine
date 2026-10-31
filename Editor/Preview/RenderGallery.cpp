@@ -3,10 +3,10 @@
 #include <cmath>
 #include <string>
 #include <vector>
-#include "Graphics/Paint/Painter.hpp"
-#include "Graphics/Paint/Path.hpp"
-#include "Graphics/Surface/Surface.hpp"
-#include "Graphics/Text/TextStyle.hpp"
+#include "Graphics/Paint/Painter.h"
+#include "Graphics/Paint/Path.h"
+#include "Graphics/Surface/Surface.h"
+#include "Graphics/Text/TextStyle.h"
 #include "Utilities/MathUtils.h"
 
 namespace {

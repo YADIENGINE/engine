@@ -7,7 +7,7 @@ from pathlib import Path
 from Tools.include_boundaries import violations
 
 HEADERS = ["Core/Input/Internals/Reader.h", "Core/Modules/Saves/Internals/State.h", "Editor/Internals/Session.h",
-           "Terminal/Internals/Screen.h", "Core/Input/Input.hpp"]
+           "Terminal/Internals/Screen.h", "Core/Input/Input.h"]
 
 
 class BoundaryTests(unittest.TestCase):
@@ -31,11 +31,11 @@ class BoundaryTests(unittest.TestCase):
 
     def test_game_may_use_public_headers_and_its_own_internals(self):
         self.write("Game/Tracking/Internals/State.h", "#pragma once\n")
-        self.write("Game/Scene.cpp", '#include "Input/Input.hpp"\n#include "Tracking/Internals/State.h"\n')
+        self.write("Game/Scene.cpp", '#include "Input/Input.h"\n#include "Tracking/Internals/State.h"\n')
         self.assertEqual(self.check(), [])
 
     def test_game_may_not_use_engine_internals(self):
-        self.write("Game/Scene.cpp", '#include "Input/Input.hpp"\n#include "Input/Internals/Reader.h"\n')
+        self.write("Game/Scene.cpp", '#include "Input/Input.h"\n#include "Input/Internals/Reader.h"\n')
         self.write("tests/SaveTests.cpp", '  #  include "Modules/Saves/Internals/State.h"\n')
         found = self.check()
         self.assertEqual(len(found), 2)

@@ -1,4 +1,4 @@
-#include "Modules/Localization/Localization.hpp"
+#include "Modules/Localization/Localization.h"
 #include <catch2/catch_test_macros.hpp>
 
 namespace {

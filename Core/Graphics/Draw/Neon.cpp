@@ -1,10 +1,10 @@
-#include "Graphics/Draw/Neon.hpp"
+#include "Graphics/Draw/Neon.h"
 #include <algorithm>
 #include <cmath>
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Paint/Painter.hpp"
-#include "Graphics/Text/FontFace.hpp"
-#include "Graphics/Text/TextStyle.hpp"
+#include "Graphics/Paint/Painter.h"
+#include "Graphics/Text/FontFace.h"
+#include "Graphics/Text/TextStyle.h"
 
 namespace {
 constexpr Color4 White{255, 255, 255, 255};

@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include "Audio/AudioSystem.hpp"
+#include "Audio/AudioSystem.h"
 
 class GameOptions;
 // Headless volume stepping and serialization into the engine's options; never writes a file itself.

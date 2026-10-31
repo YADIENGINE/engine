@@ -1,7 +1,7 @@
 #include "Tests/Support/Diagnostics.h"
 #include <initializer_list>
 #include <type_traits>
-#include "Input/InputNavigation.hpp"
+#include "Input/InputNavigation.h"
 #include "Input/Internals/InputNormalizer.h"
 
 namespace {

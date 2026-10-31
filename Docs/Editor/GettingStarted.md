@@ -53,7 +53,7 @@ private:
 #include <cmath>
 #include <memory>
 #include <variant>
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 FirstPreview::FirstPreview(const PreviewParameters& parameters)
     : _radius(static_cast<float>(std::get<double>(parameters.at("radius")))) {}

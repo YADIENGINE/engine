@@ -2,7 +2,7 @@
 #include <memory>
 #include <vector>
 #include "Graphics/Gpu/Internals/GpuDevice.h"
-#include "Graphics/Surface/Surface.hpp"
+#include "Graphics/Surface/Surface.h"
 
 // GPU objects released by their owners while a frame may still use them; the renderer destroys them after the
 // frame. Shared by the renderer's resources and every surface: when the renderer goes away 'device' becomes null

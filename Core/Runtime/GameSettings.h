@@ -1,10 +1,10 @@
 #pragma once
 #include <filesystem>
 #include <vector>
-#include "Graphics/Post/PostSettings.hpp"
+#include "Graphics/Post/PostSettings.h"
 #include "Graphics/Render/WindowSettings.h"
-#include "Audio/AudioSystem.hpp"
-#include "Modules/Persistence/Persistence.hpp"
+#include "Audio/AudioSystem.h"
+#include "Modules/Persistence/Persistence.h"
 #include "Graphics/Style/NeonArcadeTheme.h"
 #include "Utilities/Color4.h"
 

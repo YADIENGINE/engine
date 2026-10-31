@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include "Modules/Persistence/Persistence.hpp"
+#include "Modules/Persistence/Persistence.h"
 
 // Kademeli hedeflerin (başarım, görev, rozet) kalıcı durumu: her hedefin tamamlanan kademe sayısı, ekranda görülmüş
 // kademe sayısı ve bitmiş oturumlardan taşınan ilerleme değeri. Hedefleri ve neyin sayıldığını oyun tanımlar; bu sınıf

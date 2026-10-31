@@ -1,6 +1,6 @@
 #include "Tests/Support/Diagnostics.h"
-#include "Input/Input.hpp"
-#include "Input/DragPointer.hpp"
+#include "Input/Input.h"
+#include "Input/DragPointer.h"
 
 namespace {
 constexpr int Threshold = 12;

@@ -5,7 +5,7 @@ EngineProfiler is headless and depends on EngineJsonIO for report IO. EngineProf
 and Windows/OpenGL 3.3 timestamp backend; it links Engine and, on Windows, opengl32/advapi32. Neither target
 depends on Editor or Game sources. Normal games do not link these targets.
 
-The sole supported entry point is `Modules/Profiler/Profiler.hpp`. Internals are private.
+The sole supported entry point is `Modules/Profiler/Profiler.h`. Internals are private.
 
 ## Recording
 

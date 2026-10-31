@@ -1,5 +1,5 @@
 #pragma once
-#include "Modules/Profiler/Profiler.hpp"
+#include "Modules/Profiler/Profiler.h"
 
 struct Profiler::Runtime {
     virtual ~Runtime() = default;

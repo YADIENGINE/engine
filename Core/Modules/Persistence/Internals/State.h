@@ -1,5 +1,5 @@
 #pragma once
-#include "Modules/Persistence/Persistence.hpp"
+#include "Modules/Persistence/Persistence.h"
 #include "Modules/Persistence/Internals/EncryptionKeyStore.h"
 
 class Persistence::State final {

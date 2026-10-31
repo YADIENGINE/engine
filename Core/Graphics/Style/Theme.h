@@ -1,8 +1,8 @@
 #pragma once
 #include "Fx/FxStyle.h"
 #include "Graphics/Anim/ButtonAnim.h"
-#include "Graphics/Draw/BackgroundDraw.hpp"
-#include "Graphics/Draw/Neon.hpp"
+#include "Graphics/Draw/BackgroundDraw.h"
+#include "Graphics/Draw/Neon.h"
 #include "Graphics/Style/ThemePalette.h"
 
 // Arayüz widget'larının stilleri (Ui/UiDraw, Ui/UiButton bunları okur).

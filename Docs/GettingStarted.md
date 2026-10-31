@@ -62,8 +62,8 @@ private:
 ```cpp
 #include "MyScene.h"
 #include <algorithm>
-#include "Graphics/Paint/Painter.hpp"
-#include "Input/InputNavigation.hpp"
+#include "Graphics/Paint/Painter.h"
+#include "Input/InputNavigation.h"
 
 namespace {
 constexpr float StartX = 640.0f;
@@ -114,7 +114,7 @@ private:
 
 ```cpp
 #include "MyGame.h"
-#include "Input/InputNavigation.hpp"
+#include "Input/InputNavigation.h"
 
 namespace {
 GameSettings Settings() {

@@ -1,9 +1,9 @@
-#include "Graphics/Draw/DrawUtils.hpp"
+#include "Graphics/Draw/DrawUtils.h"
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <vector>
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 #include "Utilities/MathUtils.h"
 
 namespace {

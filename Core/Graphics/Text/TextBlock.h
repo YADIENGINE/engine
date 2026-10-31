@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <vector>
-#include "Graphics/Text/TextStyle.hpp"
+#include "Graphics/Text/TextStyle.h"
 #include "Utilities/Float2.h"
 
 // A laid-out text (FontFace::Layout): glyphs placed in lines at the final size. Lay out once and draw it every frame

@@ -4,7 +4,7 @@
 #include <limits>
 #include "Tests/Support/GzipInflate.h"
 #include "Tests/Support/TempDirectory.h"
-#include "Modules/JsonIO/JsonIO.hpp"
+#include "Modules/JsonIO/JsonIO.h"
 #include "Platform/Internals/FileStorage.h"
 
 namespace {

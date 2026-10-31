@@ -4,7 +4,7 @@
 #include <fstream>
 #include <limits>
 #include <stdexcept>
-#include "Modules/Version/Version.hpp"
+#include "Modules/Version/Version.h"
 #include "Options/GameOptions.h"
 #include "Tests/Support/TempDirectory.h"
 

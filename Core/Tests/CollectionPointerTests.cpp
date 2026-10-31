@@ -1,6 +1,6 @@
 #include "Tests/Support/Diagnostics.h"
-#include "Input/CollectionPointer.hpp"
-#include "Input/Input.hpp"
+#include "Input/CollectionPointer.h"
+#include "Input/Input.h"
 
 namespace {
 constexpr Rect Area{100, 100, 200, 200};

@@ -1,4 +1,4 @@
-#include "Modules/Steam/Steam.hpp"
+#include "Modules/Steam/Steam.h"
 #include <stdexcept>
 #include "Modules/Steam/Internals/SteamClient.h"
 #include "Modules/Steam/Internals/SteamLaunch.h"

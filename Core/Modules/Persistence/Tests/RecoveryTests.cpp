@@ -2,7 +2,7 @@
 #include <functional>
 #include "Tests/Support/TempDirectory.h"
 #include "Platform/Internals/FileStorage.h"
-#include "Modules/Persistence/Persistence.hpp"
+#include "Modules/Persistence/Persistence.h"
 
 namespace {
 SaveSettings ProtectedBackup(const std::filesystem::path& keyFile) {

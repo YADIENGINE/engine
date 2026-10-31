@@ -13,7 +13,7 @@ değiştirilebilmeli. Editör C++ kaynağını düzenlemez; ayar değerleri ayr�
 Ayarlanabilir değeri olan class'ın yanında, aynı adla:
 
 ```
-MyEffect.hpp
+MyEffect.h
 MyEffect.cpp
 MyEffect.tuning.json
 ```
@@ -22,7 +22,7 @@ MyEffect.tuning.json
 - Ad her zaman `X.tuning.json`; araç bu kalıptaki dosyaları otomatik bulur, CMake'e elle eklenmez.
 - **Girer:** elle ince ayar yapılan sayılar: yarıçap, hız, renk, süre, oran, ve oynanış dengesi değerleri
   (puan, hız, olasılık, fiyat).
-- **Girmez:** yapısal sabitler: dizi boyutu, yuva sayısı, enum'a bağlı sayılar. Bunlar `.cpp` / `.hpp`'de kalır.
+- **Girmez:** yapısal sabitler: dizi boyutu, yuva sayısı, enum'a bağlı sayılar. Bunlar `.cpp` / `.h`'de kalır.
 
 ## Biçim
 
@@ -54,7 +54,7 @@ Kod değeri okur:
 
 ```cpp
 #include "MyEffect.tuning.h"
-#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Paint/Painter.h"
 
 void MyEffect::Draw(Painter& paint) const
 {

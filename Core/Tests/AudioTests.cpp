@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <limits>
 #include <stdexcept>
-#include "Audio/AudioSystem.hpp"
+#include "Audio/AudioSystem.h"
 #include "Audio/Internals/AudioVolumePolicy.h"
 #include "Options/GameOptions.h"
 #include "Tests/Support/TempDirectory.h"

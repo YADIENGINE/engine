@@ -21,7 +21,7 @@
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-#include "Modules/JsonIO/JsonIO.hpp"
+#include "Modules/JsonIO/JsonIO.h"
 
 namespace {
 std::uint32_t Crc32(std::string_view text) {

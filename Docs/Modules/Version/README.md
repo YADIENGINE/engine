@@ -9,7 +9,7 @@ runtime hooks, configuration fields, or tracking work.
 
 ## Public API
 
-Include `Modules/Version/Version.hpp` and link `EngineVersion`. All operations are
+Include `Modules/Version/Version.h` and link `EngineVersion`. All operations are
 static members of `Version`; there is no instance or automatic lifecycle registration.
 `GameVersion`, `PatchNote`, and `Version::Change` are public value contracts.
 

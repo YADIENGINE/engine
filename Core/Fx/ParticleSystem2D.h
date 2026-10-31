@@ -6,7 +6,7 @@
 #include <random>
 #include <vector>
 #include "Fx/FxQuality.h"
-#include "Graphics/Draw/ParticleDraw.hpp"
+#include "Graphics/Draw/ParticleDraw.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
 #include "Utilities/FloatRange.h"

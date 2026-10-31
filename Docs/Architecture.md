@@ -35,7 +35,7 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | `Graphics/Anim` | `Easing`, `SpringPoint`, `AnimatedCounter`, `ButtonAnim` (headless) | `Utilities` |
 | `Graphics/Render` | `RenderStats`; `Internals/`: `Window`, `Renderer`, `RenderPipeline`, `FrameExecutor`, `RenderResources` | `Utilities` |
 | `Graphics/Paint`, `Text`, `Surface`, `Post`, `Gpu` | Drawing API, fonts, images, finishing and GPU backends | `Utilities`, private renderer services |
-| `Graphics/Draw` | Painter helpers (`DrawUtils.hpp`, `Neon.hpp`, `BackgroundDraw.hpp`, `ParticleDraw.hpp`), headless grid geometry | `Paint`, `Anim` |
+| `Graphics/Draw` | Painter helpers (`DrawUtils.h`, `Neon.h`, `BackgroundDraw.h`, `ParticleDraw.h`), headless grid geometry | `Paint`, `Anim` |
 | `Graphics/Icons` | Shared icon library: shape-named `Icon` + `DrawIcon` | `Draw` |
 | `Graphics/Style` | `Theme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
 | `Graphics/Ui` | Themed widgets (`DrawUi*`, `UiButton`, `Backdrop`) | `Style`, `Draw` |
@@ -43,7 +43,7 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 Particle shape drawing is shared by `Fx/ParticleSystem2D` and static previews through `Graphics/Draw/ParticleDraw`; it
 accepts explicit pose/style and never reads a theme.
 
-The render migration is complete (`Docs/Design/Rendering.md` → R13). Public drawing helpers keep their `.hpp` names.
+The render migration is complete (`Docs/Design/Rendering.md` → R13). All public headers use the `.h` extension.
 `Fx/` is Painter-only and headless. Raylib is limited to platform and native tool integration.
 
 Only `Ui` reads the theme. Shared shapes take explicit colors/styles and `Painter&` as their first parameter:
@@ -87,12 +87,12 @@ umbrellas. Window/canvas/renderer setup, background drawing, and pointer gesture
 groups focused.
 
 Include `Utilities/Float2.h` for vector operations (`Length`, `Distance`, `Dot`, `Normalized`, `Rotated`,
-`Perpendicular`, `Float2::FromAngle`) and the focused `.hpp` drawing header for each helper.
+`Perpendicular`, `Float2::FromAngle`) and the focused `.h` drawing header for each helper.
 
 Specific headers remain supported and should be used inside Engine and by headless consumers. In particular, include
 `Fx/TimeScale.h`, `Fx/TransitionClock.h`, `Scene/Scene.h`, or `GameObjects/GameObject.h` directly when using only those
-components without raylib. Input has explicit headless public headers (`Input.hpp`, `InputNavigation.hpp`,
-`DragPointer.hpp`, `CollectionPointer.hpp`); device sampling and gesture implementation stay private in
+components without raylib. Input has explicit headless public headers (`Input.h`, `InputNavigation.h`,
+`DragPointer.h`, `CollectionPointer.h`); device sampling and gesture implementation stay private in
 `Input/Internals/`. See [Input](Input.md). There is no global EngineImport header.
 
 

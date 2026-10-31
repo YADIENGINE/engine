@@ -5,7 +5,7 @@ Source/API include root: `Engine/Core/Modules/Persistence/`. Documentation and p
 
 One owned, in-memory JSON value store per file, with explicit saving, platform-protected
 key management, verified backups and automatic recovery. Include only
-`Modules/Persistence/Persistence.hpp`; link `EnginePersistence`.
+`Modules/Persistence/Persistence.h`; link `EnginePersistence`.
 
 ## Public API
 

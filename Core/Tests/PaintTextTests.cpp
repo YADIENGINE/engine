@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include "Graphics/Text/FontFace.hpp"
+#include "Graphics/Text/FontFace.h"
 #include "Graphics/Text/Internals/AtlasPacker.h"
 #include "Graphics/Text/Internals/FontData.h"
 #include "Utilities/Utf8.h"

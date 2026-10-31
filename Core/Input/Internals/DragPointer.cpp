@@ -1,4 +1,4 @@
-#include "Input/DragPointer.hpp"
+#include "Input/DragPointer.h"
 #include <algorithm>
 #include "Input/Internals/PrimaryContact.h"
 

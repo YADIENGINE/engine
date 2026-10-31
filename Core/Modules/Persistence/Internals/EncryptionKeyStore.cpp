@@ -5,7 +5,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include "Modules/Persistence/Persistence.hpp"
+#include "Modules/Persistence/Persistence.h"
 #include "Modules/Persistence/Internals/SensitiveMemory.h"
 #include "Platform/Internals/FileStorage.h"
 #include "Platform/Internals/StorageError.h"
