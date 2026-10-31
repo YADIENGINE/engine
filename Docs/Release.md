@@ -1,16 +1,16 @@
-# Release paketi ve üçüncü taraf bildirimleri
+# Release package and third-party notices
 
-`python Engine release` Release derler ve oyuncuya verilecek paketi kurar. İşi `Engine/Tools/commands/release.py`
-yapar; ayarlar `Project.json` `release` bölümündedir. Her proje aynı düzeni üretir:
+`python Engine release` builds Release and creates the package for players. `Engine/Tools/commands/release.py` does the
+work; settings are in the `Project.json` `release` section. Every project produces the same layout:
 
 ```text
-Release/                     (git'e girmez; şablonun .gitignore'unda)
+Release/                     (not tracked by git; in the template's .gitignore)
   MyGame/
     MyGame.exe
-    Assets/                  package_assets hook'unun seçtikleri (hook yoksa Assets/ olduğu gibi)
-    ThirdPartyNotices.txt    ÜRETİLİR: Part 1 Engine + Part 2 oyun
-    <release.files>          oyunun ek metinleri (ör. Credits.txt)
-  MyGame.zip                 aynı klasör, mağazaya/oyuncuya giden dosya
+    Assets/                  selected by the package_assets hook (Assets/ as-is if no hook)
+    ThirdPartyNotices.txt    GENERATED: Part 1 Engine + Part 2 game
+    <release.files>          additional game texts (e.g. Credits.txt)
+  MyGame.zip                 same folder, file delivered to the store/player
 ```
 
 ## Project.json
@@ -24,62 +24,63 @@ Release/                     (git'e girmez; şablonun .gitignore'unda)
 }
 ```
 
-| Alan | Varsayılan | Anlamı |
+| Field | Default | Meaning |
 | --- | --- | --- |
-| `directory` | `Release` | paket ve ZIP'in yazıldığı klasör |
-| `name` | proje `name` | paket klasörünün ve ZIP'in adı |
-| `notices` | yok | bildirimin oyun kısmı (Part 2); yoksa dosyada sadece Part 1 olur |
-| `files` | `[]` | paketin köküne aynen kopyalanan ek dosyalar |
+| `directory` | `Release` | folder where the package and ZIP are written |
+| `name` | project `name` | name of the package folder and ZIP |
+| `notices` | none | game section of the notice (Part 2); if absent, the file contains only Part 1 |
+| `files` | `[]` | additional files copied as-is to the package root |
 
-`ThirdPartyNotices.txt` adında bir dosya `files`'a yazılamaz; o ad üretilen bildirime aittir.
+A file named `ThirdPartyNotices.txt` cannot be listed in `files`; that name belongs to the generated notice.
 
-## Bildirim iki parçadır
+## The notice has two parts
 
-**Part 1: Engine** otomatik eklenir, oyun hiçbir şey yazmaz. En başta engine'in kendi lisansı (`Engine/LICENSE`,
-MIT; ad ve sürüm manifest'ten) gelir. Bileşenlerin kaynağı `Engine/ThirdParty/`:
-`Notices.json` bileşen listesi (ad, sürüm, metin dosyası, kaynaktaki sürüm pin'i, lisans dosyası) ve
-`Notices/*.txt` lisans metinleri; üreten kod `ThirdParty/notices.py`. Engine ile derlenen her oyuna giren kütüphaneler buradadır (raylib ve içinde gelenler, JSON, şifreleme).
-Sadece editörde ya da testte kullanılan bağımlılıklar (ImGui, Catch2) oyuna girmediği için listelenmez.
+**Part 1: Engine** is added automatically; the game writes nothing. The engine's own license comes first
+(`Engine/LICENSE`, MIT; name and version from the manifest). Components come from `Engine/ThirdParty/`: `Notices.json`
+lists components (name, version, text file, source version pin, license file), and `Notices/*.txt` holds license texts;
+`ThirdParty/notices.py` generates the output. Libraries included in every game built with the engine are here (raylib
+and its bundled libraries, JSON, encryption). Dependencies used only in the editor or tests (ImGui, Catch2) are not
+listed because they do not ship in the game.
 
-**Part 2: oyun** projenin `release.notices` dosyasıdır ve aynen eklenir. Oyunun kendi getirdiği her üçüncü taraf
-şey burada ya da buradan işaret edilen bir dosyada anılır.
+**Part 2: game** is the project's `release.notices` file, added as-is. Every third-party item brought in by the game is
+mentioned here or in a file referenced from here.
 
-## Oyun tarafı: `Game/Distribution/`
+## Game side: `Game/Distribution/`
 
-`Game/Distribution/` oyuncuya giden bildirim metinlerini tutar. `Game/Assets/`'in kardeşidir ama pakete kendiliğinden
-girmez; sadece `release.notices` ve `release.files` ile girer. `python Engine new` `Game/Distribution/GameNotices.txt`'i
-"henüz üçüncü taraf içerik yok" satırıyla kurar; ilk dış içerik eklendiğinde bu satır silinir.
+`Game/Distribution/` holds notice texts delivered to players. It is a sibling of `Game/Assets/`, but is not included in
+the package automatically; only through `release.notices` and `release.files`. `python Engine new` creates
+`Game/Distribution/GameNotices.txt` with a "no third-party content yet" line; remove it when adding the first external
+content.
 
-| Dosya | İçerik |
+| File | Contents |
 | --- | --- |
-| `GameNotices.txt` (`release.notices`) | oyunun kod kütüphaneleri, fontları, görselleri, shader'ları; uzun listeler için ayrı dosyaya yönlendirme |
-| `AudioCredits.txt`, `ArtCredits.txt` ... (`release.files`) | çok girişli içerik envanteri: dosya → eser, yazar, kaynak, lisans |
-| `README.md` | geliştirici notu: açık kaynak soruları, doğrulama kayıtları (pakete girmez) |
+| `GameNotices.txt` (`release.notices`) | game's code libraries, fonts, images, shaders; references to separate files for long lists |
+| `AudioCredits.txt`, `ArtCredits.txt` ... (`release.files`) | multi-entry content inventory: file → work, author, source, license |
+| `README.md` | developer note: open licensing/source questions, verification records (not packaged) |
 
-Bir asset'in lisansı asset'in yanında dağıtılmak zorundaysa (ör. font lisansı `Assets/Fonts/OFL.txt`) dosya
-asset'in yanında kalır, `package_assets` onu da seçmelidir ve `GameNotices.txt` ona yol verir.
+If an asset's license must be distributed beside it (e.g. font license `Assets/Fonts/OFL.txt`), the file stays beside
+the asset, `package_assets` must select it too, and `GameNotices.txt` points to it.
 
-### Ne zaman güncellenir
+### When to update
 
-Oyuna dışarıdan gelen bir şey eklenen, değiştirilen ya da silinen her değişiklik aynı committe bildirimini de
-günceller. Bu kural insan ve yapay zekâ için aynıdır: asset ya da kütüphane ekleyen değişiklik bildirimsiz bitmiş
-sayılmaz.
+Every change adding, modifying, or removing external material in the game updates its notice in the same commit. This
+rule applies equally to humans and AI: a change adding an asset or library is not complete without its notice.
 
-| Değişiklik | Yapılacak |
+| Change | Action |
 | --- | --- |
-| İndirilen font, görsel, ses, müzik, shader, model | `GameNotices.txt`'e ya da ilgili credits dosyasına giriş; lisans dosyası gerekiyorsa pakete koy |
-| Oyunun kendi `FetchContent`/vendor kütüphanesi | `GameNotices.txt`'e bileşen başlığı + lisans metninin tamamı |
-| Var olan dış içeriği düzenlemek (kesmek, yeniden kodlamak) | girişine "edited for use in the game" notu |
-| Dış içeriği silmek | girişini sil |
-| Projede üretilmiş içerik (kendi çizimin, `AudioGeneration` sesleri) | bildirim gerekmez; credits dosyası varsa "projede üretildi" diye ayrı tutulabilir |
-| Engine'in getirdiği bir şey | hiçbir şey; Part 1 Engine'indir |
+| Downloaded font, image, sound, music, shader, model | entry in `GameNotices.txt` or the relevant credits file; package the license file if required |
+| Game's own `FetchContent`/vendored library | component heading + full license text in `GameNotices.txt` |
+| Editing existing external content (cutting, re-encoding) | add "edited for use in the game" to its entry |
+| Removing external content | remove its entry |
+| Content generated in the project (your own art, `AudioGeneration` sounds) | no notice required; if a credits file exists, it can be kept separately as "generated in the project" |
+| Something supplied by the engine | nothing; Part 1 belongs to the engine |
 
-Lisansı ya da kaynağı belirsiz içerik pakete girmeden önce `Game/Distribution/README.md`'de açık soru olarak yazılır.
-Araç metinlerin varlığını denetler, oyun içeriğinin lisans uygunluğunu denetlemez.
+Content with an unclear license or source is recorded as an open question in `Game/Distribution/README.md` before it
+enters the package. The tool checks that texts exist; it does not check game content's license compliance.
 
-### Giriş biçimi
+### Entry format
 
-Düz metin, satır başına en fazla ~100 karakter, her giriş başlık + çizgi:
+Plain text, at most ~100 characters per line, each entry with a heading + underline:
 
 ```text
 Inter font
@@ -90,42 +91,42 @@ Files:
   Assets/Fonts/Inter-Medium.ttf
 ```
 
-Birden fazla lisans seçeneği olan bileşende seçilen seçenek başlıkta yazılır (`stb_image.h (MIT option)`).
-Lisans metni atıf istiyorsa (MIT, BSD, zlib, CC BY) metnin ve telif satırlarının tamamı, sadece bağlantı değil.
-Credits girişlerinde dosya yolları paketteki `Assets/`'e göredir.
+For components offering multiple license options, state the chosen option in the heading (`stb_image.h (MIT option)`).
+If the license requires attribution (MIT, BSD, zlib, CC BY), include the full text and copyright lines, not just a link.
+File paths in credits entries are relative to the packaged `Assets/`.
 
-## Denetimler
+## Checks
 
-Paketleme bir şey bulursa mevcut `Release/<name>/` klasörünü silmeden durur ve hepsini listeler:
+If packaging finds a problem, it stops before deleting the existing `Release/<name>/` folder and lists all problems:
 
-- `release.notices` ya da `release.files` dosyası, ya da `package_assets`'in seçtiği bir asset derlenmiş
-  `Assets/`'te yok (yeni asset eklendi ama Release derlenmedi).
-- Engine bileşeninin `Notices.json`'daki sürümü kaynağındaki pin'de yok (bağımlılık yükseltilmiş, bildirim
-  güncellenmemiş) ya da metin dosyasının ilk satırı o sürümü anmıyor.
-- Kayıtlı metin bileşenin `ThirdParty/` içindeki ana lisans dosyasını aynen içermiyor.
+- A `release.notices` or `release.files` file, or an asset selected by `package_assets`, is missing from the built
+  `Assets/` (a new asset was added but Release was not built).
+- An engine component's version in `Notices.json` is absent from its source pin (the dependency was upgraded without
+  updating the notice), or the text file's first line does not mention that version.
+- The recorded text does not contain the component's main license file in `ThirdParty/` verbatim.
 
-Engine'in kendi denetimleri derleyici istemez, Engine kökünde: `python -m unittest discover -s ThirdParty/Tests`
-(gerçek pin'leri ve lisansları okur) ve `python -m unittest discover -s Tools/Tests -t .` (paketleme dahil).
+The engine's own checks need no compiler, from the engine root: `python -m unittest discover -s ThirdParty/Tests` (reads
+real pins and licenses) and `python -m unittest discover -s Tools/Tests -t .` (including packaging).
 
-## Engine'de nerede
+## Where it lives in the engine
 
-Paketleme `Tools/commands/release.py`'dedir; sistem büyüyecekse (imza, sürüm damgası, mağaza depot'u, başka platform
-paketi) bu modül `Tools/commands/release/` alt paketine dönüşür. Bağımlılıklar ve bildirimleri `ThirdParty/`'dedir
-([ThirdParty/README.md](../ThirdParty/README.md)).
+Packaging is in `Tools/commands/release.py`; if the system grows (signing, version stamps, store depots, other platform
+packages), this module becomes the `Tools/commands/release/` subpackage. Dependencies and their notices are in
+`ThirdParty/` ([ThirdParty/README.md](../ThirdParty/README.md)).
 
 ```text
-Engine/Tools/commands/release.py   package(): denetim → paket klasörü → ThirdPartyNotices.txt → ZIP
+Engine/Tools/commands/release.py   package(): checks → package folder → ThirdPartyNotices.txt → ZIP
 Engine/Tools/Tests/test_release.py
 Engine/ThirdParty/
-  <bileşen>/        değiştirilmemiş kaynaklar
-  Notices.json      Part 1 bileşen listesi: ad, sürüm, metin, sürüm pin'i, lisans dosyası
-  Notices/*.txt     bileşen başına lisans metinleri
-  notices.py        denetim + Part 1 metni
+  <bileşen>/        unmodified sources
+  Notices.json      Part 1 component list: name, version, text, version pin, license file
+  Notices/*.txt     per-component license texts
+  notices.py        validation + Part 1 text
   Tests/            Python unittest
 ```
 
-## Engine bakımı: bağımlılık eklemek ya da yükseltmek
+## Engine maintenance: adding or upgrading dependencies
 
-Tarif `ThirdParty/README.md`'dedir. Oyuna giren bir bağımlılık eklendiğinde ya da sürümü değiştiğinde aynı committe
-`Notices/<bileşen>.txt` ve `Notices.json` güncellenir. Editör ya da test bağımlılığı oyuna girmez; `Notices.json`'a
-yazılmaz.
+The procedure is in `ThirdParty/README.md`. When adding or changing the version of a dependency shipped in games, update
+`Notices/<bileşen>.txt` and `Notices.json` in the same commit. Editor or test dependencies do not ship in games; do not
+list them in `Notices.json`.

@@ -1,12 +1,12 @@
-# Genel editör API'si
+# General editor API
 
-Bu belge projeden bağımsız sözleşmedir. İlk kurulum [GettingStarted](GettingStarted.md),
-üretim çizimini kullanma ve içerik tasarımı [CreatingPreviews](CreatingPreviews.md) içindedir.
+This document is the project-independent contract. Initial setup is in [GettingStarted](GettingStarted.md); using
+production drawing and designing content are in [CreatingPreviews](CreatingPreviews.md).
 
-## Kayıt
+## Registration
 
-Public başlıklar `Engine/Editor/Api/` altındadır; ImGui, Windows handle'ı ve IPC içermez. Proje, kendisine verilen
-registry'ye açık kayıt yapar:
+Public headers are under `Engine/Editor/Api/`; they contain no ImGui, Windows handles, or IPC. The project registers
+explicitly with the registry it receives:
 
 ```cpp
 void RegisterProjectPreviews(PreviewRegistry& registry) {
@@ -23,80 +23,79 @@ void RegisterProjectPreviews(PreviewRegistry& registry) {
 }
 ```
 
-`MyPreview`, `EditorPreview`'dan (bir `GameObject`) türer. Modelsiz çizimde yalnız `Draw(Painter&) const` gerekir; `Start`,
-`Update(float)`, `Stop`, `HandleInput`, `ApplyParameter`, `ExecuteAction`, `CaptureParameters`, `Inspect` gerektiğinde
-override edilir. Kendi frame döngüsü yazılmaz; model ve gerçek View'ı içerik sahiplenir, editör için ikinci çizim
-kopyası yazılmaz.
+`MyPreview` derives from `EditorPreview` (a `GameObject`). Drawing without a model needs only `Draw(Painter&) const`;
+override `Start`, `Update(float)`, `Stop`, `HandleInput`, `ApplyParameter`, `ExecuteAction`, `CaptureParameters`, and
+`Inspect` as needed. Do not write a separate frame loop; content owns the model and real View, without a second copy of
+drawing for the editor.
 
-Kurallar:
+Rules:
 
-- Kayıt yalnız metadata / fabrika ekler; pencere, asset, örnek kurulmaz. Kimlikler benzersizdir.
-- Fabrika GL, metin ve ses hazırken engine thread'inde çağrılır; başlangıç değerleri tam harita olarak verilir,
-  kurulumda `ApplyParameter` çağrılmasına güvenilmez.
-- `PreviewServices` canvas boyutunu, ses referansını, oyunun fontunu (`font`; çizim dışında ölçmek için,
-  ör. hit-test; yoksa null), log ve uygulama komutu callback'lerini verir. Referanslar örnekten uzun yaşar; içerik
-  durduktan sonra tutulmaz.
-- `Update` ölçeklenmiş saniye alır. Görsel zaman `paint.Time()`'dır: `PreviewScene::Seconds()` her Reset'te 0'lanır ve
-  `PreviewGame::DrawSeconds()` ile sunum saatine verilir; içerik saat bağlamaz.
-- `Stop` ve destructor istisna atmaz. Fabrika / hook hataları worker'ı sonlandırabilir; editör hatayı ve çıkış
-  kodunu gösterir.
+- Registration adds only metadata / factories; it creates no window, assets, or instances. IDs are unique.
+- The factory is called on the engine thread when GL, text, and audio are ready; initial values are supplied as a
+  complete map, without relying on `ApplyParameter` during setup.
+- `PreviewServices` supplies canvas size, audio reference, game font (`font`; for measurement outside drawing, e.g. hit
+  testing; null if absent), and log/application-command callbacks. References outlive the instance; do not retain them
+  after content stops.
+- `Update` receives scaled seconds. Visual time is `paint.Time()`: `PreviewScene::Seconds()` resets to 0 on every Reset
+  and supplies presentation time through `PreviewGame::DrawSeconds()`; content does not wire up a clock.
+- `Stop` and destructors do not throw. Factory / hook failures may terminate the worker; the editor shows the error and
+  exit code.
 
-`PreviewDefinition::benchmark` isteğe bağlı, tekrarlanabilir bir iş yükü sözleşmesidir. Kalıcı kimlik/sürüm,
-iki varyantın adları ve parametre farklarını taşır. Tanım yoksa önizleme yalnız
-canlı ölçüme uygundur. `PreviewServices::profiler`, özel CPU scope/sayaç kaydı için ödünç modül referansıdır;
-işlem yalnız `Modules/Profiler/Profiler.hpp` üzerinden yapılır. [Profiler rehberi](Profiler.md).
+`PreviewDefinition::benchmark` is an optional, repeatable workload contract. It carries stable identity/version, the
+names of two variants, and parameter differences. Without a definition, the preview supports only live measurement.
+`PreviewServices::profiler` is a borrowed module reference for recording custom CPU scopes/counters; use it only through
+`Modules/Profiler/Profiler.hpp`. [Profiler guide](Profiler.md).
 
-## Parametre ve eylem sözleşmesi
+## Parameter and action contract
 
-`PreviewValue`: `int64_t`, `double`, `bool`, normalize `PreviewColor` ya da seçenek metni (`std::string`).
-`PreviewParameter` tür, varsayılan, aralık / seçenek, uygulama zamanı, `group` ve `description` taşır. Sayılar sonlu
-ve aralık içinde, renk kanalları 0..1 olmalıdır. Değerler reddedilir, sessizce kırpılmaz.
-`advanced = true` olan alanlardan oluşan gruplar ilk açılışta kapalıdır; arama / Modified filtresi eşleşmeleri açar.
-`applyAction`, yalnız NextAction alanlarında tüketen eylemin kimliğini verebilir; kayıtlı bir eylem olmalıdır.
-Inspector ortak uygulama zamanını grupta bir kez, farklı zamanları alanın `*` işaretinde / tooltip'inde gösterir.
-Bu sunum bilgisi setter veya eylem yürütmez; değer değişikliği ile worker yanıtını bekleyen Pending ayrıdır.
-Choice parametresinde `choiceButtons = true`, seçenekleri Inspector'da açılır liste yerine seçili değeri vurgulayan,
-panel genişliğine göre bir veya iki sütuna yerleşen düğmeler olarak gösterir; varsayılanı `false`'tur.
-`choiceButtonColumns` pozitifse en çok belirtilen sütun sayısını kullanır; alan daraldığında okunabilir düğmeler için
-sütun sayısı azalır. Varsayılan `0`, bir veya iki sütun seçer.
+`PreviewValue`: `int64_t`, `double`, `bool`, normalized `PreviewColor`, or option text (`std::string`).
+`PreviewParameter` carries type, default, range / options, application time, `group`, and `description`. Numbers must be
+finite and within range, color channels 0..1. Values are rejected, never silently clamped. Groups consisting of
+`advanced = true` fields start collapsed; search / Modified filter matches expand them. `applyAction` can name the
+consuming action only for NextAction fields; it must be a registered action. Inspector shows a shared application time
+once per group, differing times in each field's `*` marker / tooltip. This presentation metadata runs no setters or
+actions; a value change is separate from Pending awaiting worker response. On Choice parameters, `choiceButtons = true`
+shows options in Inspector as buttons highlighting the selected value instead of a dropdown, arranged in one or two
+columns according to panel width; the default is `false`. A positive `choiceButtonColumns` caps the column count; as
+space narrows, fewer columns keep buttons readable. The default `0` chooses one or two columns.
 
-`PreviewAction` kimlik, etiket, açıklama ve isteğe bağlı `primary` (varsayılan `false`) taşır. En fazla bir eylem
-ana eylem olarak işaretlenebilir; listedeki konumu önemli değildir. Inspector onu tam genişlikte sabit alt alanda,
-diğerlerini kaydırılabilir içerikte uyarlanabilir iki sütunlu grupta gösterir. Ana eylem belirtilmesi zorunlu değildir; eski kataloglarda alan yoksa
-bütün eylemler ikincildir. Bu metadata eylem callback'lerini veya worker davranışını değiştirmez.
+`PreviewAction` carries identity, label, description, and optional `primary` (default `false`). At most one action may
+be marked primary; its list position does not matter. Inspector shows it full-width in a fixed footer, with other
+actions in an adaptive two-column group in scrollable content. A primary action is optional; in old catalogs without the
+field, all actions are secondary. This metadata changes neither action callbacks nor worker behavior.
 
-| Uygulama zamanı | Worker | İçerik |
+| Application time | Worker | Content |
 | --- | --- | --- |
-| `Immediate` | Setter'ı çağırır, başarıda kabul eder | Mevcut görünüşü güncelle |
-| `NextAction` | Setter'ı çağırır, başarıda kabul eder | Sonraki tetikleme için sakla |
-| `OnReset` | Doğrulayıp saklar; setter çağırmaz | Yeni fabrikada kullan |
+| `Immediate` | Calls the setter, accepts on success | Update current appearance |
+| `NextAction` | Calls the setter, accepts on success | Store for the next trigger |
+| `OnReset` | Validates and stores; does not call the setter | Use in the new factory |
 
-Setter / eylem boş metinle başarı, açıklamayla ret bildirir; reddedilen setter içeriği değiştirmez. Editör yeniden
-açılış için yalnız kabul edilen değeri saklar; yeni katalogda uyumsuz / silinmiş alanlar atılır ve açıklanır.
-`CaptureParameters() const` eylemin veya ürün girdisinin değiştirdiği authored kontrolleri bildirir; runtime bütün
-bildirimi doğrular, bilinmeyen / geçersiz alan hiçbir değeri değiştirmez. Preset diske yazımı, reflection ve otomatik
-kaynak yazımı yoktur.
+Setters / actions report success with empty text, rejection with an explanation; a rejected setter does not change
+content. The editor stores only accepted values for reopening; incompatible / removed fields in a new catalog are
+dropped and explained. `CaptureParameters() const` reports authored controls changed by actions or product input;
+runtime validates the entire report, and unknown / invalid fields change no values. There is no preset writing to disk,
+reflection, or automatic source writing.
 
-## İnceleme
+## Inspection
 
-`EditorPreview::Inspect()` salt okunur `PreviewInspection` döndürür: focus dikdörtgeni, etiket / değerler, tablo
-sekmeleri, gizli / etkisiz kontrol ve eylem kimlikleri, `showImage`. Tarife karışmaz; değiştiğinde en çok 10 Hz
-ayrı mesajla aktarılır. Genel UI proje kimliği bilmeden gösterir.
-`PreviewReadout::kind` varsayılan `Text` için sola hizalı ve satır saran metin, `Number` için sağa hizalı teknik
-font, `Status` için kısa rozet seçer. Sığmayan durum metni de satır sarar. Birimler biçimlenmiş değerin parçasıdır.
+`EditorPreview::Inspect()` returns read-only `PreviewInspection`: focus rectangle, labels / values, table tabs, hidden /
+disabled control and action IDs, `showImage`. It does not affect the recipe; changes are sent separately at most 10 Hz.
+General UI displays it without knowing project IDs. `PreviewReadout::kind` selects left-aligned wrapped text for default
+`Text`, right-aligned technical font for `Number`, and a short badge for `Status`. Status text also wraps if it does not
+fit. Units are part of the formatted value.
 
-## Worker çalışma zamanı
+## Worker runtime
 
-`RunPreviewHost(argc, argv, RegisterProjectPreviews, settings)` isteğe bağlı bir Game fabrikası alır; varsayılan
-`PreviewGame`'dir. `PreviewSession` IPC, örnek lifecycle'ı ve kare aktarımını Game'den ayırır; proje kendi gerçek
-Game'inde aynı session'ı kurabilir (tüketicinin özel Game adaptörü). `PreviewSessionActions` quit / reset / activate ve
-uygulama komutu callback'lerini bağlar. Game kancaları: `FrameSeconds` (host'un simülasyon süresi), `DrawSeconds`
-(sunum saati), `SetScene(scene, true)` (aynı sahnenin Enter akışını yeniden başlatır). `fixedWindow` host ayarı
-Options'ın OS pencere / capture boyutunu değiştirmesini engeller.
+`RunPreviewHost(argc, argv, RegisterProjectPreviews, settings)` takes an optional Game factory; the default is
+`PreviewGame`. `PreviewSession` separates IPC, instance lifecycle, and frame transfer from Game; the project can set up
+the same session in its own real Game (consumer's custom Game adapter). `PreviewSessionActions` wires quit / reset /
+activate and application-command callbacks. Game hooks: `FrameSeconds` (host simulation time), `DrawSeconds`
+(presentation clock), `SetScene(scene, true)` (restarts the same scene's Enter flow). The host setting `fixedWindow`
+prevents Options from changing OS window / capture size.
 
-## Proje tarifi ve build
+## Project recipe and build
 
-Proje CMake'i yapılandırmaya özel JSON tarifi üretir; başka tarif `EngineEditor.exe --project <yol>` ile seçilir:
+Project CMake generates a configuration-specific JSON recipe; select another with `EngineEditor.exe --project <yol>`:
 
 ```json
 {
@@ -111,41 +110,41 @@ Proje CMake'i yapılandırmaya özel JSON tarifi üretir; başka tarif `EngineEd
 }
 ```
 
-Göreli yollar tarif dosyasına göredir; shell komut metni çalıştırılmaz. `worker.executable` build çıktısıdır;
-editör worker'ları onun snapshot kopyalarından başlatır. Build & Refresh: çalışan önizleme açık kalırken yalnız
-tarifteki hedefi derler → başarıda snapshot alır → yeni worker'ı aynı durumla eskisinin yanında başlatır → hazır
-olunca yerine geçirir ([Architecture](Architecture.md#worker-akışı)). Build hatasında önizleme değişmez. Windows Job
-Object yalnız editörün başlattığı süreç ağacını sahiplenir; 5 s içinde çıkmayan worker sonlandırılır. Aynı build
-dizini editör oturumları arasında mutex ile korunur.
+Relative paths are relative to the recipe file; shell command text is not executed. `worker.executable` is build output;
+the editor starts workers from snapshot copies of it. Build & Refresh: build only the recipe target while the running
+preview stays open → snapshot on success → start a new worker beside the old one with the same state → replace when
+ready ([Architecture](Architecture.md#worker-flow)). Build errors leave the preview unchanged. A Windows Job Object owns
+only the process tree started by the editor; workers not exiting within 5 s are terminated. A mutex protects the same
+build directory across editor sessions.
 
-Genel editör Game olmadan derlenebilir:
+The general editor can build without Game:
 
 ```powershell
 cmake -S Engine -B build/engine-editor -G "Ninja Multi-Config" -DENGINE_BUILD_RUNTIME=ON -DENGINE_BUILD_EDITOR=ON
 cmake --build build/engine-editor --config Debug --target EngineEditor
 ```
 
-`ENGINE_BUILD_EDITOR` ve `ENGINE_BUILD_EDITOR_TESTS` varsayılan OFF'tur. Raylib 5.5, rlImGui
-118221c8a532501a3c2c236b62950877cbefc2b4 ve Dear ImGui v1.92.7-docking sabitlenmiştir.
+`ENGINE_BUILD_EDITOR` and `ENGINE_BUILD_EDITOR_TESTS` default to OFF. Raylib 5.5, rlImGui
+118221c8a532501a3c2c236b62950877cbefc2b4, and Dear ImGui v1.92.7-docking are pinned.
 
-## IPC ve görüntü aktarımı
+## IPC and image transfer
 
-- Kontrol: Windows named pipe (byte mode, `PIPE_NOWAIT`), 4 byte little-endian uzunluk + UTF-8 JSON. Mesaj en çok
-  1 MiB; gönderim kuyruğu en çok 256 mesaj / 8 MiB; poll başına 64 KiB okuma / yazma bütçesi. Poll yalnız sahibi
-  olan thread'de yapılır. Sürecin stdout / stderr çıktısı Output'a alınır; Full son 1000 satırı,
-  Last Build Try son denemenin 10000 satır / 8 MiB tamponunu ve ilk hatasını tutar. Tam oturum / deneme
-  logları build dizinindeki `editor-logs/` altındadır. Süreç çıkışında kalan çıktı 64 KiB poll sınırından
-  bağımsız tamamen okunur; tampon sınırları dosyaya yazılan çıktıyı kesmez.
-- Zarf: sürüm, oturum kimliği, içerik üretimi, istek kimliği, tür, veri. Reset yeni üretim, worker açılışı yeni oturum
-  oluşturur. Başlangıç / ilk kare zaman aşımı 30 s.
-- Görüntü: mutex korumalı iki paylaşımlı yuva, en çok 1920×1080 RGBA8. Canvas GPU'dan okunur, çevrilir, kopyalanır;
-  editör kendi dokusuna yükler. Meşgul tampon beklenmez, eski kareler atlanabilir. Canvas boyutunu proje seçer
-  (ölçüler GameSettings ile verilir). Hedef: worker 30 FPS, editör 60 FPS; View menüsündeki ölçüler readback / publish / transfer sürelerini
-  gösterir (tam input→ekran gecikmesi değildir).
-- Protokol veya `InputKey` yerleşimi değişince editör ve worker birlikte derlenir; sürüm / tuş sayısı uyuşmazlığı
-  hata olarak bildirilir.
+- Control: Windows named pipe (byte mode, `PIPE_NOWAIT`), 4-byte little-endian length + UTF-8 JSON. Messages up to 1
+  MiB; send queue up to 256 messages / 8 MiB; 64 KiB read / write budget per poll. Poll only on the owning thread.
+  Process stdout / stderr goes to Output; Full keeps the last 1000 lines, Last Build Try keeps the latest attempt's
+  10000-line / 8 MiB buffer and first error. Full session / attempt logs are under `editor-logs/` in the build
+  directory. On process exit, remaining output is fully drained regardless of the 64 KiB poll limit; buffer limits do
+  not truncate output written to files.
+- Envelope: version, session ID, content generation, request ID, type, data. Reset creates a new generation; worker
+  startup creates a new session. Startup / first-frame timeout is 30 s.
+- Image: two mutex-protected shared slots, up to 1920×1080 RGBA8. The canvas is read from the GPU, flipped, copied; the
+  editor uploads it to its own texture. Busy buffers are not waited on; old frames may be skipped. The project chooses
+  canvas size (dimensions supplied in GameSettings). Target: worker 30 FPS, editor 60 FPS; View menu metrics show
+  readback / publish / transfer times (not full input→screen latency).
+- When the protocol or `InputKey` layout changes, rebuild editor and worker together; version / key-count mismatches are
+  reported as errors.
 
-## Headless editör testleri
+## Headless editor tests
 
 ```powershell
 cmake -S Engine -B build/editor-tests -G "Ninja Multi-Config" -DENGINE_BUILD_RUNTIME=OFF -DENGINE_BUILD_EDITOR_TESTS=ON
@@ -153,5 +152,5 @@ cmake --build build/editor-tests --config Debug --target EngineEditorTests
 ctest --test-dir build/editor-tests -C Debug --output-on-failure
 ```
 
-Viewport / DPI eşlemesi, input sahipliği, mesaj parçalanması, sürüm / oturum ayrımı, parametre doğrulama / geri
-yükleme, kaynak kurmadan kayıt, worker çıkışından önce build yasağı ve paylaşımlı tamponu kapsar.
+Covers viewport / DPI mapping, input ownership, message fragmentation, version / session separation, parameter
+validation / restoration, registration without resource setup, forbidding builds before worker exit, and shared buffers.

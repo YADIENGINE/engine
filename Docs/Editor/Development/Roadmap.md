@@ -1,20 +1,20 @@
 # Editor development notes
 
-Bu dosya desteklenen özellik listesinden ayrı tutulur.
-Güncel API: [Api](../Api.md); üretim önizleme rehberi: [CreatingPreviews](../CreatingPreviews.md).
+This file is separate from the supported feature list. Current API: [Api](../Api.md); production preview guide:
+[CreatingPreviews](../CreatingPreviews.md).
 
-## Mevcut sınırlar
+## Current limits
 
-- UI ve worker süreçleri Windows masaüstüne özeldir.
-- Görüntü aktarımı GPU readback ve iki paylaşımlı tampon kullanır; sıfır kopya değildir.
-  En büyük canvas 1920×1080; meşgul tamponda eski kareler atlanabilir.
-- Durum tutan View'lar için rastgele zamana scrub yoktur; Pause, Reset ve Step kullanılır.
-- Kullanıcı recipe'lerini ayrı preset dosyasına kaydetme, reflection ve otomatik kaynak yazımı yoktur.
-- Custom Game adaptörü kendi kayıt/telemetry izolasyonunu kurmalıdır.
-- UI/worker protokol veya InputKey yerleşimi değişirse iki hedef birlikte derlenir.
+- UI and worker processes are Windows-desktop-only.
+- Image transfer uses GPU readback and two shared buffers; it is not zero-copy. Maximum canvas is 1920×1080; busy
+  buffers may skip old frames.
+- Stateful Views have no arbitrary-time scrubbing; use Pause, Reset, and Step.
+- No saving user recipes to separate preset files, reflection, or automatic source writing.
+- Custom Game adapters must set up their own save/telemetry isolation.
+- If UI/worker protocol or InputKey layout changes, both targets are built together.
 
-## Yeni iş ekleme ölçütü
+## Criteria for adding work
 
-Genel ihtiyaç birden fazla projeye hizmet etmelidir. Oyun kataloğu, özel galeriler ve
-olay koreografisi Engine'e eklenmez. Yeni public davranışta kullanım/API/mimari
-belgeleri ve ilgili en küçük doğrulama bölümü güncellenir.
+A general need must serve multiple projects. Game catalogs, custom galleries, and event choreography do not belong in
+the engine. New public behavior updates usage/API/architecture documentation and the smallest relevant validation
+section.

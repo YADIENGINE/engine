@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-# Proje adı: burada ve Project.json "name" alanında aynı olmalı (exe, paket ve editör worker'ı bu addan türer).
+# Project name: must match Project.json "name" (executable, package, and editor worker derive from this name).
 project(@PROJECT_NAME@ LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -22,15 +22,15 @@ if(APP_BUILD_TESTS)
 endif()
 add_subdirectory(Engine)
 
-# Game/ ve Editor/ altındaki .cpp'ler kendiliğinden bulunur (yeni dosya eklenince CMake yeniden yapılandırır).
-# Klasör boşken Painter kullanan starter oyunu / worker'ı ve lisanslı fontu hazırlanır.
+# Find .cpp files under Game/ and Editor/ automatically (CMake reconfigures when a new file is added).
+# When the folder is empty, prepare the Painter-based starter game / worker and its licensed font.
 file(GLOB_RECURSE APP_GAME_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Game/*.cpp")
 file(GLOB_RECURSE APP_EDITOR_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Editor/*.cpp")
 
 if(APP_BUILD_GAME)
     engine_add_game(${PROJECT_NAME} SOURCES ${APP_GAME_SOURCES} ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/Game/Assets")
     target_include_directories(${PROJECT_NAME} PRIVATE Game)
-    # Game/ altındaki *.tuning.json dosyaları (Engine/Docs/Tuning.md); dosya yokken hiçbir şey eklemez.
+    # *.tuning.json files under Game/ (Engine/Docs/Tuning.md); adds nothing when no files exist.
     engine_add_tuning(${PROJECT_NAME} ROOT Game)
 endif()
 

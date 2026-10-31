@@ -1,71 +1,72 @@
 # Editor validation
 
-Komutlar geliştirici içindir; yalnız belge değişikliğinde build/test gerekmez.
-Headless altyapı test komutları ve kapsamı [API](Api.md#headless-editör-testleri) içindedir.
-Gerçek pencere/input/görsel kontrolleri kullanıcı yapar; yalnız değişen bölüm seçilir.
+Commands are for developers; documentation-only changes do not require builds/tests. Headless infrastructure test
+commands and scope are in [API](Api.md#headless-editor-tests). The user performs real window/input/visual checks; select
+only the changed section.
 
-## Önizleme sözleşmesi
+## Preview contract
 
-1. Kayıt GL/font/ses oluşturmadan katalog alınabilmeli.
-2. Başlangıç recipe'si fabrikaya tam gelmeli; geçersiz değer atomik reddedilmeli.
-3. Immediate / NextAction / OnReset, ret, Default ve capture Inspector'a doğru yansımalı.
-4. Pause dekoratif saat ve Update'i dondurmalı; Step 1/60 s, Reset saat 0 olmalı.
-5. Reset/Stop/yeniden açma kaynakları eski context kapanmadan bırakmalı.
-6. Başka projeye ait oyuncu settings/progress/telemetry dosyaları değişmemeli.
+1. Catalog retrieval must work without creating GL/fonts/audio during registration.
+2. The factory must receive the complete initial recipe; invalid values must be rejected atomically.
+3. Immediate / NextAction / OnReset, rejection, Default, and capture must appear correctly in Inspector.
+4. Pause must freeze decorative time and Update; Step must be 1/60 s, Reset clock 0.
+5. Reset/Stop/reopening must release resources before the old context closes.
+6. Player settings/progress/telemetry files belonging to another project must not change.
 
-## Editör arayüzü
+## Editor UI
 
-1. İlk tercihlerde Develop: Project / Viewport / Inspector açık, Output / Profiler kapalı. Panelleri dock et / sekmede
-   birleştir; kapatıp Window menüsünden aç. Window → Layouts hazır / özel düzenleri, Window → Toggle last bottom tool
-   ve Ctrl+J son alt paneli yönetiyor. Viewport'un yerel View menüsünde Fit / Focus / 100% ve zoom çalışıyor;
-   üst View menüsüyle Focus preview / Restore workspace, arayüz ölçeği ve performans ölçüleri değiştirilebiliyor.
-2. %75 / %100 / %125 / %150 arayüz ölçeği ve monitör DPI değişimi; dar panellerde uzun adlar sarılıyor veya
-   tooltip ile kısalıyor. Toolbar'ın ikincil eylemleri taşma menüsünde; yatay toolbar kaydırması yok.
-3. Ctrl+P Project aramasını, gizliyken de, açıp odaklıyor. Favori yıldızı içerik açmıyor; Recent yalnız başarılı
-   açılışları sıralıyor. Boş arama / favori / geçmiş durumları anlamlı açıklama gösteriyor.
-4. Inspector Search / Modified sayacı, `?` açıklaması, değişmiş değer işareti, Pending / ret ve tek alan sıfırlama;
-   seçenek grupları tam genişliği kullanır. Paneli daraltınca Phase gibi üçlü seçenekler daha az sütuna iner;
-   normal kontroller etiketin altına geçer, checkbox sığdığında aynı satırda kalır. Düğmelerin metni dikey harf sütunlarına dönüşmez.
-   OnReset için Reset. Uygulama zamanı grup başına tek açıklama veya karışık grupta `*` tooltip'iyle gösterilir.
-   Değişmemiş alanın reset'i hover / klavye odağında görünür; yerleşim oynamaz. İleri gruplar önce kapalıdır,
-   arama / Modified eşleşmeleri açar. İçerik tanımındaki grup, primary ve disabled metadata'sı korunuyor.
-5. Output Last Build Try / Full ayrımı, kapsama göre sayaç / arama / Copy Visible; tıklama / Ctrl seçim /
-   Shift aralığı / Ctrl+A / Ctrl+C / sağ tık kopyalama / çift tıklama metin ayrıntısı. Arama ve ayrıntıda
-   metin kopyalama korunuyor; yukarı kaydırınca veya seçim yapınca Follow duruyor. Clear yalnız Full
-   tamponunu siliyor; Open Log bütün oturum veya deneme çıktısını açıyor. Uzun çıktıda ilk hata korunuyor.
-   Başarısız build'de popup bir kez geliyor; Show Output kapalı veya büyütülmüş düzenden Output'a
-   dönüp ilk hatayı gösteriyor, eski arama ve kapalı Error filtresi hatayı gizlemiyor. İptalde popup yok;
-   başarılı derleme sonrası worker başlatma hatası ayrı anlatılıyor. Yeni deneme önceki denemeye karışmıyor.
-6. Develop / Inspect / Profile arasında geçiş son özel düzeni silmiyor; Last custom layout geri getiriyor.
-   Output / Console alt çubuk düğmeleri ve Ctrl+J yalnız hedef paneli açıp kapatıyor; diğer açık paneller
-   korunuyor. Alt çubukta Profiler yok; View menüsü ve paletten açılıyor. Output kapalıyken hata / uyarı gelince
-   düğme hata / uyarı rengiyle yanıp sönüyor; Output gerçekten görüntülenene kadar bildirim kalıyor, sonraki uyarıda
-   yeniden başlıyor. Yeniden açılışta yerleşim dönüyor; View kapalı / daraltılmış kaydedilmiş olsa da açık ve
-   önde başlıyor. Büyütülmüş halde kapatmak önceki düzeni koruyor.
-7. Önizleme sekmesi gizliyken, başka panel arkasındayken veya menü açıkken ürüne input gitmiyor.
-8. Primary eylem tam genişlikte ve kaydırırken panelin altında sabit; ikincil eylemler yeterli genişlikte iki,
-   dar panelde tek sütun. Uzun etiket / seçenek ipuçları, sayı / renk düzenleme ve bölüm açma / kapama taşmıyor.
-   Canlı sayılar sağa hizalı, kısa durumlar rozetli, uzun açıklamalar satır sarıyor; child alanda yatay taşma yok.
-9. Ctrl+Shift+P ile paleti aç: arama, yukarı / aşağı, Enter, Escape, kapalı komut nedeni, panel / layout seçimi.
-   F5 / F6 / F7 / Ctrl+R / Ctrl+Shift+B toolbar ve menüyle aynı kullanılabilirliği izliyor; metin / popup
-   sırasında çalışmıyor ve ürüne sızmıyor.
+1. Initial preferences use Develop: Project / Viewport / Inspector open, Output / Profiler closed. Dock panels / combine
+   tabs; close and reopen from Window. Window → Layouts manages preset / custom layouts; Window → Toggle last bottom
+   tool and Ctrl+J manage the last bottom panel. Fit / Focus / 100% and zoom work in Viewport's local View menu; the top
+   View menu changes Focus preview / Restore workspace, UI scale, and performance metrics.
+2. 75% / 100% / 125% / 150% UI scale and monitor DPI changes; long names wrap or truncate with tooltips in narrow
+   panels. Secondary toolbar actions are in overflow; no horizontal toolbar scrolling.
+3. Ctrl+P opens and focuses Project search, even when hidden. The favorite star does not open content; Recent lists only
+   successful opens. Empty search / favorites / history states show meaningful explanations.
+4. Inspector Search / Modified counter, `?` description, changed-value marker, Pending / rejection, and single-field
+   reset; choice groups use full width. Narrowing the panel reduces columns for three-way choices such as Phase; normal
+   controls move below labels, checkboxes stay on the same line when they fit. Button text does not become vertical
+   letter columns. Reset for OnReset. Application time appears once per group or in `*` tooltips for mixed groups.
+   Unchanged-field reset appears on hover / keyboard focus; layout stays still. Advanced groups start collapsed; search
+   / Modified expand matches. Authored group, primary, and disabled metadata remain intact.
+5. Output Last Build Try / Full separation, scope-specific counters / search / Copy Visible; click / Ctrl selection /
+   Shift range / Ctrl+A / Ctrl+C / right-click copy / double-click text details. Text copying in search and details
+   remains available; scrolling up or selecting stops Follow. Clear clears only Full; Open Log opens the whole session
+   or attempt output. Long output preserves the first error. A failed build opens the popup once; Show Output returns
+   from closed or maximized layout to Output and shows the first error, unaffected by old search or a disabled Error
+   filter. No popup on cancellation; worker startup failure after successful build is explained separately. New attempts
+   do not mix with previous attempts.
+6. Switching Develop / Inspect / Profile does not erase the last custom layout; Last custom layout restores it. Output /
+   Console bottom buttons and Ctrl+J toggle only the target panel, preserving other open panels. Profiler is absent from
+   the bottom bar; it opens from View and the palette. Errors / warnings while Output is closed flash the button in
+   error / warning color; the notice stays until Output is actually viewed and restarts on the next warning. Reopening
+   restores layout; View starts open and in front even if saved closed / collapsed. Closing while maximized preserves
+   the previous layout.
+7. Product input does not arrive when the preview tab is hidden, behind another panel, or a menu is open.
+8. The primary action is full-width and fixed at the panel bottom while scrolling; secondary actions use two columns
+   when wide enough, one in narrow panels. Long label / option tooltips, number / color editing, and section toggles do
+   not overflow. Live numbers are right-aligned, short statuses badged, long explanations wrapped; no horizontal
+   overflow in the child area.
+9. Open the palette with Ctrl+Shift+P: search, up / down, Enter, Escape, disabled-command reason, panel / layout
+   selection. F5 / F6 / F7 / Ctrl+R / Ctrl+Shift+B follow the same availability as toolbar and menu; they do not run
+   during text / popups or leak into the product.
 
-## Altyapı
+## Infrastructure
 
-1. Debug derle; uyarı / hata yok. İkinci görünür worker penceresi / konsolu yok.
-2. Görüntü merkez / köşe / kenar boşluğu tıklamaları; dışarı sürükleyip bırakma; panel, pencere ve DPI değişimi.
-3. Inspector'a yazarken klavye önizlemeye gitmiyor; alt-tab sonrası basılı girdi temizleniyor.
-4. Ana düğme kapalıyken Open, hazır / pause'dayken Stop, açılış / katalog / derleme / benchmark sırasında Cancel,
-   kapanırken devre dışı Stop gösteriyor. Stop / Open / Reset tekrarlarında editör PID'i sabit; eski görüntü canlı sayılmıyor.
-5. Derleme hatası, eksik exe, worker çökmesi, build iptali ve editör kapanışı: orphan süreç kalmıyor.
-6. View içindeki performans ölçüsü tercihi kaydediliyor; FPS ve readback / publish / transfer değerleri görünüyor.
+1. Build Debug; no warnings / errors. No second visible worker window / console.
+2. Image center / corner / margin clicks; drag out and release; panel, window, and DPI changes.
+3. Typing in Inspector does not send keyboard input to the preview; alt-tab clears held input.
+4. The main button shows Open when closed, Stop when ready / paused, Cancel during startup / catalog / build /
+   benchmark, disabled Stop while closing. Repeated Stop / Open / Reset keeps the editor PID fixed; old images are not
+   considered live.
+5. Build errors, missing executables, worker crashes, build cancellation, and editor exit leave no orphan processes.
+6. View performance-metric preference is saved; FPS and readback / publish / transfer values are visible.
 
 ## Profiler
 
-Headless modül testleri `[profiler]` etiketiyle istatistikler, scope nesting, eksik GPU örneği, sınırlar,
-rapor IO ve karşılaştırma koşullarını doğrular. Editor testlerinde warmup/measurement ayrımı, A/B tekrar
-sırası, iptal, yürütme ayarı snapshot/restorasyonu, benchmark metadata round-trip ve stale generation/capture
-mesajları kontrol edilir. Testler gerçek GL/FPS sonucu sabitlemez.
-Bu testleri derleme/çalıştırma geliştiriciye aittir. Runtime ayar restorasyonu ve GPU backend'i için
-[Profiler manuel kabul listesi](Profiler.md#manual-acceptance) kullanılır.
-UI kontrolünde Advanced benchmark settings, Glow override, tek Export menüsü ve benchmark iptali de seçilir.
+Headless module tests with `[profiler]` verify statistics, scope nesting, missing GPU samples, limits, report IO, and
+comparison conditions. Editor tests check warmup/measurement separation, A/B repetition order, cancellation,
+execution-setting snapshot/restoration, benchmark metadata round-trip, and stale generation/capture messages. Tests do
+not fix actual GL/FPS results. Building/running these tests belongs to the developer. For runtime setting restoration
+and GPU backend, use the [Profiler manual acceptance list](Profiler.md#manual-acceptance). UI checks also select
+Advanced benchmark settings, Glow override, the single Export menu, and benchmark cancellation.

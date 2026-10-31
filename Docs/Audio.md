@@ -1,11 +1,11 @@
 # Audio
 
-Engine ses cihazını ve kaynakları sahiplenir; oyun neyin ne zaman çalacağını belirler.
-Tek public giriş [AudioSystem.hpp](../Core/Audio/AudioSystem.hpp): servis, kimlikler, katalog ve ayarlar bu
-header'dadır. Header raylib veya yükleme thread'i içermez. `Audio/Internals/` desteklenen API değildir;
-oyun ve editör yalnız public header'ı kullanır. Ses, Engine runtime servisidir; ayrı bir opt-in modül değildir.
+The engine owns the audio device and resources; the game decides what plays and when. The single public entry point is
+[AudioSystem.hpp](../Core/Audio/AudioSystem.hpp): the service, IDs, catalog, and settings are in this header. The header
+includes neither raylib nor the loading thread. `Audio/Internals/` is not supported API; games and editors use only the
+public header. Audio is an engine runtime service, not a separate opt-in module.
 
-## Katalog kurmak
+## Setting up a catalog
 
 ```cpp
 #include "Runtime/GameSettings.h"
@@ -26,92 +26,84 @@ GameSettings Settings() {
 }
 ```
 
-ID'ler proje tarafından atanır; SoundId ve MusicId ayrı kimlik alanlarıdır.
-Seyrek ID'ler desteklenir; en büyük ID kadar boş yuva ayrılmaz.
-Yeni bir oyun kendi ID sabitlerini ve kataloğunu oluşturup `GameSettings::audio` alanına verir.
-İkinci bir ses servisi, yükleme döngüsü veya platforma özel çalma kodu kurması gerekmez.
-Dosyalar asset köküne göre yoldur. Runtime katalogdaki yolları asset manifestine ekler;
-ayrıca aynı yolları `settings.assets` içine yazmanız gerekmez.
-Dosyaları paketlemek tüketicinin sorumluluğudur: [Assets](AssetsAndPlatforms.md).
+The project assigns IDs; SoundId and MusicId are separate ID spaces. Sparse IDs are supported; empty slots are not
+allocated up to the largest ID. A new game defines its own ID constants and catalog and supplies them in
+`GameSettings::audio`. It does not need a second audio service, loading loop, or platform-specific playback code. File
+paths are relative to the asset root. Runtime adds catalog paths to the asset manifest; you do not need to repeat them
+in `settings.assets`. Packaging the files is the consumer's responsibility: [Assets](AssetsAndPlatforms.md).
 
-`AudioSystem::ValidateCatalog(catalog)` cihaz açmadan ve dosyalara erişmeden sözleşmeyi denetler.
-Boş katalog geçerlidir; aynı türde yinelenen ID, boş/absolute/`..` içeren yol, sıfır voice,
-geçersiz volume veya enum değeri `std::invalid_argument` fırlatır.
-SoundId ve MusicId aynı sayısal değeri kullanabilir. Dosyanın varlığı ve biçimi yüklenirken denetlenir.
-`Game`, asset hazırlamadan önce; `BeginLoading` de worker başlatmadan önce kataloğu doğrular.
+`AudioSystem::ValidateCatalog(catalog)` checks the contract without opening a device or accessing files. An empty
+catalog is valid; duplicate IDs of the same type, empty/absolute/`..` paths, zero voices, invalid volume, or invalid
+enum values throw `std::invalid_argument`. SoundId and MusicId may share a numeric value. File existence and format are
+checked during loading. `Game` validates the catalog before asset preparation; `BeginLoading` validates it before
+starting a worker.
 
-## Yükleme ve sahiplik
+## Loading and ownership
 
-`Game` ses sistemini kurar ve `BeginLoading` çağırır. Arka plan yüklemesi tamamlanıp
-`FinishLoading()` başarılı olana kadar efekt çalma/durdurma veya Load/Unload API'si kullanmayın.
-Volume değerleri yükleme sırasında saklanıp devralmada uygulanabilir.
-Dosya/cihaz yükleme hataları exception olarak bildirilir.
-`Game::Start()` ses hazır olmadan çalışabilir; ilk normal sahne update/input akışı yükleme sonrasındadır.
+`Game` creates the audio system and calls `BeginLoading`. Do not use effect playback/stop or Load/Unload APIs until
+background loading completes and `FinishLoading()` succeeds. Volume values can be stored during loading and applied on
+handover. File/device loading failures are reported as exceptions. `Game::Start()` may run before audio is ready; normal
+scene update/input starts after loading.
 
-Kendi servisiniz varsa `FinishLoading()` false iken bekleme ekranını sürdürün;
-başarıda kaynaklar ana thread'e devralınır:
+With your own service, keep the waiting screen active while `FinishLoading()` is false; on success, resources are
+transferred to the main thread:
 
-| Durum | Davranış |
+| State | Behavior |
 | --- | --- |
-| Yükleme başlamadı | `FinishLoading` ve playback/resource değişiklikleri `std::logic_error` fırlatır. |
-| Yükleniyor | `FinishLoading` false; playback/resource değişiklikleri `std::logic_error` fırlatır. |
-| Hazır | `FinishLoading` sonraki çağrılarda da true; çalma ve dinamik kaynak işlemleri kullanılabilir. |
-| Yükleme başarısız | Kısmi kaynaklar bırakılır; `FinishLoading` ve playback/resource değişiklikleri aynı hatayı yeniden fırlatır. |
+| Loading not started | `FinishLoading` and playback/resource changes throw `std::logic_error`. |
+| Loading | `FinishLoading` is false; playback/resource changes throw `std::logic_error`. |
+| Ready | `FinishLoading` remains true on later calls; playback and dynamic resource operations are available. |
+| Loading failed | Partial resources are released; `FinishLoading` and playback/resource changes rethrow the same error. |
 
-Bir instance tek yükleme girişimi yapar; ikinci `BeginLoading` `std::logic_error` fırlatır.
-Katalog doğrulaması başarısızsa yükleme başlamamıştır; katalog düzeltilip tekrar denenebilir.
-Worker hatasından sonra yeniden denemek için servis yok edilip yeniden kurulur.
+An instance makes one loading attempt; a second `BeginLoading` throws `std::logic_error`. If catalog validation fails,
+loading has not started; fix the catalog and retry. To retry after a worker failure, destroy and recreate the service.
 
-AudioSystem kurulurken process çapındaki cihazı rezerve eder; ikinci canlı instance `std::logic_error` fırlatır.
-Servisi kuran thread'den kullanın; public API genel thread-safe servis değildir. Doğrudan raylib audio çağrıları
-ve paralel cihaz sahipliği desteklenmez. Yükleme worker'ı yalnız private kaynakları kullanır; ana thread
-join sonrasında devralır. Destructor yüklemeyi iptal etmeyi ister ve worker'ı bekler.
-Kaynaklar RAII ile yönetilir; alias'lar örnekten önce, bütün kaynaklar cihazdan önce bırakılır.
-`Game::Audio()` ve editörün verdiği referanslar servis sahibinin ömrünü aşmamalıdır.
+AudioSystem reserves the process-wide device on construction; a second live instance throws `std::logic_error`. Use the
+service from the thread that created it; the public API is not a generally thread-safe service. Direct raylib audio
+calls and parallel device ownership are unsupported. The loading worker uses only private resources; the main thread
+takes them over after joining. The destructor requests loading cancellation and waits for the worker. Resources use
+RAII; aliases are released before their source sample, and all resources before the device. References from
+`Game::Audio()` and the editor must not outlive the service owner.
 
 ## Playback
 
-- `Audio().PlayEffect(Click)`: önce boş bir voice seçer. `EffectSettings` varsayılanı dört eşzamanlı
-  kopya, volume 1 ve `EffectOverflow::RestartNext`'tir. Bütün kopyalar doluysa sıradaki baştan başlar;
-  `EffectOverflow::Skip` yeni isteği atlar. Katalogdaki `EffectAsset::settings` veya dinamik
-  `LoadEffect(id, file, settings)` ile efekt başına belirlenir.
-- `PlayEffectIfIdle`: zaten çalıyorsa yeni isteği atlar; kuyruk oluşturmaz.
-- `StopEffect`: ilgili ID'nin bütün kopyalarını durdurur.
-- `PlayMusic`: mevcut parçayı durdurur, yeni parçayı normal pitch ile başlatır; varsayılan loop açıktır.
-- `PlayEffect`, `PlayEffectIfIdle` ve `SetMusicPitch` pitch'i sonlu ve pozitif olmalıdır;
-  aksi durumda `std::invalid_argument` fırlatılır. Hız ve perde birlikte değişir.
-- `CurrentMusic` duraklatılmış veya doğal olarak bitmiş parçayı da bildirir; `IsMusicPlaying` gerçek çalma durumudur.
-- `PauseMusic` / `ResumeMusic` duraklatır; `StopMusic` current seçimini temizler.
-- `AudioSystem::Update()` stream'i her frame doldurur; Game bunu zaten çağırır.
+- `Audio().PlayEffect(Click)`: selects an idle voice first. `EffectSettings` defaults to four concurrent copies, volume
+  1, and `EffectOverflow::RestartNext`. If every copy is busy, the next restarts; `EffectOverflow::Skip` drops the new
+  request. Configure each effect through catalog `EffectAsset::settings` or dynamic `LoadEffect(id, file, settings)`.
+- `PlayEffectIfIdle`: drops the new request if already playing; it does not queue requests.
+- `StopEffect`: stops all copies of that ID.
+- `PlayMusic`: stops the current track and starts the new track at normal pitch; looping is enabled by default.
+- Pitch for `PlayEffect`, `PlayEffectIfIdle`, and `SetMusicPitch` must be finite and positive; otherwise
+  `std::invalid_argument` is thrown. Speed and pitch change together.
+- `CurrentMusic` also reports paused or naturally finished tracks; `IsMusicPlaying` reports actual playback.
+- `PauseMusic` / `ResumeMusic` pause/resume; `StopMusic` clears the current selection.
+- `AudioSystem::Update()` fills the stream every frame; Game already calls it.
 
-`HasEffect` / `HasMusic` hazır olmadan false döner. `CurrentMusic` boş, `IsMusicPlaying` false olur;
-seçili parça yokken `StopMusic`, `PauseMusic`, `ResumeMusic` ve `Update` güvenli no-op'tur.
-Diğer playback/resource işlemleri önce sistemin hazır olmasını gerektirir.
-Hazır sistemde yüklenmemiş ID ile işlem `std::out_of_range` fırlatır.
+`HasEffect` / `HasMusic` return false before readiness. `CurrentMusic` is empty and `IsMusicPlaying` is false; with no
+selected track, `StopMusic`, `PauseMusic`, `ResumeMusic`, and `Update` are safe no-ops. Other playback/resource
+operations require the system to be ready first. An operation with an unloaded ID on a ready system throws
+`std::out_of_range`.
 
-`LoadEffect/LoadMusic` yeni kaynağı tamamen yükledikten sonra eskisini değiştirir;
-başarısız yükleme eski kaynağı ve çalan müziği korur. Başarılı efekt değişimi verilen `EffectSettings`'i uygular.
-Çalan müzik ID'si başarıyla değiştirilirse çalma durur; yeni stream kendiliğinden başlamaz.
-Dinamik önizleme yalnız kendi yüklediği kaynakları boşaltmalıdır. Game cihazı pencereden önce kapatır.
+`LoadEffect/LoadMusic` replace the old resource only after fully loading the new one; a failed load preserves the old
+resource and playing music. Successful effect replacement applies the supplied `EffectSettings`. Successfully replacing
+the playing music ID stops playback; the new stream does not start itself. A dynamic preview must unload only resources
+it loaded itself. Game closes the device before the window.
 
-## Volume ve kalıcılık
+## Volume and persistence
 
-Master, efekt, müzik grubu ve efektin kendi volume değeri ayrı katmanlardır.
-Volume setter'ları sonlu `0..1` aralığı dışındaki değerlerde `std::invalid_argument` fırlatır.
-Efekt çıkışı master × genel efekt seviyesi × efektin kendi seviyesidir.
-`MusicVolumeGroup::Menu` menü müziğine ayrı kullanıcı seviyesi sağlar.
-`settings.audioVolume.steps` yüzde adımlarını belirler; `AdjustEffectVolume` /
-`AdjustMusicVolume` bu adımlar üzerinden değiştirir ve seviye değiştiyse true döner.
-Adım sayısı 100'ü bölen pozitif bir tamsayı olmalıdır; aksi durumda constructor `std::invalid_argument` fırlatır.
-`EffectVolumePercent` / `MusicVolumePercent` menüde gösterilecek yüzdeyi döndürür.
-`SetMuted` geçici mute içindir; saklanan seviyeleri değiştirmez. Master ve mute kalıcı tercih değildir.
-Engine `audio.*` seçeneklerini yükler ve kayıt noktalarında saklar;
-oyun bunlar için ikinci bir settings anahtarı oluşturmaz. Eksik/geçersiz kayıtlı seviyeler ayrı ayrı %100'e döner.
+Master, effect, music group, and per-effect volume are separate layers. Volume setters throw `std::invalid_argument` for
+values outside the finite `0..1` range. Effect output is master × overall effect level × the effect's own level.
+`MusicVolumeGroup::Menu` provides a separate user level for menu music. `settings.audioVolume.steps` sets percentage
+steps; `AdjustEffectVolume` / `AdjustMusicVolume` adjust by these steps and return true if the level changes. The step
+count must be a positive integer that divides 100; otherwise the constructor throws `std::invalid_argument`.
+`EffectVolumePercent` / `MusicVolumePercent` return the percentage to display in a menu. `SetMuted` is temporary mute;
+it does not change stored levels. Master and mute are not persistent preferences. The engine loads `audio.*` options and
+saves them at save points; the game does not create a second settings key for them. Missing/invalid saved levels each
+fall back to 100%.
 
-## Bağımlılıklar ve doğrulama
+## Dependencies and validation
 
-Backend raylib 5.5'tir ve `Engine` hedefinde kalır. Katalog doğrulaması ve private volume politikası
-`EngineHeadless`'da headless derlenir; public header tek başına raylib istemez.
-Engine ses altyapısı hiçbir oyun kimliğini, asset yolunu veya çalma koreografisini bilmez.
-Headless ses testleri `[audio]` etiketi altındadır; gerçek çalma ve stream
-geliştiricinin manuel kontrolüdür.
+The backend is raylib 5.5 and stays in the `Engine` target. Catalog validation and private volume policy build
+headlessly in `EngineHeadless`; the public header alone does not require raylib. The engine audio infrastructure knows
+no game IDs, asset paths, or playback choreography. Headless audio tests use the `[audio]` tag; actual playback and
+streaming are checked manually by the developer.

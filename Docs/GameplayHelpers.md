@@ -2,8 +2,8 @@
 
 ## Gameplay frameworks
 
-Headless helpers (EngineHeadless). The gameplay frameworks are header-only and templated on the game's own enum;
-Engine never names game types. Input navigation is a compiled borrowed view.
+Headless helpers (EngineHeadless). The gameplay frameworks are header-only and templated on the game's own enum; Engine
+never names game types. Input navigation is a compiled borrowed view.
 
 | Header | Use |
 | --- | --- |
@@ -25,7 +25,7 @@ struct AttributeRules {
 using Attributes = StatSheet<Attribute, AttributeRules>;
 ```
 
-## Modifier ve süreli etki örneği
+## Modifier and timed effect example
 
 ```cpp
 #include <array>
@@ -49,32 +49,31 @@ void Example() {
 
     TimedEffectSet<Status> effects;
     effects.AddTimed(Status::Haste, 2.0f, 3);
-    effects.AddTimed(Status::Haste, 1.0f, 3); // 3 saniye kalır, 2 stack
+    effects.AddTimed(Status::Haste, 1.0f, 3); // 3 seconds remain, 2 stacks
     const bool expired = effects.Update(3.0f);
     (void)expired;
 }
 ```
 
-`Apply` modifier biriktirir; her frame aynı listeyi tekrar uygulamayın. Baştan hesaplamak için önce
-`Clear()` çağırın. Etkinin stat'a nasıl dönüştüğü ve stack başına gücü oyunun kuralıdır.
-Pozitif süre ve geçerli delta verin; bu basit konteynerlerde genel input doğrulaması varsaymayın.
+`Apply` accumulates modifiers; do not reapply the same list every frame. To recalculate from scratch, call `Clear()`
+first. How effects translate into stats and their strength per stack are game rules. Supply positive durations and valid
+deltas; do not assume general input validation in these simple containers.
 
-## Kademeli ilerleme
+## Tiered progress
 
-`TieredProgress<N>` oyun hedeflerinin tier/seen/progress verisini tutar. Oyun, geçerli indeksleri,
-hedef eşiklerini, hangi olayların sayıldığını ve tier üst sınırını yönetir.
-`Load(save, keyOf, tierCountOf)` kayıtları sınırlar; `Store(save, keyOf, storesProgress)`
-yalnız Persistence değerlerini değiştirir, diske kaydetmez. Ardından oyunun kayıt noktasında
-`Persistence::Save()` çağrılır. Kalıcı key'leri enum sırası yerine sabit metinlerden üretin.
+`TieredProgress<N>` holds tier/seen/progress data for game goals. The game manages valid indices, goal thresholds, which
+events count, and the tier limit. `Load(save, keyOf, tierCountOf)` clamps saved values; `Store(save, keyOf,
+storesProgress)` only changes Persistence values, without saving to disk. Call `Persistence::Save()` afterwards at the
+game's save point. Derive persistent keys from stable strings instead of enum order.
 
 ```cpp
 TieredProgress<1> goals;
 goals.SetProgress(0, 12.0f);
-goals.CompleteTier(0); // oyun önce hedefin tamamlandığını doğrular
+goals.CompleteTier(0); // the game checks goal completion first
 const int notifications = goals.UnseenCount();
 goals.MarkSeen();
 ```
 
-Bu örnek için ayrıca `Progress/TieredProgress.h` include edilir. Kayıt, RNG ve UI politikaları
-bu yardımcıların dışında kalır. Koleksiyon gezinmesi [Input](Input.md), sayaç animasyonu
-[Themes and UI](Graphics/ThemesAndUi.md) altında anlatılır.
+Also include `Progress/TieredProgress.h` for this example. Save, RNG, and UI policies stay outside these helpers.
+Collection navigation is described in [Input](Input.md), and counter animation in [Themes and
+UI](Graphics/ThemesAndUi.md).

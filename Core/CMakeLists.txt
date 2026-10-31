@@ -1,4 +1,4 @@
-# Core: oyuna giren engine kodu. Include kökü bu klasördür (#include "Runtime/Game.h").
+# Core: engine code shipped in games. This folder is the include root (#include "Runtime/Game.h").
 
 add_library(EngineStorage STATIC
     Platform/Internals/FileStorage.cpp
@@ -143,7 +143,7 @@ add_library(EngineHeadless STATIC
 target_include_directories(EngineHeadless PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineHeadless PUBLIC cxx_std_20)
 set_target_properties(EngineHeadless PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
-# Tuning değerleri geliştirme derlemelerinde dosyadan canlı okunur, Release yapılandırmalarında constexpr'dir (Docs/Tuning.md).
+# Tuning values are read live from files in development builds and are constexpr in Release configurations (Docs/Tuning.md).
 target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}"
     ENGINE_TUNING_LIVE=$<IF:$<CONFIG:Release,MinSizeRel,RelWithDebInfo>,0,1>)
 target_link_libraries(EngineHeadless PUBLIC EnginePersistence PRIVATE EngineStorage)
@@ -152,9 +152,9 @@ set_source_files_properties(Graphics/Text/Internals/FontData.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${ENGINE_THIRD_PARTY_DIR}/raylib/src/external")
 engine_warnings(EngineHeadless)
 
-# engine_add_tuning(<target> ROOT <folder>): ROOT altındaki her *.tuning.json derleme sırasında
-# <build>/Tuning/<target>/<ROOT'a göre yol>.tuning.h üretir; o klasör hedefin PUBLIC include dizinidir, yani include
-# yazımı kaynak header'larla aynıdır. Dosyalar configure'da bulunur (CMake'e elle yazılmaz). Ayrıntı: Docs/Tuning.md.
+# engine_add_tuning(<target> ROOT <folder>): each *.tuning.json under ROOT generates
+# <build>/Tuning/<target>/<path relative to ROOT>.tuning.h at build time; that folder is a PUBLIC include directory,
+# so includes match source headers. Files are found at configure time (not listed manually in CMake). See Docs/Tuning.md.
 set(ENGINE_TUNING_GENERATOR_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." CACHE INTERNAL "Engine root for python -m Tools.tuning")
 function(engine_add_tuning target)
     cmake_parse_arguments(PARSE_ARGV 1 TUNING "" "ROOT" "")
@@ -182,13 +182,13 @@ function(engine_add_tuning target)
         endif()
         list(APPEND structs "${name}")
         set(header "${outputRoot}/${relativeHeader}")
-        # Engine kökü sys.path'e açıkça eklenir: yalıtılmış bir yorumlayıcı (launcher'ın gömülü Python'u) `-m` ile
-        # çalışma klasörünü aramaz.
+        # Add the engine root to sys.path explicitly: an isolated interpreter (the launcher's bundled Python) does not
+        # search the working directory with `-m`.
         set(command "${Python3_EXECUTABLE}" -B -c
             "import runpy, sys; sys.path.insert(0, sys.argv.pop(1)); runpy.run_module('Tools.tuning', run_name='__main__')"
             "${ENGINE_TUNING_GENERATOR_ROOT}" generate "${source}" "${header}")
         if(NOT EXISTS "${header}")
-            # IntelliSense ilk derlemeden önce de bulsun; hata varsa derleme bildirir.
+            # Let IntelliSense find it before the first build; the build reports any errors.
             execute_process(COMMAND ${command} WORKING_DIRECTORY "${ENGINE_TUNING_GENERATOR_ROOT}"
                 OUTPUT_QUIET ERROR_QUIET)
         endif()
@@ -205,7 +205,7 @@ function(engine_add_tuning target)
     target_include_directories(${target} PUBLIC "${outputRoot}")
 endfunction()
 
-# Editörün tuning paneli dosya listesini <build>/Tuning/TuningFiles.json'dan okur; configure sonunda bir kez yazılır.
+# The editor's tuning panel reads the file list from <build>/Tuning/TuningFiles.json; written once at configure end.
 function(_engine_schedule_tuning_manifest)
     get_property(scheduled GLOBAL PROPERTY ENGINE_TUNING_MANIFEST_SCHEDULED)
     if(NOT scheduled)

@@ -1,27 +1,28 @@
-# Tuning dosyaları
+# Tuning files
 
-Elle ince ayar yapılan sayılar (yarıçap, hız, renk, süre, olasılık, fiyat) C++ sabiti yerine class'ın yanındaki
-`X.tuning.json` dosyasında durabilir. Değer editörde ya da dosyada değişince çalışan oyun onu derlemeden alır;
-Release'de aynı değerler `constexpr` olarak derlenir. JSON tek kaynaktır: git'te görünür, elle, editörle ya da AI
-ile düzenlenir. Sistem opt-in'dir; tasarım kararları engine reposunda `Docs/Design/Tuning.md`.
+Manually tuned numbers (radius, speed, color, duration, probability, price) can live in an `X.tuning.json` file beside
+the class instead of C++ constants. When a value changes in the editor or file, the running game picks it up without
+building; Release compiles the same values as `constexpr`. JSON is the single source: visible in git, editable by hand,
+editor, or AI. The system is opt-in; design decisions are in `Docs/Design/Tuning.md` in the engine repo.
 
-Yapısal sabitler (dizi boyutu, yuva sayısı, enum'a bağlı sayılar) tuning'e girmez, kodda kalır. Var olan
-`constexpr` sabitleri taşımak gerekmez; iki yöntem yan yana yaşar.
+Structural constants (array sizes, slot counts, enum-related numbers) stay in code, outside tuning. Existing `constexpr`
+constants do not need to move; both methods coexist.
 
-## Kurulum
+## Setup
 
-Hedef, tuning dosyalarını hangi klasörün altında aradığını bir kez bildirir:
+The target declares once which folder to search for tuning files:
 
 ```cmake
 engine_add_tuning(MyGame ROOT Game)
 ```
 
-`ROOT` altındaki her `*.tuning.json` derleme sırasında `<build>/Tuning/MyGame/<ROOT'a göre yol>.tuning.h` üretir; o
-klasör hedefin include dizinidir. Yeni dosya CMake'e yazılmaz, bir sonraki build'de bulunur. Üretilen header repoya
-girmez. Aynı hedefte aynı adlı iki tuning dosyası hatadır (struct'lar global). `python Engine new`'in kurduğu
-projede oyun hedefi bunu zaten çağırır. Üretici Python 3.10+ ister (`python Engine` ile aynı).
+Each `*.tuning.json` under `ROOT` generates `<build>/Tuning/MyGame/<ROOT'a göre yol>.tuning.h` during the build; that
+folder is the target's include directory. New files are not listed in CMake; the next build finds them. Generated
+headers are not tracked in the repo. Two tuning files with the same name in one target are an error (structs are
+global). The game target in a project created by `python Engine new` already calls this. The generator requires Python
+3.10+ (the same as `python Engine`).
 
-## Dosya
+## File
 
 `Game/Effects/Glow.tuning.json`:
 
@@ -47,28 +48,29 @@ projede oyun hedefi bunu zaten çağırır. Üretici Python 3.10+ ister (`python
 }
 ```
 
-| `type` | Değer | C++ |
+| `type` | Value | C++ |
 | --- | --- | --- |
-| (yok, sayı) / `float` | `12.0` | `float` |
+| (absent, number) / `float` | `12.0` | `float` |
 | `int` | `3` | `int` |
-| (yok, true/false) / `bool` | `true` | `bool` |
-| `color` | `"#RRGGBB"` / `"#RRGGBBAA"` | `Color4` (`Utilities/Color4.h`; çizimde `ToColor`) |
+| (absent, true/false) / `bool` | `true` | `bool` |
+| `color` | `"#RRGGBB"` / `"#RRGGBBAA"` | `Color4` (`Utilities/Color4.h`; `ToColor` when drawing) |
 | `vec2` | `[x, y]` | `Float2` |
 | `range` | `{ "min": a, "max": b }` | `FloatRange` |
-| `T[]` | boş olmayan liste | `std::array<T, N>` |
+| `T[]` | nonempty list | `std::array<T, N>` |
 | `table` | `columns` + `rows` | `std::array<<Alan>Row, N>` |
 
-- Alan ve sütun adları camelCase'tir, struct üyesi olur. Dosya adı PascalCase'tir ve struct'ın adını verir:
+- Field and column names are camelCase and become struct members. The filename is PascalCase and names the struct:
   `Glow.tuning.json` → `GlowTuning`.
-- `type` yazılmazsa sayı `float`, `true`/`false` `bool` olur (`3` kendiliğinden `int` olmaz); diğer tiplerde zorunlu.
-- `min` / `max` geçerlilik sınırıdır (slider aralığı değil): listede her elemana, `vec2` / `range`'de her sayıya
-  uygulanır; `bool` ve `color` sınır almaz.
-- Tablo sütunu tek değerli tip ya da liste olabilir; tablo içinde tablo yok. Liste sütununun uzunluğu her satırda aynı.
-- Liste uzunluğu ve satır sayısı yapısaldır (`std::array` boyutu). Enum'a bağlı bir listenin uzunluğu kullanıldığı
-  yerde denetlenir: `static_assert(std::tuple_size_v<decltype(GlowTuning::steps)> == StepCount);`
-- "Şanslar toplamı 100" gibi alanlar arası kurallar dosyaya girmez; kodda ya da testte denetlenir.
+- If `type` is omitted, a number becomes `float`, `true`/`false` becomes `bool` (`3` does not automatically become
+  `int`); it is required for other types.
+- `min` / `max` are validity bounds (not slider ranges): applied to every list element and every number in `vec2` /
+  `range`; `bool` and `color` do not accept bounds.
+- A table column can be a scalar type or list; no nested tables. List column length is the same in every row.
+- List length and row count are structural (`std::array` size). Check the length of an enum-related list where used:
+  `static_assert(std::tuple_size_v<decltype(GlowTuning::steps)> == StepCount);`
+- Cross-field rules such as "chances sum to 100" do not belong in the file; check them in code or tests.
 
-## Kod
+## Code
 
 ```cpp
 #include "Effects/Glow.tuning.h"
@@ -80,52 +82,53 @@ void GlowView::Draw(Painter& paint) const {
 }
 ```
 
-`Tuning<T>()` her iki modda da aynıdır ve `const T&` döner; referansı karenin içinde kullanın, saklamayın (değerler
-geliştirmede yenilenir). Testler değeri struct'tan okur, literal yazmaz.
+`Tuning<T>()` is identical in both modes and returns `const T&`; use the reference within the frame, do not retain it
+(values refresh during development). Tests read values from the struct instead of writing literals.
 
-| | Geliştirme (Debug, editör) | Release yapılandırmaları |
+| | Development (Debug, editor) | Release configurations |
 | --- | --- | --- |
-| Değerin kaynağı | İlk `Tuning<T>()` dosyayı okur; dosya derlendiğinden beri değiştiyse yeni değer | Derlenmiş `constexpr` |
-| Dosya değişince | Game her karenin başında bakar (en çok 200 ms'de bir), ya hep ya hiç uygular | — |
-| Maliyet | Struct alanı okumak | Sabit |
+| Value source | First `Tuning<T>()` reads the file; new values if the file changed since compilation | Compiled `constexpr` |
+| When the file changes | Game checks at each frame's start (at most once per 200 ms), applies all or nothing | — |
+| Cost | Reading a struct field | Constant |
 
-Mod `ENGINE_TUNING_LIVE` tanımıdır (Release, MinSizeRel, RelWithDebInfo'da 0). Geliştirme exe'si dosyayı derlendiği
-kaynak yolundan okur; proje klasörü taşınırsa yeniden derleyin. Canlı değerler ana iş parçacığında yenilenir.
+The mode is the `ENGINE_TUNING_LIVE` definition (0 in Release, MinSizeRel, RelWithDebInfo). Development executables read
+the file from its compiled source path; rebuild if the project folder moves. Live values refresh on the main thread.
 
-## Değişiklik ne zaman derleme ister
+## When changes require a build
 
-- Var olan değeri değiştirmek: derleme yok.
-- Alan / sütun eklemek ya da silmek, tipini değiştirmek, liste uzunluğunu ya da satır sayısını değiştirmek: struct
-  değişir; çalışan oyun dosyayı uygulamaz, "build to apply" bildirir. Derleyince geçer.
+- Changing an existing value: no build.
+- Adding or removing fields / columns, changing types, list lengths, or row counts: the struct changes; the running game
+  does not apply the file and reports "build to apply". Building resolves it.
 
-## Hatalar
+## Errors
 
-Hiçbir değer sessizce kırpılmaz ya da yarım uygulanmaz.
+No value is silently clamped or partially applied.
 
-- **Derleme:** bozuk JSON, yanlış tip, sınır dışı değer, eksik sütun derlemeyi `dosya:satır: error: ...` ile durdurur.
-- **Çalışırken:** geçersiz dosya uygulanmaz, son geçerli değerler sürer; hata stderr'e (editörde Output'a ve Tuning
-  paneline) `dosya:satır` ile yazılır.
-- **Açılışta:** dosya geçersizse oyun derlendiği andaki değerlerle açılır ve uyarır.
+- **Build:** invalid JSON, wrong types, out-of-bounds values, or missing columns stop the build with `dosya:satır:
+  error: ...`.
+- **Runtime:** invalid files are not applied; the last valid values continue. Errors are written to stderr (Output and
+  the Tuning panel in the editor) with `dosya:satır`.
+- **Startup:** if the file is invalid, the game starts with compiled values and warns.
 
-## Editör
+## Editor
 
-Tuning paneli projenin bütün tuning dosyalarını listeler (build'in `Tuning/TuningFiles.json`'u; yeni dosya bir sonraki
-configure'dan sonra görünür). Sayılar kutuya yazılır ve Enter'la girer; Enter'sız yazılan kutudan çıkınca geri
-alınır. Sınır dışı değer kabul edilmez, kutu kırmızı kalır. Değer diskteki dosyaya tek satırlık bir değişiklikle
-yamanır; önizleme dosyayı kendisi okur. Panel önizlemenin durumunu gösterir: Live, Not applied (satırıyla),
-Build needed (Build & Refresh düğmesiyle). Ayrıntı: [Editör kullanımı](Editor/Usage.md).
+The Tuning panel lists all project tuning files (the build's `Tuning/TuningFiles.json`; new files appear after the next
+configure). Type numbers in the box and commit with Enter; leaving the box without Enter reverts the edit. Out-of-bounds
+values are rejected and the box stays red. The value is patched into the file on disk as a one-line change; the preview
+reads the file itself. The panel shows preview state: Live, Not applied (with line number), Build needed (with a Build &
+Refresh button). Details: [Editor usage](Editor/Usage.md).
 
-## Biçim denetimi
+## Format check
 
-Dosyaların tek bir yazım biçimi vardır: 2 boşluk girinti, alanlar dosyadaki sırayla ve her biri kendi satırında, alan
-içi anahtarlar `type, value, min, max` (tablo: `type, columns, rows`) sırasında, tablo satırları satır başına bir.
-Editör hep bu biçimde yazar. `python Engine check` geçersiz ya da biçim dışı tuning dosyalarını bildirir;
-`python Engine check --fix` geçerli dosyaları biçime sokar (sayılar yazıldığı gibi kalır).
+Files have one canonical format: 2-space indentation, fields in file order with one per line, keys within a field in
+`type, value, min, max` order (table: `type, columns, rows`), one table row per line. The editor always writes this
+format. `python Engine check` reports invalid or noncanonical tuning files; `python Engine check --fix` formats valid
+files (numbers retain their written form).
 
-## Engine tarafı
+## Engine side
 
-- Üretici ve denetim: `Tools/tuning/` (`python -m Tools.tuning generate <json> <header>`, sadece standart kütüphane).
-- Biçim, doğrulama, yamama: `Core/Tuning/TuningFile.h`; canlı taraf: `Core/Tuning/TuningLive.h`; erişim:
+- Generation and checking: `Tools/tuning/` (`python -m Tools.tuning generate <json> <header>`, standard library only).
+- Format, validation, patching: `Core/Tuning/TuningFile.h`; live side: `Core/Tuning/TuningLive.h`; access:
   `Core/Tuning/Tuning.h`.
-- Kurallar Python'da ve C++'ta iki kez uygulanır; `Tools/Tests/TuningCases/` iki tarafın da koştuğu ortak örneklerdir.
-  Kuralı değiştiren ikisini ve örnekleri birlikte değiştirir.
+- Rules are implemented twice, in Python and C++; `Tools/Tests/TuningCases/` contains shared cases run by both sides. A
+  rule change updates both implementations and the cases together.

@@ -1,41 +1,40 @@
-# ToolUi: araçların ortak arayüz katmanı
+# ToolUi: shared UI layer for tools
 
-`ToolUi/` (CMake `EngineToolUi`) engine'in araçlarının (editör, launcher) ortak ImGui katmanıdır. Oyunlara girmez;
-oyun arayüzü `Core/Graphics/Ui`'dır. Include'lar engine köküne göredir (`#include "ToolUi/ToolTheme.h"`). Hedef
-`ENGINE_BUILD_RUNTIME` açık Windows build'lerinde tanımlıdır ve yalnız link'leyen bir araç varsa derlenir.
+`ToolUi/` (CMake `EngineToolUi`) is the shared ImGui layer for engine tools (editor, launcher). It does not ship in
+games; game UI is `Core/Graphics/Ui`. Includes are relative to the engine root (`#include "ToolUi/ToolTheme.h"`). The
+target is defined in Windows builds with `ENGINE_BUILD_RUNTIME` enabled and builds only when a tool links it.
 
-| Dosya | İçerik |
+| File | Contents |
 | --- | --- |
-| `ToolUiContext` | ImGui bağlamı (rlImGui), fontlar, tema, ölçek. `ToolUiOptions { docking, keyboardNavigation }`. Pencereden (Game) sonra kurulur, ondan önce yıkılır; her karede `BeginFrame(ölçekYüzdesi)` / `EndFrame()` |
-| `ToolTheme` | Arcade Cabinet teması (`ApplyToolTheme`), merkezi `ToolPalette` renkleri / `ToolMetrics` ölçüleri, font rolleri (`Ui / Medium / Heading / Technical`), fonttan bağımsız ölçek (`ToolUiScale()`), işlev renkleri (`ToolToneColor`), panel yüzeyleri (`ToolSurfaceColor`) |
+| `ToolUiContext` | ImGui context (rlImGui), fonts, theme, scale. `ToolUiOptions { docking, keyboardNavigation }`. Created after the window (Game), destroyed before it; `BeginFrame(ölçekYüzdesi)` / `EndFrame()` every frame |
+| `ToolTheme` | Arcade Cabinet theme (`ApplyToolTheme`), central `ToolPalette` colors / `ToolMetrics` dimensions, font roles (`Ui / Medium / Heading / Technical`), font-independent scale (`ToolUiScale()`), semantic colors (`ToolToneColor`), panel surfaces (`ToolSurfaceColor`) |
 | `ToolWidgets` | `BeginToolPanel` / `EndToolPanel`, `ToolTooltip`, `ToolSectionHeader`, `ToolEmptyState`, `ToolStatusBadge`, `ToolButton`, `ToolSegment`, `ToolIconButton`, `ContinueToolToolbar`, `ToolSingleLineButton`, `ToolWrappedSelectable` |
-| `ToolWindow` | `ToolGameSettings(uygulamaKimliği, WindowSettings)`: ayar dosyası, canvas içeriği, ses ve oyun fontu olmayan araç penceresi |
+| `ToolWindow` | `ToolGameSettings(uygulamaKimliği, WindowSettings)`: tool window without a settings file, canvas content, audio, or game font |
 
-- **Fontlar:** Windows'un kurulu Segoe UI Regular / Semibold fontları; font dosyaları paketlenmez. Bulunamazsa
-  gömülü Noto Sans Regular / Medium / SemiBold kullanılır. Her ağırlığa Font Awesome ikonları birleşir
-  (`ICON_FA_*`, `<extras/IconsFontAwesome6.h>`). Teknik değerler Consolas (sistem fontu yoksa gömülü ImGui fontu).
-  Noto OFL lisansı `ToolFontLicense()` ile erişilir; yedek fontlar ve lisans CMake tarafından exe içine gömülür.
-- **Tipografi:** uygulama kimliği 16, gövde / düğme / bölüm 14, ana başlık 18, meta bilgi 12 mantıksal piksel.
-  Başlık ve düğme Segoe UI Semibold, gövde Regular. `PushFont(ToolFont(rol), ToolMetrics::...Size)` kullanılır.
-- **Çizim:** ImGui 1.92 dinamik atlası metni istenen son boyutta rasterize eder; sabit 14 px bitmap büyütülmez.
-  Yatay 2× oversampling, kesirli advance, ImGui'nin piksele oturan glif kökenleri ve atlas yüklenince bilinear
-  filtre kullanılır. UI canvas/render texture üzerinden yeniden ölçeklenmez; doğrudan pencereye çizilir.
-  Noto'nun hhea yüksekliği 1362/1000 em, Segoe UI'ın 2724/2048 em'dir; `ExtraSizeScale` ile em ölçüsü normalleştirilir;
-  bu düzeltme kontrol/yerleşim ölçeğini büyütmez. Aksi halde 14 px görünen ayar yaklaşık 10 px em üretir.
-- **Ölçek:** kullanıcı yüzdesi × monitör DPI hem fontlara hem taban stile bir kez uygulanır. %100 / 96 DPI'da
-  gövde 14 px, kontrol 30 px'dir; gizli çarpan yoktur. `ToolUiScale()` etkin başlık/font boyutundan etkilenmez.
-- **Renkler:** Arcade Cabinet; pencere `#1E1A22`, panel `#2C2633`, girintili içerik `#16131B`, kontroller
-  `#3D3547`, seçili yüzey `#493B50`, amber vurgu `#F4AF65`. Vurgu üzerindeki metin `#302013`'tür.
-  Metin / ikincil / sönük / pasif metin, hover / basılı ve sınır / ince ayırıcı renkleri `ToolPalette`'tedir.
-  Pasif düğme metni `#746C7E`'dir; yüzeyin pasiflik saydamlığı ayrıca korunur. Başarı `#89C9A4`,
-  uyarı vurgu rengi, hata `#DB818D`, bilgi ikincil metin rengidir. Geometri ve fontlar paletten bağımsızdır.
-  `ToolSurface` rolleri: `Header`, `Toolbar`, `Workspace`, `Content`, `Utility`, `Status`, `PanelHeader`. Ana bölgeler kendi
-  opak yüzeyi ve sınırıyla ayrılır; sıradan yerleşim alt bölgeleri saydam kalır. `BeginToolPanel` çocuk bölgesine
-  yüzey, 1 px sınır ve ölçekli iç boşluk uygular; kırpılmış olsa bile `EndToolPanel` ile kapatılır. İsteğe bağlı
-  `padding` mantıksal px'dir (varsayılan 12); yoğun araç çubukları 8 kullanabilir. Köşe yarıçapı 3 px'dir.
-  %100 altındaki ölçeklerde panel, pencere, popup ve kontrol sınırları en az 1 fiziksel px olarak korunur.
-  Araç kendi durum renklerini `ToolTone`'dan türetir (editör: `EditorPhaseColor`).
-- **Pencere:** araç `Game`'den türer, `ToolGameSettings` ile kurulur ve bütün pencereyi `DrawWindow` içinde
-  `ToolUiContext` ile ImGui olarak çizer.
-- Yeni ortak widget yalnız birden fazla aracın işine yarıyorsa buraya girer; bir araca özgü olan o aracın
-  klasöründe kalır (editörün parametre / Inspector widget'ları `Editor/Ui/Widgets`).
+- **Fonts:** Windows-installed Segoe UI Regular / Semibold fonts; font files are not packaged. If unavailable, bundled
+  Noto Sans Regular / Medium / SemiBold are used. Font Awesome icons merge into each weight (`ICON_FA_*`,
+  `<extras/IconsFontAwesome6.h>`). Technical values use Consolas (bundled ImGui font if the system font is absent). The
+  Noto OFL license is available through `ToolFontLicense()`; CMake embeds fallback fonts and license in the executable.
+- **Typography:** application identity 16, body / button / section 14, main heading 18, metadata 12 logical pixels.
+  Headings and buttons use Segoe UI Semibold, body uses Regular. Use `PushFont(ToolFont(rol), ToolMetrics::...Size)`.
+- **Drawing:** ImGui 1.92's dynamic atlas rasterizes text at the requested final size; it does not enlarge a fixed 14 px
+  bitmap. It uses horizontal 2× oversampling, fractional advance, ImGui's pixel-aligned glyph origins, and bilinear
+  filtering after atlas upload. UI is not rescaled through a canvas/render texture; it draws directly to the window.
+  Noto's hhea height is 1362/1000 em, Segoe UI's is 2724/2048 em; `ExtraSizeScale` normalizes em size; this correction
+  does not enlarge control/layout scale. Otherwise a nominal 14 px setting produces about 10 px em.
+- **Scale:** user percentage × monitor DPI is applied once to both fonts and base style. At 100% / 96 DPI, body text is
+  14 px and controls 30 px; there is no hidden multiplier. `ToolUiScale()` is unaffected by active heading/font size.
+- **Colors:** Arcade Cabinet; window `#1E1A22`, panel `#2C2633`, inset content `#16131B`, controls `#3D3547`, selected
+  surface `#493B50`, amber accent `#F4AF65`. Text on accent is `#302013`. Text / secondary / muted / disabled text,
+  hover / pressed, and border / subtle separator colors are in `ToolPalette`. Disabled button text is `#746C7E`; the
+  surface's disabled opacity is preserved separately. Success is `#89C9A4`, warning uses accent, error `#DB818D`,
+  information uses secondary text. Geometry and fonts are independent of palette. `ToolSurface` roles: `Header`,
+  `Toolbar`, `Workspace`, `Content`, `Utility`, `Status`, `PanelHeader`. Main regions are separated by their own opaque
+  surface and border; ordinary layout subregions remain transparent. `BeginToolPanel` applies a surface, 1 px border,
+  and scaled padding to the child region; close it with `EndToolPanel` even if clipped. Optional `padding` is in logical
+  px (default 12); dense toolbars can use 8. Corner radius is 3 px. Below 100% scale, panel, window, popup, and control
+  borders remain at least 1 physical px. Tools derive their state colors from `ToolTone` (editor: `EditorPhaseColor`).
+- **Window:** the tool derives from `Game`, uses `ToolGameSettings`, and draws the whole window as ImGui with
+  `ToolUiContext` inside `DrawWindow`.
+- A new shared widget belongs here only if it serves multiple tools; tool-specific widgets stay in that tool's folder
+  (editor parameter / Inspector widgets: `Editor/Ui/Widgets`).

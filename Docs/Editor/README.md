@@ -1,21 +1,20 @@
 # Engine Editor
 
-Windows geliştirme aracı, gerçek üretim çizimini ayrı bir worker sürecinde önizler.
-Genel altyapı `Engine/Editor/` içindedir; oyun kataloğu ve worker adaptörü tüketici projededir.
-Normal oyun ve headless hedefler editör/ImGui bağımlılığı almaz.
+A Windows development tool that previews actual production drawing in a separate worker process. General infrastructure
+lives in `Engine/Editor/`; the game catalog and worker adapter live in the consumer project. Normal game and headless
+targets do not acquire editor/ImGui dependencies.
 
-1. [Projeye bağlamak ve ilk önizleme](GettingStarted.md).
-2. [Arayüz ve playback kullanımı](Usage.md).
-3. [Önizleme tasarlamak](CreatingPreviews.md).
-4. [Public API ve proje dosyası](Api.md).
-5. [Mimari](Architecture.md) ve [kontroller](Testing.md).
-6. [Profiler: canlı ölçüm, benchmark ve önce/sonra karşılaştırma](Profiler.md).
-7. [Editör UI'sının sonraki yetenekleri ve ön koşulları](TODO.md).
+1. [Connecting a project and the first preview](GettingStarted.md).
+2. [UI and playback usage](Usage.md).
+3. [Designing previews](CreatingPreviews.md).
+4. [Public API and project file](Api.md).
+5. [Architecture](Architecture.md) and [checks](Testing.md).
+6. [Profiler: live measurement, benchmarks, and before/after comparison](Profiler.md).
+7. [Future editor UI capabilities and prerequisites](TODO.md).
 
-`ENGINE_BUILD_EDITOR=ON` ve `ENGINE_BUILD_RUNTIME=ON` Windows editör hedeflerini açar;
-varsayılanı kapalıdır. `ENGINE_BUILD_EDITOR_TESTS` bağımsız headless altyapı testlerini açar.
-Build & Refresh yalnız proje tarifindeki worker hedefini derler. Engine Editor/API değişikliklerinde
-editör ve worker birlikte yeniden derlenmelidir.
+`ENGINE_BUILD_EDITOR=ON` and `ENGINE_BUILD_RUNTIME=ON` enable Windows editor targets; they are disabled by default.
+`ENGINE_BUILD_EDITOR_TESTS` enables independent headless infrastructure tests. Build & Refresh builds only the worker
+target in the project recipe. Engine Editor/API changes require rebuilding editor and worker together.
 
-Mevcut sınırlar [geliştirme notlarında](Development/Roadmap.md), gerekçeler
-[tarihçede](Development/History.md) bulunur.
+Current limits are in the [development notes](Development/Roadmap.md), and rationale in the
+[history](Development/History.md).

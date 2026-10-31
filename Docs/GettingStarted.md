@@ -1,10 +1,11 @@
-# İlk oyun
+# First game
 
-Projeyi önce [Proje kurulumu](ProjectSetup.md)'ndaki gibi `python Engine new` ile kurun. Kurulumun açtığı
-`Game/` klasörü boştur; `python Engine run` o hâlde Engine'in starter oyununu ("Game/ has no sources yet") açar.
-Starter Painter metni için Noto Sans fontunu ve lisansını exe yanına kopyalar. Bu rehber `Game/` altına ilk küçük oyunu yazar.
+First set up the project with `python Engine new` as described in [Project setup](ProjectSetup.md). The `Game/` folder
+created by setup is empty; `python Engine run` in that state opens the engine's starter game ("Game/ has no sources
+yet"). The starter copies the Noto Sans font and its license beside the executable for Painter text. This guide writes
+the first small game under `Game/`.
 
-## Dosya yapısı
+## File structure
 
 ```text
 MyProject/
@@ -15,24 +16,24 @@ MyProject/
     CreateGame.cpp
     MyGame.h  MyGame.cpp
     MyScene.h  MyScene.cpp
-  Editor/                   (önizlemeler; bkz. Editor/GettingStarted.md)
+  Editor/                   (previews; see Editor/GettingStarted.md)
 ```
 
 ## CMakeLists.txt
 
-Şablonun `CMakeLists.txt`'i değiştirilmez: `Game/` altındaki her `.cpp`'yi kendiliğinden bulur ve
-`engine_add_game(${PROJECT_NAME} SOURCES ... ASSETS Game/Assets)` ile oyunu kurar. Yeni dosya ekleyince bir sonraki
-build CMake'i yeniden yapılandırır; ilk `.cpp` geldiğinde starter oyunun yerini projenin kodu alır.
+Leave the template's `CMakeLists.txt` unchanged: it automatically finds every `.cpp` under `Game/` and creates the game
+with `engine_add_game(${PROJECT_NAME} SOURCES ... ASSETS Game/Assets)`. After adding a file, the next build reconfigures
+CMake; the project's code replaces the starter game when the first `.cpp` is added.
 
-Aynı dosya `engine_add_tuning(${PROJECT_NAME} ROOT Game)` ile `Game/` altındaki `*.tuning.json` ayar dosyalarını
-derlemeye bağlar ([Tuning](Tuning.md)): yarıçap, hız, renk gibi elle ayarlanan sayıları kod yerine orada tutmak,
-onları oyun açıkken ya da editörün Tuning panelinden derlemeden değiştirmeyi sağlar.
+The same file connects `*.tuning.json` settings files under `Game/` to the build with `engine_add_tuning(${PROJECT_NAME}
+ROOT Game)` ([Tuning](Tuning.md)): keeping manually adjusted numbers such as radius, speed, and color there instead of
+in code lets you change them while the game runs or from the editor's Tuning panel without building.
 
-`engine_add_game` Engine'in `Main.cpp` dosyasını ve Engine link'ini ekler; `CreateGame()` fabrikası projenindir.
-Desteklenen argümanlar: `SOURCES`, ek hedefler için `LIBRARIES` (ör. `EngineLocalization`), masaüstünde exe
-yanına kopyalanacak klasör için `ASSETS`. Kendi `main` fonksiyonunuzu eklemeyin.
+`engine_add_game` adds the engine's `Main.cpp` and Engine link; the project owns the `CreateGame()` factory. Supported
+arguments: `SOURCES`, `LIBRARIES` for extra targets (e.g. `EngineLocalization`), and `ASSETS` for the folder to copy
+beside the desktop executable. Do not add your own `main` function.
 
-## İlk sahne
+## First scene
 
 `Game/MyScene.h`:
 
@@ -84,12 +85,12 @@ void MyScene::Update(float seconds) {
 void MyScene::Draw(Painter& paint) const { paint.Circle({_x, CenterY}, Radius, Fill(Rgb(0xffa500))); }
 ```
 
-`Horizontal()` bu frame basılan A/D veya ok tuşunu bildirir; tuş tekrarı olmayan tek basış
-hareketi gösterir. Basılı tutarak hareket için `DeviceInput::Down` sorgularını kullanın.
-Bu küçük örnek lifecycle'ı göstermek için state ve çizimi aynı sahnede tutar.
-Büyüyen oyunda saf model ve onu const okuyan View ayırın; görsel sabitleri View'da tutun.
+`Horizontal()` reports A/D or arrow keys pressed this frame; it demonstrates movement on a single press without key
+repeat. For movement while held, use `DeviceInput::Down` queries. This small example keeps state and drawing in the same
+scene to demonstrate lifecycle. As the game grows, separate a pure model and a View that reads it as const; keep visual
+constants in the View.
 
-## Oyun ve giriş fabrikası
+## Game and entry factory
 
 `Game/MyGame.h`:
 
@@ -149,21 +150,22 @@ void MyGame::HandleInput(const DeviceInput& input) {
 std::unique_ptr<Game> CreateGame() { return std::make_unique<MyGame>(); }
 ```
 
-`applicationId` kullanıcı verisi klasörünün adıdır (ayarlar, kayıtlar); projeye özgü ve kalıcı seçin.
-Sahne oyunun değer üyesidir. `ShutdownNoThrow()` somut sahne destructor'ında çağrılır;
-çocuk nesneler eklediğinizde de aynı sahiplik kuralı geçerlidir.
+`applicationId` is the user-data folder name (options, saves); choose a persistent, project-specific value. The scene is
+a value member of the game. Call `ShutdownNoThrow()` in the concrete scene's destructor; the same ownership rule applies
+when adding child objects.
 
-## Geliştiricinin derleyip denemesi
+## Building and trying it as a developer
 
 ```powershell
 python Engine run
 ```
 
-`python Engine run` MSVC ortamını kurar, `desktop` preset'iyle yapılandırır, Debug derler ve `build/Debug/MyProject.exe`'yi
-açar. Elle: Developer PowerShell'de `cmake --preset desktop` ve `cmake --build --preset debug`.
+`python Engine run` sets up the MSVC environment, configures with the `desktop` preset, builds Debug, and opens
+`build/Debug/MyProject.exe`. Manually: `cmake --preset desktop` and `cmake --build --preset debug` in Developer
+PowerShell.
 
-Beklenen: canvas ortasında turuncu daire; A/D veya sol/sağ basışı hareket ettirir, Escape kapatır.
+Expected: an orange circle in the canvas center; A/D or left/right presses move it, Escape closes it.
 
-Özel font/ses eklerken [asset rehberini](AssetsAndPlatforms.md), kalıcı veri eklerken
-[ayar ve kayıt rehberini](OptionsAndSaves.md) izleyin. Editör entegrasyonu
-[ayrı başlangıç rehberindedir](Editor/GettingStarted.md).
+Follow the [asset guide](AssetsAndPlatforms.md) when adding custom fonts/audio, and the [options and saves
+guide](OptionsAndSaves.md) when adding persistent data. Editor integration has a [separate getting-started
+guide](Editor/GettingStarted.md).

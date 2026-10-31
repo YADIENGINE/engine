@@ -1,41 +1,40 @@
-# Araç sözleşmesi
+# Tools contract
 
-Engine'in bütün araçları tek komut satırındadır. Launcher (ve her türlü otomasyon: AI ajanı, CI) engine'le sadece bu
-belgedeki komutlar üzerinden konuşur; launcher projenin kendi `Engine/`'indeki araçları çalıştırır, bu yüzden farklı
-engine sürümlü projeler yan yana çalışır. Bu belgede olmayan her şey (modül adları, iç fonksiyonlar, çıktı metinleri)
-serbestçe değişebilir.
+All engine tools share one command line. The launcher (and any automation: AI agents, CI) communicates with the engine
+only through the commands in this document; the launcher runs tools from the project's own `Engine/`, so projects using
+different engine versions work side by side. Everything outside this document (module names, internal functions, output
+text) can change freely.
 
-## Çağırma
+## Invocation
 
 ```powershell
-python Engine [--project KÖK] <komut> [seçenekler]      # proje kökünden
-python . [--project KÖK] <komut> [seçenekler]           # engine reposunun kökünden
+python Engine [--project KÖK] <komut> [seçenekler]      # from the project root
+python . [--project KÖK] <komut> [seçenekler]           # from the engine repo root
 ```
 
-`Engine` klasörü `__main__.py` taşıdığı için Python onu doğrudan çalıştırır. Python 3.10+, sadece standart kütüphane.
-Araçlar yalıtılmış bir yorumlayıcıyla da çalışır (`python -I`, launcher'ın `._pth`'li gömülü Python'u): çalışma
-klasörünün `sys.path`'te olmasına güvenmez ve CMake'e kendilerini çalıştıran yorumlayıcıyı verir
-(`Python3_EXECUTABLE`), böylece derleme adımları da aynı Python'u kullanır.
-Proje kökü: `--project` verilmişse o; yoksa engine'in üst klasörü (`Project.json` varsa), değilse engine'in kendisi.
-`--project` komuttan önce yazılır.
+Python runs the `Engine` folder directly because it contains `__main__.py`. Python 3.10+, standard library only. Tools
+also work with an isolated interpreter (`python -I`, the launcher's bundled Python with `._pth`): they do not rely on
+the working folder being in `sys.path` and pass their own interpreter to CMake (`Python3_EXECUTABLE`), so build steps
+use the same Python. Project root: `--project` if supplied; otherwise the engine's parent folder (if it has
+`Project.json`), or the engine itself. Place `--project` before the command.
 
-## Komutlar
+## Commands
 
-| Komut | Seçenekler | İş |
+| Command | Options | Job |
 | --- | --- | --- |
-| `build` | `--release`, `--clean` | Oyunu derler (Debug; `--release` ile Release). `--clean` önce build klasörünü siler |
-| `run` | `--release` | Derler ve oyunu çalıştırır; oyun kapanınca döner |
-| `release` | | Release derler, `Release/<ad>/` paket klasörünü ve ZIP'i kurar ([Release](Release.md)) |
-| `test` | `--filter RE`, `--label RE`, `--list`, `--clean` | Headless testleri derler ve koşar; rapor `<tests.buildDirectory>/reports/<run-id>/results.json` |
-| `editor` | `--release`, `--build-only`, `--clean` | Editörü ve projenin önizleme worker'ını derler, editörü açar |
-| `refresh` | | Projenin açık editöründe Build & Refresh (sürüyorsa ona katılır); çıktısını akıtır, sonucuyla çıkar. Önizleme derleme boyunca açık kalır. Editör açık değilse 2 ([kontrol kapısı](Editor/Architecture.md#kontrol-kapısı)) |
-| `new` | `--name AD`, `--dry-run` | Engine'in üst klasörünü yeni proje olarak kurar; `--name` yoksa adı sorar |
-| `info` | | Engine ve proje bilgisi, JSON (aşağıda) |
-| `check` | `--fix` | Internals include sınırı ([API boundaries](Contributing/ApiBoundaries.md)) ve tuning dosyalarının geçerliliği / kanonik biçimi ([Tuning](Tuning.md)); `--fix` geçerli tuning dosyalarını biçime sokar |
+| `build` | `--release`, `--clean` | Builds the game (Debug; Release with `--release`). `--clean` removes the build folder first |
+| `run` | `--release` | Builds and runs the game; returns when the game closes |
+| `release` | | Builds Release and creates the `Release/<ad>/` package folder and ZIP ([Release](Release.md)) |
+| `test` | `--filter RE`, `--label RE`, `--list`, `--clean` | Builds and runs headless tests; report `<tests.buildDirectory>/reports/<run-id>/results.json` |
+| `editor` | `--release`, `--build-only`, `--clean` | Builds the editor and project preview worker, opens the editor |
+| `refresh` | | Build & Refresh in the project's open editor (joins an existing refresh); streams output and exits with its result. The preview stays open during the build. Returns 2 if the editor is not open ([control gateway](Editor/Architecture.md#control-gateway)) |
+| `new` | `--name AD`, `--dry-run` | Sets up the engine's parent folder as a new project; asks for the name without `--name` |
+| `info` | | Engine and project information, JSON (below) |
+| `check` | `--fix` | Internals include boundary ([API boundaries](Contributing/ApiBoundaries.md)) and tuning file validity / canonical format ([Tuning](Tuning.md)); `--fix` formats valid tuning files |
 
-Ayarlar `Project.json`'dadır ([ProjectSetup](ProjectSetup.md)).
+Settings are in `Project.json` ([ProjectSetup](ProjectSetup.md)).
 
-## `info` çıktısı
+## `info` output
 
 ```json
 {
@@ -45,12 +44,12 @@ Ayarlar `Project.json`'dadır ([ProjectSetup](ProjectSetup.md)).
 }
 ```
 
-Proje kökünde `Project.json` yoksa `project` `null`'dır.
+If the project root has no `Project.json`, `project` is `null`.
 
 ## Manifest
 
-`EngineManifest.json` engine'in kimliğidir ve sözleşmenin parçasıdır: launcher proje listesini doldururken her
-proje için Python başlatmaz, `Engine/EngineManifest.json`'u doğrudan okur ve `toolsContract`'ı denetler.
+`EngineManifest.json` is the engine's identity and part of the contract: when populating the project list, the launcher
+does not start Python for each project; it reads `Engine/EngineManifest.json` directly and checks `toolsContract`.
 
 ```json
 {
@@ -61,43 +60,43 @@ proje için Python başlatmaz, `Engine/EngineManifest.json`'u doğrudan okur ve 
 }
 ```
 
-| Alan | Anlamı |
+| Field | Meaning |
 | --- | --- |
-| `version` | `ANA.ARA.YAMA`. 0.x'te ARA, 1.0'dan sonra ANA artışı kırıcı değişikliktir: önceki sürümle derlenen bir proje elle değişiklik ister |
-| `toolsContract` | bu belgenin sürümü |
-| `repository` | engine reposunun adresi (developer modunda submodule kaynağı) |
-| `notes` | birikimli güncelleme notları, en yeni üstte; ilki `version`'dır. `breaking` kırıcı değişiklikler ve nasıl uyulacağı (`migrate`); yoksa boş liste. Launcher güncellemede aradaki bütün notları gösterir |
+| `version` | `ANA.ARA.YAMA`. In 0.x, an ARA increase, and after 1.0, an ANA increase, is a breaking change: a project built with the previous version needs manual changes |
+| `toolsContract` | version of this document |
+| `repository` | engine repo address (submodule source in developer mode) |
+| `notes` | cumulative patch notes, newest first; the first matches `version`. `breaking` lists breaking changes and how to comply (`migrate`); empty list if none. The launcher shows all intervening notes on update |
 
-Kurallar `Tools/manifest.py` `note_problems`'tadır; `Tools/Tests/test_manifest.py` gerçek manifest'i denetler, notsuz
-sürüm artırılamaz. Launcher'ın kullanıcı kopyasında yanında üretilmiş `EngineCopy.json` (kaynak tag / commit, dosya
-özetleri) durur; engine araçları onu okumaz.
+Rules are in `Tools/manifest.py` `note_problems`; `Tools/Tests/test_manifest.py` checks the real manifest, so a version
+cannot increase without notes. The launcher's engine copy has a generated `EngineCopy.json` beside it (source tag /
+commit, file hashes); engine tools do not read it.
 
-## Ortam değişkenleri
+## Environment variables
 
-| Değişken | Okuyan | Anlamı |
+| Variable | Reader | Meaning |
 | --- | --- | --- |
-| `ENGINE_LAUNCHER` | editör | Editörü başlatan launcher'ın pencere exe'sinin tam yolu. Varsa File menüsünde "Back to project list" görünür: editör o exe'yi başlatıp kapanır. Launcher her engine komutuna koyar; araçlar dokunmadan editöre geçer |
+| `ENGINE_LAUNCHER` | editor | Full path to the windowed executable of the launcher that started the editor. If present, "Back to project list" appears in File: the editor starts that executable and closes. The launcher sets it for every engine command; tools forward it unchanged to the editor |
 
-## Ayrılmış ad
+## Reserved name
 
-`<engine> launcher ...` launcher'ın kendi komutlarıdır; launcher geri kalan her argümanı projenin engine'ine aynen
-devreder. Engine `launcher` adında komut eklemez (`test_cli.py` denetler).
+`<engine> launcher ...` is for the launcher's own commands; the launcher forwards all other arguments unchanged to the
+project's engine. The engine does not add a command named `launcher` (`test_cli.py` checks this).
 
-## Çıkış kodları
+## Exit codes
 
-| Kod | Anlamı |
+| Code | Meaning |
 | --- | --- |
-| 0 | Başarı |
-| 1 | Projenin işi başarısız: derleme hatası, başarısız test, release denetimi, oyun / editör hata koduyla kapandı, `check` ihlal ya da tuning sorunu buldu, `refresh` başarısız ya da iptal edildi |
-| 2 | Kullanım ya da altyapı: yanlış argüman, eksik araç (MSVC, CMake, Ninja), bozuk `Project.json`, test raporu kurulamadı |
-| 130 | Ctrl+C ile kesildi |
+| 0 | Success |
+| 1 | Project work failed: build error, failed test, release check, game / editor exited with an error code, `check` found a violation or tuning problem, `refresh` failed or was cancelled |
+| 2 | Usage or infrastructure: wrong argument, missing tool (MSVC, CMake, Ninja), invalid `Project.json`, test report could not be created |
+| 130 | Interrupted with Ctrl+C |
 
-Hata mesajı stderr'e `error: ...` olarak yazılır.
+Error messages are written to stderr as `error: ...`.
 
-## Sözleşmeyi değiştirmek
+## Changing the contract
 
-- Yeni komut, yeni seçenek ya da `info`'ya yeni alan eklemek sözleşmeyi bozmaz.
-- Yeni manifest alanı eklemek bozmaz.
-- Komut / seçenek silmek ya da anlamını değiştirmek, çıkış kodlarını, `info` ya da manifest alanlarını değiştirmek
-  sözleşmeyi bozar: `EngineManifest.json` `toolsContract` bir artar ve bu belge aynı committe güncellenir.
-- Sözleşme testi: `Tools/Tests/test_cli.py` (komut ve seçenek listesi, `info`, çıkış kodları).
+- Adding a command, option, or field to `info` does not break the contract.
+- Adding a manifest field does not break it.
+- Removing or changing the meaning of commands / options, or changing exit codes, `info`, or manifest fields, breaks the
+  contract: increment `EngineManifest.json` `toolsContract` and update this document in the same commit.
+- Contract test: `Tools/Tests/test_cli.py` (command and option lists, `info`, exit codes).

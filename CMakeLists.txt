@@ -13,7 +13,7 @@ option(ENGINE_BUILD_EDITOR_TESTS "Build opt-in headless editor infrastructure te
 function(engine_warnings target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8)
-        if(CMAKE_GENERATOR MATCHES "Visual Studio") # Ninja zaten dosya başına paralel derler
+        if(CMAKE_GENERATOR MATCHES "Visual Studio") # Ninja already compiles files in parallel
             target_compile_options(${target} PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/MP>")
         endif()
     else()
@@ -21,10 +21,10 @@ function(engine_warnings target)
     endif()
 endfunction()
 
-# Bağımlılıklar değiştirilmeden engine içinde durur (ThirdParty/README.md); derleme internet istemez.
+# Dependencies are vendored unmodified (ThirdParty/README.md); building needs no internet access.
 set(ENGINE_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty" CACHE INTERNAL "Engine's vendored dependencies")
 
-# Catch2'yi bir kez kurar ve catch_discover_tests'i (Catch.cmake) çağıranın kapsamına açar.
+# Set up Catch2 once and expose catch_discover_tests (Catch.cmake) in the caller's scope.
 macro(engine_use_catch2)
     if(NOT TARGET Catch2::Catch2WithMain)
         set(CATCH_BUILD_TESTING OFF CACHE BOOL "" FORCE)
@@ -46,7 +46,7 @@ set(JSON_Install OFF CACHE BOOL "" FORCE)
 set(JSON_SystemInclude ON CACHE BOOL "" FORCE)
 add_subdirectory(ThirdParty/nlohmann_json)
 
-# Engine kimliği tek kaynaktan: EngineManifest.json. Ad ve sürüm koda sabit yazılmaz, ENGINE_NAME / ENGINE_VERSION okunur.
+# Single source of engine identity: EngineManifest.json. Read ENGINE_NAME / ENGINE_VERSION; do not hardcode name or version.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/EngineManifest.json")
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/EngineManifest.json" engineManifest)
 string(JSON engineName GET "${engineManifest}" name)

@@ -1,54 +1,47 @@
-# Önizleme geliştirmek
+# Developing previews
 
-## İçerik türünü seçmek
+## Choosing a content type
 
-Basit çizim için `EditorPreview::Draw(Painter&) const` yeterlidir. Animasyon/durum için
-`Update(dt)`, kullanıcı etkileşimi için `HandleInput`, trigger için `ExecuteAction` ekleyin.
-Her katalog girişi bir `PreviewDefinition` ve fabrika ile açıkça kaydedilir.
-Genel engine otomatik dosya tarayarak preview kaydetmez.
-Projeler kendi kısa kayıt/galeri yardımcılarını (hızlı çizim, galeri sahnesi gibi) yazabilir;
-EngineEditor API'si kullanmak için bunlar gerekmez.
+For simple drawing, `EditorPreview::Draw(Painter&) const` is enough. Add `Update(dt)` for animation/state, `HandleInput`
+for user interaction, and `ExecuteAction` for triggers. Each catalog entry is explicitly registered with a
+`PreviewDefinition` and factory. The general engine does not register previews by scanning files automatically. Projects
+can write their own short registration/gallery helpers (such as quick drawing or gallery scenes); these are not required
+to use the EngineEditor API.
 
-Önizleme üretim model/View'ını çağırır. Aynı görünüşün ikinci bir editör sürümünü yazmayın.
-Liste/galeri düzeni ve proje içi kısa kayıt yardımcıları tüketicinin geliştirme katmanına aittir.
+The preview calls the production model/View. Do not write a second editor version of the same appearance. List/gallery
+layout and project-local short registration helpers belong in the consumer's development layer.
 
-## Kaynak ve lifecycle
+## Resources and lifecycle
 
-1. Registry yalnız metadata ve create callback'i içerir; global kayıtta GL/font/ses oluşturulmaz.
-2. Fabrika servisler hazırken engine thread'inde tam parametre haritasıyla örneği kurar.
-3. ObjectList Start/Update/Draw/Stop'u yönetir; içerik bu hook'ları elle dispatch etmez.
-4. Reset kabul edilen tarifle yeni örnek oluşturur; eski kaynaklar context yaşarken temizlenir.
+1. The registry contains only metadata and create callbacks; global registration does not create GL/fonts/audio.
+2. The factory constructs the instance on the engine thread with a complete parameter map when services are ready.
+3. ObjectList manages Start/Update/Draw/Stop; content does not dispatch these hooks manually.
+4. Reset creates a new instance with the accepted recipe; old resources are cleaned up while the context is alive.
 
-`PreviewServices` font/ses referansları örnekten uzun yaşar. View'lar texture sahipliğini
-açıkça tutar; dependent efektler texture'dan önce temizlenir.
-Stop/destructor exception atmaz. Fabrika/hook istisnası worker'ı kapatabilir.
+`PreviewServices` font/audio references outlive the instance. Views explicitly own textures; dependent effects are
+cleaned up before the texture. Stop/destructors do not throw. Factory/hook exceptions may close the worker.
 
-## Kontrol tasarımı
+## Control design
 
-Parametre türü, default, sınır, grup ve açıklamayı tek definition'da author edin.
-Kimlik sabittir; favori/geçmiş ve kabul edilen override'lar ona bağlıdır.
-Float değeri `double`, integer `int64_t`, Choice seçenek metnidir.
-`Immediate` görünüşü değiştirir; `NextAction` sonraki tetiklemeye hazırlar;
-`OnReset` yeni örnekte kullanılır. Constructor başlangıç değerlerini kendisi okur;
-ilk kurulumda setter çağrıldığını varsaymayın.
+Author parameter type, default, bounds, group, and description in one definition. Identity is stable; favorites/history
+and accepted overrides depend on it. Float values are `double`, integers `int64_t`, Choice values are option strings.
+`Immediate` changes appearance; `NextAction` prepares the next trigger; `OnReset` is used in the new instance. The
+constructor reads initial values itself; do not assume setters are called during initial setup.
 
-Rastgele davranış için açık seed parametresi sağlayın. Randomize/ürün girdisi bir
-authored kontrolü değiştiriyorsa CaptureParameters ile geri bildirin.
-Canlı sayaç, transient animasyon ve hata açıklaması Inspect içindir; recipe'ye yazılmaz.
-Ret açıklaması döndüren setter mevcut içeriği değiştirmemelidir.
+Provide an explicit seed parameter for random behavior. If Randomize/product input changes an authored control, report
+it through CaptureParameters. Live counters, transient animation, and error descriptions belong in Inspect, not in the
+recipe. A setter returning a rejection explanation must not change current content.
 
-## Saat, input ve gerçek oyun akışı
+## Clock, input, and real game flow
 
-Dekoratif zaman `paint.Time()`, durum ilerletme zamanı Update dt'dir.
-Sahne saatini View'lara elle bağlamayın; Pause, Step ve hız host tarafından uygulanır.
-Rastgele zamana scrub desteklenmez; stateful preview için Reset + Step kullanın.
-View alanına odaklanıldığında ürün input'u gelir; Inspector odağını veya OS input'unu yeniden okumayın.
+Decorative time is `paint.Time()`; state advances with Update dt. Do not wire scene time into Views manually; the host
+applies Pause, Step, and speed. Arbitrary-time scrubbing is unsupported; use Reset + Step for stateful previews. Product
+input arrives when the View area is focused; do not reread Inspector focus or OS input.
 
-Gerçek oyunu çalıştıran önizleme için RunPreviewHost'a özel Game fabrikası verilebilir.
-`PreviewSession` kontrol, lifecycle ve kare aktarımını taşır; oyun sahneleri aynı
-Game::Run döngüsünde kalır. Transient profil, kayıt izolasyonu ve test akışı tüketicinin sorumluluğudur.
-`persistentOptions=false` kendi başına oyun ilerlemesi/telemetry yazımını engellemez.
-Üretim Game'e Editor include veya editöre özel koşullu kod eklemek yerine genel,
-paylaşılabilir sahne/View girişleri tasarlayın.
+RunPreviewHost can take a custom Game factory for a preview running the real game. `PreviewSession` carries control,
+lifecycle, and frame transfer; game scenes stay in the same Game::Run loop. Transient profiles, save isolation, and test
+flow are the consumer's responsibility. `persistentOptions=false` alone does not prevent game progress/telemetry writes.
+Instead of adding Editor includes or editor-specific conditional code to production Game, design general, shareable
+scene/View entry points.
 
-Tam değer ve IPC sözleşmesi: [API](Api.md). Doğrulama: [Testing](Testing.md).
+Full value and IPC contract: [API](Api.md). Validation: [Testing](Testing.md).

@@ -1,30 +1,28 @@
 # Modules
 
-Oyun gerektirdiği hedefe link verir ve yalnız modülün public `<Modül>.hpp` başlığını kullanır.
-Core oyuncu seçenekleri için Persistence/JsonIO kullanır; diğer modüller oyunun seçimine bağlıdır.
+The game links the target it needs and uses only the module's public `<Modül>.hpp` header. Core uses Persistence/JsonIO
+for player options; other modules are the game's choice.
 
-| Modül / CMake hedefi | Kullanım |
+| Module / CMake target | Usage |
 | --- | --- |
-| [JsonIO](JsonIO/README.md) / EngineJsonIO | JSON belge, dosya, atomik yazım, şifreleme, gzip yazımı |
-| [Persistence](Persistence/README.md) / EnginePersistence | Kalıcı key/value, key yönetimi, backup ve kurtarma |
-| [Localization](Localization/README.md) / EngineLocalization | Dil kataloğu, fallback, placeholder ve sayı biçimleme |
-| [ScoreBoard](ScoreBoard/README.md) / EngineScoreBoard | Skor geçmişi, sıralama ve oyuna ait doğrulama |
-| [RunTracking](RunTracking/README.md) / EngineRunTracking (+ EngineRunTrackingRuntime) | Başsız gzip JSON koşu arşivi; isteğe bağlı application bağlamı |
-| [Profiler](Profiler/README.md) / EngineProfiler (+ EngineProfilerRuntime) | Opt-in CPU/GPU ölçümü, kare istatistikleri ve performans karşılaştırmaları |
-| [Version](Version/README.md) / EngineVersion | Kurulu sürüm değişimi ve patch-note sorguları |
-| [Steam](Steam/README.md) / EngineSteam | Başlatma/hesap tespiti; mevcut backend sınırları README'de |
+| [JsonIO](JsonIO/README.md) / EngineJsonIO | JSON documents, files, atomic writes, encryption, gzip writing |
+| [Persistence](Persistence/README.md) / EnginePersistence | Persistent key/value, key management, backup and recovery |
+| [Localization](Localization/README.md) / EngineLocalization | Language catalog, fallback, placeholders, and number formatting |
+| [ScoreBoard](ScoreBoard/README.md) / EngineScoreBoard | Score history, ranking, and game-defined validation |
+| [RunTracking](RunTracking/README.md) / EngineRunTracking (+ EngineRunTrackingRuntime) | Headless gzip JSON run archive; optional application context |
+| [Profiler](Profiler/README.md) / EngineProfiler (+ EngineProfilerRuntime) | Opt-in CPU/GPU measurement, frame statistics, and performance comparisons |
+| [Version](Version/README.md) / EngineVersion | Installed-version changes and patch-note queries |
+| [Steam](Steam/README.md) / EngineSteam | Launch/account detection; current backend limits in README |
 
 ```cmake
 engine_add_game(MyGame SOURCES Game/CreateGame.cpp Game/MyGame.cpp
     LIBRARIES EngineLocalization EngineVersion)
 ```
 
-Her README API, bağımlılık, sahiplik ve hataları açıklar. Gelecek işler:
-[JsonIO](JsonIO/Roadmap.md), [Persistence](Persistence/Roadmap.md),
-[Localization](Localization/Roadmap.md), [ScoreBoard](ScoreBoard/Roadmap.md),
-[Version](Version/Roadmap.md), [Steam](Steam/Roadmap.md).
-Planlanan bir iş desteklenen özellik sayılmaz; örneğin Steam'in SDK backend'i
-olmadan gerçek achievement unlock vaat edilmez.
+Each README explains API, dependencies, ownership, and errors. Future work: [JsonIO](JsonIO/Roadmap.md),
+[Persistence](Persistence/Roadmap.md), [Localization](Localization/Roadmap.md), [ScoreBoard](ScoreBoard/Roadmap.md),
+[Version](Version/Roadmap.md), [Steam](Steam/Roadmap.md). Planned work is not a supported feature; for example, real
+achievement unlocking is not promised without Steam's SDK backend.
 
-Modül geliştiriyorsanız [Module rules](../Contributing/ModuleRules.md) ve
-[Testing](../Contributing/Testing.md) rehberlerini izleyin.
+When developing a module, follow [Module rules](../Contributing/ModuleRules.md) and
+[Testing](../Contributing/Testing.md).

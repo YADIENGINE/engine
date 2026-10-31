@@ -1,146 +1,145 @@
 # Editor architecture
 
-| Katman | Hedef / kaynak | Sorumluluk |
+| Layer | Target / source | Responsibility |
 | --- | --- | --- |
-| Public API | EngineEditorApi / Engine/Editor/Api | Metadata, parametre, inspection; ImGui/IPC bilmez |
-| Support | EngineEditorSupport / Internals | Proje tarifi, protokol, süreç, viewport, tercihler |
-| Worker runtime | EnginePreviewRuntime / Preview | Game tabanlı preview ve session |
-| Ortak arayüz | EngineToolUi / ToolUi | Tema, font, ImGui bağlamı, genel widget'lar (launcher ile ortak) |
-| Arayüz | EngineEditorUi / Ui | Shell, docking, paneller ve editöre özgü widget'lar |
-| Uygulama | EngineEditor / Host, Application | Windows süreçleri ve UI lifecycle |
-| Proje worker'ı | tüketicinin hedefi | Oyun View/model ve açık katalog kaydı |
+| Public API | EngineEditorApi / Engine/Editor/Api | Metadata, parameters, inspection; knows no ImGui/IPC |
+| Support | EngineEditorSupport / Internals | Project recipe, protocol, process, viewport, preferences |
+| Worker runtime | EnginePreviewRuntime / Preview | Game-based preview and session |
+| Shared UI | EngineToolUi / ToolUi | Theme, fonts, ImGui context, general widgets (shared with launcher) |
+| UI | EngineEditorUi / Ui | Shell, docking, panels, and editor-specific widgets |
+| Application | EngineEditor / Host, Application | Windows processes and UI lifecycle |
+| Project worker | consumer target | Game View/model and explicit catalog registration |
 
-Engine → Game bağımlılığı yoktur. Normal oyuna Editor API veya ImGui link verilmez.
-`ENGINE_BUILD_EDITOR` Windows ve runtime gerektirir; `ENGINE_BUILD_EDITOR_TESTS`
-runtime kapalıyken headless protokol/state testlerini açabilir.
-Bağımlılık sürümleri ve IPC sınırları [API](Api.md) içindedir.
+There is no Engine → Game dependency. Normal games do not link Editor API or ImGui. `ENGINE_BUILD_EDITOR` requires
+Windows and runtime; `ENGINE_BUILD_EDITOR_TESTS` can enable headless protocol/state tests with runtime disabled.
+Dependency versions and IPC limits are in [API](Api.md).
 
-## Worker akışı
+## Worker flow
 
-Editör önce worker'ı catalog modunda başlatır; registry yalnız metadata verir,
-GL/font/ses kurulmaz. Önizleme açıldığında RunPreviewHost servisleri ve PreviewGame'i
-kurar; Game::Run tek döngüdür. PreviewScene içerik instance'ını ObjectList ile yönetir.
-Reset instance'ı yeniler.
+The editor first starts the worker in catalog mode; the registry supplies only metadata, without setting up
+GL/fonts/audio. Opening a preview makes RunPreviewHost set up services and PreviewGame; Game::Run is the only loop.
+PreviewScene manages the content instance through ObjectList. Reset replaces the instance.
 
-- **Snapshot'lar** (`Internals/Session/WorkerSnapshots`): worker'lar build çıktısından değil, her başarılı build'in
-  değişmez kopyasından çalışır (`<worker>.live-<n>.exe`, çıktının yanında: Assets ve çalışma klasörü aynı çözülür).
-  Build hiçbir zaman çalışan bir exe'ye yazmaz; kullanılmayan kopyalar silinir. Debug sembolleri build çıktısındadır
-  ve en son snapshot'la eşleşir.
-- **Worker örnekleri** (`Application/PreviewWorker`): süreç + kendi oturumu (kontrol kanalı, kare aktarımı) +
-  başlangıç / kapanış süreleri. Aynı anda birden fazla olabilir: aktif önizleme, onun yerine geçecek olan ve
-  kapanmakta olan (retired) örnekler. Stop, Open ve önizleme değiştirmek eski örneği emekliye ayırır, beklemez;
-  emekli örnek 5 s içinde çıkmazsa süreç ağacı sonlandırılır.
-- **Build & Refresh** (`Internals/Session/RefreshState`, `Application/PreviewBuild`): çalışan önizleme derleme
-  boyunca kullanılmaya devam eder. Başarılı build snapshot'lanır; önizleme açıksa yeni örnek eskisinin yanında
-  aynı durumla başlar (`PreviewOpenState`: önizleme, parametreler, pause, hız; kamera host'tadır) ve hazır
-  olduğunda yerine geçer. Build ya da yeni örnek başarısızsa eski önizleme hiç durmaz. Önizleme açık değilse yeni
-  build'in kataloğu okunur. Yeni katalogda seçili önizleme yoksa katalog alınır, önizleme durur.
-- Sunum saati aktarılmaz: oyun durumu saatten türetilemez (sahne Update ile ilerler), Reset gibi baştan başlar.
+- **Snapshots** (`Internals/Session/WorkerSnapshots`): workers run from an immutable copy of each successful build, not
+  from build output (`<worker>.live-<n>.exe`, beside the output: Assets and the working folder resolve identically).
+  Builds never write to a running executable; unused copies are removed. Debug symbols remain in build output and match
+  the latest snapshot.
+- **Worker instances** (`Application/PreviewWorker`): process + its own session (control channel, frame transfer) +
+  startup / shutdown timing. Several can coexist: active preview, its replacement, and retiring instances. Stop, Open,
+  and changing previews retire the old instance without waiting; if a retired instance does not exit within 5 s, its
+  process tree is terminated.
+- **Build & Refresh** (`Internals/Session/RefreshState`, `Application/PreviewBuild`): the running preview remains usable
+  throughout the build. A successful build is snapshotted; if a preview is open, a new instance starts beside the old
+  one with the same state (`PreviewOpenState`: preview, parameters, pause, speed; camera is host-owned) and replaces it
+  when ready. If the build or new instance fails, the old preview never stops. Without an open preview, the new build's
+  catalog is read. If the selected preview is absent from the new catalog, the catalog is accepted and the preview
+  stops.
+- Presentation time is not transferred: game state cannot be derived from time (scenes advance through Update), so it
+  restarts as on Reset.
 
-IPC protokolü v8, odak kaybı / pause / input süresi aşımını normal release yerine cancellation olarak taşır.
-Profiler mesajları generation/capture kimliği taşır; sınırlı parçalar tamamlanmadan kayıt yayımlanmaz.
-Public snapshot'ın kimlikli touch verisi ve canvas dışındaki boş pozisyonları da aktarılır. Host, private pencere
-örneklerini Input normalizer ile canvas'a dönüştürür; worker aynı public sözleşmeyi tüketir.
-İptalden önce birikmiş eylemler silinir; sonraki yeni basışlar iptal bildiriminin ardından teslim edilir.
-Host ve worker aynı protokol sürümüyle birlikte güncellenmelidir; proje tarifi sürümü değişmez.
+IPC protocol v8 carries focus loss / pause / input timeout as cancellation instead of normal release. Profiler messages
+carry generation/capture IDs; records are not published until bounded chunks are complete. The public snapshot's
+identified touch data and empty positions outside the canvas are also transferred. The host maps private window samples
+to canvas coordinates with the Input normalizer; the worker consumes the same public contract. Actions accumulated
+before cancellation are cleared; subsequent new presses arrive after the cancellation notice. Host and worker must
+update together to the same protocol version; the project recipe version does not change.
 
 ## Tuning
 
-Tuning dosyalarının ([Tuning](../Tuning.md)) tek yazma yolu dosyanın kendisidir; editör değeri worker'a göndermez.
-`Internals/Session/TuningWorkspace` build'in `Tuning/TuningFiles.json` listesini (CMake `engine_add_tuning`) ve
-dosyaları okur, dış değişiklikte tazeler; değeri o anki diskteki dosyaya `PatchTuningValue` ile yamar ve atomik yazar.
-Worker geliştirme derlemesinde dosyayı kendisi izler (`PollTuning`); `PreviewHost` canlı tuning raporlarını
-`tuning` mesajıyla (`PreviewTuningStatus`: kaynak, durum, satır, metin) host'a iletir. Durum aktif worker'ındır:
-worker değişince sıfırlanır, Build & Refresh'te yeni worker'ın raporları değişimle birlikte geçer. Release derlenmiş
-worker canlı okumaz, rapor da göndermez. Sunum `Ui/Panels/Tuning/TuningPanel`.
+The only write path for tuning files ([Tuning](../Tuning.md)) is the file itself; the editor does not send values to
+workers. `Internals/Session/TuningWorkspace` reads the build's `Tuning/TuningFiles.json` list (CMake
+`engine_add_tuning`) and files, refreshes on external changes, patches the current file on disk with `PatchTuningValue`,
+and writes atomically. In development builds, the worker watches files itself (`PollTuning`); `PreviewHost` forwards
+live tuning reports to the host in `tuning` messages (`PreviewTuningStatus`: source, state, line, text). State belongs
+to the active worker: it resets when the worker changes; during Build & Refresh, the new worker's reports switch with
+it. Release-built workers neither read live nor send reports. Presentation is `Ui/Panels/Tuning/TuningPanel`.
 
-## Kontrol kapısı
+## Control gateway
 
-Araçlar açık bir editöre yerel bir named pipe üzerinden ulaşır (`Internals/Protocol/EditorControlProtocol`,
-`Internals/Platform/Windows/EditorControlPipe`, `Application/EditorControlService`). Editör çalışırken pipe'ın
-adını build dizinindeki `EngineEditor.control.json`'da duyurur (`version`, `pipe`, `pid`); kapanırken, dosya hâlâ
-kendisininse siler. Mesajlar satır başına bir JSON nesnesidir (UTF-8, `\n`); sürüm `EditorControlVersion` (1).
-İstemci bir istek gönderir ve `result` ya da `error` gelene kadar okur; aynı anda tek istemci bağlanır.
+Tools reach an open editor through a local named pipe (`Internals/Protocol/EditorControlProtocol`,
+`Internals/Platform/Windows/EditorControlPipe`, `Application/EditorControlService`). While running, the editor announces
+the pipe name in `EngineEditor.control.json` in the build directory (`version`, `pipe`, `pid`); on exit, it removes the
+file if it still owns it. Messages are one JSON object per line (UTF-8, `\n`); version is `EditorControlVersion` (1). A
+client sends a request and reads until `result` or `error`; only one client connects at a time.
 
-| İstek | Yanıtlar |
+| Request | Responses |
 | --- | --- |
-| `{"version": 1, "command": "refresh"}` | Build & Refresh başlatır (sürüyorsa ona katılır); denemenin `{"type": "log", "level", "source", "text"}` satırları, sonra `{"type": "result", "result": "succeeded" \| "build-failed" \| "refresh-failed" \| "canceled"}` |
-| geçersiz / bilinmeyen | `{"type": "error", "text"}` |
+| `{"version": 1, "command": "refresh"}` | Starts Build & Refresh (joins if already running); attempt lines `{"type": "log", "level", "source", "text"}`, then `{"type": "result", "result": "succeeded" \| "build-failed" \| "refresh-failed" \| "canceled"}` |
+| invalid / unknown | `{"type": "error", "text"}` |
 
-Launcher editörü `ENGINE_LAUNCHER` ile başlatırsa File menüsü "Back to project list" sunar
-(`Host/ProjectListLauncher`; [ToolsContract](../ToolsContract.md#ortam-değişkenleri)).
+If the launcher starts the editor with `ENGINE_LAUNCHER`, the File menu offers "Back to project list"
+(`Host/ProjectListLauncher`; [ToolsContract](../ToolsContract.md#environment-variables)).
 
-İstemcisi `python Engine refresh`'tir ([ToolsContract](../ToolsContract.md)). Launcher ve ajan API'si yeni komutları
-aynı kapıya ekler.
+Its client is `python Engine refresh` ([ToolsContract](../ToolsContract.md)). The launcher and agent API add new
+commands to the same gateway.
 
-## Sunum saati ve playback
+## Presentation clock and playback
 
-- Görsel zaman `Painter::Time()` ile okunur. `Game` her kareyi çizmeden önce
-  sanal `Game::DrawSeconds()`'ı Painter bağlamına verir. Oyunda gerçek zaman; worker'da `PreviewGame`
-  override'ı önizleme sahnesinin Reset'te 0'lanan ölçekli saatidir; özel Game adaptörü akış saatini sağlar.
-- View'lar saat tutmaz, aktarmaz, `GetTime()` çağırmaz. Kendi zamanını oynatan çizim (portre, giriş) zamanı
-  `float time` parametresiyle verir.
-- Pause Update'i ve sunum saatini dondurur; çizim, iletişim, parametreler ve eylemler sürer. Hız (0.1×..4×) ve
-  Step (1/60 s) `Game::FrameSeconds` üzerinden hem gerçek zamanlı menülere hem oyun zamanına uygulanır.
+- Visual time is read through `Painter::Time()`. Before drawing each frame, `Game` supplies virtual
+  `Game::DrawSeconds()` to the Painter context. In games it is real time; in workers, the `PreviewGame` override
+  supplies the preview scene's scaled clock, reset to 0 on Reset; custom Game adapters supply their flow clock.
+- Views do not keep or forward clocks or call `GetTime()`. Drawing that advances its own time (portraits, intros) passes
+  time as a `float time` parameter.
+- Pause freezes Update and presentation time; drawing, communication, parameters, and actions continue. Speed (0.1×..4×)
+  and Step (1/60 s) apply to both real-time menus and game time through `Game::FrameSeconds`.
 
-## Kontroller ve inceleme
+## Controls and inspection
 
-- Ayarlar `PreviewParameter`, eylemler `PreviewAction`; Inspector grupları / açıklamaları içerik tanımında author edilir.
-- `CaptureParameters` eylemin veya ürün girdisinin değiştirdiği authored değerleri bildirir; `MergePreviewCapture`
-  bütün bildirimi doğrulayıp atomik uygular, `OnReset` tarifleri staged kalır.
-- `PreviewInspection` salt okunur değerleri, tabloları, focus alanını ve kontrol görünürlüğünü taşır; tarife karışmaz,
-  en çok 10 Hz gönderilir.
-- Fit / Focus / 100% / pan / zoom aynı canvas dönüşümünü input'ta da kullanır; panel dışı noktalar reddedilir.
-
-
-
-## UI katmanları (EngineEditor)
-
-- Host Game / ImGui yaşam döngüsünü, GPU görüntü köprüsünü ve input yönlendirmesini sahiplenir; ImGui bağlamı ve
-  görüntü dokusu RAII ile GL bağlamı yaşarken temizlenir.
-- Tema, fontlar, ImGui bağlamı / ölçek ve genel widget'lar araçların ortak katmanıdır: [ToolUi](../ToolUi.md)
-  (`EngineToolUi`; launcher da kullanır). Editör bağlamı docking açık, klavye gezinmesi kapalı kurar (önizleme
-  kontrolleri klavyeyi paylaşır). Editöre özgü olanlar `Ui/Style/EditorTheme` (durum renkleri / etiketleri, `EditorGlyph`)
-  ve `Ui/Widgets/EditorWidgets`'tadır (glyph'li ikon düğmesi, önizleme parametresi).
-- `Ui/Widgets/InspectorWidgets` bütün önizlemelerin ortak Inspector sunumudur: sade açılır bölüm başlıkları,
-  panel genelinde ortak etiket / değer / sıfırlama sütunları; dar panelde üstte etiket, altta tam genişlikli kontrol,
-  sığan checkbox için tek satır. Değişmemiş alanlarda sıfırlama hover / odakta görünür; ayrılan yer değişmez.
-  Seçenek grupları her genişlikte etiketin altında tam panel genişliğini kullanır. Sütun sayısı metin ölçüsüne
-  göre azalır; düğmeler tek satır kalır. Uygulama zamanı grup başına özetlenir; karışık gruplarda işaret / tooltip kullanılır.
-  `PreviewReadoutKind` canlı sayıyı, durumu ve satır saran açıklamayı ayırır. Başlık açıklaması `?` altında,
-  küçük önizlemelerin araması açılır düğmededir. `advanced` gruplar ilk açılışta kapalıdır.
-  Arama ve Modified only yalnız özellik sunumunu filtreler; authored grup, uygulama zamanı ve görünürlük
-  sözleşmesini değiştirmez. Açık `primary` metadata'sı ana eylemi sabit alt alana yerleştirir;
-  ayarlar ve canlı bilgiler ayrı child alanında kayar. İkincil eylemler yeterli
-  genişlikte iki, dar panelde tek sütundur.
-- `Application/EditorController` süreç, IPC ve önizleme komutlarını yönetir. Paneller yalnız `EditorSnapshot` ve
-  `EditorUiActions` bilir; UI komutları bütün paneller çizildikten sonra uygulanır.
-- `Application/EditorCommandState` kullanılabilirlik ve engel nedenlerini tek yerde çözer. Host'a ait
-  `EditorCommand::Step` mevcut playback mesajını kullanır; public `Preview*` API'si ve worker protokolü değişmez.
-- `Ui/Commands` komut kimliği / etiket / ikon / kısayol tablosunu menü, toolbar ve komut paletiyle paylaşır.
-  Open / Stop / Cancel ana eylemi oturum durumundan türetilir. Kısayol ve paletin tükettiği girdi aynı karede
-  worker'a gönderilmez; popup ve metin düzenleme sırasında önizleme kontrol kısayolları engellenir.
-- `Ui/Shell` menü / global toolbar / durum çubuğunu; `Ui/Workspace` docking, panel kaydı, Develop / Inspect /
-  Profile düzenleri ve geçici büyütmeyi yönetir. Panel kimlikleri görünür başlıktan bağımsızdır; görünürlük ve
-  varsayılan dock konumu ortak `EditorPanelDefinition` tablosundadır. DockBuilder'ın internal API'si yalnız
-  Workspace'te kullanılır. Hazır düzene geçiş son özel düzeni korur; kayıtlı kullanıcı düzeni açılışta korunur,
-  Viewport açık ve önde başlatılır. Window panel görünürlüğü / yerleşimleri, View görüntüleme seçeneklerini yönetir.
-- `Ui/Panels` yerel araçları sahiplenir: Viewport'un yerel View görünüm / zoom menüsü, Output tek Copy menüsü,
-  Profiler gelişmiş ölçüm ayarları ve Export menüsü. Output / Profiler / Console varsayılan olarak kapalıdır; alt durum çubuğu
-  Output ve Console'u bağımsız açıp kapatır, süreç durumunu ve okunmamış hata / uyarı bildirimini sunar.
-- `Internals/Diagnostics` ve `Internals/Settings` ImGui / raylib bilmez. Tercihler
-  `UserDataDirectory()/EngineEditor/preferences.json` altında atomik saklanır (yerleşim, son özel düzen,
-  görünürlük, ölçek, favoriler, geçmiş, Output).
-- Yeni panel kendi klasöründe değer bileşenidir; ortak panel kaydına eklenir. Yeni süreç komutu Application'da
-  davranış / kullanılabilirlik, Ui/Commands'ta sunum bilgisi alır; menü, toolbar ve palet aynı sözleşmeyi kullanır.
-  Henüz desteklenmeyen yetenekler için boş servis veya kullanılmayan public API eklenmez; bağımlılıklar
-  [UI geliştirme listesinde](TODO.md) tutulur.
-
-Profiler paneli Live / Benchmarks / Compare sunar. Headless modül ve isteğe bağlı runtime observer editörden
-bağımsızdır. Worker ölçümde görüntü aktarımını durdurur; host 10 Hz'e iner. FPS/VSync/render politikası ölçüm
-oturumuna aittir ve sonra geri yüklenir. Ayrıntılar: [Profiler](Profiler.md).
+- Settings are `PreviewParameter`, actions `PreviewAction`; Inspector groups / descriptions are authored in content
+  definitions.
+- `CaptureParameters` reports authored values changed by actions or product input; `MergePreviewCapture` validates the
+  whole report and applies it atomically; `OnReset` recipes remain staged.
+- `PreviewInspection` carries read-only values, tables, focus area, and control visibility; it does not affect the
+  recipe and is sent at most 10 Hz.
+- Fit / Focus / 100% / pan / zoom use the same canvas transform for input; points outside the panel are rejected.
 
 
-Proje adı ve build dizini editör tercihlerini ayırır. Worker options geçicidir.
-Gerçek oyun adaptörlerinde ilerleme ve telemetry izolasyonu projeye aittir;
-ayrıntılar [CreatingPreviews](CreatingPreviews.md).
+
+## UI layers (EngineEditor)
+
+- Host owns Game / ImGui lifecycle, the GPU image bridge, and input routing; the ImGui context and image texture use
+  RAII cleanup while the GL context is alive.
+- Theme, fonts, ImGui context / scale, and general widgets are the tools' shared layer: [ToolUi](../ToolUi.md)
+  (`EngineToolUi`; also used by the launcher). The editor creates the context with docking enabled and keyboard
+  navigation disabled (preview controls share the keyboard). Editor-specific parts are in `Ui/Style/EditorTheme` (state
+  colors / labels, `EditorGlyph`) and `Ui/Widgets/EditorWidgets` (glyph icon button, preview parameter).
+- `Ui/Widgets/InspectorWidgets` is the shared Inspector presentation for all previews: plain collapsible section
+  headers, shared label / value / reset columns across the panel; in narrow panels, labels above full-width controls,
+  with one line for checkboxes that fit. Reset appears on hover / focus for unchanged fields; reserved space stays
+  fixed. Choice groups use full panel width below the label at every width. Column count decreases according to text
+  measurement; buttons stay single-line. Application time is summarized per group; mixed groups use markers / tooltips.
+  `PreviewReadoutKind` distinguishes live numbers, status, and wrapped explanations. Header descriptions are under `?`,
+  and small previews put search in a dropdown button. `advanced` groups start collapsed. Search and Modified only filter
+  property presentation; they do not change authored groups, application time, or visibility contracts. Explicit
+  `primary` metadata puts the main action in a fixed footer; settings and live information scroll in a separate child
+  area. Secondary actions use two columns when wide enough, one in narrow panels.
+- `Application/EditorController` manages processes, IPC, and preview commands. Panels know only `EditorSnapshot` and
+  `EditorUiActions`; UI commands apply after all panels draw.
+- `Application/EditorCommandState` resolves availability and blocking reasons in one place. Host-owned
+  `EditorCommand::Step` uses the existing playback message; public `Preview*` API and worker protocol stay unchanged.
+- `Ui/Commands` shares the command identity / label / icon / shortcut table with menus, toolbar, and command palette.
+  The main Open / Stop / Cancel action derives from session state. Input consumed by shortcuts and the palette is not
+  sent to workers in the same frame; preview control shortcuts are blocked during popups and text editing.
+- `Ui/Shell` manages menu / global toolbar / status bar; `Ui/Workspace` manages docking, panel registration, Develop /
+  Inspect / Profile layouts, and temporary maximization. Panel IDs are independent of visible titles; visibility and
+  default dock positions are in the shared `EditorPanelDefinition` table. DockBuilder's internal API is used only in
+  Workspace. Switching to a preset layout preserves the last custom layout; saved user layout is retained on startup,
+  with Viewport open and in front. Window manages panel visibility / layouts, View manages display options.
+- `Ui/Panels` owns local tools: Viewport's local View display / zoom menu, Output's single Copy menu, Profiler's
+  advanced measurement settings and Export menu. Output / Profiler / Console are closed by default; the bottom status
+  bar toggles Output and Console independently, showing process state and unread error / warning notices.
+- `Internals/Diagnostics` and `Internals/Settings` know no ImGui / raylib. Preferences are stored atomically under
+  `UserDataDirectory()/EngineEditor/preferences.json` (layout, last custom layout, visibility, scale, favorites,
+  history, Output).
+- A new panel is a value component in its own folder, added to shared panel registration. A new process command gets
+  behavior / availability in Application and presentation metadata in Ui/Commands; menus, toolbar, and palette share the
+  same contract. Do not add empty services or unused public API for unsupported capabilities; dependencies stay in the
+  [UI development list](TODO.md).
+
+The Profiler panel provides Live / Benchmarks / Compare. The headless module and optional runtime observer are
+independent of the editor. During measurement, the worker stops image transfer; the host drops to 10 Hz.
+FPS/VSync/render policy belongs to the measurement session and is restored afterwards. Details: [Profiler](Profiler.md).
+
+
+Project name and build directory separate editor preferences. Worker options are transient. In real-game adapters,
+progress and telemetry isolation belong to the project; details in [CreatingPreviews](CreatingPreviews.md).

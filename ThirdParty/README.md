@@ -1,39 +1,41 @@
 # ThirdParty
 
-Engine'in bütün dış bağımlılıkları buradadır; derleme internet istemez ve kopyalanan bir engine kendi başına
-eksiksizdir. Kaynaklar **değiştirilmeden** durur (git satır sonlarını da değiştirmez: `.gitattributes`). Sadece
-derleme için gerekmeyen klasörler (örnekler, belgeler, testler) alınmaz.
+All external engine dependencies live here; building needs no internet access, and an engine copy is self-contained.
+Sources are **unmodified** (git does not change line endings either: `.gitattributes`). Only folders not needed for
+building (examples, documentation, tests) are omitted.
 
-| Klasör | Sürüm | Kaynak | Kim kullanır | Oyuna girer |
+| Folder | Version | Source | Used by | Ships in games |
 | --- | --- | --- | --- | --- |
-| `raylib/` | 5.5 | https://github.com/raysan5/raylib/archive/refs/tags/5.5.tar.gz | `Engine` | Evet |
-| `nlohmann_json/` | 3.12.0 | https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz | `EngineJsonIO` | Evet |
-| `Monocypher/` | 4.0.3 | https://monocypher.org | `EngineJsonIO` (private) | Evet |
-| `imgui/` | 1.92.7-docking | https://github.com/ocornut/imgui/archive/refs/tags/v1.92.7-docking.tar.gz | Editör | Hayır |
-| `rlImGui/` | 118221c | https://github.com/raylib-extras/rlImGui/archive/118221c8a532501a3c2c236b62950877cbefc2b4.tar.gz | Editör | Hayır |
-| `Catch2/` | 3.16.0 | https://github.com/catchorg/Catch2/archive/refs/tags/v3.16.0.tar.gz | Testler (`engine_use_catch2()`) | Hayır |
-| `libvterm/` | 0.3.3 | https://www.leonerd.org.uk/code/libvterm/libvterm-0.3.3.tar.gz | Araçların konsolu (`EngineTerminal`) | Hayır |
-| `NotoSans/` | 2.008 | https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSans | ToolUi yedek fontları; Painter starter oyun/worker fontu (OFL 1.1) | Yalnız starter |
+| `raylib/` | 5.5 | https://github.com/raysan5/raylib/archive/refs/tags/5.5.tar.gz | `Engine` | Yes |
+| `nlohmann_json/` | 3.12.0 | https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz | `EngineJsonIO` | Yes |
+| `Monocypher/` | 4.0.3 | https://monocypher.org | `EngineJsonIO` (private) | Yes |
+| `imgui/` | 1.92.7-docking | https://github.com/ocornut/imgui/archive/refs/tags/v1.92.7-docking.tar.gz | Editor | No |
+| `rlImGui/` | 118221c | https://github.com/raylib-extras/rlImGui/archive/118221c8a532501a3c2c236b62950877cbefc2b4.tar.gz | Editor | No |
+| `Catch2/` | 3.16.0 | https://github.com/catchorg/Catch2/archive/refs/tags/v3.16.0.tar.gz | Tests (`engine_use_catch2()`) | No |
+| `libvterm/` | 0.3.3 | https://www.leonerd.org.uk/code/libvterm/libvterm-0.3.3.tar.gz | Tools console (`EngineTerminal`) | No |
+| `NotoSans/` | 2.008 | https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSans | ToolUi fallback fonts; Painter starter game/worker font (OFL 1.1) | Starter only |
 
-Alınan parçalar: raylib `CMakeLists.txt`, `CMakeOptions.txt`, `cmake/`, `src/`, `raylib.pc.in`, lisans;
-nlohmann_json release paketinin tamamı; imgui kökteki `.cpp` / `.h` ve lisans; rlImGui kökteki kaynaklar,
-`extras/` ve lisans; Catch2 `CMakeLists.txt`, `CMake/`, `src/`, `extras/` ve lisans; libvterm `include/`, `src/` (üretilmiş `.inc`
-tabloları sürüm paketinde hazır gelir) ve `LICENSE`.
+Included parts: raylib `CMakeLists.txt`, `CMakeOptions.txt`, `cmake/`, `src/`, `raylib.pc.in`, license; the full
+nlohmann_json release package; imgui root `.cpp` / `.h` and license; rlImGui root sources, `extras/`, and license;
+Catch2 `CMakeLists.txt`, `CMake/`, `src/`, `extras/`, and license; libvterm `include/`, `src/` (generated `.inc` tables
+come ready in the release package), and `LICENSE`.
 
-## Lisans bildirimi
+## License notice
 
-Oyuna giren bileşenler (tabloda "Evet") her oyunun `ThirdPartyNotices.txt`'inin engine kısmına girer:
+Components shipped in games ("Yes" in the table) enter the engine section of every game's `ThirdPartyNotices.txt`:
 
-- `Notices.json`: bileşen listesi. `text` bildirim metni, `pin` kaynakta sürümü kanıtlayan dosya ve metin
-  (`{version}` sürümle değişir), `license` metnin aynen içermesi gereken lisans dosyası. Yollar bu klasöre göredir.
-- `Notices/<bileşen>.txt`: ilk satır `<ad> <sürüm> (<lisans>)`, sonra `Source:`, telif satırları ve lisans metni;
-  bileşenin içinde gelen alt kütüphaneler aynı dosyada kendi başlıklarıyla.
-- `notices.py`: denetim ve metin üretimi; `ReleaseSystem/release.py` paketlerken kullanır.
+- `Notices.json`: component list. `text` is the notice text, `pin` the file and text proving the source version
+  (`{version}` is replaced by the version), `license` the license file the text must contain verbatim. Paths are
+  relative to this folder.
+- `Notices/<bileşen>.txt`: first line `<ad> <sürüm> (<lisans>)`, then `Source:`, copyright lines, and license text;
+  sublibraries bundled in the component have their own headings in the same file.
+- `notices.py`: validation and text generation; used by `ReleaseSystem/release.py` during packaging.
 
-## Bağımlılık eklemek ya da yükseltmek
+## Adding or upgrading a dependency
 
-1. Kaynağı indir, tablodaki parçaları `ThirdParty/<bileşen>/`'e koy (eskisini tamamen sil, dosya karıştırma).
-2. CMake'te bağla (`add_subdirectory` ya da kaynak listesi); `FetchContent` kullanılmaz.
-3. Bu README'deki tabloyu güncelle.
-4. Oyuna giriyorsa aynı committe `Notices/<bileşen>.txt` ve `Notices.json` (sürüm, pin, lisans).
-5. Engine kökünde `python -m unittest discover -s ThirdParty/Tests`.
+1. Download the source, place the table's parts in `ThirdParty/<bileşen>/` (remove the old version completely; do not
+   mix files).
+2. Connect it in CMake (`add_subdirectory` or a source list); do not use `FetchContent`.
+3. Update the table in this README.
+4. If shipped in games, update `Notices/<bileşen>.txt` and `Notices.json` (version, pin, license) in the same commit.
+5. Run `python -m unittest discover -s ThirdParty/Tests` at the engine root.

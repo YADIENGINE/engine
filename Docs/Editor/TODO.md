@@ -1,19 +1,19 @@
-# Editör UI geliştirme listesi
+# Editor UI development list
 
-Bu liste mevcut özellikleri değil, sonraki yetenekleri ve gerekli altyapı sırasını tutar.
-Uygulanan arayüz için [Usage](Usage.md), sınırlar için [geliştirme notları](Development/Roadmap.md) kullanılır.
-Bir yetenek uygulanmadan boş düğme, servis veya kullanılmayan public API eklenmez.
+This list tracks future capabilities and the required infrastructure order, not current features. Use [Usage](Usage.md)
+for implemented UI and [development notes](Development/Roadmap.md) for limits. Do not add empty buttons, services, or
+unused public API before implementing a capability.
 
-| Sonraki yetenek | Önce gereken sözleşme / altyapı |
+| Next capability | Required contract / infrastructure first |
 | --- | --- |
-| Kaydedilebilir parametre recipe preset'leri | Önizleme kimliği ve doğrulanmış parametrelerden oluşan kalıcı recipe biçimi; uyumluluk ve yükleme / kaydetme davranışı. Sonra Project / Inspector üzerinden preset seçimi |
-| Birden çok önizleme sekmesi / bağlamı | Her bağlamın kendi seçimi, parametreleri, inspection'ı, input odağı ve kaynak sahipliği; ardından eşzamanlı worker ihtiyacı değerlendirilir, gerekiyorsa bağımsız worker lifecycle ve komut hedefleme eklenir |
-| Görsel A/B capture ve karşılaştırma | Kaynağı ve önizleme bağlamı belli, değişmeden tutulan capture'lar; ardından yan yana görüntü / karşılaştırma sunumu. Mevcut Profiler A/B benchmark'ı ayrı bir özelliktir |
-| Sahne / asset tarayıcısı ve gizmo'lar | Projenin sunduğu kararlı nesne / asset kimliği, seçim ve düzenlenebilir özellik / transform sözleşmesi; ardından ortak seçim modeli, paneller ve viewport araçları |
-| Save, dirty durumu, Undo / Redo | Kaynak belge ve kaydetme sahipliği, düzenleme işlemlerinin sınırı ve geri alınabilir komutlar; ardından değiştirilmiş belge durumu, kayıt ve geçmiş arayüzü |
-| Zaman çizgisinde scrub | Yeniden kurulabilir deterministik durum veya zaman damgalı snapshot / yeniden simülasyon sözleşmesi; ardından seek ve timeline. Mevcut Pause / Reset / Step rastgele zamana atlama sağlamaz |
-| Birden çok işletim sistemi penceresi | Platform / render backend'inde ayrı pencereler, GL bağlamı, monitör DPI'ı ve input odağı yaşam döngüsü; ardından ana pencere dışına taşınabilen dock'lar |
+| Savable parameter recipe presets | Persistent recipe format with preview identity and validated parameters; compatibility and load / save behavior. Then preset selection through Project / Inspector |
+| Multiple preview tabs / contexts | Each context's own selection, parameters, inspection, input focus, and resource ownership; then assess concurrent worker needs, adding independent worker lifecycle and command targeting if needed |
+| Visual A/B capture and comparison | Immutable captures with known source and preview context; then side-by-side image / comparison presentation. Existing Profiler A/B benchmarks are a separate feature |
+| Scene / asset browser and gizmos | Project-supplied stable object / asset identity, selection, and editable property / transform contract; then shared selection model, panels, and viewport tools |
+| Save, dirty state, Undo / Redo | Source document and save ownership, edit transaction boundaries, and reversible commands; then modified-document state, save, and history UI |
+| Timeline scrubbing | Reconstructible deterministic state or timestamped snapshot / resimulation contract; then seek and timeline. Existing Pause / Reset / Step do not provide arbitrary-time jumps |
+| Multiple OS windows | Separate window, GL context, monitor DPI, and input-focus lifecycle in platform / render backend; then docks movable outside the main window |
 
-Yeni yetenek mevcut komut ve panel kayıtlarına bağlanır. Engine genel sözleşmeleri sahiplenir; proje içeriği ve
-kaynak düzenleme kuralları tüketici adaptöründe kalır. Kullanım / mimari belgesi ve değişen davranışın en küçük
-doğrulama senaryosu yetenekle birlikte güncellenir.
+New capabilities connect to existing command and panel registrations. The engine owns general contracts; project content
+and source-editing rules stay in the consumer adapter. Usage / architecture documentation and the smallest validation
+scenario for changed behavior update with the capability.

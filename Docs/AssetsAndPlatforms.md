@@ -1,12 +1,12 @@
 # Assets and platforms
 
-## Asset kökü
+## Asset root
 
-Masaüstünde runtime exe yanındaki `Assets/` klasörünü kullanır; çalışma dizinine güvenmeyin.
-`engine_add_game(... ASSETS ".../Game/Assets")` bu klasörü build sonrasında kopyalar.
+On desktop, runtime uses the `Assets/` folder beside the executable; do not rely on the working directory.
+`engine_add_game(... ASSETS ".../Game/Assets")` copies this folder after building.
 
-`GameSettings::assets` kullanılan dosyaların göreli yol listesidir.
-Audio katalog yolları otomatik eklenir; özel font yolunu açıkça listeleyin:
+`GameSettings::assets` is the relative path list of files in use. Audio catalog paths are added automatically; list a
+custom font path explicitly:
 
 ```cpp
 GameSettings settings;
@@ -15,47 +15,44 @@ settings.assets = {settings.font, "Images/player.png"};
 settings.audio.effects = {{SoundId{0}, "Audio/click.wav"}};
 ```
 
-Boş, mutlak veya `..` içeren manifest yolları reddedilir. Eksik dosya başlangıç hatasıdır.
-`font` boşsa yerleşik varsayılan font kullanılır.
-Engine manifest hazırlama, font ve ses yükleme sağlar; genel texture asset manager sağlamaz.
-Dışarıdan gelen (indirilen, lisanslı) her asset'in bildirimi `Game/Distribution/`'a yazılır ve lisans dosyası
-pakete girer: [Release](Release.md).
-Texture'ı kullanan View kaynağı GL bağlamı yaşarken yükleyip bırakır.
+Empty, absolute, or `..` manifest paths are rejected. A missing file is a startup error. If `font` is empty, the
+built-in default font is used. The engine provides manifest preparation and font/audio loading; it does not provide a
+general texture asset manager. Every external (downloaded, licensed) asset has a notice in `Game/Distribution/` and its
+license file included in the package: [Release](Release.md). The View using a texture loads and releases the resource
+while the GL context is alive.
 
-## GameSettings referansı
+## GameSettings reference
 
-| Alan | Varsayılan / anlam |
+| Field | Default / meaning |
 | --- | --- |
-| `window` | 1280×720, başlık Game, 60 FPS; minimum 640×360, resize açık |
-| `window.visible`, `alwaysRun` | true / false; gizli context ve minimize iken çalışma |
+| `window` | 1280×720, title Game, 60 FPS; minimum 640×360, resizing enabled |
+| `window.visible`, `alwaysRun` | true / false; hidden context and running while minimized |
 | `window.maximized` | false |
-| `canvasWidth/Height` | 1280 / 720 mantıksal koordinat |
+| `canvasWidth/Height` | 1280 / 720 logical coordinates |
 | `background`, `letterbox` | opaque black `Color4` |
 | `smoothCanvas` | true; linear filtering for canvas presentation |
-| `applicationId` | Game; kullanıcı verisinin kalıcı kimliği |
+| `applicationId` | Game; persistent identity for user data |
 | `font` | empty means no game font; otherwise an asset path, with glyphs loaded on demand; [font guide](Graphics/Text.md) |
-| `assets`, `audio` | boş manifest / katalog |
-| `audioVolume` | [ses adımları ve grupları](Audio.md) |
-| `save` | [SaveSettings](Modules/Persistence/README.md); dosya bazında override destekli |
+| `assets`, `audio` | empty manifest / catalog |
+| `audioVolume` | [audio steps and groups](Audio.md) |
+| `save` | [SaveSettings](Modules/Persistence/README.md); supports per-file overrides |
 | `theme` | NeonArcadeTheme |
-| `persistentOptions` | true; false iken oyuncu tercihleri okunup yazılmaz |
-| `fixedWindow` | false; host true seçerse seçenekler capture/pencere boyutunu değiştirmez |
+| `persistentOptions` | true; when false, player preferences are neither read nor written |
+| `fixedWindow` | false; if the host sets true, options do not change capture/window size |
 
-Kaynak sözleşmeleri: [GameSettings.h](../Core/Runtime/GameSettings.h),
-[WindowSettings.h](../Core/Graphics/Render/WindowSettings.h).
-Pencere başlığı `const char*` olduğundan kalıcı string literal kullanmak en basitidir.
-Engine kullanıcı seçeneklerini yüklediğinde verilen başlangıç pencere ayarları değişebilir.
+Source contracts: [GameSettings.h](../Core/Runtime/GameSettings.h),
+[WindowSettings.h](../Core/Graphics/Render/WindowSettings.h). Since the window title is a `const char*`, a persistent
+string literal is simplest. The supplied initial window settings may change when the engine loads user options.
 
-## Platform sorumlulukları
+## Platform responsibilities
 
-Windows masaüstü oyun ve Windows editörü farklı hedeflerdir; editör bağımlılıkları normal oyuna eklenmez.
-Headless kullanım `ENGINE_BUILD_RUNTIME=OFF` ile raylib'i kapatır; JSON/Catch2 gibi
-etkin hedeflerin kendi bağımlılıkları devam eder.
+Windows desktop games and the Windows editor are separate targets; editor dependencies are not added to normal games.
+Headless use disables raylib with `ENGINE_BUILD_RUNTIME=OFF`; active targets retain their own dependencies, such as
+JSON/Catch2.
 
-`engine_add_game` masaüstü executable üretir; dağıtım paketi [Release](Release.md) akışıyla hazırlanır.
+`engine_add_game` produces a desktop executable; the [Release](Release.md) workflow prepares the distribution package.
 
-`SavePath(filename)` applicationId altında platform kullanıcı verisi yolunu üretir. Asset hazırlama, kayıt yolu,
-dosya saklama ve güvenli rastgelelik `Platform/Internals/`'tadır (Engine-private); oyun bunlara `Game` ve
-Persistence/JsonIO üzerinden ulaşır.
-Kimlik veya şifreleme anahtarını değiştirmek mevcut kayda erişimi etkiler.
-Oyunun paketleme tercihleri Engine API'si değildir.
+`SavePath(filename)` produces the platform user-data path under applicationId. Asset preparation, save paths, file
+storage, and secure randomness are in `Platform/Internals/` (Engine-private); games access them through `Game` and
+Persistence/JsonIO. Changing identity or encryption keys affects access to existing saves. Game packaging choices are
+not engine API.

@@ -1,13 +1,13 @@
 # Painter
 
-Engine'in çizim API'si. Raylib'siz, GPU'dan bağımsız kaydedilir; kare sonunda Engine'in OpenGL 3.3 cihazına
-gönderilir. Tasarım ve kararlar: [Render sistemi](../Design/Rendering.md).
+The engine's drawing API. Commands are recorded without raylib, independently of the GPU, and submitted to the engine's
+OpenGL 3.3 device at frame end. Design and decisions: [Render system](../Design/Rendering.md).
 
-## Nereden gelir
+## Where it comes from
 
-Her `GameObject` çizimini `Draw(Painter& paint) const` içinde yapar; `Scene::Render`, `Game::Draw(Painter&)` ve
-`Game::DrawWindow(Painter&)` de aynı Painter'ı geçirir. Painter kopyalanmaz, saklanmaz; sadece çağrı süresince
-kullanılır.
+Each `GameObject` draws in `Draw(Painter& paint) const`; `Scene::Render`, `Game::Draw(Painter&)`, and
+`Game::DrawWindow(Painter&)` pass the same Painter. Do not copy or retain Painter; use it only for the duration of the
+call.
 
 ```cpp
 #include "Graphics/Paint/Painter.hpp"
@@ -18,43 +18,43 @@ void ScoreView::Draw(Painter& paint) const {
 }
 ```
 
-Koordinatlar mantıksal canvas birimidir (y aşağı), açılar radyan ve ekranda saat yönündedir. Her şey float konumda,
-kenarı yumuşatılmış çizilir; çizim kare sonuna kadar gönderilmez ama çağrı sırası her zaman korunur.
+Coordinates are logical canvas units (y down); angles are radians, clockwise on screen. Everything draws at float
+positions with antialiasing; submission waits until frame end, but call order is always preserved.
 
-## Temel tipler
+## Basic types
 
-`Utilities/` altında, headless: `Float2` (işlemleri, `Length`, `Normalized`, `Rotated`, `Float2::FromAngle` ...),
+Under `Utilities/`, headless: `Float2` (operations, `Length`, `Normalized`, `Rotated`, `Float2::FromAngle` ...),
 `FloatRect` (`FromCenter`, `Center`, `Inset`, `Intersect`, `Union` ...), `Affine2` (`Translate`, `Rotate`, `Scale`,
 `Camera`, `*`, `Inverse`), `Color4` (straight alpha; `Rgb(0xRRGGBB)`, `Hsv(hue, s, v)`, `WithAlpha`, `ScaleAlpha`,
 `Mix`).
 
-## Şekiller
+## Shapes
 
-| Çağrı | Not |
+| Call | Note |
 | --- | --- |
-| `Rect`, `RoundRect(rect, radius)`, `ChamferRect(rect, chamfer)` | Köşesi kesik dikdörtgen: neon paneller |
+| `Rect`, `RoundRect(rect, radius)`, `ChamferRect(rect, chamfer)` | Chamfered rectangle: neon panels |
 | `Circle(center, radius)`, `Ellipse(center, radii)` | |
-| `Arc(center, radius, start, sweep, LineStyle)` | `Butt` / `Round` uç; tam tur halka çizer |
-| `Line(from, to, LineStyle)` | `Butt` / `Round` / `Square` uç |
-| `Polyline(points, LineStyle, closed)` | `Miter` (sınırı aşınca `Bevel`) / `Bevel` / `Round` birleşim |
-| `Polygon(points, ShapeStyle)`, `Triangle` | Kendini kesmeyen çokgen (iki sarım yönü de olur) |
-| `Mesh(points, colors, indices)` | Köşe başına renkli üçgenler, renk üçgen boyunca karışır (ışık maskesi gibi yumuşak alanlar); kenar yumuşatma yok |
+| `Arc(center, radius, start, sweep, LineStyle)` | `Butt` / `Round` caps; a full turn draws a ring |
+| `Line(from, to, LineStyle)` | `Butt` / `Round` / `Square` caps |
+| `Polyline(points, LineStyle, closed)` | `Miter` (`Bevel` beyond the limit) / `Bevel` / `Round` joins |
+| `Polygon(points, ShapeStyle)`, `Triangle` | Non-self-intersecting polygon (either winding direction) |
+| `Mesh(points, colors, indices)` | Per-vertex colored triangles, color blends across each triangle (soft areas such as light masks); no antialiasing |
 | `FillPath(path, ShapeStyle)`, `StrokePath(path, LineStyle)` | `Path`: `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ArcTo`, `Close` |
-| `Glow(center, radius, LightStyle)` | Yumuşak, eklemeli ışık |
+| `Glow(center, radius, LightStyle)` | Soft, additive light |
 
-`ShapeStyle` parçaları birlikte çizilir, sırayla: hale (`glow`), dolgu (`fill` ya da `gradient`), çerçeve (`stroke`,
-`Inside` / `Center` / `Outside`). Kısa yollar: `Fill(color)`, `Outline(width, color)`. `Gradient::Linear(start, end,
-from, to)` şeklin merkezine göre yereldir; `Gradient::Radial(radius, from, to)` merkezden; `Gradient::Vertical(height,
-top, bottom)`. Çokgen ve path dolgusu gradyan yerine `gradient.from`'u kullanır.
+`ShapeStyle` parts draw together, in order: halo (`glow`), fill (`fill` or `gradient`), border (`stroke`, `Inside` /
+`Center` / `Outside`). Shortcuts: `Fill(color)`, `Outline(width, color)`. `Gradient::Linear(start, end, from, to)` is
+local to the shape's center; `Gradient::Radial(radius, from, to)` starts at the center; `Gradient::Vertical(height, top,
+bottom)`. Polygon and path fills use `gradient.from` instead of the gradient.
 
-Bir pikselden ince çizgiler incelmez, soluklaşır. Sıfır boyut ya da NaN çizilmez; negatif kalınlık
-`invalid_argument` atar.
+Lines thinner than one pixel fade instead of becoming thinner. Zero sizes or NaN do not draw; negative thickness throws
+`invalid_argument`.
 
-## Resimler ve yüzeyler
+## Images and surfaces
 
-`Surface` ekran dışı çizim hedefidir: boyutu mantıksaldır, çözünürlüğü canvas'ı izler. İçine `paint.Target(surface)`
-ile çizilir, `paint.Image(surface, dest, style)` ile çizilir. Ölçek değişince içerik kaybolur; pahalı ve durağan
-çizimleri bir kez yapmak için:
+`Surface` is an offscreen drawing target: its size is logical, its resolution follows the canvas. Draw into it with
+`paint.Target(surface)`, draw it with `paint.Image(surface, dest, style)`. Content is lost on scale changes; to draw
+expensive, static content once:
 
 ```cpp
 if (paint.Stale(_background)) {
@@ -64,90 +64,91 @@ if (paint.Stale(_background)) {
 paint.Image(_background, field);
 ```
 
-`ImageStyle`: kaynak bölge, merkez etrafında dönüş, renk tonu. `NineSlice(texture, dest, style)` kenarları sabit
-kalan panel çizer. `ImagePolygon(surface, points, sources)` surface'in bir parçasını dışbükey bir çokgene geçirir
-(kırılan ayna parçaları, dalgalanan alan); kaynaklar surface'in mantıksal birimindedir. Surface, oyunun renderer'ından uzun yaşamaz (sahibi sahne / View olur).
+`ImageStyle`: source region, rotation around the center, tint. `NineSlice(texture, dest, style)` draws a panel with
+fixed edges. `ImagePolygon(surface, points, sources)` maps part of a surface onto a convex polygon (broken mirror
+pieces, rippling areas); sources use the surface's logical units. A Surface must not outlive the game's renderer (its
+owner is a scene / View).
 
-## Metin
+## Text
 
-Font verilmeyen metin oyunun fontuyla çizilir: `paint.Font()` (`GameSettings::font`, aynı nesne `Game::Font()`);
-`FontFace::FromFile` başka fontlar yükler, onlar `paint.Text(font, ...)` ile çizilir. Glifler ekranda kapladıkları
-piksel boyunda, ilk kullanımda rasterize edilir: her boy keskindir, fontun bütün karakterleri çizilebilir (fontta
-olmayan karakter `?` olur).
+Text without an explicit font uses the game's font: `paint.Font()` (`GameSettings::font`, same object as
+`Game::Font()`); `FontFace::FromFile` loads other fonts, drawn with `paint.Text(font, ...)`. Glyphs rasterize on first
+use at their on-screen pixel size: every size is sharp and all characters in the font are drawable (missing characters
+become `?`).
 
 ```cpp
 paint.Text("Ready", {800.0f, 120.0f}, {.size = 48.0f, .align = TextAlign::Center, .glow = {10.0f, cyan}});
 paint.TextBox(description, area, {.size = 18.0f, .wrap = TextWrap::Word});
-const TextBlock block = paint.Font().Layout(longText, style); // Bir kez yerleşip her kare çizmek için
+const TextBlock block = paint.Font().Layout(longText, style); // Lay out once and draw every frame
 ```
 
-Konum ilk satırın tepesidir; yatayda `align`'a göre satırın sol ucu, ortası ya da sağ ucu. `TextStyle`: boy, renk,
-hizalama, `maxWidth` + `TextWrap::Word` / `TextFit::Shrink`, satır aralığı (`lineSpacing` fontun satır yüksekliğinin
-katı ya da `lineHeight` birim olarak), harf aralığı, `glow`, `outline`, `shadow`, `emission`. Sık etiketler için
-kısaltmalar: `CenteredText(size, color, maxWidth)`, `FittedText(size, color, maxWidth, align)`. `Text` / `TextBox`
-çizilen bloğun boyutunu döndürür; alt alta paragraflar onunla ilerler. `TextFit::Shrink` ile küçülen yazı istenen boydaki satırın dikey ortasında kalır. `font.Measure(text, size)`
-sarmasız ölçüdür; `font.FittedSize(text, size, maxWidth)` Shrink'in vereceği boydur (hit-test ve yan yana yazılar için).
-Aynı metin her kare yeniden ölçülmez (yerleşim önbelleği). UTF-8 karakterlerini tek tek gezmek: `Utilities/Utf8.h`
+Position is the top of the first line; horizontally, the line's left edge, center, or right edge according to `align`.
+`TextStyle`: size, color, alignment, `maxWidth` + `TextWrap::Word` / `TextFit::Shrink`, line spacing (`lineSpacing` as a
+multiple of the font's line height or `lineHeight` in units), letter spacing, `glow`, `outline`, `shadow`, `emission`.
+Common label shortcuts: `CenteredText(size, color, maxWidth)`, `FittedText(size, color, maxWidth, align)`. `Text` /
+`TextBox` return the drawn block size; stacked paragraphs advance by it. Text reduced by `TextFit::Shrink` stays
+vertically centered in the line at the requested size. `font.Measure(text, size)` measures without wrapping;
+`font.FittedSize(text, size, maxWidth)` gives the size Shrink would use (for hit testing and adjacent text). Identical
+text is not measured again each frame (layout cache). Iterate UTF-8 characters with `Utilities/Utf8.h`
 (`NextCodepoint`).
 
-## Kapsamlar
+## Scopes
 
-Durum değişikliği her zaman kapsamdır; kapsam nesnesi yok olunca önceki durum döner:
+State changes are always scoped; destroying the scope object restores the previous state:
 
 ```cpp
 {
-    auto moved = paint.Transform(Affine2::Rotate(angle, center)); // Mevcut dönüşümle çarpılır
-    auto clip = paint.Clip(area);       // Mevcut clip'le kesişir; dönmüş dönüşümde invalid_argument
-    auto faded = paint.Opacity(0.5f);   // Ucuz; üst üste binen yerler koyulaşır
+    auto moved = paint.Transform(Affine2::Rotate(angle, center)); // Multiplied by the current transform
+    auto clip = paint.Clip(area);       // Intersects current clip; invalid_argument under a rotated transform
+    auto faded = paint.Opacity(0.5f);   // Cheap; overlapping areas darken
     auto light = paint.Blending(Blend::Add);
-    auto group = paint.Group({.opacity = 0.5f}); // Önce geçici resme çizer, tek parça birleştirir
-    auto into = paint.Target(surface);  // İçeride dönüşüm / clip / opaklık sıfırdan
-    auto mark = paint.Marker("HUD");    // RenderDoc'ta bölge adı (literal)
+    auto group = paint.Group({.opacity = 0.5f}); // Draws to a temporary image first, composites as one piece
+    auto into = paint.Target(surface);  // Transform / clip / opacity start fresh inside
+    auto mark = paint.Marker("HUD");    // Region name in RenderDoc (literal)
 }
 ```
 
-`Blend::Normal` ve `Blend::Add` aynı draw call'u paylaşır (premultiplied alpha); `Multiply` / `Screen` batch'i böler.
+`Blend::Normal` and `Blend::Add` share a draw call (premultiplied alpha); `Multiply` / `Screen` split the batch.
 
-## Post-process ve kalite
+## Post-process and quality
 
-`GameSettings::post` oyunun varsayılanıdır; `paint.Post()` o karede değiştirir (sonraki kare varsayılana döner):
-bloom (`intensity`, `radius`), `vignette`, `scanlines`, `aberration`. Bloom sadece `emission` > 0 olan çizimden gelir
-(`ShapeStyle::emission`, `LineStyle::emission`, `TextStyle::emission` ...). Bloom'u bir kare ilk kez isterse
-canvas bir sonraki kareden itibaren bloom katmanını tutar.
+`GameSettings::post` is the game's default; `paint.Post()` changes it for that frame (the next frame returns to the
+default): bloom (`intensity`, `radius`), `vignette`, `scanlines`, `aberration`. Bloom comes only from drawing with
+`emission` > 0 (`ShapeStyle::emission`, `LineStyle::emission`, `TextStyle::emission` ...). When a frame first requests
+bloom, the canvas retains the bloom layer starting with the next frame.
 
-`paint.Quality()` oyuncunun seçimidir (`GlowQuality`, `BloomQuality`, `backgroundEffects`). Painter haleleri ve
-bloom'u kendisi uygular; çağıran sadece tamamen süs olan işi atlamak için okur. `paint.Time()` / `paint.Delta()` sunum
-saatidir (editör Pause'u dondurur); `paint.PixelScale()` bir birimin kaç cihaz pikseli olduğunu verir.
+`paint.Quality()` is the player's choice (`GlowQuality`, `BloomQuality`, `backgroundEffects`). Painter applies halos and
+bloom itself; callers read it only to skip purely decorative work. `paint.Time()` / `paint.Delta()` are the presentation
+clock (editor Pause freezes it); `paint.PixelScale()` gives device pixels per unit.
 
-## Yardımcılar ve tema
+## Helpers and theme
 
-Ortak şekiller ve tema widget'ları Painter'ın üstündedir; hepsi ilk parametre olarak `Painter&` alır, kaliteyi ve
-saati Painter'dan okur, yazıyı oyunun fontuyla çizer:
+Shared shapes and themed widgets sit above Painter; all take `Painter&` first, read quality and time from Painter, and
+draw text with the game's font:
 
-| Başlık | İçerik |
+| Header | Contents |
 | --- | --- |
 | `Graphics/Draw/DrawUtils.hpp` | `DrawStar`, `DrawEgg`, `DrawDiamond`, `DrawRegularPolygon`, `DrawRotatedRect`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
-| `Graphics/Draw/Neon.hpp` | Açık stilli neon widget'lar ve stilleri: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
-| `Graphics/Ui/UiDraw.hpp` | Temalı widget'lar (`CurrentTheme().ui`): `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`, `DrawUiButton(Body)`, `DrawUiRoundButton`, `DrawUiKeyCap`, `DrawUiProgressBar` |
-| `Graphics/Draw/BackgroundDraw.hpp` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `BackdropStyle` ile `DrawBackdrop*` |
-| `Graphics/Ui/Backdrop.hpp` | Temanın arka plan rolleri: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
-| `Graphics/Icons/Icons.hpp` | Ortak ikon seti: `DrawIcon(paint, Icon::Star, center, size, {.color = gold})` |
-| `Fx/*` | Efektler (parçacık, uçan yazı, halka, şok dalgası, overlay, kamera, `FxStage`): [Effects](Effects.md) |
+| `Graphics/Draw/Neon.hpp` | Explicit-style neon widgets and styles: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
+| `Graphics/Ui/UiDraw.hpp` | Themed widgets (`CurrentTheme().ui`): `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`, `DrawUiButton(Body)`, `DrawUiRoundButton`, `DrawUiKeyCap`, `DrawUiProgressBar` |
+| `Graphics/Draw/BackgroundDraw.hpp` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `DrawBackdrop*` with `BackdropStyle` |
+| `Graphics/Ui/Backdrop.hpp` | Theme background roles: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
+| `Graphics/Icons/Icons.hpp` | Shared icon set: `DrawIcon(paint, Icon::Star, center, size, {.color = gold})` |
+| `Fx/*` | Effects (particles, floating text, rings, shockwaves, overlays, cameras, `FxStage`): [Effects](Effects.md) |
 
-Kamera `Utilities/CameraView.h`'tır (`offset`, `target`, `rotation` radyan, `zoom`; `Transform()`, `ToScreen`,
-`ToWorld`); dünya `auto view = paint.Transform(camera.Transform())` kapsamında çizilir.
+The camera is `Utilities/CameraView.h` (`offset`, `target`, `rotation` in radians, `zoom`; `Transform()`, `ToScreen`,
+`ToWorld`); draw the world within `auto view = paint.Transform(camera.Transform())`.
 
 ```cpp
 DrawUiPanel(paint, _area, accent);
-DrawUiButton(paint, _play, "PLAY", 30.0f, _playButton.Look(accent)); // UiButton: View'ın değer üyesi
+DrawUiButton(paint, _play, "PLAY", 30.0f, _playButton.Look(accent)); // UiButton: value member of the View
 DrawUiText(paint, "SETTINGS", {_area.Center().x, 40.0f}, {.size = 36.0f, .color = text, .align = TextAlign::Center});
 ```
 
-Tek seferlik varyant: `CurrentTheme().ui.X` kopyalanır, değiştirilir, açık stilli fonksiyona verilir. Kendi saatini
-oynatan çizim (ör. önizleme kartı) de açık stilli fonksiyonu `time` ile çağırır.
+One-off variant: copy `CurrentTheme().ui.X`, modify it, and pass it to the explicit-style function. Drawing that
+advances its own clock (e.g. a preview card) also calls the explicit-style function with `time`.
 
-## Ölçüm
+## Measurement
 
-`Game::RenderStatistics()` son karenin maliyetini verir: draw call, batch, köşe, yüklenen bayt, durum değişimleri,
-rasterize edilen glif, yeniden ayrılan yüzey. Editörde **Engine > Render Gallery** bütün özellikleri
-tek ekranda gösterir.
+`Game::RenderStatistics()` gives the last frame's cost: draw calls, batches, vertices, uploaded bytes, state changes,
+rasterized glyphs, reallocated surfaces. In the editor, **Engine > Render Gallery** shows all features on one screen.
