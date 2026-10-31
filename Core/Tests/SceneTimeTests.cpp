@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "Scene/Scene.h"
+#include "Tests/PaintHarness.h"
 
 namespace {
 class TimeSceneChild final : public GameObject {
@@ -62,7 +63,7 @@ TEST_CASE("Engine.Scene.RealUpdateRunsWhileGameTimeIsFrozenAndCanReleasePause", 
     scene.TickReal(0.1f);
     CHECK(scene.GameTimePaused());
     scene.Tick(0.0f);
-    scene.Render();
+    PaintFrame([&](Painter& paint) { scene.Render(paint); });
     CHECK(log == std::vector<std::string>{"scene.real", "scene.draw"});
     CHECK(scene.realElapsed == Catch::Approx(0.1f));
     CHECK(scene.gameElapsed == 0.0f);
@@ -82,7 +83,7 @@ TEST_CASE("Engine.Scene.ZeroHostTimeInitializesWithoutAdvancingEitherUpdate", "[
     scene.Activate();
     scene.TickReal(0.0f);
     scene.Tick(0.0f);
-    scene.Render();
+    PaintFrame([&](Painter& paint) { scene.Render(paint); });
     CHECK(log == std::vector<std::string>{"scene.start", "scene.enter", "scene.draw"});
     CHECK(scene.realElapsed == 0.0f);
     CHECK(scene.gameElapsed == 0.0f);
@@ -104,7 +105,7 @@ TEST_CASE("Engine.Scene.RealUpdateRespectsActivationAndReleasesItsDispatchGuardO
     scene.duringReal = [&] {
         CHECK_THROWS_AS(scene.TickReal(0.1f), std::logic_error);
         CHECK_THROWS_AS(scene.Tick(0.1f), std::logic_error);
-        CHECK_THROWS_AS(scene.Render(), std::logic_error);
+        CHECK_THROWS_AS(PaintFrame([&](Painter& paint) { scene.Render(paint); }), std::logic_error);
         CHECK_THROWS_AS(scene.Deactivate(), std::logic_error);
         CHECK_THROWS_AS(scene.Shutdown(), std::logic_error);
         throw std::runtime_error("real update failure");

@@ -50,7 +50,7 @@ set(editor_output "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
 if(ENGINE_BUILD_EDITOR)
     add_library(EnginePreviewRuntime STATIC EXCLUDE_FROM_ALL
         Preview/PreviewScene.cpp Preview/PreviewGame.cpp Preview/PreviewSession.cpp Preview/PreviewHost.cpp
-        Preview/PreviewProfiler.cpp Preview/GlowBenchmark.cpp)
+        Preview/PreviewProfiler.cpp Preview/GlowBenchmark.cpp Preview/RenderGallery.cpp)
     target_link_libraries(EnginePreviewRuntime PUBLIC Engine EngineEditorApi EngineEditorSupport EngineProfilerRuntime)
     engine_warnings(EnginePreviewRuntime)
 

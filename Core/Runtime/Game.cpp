@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 #include "Platform/Internals/ApplicationFiles.h"
+#include "Graphics/Paint/Painter.hpp"
 #include "Graphics/Render/Internals/Renderer.h"
 #include "Scene/Internals/SceneManager.h"
 #include "Scene/Scene.h"
@@ -42,6 +43,32 @@ constexpr float FpsCounterSmoothing = 0.1f; // Her karede iş süresinin yeni ö
 constexpr Color FpsCounterBackground{0, 0, 0, 170};
 constexpr Color FpsCounterText{120, 255, 160, 255};
 
+Color4 ToColor4(Color color) { return {color.r, color.g, color.b, color.a}; }
+
+RenderPipelineSettings PipelineSettings(const GameSettings& settings) {
+    return {{static_cast<float>(settings.canvasWidth), static_cast<float>(settings.canvasHeight)},
+            ToColor4(settings.background),
+            ToColor4(settings.letterbox),
+            settings.canvasTextureFilter != TEXTURE_FILTER_POINT,
+            settings.post};
+}
+
+// The renderer's share of the player's effect settings.
+RenderQuality QualityOf(const EffectQuality& effects) {
+    RenderQuality quality;
+    switch (effects.glow) {
+    case EffectLevel::Full   : quality.glow = GlowQuality::Full; break;
+    case EffectLevel::Reduced: quality.glow = GlowQuality::Reduced; break;
+    case EffectLevel::Off    : quality.glow = GlowQuality::Off; break;
+    }
+    quality.backgroundEffects = effects.backgroundEffects;
+    return quality;
+}
+
+Texture2D CanvasTexture(const GpuNativeTarget& canvas) {
+    return {canvas.colorTexture, canvas.width, canvas.height, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+}
+
 EffectLevel StoredLevel(std::int64_t stored) {
     return stored >= 0 && stored <= static_cast<std::int64_t>(EffectLevel::Off) ? static_cast<EffectLevel>(stored)
                                                                                 : EffectLevel::Full;
@@ -49,11 +76,11 @@ EffectLevel StoredLevel(std::int64_t stored) {
 } // namespace
 
 Game::Game(const GameSettings& settings)
-    : _renderer(std::make_unique<Renderer>(settings.window, settings.canvasWidth, settings.canvasHeight,
-                                           settings.background, settings.canvasTextureFilter, settings.letterbox))
+    : _renderer(std::make_unique<Renderer>(settings.window, PipelineSettings(settings)))
     , _assetRoot(PrepareAssets(AssetManifest(settings)))
     , _text(settings.font.empty() ? std::filesystem::path{} : _assetRoot / settings.font, settings.fontAtlasSizes,
             settings.fontCodepoints, settings.fontTextureFilter)
+    , _font(settings.font.empty() ? std::optional<FontFace>{} : FontFace::FromFile(_assetRoot / settings.font))
     , _audio(_assetRoot, settings.audioVolume)
     , _input(std::make_unique<InputNormalizer>())
     , _applicationId(settings.applicationId)
@@ -94,13 +121,26 @@ DeviceInput Game::ReadInput() {
     });
 }
 void Game::CanvasReady(const Texture2D& texture) const { (void)texture; }
+void Game::DrawWindow(Painter& window) const {
+    auto legacy = window.Legacy();
+    DrawWindow();
+}
 void Game::DrawWindow() const {}
+const RenderStats& Game::RenderStatistics() const { return _renderer->LastFrame(); }
+const FontFace& Game::Font() const {
+    if (!_font) throw std::logic_error("Game::Font: GameSettings::font is not set");
+    return *_font;
+}
 void Game::HandleInput(const DeviceInput& input) {
     if (Scene* scene = _sceneManager->Current()) scene->ReadInput(input);
 }
 void Game::Update(float realSeconds) { (void)realSeconds; }
 float Game::FrameSeconds(float realSeconds) { return realSeconds; }
 double Game::DrawSeconds() const { return GetTime(); }
+void Game::Draw(Painter& paint) const {
+    auto legacy = paint.Legacy();
+    Draw();
+}
 void Game::Draw() const {}
 void Game::DrawLoading(float seconds, float outro) const {
     (void)seconds;
@@ -174,6 +214,7 @@ void Game::ApplyGraphics() {
     _renderer->SetVSync(graphics.vsync);
     _frameExecution.vsync = graphics.vsync;
     SetEffectQuality(graphics.effects);
+    _renderer->SetQuality(QualityOf(CurrentEffectQuality()));
     _showFps = graphics.showFps;
 }
 
@@ -213,12 +254,18 @@ void Game::CommitScene() {
         SaveOptions(); // Sahne geçişi tercihlerin kayıt noktasıdır (ör. Options ekranından çıkış)
 }
 void Game::Present() const {
-    SetDrawTime(DrawSeconds());
-    auto frame = _renderer->BeginFrame();
-    if (const Scene* scene = _sceneManager->Current()) scene->Render();
-    Draw();
-    if (_showFps) DrawFpsCounter();
-    frame.Complete([this](const Texture2D& texture) { CanvasReady(texture); }, [this] { DrawWindow(); });
+    const double time = DrawSeconds();
+    SetDrawTime(time);
+    auto frame = _renderer->BeginFrame(time, _frameSeconds);
+    Painter& paint = frame.Canvas();
+    if (const Scene* scene = _sceneManager->Current()) scene->Render(paint);
+    Draw(paint);
+    if (_showFps) {
+        auto legacy = paint.Legacy();
+        DrawFpsCounter();
+    }
+    frame.Complete([this](const GpuNativeTarget& canvas) { CanvasReady(CanvasTexture(canvas)); },
+                   [this](Painter& window) { DrawWindow(window); });
 }
 void Game::ConfigureFrameExecution(const FrameExecutionSettings& settings) {
     if (settings.fpsLimit < 0) throw std::invalid_argument("Invalid frame limit");
@@ -253,11 +300,16 @@ bool Game::ShowLoading() {
             outro = Progress01(since, 0.0f, outroSeconds);
         }
         {
-            SetDrawTime(DrawSeconds());
-            auto frame = _renderer->BeginFrame();
-            if (const Scene* scene = _sceneManager->Current()) scene->Render();
-            DrawLoading(static_cast<float>(now - start), outro);
-            frame.Complete({}, [this] { DrawWindow(); });
+            const double time = DrawSeconds();
+            SetDrawTime(time);
+            auto frame = _renderer->BeginFrame(time, GetFrameTime());
+            Painter& paint = frame.Canvas();
+            if (const Scene* scene = _sceneManager->Current()) scene->Render(paint);
+            {
+                auto legacy = paint.Legacy();
+                DrawLoading(static_cast<float>(now - start), outro);
+            }
+            frame.Complete({}, [this](Painter& window) { DrawWindow(window); });
         }
         RevealWindow();
     }
@@ -307,6 +359,7 @@ void Game::Run() {
                 observer->BeginRegion(FrameRegion::Application);
             }
             realSeconds = FrameSeconds(realSeconds);
+            _frameSeconds = realSeconds;
             Update(realSeconds);
             CommitScene();
             if (observer) {

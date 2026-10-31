@@ -9,6 +9,7 @@ PreviewGame::PreviewGame(const GameSettings& settings, const PreviewRegistry& re
                 [this](PreviewScene& scene) { SetScene(scene); },
                 {}}) {
     RegisterScene(_preview.Scene());
+    if (HasFont()) _preview.Scene().SetFont(&Font());
 }
 PreviewGame::~PreviewGame() { _preview.Scene().ShutdownNoThrow(); }
 void PreviewGame::Start() { SetScene(_preview.Scene()); }

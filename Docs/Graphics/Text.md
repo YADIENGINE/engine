@@ -1,4 +1,7 @@
-# Text and fonts
+# Text and fonts (eski yol)
+
+Yeni metin çizimi `FontFace` + `Painter::Text`'tir ([Painter → Metin](Painter.md#metin)). Bu rehber eski
+`TextRenderer`'ı anlatır.
 
 `Game::Text()` ortak `TextRenderer` servisidir. Boş `GameSettings::font` raylib varsayılan fontunu kullanır.
 Özel font asset köküne göre yoldur; başlangıçta doğrulanması için `settings.assets` listesine de ekleyin.

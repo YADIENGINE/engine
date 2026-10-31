@@ -30,7 +30,10 @@ Core/      Oyuna giren engine kodu; include kökü (#include "Runtime/Game.h"). 
   Runtime/   Game, GameSettings; ana döngü ve servisler; Main.cpp CreateGame() çağırır
   GameObjects/ GameObject, ObjectList; headless nesne lifecycle'ı ve isteğe bağlı sahiplik
   Scene/     Scene, Internals/SceneManager; headless sahne lifecycle'ı, seçimi ve kapanışı
-  Graphics/  Render/ (Window/Canvas/Renderer Internals/'da) Draw/ Anim/ Icons/ Style/ Ui/ (görünüşün tamamı; renkler/stiller parametre)
+  Graphics/  Çizim: Paint/ (Painter API), Text/ (FontFace), Surface/, Post/, Gpu/Internals/ (GpuDevice, GlDevice,
+             NullDevice, Shaders/*.glsl), Render/ (RenderStats; Internals/: Renderer, RenderPipeline, LegacyBridge);
+             Docs/Graphics/Painter.md. Eski raylib yolu (Draw/ Anim/ Icons/ Style/ Ui/, RenderLayer) geçiş bitene
+             kadar Painter::Legacy köprüsünden çalışır; yeni çizim kodu Painter ile yazılır.
   Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Utilities/
   Tuning/    *.tuning.json biçimi (TuningFile), canlı okuma (TuningLive, ENGINE_TUNING_LIVE), Tuning<T>(); Docs/Tuning.md
   Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, ScoreBoard, RunTracking ...); Modules/X/Tests/

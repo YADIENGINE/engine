@@ -2,6 +2,7 @@
 #include <raylib.h>
 #include <filesystem>
 #include <vector>
+#include "Graphics/Post/PostSettings.hpp"
 #include "Graphics/Render/WindowSettings.h"
 #include "Audio/AudioSystem.hpp"
 #include "Modules/Persistence/Persistence.hpp"
@@ -14,6 +15,9 @@ struct GameSettings {
     Color background = BLACK;
     Color letterbox = BLACK;
     TextureFilter canvasTextureFilter = TEXTURE_FILTER_BILINEAR;
+    // Full-screen finish (bloom, vignette, scanlines); a frame may change it through Painter::Post. The canvas keeps a
+    // bloom layer only while bloom is asked for (here, or by the previous frame).
+    PostSettings post;
     std::filesystem::path applicationId = "Game";
     std::filesystem::path font;
     // Açılışta yüklenen atlaslar (ekrandaki piksel boyu); yazı kendinden büyük en küçük atlastan çizilir, komşu boyut

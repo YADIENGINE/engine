@@ -7,6 +7,8 @@
 #include "Options/GameOptions.h"
 #include "Fx/TimeScale.h"
 #include "Graphics/Draw/TextRenderer.h"
+#include "Graphics/Render/RenderStats.hpp"
+#include "Graphics/Text/FontFace.hpp"
 #include "Input/Input.hpp"
 #include "Runtime/GameSettings.h"
 #include "Runtime/GraphicsSettings.h"
@@ -14,6 +16,7 @@
 #include "Utilities/FrameObserver.h"
 #include "Utilities/Vec2.h"
 
+class Painter;
 class Scene;
 class SceneManager;
 class Renderer;
@@ -29,6 +32,8 @@ public:
     [[nodiscard]] FrameObserver* FrameInstrumentation() const { return _frameObserver; }
     [[nodiscard]] FrameExecutionSettings FrameExecution() const { return _frameExecution; }
     void ConfigureFrameExecution(const FrameExecutionSettings& settings);
+    // What the last presented frame cost the renderer (draw calls, uploads, glyphs ...).
+    [[nodiscard]] const RenderStats& RenderStatistics() const;
 
 protected:
     explicit Game(const GameSettings& settings);
@@ -43,6 +48,9 @@ protected:
     [[nodiscard]] AudioSystem& Audio() { return _audio; }
     [[nodiscard]] const AudioSystem& Audio() const { return _audio; }
     [[nodiscard]] const TextRenderer& Text() const { return _text; }
+    // The game's font (GameSettings::font) for Painter::Text; throws logic_error when the game has none.
+    [[nodiscard]] const FontFace& Font() const;
+    [[nodiscard]] bool HasFont() const { return _font.has_value(); }
     // FPS sınırı, ekran modu ve pencere boyutu engine tercihidir: uygulanır ve kalıcı olur. 0: sınırsız FPS.
     void SetFpsLimit(int fps);
     [[nodiscard]] int FpsLimit() const;
@@ -82,10 +90,15 @@ protected:
     // Sunum saati (DrawTime) kaynağı; her kare çizilmeden önce okunur. Varsayılan gerçek zaman; host'lar
     // duraklatılabilir kendi saatini verir.
     [[nodiscard]] virtual double DrawSeconds() const;
-    virtual void Draw() const;
-    // Completed canvas is borrowed for this call; window drawing runs outside the canvas projection.
+    // Draws over the current scene every frame. The default runs the raylib-based Draw() through Painter::Legacy.
+    virtual void Draw(Painter& paint) const;
+    virtual void Draw() const; // Raylib-based (migration only)
+    // Completed canvas is borrowed for this call (frame capture).
     virtual void CanvasReady(const Texture2D& texture) const;
-    virtual void DrawWindow() const;
+    // Draws over the whole window (device pixels) after the canvas was presented. The default runs the raylib-based
+    // DrawWindow() through Painter::Legacy.
+    virtual void DrawWindow(Painter& window) const;
+    virtual void DrawWindow() const; // Raylib-based (migration only)
     // Yükleme ekranı: Start'tan sonra sesler arka planda yüklenirken ilk sahne ilerlemeden (input ve Tick yok) çizilir,
     // bu onun üstüne çizilir. 'seconds' ekranın açılışından beri; 'outro' yükleme bittikten sonraki kapanış (0..1).
     virtual void DrawLoading(float seconds, float outro) const;
@@ -109,6 +122,7 @@ private:
     std::unique_ptr<Renderer> _renderer;
     std::filesystem::path _assetRoot;
     TextRenderer _text;
+    std::optional<FontFace> _font;
     AudioSystem _audio;
     std::unique_ptr<InputNormalizer> _input;
     TimeScale _timeScale;
@@ -120,6 +134,7 @@ private:
     bool _fixedWindow;
     bool _showFps = false;
     double _frameStart = 0.0;               // Karenin başı (GetTime); FPS sayacının iş süresi buradan ölçülür
+    float _frameSeconds = 0.0f;             // Bu karenin gerçek süresi (Painter::Delta)
     mutable float _frameWorkSeconds = 0.0f; // Güncelleme + çizim süresi (bekleme hariç), yumuşatılmış
     std::unique_ptr<SceneManager> _sceneManager;
     bool _quitRequested = false;

@@ -1,4 +1,8 @@
-# Rendering
+# Rendering (eski yol)
+
+Bu rehber raylib tabanlı eski çizimi anlatır; yeni kod [Painter](Painter.md) kullanır. Canvas, pencere ve sunum
+artık Engine'in renderer'ındadır; aşağıdaki `RenderLayer`, `GlowBatch`, `BeginClip` ... geçiş bitene kadar
+`Painter::Legacy` kapsamında çalışır.
 
 `GameSettings::canvasWidth/canvasHeight` mantıksal çalışma alanıdır (varsayılan 1280×720).
 Pencere daha büyükse canvas texture pencerenin piksel boyutunda rasterize edilir; mantıksal

@@ -14,7 +14,7 @@ public:
     void Clear();
     void Start();
     void Update(float deltaSeconds);
-    void Draw() const;
+    void Draw(Painter& paint) const;
     // Completes cleanup before rethrowing the first Stop callback failure.
     void Stop();
 

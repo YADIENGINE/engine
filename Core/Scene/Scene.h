@@ -17,7 +17,7 @@ public:
     // Host-adjusted real time, before pause/scaled game time is evaluated. Does not update children.
     void TickReal(float realSeconds);
     void Tick(float deltaSeconds);
-    void Render() const;
+    void Render(Painter& paint) const;
     // Cancellation may be requested from an input callback; lifecycle dispatch remains non-reentrant.
     void CancelInput();
     void Shutdown();

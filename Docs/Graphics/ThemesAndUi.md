@@ -28,8 +28,8 @@ change it and call the explicit-style `Graphics/Draw/Neon.h` function. Dependenc
 engine options). Helpers read it themselves so callers never branch: Neon drops outer frame glow and text rings
 when glow is reduced and all glow (including `DrawGlow`) when off; `ParticleSystem2D::Emit` scales counts;
 `CameraEffects2D` scales shake, kick and punch and ignores `SetMotion` when sprint effects are off; `OverlayEffects2D` flashes and `GlitchEffects2D` are skipped when
-flashes are off; `DrawScanlines` is skipped when background effects are off. `Canvas::SetMaxHeight` caps the
-upscaled canvas texture (render resolution).
+flashes are off; `DrawScanlines` is skipped when background effects are off. `GraphicsSettings::renderHeight` caps
+the upscaled canvas texture (render resolution).
 
 `Graphics/Draw/BackgroundDraw.h` provides separate `DrawGrid2D`, `DrawScanlines` and `DrawVignette` calls, and
 `BackdropStyle` (scrolling grid, vignette, scanline alpha) with `DrawBackdropGrid/Vignette/Scanlines(style, ...)`.

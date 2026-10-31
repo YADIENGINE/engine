@@ -49,6 +49,8 @@ public:
 
     void BeginFrame() override;
     void EndFrame() override;
+    void SetBackBufferSize(int width, int height) override { _backBuffer = {0, 0, width, height}; }
+    [[nodiscard]] PixelRect BackBuffer() const { return _backBuffer; }
     [[nodiscard]] GpuGeometry Upload(std::span<const PaintVertex> vertices,
                                      std::span<const std::uint32_t> indices) override;
     void BeginPass(const GpuPassDesc& pass) override;
@@ -103,6 +105,7 @@ private:
     std::vector<std::uint32_t> _indices;
     std::vector<NullCommand> _commands;
     GpuFrameCounters _counters;
+    PixelRect _backBuffer;
     bool _inFrame = false;
     bool _inPass = false;
     int _markerDepth = 0;

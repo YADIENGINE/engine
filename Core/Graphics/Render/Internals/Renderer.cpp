@@ -1,71 +1,73 @@
 #include "Graphics/Render/Internals/Renderer.h"
 #include <raylib.h>
+#include "Graphics/Gpu/Internals/GlDevice.h"
+#include "Graphics/Paint/Painter.hpp"
 
-Renderer::Frame::Frame(const Window& window, Canvas& canvas, Color background, Color letterbox,
-                       const RenderExecutionOptions& options, FrameObserver* observer)
-    : _window(window)
+Renderer::Frame::Frame(Renderer& renderer, Painter& canvas)
+    : _renderer(renderer)
     , _canvas(canvas)
-    , _letterbox(letterbox)
-    , _execution(options, observer)
-    , _observer(observer) {
-    if (_observer) _observer->BeginRegion(FrameRegion::Canvas);
-    canvas.Fit(_window.Width(), _window.Height());
-    _canvas.Begin();
-    ClearBackground(background);
-}
+    , _execution(renderer._execution, renderer._observer) {}
 
 Renderer::Frame::~Frame() {
-    if (_canvasOpen) _canvas.End();
-    if (_windowOpen) EndDrawing();
-    // Existing scoped-frame consumers still get the default presentation.
-    if (!_completed && !_windowOpen) {
-        BeginDrawing();
-        ClearBackground(_letterbox);
-        _canvas.Present(_window.Width(), _window.Height());
-        EndDrawing();
-    }
-}
-
-void Renderer::Frame::Complete(const std::function<void(const Texture2D&)>& canvasReady,
-                               const std::function<void()>& windowDraw) {
     if (_completed) return;
-    _canvas.End();
-    if (_observer) _observer->EndRegion(FrameRegion::Canvas);
-    _canvasOpen = false;
-    _completed = true;
-    if (_observer) _observer->BeginRegion(FrameRegion::PreviewBridge);
-    if (canvasReady) canvasReady(_canvas.Texture());
-    if (_observer) {
-        _observer->EndRegion(FrameRegion::PreviewBridge);
-        _observer->BeginRegion(FrameRegion::Present);
+    try {
+        Complete();
+    } catch (...) {
+        // Already unwinding (or shutting down); the next frame starts clean.
     }
-    BeginDrawing();
-    _windowOpen = true;
-    ClearBackground(_letterbox);
-    _canvas.Present(_window.Width(), _window.Height());
-    if (windowDraw) windowDraw();
-    if (_observer) {
-        _observer->EndRegion(FrameRegion::Present);
-        _observer->BeginRegion(FrameRegion::EndDrawing);
-    }
-    EndDrawing();
-    if (_observer) _observer->EndRegion(FrameRegion::EndDrawing);
-    _windowOpen = false;
 }
 
-Renderer::Renderer(const WindowSettings& window, int canvasWidth, int canvasHeight, Color background,
-                   TextureFilter canvasFilter, Color letterbox)
+void Renderer::Frame::Complete(const std::function<void(const GpuNativeTarget&)>& canvasReady,
+                               const std::function<void(Painter&)>& windowDraw) {
+    if (_completed) return;
+    _completed = true;
+    Renderer& renderer = _renderer;
+    FrameObserver* observer = renderer._observer;
+    RenderPipeline& pipeline = *renderer._pipeline;
+    const GpuTarget image = pipeline.FinishCanvas();
+    if (observer) {
+        observer->EndRegion(FrameRegion::Canvas);
+        observer->BeginRegion(FrameRegion::PreviewBridge);
+    }
+    if (canvasReady) {
+        canvasReady(renderer._device->Native(image));
+        renderer._device->InvalidateState(); // The capture may read through other GL state
+    }
+    if (observer) {
+        observer->EndRegion(FrameRegion::PreviewBridge);
+        observer->BeginRegion(FrameRegion::Present);
+    }
+    Painter& window = pipeline.BeginWindow();
+    if (windowDraw) windowDraw(window);
+    pipeline.EndFrame();
+    renderer._legacy.Release();
+    if (observer) {
+        observer->EndRegion(FrameRegion::Present);
+        observer->BeginRegion(FrameRegion::EndDrawing);
+    }
+    EndDrawing(); // raylib: swap buffers, poll input, frame pacing
+    if (observer) observer->EndRegion(FrameRegion::EndDrawing);
+}
+
+Renderer::Renderer(const WindowSettings& window, const RenderPipelineSettings& settings)
     : _window(window)
-    , _canvas(canvasWidth, canvasHeight, canvasFilter)
-    , _background(background)
-    , _letterbox(letterbox) {}
+    , _device(std::make_unique<GlDevice>())
+    , _pipeline(std::make_unique<RenderPipeline>(*_device, settings, &_legacy)) {}
+
+Renderer::~Renderer() {
+    _pipeline.reset();
+    _device.reset();
+}
 
 bool Renderer::ShouldClose() const { return _window.ShouldClose(); }
 
-Renderer::Frame Renderer::BeginFrame() const {
-    return Frame(_window, _canvas, _background, _letterbox, _execution, _observer);
+Renderer::Frame Renderer::BeginFrame(double time, float delta) {
+    if (_observer) _observer->BeginRegion(FrameRegion::Canvas);
+    BeginDrawing(); // raylib: frame timing
+    Painter& canvas = _pipeline->BeginFrame({_window.PixelWidth(), _window.PixelHeight()}, time, delta);
+    return Frame(*this, canvas);
 }
 
 std::optional<Vec2> Renderer::ToCanvas(Vec2 windowPoint) const {
-    return _canvas.ToCanvas(windowPoint, _window.Width(), _window.Height());
+    return _pipeline->ToCanvas(windowPoint, {_window.Width(), _window.Height()});
 }

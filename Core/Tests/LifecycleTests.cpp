@@ -10,6 +10,7 @@
 #include "Fx/TransitionClock.h"
 #include "GameObjects/ObjectList.h"
 #include "Scene/Scene.h"
+#include "Tests/PaintHarness.h"
 
 namespace {
 class Probe final : public GameObject {
@@ -66,11 +67,11 @@ TEST_CASE("Engine.Lifecycle.StartsOnceAndDisabledObjectsSkipCallbacks", "[engine
     CHECK_THROWS_AS(other.Add(object), std::logic_error);
     objects.Start();
     objects.Update(0.1f);
-    objects.Draw();
+    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
     CHECK(log.empty());
     object.SetEnabled(true);
     objects.Update(0.1f);
-    objects.Draw();
+    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
     object.SetEnabled(false);
     objects.Update(0.1f);
     object.SetEnabled(true);
@@ -78,7 +79,7 @@ TEST_CASE("Engine.Lifecycle.StartsOnceAndDisabledObjectsSkipCallbacks", "[engine
     objects.Stop();
     objects.Stop();
     objects.Update(0.1f);
-    objects.Draw();
+    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
     CHECK(log ==
           std::vector<std::string>{"object.start", "object.update", "object.draw", "object.update", "object.stop"});
     CHECK_THROWS_AS(other.Add(object), std::logic_error);
@@ -92,7 +93,7 @@ TEST_CASE("Engine.Lifecycle.RemovalStopsOwnedObjectsBeforeDestruction", "[engine
     object.duringUpdate = [&] { objects.Remove(object); };
     objects.Add(std::move(owned));
     objects.Update(0.1f);
-    objects.Draw();
+    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
     CHECK(log == std::vector<std::string>{"owned.start", "owned.update"});
     objects.Update(0.1f);
     CHECK(log == std::vector<std::string>{"owned.start", "owned.update", "owned.stop", "owned.destroy"});
@@ -108,7 +109,7 @@ TEST_CASE("Engine.Lifecycle.EnablingDuringUpdateStartsBeforeTheNextUpdate", "[en
     objects.Add(first);
     objects.Add(second);
     objects.Update(0.1f);
-    objects.Draw();
+    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
     CHECK(log == std::vector<std::string>{"first.start", "first.update", "first.draw"});
     log.clear();
     objects.Update(0.1f);
@@ -129,7 +130,7 @@ TEST_CASE("Engine.Lifecycle.NewObjectsStartOnTheNextDispatch", "[engine]") {
     };
     objects.Add(first);
     objects.Update(0.1f);
-    objects.Draw();
+    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
     CHECK(log == std::vector<std::string>{"first.start", "first.update", "first.draw"});
     log.clear();
     objects.Update(0.1f);
@@ -163,7 +164,7 @@ TEST_CASE("Engine.Time.ZeroGameTimeKeepsDrawingAndRealTimeObjectsAdvance", "[eng
     time.Hitstop(0.5f);
     game.Update(time.Advance(0.1f));
     real.Update(0.1f);
-    game.Draw();
+    PaintFrame([&](Painter& paint) { game.Draw(paint); });
     CHECK(log == std::vector<std::string>{"visual.start", "transition.start", "transition.update", "visual.draw"});
 }
 

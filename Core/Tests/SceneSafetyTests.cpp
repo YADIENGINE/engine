@@ -6,6 +6,7 @@
 #include <vector>
 #include "Input/Input.hpp"
 #include "Scene/Scene.h"
+#include "Tests/PaintHarness.h"
 
 namespace {
 class SceneSafetyChild final : public GameObject {
@@ -91,7 +92,7 @@ TEST_CASE("Engine.Scene.DisabledActivationDefersInitializationBeforeInput", "[en
     scene.SetEnabled(false);
     scene.Activate();
     scene.Tick(0.1f);
-    scene.Render();
+    PaintFrame([&](Painter& paint) { scene.Render(paint); });
     CHECK(log.empty());
     scene.SetEnabled(true);
     scene.ReadInput({});

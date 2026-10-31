@@ -13,6 +13,7 @@ public:
     [[nodiscard]] bool HasContent() const { return _preview != nullptr; }
     [[nodiscard]] const PreviewDefinition* Definition() const { return _definition; }
     void SetProfiler(Profiler* profiler) { _services.profiler = profiler; }
+    void SetFont(const FontFace* font) { _services.font = font; }
     [[nodiscard]] const PreviewParameters& Parameters() const { return _parameters; }
     [[nodiscard]] std::string SetParameter(const std::string& id, const PreviewValue& value);
     [[nodiscard]] std::string Action(const std::string& id);
@@ -28,7 +29,7 @@ protected:
     void InputCancelled() override;
     void HandleInput(const DeviceInput& input) override;
     void Update(float deltaSeconds) override;
-    void Draw() const override;
+    void Draw(Painter& paint) const override;
     void Stop() override;
 
 private:

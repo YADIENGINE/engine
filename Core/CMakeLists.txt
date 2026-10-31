@@ -91,6 +91,8 @@ add_library(EngineHeadless STATIC
     Graphics/Paint/PainterText.cpp
     Graphics/Paint/Path.cpp
     Graphics/Render/Internals/FrameExecutor.cpp
+    Graphics/Render/Internals/PostChain.cpp
+    Graphics/Render/Internals/RenderPipeline.cpp
     Graphics/Render/Internals/RenderResources.cpp
     Graphics/Surface/Surface.cpp
     Graphics/Text/FontFace.cpp
@@ -279,7 +281,8 @@ add_library(Engine STATIC
     Fx/IrisTransition.cpp
     Graphics/Icons/Icons.cpp
     Graphics/Draw/BackgroundDraw.cpp
-    Graphics/Render/Internals/Canvas.cpp
+    Graphics/Gpu/Internals/GlDevice.cpp
+    Graphics/Render/Internals/LegacyBridge.cpp
     Graphics/Draw/DrawUtils.cpp
     Graphics/Draw/DrawTime.cpp
     Graphics/Draw/GlowBatch.cpp
@@ -302,6 +305,19 @@ add_library(Engine STATIC
     Runtime/Game.cpp
 )
 target_link_libraries(Engine PUBLIC EngineHeadless raylib)
+# GLSL sources are compiled into the engine: Graphics/Gpu/Internals/Shaders/Name.glsl -> NameShader in EngineShaders.h.
+# Configure-time generation; editing a shader re-runs configure.
+file(GLOB engineShaders CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Gpu/Internals/Shaders/*.glsl")
+set(engineShaderHeader "#pragma once\n#include <string_view>\n// Generated from Graphics/Gpu/Internals/Shaders; do not edit.\n")
+foreach(shader IN LISTS engineShaders)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${shader}")
+    get_filename_component(shaderName "${shader}" NAME_WE)
+    file(READ "${shader}" shaderSource)
+    string(APPEND engineShaderHeader
+        "inline constexpr std::string_view ${shaderName}Shader = R\"glsl(${shaderSource})glsl\";\n")
+endforeach()
+file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/Shaders/EngineShaders.h" CONTENT "${engineShaderHeader}" @ONLY)
+target_include_directories(Engine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/Shaders")
 set_target_properties(Engine PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_warnings(Engine)
 

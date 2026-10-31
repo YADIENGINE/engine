@@ -54,3 +54,11 @@ struct PaintHarness {
     Painter paint{context};
     GpuTarget canvas;
 };
+
+// Runs 'draw(painter)' as one headless frame (lifecycle tests that only need a Painter to pass on).
+template <class Draw> void PaintFrame(Draw&& draw) {
+    PaintHarness harness;
+    harness.Begin();
+    draw(harness.paint);
+    harness.End();
+}

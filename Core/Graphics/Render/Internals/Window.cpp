@@ -30,6 +30,10 @@ int Window::Width() const { return GetScreenWidth(); }
 
 int Window::Height() const { return GetScreenHeight(); }
 
+int Window::PixelWidth() const { return GetRenderWidth(); }
+
+int Window::PixelHeight() const { return GetRenderHeight(); }
+
 void Window::SetTargetFps(int fps) { SetTargetFPS(fps); }
 
 void Window::Resize(Vec2 size) {

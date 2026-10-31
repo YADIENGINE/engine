@@ -1,35 +1,36 @@
 #pragma once
-#include <raylib.h>
 #include <functional>
+#include <memory>
 #include <optional>
-#include "Graphics/Render/Internals/Canvas.h"
-#include "Graphics/Render/Internals/Window.h"
+#include "Graphics/Gpu/Internals/GpuTypes.h"
+#include "Graphics/Render/Internals/LegacyBridge.h"
 #include "Graphics/Render/Internals/RenderExecutionContext.h"
+#include "Graphics/Render/Internals/RenderPipeline.h"
+#include "Graphics/Render/Internals/Window.h"
 
-// Render altyapısı: pencere ve canvas'ın sahibidir, frame'leri yönetir.
-// Neyin çizileceğini bilmez; her nesne kendi View'ı ile Frame içinde çizer.
+class GlDevice;
+class Painter;
+
+// The window plus everything that draws into it: the OpenGL device, the frame pipeline (canvas, post-processing,
+// presentation) and the raylib bridge for code not yet migrated to Painter.
 class Renderer {
 public:
-    // RAII frame: kurulunca canvas'a çizim başlar, yok edilince canvas pencereye basılır.
+    // RAII frame: opens the canvas Painter; Complete (or destruction) executes, post-processes and presents it.
     class Frame {
     public:
         ~Frame();
-        // Explicit completion runs user callbacks outside the noexcept cleanup path.
-        void Complete(const std::function<void(const Texture2D&)>& canvasReady = {},
-                      const std::function<void()>& windowDraw = {});
+        [[nodiscard]] Painter& Canvas() { return _canvas; }
+        // 'canvasReady' borrows the finished canvas image (for capture) during the call; 'windowDraw' draws over the
+        // whole window in device pixels after the canvas was presented.
+        void Complete(const std::function<void(const GpuNativeTarget&)>& canvasReady = {},
+                      const std::function<void(Painter&)>& windowDraw = {});
 
     private:
         friend class Renderer;
-        Frame(const Window& window, Canvas& canvas, Color background, Color letterbox,
-              const RenderExecutionOptions& options, FrameObserver* observer);
-
-        const Window& _window;
-        const Canvas& _canvas;
-        Color _letterbox;
+        Frame(Renderer& renderer, Painter& canvas);
+        Renderer& _renderer;
+        Painter& _canvas;
         RenderExecutionContext _execution;
-        FrameObserver* _observer;
-        bool _canvasOpen = true;
-        bool _windowOpen = false;
         bool _completed = false;
 
     public:
@@ -39,30 +40,33 @@ public:
         Frame& operator=(Frame&&) = delete;
     };
 
-    // 'background': her frame'in canvas'ı bu renkle temizlenir.
-    Renderer(const WindowSettings& window, int canvasWidth, int canvasHeight, Color background,
-             TextureFilter canvasFilter = TEXTURE_FILTER_BILINEAR, Color letterbox = BLACK);
+    Renderer(const WindowSettings& window, const RenderPipelineSettings& settings);
+    ~Renderer();
 
     [[nodiscard]] bool ShouldClose() const;
-    [[nodiscard]] Frame BeginFrame() const;
+    [[nodiscard]] Frame BeginFrame(double time, float delta);
     void SetObserver(FrameObserver* observer) { _observer = observer; }
     void SetExecutionOptions(const RenderExecutionOptions& options) { _execution = options; }
+    void SetQuality(const RenderQuality& quality) { _pipeline->SetQuality(quality); }
+    void SetPostDefaults(const PostSettings& post) { _pipeline->SetPostDefaults(post); }
+    [[nodiscard]] const RenderStats& LastFrame() const { return _pipeline->LastFrame(); }
     [[nodiscard]] std::optional<Vec2> ToCanvas(Vec2 windowPoint) const;
     void RevealWindow() { _window.Show(); }
     void SetTargetFps(int fps) { _window.SetTargetFps(fps); }
     void SetBorderlessFullscreen(bool enabled) { _window.SetBorderlessFullscreen(enabled); }
     void SetVSync(bool enabled) { _window.SetVSync(enabled); }
-    // Canvas dokusunun yükseklik sınırı (0: pencere çözünürlüğü); bkz. Canvas::SetMaxHeight.
-    void SetMaxRenderHeight(int height) { _canvas.SetMaxHeight(height); }
+    // Canvas texture height limit (0: the window's); see RenderPipeline::SetMaxRenderHeight.
+    void SetMaxRenderHeight(int height) { _pipeline->SetMaxRenderHeight(height); }
     void SetWindowSize(Vec2 size) { _window.Resize(size); }
     [[nodiscard]] Vec2 MonitorSize() const { return _window.MonitorSize(); }
 
 private:
-    // Üye sırası önemli: Window (GL context) ilk kurulur, en son yok edilir.
+    // Member order matters: the window (GL context) is created first and destroyed last; the pipeline's GPU objects
+    // go before the device.
     Window _window;
-    mutable Canvas _canvas; // Her frame başında pencere boyutuna göre yeniden açılabilir (Canvas::Fit)
-    Color _background;
-    Color _letterbox;
+    std::unique_ptr<GlDevice> _device;
+    LegacyBridge _legacy;
+    std::unique_ptr<RenderPipeline> _pipeline;
     RenderExecutionOptions _execution;
     FrameObserver* _observer = nullptr;
 

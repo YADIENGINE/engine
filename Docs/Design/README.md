@@ -467,7 +467,7 @@ Snake View View taşınır, sonra köprü ve eski yol silinir. Ayrıntı: [Rende
 **Neden:** Engine çizim durumunu, batch'lemeyi, kenar yumuşatmayı ve shader'ı sahiplenmeden ne kalite ne performans
 tek yerden iyileşir. rlgl üstüne kurmak sabit köşe biçimi ve kontrolsüz yüklemeyle kalıcı borç bırakırdı; kendi
 katmanımız köşe biçimini, yüklemeyi ve ölçümü bize verir, başka arka uç yeni bir `GpuDevice` uygulamasıdır.
-Durum: taslak (2026-10-31), onay bekliyor.
+Durum: uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliyor; kullanım [Painter](../Graphics/Painter.md).
 
 ## v1 iş sırası
 

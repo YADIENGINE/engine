@@ -62,7 +62,7 @@ void PreviewScene::Update(float deltaSeconds) {
     _seconds += deltaSeconds;
     _content.Update(deltaSeconds);
 }
-void PreviewScene::Draw() const { _content.Draw(); }
+void PreviewScene::Draw(Painter& paint) const { _content.Draw(paint); }
 PreviewInspection PreviewScene::Inspect() const { return _preview ? _preview->Inspect() : PreviewInspection{}; }
 void PreviewScene::Stop() {
     _preview = nullptr;

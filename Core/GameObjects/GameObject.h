@@ -1,5 +1,6 @@
 #pragma once
 class ObjectList;
+class Painter;
 
 // Lifecycle-only object. ObjectList dispatches callbacks; registration and ownership are separate.
 class GameObject {
@@ -12,6 +13,10 @@ protected:
     GameObject();
     virtual void Start();
     virtual void Update(float deltaSeconds);
+    // Draws the object for this frame. The default runs the raylib-based Draw() below inside Painter::Legacy, so
+    // objects not migrated to Painter keep working; migrated objects override this one instead.
+    virtual void Draw(Painter& paint) const;
+    // Raylib-based drawing (migration only).
     virtual void Draw() const;
     virtual void Stop();
 

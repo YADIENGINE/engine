@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 #include "GameObjects/ObjectList.h"
+#include "Tests/PaintHarness.h"
 
 namespace {
 struct ObjectCalls {
@@ -130,7 +131,7 @@ TEST_CASE("Engine.Lifecycle.CallbacksRejectRecursiveDispatchAndShutdown", "[engi
     const auto checkBlocked = [&] {
         CHECK_THROWS_AS(objects.Start(), std::logic_error);
         CHECK_THROWS_AS(objects.Update(0.1f), std::logic_error);
-        CHECK_THROWS_AS(objects.Draw(), std::logic_error);
+        CHECK_THROWS_AS(PaintFrame([&](Painter& paint) { objects.Draw(paint); }), std::logic_error);
         CHECK_THROWS_AS(objects.Stop(), std::logic_error);
     };
 
@@ -145,7 +146,7 @@ TEST_CASE("Engine.Lifecycle.CallbacksRejectRecursiveDispatchAndShutdown", "[engi
     SECTION("Draw callback") {
         objects.Start();
         object.onDraw = checkBlocked;
-        CHECK_NOTHROW(objects.Draw());
+        CHECK_NOTHROW(PaintFrame([&](Painter& paint) { objects.Draw(paint); }));
     }
     SECTION("Stop callback") {
         objects.Start();
@@ -181,11 +182,11 @@ TEST_CASE("Engine.Lifecycle.CallbackFailureReleasesTheDispatchGuard", "[engine][
     SECTION("Draw callback") {
         objects.Start();
         object.onDraw = fail;
-        CHECK_THROWS_AS(objects.Draw(), std::runtime_error);
+        CHECK_THROWS_AS(PaintFrame([&](Painter& paint) { objects.Draw(paint); }), std::runtime_error);
         object.onDraw = {};
     }
     CHECK_NOTHROW(objects.Update(0.1f));
-    CHECK_NOTHROW(objects.Draw());
+    CHECK_NOTHROW(PaintFrame([&](Painter& paint) { objects.Draw(paint); }));
     CHECK_NOTHROW(objects.Stop());
     CHECK(calls.starts == 1);
     CHECK(calls.stops == 1);

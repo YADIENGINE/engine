@@ -18,7 +18,6 @@ void FrameExecutor::Begin(const PaintTarget& target, std::optional<Premultiplied
     pass.target = target.target;
     pass.viewport = target.viewport;
     pass.viewSize = target.size;
-    pass.flipY = !target.target.Valid();
     pass.clear = clear;
     _device.BeginPass(pass);
     _passOpen = true;
@@ -35,8 +34,11 @@ void FrameExecutor::Execute(DrawList& list) {
                                                     list.Vertices().size() - vertexStart);
         const std::span<const std::uint32_t> indices(list.Indices().data() + indexStart,
                                                      list.Indices().size() - indexStart);
-        geometry = _device.Upload(vertices, indices);
-        geometry.baseVertex -= static_cast<std::int64_t>(vertexStart);
+        // Indices are frame-wide; the device wants them relative to this upload.
+        _indices.clear();
+        for (const std::uint32_t index : indices)
+            _indices.push_back(index - static_cast<std::uint32_t>(vertexStart));
+        geometry = _device.Upload(vertices, _indices);
     }
     // A segment after raylib drawing resumes the target that was open.
     if (!_passOpen && !_targets.empty()) Begin(_targets.back(), std::nullopt);

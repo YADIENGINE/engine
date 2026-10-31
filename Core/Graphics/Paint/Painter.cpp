@@ -535,8 +535,8 @@ PaintScope Painter::Marker(std::string_view name) {
 
 PaintScope Painter::Legacy() {
     PaintContext& context = _context;
-    if (!context.legacy) throw std::logic_error("Painter::Legacy: no raylib bridge in this renderer");
     DrawList& list = context.list;
+    if (!context.legacy) return {*this, list.PushScope(ScopeKind::Legacy)}; // Headless: nothing to hand over
     const PaintTarget& target = list.CurrentTarget();
     LegacyBinding binding;
     binding.target = target.target.Valid() ? context.resources.Device().Native(target.target)

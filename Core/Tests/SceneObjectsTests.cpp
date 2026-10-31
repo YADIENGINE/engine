@@ -3,6 +3,7 @@
 #include <memory>
 #include <utility>
 #include "Scene/Scene.h"
+#include "Tests/PaintHarness.h"
 
 namespace {
 struct SceneObjectCalls {
@@ -49,14 +50,14 @@ TEST_CASE("Engine.Scene.OwnsDynamicObjectsAndOnlyBorrowsRegisteredReferences", "
     GameObject& owned = scene.AddObject(std::make_unique<SceneObject>(ownedCalls));
     scene.Activate();
     scene.Tick(0.0f);
-    scene.Render();
+    PaintFrame([&](Painter& paint) { scene.Render(paint); });
     CHECK(borrowedCalls.starts == 1);
     CHECK(ownedCalls.starts == 1);
     CHECK(ownedCalls.updates == 0);
     CHECK(ownedCalls.draws == 1);
 
     scene.RemoveObject(owned);
-    scene.Render();
+    PaintFrame([&](Painter& paint) { scene.Render(paint); });
     CHECK(ownedCalls.draws == 1);
     CHECK(ownedCalls.destroyed == 0);
     scene.Tick(0.0f);
@@ -83,7 +84,7 @@ TEST_CASE("Engine.Scene.CallbackChangesWaitForDispatchAndZeroTimeCommitsThem", "
     scene.AddObject(std::move(first));
     scene.Activate();
     scene.Tick(0.1f);
-    scene.Render();
+    PaintFrame([&](Painter& paint) { scene.Render(paint); });
     CHECK(firstCalls.updates == 1);
     CHECK(firstCalls.draws == 0);
     CHECK(firstCalls.destroyed == 0);
@@ -94,7 +95,7 @@ TEST_CASE("Engine.Scene.CallbackChangesWaitForDispatchAndZeroTimeCommitsThem", "
     CHECK(firstCalls.destroyed == 1);
     CHECK(nextCalls.starts == 1);
     CHECK(nextCalls.updates == 0);
-    scene.Render();
+    PaintFrame([&](Painter& paint) { scene.Render(paint); });
     CHECK(nextCalls.draws == 1);
     scene.Shutdown();
     CHECK(nextCalls.stops == 1);

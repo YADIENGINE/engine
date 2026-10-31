@@ -65,7 +65,6 @@ struct GpuPassDesc {
     GpuTarget target{};                      // Null: the window's back buffer
     PixelRect viewport;                      // Within the target, device pixels
     Float2 viewSize;                         // Logical size the viewport covers (paint coordinates)
-    bool flipY = false;                      // True for the back buffer (paint y grows down, window y up)
     std::optional<PremultipliedColor> clear; // Clears the whole viewport (all attachments) when set
 };
 
@@ -73,6 +72,7 @@ struct GpuPassDesc {
 struct PostUniforms {
     Float2 sourceTexel;          // 1 / source texture size
     float bloomIntensity = 0.0f; // Compose: bloom added on top of the colour
+    float bloomSpread = 1.0f;    // Bloom passes: sample offset multiplier
     float vignette = 0.0f;       // Compose: corner darkening 0..1
     float scanlines = 0.0f;      // Compose: scanline darkening 0..1
     float scanlineCount = 0.0f;  // Compose: scanlines over the full height
@@ -80,9 +80,9 @@ struct PostUniforms {
     float time = 0.0f;
 };
 
-// Where a frame's uploaded geometry starts inside the device's streaming buffers.
+// Where an upload starts inside the device's streaming buffers.
 struct GpuGeometry {
-    std::int64_t baseVertex = 0; // Added to every index of this upload
+    std::int64_t baseVertex = 0; // Added to every index of this upload (indices are relative to it)
     std::uint32_t firstIndex = 0;
 };
 

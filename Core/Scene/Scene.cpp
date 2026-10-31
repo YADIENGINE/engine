@@ -140,13 +140,13 @@ void Scene::Tick(float deltaSeconds) {
     }
     _dispatching = false;
 }
-void Scene::Render() const {
+void Scene::Render(Painter& paint) const {
     CheckDispatch();
     if (!_active || !_entered || !Enabled()) return;
     _dispatching = true;
     try {
-        _objects.Draw();
-        if (Enabled()) _self.Draw();
+        _objects.Draw(paint);
+        if (Enabled()) _self.Draw(paint);
     } catch (...) {
         _dispatching = false;
         throw;

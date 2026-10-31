@@ -28,6 +28,7 @@ private:
     std::optional<GpuBlend> _blend;
     std::optional<std::optional<PixelRect>> _scissor;
     std::vector<GpuTexture> _textures;
+    std::vector<std::uint32_t> _indices; // Rebased indices of the segment being uploaded
     bool _texturesKnown = false;
     std::uint32_t _batches = 0;
 

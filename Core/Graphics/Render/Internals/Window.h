@@ -14,6 +14,9 @@ public:
     [[nodiscard]] bool ShouldClose() const;
     [[nodiscard]] int Width() const;
     [[nodiscard]] int Height() const;
+    // Back buffer size in device pixels (differs from Width/Height on high-DPI displays).
+    [[nodiscard]] int PixelWidth() const;
+    [[nodiscard]] int PixelHeight() const;
     void SetTargetFps(int fps);
     void SetBorderlessFullscreen(bool enabled);
     // Kare değişimini monitör yenilemesine bağlar; FPS sınırıyla birlikte çalışır.

@@ -117,13 +117,13 @@ void ObjectList::Update(float deltaSeconds) {
     _dispatching = false;
 }
 
-void ObjectList::Draw() const {
+void ObjectList::Draw(Painter& paint) const {
     if (_dispatching) throw std::logic_error("Cannot dispatch GameObjects recursively");
     if (_stopped) return;
     _dispatching = true;
     try {
         for (const Entry& entry : _entries) {
-            if (!entry.removed && entry.object->_enabled && entry.object->_started) entry.object->Draw();
+            if (!entry.removed && entry.object->_enabled && entry.object->_started) entry.object->Draw(paint);
         }
     } catch (...) {
         _dispatching = false;

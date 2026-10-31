@@ -35,8 +35,11 @@ public:
 
     // A frame: BeginFrame, any number of uploads and passes, EndFrame.
     virtual void BeginFrame() = 0;
+    // Pixel size of the window's back buffer (passes with a null target) for this frame.
+    virtual void SetBackBufferSize(int width, int height) = 0;
     virtual void EndFrame() = 0;
-    // Copies geometry into the streaming buffers; valid for draws until EndFrame.
+    // Copies geometry into the streaming buffers; valid for draws until EndFrame. Indices count from the first
+    // uploaded vertex.
     [[nodiscard]] virtual GpuGeometry Upload(std::span<const PaintVertex> vertices,
                                              std::span<const std::uint32_t> indices) = 0;
     virtual void BeginPass(const GpuPassDesc& pass) = 0;

@@ -9,6 +9,7 @@
 #include "Editor/Internals/Platform/Windows/ControlChannel.h"
 #include "Editor/Preview/PreviewGame.h"
 #include "Editor/Preview/GlowBenchmark.h"
+#include "Editor/Preview/RenderGallery.h"
 #include "Tuning/TuningLive.h"
 
 #if ENGINE_TUNING_LIVE
@@ -66,6 +67,7 @@ int RunPreviewHost(int argc, char** argv, const std::function<void(PreviewRegist
         }
         PreviewRegistry registry;
         registry.Add(GlowBenchmarkDefinition());
+        registry.Add(RenderGalleryDefinition());
         registerPreviews(registry); // Metadata and factories only: no GL/assets/instances.
         channel = std::make_unique<ControlChannel>(session, false);
         channel->Send({{}, 0, 0, "catalog", EncodePreviewCatalog(registry.Entries())});

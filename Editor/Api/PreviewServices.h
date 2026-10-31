@@ -5,6 +5,7 @@
 #include "Editor/Api/PreviewParameter.h"
 
 class AudioSystem;
+class FontFace;
 class TextRenderer;
 class Profiler;
 
@@ -17,4 +18,5 @@ struct PreviewServices {
     std::function<void(const std::string&)> log;
     std::function<std::string(const std::string&, const PreviewParameters&)> applicationCommand;
     Profiler* profiler = nullptr;
+    const FontFace* font = nullptr; // The game's font for Painter::Text; null when it has none
 };

@@ -1,6 +1,6 @@
 # Render sistemi (tasarım)
 
-Durum: taslak (2026-10-31), onay bekliyor. Karar kaydı: [README → D17](README.md#d17-render-sistemi-kendi-gpu-katmanı-üstünde-yeni-2d-çizim-sistemi).
+Durum: uygulandı (2026-10-31; çalışma zamanı doğrulaması bekliyor). Kullanım: [Painter](../Graphics/Painter.md). Karar kaydı: [README → D17](README.md#d17-render-sistemi-kendi-gpu-katmanı-üstünde-yeni-2d-çizim-sistemi).
 Uygulandıkça kullanım belgesi `Docs/Graphics/`'e taşınır; burada sadece kararlar ve gerekçeleri kalır.
 
 ## Neden
@@ -352,10 +352,36 @@ Sonraki oturumlar: Engine yardımcılarının (Neon, Ui, Icons, Backdrop, Fx) ye
 View göçü; köprünün ve eski yolun silinmesi; D10 pişirme önbelleği (pişirilmiş parçalar atlas sayfalarına paketlenir,
 batch'i bölmez).
 
-## Açık ayrıntılar (uygulamada netleşir)
+## Uygulamada netleşenler
 
-- Köşe düzeninin kesin baytları ve f16 hassasiyetinin yettiği aralıklar.
-- Halka buffer'ın başlangıç boyu; atlas sayfa bütçesi; boy kademesinin oranı.
-- Bloom zincirinin örnekleme sayısı ve yarıçap eşlemesi.
-- Clip'in shader'da yapılması (batch bölmez) ölçüme göre sonraya.
-- Alt piksel metin konumu (yatay 3 kademe) ölçüme göre sonraya.
+- **Köşe biçimi 52 bayt, hepsi f32** (konum, yerel koordinat, 4 şekil + 2 stil değeri, iki renk, tür / yuva /
+  emission / bayraklar). f16, büyük dikdörtgenlerde kenar hassasiyetini bozduğu için kullanılmadı. Doğrusal gradyan
+  köşe başına `t` olarak taşınır (üçgen üstünde tam doğrusal), radyal gradyan şeklin merkezindendir.
+- **Şekil başına katmanlar:** hale, dolgu ve çerçeve ayrı dörtgenlerdir (aynı batch). Shader mesafeyi türe göre,
+  kaplamayı moda göre (Fill / Stroke / Halo) hesaplar; `fwidth` dallanmanın dışındadır.
+- **Akış buffer'ı:** fence yerine "ekle + taşınca orphan": yalnız son orphan'dan beri hiç yazılmamış baytlara
+  `UNSYNCHRONIZED` yazılır, GPU'yu beklemek gerekmez. İndeksler her yüklemede segmentin ilk köşesine göre
+  yeniden tabanlanır (negatif base vertex yok).
+- **Kare boru hattı GPU'dan bağımsızdır** (`RenderPipeline`: canvas boyutu, post, sunum, istatistik) ve
+  `NullDevice` ile test edilir; raylib'e bağlı kalan sadece pencere, `GlDevice` ve köprüdür.
+- **Pencere aşaması da Painter'dır:** canvas görüntüsü arka tampona Painter ile letterbox'lanır; `DrawWindow`
+  (editör ImGui'si) aynı Painter'ın köprüsünden çizer.
+- **Bloom katmanı tembel:** canvas emission ekini yalnız varsayılan ayar ya da bir önceki kare bloom isterken tutar
+  (`Painter::Post` ile açılan bloom bir kare sonra başlar); bloom yoksa MRT maliyeti yoktur.
+- **Glif önbelleği:** R8 sayfalar (1024², skyline, 2 px boşluk), 48 px'e kadar tam piksel boyu, sonra ~%6 kademe,
+  192 px üstü ölçeklenir. Uzaklık glifleri 32 px'te 16 px alanla üretilir: hale yazı boyunun yarısına kadar uzanır.
+  Bütçe dolunca bu karede kullanılmamış en eski sayfa geri alınır.
+- **Yerleşim önbelleği:** `Painter::Text(string)` aynı metni (font + boy + sarma ayarları) 120 kare boyunca tutar.
+- **Kapsam dengesi:** `PaintScope` taşınamaz, bu yüzden kullanıcı kodu kapsamları sırasız kapatamaz; kayıt yine de
+  denetler ve kare sonunda `logic_error` atar.
+- **Köprü tembeldir:** Painter ile raylib arasında gerçek bir geçiş olmadıkça boşaltma yapılmaz; taşınmamış ardışık
+  nesneler tek geçişte çizilir. Headless bağlamda (testler) `Legacy()` boş bir kapsamdır.
+- **Eski `TextStyle`** `LegacyTextStyle` oldu; yeni `TextStyle` Painter'ındır.
+- **Çözünürlük:** eski `Canvas` mantığı (`renderHeight` sınırı, küçültmede mantıksal boyut) `RenderPipeline`'a
+  taşındı; arka tampon yüksek DPI'da piksel boyutundadır, input dönüşümü ekran boyutundadır.
+
+## Sonraya kalanlar
+
+- GPU zaman sorguları (`RenderStats::gpuMilliseconds` şimdilik 0) ve editör önizlemesinin PBO ile beklemesiz okunması.
+- Clip'in shader'da yapılması (batch bölmez) ve alt piksel metin konumu, ölçüme göre.
+- `NullDevice`'ın kaynak tablolarının `HandlePool`'a taşınması (şimdi iki ayrı uygulama).
