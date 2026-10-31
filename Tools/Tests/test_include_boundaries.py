@@ -69,6 +69,13 @@ class BoundaryTests(unittest.TestCase):
         self.write(".git/Hook.cpp", '#include "Input/Internals/Reader.h"\n')
         self.assertEqual(self.check(), [])
 
+    def test_other_engine_copies_in_the_project_are_not_scanned(self):
+        self.write("Engine/EngineManifest.json", "{}")
+        self.write("Engine/Core/Runtime/Game.cpp", '#include "Modules/Saves/Internals/State.h"\n')
+        self.write("Launcher/Engines/Engine0.1/EngineManifest.json", "{}")
+        self.write("Launcher/Engines/Engine0.1/Core/Runtime/Game.cpp", '#include "Input/Internals/Reader.h"\n')
+        self.assertEqual([entry.split(":")[0] for entry in self.check()], ["Engine/Core/Runtime/Game.cpp"])
+
 
 if __name__ == "__main__":
     unittest.main()

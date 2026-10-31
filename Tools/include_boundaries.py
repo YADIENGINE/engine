@@ -12,24 +12,27 @@ kendi `Internals/` klasörleri bu denetimin konusu değildir. Komut: `python Eng
 import re
 from pathlib import Path
 
-from .manifest import ENGINE_ROOT
+from .manifest import ENGINE_ROOT, MANIFEST_FILE
 
 CORE = "Core"  # Oyuna giren engine kodu; include kökü
 SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".inl"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
 
 
-def skipped_directory(directory: Path) -> bool:
-    """Gizli klasörler, CMake build ağaçları, FetchContent kaynakları ve engine'in ThirdParty/'si taranmaz."""
+def skipped_directory(directory: Path, engine_root: Path = ENGINE_ROOT) -> bool:
+    """Gizli klasörler, CMake build ağaçları, FetchContent kaynakları, engine'in ThirdParty/'si ve projenin içindeki
+    başka engine kopyaları (kendi EngineManifest.json'u olan klasör; ör. projede duran bir launcher reposunun
+    engine'leri) taranmaz: onlar projenin kodu değildir."""
     return (directory.name.startswith(".") or directory.name in ("_deps", "ThirdParty")
-            or (directory / "CMakeCache.txt").exists())
+            or (directory / "CMakeCache.txt").exists()
+            or ((directory / MANIFEST_FILE).is_file() and directory.resolve() != engine_root.resolve()))
 
 
-def _sources(directory: Path):
+def _sources(directory: Path, engine_root: Path):
     for entry in sorted(directory.iterdir()):
         if entry.is_dir():
-            if not skipped_directory(entry):
-                yield from _sources(entry)
+            if not skipped_directory(entry, engine_root):
+                yield from _sources(entry, engine_root)
         elif entry.suffix in SOURCE_SUFFIXES:
             yield entry
 
@@ -52,7 +55,7 @@ def _owner(include: str, engine_root: Path) -> tuple[Path, str] | None:
 def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]:
     project_root, engine_root = project_root.resolve(), engine_root.resolve()
     found = []
-    for source in _sources(project_root):
+    for source in _sources(project_root, engine_root):
         try:
             lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
