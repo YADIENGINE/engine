@@ -51,6 +51,7 @@ private:
     bool _offerProjectList = false;
     bool _pendingToggle = false;
     bool _focusCatalog = false;
+    bool _focusViewport = true;
     bool _consoleFocused = false; // önceki karede klavye konsoldaydı
     std::optional<EditorPanel> _focusBottom;
     std::uint64_t _failureAttempt = 0;

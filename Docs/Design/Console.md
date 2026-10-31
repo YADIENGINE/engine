@@ -23,8 +23,9 @@ reporting), metin arama, hazır komut düğmeleri, MCP köprüsü ([Agent API](A
 
 ## Kararlar
 
-- **Ayrı panel:** `EditorPanel::Console`. Alt dock'ta `Output` ile aynı sekme grubunda; `Ctrl+J` alt alanı açıp
-  kapatmaya devam eder. Hazır layout'lara (`Develop`, `Inspect`, `Profile`) eklenir, panel menüsü ve komut
+- **Ayrı panel:** `EditorPanel::Console`. Alt dock'ta `Output` ile aynı sekme grubunda; alt çubuk düğmeleri ve
+  `Ctrl+J` yalnız hedef paneli açıp kapatır, diğer açık paneller korunur. Hazır layout'lara (`Develop`, `Inspect`,
+  `Profile`) eklenir, panel menüsü ve komut
   paletinden açılır.
 - **Sadece kabuk:** Panel düz bir kabuk açar, kullanıcı ne çalıştıracağını kendisi yazar. Engine'e AI adı ya da AI
   komutu gömülmez (D14: herkes kendi AI'ından sorumlu).
@@ -87,7 +88,7 @@ Kabuğun çalışma klasörü editör tarifinden gelir: `EngineEditor.project.js
 
 ## Input
 
-- Panel odaktayken klavye terminale gider. Editör kısayollarından sadece `Ctrl+J` (alt alan), ``Ctrl+` `` (konsolu
+- Panel odaktayken klavye terminale gider. Editör kısayollarından sadece `Ctrl+J` (son alt panel), ``Ctrl+` `` (konsolu
   aç / kapat) ve `Ctrl+Shift+P` (komut paleti) çalışır; `TerminalView` bunları ayrılmış akor olarak almaz. Workspace
   önceki karede konsol odaktaysa diğer kısayollarını (`Ctrl+R`, `Ctrl+P`, `F5` ...) çalıştırmaz, tuş kabuğa gider.
 - Yazılan karakterler (Türkçe ve IME dahil) ImGui'nin karakter kuyruğundan `vterm_keyboard_unichar`'a; özel tuşlar

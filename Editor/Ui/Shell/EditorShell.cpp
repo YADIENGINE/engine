@@ -1,5 +1,7 @@
 #include "Editor/Ui/Shell/EditorShell.h"
 #include <algorithm>
+#include <cmath>
+#include <numbers>
 #include <string>
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Style/EditorTheme.h"
@@ -12,6 +14,9 @@ constexpr ImGuiWindowFlags BarFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindo
                                       ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
                                       ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar |
                                       ImGuiWindowFlags_NoScrollWithMouse;
+constexpr double OutputPulseSeconds = 1.4;
+constexpr float OutputPulseMinimum = 0.12f;
+constexpr float OutputPulseMaximum = 0.48f;
 void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     const PreviewParameter* language = nullptr;
     if (snapshot.selected) {
@@ -74,7 +79,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
             ImGui::MenuItem(panel.title, nullptr, &preferences.Visible(panel.id));
         ImGui::Separator();
         result.toggleMaximize = ImGui::MenuItem(maximized ? "Restore workspace" : "Focus preview");
-        result.toggleBottom = ImGui::MenuItem("Toggle bottom tools", "Ctrl+J");
+        result.toggleBottom = ImGui::MenuItem("Toggle last bottom tool", "Ctrl+J");
         if (ImGui::BeginMenu("Layout")) {
             for (const auto& layout : EditorLayouts)
                 if (ImGui::MenuItem(layout.title, nullptr, preferences.layout == layout.id,
@@ -122,14 +127,27 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {6.0f * scale, 2.0f * scale});
     if (ImGui::Begin("Status###editor.status", nullptr, BarFlags)) {
         const auto errors = snapshot.diagnostics.UnreadErrors();
+        const auto warnings = snapshot.diagnostics.UnreadWarnings();
+        const auto unread = errors + warnings;
         const auto output =
-            (errors ? "Output (" + std::to_string(errors) + ")" : std::string("Output")) + "###editor.output-status";
-        if (ToolSegment(output.c_str(), preferences.visible[static_cast<std::size_t>(EditorPanel::Output)]))
-            result.bottomPanel = EditorPanel::Output;
-        if (errors) ToolTooltip("Unread errors. Open Output for details.");
-        ImGui::SameLine();
-        if (ToolSegment("Profiler", preferences.visible[static_cast<std::size_t>(EditorPanel::Profiler)]))
-            result.bottomPanel = EditorPanel::Profiler;
+            (unread ? "Output (" + std::to_string(unread) + ")" : std::string("Output")) + "###editor.output-status";
+        const bool outputVisible = preferences.visible[static_cast<std::size_t>(EditorPanel::Output)];
+        if (unread) {
+            const auto tone = EditorLevelColor(errors ? EditorLogLevel::Error : EditorLogLevel::Warning);
+            const auto base = ImGui::GetStyleColorVec4(outputVisible ? ImGuiCol_TabSelected : ImGuiCol_Tab);
+            const float pulse =
+                static_cast<float>(0.5 + 0.5 * std::sin(ImGui::GetTime() * 2 * std::numbers::pi / OutputPulseSeconds));
+            const float amount = OutputPulseMinimum + (OutputPulseMaximum - OutputPulseMinimum) * pulse;
+            const ImVec4 background{base.x + (tone.x - base.x) * amount, base.y + (tone.y - base.y) * amount,
+                                    base.z + (tone.z - base.z) * amount, base.w};
+            ImGui::PushStyleColor(ImGuiCol_Tab, background);
+            ImGui::PushStyleColor(ImGuiCol_TabSelected, background);
+        }
+        if (ToolSegment(output.c_str(), outputVisible)) result.bottomPanel = EditorPanel::Output;
+        if (unread) {
+            ImGui::PopStyleColor(2);
+            ToolTooltip("Unread errors or warnings. Open Output for details.");
+        }
         ImGui::SameLine();
         if (ToolSegment("Console", preferences.visible[static_cast<std::size_t>(EditorPanel::Console)]))
             result.bottomPanel = EditorPanel::Console;

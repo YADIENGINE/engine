@@ -89,13 +89,12 @@ void EditorWorkspace::ApplyLayout(EditorWorkspaceLayout layout, EditorPreference
     _viewport.ReleaseFocus();
 }
 void EditorWorkspace::ToggleBottom(EditorPreferences& preferences, std::optional<EditorPanel> panel) {
-    const bool close = BottomVisible(preferences) && (!panel || *panel == preferences.lastBottomPanel);
-    if (panel) preferences.lastBottomPanel = *panel;
-    for (const auto bottom : EditorBottomPanels)
-        preferences.Visible(bottom) = false;
-    if (!close) {
-        preferences.Visible(preferences.lastBottomPanel) = true;
-        _focusBottom = preferences.lastBottomPanel;
+    const auto target = panel.value_or(preferences.lastBottomPanel);
+    auto& visible = preferences.Visible(target);
+    visible = !visible;
+    if (visible) {
+        preferences.lastBottomPanel = target;
+        _focusBottom = target;
     }
 }
 bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiActions& actions,
@@ -124,7 +123,7 @@ bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiAc
         result.focusCatalog = true;
         consumed = true;
     }
-    if (bottom && !blocked) {
+    if (bottom && !popup && !io.WantTextInput) {
         result.toggleBottom = true;
         consumed = true;
     }
@@ -220,6 +219,8 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                                             int& fontSize) {
     const bool opening = !_initialized;
     if (opening) {
+        // View her oturumun başında açıktır; kayıtlı kapalı / daraltılmış hali başlangıcı gizlemez.
+        preferences.Visible(EditorPanel::Viewport) = true;
         if (!preferences.docking.empty())
             ImGui::LoadIniSettingsFromMemory(preferences.docking.data(), preferences.docking.size());
         for (const auto& panel : EditorPanels)
@@ -315,8 +316,11 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         bool consoleDrawn = false;
         for (const auto& panel : EditorPanels) {
             if (!preferences.Visible(panel.id)) continue;
-            if ((_focusBottom && *_focusBottom == panel.id) || (_focusCatalog && panel.id == EditorPanel::Catalog))
+            const bool focusViewport = _focusViewport && panel.id == EditorPanel::Viewport;
+            if (focusViewport || (_focusBottom && *_focusBottom == panel.id) ||
+                (_focusCatalog && panel.id == EditorPanel::Catalog))
                 ImGui::SetNextWindowFocus();
+            if (focusViewport) ImGui::SetNextWindowCollapsed(false);
             if (ImGui::Begin(panel.window, &preferences.Visible(panel.id),
                              flags | (panel.id == EditorPanel::Viewport || panel.id == EditorPanel::Inspector
                                           ? ImGuiWindowFlags_NoScrollbar
@@ -349,9 +353,11 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             _viewport.ReleaseFocus();
             result.interaction = {};
         }
-        if (opening && preferences.Visible(EditorPanel::Viewport)) {
+        if (_focusViewport) {
             SelectPanelTab(EditorPanelInfo(EditorPanel::Viewport).window);
             ImGui::SetWindowFocus(EditorPanelInfo(EditorPanel::Viewport).window);
+            // Dock sekmesi ilk karede henüz hazır olmayabilir; View gerçekten çizilene kadar seçilir.
+            if (viewportDrawn) _focusViewport = false;
         }
     }
     ImGui::PopStyleVar();

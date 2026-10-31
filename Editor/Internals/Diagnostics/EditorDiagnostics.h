@@ -50,7 +50,8 @@ public:
     void BeginAttempt();
     void BuildExited(unsigned long code);
     void FinishAttempt(EditorBuildResult result);
-    [[nodiscard]] std::size_t UnreadErrors() const;
+    [[nodiscard]] std::size_t UnreadErrors() const { return _unreadErrors; }
+    [[nodiscard]] std::size_t UnreadWarnings() const { return _unreadWarnings; }
     [[nodiscard]] const std::deque<EditorLogEntry>& Entries() const { return _entries; }
     [[nodiscard]] const std::deque<EditorLogEntry>& AttemptEntries() const { return _attemptEntries; }
     [[nodiscard]] const EditorBuildAttempt& Attempt() const { return _attempt; }
@@ -61,7 +62,8 @@ public:
 private:
     std::deque<EditorLogEntry> _entries;
     std::uint64_t _nextSequence = 1;
-    std::uint64_t _acknowledged = 0;
+    std::size_t _unreadErrors = 0;
+    std::size_t _unreadWarnings = 0;
     EditorBuildAttempt _attempt;
     std::deque<EditorLogEntry> _attemptEntries;
     std::size_t _attemptBytes = 0;

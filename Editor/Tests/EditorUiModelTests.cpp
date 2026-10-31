@@ -53,11 +53,12 @@ TEST_CASE("Editor.Catalog.PrimaryActionMustBeUnambiguous", "[engine-editor]") {
     CHECK_NOTHROW(DecodePreviewCatalog(EncodePreviewCatalog({definition})));
 }
 
-TEST_CASE("Editor.Diagnostics.BoundsFiltersAndUnreadErrors", "[engine-editor]") {
+TEST_CASE("Editor.Diagnostics.BoundsFiltersAndUnreadDiagnostics", "[engine-editor]") {
     EditorDiagnostics diagnostics;
     diagnostics.Append("first\nsecond\r\n", EditorLogLevel::Warning, EditorLogSource::Worker);
     REQUIRE(diagnostics.Entries().size() == 2);
     CHECK(diagnostics.Entries().back().text == "second");
+    CHECK(diagnostics.UnreadWarnings() == 2);
     diagnostics.Append("Build failed", EditorLogLevel::Error, EditorLogSource::Build);
     CHECK(diagnostics.UnreadErrors() == 1);
     EditorLogFilter filter{false, false, true, "FAILED"};
@@ -65,16 +66,27 @@ TEST_CASE("Editor.Diagnostics.BoundsFiltersAndUnreadErrors", "[engine-editor]") 
     CHECK_FALSE(filter.Matches(diagnostics.Entries().front()));
     diagnostics.Acknowledge();
     CHECK(diagnostics.UnreadErrors() == 0);
+    CHECK(diagnostics.UnreadWarnings() == 0);
     const auto sequence = diagnostics.Entries().back().sequence;
     diagnostics.Clear();
     diagnostics.Append(std::string(20 * 1024, 'x'), EditorLogLevel::Error);
     CHECK(diagnostics.Entries().back().sequence > sequence);
     CHECK(diagnostics.Entries().back().text.size() == 16 * 1024);
     CHECK(diagnostics.UnreadErrors() == 1);
+    diagnostics.Append("another warning", EditorLogLevel::Warning);
     for (int i = 0; i < 1100; ++i)
         diagnostics.Append("sample");
     CHECK(diagnostics.Entries().size() == 1000);
+    // Bildirim, eski satırlar tampon dışına çıksa da Output açılana kadar kalır.
+    CHECK(diagnostics.UnreadErrors() == 1);
+    CHECK(diagnostics.UnreadWarnings() == 1);
+    diagnostics.Acknowledge();
     CHECK(diagnostics.UnreadErrors() == 0);
+    CHECK(diagnostics.UnreadWarnings() == 0);
+    diagnostics.Append("new warning", EditorLogLevel::Warning);
+    CHECK(diagnostics.UnreadWarnings() == 1);
+    diagnostics.Clear();
+    CHECK(diagnostics.UnreadWarnings() == 0);
     CHECK(ClassifyBuildOutput("source.cpp(4): warning C4100: unused") == EditorLogLevel::Warning);
     CHECK(ClassifyBuildOutput("source.cpp(4): error C2039: missing") == EditorLogLevel::Error);
     CHECK(ClassifyBuildOutput("CMake Error at CMakeLists.txt:4") == EditorLogLevel::Error);

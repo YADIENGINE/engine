@@ -2,8 +2,9 @@
 
 ## Pencere
 
-Kayıtlı dock yerleşimi ve panel görünürlüğü korunur. İlk açılışta Develop düzeni Project, View, Inspector ve
-Tuning'i (Inspector'la aynı sağ alanda sekme) gösterir; Output ve Profiler kapalıdır. Alt durum çubuğu bu araçları ve okunmamış hata sayısını erişilebilir tutar.
+Kayıtlı dock yerleşimi ve panel görünürlüğü korunur; View her editör açılışında açık ve önde başlar.
+İlk açılışta Develop düzeni Project, View, Inspector ve Tuning'i (Inspector'la aynı sağ alanda sekme) gösterir;
+Output, Profiler ve Console kapalıdır. Alt durum çubuğunda Output ve Console düğmeleri bulunur.
 
 - **Sol (Project):** arama, kategori, All / Favorites / Recent. İçerik tek tıklamayla açılır; Ctrl+P aramaya odaklanır.
   Yıldız favoriyi değiştirir. Recent son başarılı 10 açılışı tutar.
@@ -64,7 +65,10 @@ Tuning'i (Inspector'la aynı sağ alanda sekme) gösterir; Output ve Profiler ka
 
 View → Layout altında Develop genel önizleme, Inspect daha geniş Inspector, Profile ise Profiler odaklı düzeni
 açar. Elle oluşturulan son yerleşim Last custom layout ile geri çağrılabilir; hazır düzene geçmek onu silmez.
-Alt çubuktaki Output / Profiler düğmeleri ilgili aracı açar veya kapatır; Ctrl+J son kullanılan alt aracı açıp kapatır.
+Alt çubuktaki Output / Console düğmeleri yalnız ilgili paneli açar veya kapatır; birden fazlası açık kalabilir.
+Ctrl+J de son kullanılan alt paneli diğerlerine dokunmadan açıp kapatır. Profiler, View menüsünden veya komut
+paletinden açılır. Okunmamış hata veya uyarı gelince Output düğmesi yanıp söner; Output gerçekten
+görüntülendiğinde bildirim temizlenir. Vurgu temanın hata veya uyarı rengini kullanır; hata varsa önceliklidir.
 
 ## Toolbar
 

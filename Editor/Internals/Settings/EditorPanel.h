@@ -25,7 +25,7 @@ inline constexpr std::array EditorPanels{
     EditorPanelDefinition{EditorPanel::Tuning, "Tuning", "Tuning###editor.tuning", true, EditorDockGroup::Right},
     EditorPanelDefinition{EditorPanel::Console, "Console", "Console###editor.console", false, EditorDockGroup::Bottom}};
 
-// Alt dock'un panelleri (Ctrl+J bunları birlikte açıp kapatır).
+// Alt dock'un panelleri (Ctrl+J son kullanılan paneli bağımsız açıp kapatır).
 inline constexpr std::array EditorBottomPanels{EditorPanel::Output, EditorPanel::Profiler, EditorPanel::Console};
 
 struct EditorLayoutDefinition {

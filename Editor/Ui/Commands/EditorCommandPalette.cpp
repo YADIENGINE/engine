@@ -80,7 +80,7 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
     entries.push_back({maximized ? "View: Restore workspace" : "View: Focus preview", "", true, {}, [&] {
                            result.toggleMaximize = true;
                        }});
-    entries.push_back({"View: Toggle bottom tools", "Ctrl+J", true, {}, [&] { result.toggleBottom = true; }});
+    entries.push_back({"View: Toggle last bottom tool", "Ctrl+J", true, {}, [&] { result.toggleBottom = true; }});
     for (const auto& panel : EditorPanels) {
         const auto id = panel.id;
         entries.push_back({std::string("View: ") + (preferences.Visible(id) ? "Hide " : "Show ") + panel.title,

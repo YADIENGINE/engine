@@ -52,6 +52,8 @@ void EditorDiagnostics::Append(std::string_view text, EditorLogLevel level, Edit
         auto line = text.substr(0, newline);
         if (line.ends_with('\r')) line.remove_suffix(1);
         EditorLogEntry entry{_nextSequence++, time, level, source, std::string(line.substr(0, MaxLineBytes))};
+        if (level == EditorLogLevel::Error) ++_unreadErrors;
+        if (level == EditorLogLevel::Warning) ++_unreadWarnings;
         ArchiveLine(_archive, entry, line, _archiveError);
         if (_attempt.result == EditorBuildResult::Running) {
             ArchiveLine(_attemptArchive, entry, line, _archiveError);
@@ -129,11 +131,9 @@ void EditorDiagnostics::Clear() {
     _entries.clear();
     Acknowledge();
 }
-void EditorDiagnostics::Acknowledge() { _acknowledged = _nextSequence - 1; }
-std::size_t EditorDiagnostics::UnreadErrors() const {
-    return static_cast<std::size_t>(std::ranges::count_if(_entries, [this](const auto& entry) {
-        return entry.sequence > _acknowledged && entry.level == EditorLogLevel::Error;
-    }));
+void EditorDiagnostics::Acknowledge() {
+    _unreadErrors = 0;
+    _unreadWarnings = 0;
 }
 EditorLogLevel ClassifyBuildOutput(std::string_view text) {
     if (text.starts_with("CMake Error") || text.starts_with("FAILED:") || text.starts_with("ninja: error:") ||

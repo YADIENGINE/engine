@@ -35,8 +35,11 @@ Gerçek pencere/input/görsel kontrolleri kullanıcı yapar; yalnız değişen b
    dönüp ilk hatayı gösteriyor, eski arama ve kapalı Error filtresi hatayı gizlemiyor. İptalde popup yok;
    başarılı derleme sonrası worker başlatma hatası ayrı anlatılıyor. Yeni deneme önceki denemeye karışmıyor.
 6. Develop / Inspect / Profile arasında geçiş son özel düzeni silmiyor; Last custom layout geri getiriyor.
-   Ctrl+J ve alt çubuk son aracı açıp kapatıyor. Yeniden açılışta tercihler dönüyor; büyütülmüş halde kapatmak
-   önceki düzeni koruyor.
+   Output / Console alt çubuk düğmeleri ve Ctrl+J yalnız hedef paneli açıp kapatıyor; diğer açık paneller
+   korunuyor. Alt çubukta Profiler yok; View menüsü ve paletten açılıyor. Output kapalıyken hata / uyarı gelince
+   düğme hata / uyarı rengiyle yanıp sönüyor; Output gerçekten görüntülenene kadar bildirim kalıyor, sonraki uyarıda
+   yeniden başlıyor. Yeniden açılışta yerleşim dönüyor; View kapalı / daraltılmış kaydedilmiş olsa da açık ve
+   önde başlıyor. Büyütülmüş halde kapatmak önceki düzeni koruyor.
 7. Önizleme sekmesi gizliyken, başka panel arkasındayken veya menü açıkken ürüne input gitmiyor.
 8. Primary eylem tam genişlikte ve kaydırırken panelin altında sabit; ikincil eylemler yeterli genişlikte iki,
    dar panelde tek sütun. Uzun etiket / seçenek ipuçları, sayı / renk düzenleme ve bölüm açma / kapama taşmıyor.
