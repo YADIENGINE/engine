@@ -90,8 +90,8 @@ var olan oyunun geçişi (kurulu launcher ister) ve "ses araçlarını kur" (D7)
 Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, tek tek kapanır.
 
 - Tek exe kurulum: `%LOCALAPPDATA%\<Engine>`, masaüstü kısayolu, PATH, Uygulamalar kaydı, üzerine kurulan
-  güncelleme, kaldırma (D15). Paketi launcher reposunun betiği üretir (`ToolCache/` + `Engines/` + launcher
-  build'i).
+  güncelleme, kaldırma (D15): Velopack `Setup.exe`'si; ilk iş var olan build'le deneme paketi. Paketi launcher
+  reposunun betiği üretir (`ToolCache/` + `Engines/` + launcher build'i → `vpk pack`), imza adımının yeri boş durur.
 - Engine güncellemesi (D16): notların gösterimi ve onaylı güncelleme Aşama 3'te yapıldı (`PlanEngineUpdate` /
   `ApplyEngineUpdate`, Engine update paneli). Kalan: iki gerçek sürümle (`Engine0.1` → sonraki) uçtan uca deneme.
 - "Ses araçlarını kur" (D7): AudioGeneration'ın NumPy / SciPy'si gömülü Python'a, isteğe bağlı.
@@ -113,8 +113,8 @@ Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, te
 
 ## v1 dışı
 
-- Ajan API'si (D5), sürüklenebilir uzamsal tuning (D11), flipbook / disk önbelleği (D10), otomatik güncelleme ve kod
-  imzalama (D15), llvm-mingw (D8).
+- Ajan API'si (D5), sürüklenebilir uzamsal tuning (D11), flipbook / disk önbelleği (D10), otomatik güncelleme
+  (D15; Velopack'in güncelleme API'siyle), SignPath imzası (D15; repolar açık kaynak olunca), llvm-mingw (D8).
 - **Paylaşılan bağımlılık önbelleği** (derleme süresi dert olursa): kaynaklar `ThirdParty/`'de kalır; launcher ilk
   derlenen bağımlılık kütüphanelerini (raylib, imgui, Catch2 ...) projeler arasında paylaşılan bir önbellekte
   tutar. Anahtar: engine sürümü + bağımlılık + yapılandırma (Debug / Release, runtime) + derleyici sürümü. Yeni

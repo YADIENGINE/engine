@@ -309,20 +309,40 @@ Launcher/
 - **Güncelleme:** yeni sürümün exe'si var olan kurulumun üzerine kurar; proje listesi ve ayarlar korunur, `Engines/`
   yeni sürümün desteklediklerle değişir. Desteği düşen sürümü kullanan projeler etkilenmez (kendi kopyaları var);
   sadece o sürümle yeni proje kurulamaz. Otomatik güncelleme v1 sonrası.
-- Kod imzalama yok; SmartScreen uyarısı kabul edilir.
+- İmza: aşağıda "Karar (imzalama)" (açık kaynak olunca SignPath Foundation; o güne kadar imzasız).
 
-**Karar (kurulum programı, 2026-10-31):** tek exe bir **Inno Setup** kurulum programıdır (indirilen exe kurulumdur;
-bitince launcher'ı açar). Launcher reposunda bildirimsel bir `.iss` dosyası; paket betiği launcher build'ini,
-`ToolCache/`'i (`Tools/` olarak) ve `Engines/`'i ona verir, `ISCC.exe` exe'yi üretir. ISCC yalnız paketleyen
-makinede gerekir, cmake gibi `Toolchain.lock.json`'da sabitlenir. Kullanıcı başına kurulum (`{localappdata}`,
-yönetici izni yok), LZMA2; kaldırma ve Uygulamalar kaydı, aynı AppId ile üzerine kurma, açık launcher'ı Restart
-Manager ile kapatma ve yarıda kalan kurulumun geri alınması Inno'dandır. PATH işi tek yerde kalır: kurulumun
-son adımı ve kaldırma launcher'ın `UserPath`'ini `<engine>.com` üzerinden çağırır.
-- **Görünüş:** sayfaların hepsi kapalı (hoş geldin, klasör, hazır, bitti); yalnız ilerleme penceresi, bizim ikon ve
-  logo görseliyle, modern sihirbaz stili. Skin eklentisi yok. İlk gerçek ekran launcher'ın Sistem kontrolüdür.
-- **Neden:** kullanıcının gördüğü akış kendini kuran launcher'la neredeyse aynı; o seçenekte çıkarma, exe'nin
-  kendini ayıklaması, çalışırken kendini silen kaldırıcı, kilitli dosya ve antivirüs sezgileri (~1–1,5k satır) bize
-  kalırdı. Bedel: kurulum / kaldırma pencereleri Win32 denetimleridir, ImGui temasında değildir.
+**Karar (kurulum programı, 2026-10-31):** tek exe bir **Velopack** `Setup.exe`'sidir (MIT; indirilen exe
+kurulumdur, bitince launcher'ı açar). Sihirbaz yok: çift tıklanınca kurulurken bizim görselimiz (png / animasyonlu
+gif) görünür, sonra launcher açılır; ilk gerçek ekran Sistem kontrolüdür. Kullanıcı başına
+`%LOCALAPPDATA%\<id>\` (yönetici izni yok), masaüstü + Başlat menüsü kısayolu, Uygulamalar kaydı ve kaldırma
+Velopack'tandır. Paket betiği launcher build'ini, `ToolCache/`'i (`Tools/` olarak) ve `Engines/`'i `vpk pack`'e
+verir.
+- **Launcher'a girenler:** Velopack'in hazır C kütüphanesi (`velopack_libc`, launcher reposunda sürümü sabit) ve
+  `<engine>.exe` / `<engine>.com` başında `VelopackApp::Build().Run()`. Kurulum / kaldırma hook'ları orada çalışır;
+  PATH ekleme / silme launcher'ın kendi `UserPath`'iyle hook'tadır (tek uygulama).
+- **Düzen:** Velopack uygulamayı `<id>\current\`'e koyar ve güncellemede onu bütünüyle değiştirir; bu yüzden
+  `Settings.json` (ve kullanıcı verisi) `current/`'in dışındadır, yeri Aşama 4 açık sorusu. `Engines/` ve `Tools/`
+  `current/`'in içindedir (sürümle gelir).
+- **Paketleyen makine:** `vpk` bir .NET aracıdır (.NET SDK gerekir); sürümü launcher'ın kütüphanesiyle aynı tutulur.
+- **İlk iş deneme paketi:** var olan launcher build'i bir kez paketlenip kurulur / kaldırılır; Velopack bir
+  engel çıkarırsa geri dönüş Inno Setup 6.6'dır (bildirimsel `.iss`, yalnız ilerleme penceresi, Windows 11 stili).
+- **Neden:** en modern kurulum deneyimi; v1 sonrasına bırakılan otomatik güncelleme ve delta güncelleme (yalnız
+  değişen dosyalar iner, GitHub Releases'tan) aynı temelin üstünde neredeyse hazır gelir. Kendini kuran launcher
+  seçeneğinde çıkarma, kendini silen kaldırıcı, kilitli dosya ve antivirüs sezgileri (~1–1,5k satır) bize kalırdı.
+  Bedel: hazır bir ikili kütüphane, paketleyen makinede .NET SDK, Velopack'in genç olması (2024).
+
+**Karar (imzalama, 2026-10-31):** "Windows bilgisayarınızı korudu" (SmartScreen) kurulum aracına değil imzaya
+bağlıdır. İmzasız exe'de itibar her sürümde sıfırdan başlar; Windows 11 Smart App Control imzasız dosyayı hiç
+çalıştırmayabilir. EV sertifikası 2024'ten beri SmartScreen'i aşmaz; imzalı yeni dosya da ilk indirmelerde
+uyarı alır ama yayıncı adı görünür ve itibar aynı sertifikanın sonraki sürümlerine taşınır.
+- **Engine ve launcher açık kaynak olacak** ve paket **SignPath Foundation** ile ücretsiz imzalanır. Şartları: OSI
+  lisansı, public repo, pakette kapalı kaynak bileşen yok, imzalayan ekip repo sahibi, MFA, imzalanan ikilinin public
+  repodan CI'da derlendiğinin doğrulanması. Sertifikada yayıncı "SignPath Foundation"dır.
+- O güne kadar imzasız (yalnız tanıdık test kullanıcıları; "Yine de çalıştır"). Paket betiğinde imza adımının yeri
+  baştan vardır.
+- Microsoft Store (MSIX) hiç uyarı göstermeyen tek ücretsiz yoldur ama şimdilik uymaz (salt okunur kurulum klasörü,
+  PATH yazımının sanal kayıt defterine gitmesi, her sürümde mağaza incelemesi); ileride ikinci kanal olabilir.
+  Azure Artifact Signing bireylere yalnız ABD / Kanada'da açık.
 
 **Karar (dil ve giriş noktaları, 2026-10-31):**
 - Launcher C++20'dir. Bütün iş (ayarlar, proje listesi, proje işlemleri, modlar, manifest denetimi, sistem
@@ -519,11 +539,16 @@ Aşama 3 (launcher çekirdeği) için, tek tek konuşulur; karar alınınca ilgi
 
 Aşama 4 (dağıtım) için, tek tek konuşulur:
 
-1. ~~Paketin biçimi: kurulumu kim yapar~~ → D15 (Inno Setup; yalnız ilerleme penceresi).
-2. Paketin sürümü: exe adındaki sürüm launcher'ınki mi (`LAUNCHER_VERSION`), engine'inki mi.
-3. Kurulum / güncelleme sırasında açık launcher, editör ya da `<engine>` komutu.
-4. Kaldırmanın sildikleri (`Settings.json`, PATH; projeler hiçbir zaman) ve aynı / eski sürümün tekrar çalıştırılması.
+1. ~~Paketin biçimi: kurulumu kim yapar~~ → D15 (Velopack; geri dönüş Inno Setup 6.6). ~~İmza~~ → D15
+   (açık kaynak + SignPath Foundation; o güne kadar imzasız).
+2. Paketin sürümü: Velopack sürümü ve exe adı launcher'ınki mi (`LAUNCHER_VERSION`), engine'inki mi.
+3. `Settings.json`'un yeri (`current/` dışında: `<id>\` kökü mü, `%APPDATA%` mı) ve kaldırmanın sildikleri (ayarlar,
+   PATH; projeler hiçbir zaman).
+4. Kurulum / güncelleme sırasında açık launcher, editör ya da `<engine>` komutu; aynı / eski sürümün tekrar
+   çalıştırılması.
 5. "Ses araçlarını kur": NumPy / SciPy paketin içinde mi, istendiğinde internetten mi.
+6. Yayın yeri ve CI: SignPath public repodan CI'da derlenmiş ikili ister; repolar açılana kadar paket nerede derlenir,
+   exe nereden indirilir (private repo release'leri dışarıdan indirilemez).
 
 Kapanan ilk liste:
 
