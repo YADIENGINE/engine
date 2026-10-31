@@ -357,6 +357,8 @@ batch'i bölmez).
 - **Köşe biçimi 52 bayt, hepsi f32** (konum, yerel koordinat, 4 şekil + 2 stil değeri, iki renk, tür / yuva /
   emission / bayraklar). f16, büyük dikdörtgenlerde kenar hassasiyetini bozduğu için kullanılmadı. Doğrusal gradyan
   köşe başına `t` olarak taşınır (üçgen üstünde tam doğrusal), radyal gradyan şeklin merkezindendir.
+- **Yay dörtgeni yalnız kendi dilimini kaplar** (çeyrek yay çemberin karesinin yarısından azını boyar); mesafe
+  fonksiyonunun orijini şeklin merkezinde kalır, dörtgen `ShapeGeometry::offset` kadar kayar.
 - **Şekil başına katmanlar:** hale, dolgu ve çerçeve ayrı dörtgenlerdir (aynı batch). Shader mesafeyi türe göre,
   kaplamayı moda göre (Fill / Stroke / Halo) hesaplar; `fwidth` dallanmanın dışındadır.
 - **Akış buffer'ı:** fence yerine "ekle + taşınca orphan": yalnız son orphan'dan beri hiç yazılmamış baytlara
@@ -392,7 +394,9 @@ Eski yardımcıların (Draw, Neon, Ui, Backdrop, Icons, Fx) Painter karşılıkl
   `EngineHeadless`'tadır (NullDevice ile test edilir); eski `.h` başlıkları ve raylib uygulamaları göç bitince silinir.
 - **Stil tipleri ortak ve raylib'siz** (`Color4`, `Float2`): tek tema iki yolu da besler, Painter'lı ve eski View
   aynı ayarla çizer. Yalnız eski yolun öykünmesi olan alanlar (yazı halesinin kaydırılmış kopyaları) "eski yol"
-  diye işaretlidir; Painter karşılığı yerel haledir (`TextStyle::glow`). Göç bitince silinir.
+  diye işaretlidir; Painter karşılığı yerel haledir (`TextStyle::glow`). Göç bitince silinir. İstisna: oyunlar ikon
+  stilini çoğunlukla hesaplanmış raylib renkleriyle kurar; eski `DrawIcon` bu yüzden raylib renkli
+  `LegacyIconStyle` alır (paylaşılan `IconStyle` `Color4`'tür).
 - **Geçici örtük dönüşüm:** `Color4` raylib `Color`'ına örtük dönüşür (tek yön; `Color4.h` raylib'siz bir şablonla).
   Oyunun paleti `Color4` olabilir ve iki yolda da kullanılır; ters yön (`ToColor4`) açıktır, böylece
   `koşul ? Color4 : Color` belirsizleşmez. Köprüyle birlikte silinir. `Rect` → `FloatRect` örtük dönüşümü kalıcıdır

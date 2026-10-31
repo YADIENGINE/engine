@@ -124,6 +124,7 @@ saati Painter'dan okur, yazıyı oyunun fontuyla çizer:
 | `Graphics/Ui/UiDraw.hpp` | Temalı widget'lar (`CurrentTheme().ui`): `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`, `DrawUiButton(Body)`, `DrawUiRoundButton`, `DrawUiKeyCap`, `DrawUiProgressBar` |
 | `Graphics/Draw/BackgroundDraw.hpp` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `BackdropStyle` ile `DrawBackdrop*` |
 | `Graphics/Ui/Backdrop.hpp` | Temanın arka plan rolleri: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
+| `Graphics/Icons/Icons.hpp` | Ortak ikon seti: `DrawIcon(paint, Icon::Star, center, size, {.color = gold})` |
 
 ```cpp
 DrawUiPanel(paint, _area, accent);
@@ -139,6 +140,7 @@ oynatan çizim (ör. önizleme kartı) de açık stilli fonksiyonu `time` ile ç
 Aynı ada sahip eski (raylib) fonksiyonlar `.h` başlıklarındadır ve göç bitince silinir; Painter sürümleri aynı adın
 `.hpp`'sindedir. Stil tipleri (`NeonPanelStyle`, `ButtonLook`, `BackdropStyle` ...) ve tema ikisinde ortaktır,
 renkler `Color4`'tür. Göç süresince `Color4` raylib `Color`'ına kendiliğinden dönüşür; tersi `ToColor4(color)`.
+Tek istisna ikonlardır: eski `DrawIcon` raylib renkli `LegacyIconStyle` alır, Painter'lı `DrawIcon` `IconStyle` alır.
 
 | Eski | Painter |
 | --- | --- |

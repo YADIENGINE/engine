@@ -87,6 +87,7 @@ add_library(EngineHeadless STATIC
     Graphics/Draw/GridViewport.cpp
     Graphics/Draw/Neon.cpp
     Graphics/Draw/TextLayout.cpp
+    Graphics/Icons/Icons.cpp
     Graphics/Gpu/Internals/NullDevice.cpp
     Graphics/Paint/Internals/DrawList.cpp
     Graphics/Paint/Internals/Tessellator.cpp
@@ -282,7 +283,7 @@ add_library(Engine STATIC
     Fx/RingEffects2D.cpp
     Fx/SpeedLines.cpp
     Fx/IrisTransition.cpp
-    Graphics/Icons/Icons.cpp
+    Graphics/Icons/IconsLegacy.cpp
     Graphics/Draw/BackgroundDrawLegacy.cpp
     Graphics/Gpu/Internals/GlDevice.cpp
     Graphics/Render/Internals/LegacyBridge.cpp

@@ -6,6 +6,7 @@
 #include "Graphics/Draw/BackgroundDraw.hpp"
 #include "Graphics/Draw/DrawUtils.hpp"
 #include "Graphics/Draw/Neon.hpp"
+#include "Graphics/Icons/Icons.hpp"
 #include "Graphics/Text/FontFace.hpp"
 #include "Graphics/Text/TextStyle.hpp"
 #include "Tests/PaintHarness.h"
@@ -200,6 +201,23 @@ TEST_CASE("Engine.Widgets.ShapesProduceGeometryAndLightningGlowFollowsQuality", 
     h.End();
     CHECK(Inside(AllVertices(h), {0.0f, 0.0f, 240.0f, 190.0f}));
     CHECK(h.Draws().size() == 1);
+}
+
+TEST_CASE("Engine.Widgets.EveryIconDrawsInsideItsBoxInOneBatch", "[engine][paint]") {
+    constexpr Float2 Center{100.0f, 100.0f};
+    constexpr float Size = 20.0f;
+    constexpr IconStyle Style{.color = Cyan, .detail = Dark, .line = 2.0f};
+    for (std::size_t i = 0; i < IconCount; ++i) {
+        CAPTURE(i);
+        PaintHarness h;
+        h.Begin();
+        DrawIcon(h.paint, static_cast<Icon>(i), Center, Size, Style);
+        h.End();
+        REQUIRE(h.Draws().size() == 1);
+        const auto vertices = h.Drawn();
+        CHECK_FALSE(vertices.empty());
+        CHECK(Inside(vertices, FloatRect::FromCenter(Center, Float2{Size, Size} * 2.5f)));
+    }
 }
 
 TEST_CASE("Engine.Widgets.RowSlotsCentreTheRow", "[engine][paint]") {

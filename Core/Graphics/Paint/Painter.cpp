@@ -46,7 +46,8 @@ PremultipliedColor Premultiply(Color4 color) {
 struct ShapeGeometry {
     PaintKind kind = PaintKind::Circle;
     Affine2 frame;
-    Float2 half; // Extent of the shape around its centre
+    Float2 half;   // Extent of the drawn quad around 'offset'
+    Float2 offset; // Centre of the drawn quad in shape coordinates (the distance function's origin stays at 0)
     float shape0 = 0.0f;
     float shape1 = 0.0f;
     float shape2 = 0.0f;
@@ -71,7 +72,8 @@ void EmitShape(PaintContext& context, const ShapeGeometry& shape, const ShapeLay
     const float margin = layer.outside + AntiAliasPixels / list.PixelScale();
     const float x = shape.half.x + margin;
     const float y = shape.half.y + margin;
-    const std::array<Float2, 4> local{Float2{-x, -y}, Float2{x, -y}, Float2{x, y}, Float2{-x, y}};
+    const Float2 o = shape.offset;
+    const std::array<Float2, 4> local{o + Float2{-x, -y}, o + Float2{x, -y}, o + Float2{x, y}, o + Float2{-x, y}};
     std::array<PaintVertex, 4> corners{};
     for (std::size_t i = 0; i < corners.size(); ++i) {
         PaintVertex& vertex = corners[i];
@@ -320,7 +322,15 @@ void Painter::Arc(Float2 center, float radius, float startAngle, float sweep, co
     ShapeGeometry shape;
     shape.kind = PaintKind::Arc;
     shape.frame = Affine2::Translate(center) * Affine2::Rotate(startAngle + sweep * 0.5f);
-    shape.half = {radius + half, radius + half};
+    // The quad covers the arc's sector only (local x points at the arc's middle, it spans +-spread around it).
+    const float spread = std::abs(sweep) * 0.5f;
+    const float outer = radius + half;
+    const float cap = style.cap == StrokeCap::Round ? half : 0.0f;
+    const float left =
+        std::max(-outer, (spread <= Pi * 0.5f ? std::max(0.0f, radius - half) : outer) * std::cos(spread) - cap);
+    const float reach = (spread <= Pi * 0.5f ? outer * std::sin(spread) : outer) + cap;
+    shape.half = {(outer - left) * 0.5f, std::min(reach, outer)};
+    shape.offset = {(outer + left) * 0.5f, 0.0f};
     shape.shape0 = radius;
     shape.shape1 = half;
     shape.shape2 = std::abs(sweep) * 0.5f;
