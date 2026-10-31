@@ -68,6 +68,21 @@ void EmitGlyph(DrawList& list, Float2 topLeft, Float2 size, const CachedGlyph& g
 }
 } // namespace
 
+const FontFace& Painter::Font() const {
+    if (!_context.font) throw std::logic_error("Painter::Font: the game has no font (GameSettings::font)");
+    return *_context.font;
+}
+
+bool Painter::HasFont() const { return _context.font != nullptr; }
+
+void Painter::Text(std::string_view text, Float2 position, const TextStyle& style) {
+    if (!text.empty()) Text(Font(), text, position, style);
+}
+
+void Painter::TextBox(std::string_view text, const FloatRect& area, const TextStyle& style) {
+    if (!text.empty()) TextBox(Font(), text, area, style);
+}
+
 void Painter::Text(const FontFace& font, std::string_view text, Float2 position, const TextStyle& style) {
     if (!_context.text) throw std::logic_error("Painter::Text: no text services in this renderer");
     if (text.empty()) return;

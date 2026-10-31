@@ -1,6 +1,8 @@
 #pragma once
 #include "Utilities/Vec2.h"
 
+struct FloatRect;
+
 struct Rect {
     int x = 0;
     int y = 0;
@@ -19,4 +21,6 @@ struct Rect {
         const int dy = point.y - CenterY();
         return dx * dx + dy * dy <= radius * radius;
     }
+    // Lossless widening to continuous coordinates (Painter takes FloatRect); defined in Utilities/FloatRect.h.
+    constexpr operator FloatRect() const;
 };

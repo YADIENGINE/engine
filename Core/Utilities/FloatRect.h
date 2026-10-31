@@ -62,3 +62,5 @@ struct FloatRect {
 
     friend constexpr bool operator==(const FloatRect&, const FloatRect&) = default;
 };
+
+constexpr Rect::operator FloatRect() const { return FloatRect::From(*this); }

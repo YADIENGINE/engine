@@ -6,7 +6,7 @@
 #include "Graphics/Paint/Painter.hpp"
 #include "Graphics/Paint/Path.hpp"
 #include "Graphics/Surface/Surface.hpp"
-#include "Graphics/Text/FontFace.hpp"
+#include "Graphics/Text/TextStyle.hpp"
 #include "Utilities/MathUtils.h"
 
 namespace {
@@ -27,8 +27,7 @@ constexpr Color4 Violet = Rgb(0x8a5cff);
 class RenderGallery final : public EditorPreview {
 public:
     RenderGallery(const PreviewServices& services, const PreviewParameters& parameters)
-        : _canvas(services.canvas)
-        , _font(services.font) {
+        : _canvas(services.canvas) {
         for (const auto& [id, value] : parameters)
             (void)ApplyParameter(id, value);
     }
@@ -74,9 +73,8 @@ private:
             const FloatRect cell{Margin + column * (width + Margin), Margin + row * (height + Margin), width, height};
             auto marker = paint.Marker(Panels[i].first);
             paint.RoundRect(cell, 8.0f, {.fill = Panel, .stroke = {1.0f, Frame, StrokeAlign::Inside}});
-            if (_font)
-                paint.Text(*_font, Panels[i].first, {cell.x + 12.0f, cell.y + 8.0f},
-                           {.size = TitleSize, .color = Muted});
+            if (paint.HasFont())
+                paint.Text(Panels[i].first, {cell.x + 12.0f, cell.y + 8.0f}, {.size = TitleSize, .color = Muted});
             const FloatRect body{cell.x + 12.0f, cell.y + 32.0f, cell.width - 24.0f, cell.height - 44.0f};
             (this->*Panels[i].second)(paint, body, time);
         }
@@ -193,32 +191,31 @@ private:
     }
 
     void Texts(Painter& paint, const FloatRect& area, float) const {
-        if (!_font) return;
+        if (!paint.HasFont()) return;
         constexpr std::array<float, 6> Sizes{10.0f, 13.0f, 16.0f, 22.0f, 30.0f, 44.0f};
         float y = area.y;
         for (const float size : Sizes) {
-            paint.Text(*_font, "Glyphs ağçşİı " + std::to_string(static_cast<int>(size)), {area.x, y},
+            paint.Text("Glyphs ağçşİı " + std::to_string(static_cast<int>(size)), {area.x, y},
                        {.size = size, .color = Ink});
             y += size * 1.15f;
         }
-        paint.TextBox(*_font, "Wrapped text stays inside its box and keeps words together.",
+        paint.TextBox("Wrapped text stays inside its box and keeps words together.",
                       {area.Right() - area.width * 0.42f, area.y, area.width * 0.42f, area.height},
                       {.size = 13.0f, .color = Muted, .align = TextAlign::Right, .wrap = TextWrap::Word});
     }
 
     void TextEffects(Painter& paint, const FloatRect& area, float time) const {
-        if (!_font) return;
-        paint.Text(*_font, "NEON", {area.x + 10.0f, area.y + 4.0f},
+        if (!paint.HasFont()) return;
+        paint.Text("NEON", {area.x + 10.0f, area.y + 4.0f},
                    {.size = 40.0f, .color = Rgb(0xd8fbff), .glow = {12.0f, Cyan, 1.2f}, .emission = 0.6f});
-        paint.Text(*_font, "OUTLINE", {area.x + 10.0f, area.y + 56.0f},
+        paint.Text("OUTLINE", {area.x + 10.0f, area.y + 56.0f},
                    {.size = 30.0f, .color = Gold, .outline = {3.0f, Rgb(0x402000)}});
-        paint.Text(*_font, "Shadow", {area.x + 10.0f, area.y + 98.0f},
+        paint.Text("Shadow", {area.x + 10.0f, area.y + 98.0f},
                    {.size = 24.0f, .color = Ink, .shadow = {{2.0f, 3.0f}, Rgb(0x000000, 200)}});
         const Float2 pivot{area.Right() - area.width * 0.22f, area.Center().y};
         auto pulse = paint.Transform(Affine2::Scale(1.0f + 0.35f * std::sin(time * 1.5f), pivot) *
                                      Affine2::Rotate(0.15f * std::sin(time), pivot));
-        paint.Text(*_font, "Scale", pivot - Float2{0.0f, 14.0f},
-                   {.size = 28.0f, .color = Pink, .align = TextAlign::Center});
+        paint.Text("Scale", pivot - Float2{0.0f, 14.0f}, {.size = 28.0f, .color = Pink, .align = TextAlign::Center});
     }
 
     void Groups(Painter& paint, const FloatRect& area, float time) const {
@@ -236,10 +233,10 @@ private:
             paint.Circle(right - Float2{radius * 0.45f, 0.0f}, radius, Fill(Cyan));
             paint.Circle(right + Float2{radius * 0.45f, 0.0f}, radius, Fill(Cyan));
         }
-        if (_font) {
-            paint.Text(*_font, "Opacity", {left.x, area.Bottom() - 18.0f},
+        if (paint.HasFont()) {
+            paint.Text("Opacity", {left.x, area.Bottom() - 18.0f},
                        {.size = 12.0f, .color = Muted, .align = TextAlign::Center});
-            paint.Text(*_font, "Group", {right.x, area.Bottom() - 18.0f},
+            paint.Text("Group", {right.x, area.Bottom() - 18.0f},
                        {.size = 12.0f, .color = Muted, .align = TextAlign::Center});
         }
     }
@@ -285,13 +282,12 @@ private:
         paint.Line({area.x + 10.0f, area.y + 14.0f}, {area.Right() - 10.0f, area.y + 14.0f},
                    {.width = 3.0f, .color = Pink, .emission = 1.0f});
         paint.Rect({area.x + 10.0f, area.Bottom() - 30.0f, area.width - 20.0f, 20.0f}, Fill(Rgb(0x1a1f33)));
-        if (_font)
-            paint.Text(*_font, "emission 0 .. 1 (set Bloom above 0)", {center.x, area.Bottom() - 28.0f},
+        if (paint.HasFont())
+            paint.Text("emission 0 .. 1 (set Bloom above 0)", {center.x, area.Bottom() - 28.0f},
                        {.size = 12.0f, .color = Muted, .align = TextAlign::Center});
     }
 
     Vec2 _canvas;
-    const FontFace* _font;
     mutable Surface _cached{{120.0f, 80.0f}};
     bool _animate = true;
     float _bloom = 0.8f;

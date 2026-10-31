@@ -37,6 +37,9 @@ TEST_CASE("Engine.UiTransform.OddCentersFractionalInverseAndRounding", "[engine]
     const Float2 local = odd.Unmap(mapped);
     CHECK(local.x == Catch::Approx(11.25f));
     CHECK(local.y == Catch::Approx(-5.75f));
+    const Float2 drawn = odd.Affine().Apply({11.25f, -5.75f}); // Drawing goes where Map points
+    CHECK(drawn.x == Catch::Approx(mapped.x));
+    CHECK(drawn.y == Catch::Approx(mapped.y));
 
     const UiTransform halves({0, 0, 4, 4}, {-1, -1, 2, 2});
     CHECK(halves.Map(Vec2{1, 3}) == Vec2{-1, 1});

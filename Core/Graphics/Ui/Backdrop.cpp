@@ -1,4 +1,4 @@
-#include "Graphics/Ui/Backdrop.h"
+#include "Graphics/Ui/Backdrop.hpp"
 #include "Graphics/Style/Theme.h"
 
 const BackdropStyle& ThemeBackdrop(BackdropRole role) {
@@ -10,13 +10,15 @@ const BackdropStyle& ThemeBackdrop(BackdropRole role) {
     }
     return backdrop.menu;
 }
-void DrawBackdropGrid(BackdropRole role, const Rect& area, float time) {
-    DrawBackdropGrid(ThemeBackdrop(role), area, time);
+void DrawBackdropGrid(Painter& paint, BackdropRole role, const FloatRect& area) {
+    DrawBackdropGrid(paint, ThemeBackdrop(role), area);
 }
-void DrawBackdropVignette(BackdropRole role, const Rect& area) { DrawBackdropVignette(ThemeBackdrop(role), area); }
-void DrawBackdropScanlines(BackdropRole role, const Rect& area) {
-    DrawBackdropScanlines(ThemeBackdrop(role), CurrentTheme().backdrop.scanlines, area);
+void DrawBackdropVignette(Painter& paint, BackdropRole role, const FloatRect& area) {
+    DrawBackdropVignette(paint, ThemeBackdrop(role), area);
 }
-void DrawScanlineOverlay(const Rect& area, float alpha) {
-    DrawScanlines(area, CurrentTheme().backdrop.scanlines, alpha);
+void DrawBackdropScanlines(Painter& paint, BackdropRole role, const FloatRect& area) {
+    DrawBackdropScanlines(paint, ThemeBackdrop(role), CurrentTheme().backdrop.scanlines, area);
+}
+void DrawScanlineOverlay(Painter& paint, const FloatRect& area, float alpha) {
+    DrawScanlines(paint, area, CurrentTheme().backdrop.scanlines, alpha);
 }

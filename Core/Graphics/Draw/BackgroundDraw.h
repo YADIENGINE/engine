@@ -1,25 +1,10 @@
 #pragma once
 #include <raylib.h>
+#include "Graphics/Draw/BackgroundDraw.hpp"
 #include "Utilities/Rect.h"
 
-// Tarama çizgilerinin geometrisi; koyuluk çizim anında verilir.
-struct ScanlineStyle {
-    Color color = BLACK; // Opak renk; çizimde verilen koyulukla soldurulur
-    int spacing = 4;
-    int thickness = 1;
-};
-
-// Ekran arka planı: kayan grid, kenar karartması ve tarama çizgisi koyuluğu. Katmanlar ayrı çizilir; sırayı çağıran
-// belirler.
-struct BackdropStyle {
-    int gridCell = 50;
-    float gridScrollSpeed = 0.0f; // birim/s, aşağı doğru
-    Color gridColor = BLANK;
-    int vignetteSize = 0; // 0: vinyet yok
-    Color vignetteColor = BLANK;
-    float scanlineAlpha = 0.0f;
-};
-
+// Eski yol (raylib): stiller Graphics/Draw/BackgroundDraw.hpp'deki ortak tiplerdir; Painter karşılıkları da oradadır.
+// Bu başlık göç bitince silinir.
 void DrawGrid2D(const Rect& bounds, int spacing, Vector2 offset, Color color, int thickness);
 // Arka plan efektleri kapalıysa (EffectQuality) çizilmez.
 void DrawScanlines(const Rect& bounds, Color color, int spacing, int thickness);

@@ -1,20 +1,9 @@
 #pragma once
-#include <raylib.h>
 #include "Fx/FxStyle.h"
-#include "Graphics/Draw/BackgroundDraw.h"
 #include "Graphics/Anim/ButtonAnim.h"
-#include "Graphics/Draw/Neon.h"
+#include "Graphics/Draw/BackgroundDraw.hpp"
+#include "Graphics/Draw/Neon.hpp"
 #include "Graphics/Style/ThemePalette.h"
-
-// Tuş simgesi (Q / E gibi): yuvarlak köşeli kutu, ortada harf.
-struct KeyCapStyle {
-    Color body = BLANK;
-    Color frame = BLANK;
-    Color label = WHITE;
-    float roundness = 0.0f; // DrawRectangleRounded oranı
-    int segments = 0;
-    float frameWidth = 0.0f;
-};
 
 // Arayüz widget'larının stilleri (Ui/UiDraw, Ui/UiButton bunları okur).
 struct UiStyle {

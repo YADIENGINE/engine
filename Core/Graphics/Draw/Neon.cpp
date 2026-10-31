@@ -1,241 +1,195 @@
-#include "Graphics/Draw/Neon.h"
+#include "Graphics/Draw/Neon.hpp"
 #include <algorithm>
-#include <array>
 #include <cmath>
-#include <utility>
-#include "Graphics/Draw/DrawUtils.h"
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Draw/EffectQuality.h"
-#include "Graphics/Draw/TextRenderer.h"
+#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Text/FontFace.hpp"
+#include "Graphics/Text/TextStyle.hpp"
 
 namespace {
-float ClampNotch(Rectangle rect, float notch) {
-    return std::max(0.0f, std::min({notch, rect.width / 2.0f, rect.height / 2.0f}));
+constexpr Color4 White{255, 255, 255, 255};
+
+float ClampNotch(const FloatRect& rect, float notch) {
+    return std::max(0.0f, std::min({notch, rect.width * 0.5f, rect.height * 0.5f}));
 }
 
-std::array<Vector2, 8> NotchedCorners(Rectangle r, float n) {
-    return {{{r.x + n, r.y},
-             {r.x + r.width - n, r.y},
-             {r.x + r.width, r.y + n},
-             {r.x + r.width, r.y + r.height - n},
-             {r.x + r.width - n, r.y + r.height},
-             {r.x + n, r.y + r.height},
-             {r.x, r.y + r.height - n},
-             {r.x, r.y + n}}};
-}
+// 'color' moved towards white by 't', keeping its alpha.
+Color4 Whiten(Color4 color, float t) { return Mix(color, Color4{255, 255, 255, color.a}, t); }
 
-void DrawNotchedOutline(Rectangle rect, float notch, float thickness, Color color) {
-    const auto corners = NotchedCorners(rect, ClampNotch(rect, notch));
-    for (std::size_t i = 0; i < corners.size(); ++i) {
-        DrawLineEx(corners[i], corners[(i + 1) % corners.size()], thickness, color);
-        DrawCircleV(corners[i], thickness / 2.0f, color); // Köşe birleşimi boşluk bırakmasın
-    }
-}
-
+bool Glows(const Painter& paint, float glow) { return glow > 0.0f && paint.Quality().glow != GlowQuality::Off; }
 } // namespace
 
-void FillNotched(Rectangle r, float notch, Color color) {
-    if (r.width <= 0.0f || r.height <= 0.0f) return;
-    const float n = ClampNotch(r, notch);
-    DrawRectangleRec({r.x + n, r.y, r.width - 2.0f * n, r.height}, color);
-    DrawRectangleRec({r.x, r.y + n, n, r.height - 2.0f * n}, color);
-    DrawRectangleRec({r.x + r.width - n, r.y + n, n, r.height - 2.0f * n}, color);
-    const float right = r.x + r.width;
-    const float bottom = r.y + r.height;
-    FillTriangle({r.x + n, r.y}, {r.x, r.y + n}, {r.x + n, r.y + n}, color);
-    FillTriangle({right - n, r.y}, {right - n, r.y + n}, {right, r.y + n}, color);
-    FillTriangle({r.x, bottom - n}, {r.x + n, bottom}, {r.x + n, bottom - n}, color);
-    FillTriangle({right - n, bottom - n}, {right - n, bottom}, {right, bottom - n}, color);
-}
-
-void DrawNeonFrame(Rectangle rect, float notch, float thickness, Color color, float glow, const NeonFrameStyle& style) {
-    if (rect.width <= 0.0f || rect.height <= 0.0f || thickness <= 0.0f) return;
-    const EffectLevel level = CurrentEffectQuality().glow;
-    if (glow > 0.0f && level != EffectLevel::Off) {
-        BeginBlendMode(BLEND_ADDITIVE);
-        if (style.outerWidth > 0.0f && level == EffectLevel::Full)
-            DrawNotchedOutline(rect, notch, thickness * style.outerWidth, Alpha(color, style.outerAlpha * glow));
+void DrawNeonFrame(Painter& paint, const FloatRect& rect, float notch, float thickness, Color4 color, float glow,
+                   const NeonFrameStyle& style) {
+    if (rect.Empty() || !(thickness > 0.0f)) return;
+    const float chamfer = ClampNotch(rect, notch);
+    if (Glows(paint, glow)) {
+        auto light = paint.Blending(Blend::Add);
+        if (style.outerWidth > 0.0f && paint.Quality().glow == GlowQuality::Full)
+            paint.ChamferRect(rect, chamfer,
+                              Outline(thickness * style.outerWidth, ScaleAlpha(color, style.outerAlpha * glow)));
         if (style.innerWidth > 0.0f)
-            DrawNotchedOutline(rect, notch, thickness * style.innerWidth, Alpha(color, style.innerAlpha * glow));
-        EndBlendMode();
+            paint.ChamferRect(rect, chamfer,
+                              Outline(thickness * style.innerWidth, ScaleAlpha(color, style.innerAlpha * glow)));
     }
-    DrawNotchedOutline(rect, notch, thickness, color);
+    paint.ChamferRect(rect, chamfer, Outline(thickness, color));
     if (style.coreWidth > 0.0f || style.coreMinWidth > 0.0f)
-        DrawNotchedOutline(
-            rect, notch, std::max(style.coreMinWidth, thickness * style.coreWidth),
-            ColorLerp(color, Alpha(WHITE, static_cast<float>(color.a) / 255.0f), style.coreWhiten * glow));
+        paint.ChamferRect(
+            rect, chamfer,
+            Outline(std::max(style.coreMinWidth, thickness * style.coreWidth), Whiten(color, style.coreWhiten * glow)));
 }
 
-void DrawNeonText(const TextRenderer& text, const char* label, int centerX, int y, int fontSize, Color color,
-                  int maxWidth, float glow, const NeonTextStyle& style) {
-    const EffectLevel level = CurrentEffectQuality().glow;
-    if (glow > 0.0f && level != EffectLevel::Off && (style.glowAlpha > 0.0f || style.samples > 0)) {
-        BeginBlendMode(BLEND_ADDITIVE);
-        if (style.glowAlpha > 0.0f) {
-            const int offset = style.glowOffset;
-            const Color halo = Alpha(color, style.glowAlpha * glow);
-            text.DrawCentered(label, centerX - offset, y, fontSize, halo, maxWidth);
-            text.DrawCentered(label, centerX + offset, y, fontSize, halo, maxWidth);
-            text.DrawCentered(label, centerX, y - offset, fontSize, halo, maxWidth);
-            text.DrawCentered(label, centerX, y + offset, fontSize, halo, maxWidth);
-        }
-        for (const NeonTextRing& ring : style.rings) {
-            if (level != EffectLevel::Full || style.samples <= 0 || ring.alpha <= 0.0f) continue;
-            const Color halo = Alpha(color, ring.alpha * glow);
-            for (int i = 0; i < style.samples; ++i) {
-                const float angle =
-                    (static_cast<float>(i) + ring.phase) * 2.0f * PI / static_cast<float>(style.samples);
-                const int dx = static_cast<int>(std::lround(std::cos(angle) * ring.radius));
-                const int dy = static_cast<int>(std::lround(std::sin(angle) * ring.radius));
-                text.DrawCentered(label, centerX + dx, y + dy, fontSize, halo, maxWidth);
-            }
-        }
-        EndBlendMode();
-    }
-    const Color core = ColorLerp(color, Alpha(WHITE, static_cast<float>(color.a) / 255.0f), style.coreWhiten * glow);
-    text.DrawCentered(label, centerX, y, fontSize, core, maxWidth);
+void DrawNeonText(Painter& paint, std::string_view label, Float2 position, const TextStyle& text, float glow,
+                  const NeonTextStyle& style) {
+    TextStyle look = text;
+    if (glow > 0.0f && style.haloRadius > 0.0f && style.haloAlpha > 0.0f)
+        look.glow = {style.haloRadius, text.color, style.haloAlpha * glow};
+    look.color = Whiten(text.color, style.coreWhiten * std::max(0.0f, glow));
+    paint.Text(label, position, look);
 }
 
-void DrawNeonPanel(const Rect& rect, Color accent, const NeonPanelStyle& style) {
-    if (rect.width <= 0 || rect.height <= 0) return;
-    const Rectangle r = ToRectangle(rect);
-    FillNotched(r, style.notch, style.body);
-    DrawRectangleRec({r.x + style.notch, r.y + style.shineOffset, r.width - 2.0f * style.notch, style.shineHeight},
-                     style.shine);
-    DrawNeonFrame(r, style.notch, style.frameWidth, accent, style.glow, style.frame);
+void DrawNeonPanel(Painter& paint, const FloatRect& rect, Color4 accent, const NeonPanelStyle& style) {
+    if (rect.Empty()) return;
+    const float chamfer = ClampNotch(rect, style.notch);
+    paint.ChamferRect(rect, chamfer, Fill(style.body));
+    if (style.shineHeight > 0.0f)
+        paint.Rect({rect.x + chamfer, rect.y + style.shineOffset, rect.width - 2.0f * chamfer, style.shineHeight},
+                   Fill(style.shine));
+    DrawNeonFrame(paint, rect, style.notch, style.frameWidth, accent, style.glow, style.frame);
 }
 
-void DrawNeonChip(const TextRenderer& text, const char* label, Vector2 center, int fontSize, Color color,
+void DrawNeonChip(Painter& paint, std::string_view label, Float2 center, float size, Color4 color,
                   const NeonChipStyle& style) {
-    const float width = static_cast<float>(text.Measure(label, fontSize) + 2 * style.paddingX);
-    const float height = static_cast<float>(fontSize + 2 * style.paddingY);
-    const Rectangle r{center.x - width / 2.0f, center.y - height / 2.0f, width, height};
-    if (style.glowRadiusScale > 0.0f && style.glowAlpha > 0.0f) {
-        DrawGlow(center, width * style.glowRadiusScale, Alpha(color, style.glowAlpha));
-    }
-    FillNotched(r, style.notch, color);
-    text.DrawCentered(label, static_cast<int>(center.x), static_cast<int>(r.y) + style.paddingY, fontSize,
-                      Alpha(style.text, static_cast<float>(color.a) / 255.0f));
+    const float width = paint.Font().Measure(label, size).x + 2.0f * style.paddingX;
+    const FloatRect body = FloatRect::FromCenter(center, {width, size + 2.0f * style.paddingY});
+    if (style.glowRadiusScale > 0.0f && style.glowAlpha > 0.0f)
+        paint.Glow(center, width * style.glowRadiusScale, {.color = ScaleAlpha(color, style.glowAlpha)});
+    paint.ChamferRect(body, ClampNotch(body, style.notch), Fill(color));
+    paint.Text(label, {center.x, body.y + style.paddingY},
+               {.size = size,
+                .color = ScaleAlpha(style.text, static_cast<float>(color.a) / 255.0f),
+                .align = TextAlign::Center});
 }
 
-Rectangle DrawArcadeButtonBody(const Rect& rect, const ButtonLook& look, float timeSeconds,
+FloatRect DrawArcadeButtonBody(Painter& paint, const FloatRect& rect, const ButtonLook& look, float time,
                                const ArcadeButtonStyle& style) {
-    if (look.appear <= 0.0f || rect.width <= 0 || rect.height <= 0) {
-        return {};
-    }
+    if (look.appear <= 0.0f || rect.Empty()) return {};
     const float alpha = Clamp01(look.appear * style.appearAlphaScale);
     const float highlight = std::max(0.0f, look.animation.highlight);
     const float press = Clamp01(look.animation.press);
     const float scale = 1.0f + style.grow * look.animation.highlight - style.squash * press;
-    const float width = static_cast<float>(rect.width) * scale;
-    const float height = static_cast<float>(rect.height) * scale;
-    const float centerX = static_cast<float>(rect.CenterX()) + look.offset.x +
-                          look.animation.shake * style.shakeAmount * std::sin(timeSeconds * style.shakeSpeed);
-    const float centerY =
-        static_cast<float>(rect.CenterY()) + look.offset.y + (1.0f - EaseOutBack(look.appear)) * style.appearDrop;
+    const Float2 size = rect.Size() * scale;
+    const Float2 center = rect.Center() + look.offset +
+                          Float2{look.animation.shake * style.shakeAmount * std::sin(time * style.shakeSpeed),
+                                 (1.0f - EaseOutBack(look.appear)) * style.appearDrop};
 
-    const float top = centerY - height / 2.0f - style.depth / 2.0f;
-    const Rectangle shadow{centerX - width / 2.0f, top + style.depth, width, height};
-    const Rectangle body{shadow.x, top + style.depth * press, width, height};
+    const float top = center.y - size.y * 0.5f - style.depth * 0.5f;
+    const FloatRect shadow{center.x - size.x * 0.5f, top + style.depth, size.x, size.y};
+    const FloatRect body{shadow.x, top + style.depth * press, size.x, size.y};
+    const float chamfer = ClampNotch(body, style.notch);
 
-    const float pulse = 1.0f - style.pulseAmount + style.pulseAmount * std::sin(timeSeconds * style.pulseSpeed);
-    const Color accent = look.accent;
-    const Color darkAccent = ColorLerp(style.body, accent, style.darkAccent);
-
-    FillNotched(shadow, style.notch, Alpha(ColorLerp(style.shadow, darkAccent, style.shadowAccent * highlight), alpha));
-    FillNotched(body, style.notch, Alpha(ColorLerp(style.body, darkAccent, Clamp01(highlight)), alpha));
-    DrawRectangleRec(
-        {body.x + style.notch, body.y + style.shineOffset, body.width - 2.0f * style.notch, style.shineHeight},
-        Alpha(style.shine, alpha * (1.0f + style.shineHighlight * highlight)));
-    if (press > 0.0f) {
-        FillNotched(body, style.notch, Alpha(style.pressColor, style.pressFlash * press * alpha));
-    }
-    const Color frame = ColorLerp(style.frameColor, accent, Clamp01(highlight + press));
-    DrawNeonFrame(body, style.notch, style.frameWidth, Alpha(frame, alpha), Clamp01(highlight * pulse + press),
-                  style.frame);
+    const float pulse = 1.0f - style.pulseAmount + style.pulseAmount * std::sin(time * style.pulseSpeed);
+    const Color4 darkAccent = Mix(style.body, look.accent, style.darkAccent);
+    paint.ChamferRect(shadow, chamfer,
+                      Fill(ScaleAlpha(Mix(style.shadow, darkAccent, style.shadowAccent * highlight), alpha)));
+    paint.ChamferRect(body, chamfer, Fill(ScaleAlpha(Mix(style.body, darkAccent, Clamp01(highlight)), alpha)));
+    if (style.shineHeight > 0.0f)
+        paint.Rect({body.x + chamfer, body.y + style.shineOffset, body.width - 2.0f * chamfer, style.shineHeight},
+                   Fill(ScaleAlpha(style.shine, alpha * (1.0f + style.shineHighlight * highlight))));
+    if (press > 0.0f)
+        paint.ChamferRect(body, chamfer, Fill(ScaleAlpha(style.pressColor, style.pressFlash * press * alpha)));
+    const Color4 frame = Mix(style.frameColor, look.accent, Clamp01(highlight + press));
+    DrawNeonFrame(paint, body, style.notch, style.frameWidth, ScaleAlpha(frame, alpha),
+                  Clamp01(highlight * pulse + press), style.frame);
     return body;
 }
 
-void DrawArcadeButton(const Rect& rect, const char* label, int fontSize, const ButtonLook& look,
-                      const TextRenderer& text, float timeSeconds, const ArcadeButtonStyle& style) {
-    if (look.appear <= 0.0f || rect.width <= 0 || rect.height <= 0) {
-        return;
-    }
-    const Rectangle body = DrawArcadeButtonBody(rect, look, timeSeconds, style);
-    const float scale = body.width / static_cast<float>(rect.width);
+void DrawArcadeButton(Painter& paint, const FloatRect& rect, std::string_view label, float size, const ButtonLook& look,
+                      float time, const ArcadeButtonStyle& style) {
+    const FloatRect body = DrawArcadeButtonBody(paint, rect, look, time, style);
+    if (body.Empty()) return;
+    const float labelSize = size * body.width / rect.width;
     const float alpha = Clamp01(look.appear * style.appearAlphaScale);
-    const float highlight = std::max(0.0f, look.animation.highlight);
-    const Color accent = look.accent;
-    const float centerX = body.x + body.width / 2.0f;
-    const int labelSize = std::max(1, static_cast<int>(std::lround(static_cast<float>(fontSize) * scale)));
-    const Color labelColor = ColorLerp(style.label, ColorLerp(accent, WHITE, style.labelWhiten), Clamp01(highlight));
-    DrawNeonText(text, label, static_cast<int>(centerX), static_cast<int>(body.y + body.height / 2.0f) - labelSize / 2,
-                 labelSize, Alpha(labelColor, alpha), static_cast<int>(body.width) - style.padding, Clamp01(highlight),
-                 style.text);
+    const float highlight = Clamp01(look.animation.highlight);
+    const Color4 color = Mix(style.label, Whiten(look.accent, style.labelWhiten), highlight);
+    DrawNeonText(paint, label, {body.Center().x, body.Center().y - labelSize * 0.5f},
+                 {.size = labelSize,
+                  .color = ScaleAlpha(color, alpha),
+                  .align = TextAlign::Center,
+                  .maxWidth = std::max(0.0f, body.width - style.padding),
+                  .fit = TextFit::Shrink},
+                 highlight, style.text);
 }
 
-void DrawRoundButton(const Rect& rect, const char* label, int fontSize, Color accent, const TextRenderer& text,
+void DrawRoundButton(Painter& paint, const FloatRect& rect, std::string_view label, float size, Color4 accent,
                      const RoundButtonStyle& style) {
-    if (rect.width <= 0 || rect.height <= 0) return;
-    const Vector2 center{static_cast<float>(rect.CenterX()), static_cast<float>(rect.CenterY())};
-    const float radius = static_cast<float>(std::min(rect.width, rect.height)) / 2.0f;
-    DrawCircleV({center.x, center.y + style.shadowOffset}, radius, style.shadow);
-    DrawCircleV(center, radius, style.body);
-    if (CurrentEffectQuality().glow != EffectLevel::Off && style.glowAlpha > 0.0f &&
-        (style.glowInnerWidth > 0.0f || style.glowOuterWidth > 0.0f)) {
-        BeginBlendMode(BLEND_ADDITIVE);
-        DrawRing(center, std::max(0.0f, radius - style.glowInnerWidth), radius + style.glowOuterWidth, 0.0f, 360.0f,
-                 style.segments, Alpha(accent, style.glowAlpha));
-        EndBlendMode();
+    if (rect.Empty()) return;
+    const Float2 center = rect.Center();
+    const float radius = std::min(rect.width, rect.height) * 0.5f;
+    paint.Circle(center + Float2{0.0f, style.shadowOffset}, radius, Fill(style.shadow));
+    paint.Circle(center, radius, Fill(style.body));
+    if (Glows(paint, style.glowAlpha) && (style.glowInnerWidth > 0.0f || style.glowOuterWidth > 0.0f)) {
+        const float inner = std::max(0.0f, radius - style.glowInnerWidth);
+        const float outer = radius + style.glowOuterWidth;
+        auto light = paint.Blending(Blend::Add);
+        paint.Circle(center, (inner + outer) * 0.5f, Outline(outer - inner, ScaleAlpha(accent, style.glowAlpha)));
     }
-    if (style.frameWidth > 0.0f)
-        DrawRing(center, std::max(0.0f, radius - style.frameWidth), radius, 0.0f, 360.0f, style.segments, accent);
-    DrawNeonText(text, label, rect.CenterX(), rect.CenterY() - fontSize / 2, fontSize,
-                 ColorLerp(accent, WHITE, style.labelWhiten), rect.width - style.padding, style.textGlow, style.text);
+    if (style.frameWidth > 0.0f) paint.Circle(center, radius, Outline(style.frameWidth, accent, StrokeAlign::Inside));
+    DrawNeonText(paint, label, {center.x, center.y - size * 0.5f},
+                 {.size = size,
+                  .color = Whiten(accent, style.labelWhiten),
+                  .align = TextAlign::Center,
+                  .maxWidth = std::max(0.0f, rect.width - style.padding),
+                  .fit = TextFit::Shrink},
+                 style.textGlow, style.text);
 }
 
-void DrawNeonRing(Vector2 center, float radius, float width, Color color, float glow, int segments) {
-    if (glow > 0.0f && CurrentEffectQuality().glow != EffectLevel::Off) {
-        BeginBlendMode(BLEND_ADDITIVE);
-        DrawRing(center, radius - 2.0f * width, radius + width, 0.0f, 360.0f, segments, Fade(color, glow));
-        EndBlendMode();
-    }
-    DrawRing(center, radius - width, radius, 0.0f, 360.0f, segments, color);
+void DrawKeyCap(Painter& paint, const FloatRect& area, std::string_view key, float size, const KeyCapStyle& style) {
+    if (area.Empty()) return;
+    const float radius = style.roundness * std::min(area.width, area.height) * 0.5f;
+    paint.RoundRect(area, radius, {.fill = style.body, .stroke = {style.frameWidth, style.frame, StrokeAlign::Inside}});
+    paint.Text(key, {area.Center().x, area.Center().y - size * 0.5f},
+               {.size = size, .color = style.label, .align = TextAlign::Center});
 }
 
-void DrawProgressBar(Rectangle bar, const ProgressBarLook& look, const ProgressBarStyle& style) {
-    if (bar.width <= 0.0f || bar.height <= 0.0f) return;
+void DrawNeonRing(Painter& paint, Float2 center, float radius, float width, Color4 color, float glow) {
+    if (!(width > 0.0f)) return;
+    if (Glows(paint, glow)) {
+        auto light = paint.Blending(Blend::Add);
+        paint.Circle(center, radius - 0.5f * width, Outline(3.0f * width, WithAlpha(color, glow)));
+    }
+    paint.Circle(center, radius, Outline(width, color, StrokeAlign::Inside));
+}
+
+void DrawProgressBar(Painter& paint, const FloatRect& bar, const ProgressBarLook& look, const ProgressBarStyle& style) {
+    if (bar.Empty()) return;
     const float alpha = look.alpha;
-    const float fillWidth = bar.width * Clamp01(look.fill);
-    DrawRectangleRec(bar, Alpha(style.track, alpha));
-    if (look.ghost > 0.0f)
-        DrawRectangleRec({bar.x, bar.y, bar.width * Clamp01(look.ghost), bar.height}, Alpha(style.ghost, alpha));
-    const float previewStart = std::max(Clamp01(look.fill), Clamp01(look.ghost));
+    const auto slice = [&](float from, float to) {
+        return FloatRect{bar.x + bar.width * from, bar.y, bar.width * (to - from), bar.height};
+    };
+    const float fill = Clamp01(look.fill);
+    paint.Rect(bar, Fill(ScaleAlpha(style.track, alpha)));
+    if (look.ghost > 0.0f) paint.Rect(slice(0.0f, Clamp01(look.ghost)), Fill(ScaleAlpha(style.ghost, alpha)));
+    const float previewStart = std::max(fill, Clamp01(look.ghost));
     if (Clamp01(look.preview) > previewStart && style.previewAlpha > 0.0f)
-        DrawRectangleRec(
-            {bar.x + bar.width * previewStart, bar.y, bar.width * (Clamp01(look.preview) - previewStart), bar.height},
-            Alpha(look.color, style.previewAlpha * alpha));
-    if (fillWidth > 0.0f && style.glowAlpha > 0.0f && CurrentEffectQuality().glow != EffectLevel::Off) {
-        BeginBlendMode(BLEND_ADDITIVE);
-        DrawRectangleRec({bar.x, bar.y - style.glowSpread, fillWidth, bar.height + 2.0f * style.glowSpread},
-                         Alpha(look.color, style.glowAlpha * alpha));
-        EndBlendMode();
+        paint.Rect(slice(previewStart, Clamp01(look.preview)),
+                   Fill(ScaleAlpha(look.color, style.previewAlpha * alpha)));
+    if (fill > 0.0f && Glows(paint, style.glowAlpha)) {
+        auto light = paint.Blending(Blend::Add);
+        paint.Rect(slice(0.0f, fill).Inset(0.0f, -style.glowSpread),
+                   Fill(ScaleAlpha(look.color, style.glowAlpha * alpha)));
     }
-    DrawRectangleRec({bar.x, bar.y, fillWidth, bar.height}, Alpha(look.color, alpha));
-    if (look.overlay > 0.0f)
-        DrawRectangleRec({bar.x, bar.y, bar.width * Clamp01(look.overlay), bar.height},
-                         Alpha(look.overlayColor, alpha));
-    if (style.shineHeight > 0.0f)
-        DrawRectangleRec({bar.x, bar.y, fillWidth, bar.height * style.shineHeight}, Alpha(style.shine, alpha));
-    if (style.segment > 0.0f) {
-        for (float x = bar.x + style.segment; x < bar.x + bar.width; x += style.segment)
-            DrawRectangleRec({x - style.segmentGap / 2.0f, bar.y, style.segmentGap, bar.height},
-                             Alpha(style.track, alpha));
-    }
-    if (look.flash > 0.0f) DrawRectangleRec(bar, Alpha(style.flash, look.flash * alpha));
-    if (style.frameWidth > 0.0f) {
-        const float outset = style.frameOutset;
-        DrawNeonFrame({bar.x - outset, bar.y - outset, bar.width + 2.0f * outset, bar.height + 2.0f * outset}, outset,
-                      style.frameWidth, Alpha(style.frame, alpha), style.frameGlow, style.frameStyle);
-    }
+    if (fill > 0.0f) paint.Rect(slice(0.0f, fill), Fill(ScaleAlpha(look.color, alpha)));
+    if (look.overlay > 0.0f) paint.Rect(slice(0.0f, Clamp01(look.overlay)), Fill(ScaleAlpha(look.overlayColor, alpha)));
+    if (fill > 0.0f && style.shineHeight > 0.0f)
+        paint.Rect({bar.x, bar.y, bar.width * fill, bar.height * style.shineHeight},
+                   Fill(ScaleAlpha(style.shine, alpha)));
+    if (style.segment > 0.0f)
+        for (float x = bar.x + style.segment; x < bar.Right(); x += style.segment)
+            paint.Rect({x - style.segmentGap * 0.5f, bar.y, style.segmentGap, bar.height},
+                       Fill(ScaleAlpha(style.track, alpha)));
+    if (look.flash > 0.0f) paint.Rect(bar, Fill(ScaleAlpha(style.flash, look.flash * alpha)));
+    if (style.frameWidth > 0.0f)
+        DrawNeonFrame(paint, bar.Inset(-style.frameOutset), style.frameOutset, style.frameWidth,
+                      ScaleAlpha(style.frame, alpha), style.frameGlow, style.frameStyle);
 }

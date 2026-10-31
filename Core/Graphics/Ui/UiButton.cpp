@@ -7,4 +7,4 @@ void UiButton::Update(bool selected, float deltaSeconds) { _animation.Update(sel
 void UiButton::Press() { _animation.Press(); }
 void UiButton::Deny() { _animation.Deny(); }
 void UiButton::Clear() { _animation.Clear(); }
-ButtonLook UiButton::Look(Color accent) const { return {.animation = _animation.State(), .accent = accent}; }
+ButtonLook UiButton::Look(Color4 accent) const { return {.animation = _animation.State(), .accent = accent}; }

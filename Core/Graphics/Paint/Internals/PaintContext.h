@@ -51,8 +51,9 @@ struct PaintContext {
     DrawList& list;
     RenderResources& resources;
     FrameExecutor& executor;
-    TextServices* text; // Null: Painter::Text is not available
-    LegacyHost* legacy; // Null: Painter::Legacy is not available
+    TextServices* text;             // Null: Painter::Text is not available
+    LegacyHost* legacy;             // Null: Painter::Legacy is not available
+    const FontFace* font = nullptr; // The game's font (Painter::Font); borrowed, outlives the frames
     PaintFrameInfo frame;
 
     // Legacy bridge state.

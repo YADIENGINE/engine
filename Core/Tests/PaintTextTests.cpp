@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include "Graphics/Text/FontFace.hpp"
 #include "Graphics/Text/Internals/AtlasPacker.h"
@@ -101,6 +102,20 @@ TEST_CASE("Engine.Text.DrawsInOneBatchAndCachesGlyphs", "[engine][paint][text]")
     h.paint.Text(TestFont(), "Score 120", {10.0f, 10.0f}, {.size = 24.0f});
     CHECK(h.glyphs.RasterizedThisFrame() > 0);
     h.End();
+}
+
+TEST_CASE("Engine.Text.TextWithoutAFontUsesTheGamesFont", "[engine][paint][text]") {
+    PaintHarness h;
+    h.Begin();
+    CHECK_FALSE(h.paint.HasFont());
+    CHECK_THROWS_AS(h.paint.Text("Score", {10.0f, 10.0f}, {.size = 16.0f}), std::logic_error);
+    h.context.font = &TestFont();
+    REQUIRE(h.paint.HasFont());
+    CHECK(h.paint.Font().Id() == TestFont().Id());
+    h.paint.Text("Score", {10.0f, 10.0f}, {.size = 16.0f});
+    h.paint.TextBox("Score", {10.0f, 40.0f, 100.0f, 30.0f}, {.size = 16.0f});
+    h.End();
+    CHECK(h.Draws().size() == 1);
 }
 
 TEST_CASE("Engine.Text.ExactSizeGlyphsLandOnThePixelGrid", "[engine][paint][text]") {

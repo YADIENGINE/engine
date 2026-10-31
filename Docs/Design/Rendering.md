@@ -380,6 +380,38 @@ batch'i bölmez).
 - **Çözünürlük:** eski `Canvas` mantığı (`renderHeight` sınırı, küçültmede mantıksal boyut) `RenderPipeline`'a
   taşındı; arka tampon yüksek DPI'da piksel boyutundadır, input dönüşümü ekran boyutundadır.
 
+## Göç (R13)
+
+Eski yardımcıların (Draw, Neon, Ui, Backdrop, Icons, Fx) Painter karşılıkları ve oyunların göçü. Kararlar:
+
+- **Yukarıdan aşağı.** Painter sahneden View'a parametreyle akar; eski bir fonksiyon Painter'ı göremez. Bir View
+  bütünüyle taşınır; yarım kalan kısım `paint.Legacy()` kapsamında kalır. Ters köprü (eski koddan Painter'a) yok:
+  her küçük çağrı bir boşaltma olurdu (yüzlerce parıltı = yüzlerce draw call).
+- **Aynı ad, `Painter&` ilk parametre.** `DrawUiPanel(paint, rect, accent)` eskisinin (`DrawUiPanel(rect, accent)`)
+  overload'udur; View taşınırken çağrı adı değişmez. Painter sürümleri raylib'siz `.hpp` başlıklarında ve
+  `EngineHeadless`'tadır (NullDevice ile test edilir); eski `.h` başlıkları ve raylib uygulamaları göç bitince silinir.
+- **Stil tipleri ortak ve raylib'siz** (`Color4`, `Float2`): tek tema iki yolu da besler, Painter'lı ve eski View
+  aynı ayarla çizer. Yalnız eski yolun öykünmesi olan alanlar (yazı halesinin kaydırılmış kopyaları) "eski yol"
+  diye işaretlidir; Painter karşılığı yerel haledir (`TextStyle::glow`). Göç bitince silinir.
+- **Geçici örtük dönüşüm:** `Color4` raylib `Color`'ına örtük dönüşür (tek yön; `Color4.h` raylib'siz bir şablonla).
+  Oyunun paleti `Color4` olabilir ve iki yolda da kullanılır; ters yön (`ToColor4`) açıktır, böylece
+  `koşul ? Color4 : Color` belirsizleşmez. Köprüyle birlikte silinir. `Rect` → `FloatRect` örtük dönüşümü kalıcıdır
+  (kayıpsız genişletme).
+- **Varsayılan font:** `paint.Font()` oyunun fontudur (`GameSettings::font`); `paint.Text(text, ...)` ve
+  `paint.TextBox(text, ...)` onu kullanır. Widget'lar font parametresi almaz; başka font `paint.Text(font, ...)`.
+  View'ların `const TextRenderer&` taşıması biter.
+- **Zaman ve kalite Painter'dan:** Painter'lı yardımcılar sunum saatini `paint.Time()`'dan (`DrawTime` karşılığı),
+  parıltı / arka plan kalitesini `paint.Quality()`'den okur. Parçacık adedi, sarsıntı ve flaş `EffectQuality`'de
+  kalır (Fx simülasyonu; çizim değil).
+
+Eski → yeni karşılıklar: `RenderLayer` → `Surface` + `paint.Target`; `UiRegion` → `paint.Transform`;
+`BeginClip` / `BeginUiClip` → `paint.Clip`; `DrawMergedShadow` → `paint.Group({.opacity})`; `GlowBatch` / `DrawGlow`
+→ `paint.Glow` (batch kendiliğinden); `FillNotched` → `ChamferRect`; `Camera2D` → `Affine2::Camera`;
+`TextRenderer` → `FontFace` (`paint.Font()`), `TextLayout` → `TextBlock`.
+
+Sıra: (1) dönüşümler + varsayılan font; (2) Draw şekilleri, Neon, Ui, Backdrop; (3) Icons; (4) Fx; (5) oyun:
+sahne kökleri, sonra View View; (6) eski yolun, köprünün ve geçici dönüşümün silinmesi.
+
 ## Sonraya kalanlar
 
 - GPU zaman sorguları (`RenderStats::gpuMilliseconds` şimdilik 0) ve editör önizlemesinin PBO ile beklemesiz okunması.

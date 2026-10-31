@@ -6,6 +6,7 @@
 
 class TextRenderer;
 
+// Eski yol (raylib); Painter karşılıkları Graphics/Ui/UiDraw.hpp'de, bu başlık göç bitince silinir.
 // Temalı widget'lar: stil etkin temadan (CurrentTheme().ui), animasyon zamanı sunum saatinden (DrawTime) gelir; kendi
 // zamanını oynatan çizim (ör. önizleme kartı) 'time' verir. Tek seferlik bir varyant için stil kopyalanıp açık stil
 // alan fonksiyona (DrawNeon*, DrawArcadeButton) verilir.

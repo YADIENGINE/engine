@@ -89,11 +89,18 @@ public:
     // --- Text --------------------------------------------------------------------------------------------------
     // 'position' is the top of the first line; horizontally the line's left end, centre or right end (style.align).
     // Repeated strings are laid out once (cached); glyphs are rasterized for the size they cover on screen.
+    // Without a font argument the game's font is used (Font()).
+    void Text(std::string_view text, Float2 position, const TextStyle& style);
     void Text(const FontFace& font, std::string_view text, Float2 position, const TextStyle& style);
     // A block from font.Layout (its size, wrapping and fitting win over 'style'; colour and effects come from it).
     void Text(const FontFace& font, const TextBlock& block, Float2 position, const TextStyle& style);
     // Text wrapped or fitted to 'area' (style.maxWidth = area width), aligned inside it, starting at its top.
+    void TextBox(std::string_view text, const FloatRect& area, const TextStyle& style);
     void TextBox(const FontFace& font, std::string_view text, const FloatRect& area, const TextStyle& style);
+    // The game's font (GameSettings::font): widgets and text without a font argument use it. logic_error when the
+    // game has none.
+    [[nodiscard]] const FontFace& Font() const;
+    [[nodiscard]] bool HasFont() const;
 
     // --- State scopes ------------------------------------------------------------------------------------------
     // Following drawing goes through 'transform' (applied before the current one).

@@ -49,6 +49,7 @@ public:
     void SetExecutionOptions(const RenderExecutionOptions& options) { _execution = options; }
     void SetQuality(const RenderQuality& quality) { _pipeline->SetQuality(quality); }
     void SetPostDefaults(const PostSettings& post) { _pipeline->SetPostDefaults(post); }
+    void SetFont(const FontFace* font) { _pipeline->SetFont(font); }
     [[nodiscard]] const RenderStats& LastFrame() const { return _pipeline->LastFrame(); }
     [[nodiscard]] std::optional<Vec2> ToCanvas(Vec2 windowPoint) const;
     void RevealWindow() { _window.Show(); }

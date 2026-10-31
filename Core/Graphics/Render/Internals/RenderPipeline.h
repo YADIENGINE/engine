@@ -44,6 +44,8 @@ public:
     void SetQuality(const RenderQuality& quality) { _quality = quality; }
     [[nodiscard]] const RenderQuality& Quality() const { return _quality; }
     void SetPostDefaults(const PostSettings& post) { _settings.post = post; }
+    // The game's font for Painter::Font (null: none); borrowed, must outlive the pipeline's frames.
+    void SetFont(const FontFace* font) { _context.font = font; }
     // Upper limit for the canvas texture's height in pixels (0: the window's); never below the logical height.
     void SetMaxRenderHeight(int height) { _maxRenderHeight = std::max(0, height); }
     // Window pixel -> canvas point; nullopt in the letterbox.

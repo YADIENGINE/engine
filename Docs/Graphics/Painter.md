@@ -68,14 +68,15 @@ kalan panel çizer. Surface, oyunun renderer'ından uzun yaşamaz (sahibi sahne 
 
 ## Metin
 
-`Game::Font()` oyunun fontudur (`GameSettings::font`); `FontFace::FromFile` başka fontlar yükler. Glifler ekranda
-kapladıkları piksel boyunda, ilk kullanımda rasterize edilir: her boy keskindir, fontun bütün karakterleri çizilebilir
-(fontta olmayan karakter `?` olur).
+Font verilmeyen metin oyunun fontuyla çizilir: `paint.Font()` (`GameSettings::font`, aynı nesne `Game::Font()`);
+`FontFace::FromFile` başka fontlar yükler, onlar `paint.Text(font, ...)` ile çizilir. Glifler ekranda kapladıkları
+piksel boyunda, ilk kullanımda rasterize edilir: her boy keskindir, fontun bütün karakterleri çizilebilir (fontta
+olmayan karakter `?` olur).
 
 ```cpp
-paint.Text(font, "Ready", {800.0f, 120.0f}, {.size = 48.0f, .align = TextAlign::Center, .glow = {10.0f, cyan}});
-paint.TextBox(font, description, area, {.size = 18.0f, .wrap = TextWrap::Word});
-const TextBlock block = font.Layout(longText, style); // Bir kez yerleşip her kare çizmek için
+paint.Text("Ready", {800.0f, 120.0f}, {.size = 48.0f, .align = TextAlign::Center, .glow = {10.0f, cyan}});
+paint.TextBox(description, area, {.size = 18.0f, .wrap = TextWrap::Word});
+const TextBlock block = paint.Font().Layout(longText, style); // Bir kez yerleşip her kare çizmek için
 ```
 
 Konum ilk satırın tepesidir; yatayda `align`'a göre satırın sol ucu, ortası ya da sağ ucu. `TextStyle`: boy, renk,
@@ -110,6 +111,46 @@ canvas bir sonraki kareden itibaren bloom katmanını tutar.
 `paint.Quality()` oyuncunun seçimidir (`GlowQuality`, `BloomQuality`, `backgroundEffects`). Painter haleleri ve
 bloom'u kendisi uygular; çağıran sadece tamamen süs olan işi atlamak için okur. `paint.Time()` / `paint.Delta()` sunum
 saatidir (editör Pause'u dondurur); `paint.PixelScale()` bir birimin kaç cihaz pikseli olduğunu verir.
+
+## Yardımcılar ve tema
+
+Ortak şekiller ve tema widget'ları Painter'ın üstündedir; hepsi ilk parametre olarak `Painter&` alır, kaliteyi ve
+saati Painter'dan okur, yazıyı oyunun fontuyla çizer:
+
+| Başlık | İçerik |
+| --- | --- |
+| `Graphics/Draw/DrawUtils.hpp` | `DrawStar`, `DrawEgg`, `DrawDiamond`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
+| `Graphics/Draw/Neon.hpp` | Açık stilli neon widget'lar ve stilleri: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
+| `Graphics/Ui/UiDraw.hpp` | Temalı widget'lar (`CurrentTheme().ui`): `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`, `DrawUiButton(Body)`, `DrawUiRoundButton`, `DrawUiKeyCap`, `DrawUiProgressBar` |
+| `Graphics/Draw/BackgroundDraw.hpp` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `BackdropStyle` ile `DrawBackdrop*` |
+| `Graphics/Ui/Backdrop.hpp` | Temanın arka plan rolleri: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
+
+```cpp
+DrawUiPanel(paint, _area, accent);
+DrawUiButton(paint, _play, "PLAY", 30.0f, _playButton.Look(accent)); // UiButton: View'ın değer üyesi
+DrawUiText(paint, "SETTINGS", {_area.Center().x, 40.0f}, {.size = 36.0f, .color = text, .align = TextAlign::Center});
+```
+
+Tek seferlik varyant: `CurrentTheme().ui.X` kopyalanır, değiştirilir, açık stilli fonksiyona verilir. Kendi saatini
+oynatan çizim (ör. önizleme kartı) de açık stilli fonksiyonu `time` ile çağırır.
+
+### Eski yoldan taşırken
+
+Aynı ada sahip eski (raylib) fonksiyonlar `.h` başlıklarındadır ve göç bitince silinir; Painter sürümleri aynı adın
+`.hpp`'sindedir. Stil tipleri (`NeonPanelStyle`, `ButtonLook`, `BackdropStyle` ...) ve tema ikisinde ortaktır,
+renkler `Color4`'tür. Göç süresince `Color4` raylib `Color`'ına kendiliğinden dönüşür; tersi `ToColor4(color)`.
+
+| Eski | Painter |
+| --- | --- |
+| `TextRenderer& text`, `text.DrawCentered(...)` | `paint.Text(label, position, {.align = TextAlign::Center ...})` |
+| `DrawGlow`, `GlowBatch` | `paint.Glow` (batch kendiliğinden) |
+| `FillNotched` | `paint.ChamferRect` |
+| `FillTriangle`, `FillQuad`, `FillPolygon` | `paint.Triangle`, `paint.Polygon` |
+| `BeginClip`, `BeginUiClip` | `auto clip = paint.Clip(rect)` |
+| `UiRegion::Draw` | `auto region = paint.Transform(UiTransform(source, target).Affine())` |
+| `RenderLayer` | `Surface` + `paint.Target` |
+| `DrawMergedShadow` | `auto group = paint.Group({.opacity = darkness})` |
+| `DrawTime()` | `paint.Time()` |
 
 ## Ölçüm
 

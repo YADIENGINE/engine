@@ -1,5 +1,10 @@
 # Themes and UI
 
+> Painter: the widgets below have Painter overloads with the same names in `.hpp` headers
+> (`Graphics/Ui/UiDraw.hpp`, `Graphics/Draw/Neon.hpp`, `Graphics/Ui/Backdrop.hpp`); see
+> [Painter → Yardımcılar ve tema](Painter.md#yardımcılar-ve-tema). Theme and style colours are `Color4`. The raylib
+> functions described here remain until the migration ends.
+
 ### Themes and UI widgets
 
 A game's visual identity is one `Theme` (`Graphics/Style/Theme.h`): `palette` holds role colors (`background`,

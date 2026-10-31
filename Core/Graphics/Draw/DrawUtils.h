@@ -1,11 +1,14 @@
 #pragma once
 #include <raylib.h>
 #include <span>
+#include "Graphics/Draw/DrawUtils.hpp"
 #include "Utilities/Color4.h"
 #include "Utilities/Rect.h"
 
-// View'ların ortak kullandığı küçük çizim yardımcıları (canvas koordinatlarında).
-[[nodiscard]] constexpr Color ToColor(Color4 color) { return {color.r, color.g, color.b, color.a}; }
+// Eski yol (raylib): View'ların ortak kullandığı küçük çizim yardımcıları (canvas koordinatlarında). Painter
+// karşılıkları Graphics/Draw/DrawUtils.hpp'de; bu başlık göç bitince silinir.
+// raylib → Color4 (the other way is implicit during the migration; Utilities/Color4.h).
+[[nodiscard]] constexpr Color4 ToColor4(Color color) { return {color.r, color.g, color.b, color.a}; }
 void FillRect(const Rect& rect, Color color);
 // Canvas koordinatında scissor (raylib'in BeginScissorMode'u piksel ister; canvas pencere çözünürlüğünde çizilir).
 // Kamerayı yok sayar; EndScissorMode ile kapanır.
@@ -41,15 +44,6 @@ void DrawDiamondLines(Vector2 center, float halfWidth, float halfHeight, float t
 // rozet dizileri).
 [[nodiscard]] Vector2 RowSlot(Vector2 center, int count, int index, float gap);
 // Zikzak yıldırım: 'from'dan 'to'ya kırılarak iner; şekli 'seed' ile değişir. Uçta 'glowRadius' parıltı.
-struct LightningStyle {
-    int segments = 8;
-    float jitter = 0.0f; // Ortada en büyük yana sapma
-    float width = 1.0f;  // 'color' renkli dış çizgi
-    float coreWidth = 0.0f;
-    Color core = WHITE; // İç çizgi
-    float glowRadius = 0.0f;
-    float glowAlpha = 0.0f;
-};
 void DrawLightning(Vector2 from, Vector2 to, int seed, Color color, float alpha, const LightningStyle& style);
 // Dışbükey çokgen (köşeler sırayla); sarım yönü fark etmez, aynalanmış (ters dönmüş) çokgen de çizilir.
 void FillPolygon(std::span<const Vector2> points, Color color);

@@ -81,8 +81,11 @@ add_library(EngineHeadless STATIC
     GameObjects/ObjectList.cpp
     Graphics/Anim/AnimatedCounter.cpp
     Graphics/Anim/ButtonAnim.cpp
+    Graphics/Draw/BackgroundDraw.cpp
+    Graphics/Draw/DrawUtils.cpp
     Graphics/Draw/EffectQuality.cpp
     Graphics/Draw/GridViewport.cpp
+    Graphics/Draw/Neon.cpp
     Graphics/Draw/TextLayout.cpp
     Graphics/Gpu/Internals/NullDevice.cpp
     Graphics/Paint/Internals/DrawList.cpp
@@ -280,14 +283,14 @@ add_library(Engine STATIC
     Fx/SpeedLines.cpp
     Fx/IrisTransition.cpp
     Graphics/Icons/Icons.cpp
-    Graphics/Draw/BackgroundDraw.cpp
+    Graphics/Draw/BackgroundDrawLegacy.cpp
     Graphics/Gpu/Internals/GlDevice.cpp
     Graphics/Render/Internals/LegacyBridge.cpp
-    Graphics/Draw/DrawUtils.cpp
+    Graphics/Draw/DrawUtilsLegacy.cpp
     Graphics/Draw/DrawTime.cpp
     Graphics/Draw/GlowBatch.cpp
     Graphics/Draw/ParticleDraw.cpp
-    Graphics/Draw/Neon.cpp
+    Graphics/Draw/NeonLegacy.cpp
     Graphics/Render/RenderLayer.cpp
     Graphics/Render/Internals/RenderTargetStack.cpp
     Graphics/Render/Internals/RenderExecutionContext.cpp
@@ -300,8 +303,10 @@ add_library(Engine STATIC
     Platform/Internals/ApplicationFiles.cpp
     Graphics/Style/Theme.cpp
     Graphics/Ui/Backdrop.cpp
+    Graphics/Ui/BackdropLegacy.cpp
     Graphics/Ui/UiButton.cpp
     Graphics/Ui/UiDraw.cpp
+    Graphics/Ui/UiDrawLegacy.cpp
     Runtime/Game.cpp
 )
 target_link_libraries(Engine PUBLIC EngineHeadless raylib)

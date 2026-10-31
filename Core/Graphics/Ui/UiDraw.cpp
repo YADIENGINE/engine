@@ -1,38 +1,36 @@
-#include "Graphics/Ui/UiDraw.h"
-#include "Graphics/Draw/DrawUtils.h"
-#include "Graphics/Draw/TextRenderer.h"
+#include "Graphics/Ui/UiDraw.hpp"
+#include "Graphics/Paint/Painter.hpp"
 #include "Graphics/Style/Theme.h"
 
 namespace {
 const UiStyle& Ui() { return CurrentTheme().ui; }
+float Time(const Painter& paint) { return static_cast<float>(paint.Time()); }
 } // namespace
 
-void DrawUiFrame(Rectangle rect, float notch, float thickness, Color color, float glow) {
-    DrawNeonFrame(rect, notch, thickness, color, glow, Ui().frame);
+void DrawUiFrame(Painter& paint, const FloatRect& rect, float notch, float thickness, Color4 color, float glow) {
+    DrawNeonFrame(paint, rect, notch, thickness, color, glow, Ui().frame);
 }
-void DrawUiText(const TextRenderer& text, const char* label, int centerX, int y, int fontSize, Color color,
-                int maxWidth, float glow) {
-    DrawNeonText(text, label, centerX, y, fontSize, color, maxWidth, glow, Ui().text);
+void DrawUiText(Painter& paint, std::string_view label, Float2 position, const TextStyle& text, float glow) {
+    DrawNeonText(paint, label, position, text, glow, Ui().text);
 }
-void DrawUiPanel(const Rect& rect, Color accent) { DrawNeonPanel(rect, accent, Ui().panel); }
-void DrawUiChip(const TextRenderer& text, const char* label, Vector2 center, int fontSize, Color color) {
-    DrawNeonChip(text, label, center, fontSize, color, Ui().chip);
+void DrawUiPanel(Painter& paint, const FloatRect& rect, Color4 accent) {
+    DrawNeonPanel(paint, rect, accent, Ui().panel);
 }
-Rectangle DrawUiButtonBody(const Rect& rect, const ButtonLook& look, float time) {
-    return DrawArcadeButtonBody(rect, look, time, Ui().button);
+void DrawUiChip(Painter& paint, std::string_view label, Float2 center, float size, Color4 color) {
+    DrawNeonChip(paint, label, center, size, color, Ui().chip);
 }
-void DrawUiButton(const Rect& rect, const char* label, int fontSize, const ButtonLook& look, const TextRenderer& text,
-                  float time) {
-    DrawArcadeButton(rect, label, fontSize, look, text, time, Ui().button);
+FloatRect DrawUiButtonBody(Painter& paint, const FloatRect& rect, const ButtonLook& look) {
+    return DrawArcadeButtonBody(paint, rect, look, Time(paint), Ui().button);
 }
-void DrawUiRoundButton(const Rect& rect, const char* label, int fontSize, Color accent, const TextRenderer& text) {
-    DrawRoundButton(rect, label, fontSize, accent, text, Ui().roundButton);
+void DrawUiButton(Painter& paint, const FloatRect& rect, std::string_view label, float size, const ButtonLook& look) {
+    DrawArcadeButton(paint, rect, label, size, look, Time(paint), Ui().button);
 }
-void DrawUiKeyCap(const Rect& area, const char* key, int fontSize, const TextRenderer& text) {
-    const KeyCapStyle& style = Ui().keyCap;
-    const Rectangle rect = ToRectangle(area);
-    DrawRectangleRounded(rect, style.roundness, style.segments, style.body);
-    DrawRectangleRoundedLinesEx(rect, style.roundness, style.segments, style.frameWidth, style.frame);
-    text.DrawCentered(key, area.CenterX(), area.CenterY() - fontSize / 2, fontSize, style.label);
+void DrawUiRoundButton(Painter& paint, const FloatRect& rect, std::string_view label, float size, Color4 accent) {
+    DrawRoundButton(paint, rect, label, size, accent, Ui().roundButton);
 }
-void DrawUiProgressBar(Rectangle bar, const ProgressBarLook& look) { DrawProgressBar(bar, look, Ui().progressBar); }
+void DrawUiKeyCap(Painter& paint, const FloatRect& area, std::string_view key, float size) {
+    DrawKeyCap(paint, area, key, size, Ui().keyCap);
+}
+void DrawUiProgressBar(Painter& paint, const FloatRect& bar, const ProgressBarLook& look) {
+    DrawProgressBar(paint, bar, look, Ui().progressBar);
+}

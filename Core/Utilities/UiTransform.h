@@ -1,4 +1,5 @@
 #pragma once
+#include "Utilities/Affine2.h"
 #include "Utilities/Float2.h"
 #include "Utilities/Rect.h"
 
@@ -12,6 +13,8 @@ public:
     [[nodiscard]] Vec2 Unmap(Vec2 point) const;
     [[nodiscard]] float Scale() const { return _scale; }
     [[nodiscard]] Float2 Offset() const { return _offset; }
+    // The same mapping for drawing: auto region = paint.Transform(transform.Affine());
+    [[nodiscard]] Affine2 Affine() const { return Affine2::Translate(_offset) * Affine2::Scale(_scale); }
 
 private:
     Vec2 _sourceCenter;

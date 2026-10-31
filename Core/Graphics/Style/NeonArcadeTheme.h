@@ -12,11 +12,13 @@ inline constexpr NeonFrameStyle NeonArcadeFrame{.outerWidth = 4.5f,
                                                 .coreMinWidth = 1.0f,
                                                 .coreWhiten = 0.6f};
 inline constexpr NeonTextStyle NeonArcadeText{
+    .haloRadius = 5.0f,
+    .haloAlpha = 0.45f,
+    .coreWhiten = 0.2f,
     .rings = {{{.radius = 2.0f, .alpha = 0.06f}, {.radius = 4.0f, .alpha = 0.03f, .phase = 0.5f}}},
-    .samples = 8,
-    .coreWhiten = 0.2f};
-inline constexpr Color NeonArcadeButtonBody{24, 19, 50, 255};
-inline constexpr Color NeonArcadeButtonShadow{5, 3, 14, 255};
+    .samples = 8};
+inline constexpr Color4 NeonArcadeButtonBody{24, 19, 50, 255};
+inline constexpr Color4 NeonArcadeButtonShadow{5, 3, 14, 255};
 
 inline constexpr Color NeonArcadeTextShadow{0, 0, 0, 153};
 inline constexpr Vector2 NeonArcadeTextShadowOffset{2.0f, 2.0f};
@@ -171,7 +173,7 @@ inline constexpr BackdropTheme NeonArcadeBackdrop{
              .scanlineAlpha = 0.12f},
     .play = {.gridCell = 50, .gridScrollSpeed = 10.0f, .gridColor = {70, 45, 140, 40}, .scanlineAlpha = 0.07f},
     .gallery = {.gridCell = 50, .gridScrollSpeed = 10.0f, .gridColor = {70, 45, 140, 40}, .scanlineAlpha = 0.06f},
-    .scanlines = {.color = BLACK, .spacing = 4, .thickness = 1}};
+    .scanlines = {.color = {0, 0, 0, 255}, .spacing = 4.0f, .thickness = 1.0f}};
 
 inline constexpr Theme NeonArcadeTheme{
     .palette = NeonArcadePalette,
@@ -186,8 +188,8 @@ inline constexpr Theme NeonArcadeTheme{
                      .shineHeight = 3.0f,
                      .frame = NeonArcadeFrame},
            .chip = {.text = {12, 8, 24, 255},
-                    .paddingX = 10,
-                    .paddingY = 4,
+                    .paddingX = 10.0f,
+                    .paddingY = 4.0f,
                     .notch = 5.0f,
                     .glowRadiusScale = 0.7f,
                     .glowAlpha = 0.35f},
@@ -196,7 +198,7 @@ inline constexpr Theme NeonArcadeTheme{
                       .frameColor = {95, 85, 150, 255},
                       .label = {205, 200, 235, 255},
                       .shine = {255, 255, 255, 30},
-                      .pressColor = WHITE,
+                      .pressColor = {255, 255, 255, 255},
                       .depth = 8.0f,
                       .notch = 12.0f,
                       .grow = 0.07f,
@@ -215,7 +217,7 @@ inline constexpr Theme NeonArcadeTheme{
                       .shineOffset = 4.0f,
                       .shineHeight = 3.0f,
                       .shineHighlight = 2.0f,
-                      .padding = 28,
+                      .padding = 28.0f,
                       .frame = NeonArcadeFrame,
                       .text = NeonArcadeText},
            .roundButton = {.body = NeonArcadeButtonBody,
@@ -228,7 +230,7 @@ inline constexpr Theme NeonArcadeTheme{
                            .labelWhiten = 0.4f,
                            .textGlow = 0.6f,
                            .segments = 40,
-                           .padding = 28,
+                           .padding = 28.0f,
                            .text = NeonArcadeText},
            // Gövde yüzey renginde, çerçeve ve harf ikincil yazı renginde (yarı saydam).
            .keyCap = {.body = {18, 14, 40, 229},
