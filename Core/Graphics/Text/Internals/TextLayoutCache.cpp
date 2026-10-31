@@ -13,7 +13,8 @@ void Combine(std::size_t& hash, std::size_t value) {
 } // namespace
 
 TextLayoutCache::KeyView TextLayoutCache::View(const Key& key) {
-    return {key.font, key.size, key.maxWidth, key.lineSpacing, key.letterSpacing, key.wrap, key.fit, key.text};
+    return {key.font,          key.size, key.maxWidth, key.lineSpacing, key.lineHeight,
+            key.letterSpacing, key.wrap, key.fit,      key.text};
 }
 
 std::size_t TextLayoutCache::Hash::operator()(const KeyView& key) const noexcept {
@@ -22,6 +23,7 @@ std::size_t TextLayoutCache::Hash::operator()(const KeyView& key) const noexcept
     Combine(hash, std::bit_cast<std::uint32_t>(key.size));
     Combine(hash, std::bit_cast<std::uint32_t>(key.maxWidth));
     Combine(hash, std::bit_cast<std::uint32_t>(key.lineSpacing));
+    Combine(hash, std::bit_cast<std::uint32_t>(key.lineHeight));
     Combine(hash, std::bit_cast<std::uint32_t>(key.letterSpacing));
     Combine(hash, static_cast<std::size_t>(key.wrap) * 4 + static_cast<std::size_t>(key.fit));
     return hash;
@@ -31,17 +33,19 @@ std::size_t TextLayoutCache::Hash::operator()(const Key& key) const noexcept { r
 
 bool TextLayoutCache::Equal::operator()(const KeyView& a, const Key& b) const noexcept {
     return a.font == b.font && a.size == b.size && a.maxWidth == b.maxWidth && a.lineSpacing == b.lineSpacing &&
-           a.letterSpacing == b.letterSpacing && a.wrap == b.wrap && a.fit == b.fit && a.text == b.text;
+           a.lineHeight == b.lineHeight && a.letterSpacing == b.letterSpacing && a.wrap == b.wrap && a.fit == b.fit &&
+           a.text == b.text;
 }
 
 const TextBlock& TextLayoutCache::Get(const FontFace& font, std::string_view text, const TextStyle& style) {
-    const KeyView view{font.Id(),           style.size, style.maxWidth, style.lineSpacing,
-                       style.letterSpacing, style.wrap, style.fit,      text};
+    const KeyView view{font.Id(),         style.size,       style.maxWidth,
+                       style.lineSpacing, style.lineHeight, style.letterSpacing,
+                       style.wrap,        style.fit,        text};
     if (const auto found = _entries.find(view); found != _entries.end()) {
         found->second.lastUsed = _frame;
         return found->second.block;
     }
-    Key key{view.font,          view.size, view.maxWidth, view.lineSpacing,
+    Key key{view.font,          view.size, view.maxWidth, view.lineSpacing, view.lineHeight,
             view.letterSpacing, view.wrap, view.fit,      std::string(text)};
     return _entries.emplace(std::move(key), Entry{font.Layout(text, style), _frame}).first->second.block;
 }

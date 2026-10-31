@@ -81,8 +81,10 @@ const TextBlock block = paint.Font().Layout(longText, style); // Bir kez yerleş
 ```
 
 Konum ilk satırın tepesidir; yatayda `align`'a göre satırın sol ucu, ortası ya da sağ ucu. `TextStyle`: boy, renk,
-hizalama, `maxWidth` + `TextWrap::Word` / `TextFit::Shrink`, satır ve harf aralığı, `glow`, `outline`, `shadow`,
-`emission`. `TextFit::Shrink` ile küçülen yazı istenen boydaki satırın dikey ortasında kalır. `font.Measure(text, size)`
+hizalama, `maxWidth` + `TextWrap::Word` / `TextFit::Shrink`, satır aralığı (`lineSpacing` fontun satır yüksekliğinin
+katı ya da `lineHeight` birim olarak), harf aralığı, `glow`, `outline`, `shadow`, `emission`. Sık etiketler için
+kısaltmalar: `CenteredText(size, color, maxWidth)`, `FittedText(size, color, maxWidth, align)`. `Text` / `TextBox`
+çizilen bloğun boyutunu döndürür; alt alta paragraflar onunla ilerler. `TextFit::Shrink` ile küçülen yazı istenen boydaki satırın dikey ortasında kalır. `font.Measure(text, size)`
 sarmasız ölçüdür; `font.FittedSize(text, size, maxWidth)` Shrink'in vereceği boydur (hit-test ve yan yana yazılar için).
 Aynı metin her kare yeniden ölçülmez (yerleşim önbelleği). UTF-8 karakterlerini tek tek gezmek: `Utilities/Utf8.h`
 (`NextCodepoint`).

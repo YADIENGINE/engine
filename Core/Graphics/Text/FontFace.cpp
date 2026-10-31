@@ -188,7 +188,8 @@ TextBlock FontFace::Layout(std::string_view text, const TextStyle& style) const 
         const float widest = Widest(*_data, text, size, style.letterSpacing, wrap) - style.letterSpacing;
         if (widest > style.maxWidth) size *= style.maxWidth / widest;
     }
-    const float lineHeight = LineHeightOf(*_data, size) * std::max(style.lineSpacing, 0.0f);
+    const float lineHeight = style.lineHeight > 0.0f ? style.lineHeight * size / style.size
+                                                     : LineHeightOf(*_data, size) * std::max(style.lineSpacing, 0.0f);
     LineBuilder builder(*_data, size, style.letterSpacing, lineHeight, style.maxWidth, wrap, block._glyphs,
                         block._lines);
     for (std::size_t at = 0; at < text.size();)

@@ -75,38 +75,38 @@ const FontFace& Painter::Font() const {
 
 bool Painter::HasFont() const { return _context.font != nullptr; }
 
-void Painter::Text(std::string_view text, Float2 position, const TextStyle& style) {
-    if (!text.empty()) Text(Font(), text, position, style);
+Float2 Painter::Text(std::string_view text, Float2 position, const TextStyle& style) {
+    return text.empty() ? Float2{} : Text(Font(), text, position, style);
 }
 
-void Painter::TextBox(std::string_view text, const FloatRect& area, const TextStyle& style) {
-    if (!text.empty()) TextBox(Font(), text, area, style);
+Float2 Painter::TextBox(std::string_view text, const FloatRect& area, const TextStyle& style) {
+    return text.empty() ? Float2{} : TextBox(Font(), text, area, style);
 }
 
-void Painter::Text(const FontFace& font, std::string_view text, Float2 position, const TextStyle& style) {
+Float2 Painter::Text(const FontFace& font, std::string_view text, Float2 position, const TextStyle& style) {
     if (!_context.text) throw std::logic_error("Painter::Text: no text services in this renderer");
-    if (text.empty()) return;
+    if (text.empty()) return {};
     const TextBlock& block = _context.text->layouts.Get(font, text, style);
     // A shrunk text keeps the vertical centre of a line at the requested size (it stays centred in its slot).
-    Text(font, block, {position.x, position.y + (style.size - block.Size()) * 0.5f}, style);
+    return Text(font, block, {position.x, position.y + (style.size - block.Size()) * 0.5f}, style);
 }
 
-void Painter::TextBox(const FontFace& font, std::string_view text, const FloatRect& area, const TextStyle& style) {
+Float2 Painter::TextBox(const FontFace& font, std::string_view text, const FloatRect& area, const TextStyle& style) {
     TextStyle boxed = style;
     boxed.maxWidth = area.width;
     const float x = style.align == TextAlign::Left    ? area.x
                     : style.align == TextAlign::Right ? area.Right()
                                                       : area.Center().x;
-    Text(font, text, {x, area.y}, boxed);
+    return Text(font, text, {x, area.y}, boxed);
 }
 
-void Painter::Text(const FontFace& font, const TextBlock& block, Float2 position, const TextStyle& style) {
+Float2 Painter::Text(const FontFace& font, const TextBlock& block, Float2 position, const TextStyle& style) {
     PaintContext& context = _context;
     if (!context.text) throw std::logic_error("Painter::Text: no text services in this renderer");
     if (block.FontId() != font.Id())
         throw std::invalid_argument("Painter::Text: the block was laid out with another font");
     RequireWidth(style.outline.width, "Text outline width must not be negative");
-    if (block.Glyphs().empty() || !Finite(position)) return;
+    if (block.Glyphs().empty() || !Finite(position)) return block.Extent();
     const FontData& data = FontAccess::Data(font);
     GlyphCache& glyphs = context.text->glyphs;
     DrawList& list = context.list;
@@ -170,4 +170,5 @@ void Painter::Text(const FontFace& font, const TextBlock& block, Float2 position
                   .emission = emission});
     }
     if (style.color.a > 0) coverage({}, {.color = list.Shade(style.color), .emission = emission});
+    return block.Extent();
 }

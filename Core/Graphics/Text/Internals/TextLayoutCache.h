@@ -22,6 +22,7 @@ private:
         float size;
         float maxWidth;
         float lineSpacing;
+        float lineHeight;
         float letterSpacing;
         TextWrap wrap;
         TextFit fit;
@@ -32,6 +33,7 @@ private:
         float size;
         float maxWidth;
         float lineSpacing;
+        float lineHeight;
         float letterSpacing;
         TextWrap wrap;
         TextFit fit;

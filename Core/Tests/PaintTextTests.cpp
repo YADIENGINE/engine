@@ -60,6 +60,9 @@ TEST_CASE("Engine.Text.WordWrapKeepsLinesWithinTheWidth", "[engine][paint][text]
         CHECK(block.Glyphs()[line.firstGlyph].x == Approx(0.0f));
     }
     CHECK(block.Lines()[1].top == Approx(font.LineHeight(20.0f)));
+    style.lineHeight = 31.0f; // Absolute pitch replaces the font's line height
+    CHECK(font.Layout("snake snake snake snake", style).Lines()[1].top == Approx(31.0f));
+    style.lineHeight = 0.0f;
     style.maxWidth = word * 0.5f; // A word longer than the line breaks between characters
     const TextBlock broken = font.Layout("snake", style);
     CHECK(broken.Lines().size() >= 2);
@@ -140,8 +143,11 @@ TEST_CASE("Engine.Text.TextWithoutAFontUsesTheGamesFont", "[engine][paint][text]
     h.context.font = &TestFont();
     REQUIRE(h.paint.HasFont());
     CHECK(h.paint.Font().Id() == TestFont().Id());
-    h.paint.Text("Score", {10.0f, 10.0f}, {.size = 16.0f});
-    h.paint.TextBox("Score", {10.0f, 40.0f, 100.0f, 30.0f}, {.size = 16.0f});
+    CHECK(h.paint.Text("Score", {10.0f, 10.0f}, {.size = 16.0f}).x == Approx(TestFont().Measure("Score", 16.0f).x));
+    const Float2 box =
+        h.paint.TextBox("Score Score", {10.0f, 40.0f, TestFont().Measure("Score", 16.0f).x + 1.0f, 30.0f},
+                        {.size = 16.0f, .wrap = TextWrap::Word});
+    CHECK(box.y == Approx(TestFont().LineHeight(16.0f) + 16.0f)); // Two lines
     h.End();
     CHECK(h.Draws().size() == 1);
 }

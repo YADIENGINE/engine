@@ -30,9 +30,19 @@ struct TextStyle {
     TextWrap wrap = TextWrap::None;
     TextFit fit = TextFit::None;
     float lineSpacing = 1.0f;   // Multiplies the font's line height
+    float lineHeight = 0.0f;    // > 0: distance between lines in logical units instead (scaled with a shrink)
     float letterSpacing = 0.0f; // Extra advance after each character, logical units
     GlowStyle glow{};           // Soft light around the glyphs (radius at most half the size)
     TextOutline outline{};
     TextShadow shadow{};
     float emission = 0.0f;
 };
+
+// Shorthands for the usual label: shrunk to 'maxWidth' when one is given (0: no limit).
+[[nodiscard]] constexpr TextStyle FittedText(float size, Color4 color, float maxWidth = 0.0f,
+                                             TextAlign align = TextAlign::Left) {
+    return {.size = size, .color = color, .align = align, .maxWidth = maxWidth, .fit = TextFit::Shrink};
+}
+[[nodiscard]] constexpr TextStyle CenteredText(float size, Color4 color, float maxWidth = 0.0f) {
+    return FittedText(size, color, maxWidth, TextAlign::Center);
+}
