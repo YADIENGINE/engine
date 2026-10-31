@@ -1,15 +1,15 @@
 #pragma once
 #include <optional>
-#include "Utilities/Rect.h"
+#include "Utilities/FloatRect.h"
 
 struct GridViewportSettings {
-    Rect bounds;
+    FloatRect bounds;
     int columns = 1;
     int visibleRows = 1;
-    int tileWidth = 1;
-    int tileHeight = 1;
-    int gapX = 0;
-    int gapY = 0;
+    float tileWidth = 1.0f;
+    float tileHeight = 1.0f;
+    float gapX = 0.0f;
+    float gapY = 0.0f;
     float scrollSpeed = 0.0f; // zero snaps immediately
 };
 
@@ -19,7 +19,7 @@ public:
     explicit GridViewport(const GridViewportSettings& settings);
     void Reset(int itemCount, int selectedIndex);
     void Update(int itemCount, int selectedIndex, float deltaSeconds);
-    [[nodiscard]] Rect TileArea(int index) const;
+    [[nodiscard]] FloatRect TileArea(int index) const;
     // Uses the current count even when input changes content before the next Update.
     [[nodiscard]] std::optional<int> TileAt(Vec2 point, int itemCount) const;
     [[nodiscard]] int RowCount(int itemCount) const;

@@ -32,6 +32,7 @@ const uint FlagGradientLinear = 4u;
 const uint FlagGradientRadial = 8u;
 const uint FlagCapRound = 16u;
 const uint FlagCapSquare = 32u;
+const uint FlagCoverage = 64u;
 
 // GLSL 3.30 only indexes sampler arrays with constants. textureLod: no derivatives needed in branches.
 vec4 SampleSlot(uint slot, vec2 uv) {
@@ -152,6 +153,7 @@ void main() {
     } else if ((flags & FlagGradientRadial) != 0u) {
         color = mix(vColor, vColor2, clamp(length(vLocal) * vStyle.x, 0.0, 1.0));
     }
+    if ((flags & FlagCoverage) != 0u) coverage *= vShape.w;
     vec4 result = color * texel * coverage;
     oColor = result;
 

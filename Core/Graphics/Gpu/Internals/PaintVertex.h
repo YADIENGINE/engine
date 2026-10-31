@@ -33,6 +33,7 @@ inline constexpr std::uint8_t PaintGradientLinear = 0x04; // Fill: colour -> col
 inline constexpr std::uint8_t PaintGradientRadial = 0x08; // Fill: colour -> colour2 from the shape centre
 inline constexpr std::uint8_t PaintCapRound = 0x10;       // Segment / Arc: round ends (else flat)
 inline constexpr std::uint8_t PaintCapSquare = 0x20;      // Segment: ends extended by half the width
+inline constexpr std::uint8_t PaintCoverage = 0x40;       // Tessellated gradient: AA coverage in shape3
 
 struct PaintColor {
     std::uint8_t r = 0;
@@ -46,7 +47,7 @@ struct PaintColor {
 // already applied; 'local' is the shape's own coordinate system (distance shapes) or the texture coordinate.
 //   shape  Circle: radius | Ellipse: rx, ry | RoundRect / ChamferRect: half width, half height, corner |
 //          Segment: half length, half width | Arc: radius, half thickness, half sweep | Glow: radius |
-//          GlyphHalo: distance units per texel
+//          GlyphHalo: distance units per texel | Tessellated gradient: shape3 is AA coverage
 //   style  Stroke: half width, centre offset | Halo: radius, strength | Fill with gradient: direction / span (linear)
 //          or 1 / radius (radial) | GlyphHalo: radius, strength
 struct PaintVertex {

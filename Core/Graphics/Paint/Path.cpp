@@ -89,6 +89,19 @@ Path& Path::AddCircle(Float2 center, float radius) {
     return Close();
 }
 
+Path& Path::AddRegularPolygon(Float2 center, int sides, float radius, float radians) {
+    if (sides < 3) return *this;
+    for (int i = 0; i < sides; ++i) {
+        const Float2 point =
+            center + Float2::FromAngle(radians + static_cast<float>(i) * 2.0f * Pi / static_cast<float>(sides), radius);
+        if (i == 0)
+            MoveTo(point);
+        else
+            LineTo(point);
+    }
+    return Close();
+}
+
 void Path::Clear() {
     _verbs.clear();
     _points.clear();

@@ -40,6 +40,9 @@ void StrokePolyline(MeshBuffer& out, std::span<const Float2> points, bool closed
                     PaintColor color);
 // Appends a filled simple polygon (either winding). Falls back to a fan when ear clipping fails (self-intersection).
 void FillPolygon(MeshBuffer& out, std::span<const Float2> points, PaintColor color, float aa);
+// Gradient coordinates are relative to the shape's centre; toLocal maps target positions into that frame.
+void FillPolygon(MeshBuffer& out, std::span<const Float2> points, PaintColor from, PaintColor to,
+                 const Gradient& gradient, const Affine2& toLocal, float aa);
 // Appends a band from the polygon's edge outwards 'width' wide, 'color' at the edge fading to transparent.
 void PolygonHalo(MeshBuffer& out, std::span<const Float2> points, float width, PaintColor color);
 

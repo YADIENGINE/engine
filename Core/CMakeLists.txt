@@ -97,7 +97,7 @@ add_library(EngineHeadless STATIC
     Graphics/Anim/ButtonAnim.cpp
     Graphics/Draw/BackgroundDraw.cpp
     Graphics/Draw/DrawUtils.cpp
-    Graphics/Draw/GridViewport.cpp
+    Menus/GridViewport.cpp
     Graphics/Draw/Neon.cpp
     Graphics/Draw/ParticleDraw.cpp
     Graphics/Icons/Icons.cpp

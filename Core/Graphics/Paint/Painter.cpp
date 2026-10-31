@@ -196,7 +196,20 @@ void StrokeTargetPoints(PaintContext& context, std::span<const Float2> points, b
     SubmitMesh(context, EmissionByte(style.emission));
 }
 
-void ShadeTargetPolygon(PaintContext& context, std::span<const Float2> points, const ShapeStyle& style) {
+Float2 BoundsCenter(std::span<const Float2> points, const Affine2& transform = {}) {
+    if (points.empty()) return {};
+    Float2 low = transform.Apply(points.front());
+    Float2 high = low;
+    for (const Float2 point : points) {
+        const Float2 at = transform.Apply(point);
+        low = {std::min(low.x, at.x), std::min(low.y, at.y)};
+        high = {std::max(high.x, at.x), std::max(high.y, at.y)};
+    }
+    return (low + high) * 0.5f;
+}
+
+void ShadeTargetPolygon(PaintContext& context, std::span<const Float2> points, const ShapeStyle& style,
+                        Float2 gradientCenter) {
     DrawList& list = context.list;
     if (!ValidWidth(list, style.stroke.width, "Stroke width must not be negative")) return;
     const TargetScale scale = Measure(list);
@@ -205,16 +218,20 @@ void ShadeTargetPolygon(PaintContext& context, std::span<const Float2> points, c
         PolygonHalo(context.mesh, points, glow->radius * scale.scale, list.Shade(glow->color, true, glow->strength));
         SubmitMesh(context, emission);
     }
-    const Color4 fill = style.gradient.kind != GradientKind::None ? style.gradient.from : style.fill;
-    if (fill.a > 0) {
-        FillPolygon(context.mesh, points, list.Shade(fill), scale.aa);
+    if (style.gradient.kind != GradientKind::None) {
+        const Affine2 toLocal = Affine2::Translate(-gradientCenter) * list.State().transform.Inverse();
+        FillPolygon(context.mesh, points, list.Shade(style.gradient.from), list.Shade(style.gradient.to),
+                    style.gradient, toLocal, scale.aa);
+        SubmitMesh(context, emission);
+    } else if (style.fill.a > 0) {
+        FillPolygon(context.mesh, points, list.Shade(style.fill), scale.aa);
         SubmitMesh(context, emission);
     }
     if (style.stroke.width > 0.0f && style.stroke.color.a > 0) {
         StrokeTargetPoints(context, points, true,
                            {.width = style.stroke.width,
                             .color = style.stroke.color,
-                            .join = StrokeJoin::Miter,
+                            .join = style.stroke.join,
                             .emission = style.emission});
     }
 }
@@ -360,7 +377,7 @@ void Painter::Polyline(std::span<const Float2> points, const LineStyle& style, b
 void Painter::Polygon(std::span<const Float2> points, const ShapeStyle& style) {
     if (points.size() < 3) return;
     TransformPoints(_context, points);
-    ShadeTargetPolygon(_context, _context.points, style);
+    ShadeTargetPolygon(_context, _context.points, style, BoundsCenter(points));
 }
 
 void Painter::Triangle(Float2 a, Float2 b, Float2 c, const ShapeStyle& style) {
@@ -392,10 +409,11 @@ void Painter::FillPath(const Path& path, const ShapeStyle& style) {
     const Float2 pixels = list.CurrentTarget().PixelScale();
     const float tolerance = FlattenPixels / std::max(std::min(pixels.x, pixels.y), 1e-6f);
     FlattenPath(path, list.State().transform, tolerance, _context.points, _context.contours);
+    const Float2 center = BoundsCenter(_context.points, list.State().transform.Inverse());
     for (const Contour& contour : _context.contours) {
         if (contour.count < 3) continue;
         ShadeTargetPolygon(_context, std::span<const Float2>(_context.points).subspan(contour.first, contour.count),
-                           style);
+                           style, center);
     }
 }
 

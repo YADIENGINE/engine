@@ -22,6 +22,8 @@ public:
 
     // Closed contours of common shapes.
     Path& AddPolygon(std::span<const Float2> points);
+    // Closed regular polygon: 'sides' corners on a circle of 'radius', the first 'radians' clockwise from +x.
+    Path& AddRegularPolygon(Float2 center, int sides, float radius, float radians);
     Path& AddCircle(Float2 center, float radius);
 
     void Clear();

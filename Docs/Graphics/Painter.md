@@ -45,7 +45,10 @@ Under `Utilities/`, headless: `Float2` (operations, `Length`, `Normalized`, `Rot
 `ShapeStyle` parts draw together, in order: halo (`glow`), fill (`fill` or `gradient`), border (`stroke`, `Inside` /
 `Center` / `Outside`). Shortcuts: `Fill(color)`, `Outline(width, color)`. `Gradient::Linear(start, end, from, to)` is
 local to the shape's center; `Gradient::Radial(radius, from, to)` starts at the center; `Gradient::Vertical(height, top,
-bottom)`. Polygon and path fills use `gradient.from` instead of the gradient.
+bottom)`. Polygon gradients use the centre of the points' bounding box before the current transform; path fills use
+the bounding box of all flattened contours in that same drawing coordinate system. Linear and radial gradients
+include the antialiasing fringe. Polygon and path borders use `StrokeStyle::join` (`Miter` by default, `Bevel` or
+`Round`); distance shapes retain their analytic borders.
 
 Lines thinner than one pixel fade instead of becoming thinner. Zero sizes or NaN positions do not draw.
 
@@ -138,6 +141,9 @@ bloom itself; callers read it only to skip purely decorative work. `paint.Time()
 clock (editor Pause freezes it); `paint.PixelScale()` gives device pixels per unit.
 
 ## Helpers and theme
+
+`DrawBand` draws an arc between inner/outer radii with a `LineStyle` (its width is replaced); `DrawRing` uses a `ShapeStyle` with the same radius/width convention.
+`Path::AddRegularPolygon` adds a closed contour with the same clockwise corners as `DrawRegularPolygon`; fewer than three sides add nothing.
 
 Shared shapes and themed widgets sit above Painter; all take `Painter&` first, read quality and time from Painter, and
 draw text with the game's font:

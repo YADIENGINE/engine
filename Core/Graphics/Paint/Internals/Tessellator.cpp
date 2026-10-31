@@ -327,6 +327,31 @@ void FillPolygon(MeshBuffer& out, std::span<const Float2> input, PaintColor colo
     }
 }
 
+void FillPolygon(MeshBuffer& out, std::span<const Float2> points, PaintColor from, PaintColor to,
+                 const Gradient& gradient, const Affine2& toLocal, float aa) {
+    const std::size_t first = out.vertices.size();
+    FillPolygon(out, points, PaintColor{255, 255, 255, 255}, aa);
+    const Float2 axis = gradient.end - gradient.start;
+    const float span = std::max(LengthSquared(axis), 1e-12f);
+    for (std::size_t i = first; i < out.vertices.size(); ++i) {
+        PaintVertex& vertex = out.vertices[i];
+        const Float2 local = toLocal.Apply({vertex.x, vertex.y});
+        vertex.u = local.x;
+        vertex.v = local.y;
+        // Coverage must interpolate separately from both colours, including transparent gradient endpoints.
+        vertex.shape3 = static_cast<float>(vertex.color.a) / 255.0f;
+        vertex.color = from;
+        vertex.color2 = to;
+        if (gradient.kind == GradientKind::Linear) {
+            vertex.flags = PaintGradientLinear | PaintCoverage;
+            vertex.style0 = Dot(local - gradient.start, axis) / span;
+        } else {
+            vertex.flags = PaintGradientRadial | PaintCoverage;
+            vertex.style0 = gradient.radius > 0.0f ? 1.0f / gradient.radius : 0.0f;
+        }
+    }
+}
+
 void PolygonHalo(MeshBuffer& out, std::span<const Float2> input, float width, PaintColor color) {
     std::vector<Float2>& points = out.points;
     Deduplicate(input, true, points);

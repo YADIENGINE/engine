@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <vector>
 #include "Graphics/Paint/Painter.h"
+#include "Graphics/Paint/Path.h"
 #include "Utilities/MathUtils.h"
 
 namespace {
@@ -29,11 +30,24 @@ void DrawDiamond(Painter& paint, Float2 center, Float2 half, const ShapeStyle& s
 void DrawRegularPolygon(Painter& paint, Float2 center, int sides, float radius, float radians,
                         const ShapeStyle& style) {
     if (sides < 3) return;
-    std::vector<Float2> corners(static_cast<std::size_t>(sides));
-    for (std::size_t i = 0; i < corners.size(); ++i)
-        corners[i] =
-            center + Float2::FromAngle(radians + static_cast<float>(i) * 2.0f * Pi / static_cast<float>(sides), radius);
-    paint.Polygon(corners, style);
+    Path path;
+    path.AddRegularPolygon(center, sides, radius, radians);
+    paint.FillPath(path, style);
+}
+
+void DrawBand(Painter& paint, Float2 center, float inner, float outer, float start, float sweep,
+              const LineStyle& style) {
+    if (outer <= inner) return;
+    LineStyle band = style;
+    band.width = outer - inner;
+    paint.Arc(center, (inner + outer) * 0.5f, start, sweep, band);
+}
+
+void DrawRing(Painter& paint, Float2 center, float inner, float outer, const ShapeStyle& style) {
+    if (outer <= inner) return;
+    ShapeStyle ring = style;
+    ring.stroke.width = outer - inner;
+    paint.Circle(center, (inner + outer) * 0.5f, ring);
 }
 
 void DrawRotatedRect(Painter& paint, Float2 center, Float2 half, float radians, const ShapeStyle& style) {

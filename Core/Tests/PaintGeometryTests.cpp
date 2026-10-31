@@ -146,3 +146,32 @@ TEST_CASE("Engine.Tessellator.PathsFlattenWithinTolerance", "[engine][paint]") {
     CHECK_FALSE(contours[1].closed);
     CHECK(Near(points[contours[1].first + contours[1].count - 1], {9.0f, 5.0f}));
 }
+
+TEST_CASE("Engine.Path.RegularPolygonsAppendClosedClockwiseContours", "[engine][paint]") {
+    Path path;
+    path.AddRegularPolygon({10.0f, 20.0f}, 4, 5.0f, Pi * 0.5f);
+    std::vector<Float2> points;
+    std::vector<Contour> contours;
+    FlattenPath(path, {}, 0.1f, points, contours);
+    REQUIRE(contours.size() == 1);
+    CHECK(contours[0].closed);
+    REQUIRE(points.size() == 4);
+    CHECK(Near(points[0], {10.0f, 25.0f}));
+    CHECK(Near(points[1], {5.0f, 20.0f}));
+    CHECK(Near(points[2], {10.0f, 15.0f}));
+    CHECK(Near(points[3], {15.0f, 20.0f}));
+    const auto before = points;
+    for (int sides : {-1, 0, 1, 2})
+        path.AddRegularPolygon({}, sides, 10.0f, 0.0f);
+    FlattenPath(path, {}, 0.1f, points, contours);
+    CHECK(points == before);
+    REQUIRE(contours.size() == 1);
+    Path empty;
+    empty.AddRegularPolygon({}, 2, 10.0f, 0.0f);
+    CHECK(empty.Empty());
+    path.AddRegularPolygon({}, 3, 2.0f, 0.0f);
+    FlattenPath(path, {}, 0.1f, points, contours);
+    REQUIRE(contours.size() == 2);
+    CHECK(contours[1].count == 3);
+    CHECK(contours[1].closed);
+}

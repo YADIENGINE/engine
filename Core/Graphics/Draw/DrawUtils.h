@@ -29,6 +29,12 @@ struct LightningStyle {
 void DrawStar(Painter& paint, Float2 center, float outerRadius, const ShapeStyle& style);
 // Rhombus with its corners above, below and beside 'center'; 'half' is half its width and height.
 void DrawDiamond(Painter& paint, Float2 center, Float2 half, const ShapeStyle& style);
+// Thick arc between 'inner' and 'outer' radii from 'start' over 'sweep' radians (clockwise when positive);
+// a full turn draws a ring. Ignores style.width; uses outer - inner instead.
+void DrawBand(Painter& paint, Float2 center, float inner, float outer, float start, float sweep,
+              const LineStyle& style);
+// Ring between 'inner' and 'outer' radii; the stroke width is outer - inner.
+void DrawRing(Painter& paint, Float2 center, float inner, float outer, const ShapeStyle& style);
 // Regular polygon with 'sides' corners on a circle of 'radius'; the first corner points 'radians' clockwise from +x.
 void DrawRegularPolygon(Painter& paint, Float2 center, int sides, float radius, float radians, const ShapeStyle& style);
 // Rectangle turned 'radians' (clockwise on screen) around its centre; 'half' is half its width and height.

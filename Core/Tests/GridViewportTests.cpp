@@ -2,7 +2,7 @@
 #include <limits>
 #include <stdexcept>
 #include "Tests/Support/Diagnostics.h"
-#include "Graphics/Draw/GridViewport.h"
+#include "Menus/GridViewport.h"
 
 namespace {
 constexpr GridViewportSettings Settings{.bounds = {10, 20, 70, 45},
@@ -83,7 +83,7 @@ TEST_CASE("Engine.GridViewport.ConfiguresIndependentGeometryAndImmediateScrollin
                            .tileHeight = 18,
                            .gapX = 3,
                            .gapY = 5});
-    const Rect tile = viewport.TileArea(3);
+    const FloatRect tile = viewport.TileArea(3);
     CHECK(tile.x == 127);
     CHECK(tile.y == 223);
     CHECK(tile.width == 24);
@@ -112,4 +112,24 @@ TEST_CASE("Engine.GridViewport.RejectsInvalidSettingsAndSkipsInvalidAnimationDel
     invalid = Settings;
     invalid.scrollSpeed = std::numeric_limits<float>::infinity();
     CHECK_THROWS_AS(GridViewport(invalid), std::invalid_argument);
+    invalid = Settings;
+    invalid.tileWidth = std::numeric_limits<float>::quiet_NaN();
+    CHECK_THROWS_AS(GridViewport(invalid), std::invalid_argument);
+}
+
+TEST_CASE("Engine.GridViewport.KeepsFloatSizesAndConvertsIntegerPointerInput", "[engine][menus]") {
+    GridViewport viewport({.bounds = {10.25f, 20.0f, 50.5f, 40.5f},
+                           .columns = 2,
+                           .visibleRows = 2,
+                           .tileWidth = 20.5f,
+                           .tileHeight = 18.25f,
+                           .gapX = 4.25f,
+                           .gapY = 2.0f});
+    const FloatRect tile = viewport.TileArea(1);
+    CHECK(tile.x == Catch::Approx(35.0f));
+    CHECK(tile.width == Catch::Approx(20.5f));
+    CHECK(tile.height == Catch::Approx(18.25f));
+    CHECK(viewport.TileAt({35, 20}, 4) == 1);
+    CHECK_FALSE(viewport.TileAt({31, 20}, 4));
+    CHECK_FALSE(viewport.TileAt({10, 20}, 4));
 }

@@ -17,6 +17,7 @@ struct StrokeStyle {
     float width = 0.0f; // 0: no stroke
     Color4 color{};
     StrokeAlign align = StrokeAlign::Center;
+    StrokeJoin join = StrokeJoin::Miter;
 };
 
 // Light around a shape: fades from the shape's edge to 'radius' outside it, added on top of what is below.
