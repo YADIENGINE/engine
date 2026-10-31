@@ -466,9 +466,8 @@ terminalde çıktı vermez ve beklenmez (AI / CI çıkış kodunu okuyamaz).
   tasarım sonra.
 - Developer modundaki projeler sürüm takip etmez, engine reposunun dalını takip eder.
 
-**Launcher reposu (2026-10-31):** `YADIEN`, yerelde `C:\Users\WWW\Desktop\YADIEN` (oyun reposunun içinde değil,
-yanında); GitHub'da private `yagizdkurt/YADIEN`. Repo adı ürünün görünen adı değildir: launcher kodu ve belgeleri adı
-yine sabit yazmaz, gösterdiği ad içe aktarılan engine manifest'inden gelir.
+**Launcher reposu (2026-10-31):** GitHub'da `YADIENGINE/yadien` (D19). Repo adı ürünün görünen adı değildir:
+launcher kodu ve belgeleri adı yine sabit yazmaz, gösterdiği ad içe aktarılan engine manifest'inden gelir.
 
 **Aktif engine launcher reposunda submodule (2026-10-31):**
 ```
@@ -592,7 +591,7 @@ Kabul edildi: [Plan](Plan.md) (Aşama 0 hazırlık → 1 editör döngüsü → 
 Aşama 3 (launcher çekirdeği) için, tek tek konuşulur; karar alınınca ilgili D'ye yazılır:
 
 1. ~~Launcher'ın dili; CLI ile UI aynı exe mi~~ → D15 (C++20 çekirdek; `.exe` pencere + `.com` CLI).
-2. ~~Launcher reposunun adı ve diskteki yeri~~ → D16 (`YADIEN`, Desktop).
+2. ~~Launcher reposunun adı ve yeri~~ → D16 (`YADIENGINE/yadien`).
 3. ~~Gömülü araçların launcher'a nasıl girdiği~~ → D8 (kilit dosyası + özetli indirme betiği).
 4. ~~Kopyadaki manifest'in adı ve biçimi~~ → D4 (`EngineManifest.json` aynen + üretilen `EngineCopy.json`).
 5. ~~Developer modunun nasıl açıldığı~~ → D4 (Ayarlar'da şifre; repoda sadece PBKDF2 özeti).
