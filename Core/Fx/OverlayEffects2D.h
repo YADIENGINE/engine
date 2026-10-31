@@ -1,13 +1,14 @@
 #pragma once
-#include <raylib.h>
 #include <cstddef>
 #include <deque>
 #include <optional>
 #include <string>
-#include "Graphics/Draw/LegacyTextStyle.h"
-#include "Utilities/Rect.h"
+#include "Fx/FxText.h"
+#include "Utilities/Color4.h"
+#include "Utilities/Float2.h"
+#include "Utilities/FloatRect.h"
 
-class TextRenderer;
+class Painter;
 
 struct FlashStyle {
     float duration = 1.0f;
@@ -18,38 +19,38 @@ struct BannerStyle {
     float duration = 1.0f;
     float fadeSeconds = 0.0f;
     float curtainFadeSeconds = 0.0f;
-    Color curtain = BLANK;
-    Color color = WHITE;
-    Vector2 position{0.5f, 0.5f}; // normalized within supplied bounds
-    Vector2 offset{};
-    LegacyTextStyle text;
+    Color4 curtain{0, 0, 0, 0};
+    Color4 color{255, 255, 255, 255};
+    Float2 position{0.5f, 0.5f}; // normalized within supplied bounds
+    Float2 offset{};
+    FxTextStyle text;
 };
 
 struct ToastStyle {
     float duration = 1.0f;
     float queuedDuration = 1.0f;
     float fadeSeconds = 0.0f;
-    Vector2 position{0.5f, 0.0f};
-    Vector2 offset{};
-    LegacyTextStyle text;
+    Float2 position{0.5f, 0.0f};
+    Float2 offset{};
+    FxTextStyle text;
 };
 
 class OverlayEffects2D {
 public:
     explicit OverlayEffects2D(std::size_t toastCapacity);
-    void Flash(Color color, const FlashStyle& style);
+    void Flash(Color4 color, const FlashStyle& style);
     void Banner(const std::string& text, const BannerStyle& style);
-    void Toast(const std::string& text, Color color, const ToastStyle& style);
+    void Toast(const std::string& text, Color4 color, const ToastStyle& style);
     void Update(float deltaSeconds);
     void Clear();
-    // Flash, then banner, then toast. Does not open a clipping or camera scope.
-    void Draw(const TextRenderer& textRenderer, const Rect& bounds) const;
-    // Text uses bounds; flash and banner curtain cover fillBounds.
-    void Draw(const TextRenderer& textRenderer, const Rect& bounds, const Rect& fillBounds) const;
+    // Flash, then banner, then toast. Text is placed in 'bounds'; the flash and the banner curtain cover
+    // 'fillBounds'. Opens no clip or transform of its own.
+    void Draw(Painter& paint, const FloatRect& bounds, const FloatRect& fillBounds) const;
+    void Draw(Painter& paint, const FloatRect& bounds) const { Draw(paint, bounds, bounds); }
 
 private:
     struct FlashEntry {
-        Color color;
+        Color4 color;
         FlashStyle style;
         float life;
     };
@@ -60,7 +61,7 @@ private:
     };
     struct ToastEntry {
         std::string text;
-        Color color;
+        Color4 color;
         ToastStyle style;
         float life;
     };

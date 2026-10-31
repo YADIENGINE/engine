@@ -1,16 +1,18 @@
 #pragma once
-#include <raylib.h>
-#include "Utilities/Rect.h"
+#include "Utilities/Color4.h"
+#include "Utilities/Float2.h"
+#include "Utilities/FloatRect.h"
+
+class Painter;
 
 struct IrisStyle {
-    Color curtain{};
-    Color innerRim{};
-    Color outerRim{};
-    Color glow{};
+    Color4 curtain{};
+    Color4 innerRim{};
+    Color4 outerRim{};
+    Color4 glow{}; // Its alpha is the glow's strength
     float rimWidth = 0.0f;
     float glowWidth = 0.0f;
 };
 
-// Canvas koordinatlarında çizer; cover: 0 açık, 1 kapalı. Glow gücü rengin alpha'sıdır.
-// Bounds'a kırpar; çağrılırken başka bir scissor scope'u etkin olmamalıdır.
-void DrawIrisTransition(const Rect& bounds, Vector2 focus, float cover, const IrisStyle& style);
+// A closing circle around 'focus'; 'cover' 0: open, 1: closed. Clipped to 'bounds'.
+void DrawIrisTransition(Painter& paint, const FloatRect& bounds, Float2 focus, float cover, const IrisStyle& style);

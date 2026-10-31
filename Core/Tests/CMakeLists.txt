@@ -33,6 +33,7 @@ engine_tests(EngineTests
         CollectionPointerTests.cpp
         DragPointerTests.cpp
         FrameworkTests.cpp
+        FxTests.cpp
         GameOptionsTests.cpp
         GraphicsAnimationTests.cpp
         GridMenuTests.cpp

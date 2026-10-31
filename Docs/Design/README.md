@@ -469,6 +469,17 @@ tek yerden iyileşir. rlgl üstüne kurmak sabit köşe biçimi ve kontrolsüz y
 katmanımız köşe biçimini, yüklemeyi ve ölçümü bize verir, başka arka uç yeni bir `GpuDevice` uygulamasıdır.
 Durum: uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliyor; kullanım [Painter](../Graphics/Painter.md).
 
+### D18. Console paneli: editörde gerçek terminal
+**Karar:** Editörün alt dock'unda `Output`'un yanında ayrı bir `Console` paneli. İçinde ConPTY ile düz bir kabuk
+çalışır, libvterm ekranı çözer, ImGui çizer. Çekirdek ortak `Terminal/` hedefindedir (launcher da alabilir).
+Editör AI'a özel arayüz ya da komut yazmaz; AI CLI'ı kendi TUI'siyle olduğu gibi çalışır. İlk sürüm tek oturumdur
+(MVP + seçim / kaydırma geçmişi); sekmeler, link algılama ve MCP köprüsü sonra. Ayrıntı: [Console](Console.md).
+
+**Neden:** AI ile prototipleme editörden çıkmadan yapılabilmeli. Kendi sohbet arayüzümüz CLI'ın komutlarını, izin
+akışını ve her yeni özelliğini yeniden yazmayı gerektirir, hep geride kalır; gerçek terminal hiçbir şeyi yeniden
+yazmaz ve bakımı küçüktür (ConPTY işletim sisteminin, libvterm kararlı). D6 ile konsoldaki derleme editöre gider.
+Durum: kabul edildi, uygulanmadı.
+
 ## v1 iş sırası
 
 Kabul edildi: [Plan](Plan.md) (Aşama 0 hazırlık → 1 editör döngüsü → 2 tuning → 3 launcher MVP → 4 dağıtım;

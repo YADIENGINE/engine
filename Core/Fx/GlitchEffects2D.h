@@ -1,6 +1,8 @@
 #pragma once
-#include <raylib.h>
-#include "Utilities/Rect.h"
+#include "Utilities/Color4.h"
+#include "Utilities/FloatRect.h"
+
+class Painter;
 
 // Ekran glitch'i: her 'fps'te yeniden dağılan renk şeritleri, koyu yırtıklar ve statik pikseller. Yükseklikler
 // [min, max) aralığından seçilir; yoğunluk kalan süreyle söner.
@@ -18,10 +20,10 @@ struct GlitchStyle {
     int noise = 0;
     int noiseSize = 1;
     float noiseAlpha = 0.0f;
-    Color first = BLANK;
-    Color second = BLANK;
-    Color tear = BLANK;
-    Color highlight = WHITE;
+    Color4 first{0, 0, 0, 0};
+    Color4 second{0, 0, 0, 0};
+    Color4 tear{0, 0, 0, 0};
+    Color4 highlight{255, 255, 255, 255};
 };
 
 class GlitchEffects2D {
@@ -30,7 +32,8 @@ public:
     void Trigger(float seconds);
     void Update(float deltaSeconds);
     void Clear();
-    void Draw(const Rect& area, double timeSeconds) const;
+    // Clipped to 'area'; 'timeSeconds' picks the pattern.
+    void Draw(Painter& paint, const FloatRect& area, double timeSeconds) const;
 
 private:
     GlitchStyle _style;

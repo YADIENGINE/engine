@@ -1,5 +1,4 @@
 #pragma once
-#include <raylib.h>
 #include <cstddef>
 #include "Fx/CameraEffects2D.h"
 #include "Fx/FloatingText2D.h"
@@ -10,12 +9,13 @@
 #include "Fx/RingEffects2D.h"
 #include "Fx/ShockwaveEffects2D.h"
 #include "Fx/SpeedLines.h"
+#include "Utilities/Color4.h"
 
 // Ağır çekim: alan rengine çalar, kenarlar kararır, ağır ışık izleri akar; süresinin 'fadeStart' oranından sonra söner.
 struct SlowMotionStyle {
     float fadeStart = 1.0f;
     float tintAlpha = 0.0f;
-    int vignetteSize = 0;
+    float vignetteSize = 0.0f;
     float vignetteAlpha = 0.0f;
     SpeedLineStyle lines;
 };
@@ -38,6 +38,6 @@ struct FxStyle {
     ShockwaveStyle shockwave;
     GlitchStyle glitch;
     SlowMotionStyle slowMotion;
-    int vignetteSize = 0; // Görüş alanının kalıcı kenar karartması; 0: yok
-    Color vignetteColor = BLANK;
+    float vignetteSize = 0.0f; // Görüş alanının kalıcı kenar karartması; 0: yok
+    Color4 vignetteColor{0, 0, 0, 0};
 };

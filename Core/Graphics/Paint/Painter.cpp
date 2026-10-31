@@ -543,6 +543,12 @@ PaintScope Painter::Marker(std::string_view name) {
     return {*this, depth};
 }
 
+unsigned Painter::LegacyTextureName(const Surface& surface) const {
+    const SurfaceAccess::State& state = SurfaceAccess::Of(surface);
+    if (!state.drawn || !state.target.Valid()) return 0;
+    return _context.resources.Device().Native(state.target).colorTexture;
+}
+
 PaintScope Painter::Legacy() {
     PaintContext& context = _context;
     DrawList& list = context.list;

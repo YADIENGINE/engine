@@ -1,31 +1,32 @@
 #pragma once
-#include <raylib.h>
 #include <string>
 #include <vector>
-#include "Graphics/Draw/LegacyTextStyle.h"
+#include "Fx/FxText.h"
+#include "Utilities/Color4.h"
+#include "Utilities/Float2.h"
 
-class TextRenderer;
+class Painter;
 
 struct FloatingTextStyle {
     float duration = 1.0f;
-    Vector2 velocity{};
+    Float2 velocity{};
     float fadeSeconds = 0.0f;
     float popSeconds = 0.0f; // zero disables the EaseOutBack entrance
-    LegacyTextStyle text;
+    FxTextStyle text;
 };
 
 class FloatingText2D {
 public:
-    void Emit(Vector2 position, const std::string& text, Color color, const FloatingTextStyle& style);
+    void Emit(Float2 position, const std::string& text, Color4 color, const FloatingTextStyle& style);
     void Update(float deltaSeconds);
     void Clear();
-    void Draw(const TextRenderer& textRenderer) const;
+    void Draw(Painter& paint) const;
 
 private:
     struct Entry {
-        Vector2 position;
+        Float2 position;
         std::string text;
-        Color color;
+        Color4 color;
         float life;
         FloatingTextStyle style;
     };

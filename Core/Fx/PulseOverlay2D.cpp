@@ -1,14 +1,13 @@
 #include "Fx/PulseOverlay2D.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Draw/DrawUtils.h"
-#include "Graphics/Anim/Easing.h"
-#include "Utilities/MathUtils.h"
+#include "Graphics/Draw/BackgroundDraw.hpp"
+#include "Graphics/Paint/Painter.hpp"
 
 PulseOverlay2D::PulseOverlay2D(const PulseOverlayStyle& style)
     : _style(style) {}
 
-void PulseOverlay2D::SetActive(bool active, Color color) {
+void PulseOverlay2D::SetActive(bool active, Color4 color) {
     _active = active;
     _color = color;
 }
@@ -30,19 +29,14 @@ float PulseOverlay2D::Heartbeat() const {
     return beat(_time) + _style.secondBeatScale * beat(_time - _style.secondBeatAt);
 }
 
-void PulseOverlay2D::DrawTint(const Rect& area) const {
+void PulseOverlay2D::DrawTint(Painter& paint, const FloatRect& area) const {
     if (_intensity <= 0.0f) return;
-    BeginBlendMode(BLEND_ADDITIVE);
-    FillRect(area, Fade(_color, _intensity * (_style.tintAlpha + _style.tintBeatAlpha * Heartbeat())));
-    EndBlendMode();
+    auto light = paint.Blending(Blend::Add);
+    paint.Rect(area, Fill(WithAlpha(_color, _intensity * (_style.tintAlpha + _style.tintBeatAlpha * Heartbeat()))));
 }
 
-void PulseOverlay2D::DrawVignette(const Rect& area) const {
+void PulseOverlay2D::DrawVignette(Painter& paint, const FloatRect& area) const {
     if (_intensity <= 0.0f) return;
-    const Color edge = Fade(_color, _intensity * (_style.vignetteAlpha + _style.vignetteBeatAlpha * Heartbeat()));
-    const Color clear = Fade(_color, 0.0f);
-    DrawRectangleGradientV(area.x, area.y, area.width, _style.vignetteSize, edge, clear);
-    DrawRectangleGradientV(area.x, area.Bottom() - _style.vignetteSize, area.width, _style.vignetteSize, clear, edge);
-    DrawRectangleGradientH(area.x, area.y, _style.vignetteSize, area.height, edge, clear);
-    DrawRectangleGradientH(area.Right() - _style.vignetteSize, area.y, _style.vignetteSize, area.height, clear, edge);
+    ::DrawVignette(paint, area, _style.vignetteSize,
+                   WithAlpha(_color, _intensity * (_style.vignetteAlpha + _style.vignetteBeatAlpha * Heartbeat())));
 }

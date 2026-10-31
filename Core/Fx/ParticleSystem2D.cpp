@@ -3,6 +3,7 @@
 #include <cmath>
 #include <stdexcept>
 #include "Graphics/Draw/EffectQuality.h"
+#include "Graphics/Paint/Painter.hpp"
 
 namespace {
 bool ValidRange(FloatRange range) {
@@ -35,7 +36,7 @@ ParticleSystem2D::ParticleSystem2D(const ParticleSystemSettings& settings)
     _particles.reserve(_capacity);
 }
 
-void ParticleSystem2D::Emit(Vector2 position, int count, const ParticleEmission& emission,
+void ParticleSystem2D::Emit(Float2 position, int count, const ParticleEmission& emission,
                             const ParticleAppearance& appearance) {
     Validate(emission, appearance);
     count = ScaledParticleCount(count);
@@ -77,34 +78,32 @@ void ParticleSystem2D::Update(float deltaSeconds) {
 
 void ParticleSystem2D::Clear() { _particles.clear(); }
 
-void ParticleSystem2D::DrawPass(ParticleBlend blend) const {
+void ParticleSystem2D::DrawPass(Painter& paint, ParticleBlend blend) const {
     for (const Particle& particle : _particles) {
         const ParticleAppearance& appearance = particle.appearance;
         if (appearance.blend != blend) continue;
         const float remaining = particle.life / particle.duration;
         const float alpha = appearance.fadeFraction > 0.0f ? std::min(1.0f, remaining / appearance.fadeFraction) : 1.0f;
-        const Color color = Fade(appearance.color, alpha);
         const float size = particle.size * (appearance.endSizeScale + (1.0f - appearance.endSizeScale) * remaining) *
                            appearance.sizeScale;
+        const ParticleDrawData data{.position = particle.position,
+                                    .velocity = particle.velocity,
+                                    .color = WithAlpha(appearance.color, alpha),
+                                    .size = size,
+                                    .rotation = particle.rotation,
+                                    .normalizedAge = 1.0f - remaining};
         if (appearance.draw) {
-            appearance.draw({particle.position, particle.velocity, color, size, particle.rotation, 1.0f - remaining});
+            appearance.draw(paint, data);
             continue;
         }
-        DrawParticleShape(appearance.shape,
-                          {particle.position, particle.velocity, color, size, particle.rotation, 1.0f - remaining},
+        DrawParticleShape(paint, appearance.shape, data,
                           {appearance.sparkTrailSeconds,
                            std::max(appearance.sparkMinThickness, particle.size * appearance.sparkThickness)});
     }
 }
 
-void ParticleSystem2D::Draw() const {
-    DrawPass(ParticleBlend::Alpha);
-    BeginBlendMode(BLEND_ADDITIVE);
-    try {
-        DrawPass(ParticleBlend::Additive);
-    } catch (...) {
-        EndBlendMode();
-        throw;
-    }
-    EndBlendMode();
+void ParticleSystem2D::Draw(Painter& paint) const {
+    DrawPass(paint, ParticleBlend::Alpha);
+    auto light = paint.Blending(Blend::Add);
+    DrawPass(paint, ParticleBlend::Additive);
 }

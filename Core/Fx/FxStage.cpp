@@ -1,11 +1,11 @@
 #include "Fx/FxStage.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Draw/BackgroundDraw.h"
-#include "Graphics/Draw/DrawUtils.h"
 #include "Graphics/Anim/Easing.h"
+#include "Graphics/Draw/BackgroundDraw.hpp"
+#include "Graphics/Paint/Painter.hpp"
 
-FxStage::FxStage(const Rect& area, const Rect& viewArea, const FxStyle& style)
+FxStage::FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle& style)
     : _area(area)
     , _viewArea(viewArea)
     , _style(style)
@@ -44,69 +44,69 @@ void FxStage::Clear() {
     _slowMotionColor = {};
     _shot = {};
 }
-void FxStage::Burst(Vector2 at, Color color, int count, ParticleRecipe recipe) {
+void FxStage::Burst(Float2 at, Color4 color, int count, ParticleRecipe recipe) {
     EmitBurst(_particles, at, color, count, recipe, _style.particles);
 }
-void FxStage::Trail(Vector2 at, Color color) {
+void FxStage::Trail(Float2 at, Color4 color) {
     EmitLayer(_particles, at, color, _style.particles.trailCount, TrailRecipe(_style.particles));
 }
-void FxStage::Dash(Vector2 at, Vector2 facing, Color color) {
+void FxStage::Dash(Float2 at, Float2 facing, Color4 color) {
     EmitLayer(_particles, at, color, _style.particles.dashCount, DashRecipe(facing, _style.particles));
 }
-void FxStage::Steam(Vector2 at, Color color) {
+void FxStage::Steam(Float2 at, Color4 color) {
     const auto& tuning = _style.particles;
-    EmitLayer(_particles, at, Fade(ColorLerp(color, WHITE, tuning.steamWhiten), tuning.steamOpacity), tuning.steamCount,
-              SteamRecipe(tuning));
+    const Color4 steam = Mix(color, Color4{255, 255, 255, 255}, tuning.steamWhiten);
+    EmitLayer(_particles, at, WithAlpha(steam, tuning.steamOpacity), tuning.steamCount, SteamRecipe(tuning));
 }
-void FxStage::FloatText(Vector2 at, const std::string& text, Color color) { _texts.Emit(at, text, color, _style.text); }
-void FxStage::PopText(Vector2 at, const std::string& text, Color color, int fontSize) {
+void FxStage::FloatText(Float2 at, const std::string& text, Color4 color) { _texts.Emit(at, text, color, _style.text); }
+void FxStage::PopText(Float2 at, const std::string& text, Color4 color, float size) {
     auto style = _style.text;
-    style.text.fontSize = fontSize;
+    style.text.size = size;
     style.popSeconds = _style.textPopSeconds;
     _texts.Emit(at, text, color, style);
 }
-void FxStage::Ring(Vector2 at, Color color) { _rings.Emit(at, color, _style.ring); }
-void FxStage::Toast(const std::string& text, Color color) { _overlays.Toast(text, color, _style.toast); }
-void FxStage::Flash(Color color) { _overlays.Flash(color, _style.flash); }
+void FxStage::Ring(Float2 at, Color4 color) { _rings.Emit(at, color, _style.ring); }
+void FxStage::Toast(const std::string& text, Color4 color) { _overlays.Toast(text, color, _style.toast); }
+void FxStage::Flash(Color4 color) { _overlays.Flash(color, _style.flash); }
 void FxStage::Banner(const std::string& text) { _overlays.Banner(text, _style.banner); }
 void FxStage::Shake(float seconds) { _camera.Shake(seconds); }
-void FxStage::Punch(float amount, std::optional<Vector2> focus) { _camera.Punch(amount, focus); }
-void FxStage::Kick(Vector2 direction) { _camera.Kick(direction); }
-void FxStage::SetMotion(float intensity, Color color, Vector2 facing) {
+void FxStage::Punch(float amount, std::optional<Float2> focus) { _camera.Punch(amount, focus); }
+void FxStage::Kick(Float2 direction) { _camera.Kick(direction); }
+void FxStage::SetMotion(float intensity, Color4 color, Float2 facing) {
     _motionColor = color;
     _camera.SetMotion(intensity, facing);
 }
-void FxStage::SetPulse(bool active, Color color) { _pulse.SetActive(active, color); }
-void FxStage::Shockwave(Vector2 at, Color color, float reach) { _shockwaves.Emit(at, color, reach); }
+void FxStage::SetPulse(bool active, Color4 color) { _pulse.SetActive(active, color); }
+void FxStage::Shockwave(Float2 at, Color4 color, float reach) { _shockwaves.Emit(at, color, reach); }
 void FxStage::Glitch(float seconds) { _glitch.Trigger(seconds); }
-void FxStage::SlowMotion(float seconds, Color color) {
+void FxStage::SlowMotion(float seconds, Color4 color) {
     _slowMotionAge = 0.0f;
     _slowMotionDuration = std::max(0.0f, seconds);
     _slowMotionColor = color;
 }
-Camera2D FxStage::WorldCamera(float timeSeconds) const {
-    const Camera2D base = ShotCamera(_shot, ToRectangle(_area), ToRectangle(_area));
-    return _camera.Apply(base, timeSeconds);
+CameraView FxStage::WorldCamera(float timeSeconds) const {
+    return _camera.Apply(ShotCamera(_shot, _area, _area), timeSeconds);
 }
-void FxStage::DrawWorldLayer(const TextRenderer& text) const {
-    _pulse.DrawTint(_area);
-    _rings.Draw();
-    _particles.Draw();
-    _texts.Draw(text);
-    _shockwaves.Draw(_area);
+void FxStage::DrawWorldLayer(Painter& paint) const {
+    _pulse.DrawTint(paint, _area);
+    _rings.Draw(paint);
+    _particles.Draw(paint);
+    _texts.Draw(paint);
+    _shockwaves.Draw(paint, _area);
 }
-void FxStage::DrawOverlay(const TextRenderer& text, float timeSeconds) const {
-    _pulse.DrawVignette(_viewArea);
-    DrawVignette(_viewArea, _style.vignetteSize, _style.vignetteColor);
-    DrawSpeedLines(_area, _camera.MotionIntensity(), _motionColor, timeSeconds, _style.speedLines);
+void FxStage::DrawOverlay(Painter& paint) const {
+    const auto time = static_cast<float>(paint.Time());
+    _pulse.DrawVignette(paint, _viewArea);
+    DrawVignette(paint, _viewArea, _style.vignetteSize, _style.vignetteColor);
+    DrawSpeedLines(paint, _area, _camera.MotionIntensity(), _motionColor, time, _style.speedLines);
     if (_slowMotionAge < _slowMotionDuration) {
         const auto& slow = _style.slowMotion;
         const float fadeStart = _slowMotionDuration * slow.fadeStart;
         const float strength = 1.0f - EaseOutCubic(Progress01(_slowMotionAge, fadeStart, _slowMotionDuration));
-        DrawRectangleRec(ToRectangle(_area), Fade(_slowMotionColor, slow.tintAlpha * strength));
-        DrawVignette(_viewArea, slow.vignetteSize, Fade(_slowMotionColor, slow.vignetteAlpha * strength));
-        DrawSpeedLines(_area, strength, _slowMotionColor, _slowMotionAge, slow.lines);
+        paint.Rect(_area, Fill(WithAlpha(_slowMotionColor, slow.tintAlpha * strength)));
+        DrawVignette(paint, _viewArea, slow.vignetteSize, WithAlpha(_slowMotionColor, slow.vignetteAlpha * strength));
+        DrawSpeedLines(paint, _area, strength, _slowMotionColor, _slowMotionAge, slow.lines);
     }
-    _overlays.Draw(text, _area, _viewArea);
-    _glitch.Draw(_area, timeSeconds);
+    _overlays.Draw(paint, _area, _viewArea);
+    _glitch.Draw(paint, _area, paint.Time());
 }

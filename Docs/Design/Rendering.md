@@ -397,10 +397,15 @@ Eski yardımcıların (Draw, Neon, Ui, Backdrop, Icons, Fx) Painter karşılıkl
   diye işaretlidir; Painter karşılığı yerel haledir (`TextStyle::glow`). Göç bitince silinir. İstisna: oyunlar ikon
   stilini çoğunlukla hesaplanmış raylib renkleriyle kurar; eski `DrawIcon` bu yüzden raylib renkli
   `LegacyIconStyle` alır (paylaşılan `IconStyle` `Color4`'tür).
-- **Geçici örtük dönüşüm:** `Color4` raylib `Color`'ına örtük dönüşür (tek yön; `Color4.h` raylib'siz bir şablonla).
-  Oyunun paleti `Color4` olabilir ve iki yolda da kullanılır; ters yön (`ToColor4`) açıktır, böylece
-  `koşul ? Color4 : Color` belirsizleşmez. Köprüyle birlikte silinir. `Rect` → `FloatRect` örtük dönüşümü kalıcıdır
-  (kayıpsız genişletme).
+- **Geçici örtük dönüşümler, hepsi tek yönlü** (raylib'siz şablonlarla, köprüyle birlikte silinir): `Color4` →
+  raylib `Color` (yeni sabitler, ör. oyunun `Color4` paleti, eski çizime gider); raylib `Vector2` → `Float2` ve
+  `Rectangle` → `FloatRect` (taşınan kod eski hesapların değerlerini Painter'a verir). Ters yönler açıktır
+  (`ToColor4`, `ToVector2`), böylece `koşul ? Color4 : Color` ve karışık vektör aritmetiği belirsizleşmez.
+  `Rect` → `FloatRect` örtük dönüşümü kalıcıdır (kayıpsız genişletme).
+- **Fx eski yolsuz taşındı:** efekt sınıfları ikili yol tutmaz, doğrudan Painter'lıdır. Onları çizen sahne kökleri
+  (oyun alanı, mağaza, açılış, tanıtım, ekran geçişi) `Draw(Painter&)`'e geçer; içlerindeki taşınmamış View'lar
+  `paint.Legacy()` kapsamında kalır. Sahnenin `RenderLayer` katmanları `Surface` olur; katmanı raylib dokusu olarak
+  okuyan eski kod `LegacyTexture(paint, surface)` kullanır (geçici, `Painter::LegacyTextureName`).
 - **Varsayılan font:** `paint.Font()` oyunun fontudur (`GameSettings::font`); `paint.Text(text, ...)` ve
   `paint.TextBox(text, ...)` onu kullanır. Widget'lar font parametresi almaz; başka font `paint.Text(font, ...)`.
   View'ların `const TextRenderer&` taşıması biter.

@@ -1,9 +1,10 @@
 #pragma once
 #include <raylib.h>
+#include "Graphics/Draw/ParticleDraw.hpp"
 
-enum class ParticleShape { Circle, Square, Pixel, Spark, Star };
-
-struct ParticleDrawData {
+// Eski yol (raylib); ParticleShape ve Painter karşılığı Graphics/Draw/ParticleDraw.hpp'de. Bu başlık göç bitince
+// silinir.
+struct LegacyParticleDrawData {
     Vector2 position;
     Vector2 velocity;
     Color color;
@@ -11,9 +12,4 @@ struct ParticleDrawData {
     float rotation;
     float normalizedAge;
 };
-struct ParticleShapeStyle {
-    float sparkTrailSeconds = 0.0f;
-    float sparkThickness = 1.0f; // Çizime hazır piksel kalınlığı
-};
-// Parçacık simülasyonu ve statik küçük resimler aynı şekli çizer; tema/simülasyon bağımlılığı yoktur.
-void DrawParticleShape(ParticleShape shape, const ParticleDrawData& data, ParticleShapeStyle style = {});
+void DrawParticleShape(ParticleShape shape, const LegacyParticleDrawData& data, ParticleShapeStyle style = {});

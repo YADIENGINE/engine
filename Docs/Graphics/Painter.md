@@ -125,6 +125,10 @@ saati Painter'dan okur, yazıyı oyunun fontuyla çizer:
 | `Graphics/Draw/BackgroundDraw.hpp` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `BackdropStyle` ile `DrawBackdrop*` |
 | `Graphics/Ui/Backdrop.hpp` | Temanın arka plan rolleri: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
 | `Graphics/Icons/Icons.hpp` | Ortak ikon seti: `DrawIcon(paint, Icon::Star, center, size, {.color = gold})` |
+| `Fx/*` | Efektler (parçacık, uçan yazı, halka, şok dalgası, overlay, kamera, `FxStage`): [Effects](Effects.md) |
+
+Kamera `Utilities/CameraView.h`'tır (`offset`, `target`, `rotation` radyan, `zoom`; `Transform()`, `ToScreen`,
+`ToWorld`); dünya `auto view = paint.Transform(camera.Transform())` kapsamında çizilir.
 
 ```cpp
 DrawUiPanel(paint, _area, accent);
@@ -139,8 +143,11 @@ oynatan çizim (ör. önizleme kartı) de açık stilli fonksiyonu `time` ile ç
 
 Aynı ada sahip eski (raylib) fonksiyonlar `.h` başlıklarındadır ve göç bitince silinir; Painter sürümleri aynı adın
 `.hpp`'sindedir. Stil tipleri (`NeonPanelStyle`, `ButtonLook`, `BackdropStyle` ...) ve tema ikisinde ortaktır,
-renkler `Color4`'tür. Göç süresince `Color4` raylib `Color`'ına kendiliğinden dönüşür; tersi `ToColor4(color)`.
-Tek istisna ikonlardır: eski `DrawIcon` raylib renkli `LegacyIconStyle` alır, Painter'lı `DrawIcon` `IconStyle` alır.
+renkler `Color4`'tür. Göç süresince tek yönlü örtük dönüşümler vardır: `Color4` → raylib `Color` (yeni sabitler eski
+çizime), raylib `Vector2` → `Float2` ve `Rectangle` → `FloatRect` (eski değerler Painter'a); karşı yönler
+`ToColor4(color)` / `ToVector2(point)` ile açıktır. İkonlarda eski `DrawIcon` raylib renkli `LegacyIconStyle` alır,
+Painter'lı `DrawIcon` `IconStyle` alır. Taşınmamış kod bir `Surface`'in görüntüsünü raylib dokusu olarak
+`LegacyTexture(paint, surface)` ile alır (`Graphics/Render/LegacyTexture.h`, `Legacy()` kapsamında).
 
 | Eski | Painter |
 | --- | --- |
@@ -150,7 +157,8 @@ Tek istisna ikonlardır: eski `DrawIcon` raylib renkli `LegacyIconStyle` alır, 
 | `FillTriangle`, `FillQuad`, `FillPolygon` | `paint.Triangle`, `paint.Polygon` |
 | `BeginClip`, `BeginUiClip` | `auto clip = paint.Clip(rect)` |
 | `UiRegion::Draw` | `auto region = paint.Transform(UiTransform(source, target).Affine())` |
-| `RenderLayer` | `Surface` + `paint.Target` |
+| `RenderLayer` | `Surface` + `paint.Target` (const çizimdeki önbellek: `mutable Surface`) |
+| `Camera2D`, `BeginMode2D` | `CameraView` + `paint.Transform(camera.Transform())` |
 | `DrawMergedShadow` | `auto group = paint.Group({.opacity = darkness})` |
 | `DrawTime()` | `paint.Time()` |
 

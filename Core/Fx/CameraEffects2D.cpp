@@ -23,18 +23,18 @@ void CameraEffects2D::Shake(float seconds) {
     _shakeLife = std::max(_shakeLife, seconds);
 }
 
-void CameraEffects2D::Punch(float amount, std::optional<Vector2> focus) {
+void CameraEffects2D::Punch(float amount, std::optional<Float2> focus) {
     if (!std::isfinite(amount) || amount < 0.0f) throw std::invalid_argument("Punch amount must be nonnegative");
     _punch = std::max(_punch, amount);
     _punchFocus = focus;
 }
 
-void CameraEffects2D::Kick(Vector2 direction) {
+void CameraEffects2D::Kick(Float2 direction) {
     _kickVelocity.x += direction.x * _settings.kickImpulse;
     _kickVelocity.y += direction.y * _settings.kickImpulse;
 }
 
-void CameraEffects2D::SetMotion(float intensity, Vector2 direction) {
+void CameraEffects2D::SetMotion(float intensity, Float2 direction) {
     // Sprint efektleri kapalıyken kamera hareketi (ve ona bağlı hız çizgileri) söner.
     _motionTarget = CurrentEffectQuality().sprintEffects ? Clamp01(intensity) : 0.0f;
     _motionLeadTarget = {direction.x * _motionTarget, direction.y * _motionTarget};
@@ -70,15 +70,15 @@ void CameraEffects2D::Clear() {
     _motionLeadTarget = {};
 }
 
-Camera2D CameraEffects2D::Apply(const Camera2D& baseCamera, float timeSeconds) const {
-    Camera2D camera = baseCamera;
+CameraView CameraEffects2D::Apply(const CameraView& base, float timeSeconds) const {
+    CameraView camera = base;
     if (_punchFocus) {
-        camera.offset = GetWorldToScreen2D(*_punchFocus, baseCamera);
+        camera.offset = base.ToScreen(*_punchFocus);
         camera.target = *_punchFocus;
     }
     // Oyuncunun sarsıntı tercihi sarsıntıyı, tekmeyi ve zoom vuruşunu ölçekler; hareket önü (sprint) etkilenmez.
     const float scale = ShakeScale();
-    Vector2 shake{};
+    Float2 shake{};
     if (_shakeLife > 0.0f) {
         const float fade =
             _settings.shakeFadeSeconds > 0.0f ? std::min(_shakeLife / _settings.shakeFadeSeconds, 1.0f) : 1.0f;

@@ -1,42 +1,35 @@
 #include "Fx/IrisTransition.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Draw/DrawUtils.h"
-#include "Graphics/Draw/VectorMath.h"
+#include "Graphics/Paint/Painter.hpp"
 
 namespace {
-constexpr int IrisSegments = 96;
 constexpr float FullyCoveredRadius = 1.0f;
 } // namespace
 
-void DrawIrisTransition(const Rect& bounds, Vector2 focus, float cover, const IrisStyle& style) {
-    if (bounds.width <= 0 || bounds.height <= 0) return;
+void DrawIrisTransition(Painter& paint, const FloatRect& bounds, Float2 focus, float cover, const IrisStyle& style) {
+    if (bounds.Empty()) return;
     cover = std::clamp(cover, 0.0f, 1.0f);
     if (cover == 0.0f) return;
-    const float left = static_cast<float>(bounds.x);
-    const float top = static_cast<float>(bounds.y);
-    const float right = static_cast<float>(bounds.Right());
-    const float bottom = static_cast<float>(bounds.Bottom());
     const float glowWidth = std::max(0.0f, style.glowWidth);
     const float rimWidth = std::max(0.0f, style.rimWidth);
-    const float reach = std::max({Distance(focus, {left, top}), Distance(focus, {right, top}),
-                                  Distance(focus, {left, bottom}), Distance(focus, {right, bottom})}) +
-                        std::max(glowWidth, rimWidth);
+    const float reach =
+        std::max({Distance(focus, bounds.Position()), Distance(focus, {bounds.Right(), bounds.y}),
+                  Distance(focus, {bounds.x, bounds.Bottom()}), Distance(focus, {bounds.Right(), bounds.Bottom()})}) +
+        std::max(glowWidth, rimWidth);
     const float radius = reach * (1.0f - cover);
-    BeginClip(bounds.x, bounds.y, bounds.width, bounds.height);
+    auto clip = paint.Clip(bounds);
     if (radius < FullyCoveredRadius) {
-        FillRect(bounds, style.curtain);
-    } else {
-        DrawRing(focus, radius, reach + glowWidth, 0.0f, 360.0f, IrisSegments, style.curtain);
-        if (glowWidth > 0.0f) {
-            BeginBlendMode(BLEND_ADDITIVE);
-            DrawRing(focus, std::max(0.0f, radius - glowWidth), radius, 0.0f, 360.0f, IrisSegments, style.glow);
-            EndBlendMode();
-        }
-        if (rimWidth > 0.0f) {
-            DrawRing(focus, std::max(0.0f, radius - rimWidth), radius, 0.0f, 360.0f, IrisSegments, style.innerRim);
-            DrawRing(focus, radius, radius + rimWidth, 0.0f, 360.0f, IrisSegments, style.outerRim);
-        }
+        paint.Rect(bounds, Fill(style.curtain));
+        return;
     }
-    EndScissorMode();
+    paint.Circle(focus, radius, Outline(reach + glowWidth - radius, style.curtain, StrokeAlign::Outside));
+    if (glowWidth > 0.0f) {
+        auto light = paint.Blending(Blend::Add);
+        paint.Circle(focus, radius, Outline(std::min(glowWidth, radius), style.glow, StrokeAlign::Inside));
+    }
+    if (rimWidth > 0.0f) {
+        paint.Circle(focus, radius, Outline(std::min(rimWidth, radius), style.innerRim, StrokeAlign::Inside));
+        paint.Circle(focus, radius, Outline(rimWidth, style.outerRim, StrokeAlign::Outside));
+    }
 }

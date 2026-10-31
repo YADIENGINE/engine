@@ -1,7 +1,10 @@
 #pragma once
-#include <raylib.h>
 #include <vector>
-#include "Utilities/Rect.h"
+#include "Utilities/Color4.h"
+#include "Utilities/Float2.h"
+#include "Utilities/FloatRect.h"
+
+class Painter;
 
 // Şok dalgası: verilen erişime (0: alanın köşegeni) kadar genişleyen halka; arkasından 'trailDelay' sonra ikinci,
 // ince bir halka gelir.
@@ -13,22 +16,22 @@ struct ShockwaveStyle {
     float opacity = 1.0f;
     float trailOpacity = 1.0f;
     float rimWidth = 0.0f;
-    Color rim = WHITE;
-    int segments = 32;
+    Color4 rim{255, 255, 255, 255};
 };
 
 class ShockwaveEffects2D {
 public:
     explicit ShockwaveEffects2D(const ShockwaveStyle& style);
-    void Emit(Vector2 center, Color color, float reach = 0.0f);
+    void Emit(Float2 center, Color4 color, float reach = 0.0f);
     void Update(float deltaSeconds);
     void Clear();
-    void Draw(const Rect& bounds) const;
+    // 'bounds' gives the full reach (its diagonal) of waves emitted without one.
+    void Draw(Painter& paint, const FloatRect& bounds) const;
 
 private:
     struct Wave {
-        Vector2 center;
-        Color color;
+        Float2 center;
+        Color4 color;
         float reach;
         float age = 0.0f;
     };

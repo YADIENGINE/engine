@@ -74,7 +74,21 @@ engine_warnings(EngineLocalization)
 add_library(EngineHeadless STATIC
     Audio/Internals/AudioVolumePolicy.cpp
     Audio/Internals/Validation.cpp
+    Fx/CameraEffects2D.cpp
+    Fx/CameraShot.cpp
+    Fx/FloatingText2D.cpp
+    Fx/FxStage.cpp
+    Fx/FxText.cpp
+    Fx/GlitchEffects2D.cpp
+    Fx/IrisTransition.cpp
+    Fx/OverlayEffects2D.cpp
+    Fx/ParticleRecipes.cpp
+    Fx/ParticleSystem2D.cpp
+    Fx/PulseOverlay2D.cpp
+    Fx/RingEffects2D.cpp
     Fx/ShatterPattern.cpp
+    Fx/ShockwaveEffects2D.cpp
+    Fx/SpeedLines.cpp
     Fx/TimeScale.cpp
     Fx/TransitionClock.cpp
     GameObjects/GameObject.cpp
@@ -86,8 +100,12 @@ add_library(EngineHeadless STATIC
     Graphics/Draw/EffectQuality.cpp
     Graphics/Draw/GridViewport.cpp
     Graphics/Draw/Neon.cpp
+    Graphics/Draw/ParticleDraw.cpp
     Graphics/Draw/TextLayout.cpp
     Graphics/Icons/Icons.cpp
+    Graphics/Style/Theme.cpp
+    Graphics/Ui/Backdrop.cpp
+    Graphics/Ui/UiDraw.cpp
     Graphics/Gpu/Internals/NullDevice.cpp
     Graphics/Paint/Internals/DrawList.cpp
     Graphics/Paint/Internals/Tessellator.cpp
@@ -270,19 +288,6 @@ add_library(Engine STATIC
     Audio/Internals/AudioMusicStream.cpp
     Audio/Internals/EffectVoices.cpp
     Audio/Internals/State.cpp
-    Fx/CameraEffects2D.cpp
-    Fx/CameraShot.cpp
-    Fx/FxStage.cpp
-    Fx/GlitchEffects2D.cpp
-    Fx/ShockwaveEffects2D.cpp
-    Fx/PulseOverlay2D.cpp
-    Fx/FloatingText2D.cpp
-    Fx/OverlayEffects2D.cpp
-    Fx/ParticleSystem2D.cpp
-    Fx/ParticleRecipes.cpp
-    Fx/RingEffects2D.cpp
-    Fx/SpeedLines.cpp
-    Fx/IrisTransition.cpp
     Graphics/Icons/IconsLegacy.cpp
     Graphics/Draw/BackgroundDrawLegacy.cpp
     Graphics/Gpu/Internals/GlDevice.cpp
@@ -290,8 +295,9 @@ add_library(Engine STATIC
     Graphics/Draw/DrawUtilsLegacy.cpp
     Graphics/Draw/DrawTime.cpp
     Graphics/Draw/GlowBatch.cpp
-    Graphics/Draw/ParticleDraw.cpp
+    Graphics/Draw/ParticleDrawLegacy.cpp
     Graphics/Draw/NeonLegacy.cpp
+    Graphics/Render/LegacyTexture.cpp
     Graphics/Render/RenderLayer.cpp
     Graphics/Render/Internals/RenderTargetStack.cpp
     Graphics/Render/Internals/RenderExecutionContext.cpp
@@ -302,11 +308,8 @@ add_library(Engine STATIC
     Graphics/Render/Internals/Window.cpp
     Input/Internals/InputReader.cpp
     Platform/Internals/ApplicationFiles.cpp
-    Graphics/Style/Theme.cpp
-    Graphics/Ui/Backdrop.cpp
     Graphics/Ui/BackdropLegacy.cpp
     Graphics/Ui/UiButton.cpp
-    Graphics/Ui/UiDraw.cpp
     Graphics/Ui/UiDrawLegacy.cpp
     Runtime/Game.cpp
 )

@@ -44,6 +44,10 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 Particle shape drawing is shared by `Fx/ParticleSystem2D` and static previews through
 `Graphics/Draw/ParticleDraw`; it accepts explicit pose/style and never reads a theme.
 
+Render migration (`Docs/Design/Rendering.md` → R13): `Graphics/Paint` (Painter), `Text`, `Surface`, `Post` and `Gpu`
+are the new render core; the helpers above have Painter versions in `.hpp` headers next to their raylib `.h`
+originals, which are removed when the migration ends. `Fx/` is Painter-only and headless.
+
 Only `Ui` reads the theme. Shared shapes take explicit colors/styles: `DrawDiamond(Lines)`, `RowSlot` (centre of
 item `i` in a centred row of pips/stars/badges), `DrawLightning(from, to, seed, color, alpha, LightningStyle)`,
 `DrawNeonRing`, and `DrawProgressBar(bar, ProgressBarLook, ProgressBarStyle)` (themed: `DrawUiProgressBar`). When a
@@ -59,7 +63,7 @@ game needs a shape another game could use, it is added here (shape-named, style-
 - Bağımlılık yönü Runtime → Scene → GameObjects; SceneManager, Scene, GameObject ve ObjectList EngineHeadless'da,
   Game ise raylib'li Engine hedefindedir.
 - `Graphics/Anim`, temel geometri ve gameplay yardımcıları headless kullanılabilir.
-- `Graphics/Draw` → Render/Anim; Icons → Draw; Fx → Draw/Render/Anim;
+- `Graphics/Draw` → Render/Anim; Icons → Draw; Fx → Draw/Paint/Anim (headless);
   Style → Draw/Fx stil tipleri; Ui → Style/Draw. Temayı yalnız üst seviye Ui okur.
 - Engine → Game, modül → başka modülün Internals'ı ve dairesel modül bağımlılığı yasaktır.
 - GL kaynağı sahipleri pencere kurulduktan sonra oluşturulur ve pencere kapanmadan yok edilir.

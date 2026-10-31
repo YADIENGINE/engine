@@ -70,8 +70,10 @@ EngineManifest.json  Ad, sürüm, toolsContract, repo adresi, birikimli notlar (
 - CMake: `EngineHeadless` (headless) / `Engine` (raylib'li) ve modül hedefleri; oyun `engine_add_game`, editör worker'ı
   `engine_add_editor_worker` ile kurulur. Yeni `.cpp` ilgili hedefin listesine.
 - Bağımlılık yönleri (`Graphics/`): `Anim`, `Render` → `Utilities`; `Draw` → `Render` + `Anim`; `Icons` → `Draw`;
-  `Fx` → `Draw` + `Render` + `Anim`; `Style` → `Draw` + `Fx` (sadece stil tipleri); `Ui` → `Style` + `Draw`.
-  `Draw`, `Render` ve `Fx` temayı okumaz, stilleri ve saati parametre alır.
+  `Fx` → `Draw` + `Paint` + `Anim` (headless, Painter'lı); `Style` → `Draw` + `Fx` (sadece stil tipleri); `Ui` →
+  `Style` + `Draw`. `Draw`, `Render` ve `Fx` temayı okumaz, stilleri ve saati parametre alır.
+- Render göçü (`Docs/Design/Rendering.md` R13): yardımcıların Painter sürümü aynı adın `.hpp`'sinde, raylib'li eski
+  `.h` + `XLegacy.cpp` göç bitince silinir. Yeni kod `.hpp` API'sini kullanır.
 - Headless kod (`EngineHeadless`, `Utilities/`, mantık yardımcıları) raylib include etmez. `InitWindow`/`CloseWindow`
   sadece `Window`'da. Canvas koordinatları mantıksaldır; scissor `BeginClip` / `BeginUiClip`.
 - Yeni yardımcı yazmadan önce mevcutları kullan: `Easing.h`, `MathUtils.h`, `DrawUtils.h`, `Neon.h`, `VectorMath.h`.

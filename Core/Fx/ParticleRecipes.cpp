@@ -43,7 +43,7 @@ ParticleBurst BurstRecipe(ParticleRecipe recipe, const ParticleRecipeTuning& tun
 ParticleLayer TrailRecipe(const ParticleRecipeTuning& tuning) {
     return Layer(tuning, 1.0f, ParticleShape::Circle, tuning.trailSpeed, 0.0f, ParticleBlend::Additive);
 }
-ParticleLayer DashRecipe(Vector2 direction, const ParticleRecipeTuning& tuning) {
+ParticleLayer DashRecipe(Float2 direction, const ParticleRecipeTuning& tuning) {
     auto layer = Layer(tuning, 1.0f, ParticleShape::Spark, tuning.dashSpeed, 0.0f, ParticleBlend::Additive);
     layer.emission.direction = std::atan2(-direction.y, -direction.x);
     layer.emission.spread = tuning.dashSpread;
@@ -55,13 +55,13 @@ ParticleLayer SteamRecipe(const ParticleRecipeTuning& tuning) {
             .appearance = {.blend = ParticleBlend::Additive, .endSizeScale = tuning.steamEndSizeScale}};
 }
 
-void EmitLayer(ParticleSystem2D& particles, Vector2 position, Color color, int count, const ParticleLayer& layer) {
+void EmitLayer(ParticleSystem2D& particles, Float2 position, Color4 color, int count, const ParticleLayer& layer) {
     if (count <= 0) return;
     auto appearance = layer.appearance;
     appearance.color = color;
     particles.Emit(position, count, layer.emission, appearance);
 }
-void EmitBurst(ParticleSystem2D& particles, Vector2 position, Color color, int count, ParticleRecipe recipe,
+void EmitBurst(ParticleSystem2D& particles, Float2 position, Color4 color, int count, ParticleRecipe recipe,
                const ParticleRecipeTuning& tuning) {
     if (count <= 0) return;
     for (const auto& layer : BurstRecipe(recipe, tuning)) {

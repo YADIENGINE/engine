@@ -1,5 +1,4 @@
 #pragma once
-#include <raylib.h>
 #include <array>
 #include "Fx/ParticleSystem2D.h"
 
@@ -51,11 +50,11 @@ using ParticleBurst = std::array<ParticleLayer, 2>;
 [[nodiscard]] ParticleBurst BurstRecipe(ParticleRecipe recipe, const ParticleRecipeTuning& tuning);
 [[nodiscard]] ParticleLayer TrailRecipe(const ParticleRecipeTuning& tuning);
 // 'direction': hareket yönü; kıvılcımlar tersine saçılır.
-[[nodiscard]] ParticleLayer DashRecipe(Vector2 direction, const ParticleRecipeTuning& tuning);
+[[nodiscard]] ParticleLayer DashRecipe(Float2 direction, const ParticleRecipeTuning& tuning);
 [[nodiscard]] ParticleLayer SteamRecipe(const ParticleRecipeTuning& tuning);
 
 // Katmanı 'color' renginde 'count' adet yayar.
-void EmitLayer(ParticleSystem2D& particles, Vector2 position, Color color, int count, const ParticleLayer& layer);
+void EmitLayer(ParticleSystem2D& particles, Float2 position, Color4 color, int count, const ParticleLayer& layer);
 // 'count' adedi tarifin katmanlarına paylarıyla dağıtır.
-void EmitBurst(ParticleSystem2D& particles, Vector2 position, Color color, int count, ParticleRecipe recipe,
+void EmitBurst(ParticleSystem2D& particles, Float2 position, Color4 color, int count, ParticleRecipe recipe,
                const ParticleRecipeTuning& tuning);

@@ -3,10 +3,9 @@
 #include <cmath>
 #include <stdexcept>
 #include <utility>
-#include "Graphics/Draw/DrawUtils.h"
 #include "Graphics/Anim/Easing.h"
 #include "Graphics/Draw/EffectQuality.h"
-#include "Graphics/Draw/TextRenderer.h"
+#include "Graphics/Paint/Painter.hpp"
 
 namespace {
 void ValidateTiming(float duration, float fade) {
@@ -15,19 +14,18 @@ void ValidateTiming(float duration, float fade) {
     }
 }
 float FadeOut(float life, float seconds) { return seconds > 0.0f ? Clamp01(life / seconds) : 1.0f; }
-Vector2 Position(const Rect& bounds, Vector2 position, Vector2 offset) {
-    return {static_cast<float>(bounds.x) + static_cast<float>(bounds.width) * position.x + offset.x,
-            static_cast<float>(bounds.y) + static_cast<float>(bounds.height) * position.y + offset.y};
+Float2 Position(const FloatRect& bounds, Float2 position, Float2 offset) {
+    return {bounds.x + bounds.width * position.x + offset.x, bounds.y + bounds.height * position.y + offset.y};
 }
-LegacyTextStyle BoundedText(LegacyTextStyle style, const Rect& bounds) {
-    if (style.maxWidth <= 0) style.maxWidth = bounds.width;
+FxTextStyle BoundedText(FxTextStyle style, const FloatRect& bounds) {
+    if (style.maxWidth <= 0.0f) style.maxWidth = bounds.width;
     return style;
 }
 } // namespace
 
 OverlayEffects2D::OverlayEffects2D(std::size_t toastCapacity)
     : _toastCapacity(toastCapacity) {}
-void OverlayEffects2D::Flash(Color color, const FlashStyle& style) {
+void OverlayEffects2D::Flash(Color4 color, const FlashStyle& style) {
     ValidateTiming(style.duration, 0.0f);
     if (!std::isfinite(style.opacity) || style.opacity < 0.0f || style.opacity > 1.0f) {
         throw std::invalid_argument("Invalid flash opacity");
@@ -37,15 +35,15 @@ void OverlayEffects2D::Flash(Color color, const FlashStyle& style) {
 }
 void OverlayEffects2D::Banner(const std::string& text, const BannerStyle& style) {
     ValidateTiming(style.duration, style.fadeSeconds);
-    if (!std::isfinite(style.curtainFadeSeconds) || style.curtainFadeSeconds < 0.0f || style.text.fontSize <= 0) {
+    if (!std::isfinite(style.curtainFadeSeconds) || style.curtainFadeSeconds < 0.0f || !(style.text.size > 0.0f)) {
         throw std::invalid_argument("Invalid banner style");
     }
     _banner = BannerEntry{text, style, style.duration};
 }
-void OverlayEffects2D::Toast(const std::string& text, Color color, const ToastStyle& style) {
+void OverlayEffects2D::Toast(const std::string& text, Color4 color, const ToastStyle& style) {
     ValidateTiming(style.duration, style.fadeSeconds);
     ValidateTiming(style.queuedDuration, style.fadeSeconds);
-    if (style.text.fontSize <= 0) throw std::invalid_argument("Invalid toast font size");
+    if (!(style.text.size > 0.0f)) throw std::invalid_argument("Invalid toast font size");
     ToastEntry entry{text, color, style, style.duration};
     if (!_toast) {
         ShowToast(std::move(entry));
@@ -77,30 +75,22 @@ void OverlayEffects2D::Clear() {
     _toast.reset();
     _toastQueue.clear();
 }
-void OverlayEffects2D::Draw(const TextRenderer& textRenderer, const Rect& bounds) const {
-    Draw(textRenderer, bounds, bounds);
-}
-void OverlayEffects2D::Draw(const TextRenderer& textRenderer, const Rect& bounds, const Rect& fillBounds) const {
-    if (bounds.width <= 0 || bounds.height <= 0) return;
-    if (_flash) {
-        Color color = _flash->color;
-        color.a = static_cast<unsigned char>(255.0f * _flash->style.opacity * (_flash->life / _flash->style.duration));
-        FillRect(fillBounds, color);
-    }
+void OverlayEffects2D::Draw(Painter& paint, const FloatRect& bounds, const FloatRect& fillBounds) const {
+    if (bounds.Empty()) return;
+    if (_flash)
+        paint.Rect(fillBounds,
+                   Fill(WithAlpha(_flash->color, _flash->style.opacity * (_flash->life / _flash->style.duration))));
     if (_banner) {
         const BannerStyle& style = _banner->style;
         const float elapsed = style.duration - _banner->life;
-        if (elapsed < style.curtainFadeSeconds) {
-            FillRect(fillBounds, Fade(style.curtain, 1.0f - elapsed / style.curtainFadeSeconds));
-        }
-        textRenderer.DrawAnchored(_banner->text.c_str(), Position(bounds, style.position, style.offset),
-                                  Fade(style.color, FadeOut(_banner->life, style.fadeSeconds)),
-                                  BoundedText(style.text, bounds));
+        if (elapsed < style.curtainFadeSeconds)
+            paint.Rect(fillBounds, Fill(WithAlpha(style.curtain, 1.0f - elapsed / style.curtainFadeSeconds)));
+        DrawFxText(paint, _banner->text, Position(bounds, style.position, style.offset),
+                   WithAlpha(style.color, FadeOut(_banner->life, style.fadeSeconds)), BoundedText(style.text, bounds));
     }
     if (_toast) {
         const ToastStyle& style = _toast->style;
-        textRenderer.DrawAnchored(_toast->text.c_str(), Position(bounds, style.position, style.offset),
-                                  Fade(_toast->color, FadeOut(_toast->life, style.fadeSeconds)),
-                                  BoundedText(style.text, bounds));
+        DrawFxText(paint, _toast->text, Position(bounds, style.position, style.offset),
+                   WithAlpha(_toast->color, FadeOut(_toast->life, style.fadeSeconds)), BoundedText(style.text, bounds));
     }
 }

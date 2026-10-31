@@ -1,27 +1,31 @@
-#include "Graphics/Draw/ParticleDraw.h"
+#include "Graphics/Draw/ParticleDraw.hpp"
 #include <cmath>
-#include "Graphics/Draw/DrawUtils.h"
+#include "Graphics/Draw/DrawUtils.hpp"
+#include "Graphics/Paint/Painter.hpp"
+#include "Utilities/Affine2.h"
+#include "Utilities/FloatRect.h"
+#include "Utilities/MathUtils.h"
 
-void DrawParticleShape(ParticleShape shape, const ParticleDrawData& data, ParticleShapeStyle style) {
+void DrawParticleShape(Painter& paint, ParticleShape shape, const ParticleDrawData& data,
+                       const ParticleShapeStyle& style) {
     switch (shape) {
-    case ParticleShape::Circle: DrawCircleV(data.position, data.size, data.color); break;
-    case ParticleShape::Square:
-        DrawRectanglePro({data.position.x, data.position.y, data.size * 2.0f, data.size * 2.0f}, {data.size, data.size},
-                         data.rotation, data.color);
+    case ParticleShape::Circle: paint.Circle(data.position, data.size, Fill(data.color)); break;
+    case ParticleShape::Square: {
+        auto turned = paint.Transform(Affine2::Rotate(data.rotation * Pi / 180.0f, data.position));
+        paint.Rect(FloatRect::FromCenter(data.position, {data.size * 2.0f, data.size * 2.0f}), Fill(data.color));
         break;
+    }
     case ParticleShape::Pixel: {
+        // Whole units, snapped: a pixel-art square that never blurs.
         const float half = std::round(data.size);
-        DrawRectangleRec(
-            {std::round(data.position.x) - half, std::round(data.position.y) - half, half * 2.0f, half * 2.0f},
-            data.color);
+        paint.Rect({std::round(data.position.x) - half, std::round(data.position.y) - half, half * 2.0f, half * 2.0f},
+                   Fill(data.color));
         break;
     }
-    case ParticleShape::Spark: {
-        const Vector2 tail{data.position.x - data.velocity.x * style.sparkTrailSeconds,
-                           data.position.y - data.velocity.y * style.sparkTrailSeconds};
-        DrawLineEx(tail, data.position, style.sparkThickness, data.color);
+    case ParticleShape::Spark:
+        paint.Line(data.position - data.velocity * style.sparkTrailSeconds, data.position,
+                   {.width = style.sparkThickness, .color = data.color});
         break;
-    }
-    case ParticleShape::Star: DrawStar(data.position, data.size, data.color); break;
+    case ParticleShape::Star: DrawStar(paint, data.position, data.size, Fill(data.color)); break;
     }
 }

@@ -120,6 +120,9 @@ public:
     // Lets raylib-based code draw here during the migration to Painter: it sees the current target, transform and
     // clip. Remove once the caller is migrated.
     PaintScope Legacy();
+    // Migration only: the OpenGL texture holding 'surface' for raylib-based code (0 while it has no image); see
+    // Graphics/Render/LegacyTexture.h. Use it inside Legacy(), where drawing into the surface has been submitted.
+    [[nodiscard]] unsigned LegacyTextureName(const Surface& surface) const;
 
     // --- Frame information -------------------------------------------------------------------------------------
     // Presentation clock in seconds (frozen while the editor pauses) and the frame's step.

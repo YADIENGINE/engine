@@ -1,6 +1,7 @@
 #pragma once
 #include "Graphics/Style/NeonArcadePalette.h"
 #include "Graphics/Style/Theme.h"
+#include "Utilities/MathUtils.h"
 
 // Neon arcade hazır teması: çentikli koyu paneller, parlayan çerçeveler, basınca çöken 3B butonlar. Yeni bir tema bunu
 // kopyalayıp alanlarını değiştirerek başlar.
@@ -20,9 +21,9 @@ inline constexpr NeonTextStyle NeonArcadeText{
 inline constexpr Color4 NeonArcadeButtonBody{24, 19, 50, 255};
 inline constexpr Color4 NeonArcadeButtonShadow{5, 3, 14, 255};
 
-inline constexpr Color NeonArcadeTextShadow{0, 0, 0, 153};
-inline constexpr Vector2 NeonArcadeTextShadowOffset{2.0f, 2.0f};
-inline constexpr int NeonArcadeVignetteSize = 102;
+inline constexpr TextShadow NeonArcadeTextShadow{.offset = {2.0f, 2.0f}, .color = {0, 0, 0, 153}};
+inline constexpr float NeonArcadeVignetteSize = 102.0f;
+inline constexpr Color4 NeonArcadeWhite{255, 255, 255, 255};
 
 // Efektler: hızlı, parlak, kısa ömürlü parçacıklar; sert ama çabuk sönen kamera darbeleri.
 inline constexpr FxStyle NeonArcadeFx{
@@ -60,8 +61,8 @@ inline constexpr FxStyle NeonArcadeFx{
                   .steam = {.speed = {12.0f, 42.0f},
                             .lifetime = {0.35f, 0.65f},
                             .size = {1.5f, 3.0f},
-                            .direction = -PI * 0.5f,
-                            .spread = PI * 0.65f,
+                            .direction = -Pi * 0.5f,
+                            .spread = Pi * 0.65f,
                             .acceleration = {0.0f, -18.0f},
                             .drag = 1.5f},
                   .steamEndSizeScale = 2.5f,
@@ -82,27 +83,21 @@ inline constexpr FxStyle NeonArcadeFx{
     .text = {.duration = 0.9f,
              .velocity = {0.0f, -45.0f},
              .fadeSeconds = 0.45f,
-             .text = {.fontSize = 22,
-                      .anchor = {0.5f, 1.0f},
-                      .shadow = NeonArcadeTextShadow,
-                      .shadowOffset = NeonArcadeTextShadowOffset}},
+             .text = {.size = 22.0f, .anchor = {0.5f, 1.0f}, .shadow = NeonArcadeTextShadow}},
     .textPopSeconds = 0.25f,
-    .ring = {.duration = 0.5f, .endRadius = 62.5f, .thickness = 4.0f, .fadeSeconds = 0.5f, .segments = 32},
+    .ring = {.duration = 0.5f, .endRadius = 62.5f, .thickness = 4.0f, .fadeSeconds = 0.5f},
     .flash = {.duration = 0.35f, .opacity = 140.0f / 255.0f},
     .banner = {.duration = 1.6f,
                .fadeSeconds = 0.6f,
                .curtainFadeSeconds = 0.6f,
-               .curtain = BLACK,
+               .curtain = {0, 0, 0, 255},
                .color = NeonArcadePalette.text,
-               .text = {.fontSize = 80,
-                        .anchor = {0.5f, 0.5f},
-                        .shadow = NeonArcadeTextShadow,
-                        .shadowOffset = NeonArcadeTextShadowOffset}},
+               .text = {.size = 80.0f, .anchor = {0.5f, 0.5f}, .shadow = NeonArcadeTextShadow}},
     .toast = {.duration = 1.6f,
               .queuedDuration = 0.9f,
               .fadeSeconds = 0.4f,
               .offset = {0.0f, 40.0f},
-              .text = {.fontSize = 34, .shadow = NeonArcadeTextShadow, .shadowOffset = NeonArcadeTextShadowOffset}},
+              .text = {.size = 34.0f, .shadow = NeonArcadeTextShadow}},
     .speedLines = {.count = 40,
                    .rate = 2.2f,
                    .innerRadius = {0.6f, 0.9f},
@@ -129,8 +124,7 @@ inline constexpr FxStyle NeonArcadeFx{
                   .opacity = 0.9f,
                   .trailOpacity = 0.5f,
                   .rimWidth = 2.0f,
-                  .rim = WHITE,
-                  .segments = 72},
+                  .rim = NeonArcadeWhite},
     // Glitch: her karede yeniden dağılan kırmızı / camgöbeği şeritler, koyu yırtıklar ve statik noktalar.
     .glitch = {.fps = 24.0f,
                .bands = 9,
@@ -148,10 +142,10 @@ inline constexpr FxStyle NeonArcadeFx{
                .first = {255, 40, 90, 255},
                .second = {40, 240, 255, 255},
                .tear = {6, 4, 12, 255},
-               .highlight = WHITE},
+               .highlight = NeonArcadeWhite},
     .slowMotion = {.fadeStart = 0.7f,
                    .tintAlpha = 0.04f,
-                   .vignetteSize = 100,
+                   .vignetteSize = 100.0f,
                    .vignetteAlpha = 0.3f,
                    .lines = {.count = 24,
                              .rate = 1.0f,

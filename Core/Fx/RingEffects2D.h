@@ -1,6 +1,9 @@
 #pragma once
-#include <raylib.h>
 #include <vector>
+#include "Utilities/Color4.h"
+#include "Utilities/Float2.h"
+
+class Painter;
 
 struct RingStyle {
     float duration = 1.0f;
@@ -8,20 +11,19 @@ struct RingStyle {
     float endRadius = 0.0f;
     float thickness = 0.0f;
     float fadeSeconds = 0.0f;
-    int segments = 32;
 };
 
 class RingEffects2D {
 public:
-    void Emit(Vector2 position, Color color, const RingStyle& style);
+    void Emit(Float2 position, Color4 color, const RingStyle& style);
     void Update(float deltaSeconds);
     void Clear();
-    void Draw() const;
+    void Draw(Painter& paint) const;
 
 private:
     struct Ring {
-        Vector2 position;
-        Color color;
+        Float2 position;
+        Color4 color;
         float life;
         RingStyle style;
     };
