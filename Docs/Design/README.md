@@ -364,7 +364,7 @@ verir.
   - Kurulumdan sonra exe `--veloapp-install`, kaldırmada `--veloapp-uninstall` ile çalıştırılır (30 / 60 sn
     sınır); `VelopackApp::Build().Run()` yoksa launcher normal açılır ve öldürülür. Entegrasyon şarttır.
   - Kaldırma temizdir (klasör, kısayollar, kayıt gider); yalnız Velopack'in `%LOCALAPPDATA%\velopack\`
-    günlükleri kalır. Kendi günlüğümüzü (`velopack_<id>.log`) kaldırma hook'u siler.
+    günlükleri kalır (hook'tan sonra da yazıldığı için silinmez; kabul).
 - **Çalışan süreçler (Q4, 2026-10-31):** yeni sürümün Setup'ı kurulum klasöründen çalışan her süreci (launcher,
   `<engine>` komutları, onların python / cmake / ninja'sı) sormadan kapatır; aynı ya da eski sürümü de üzerine
   kurar. Editör projenin `build/`'inden çalıştığı için kapanmaz, yalnız o anki Build & Refresh'i bozulur. Elle

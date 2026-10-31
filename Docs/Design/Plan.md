@@ -93,7 +93,8 @@ Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, te
   şifresiz, repolar `YADIENGINE/engine` ve `YADIENGINE/yadien` olarak public, kullanıcıya dönük belgeler
   İngilizce. Yayın elle (`dev.py package` + Releases'a yükleme).
 - ~~Velopack deneme paketi~~ yapıldı (2026-10-31, bulgular D15).
-- Tek exe kurulum (D15), sırayla: (1) launcher entegrasyonu: `velopack_libc`, `VelopackApp::Run()`, kurulum /
+- Tek exe kurulum (D15), sırayla (1–3 yazıldı 2026-10-31, launcher derlemesi ve paket denemesi bekliyor; ayrıntı
+  launcher `Docs/Packaging.md`): (1) launcher entegrasyonu: `velopack_libc`, `VelopackApp::Run()`, kurulum /
   kaldırma hook'larında PATH ve günlük, `Settings.json` `current/`'in dışına (`LauncherLayout`); (2) paket betiği
   `dev.py package`: Release build + budanmış CMake (`Toolchain.lock.json` `exclude`) + `Engines/` + gömülü
   araçların lisans metinleri → `vpk pack`, imza adımının yeri boş; (3) Ayarlar'daki Licenses bölümü paketteki
