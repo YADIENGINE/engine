@@ -356,8 +356,24 @@ verir.
   notları manifest'te kalır (D16). **Neden:** engine sürümüne bağlansa yalnız launcher'ı değiştiren yayının numarası
   olmazdı ve iki seri taşınırken numara yanıltırdı.
 - **Paketleyen makine:** `vpk` bir .NET aracıdır (.NET SDK gerekir); sürümü launcher'ın kütüphanesiyle aynı tutulur.
-- **İlk iş deneme paketi:** var olan launcher build'i bir kez paketlenip kurulur / kaldırılır; Velopack bir
-  engel çıkarırsa geri dönüş Inno Setup 6.6'dır (bildirimsel `.iss`, yalnız ilerleme penceresi, Windows 11 stili).
+- **Deneme paketi (yapıldı 2026-10-31, vpk 1.2.161, Debug build):** Velopack engel çıkarmadı; geri dönüş (Inno
+  Setup 6.6) gerekmedi. Görülenler:
+  - Düzen: `%LOCALAPPDATA%\<id>\` altında `current\` (uygulama), `Update.exe`, `packages\` ve kısayolların
+    hedefi olan küçük bir `<id>.exe` başlatıcısı. Uygulamalar kaydı `Update.exe --uninstall` ile kaldırır.
+  - Boyut (Debug exe'lerle): Setup 47 MB, tam paket 40 MB; aynı içerikli sonraki sürümün delta paketi 2,3 MB.
+  - Kurulumdan sonra exe `--veloapp-install`, kaldırmada `--veloapp-uninstall` ile çalıştırılır (30 / 60 sn
+    sınır); `VelopackApp::Build().Run()` yoksa launcher normal açılır ve öldürülür. Entegrasyon şarttır.
+  - Kaldırma temizdir (klasör, kısayollar, kayıt gider); yalnız Velopack'in `%LOCALAPPDATA%\velopack\`
+    günlükleri kalır. Kendi günlüğümüzü (`velopack_<id>.log`) kaldırma hook'u siler.
+- **Çalışan süreçler (Q4, 2026-10-31):** yeni sürümün Setup'ı kurulum klasöründen çalışan her süreci (launcher,
+  `<engine>` komutları, onların python / cmake / ninja'sı) sormadan kapatır; aynı ya da eski sürümü de üzerine
+  kurar. Editör projenin `build/`'inden çalıştığı için kapanmaz, yalnız o anki Build & Refresh'i bozulur. Elle
+  kurulumda bu kabul edilir: kesilen derleme kaldığı yerden sürer (Ninja), ayarlar her değişiklikte diske yazılır,
+  engine güncellemesi yeni kopyayı yanına kurup sonda yer değiştirir. İndirme sayfası ve belgeler "kurmadan önce
+  launcher'ı kapat, derlemelerin bitmesini bekle" der. Otomatik güncelleme (v1 sonrası) launcher'dan yapılır ve
+  yalnız hiçbir `<engine>` komutu ya da iş çalışmazken, launcher kapanırken uygulanır; `<engine>.com` çalışırken
+  adlı bir mutex tutar. **Neden:** Velopack'in kapatması hook'larımızdan önce olur; elle kurulumu da korumak kendi
+  kurulum sarmalayıcımızı, yani reddedilen seçeneği geri getirirdi.
 - **Neden:** en modern kurulum deneyimi; v1 sonrasına bırakılan otomatik güncelleme ve delta güncelleme (yalnız
   değişen dosyalar iner, GitHub Releases'tan) aynı temelin üstünde neredeyse hazır gelir. Kendini kuran launcher
   seçeneğinde çıkarma, kendini silen kaldırıcı, kilitli dosya ve antivirüs sezgileri (~1–1,5k satır) bize kalırdı.
@@ -612,9 +628,8 @@ Aşama 4 (dağıtım) için, tek tek konuşulur:
 2. ~~Paketin sürümü~~ → D15 (launcher'ın kendi sürümü).
 3. ~~`Settings.json`'un yeri ve kaldırmanın sildikleri~~ → D15 (Velopack kökü; kaldırma iz bırakmaz, projeler ve
    MSVC kalır).
-4. Kurulum / güncelleme sırasında açık launcher, editör ya da `<engine>` komutu; aynı / eski sürümün tekrar
-   çalıştırılması. Deneme paketinden sonra konuşulur: Velopack'in çalışan süreçlere ve tekrar kuruluma ne yaptığı
-   orada görülür.
+4. ~~Güncelleme sırasında çalışan süreçler; aynı / eski sürümün tekrar kurulması~~ → D15 (elle kurulumda Velopack
+   kapatır, kabul; otomatik güncelleme yalnız boşta uygulanır).
 5. ~~"Ses araçlarını kur"~~ → D7 (istendiğinde, özeti sabit wheel'ler, `current/` dışına).
 6. ~~Yayın yeri ve CI~~ → D19 (hemen public; `YADIENGINE` organizasyonu; yayın elle, CI/CD ve SignPath ertelendi).
 7. ~~Lisans~~ → D19 (iki repo da MIT, "YADIEN contributors").
