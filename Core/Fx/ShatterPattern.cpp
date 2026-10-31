@@ -15,10 +15,6 @@ struct Corner {
     int edge = Border;
 };
 
-float Distance(Float2 a, Float2 b) { return std::hypot(b.x - a.x, b.y - a.y); }
-
-Float2 Mix(Float2 a, Float2 b, float t) { return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t}; }
-
 // Çokgenin 'seed'e 'other'dan yakın olan yarısı (Sutherland–Hodgman); kesimden doğan kenar 'neighbour'ındır.
 std::vector<Corner> Clip(const std::vector<Corner>& polygon, Float2 seed, Float2 other, int neighbour) {
     const Float2 normal{other.x - seed.x, other.y - seed.y};

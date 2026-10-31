@@ -41,6 +41,8 @@ engine_tests(EngineTests
         LifecycleTests.cpp
         MathTests.cpp
         ObjectListSafetyTests.cpp
+        PaintTests.cpp
+        PaintGeometryTests.cpp
         SceneManagerTests.cpp
         SceneObjectsTests.cpp
         SceneSafetyTests.cpp

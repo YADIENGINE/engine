@@ -1,0 +1,129 @@
+#pragma once
+#include <cstdint>
+#include <optional>
+#include <span>
+#include <string_view>
+#include "Graphics/Paint/PaintStyle.hpp"
+#include "Graphics/Post/PostSettings.hpp"
+#include "Graphics/Post/RenderQuality.hpp"
+#include "Graphics/Surface/TextureRef.hpp"
+#include "Utilities/Affine2.h"
+#include "Utilities/Color4.h"
+#include "Utilities/Float2.h"
+#include "Utilities/FloatRect.h"
+
+class Painter;
+class Path;
+class Surface;
+struct PaintContext;
+
+// A temporary Painter state (transform, clip, opacity, blend, group, target, marker, legacy drawing). It lasts until
+// the object is destroyed, then the previous state returns. Keep it in a local variable:
+//     auto clip = paint.Clip(area);
+// Scopes end in the reverse order they began; ending one early (by destroying it out of order) is a programming
+// error reported when the frame ends.
+class [[nodiscard]] PaintScope {
+public:
+    ~PaintScope();
+
+private:
+    friend class Painter;
+    PaintScope(Painter& painter, std::uint32_t depth)
+        : _painter(&painter)
+        , _depth(depth) {}
+    Painter* _painter;
+    std::uint32_t _depth;
+
+public:
+    PaintScope(const PaintScope&) = delete;
+    PaintScope& operator=(const PaintScope&) = delete;
+    PaintScope(PaintScope&&) = delete;
+    PaintScope& operator=(PaintScope&&) = delete;
+};
+
+// Draws the group into a temporary image first, then composites it in one piece: overlapping parts do not add up
+// (a fading sprite made of several shapes fades as a whole).
+struct GroupStyle {
+    float opacity = 1.0f;
+    Blend blend = Blend::Normal;
+    float emission = 0.0f; // Extra bloom share of the whole group
+};
+
+// Records drawing for one frame (or one offscreen surface). Coordinates are logical canvas units (y down), angles
+// radians clockwise. Every shape is anti-aliased and positioned with sub-pixel precision; nothing is drawn until the
+// frame ends, but the order of calls is always kept. Degenerate input (zero size, NaN) draws nothing; invalid style
+// values (negative widths) throw invalid_argument.
+class Painter {
+public:
+    explicit Painter(PaintContext& context);
+
+    // --- Shapes ------------------------------------------------------------------------------------------------
+    void Rect(const FloatRect& rect, const ShapeStyle& style);
+    void RoundRect(const FloatRect& rect, float radius, const ShapeStyle& style);
+    // Rectangle with its corners cut off at 45 degrees ('chamfer' along each edge).
+    void ChamferRect(const FloatRect& rect, float chamfer, const ShapeStyle& style);
+    void Circle(Float2 center, float radius, const ShapeStyle& style);
+    void Ellipse(Float2 center, Float2 radii, const ShapeStyle& style);
+    // Part of a circle's outline from 'startAngle' over 'sweep' (clockwise when positive), 'style.width' thick.
+    // Caps: Butt or Round. A full turn draws a ring.
+    void Arc(Float2 center, float radius, float startAngle, float sweep, const LineStyle& style);
+    void Line(Float2 from, Float2 to, const LineStyle& style);
+    void Polyline(std::span<const Float2> points, const LineStyle& style, bool closed = false);
+    // Simple (non-self-intersecting) polygon: fill (no gradient), stroke and glow are supported.
+    void Polygon(std::span<const Float2> points, const ShapeStyle& style);
+    void Triangle(Float2 a, Float2 b, Float2 c, const ShapeStyle& style);
+    void FillPath(const Path& path, const ShapeStyle& style);
+    void StrokePath(const Path& path, const LineStyle& style);
+    // Soft round light fading from 'center' to 'radius', added on top (follows RenderQuality::glow).
+    void Glow(Float2 center, float radius, const LightStyle& light);
+
+    // --- Images ------------------------------------------------------------------------------------------------
+    void Image(const TextureRef& texture, const FloatRect& dest, const ImageStyle& style = {});
+    // Whole surface into 'dest'; the surface must have been drawn into this frame or earlier.
+    void Image(const Surface& surface, const FloatRect& dest, const ImageStyle& style = {});
+    void NineSlice(const TextureRef& texture, const FloatRect& dest, const NineSliceStyle& style);
+
+    // --- State scopes ------------------------------------------------------------------------------------------
+    // Following drawing goes through 'transform' (applied before the current one).
+    PaintScope Transform(const Affine2& transform);
+    // Following drawing is clipped to 'rect' (current coordinates) intersected with the current clip. The transform
+    // must not rotate (90-degree multiples included); otherwise invalid_argument.
+    PaintScope Clip(const FloatRect& rect);
+    // Multiplies the alpha of following drawing. Overlapping parts show through each other; see Group.
+    PaintScope Opacity(float opacity);
+    PaintScope Blending(Blend blend);
+    PaintScope Group(const GroupStyle& style = {});
+    // Following drawing goes into 'surface' (fresh state: no transform, clip or opacity); cleared first unless
+    // 'clear' is empty.
+    PaintScope Target(Surface& surface, std::optional<Color4> clear = Color4{0, 0, 0, 0});
+    // Names the following GPU work in captures and the profiler. 'name' must outlive the frame (a literal).
+    PaintScope Marker(std::string_view name);
+    // Lets raylib-based code draw here during the migration to Painter: it sees the current target, transform and
+    // clip. Remove once the caller is migrated.
+    PaintScope Legacy();
+
+    // --- Frame information -------------------------------------------------------------------------------------
+    // Presentation clock in seconds (frozen while the editor pauses) and the frame's step.
+    [[nodiscard]] double Time() const;
+    [[nodiscard]] float Delta() const;
+    [[nodiscard]] const RenderQuality& Quality() const;
+    // Device pixels one unit covers under the current transform (for level-of-detail decisions).
+    [[nodiscard]] float PixelScale() const;
+    // Logical rectangle of the current target (the canvas or a surface) in target coordinates.
+    [[nodiscard]] FloatRect Bounds() const;
+    // True when 'surface' has no up-to-date image for the current resolution and must be drawn again.
+    [[nodiscard]] bool Stale(const Surface& surface) const;
+    // This frame's post-processing (starts as the game's defaults every frame).
+    [[nodiscard]] PostSettings& Post();
+
+private:
+    friend class PaintScope;
+    void EndScope(std::uint32_t depth);
+    PaintContext& _context;
+
+public:
+    Painter(const Painter&) = delete;
+    Painter& operator=(const Painter&) = delete;
+    Painter(Painter&&) = delete;
+    Painter& operator=(Painter&&) = delete;
+};

@@ -84,6 +84,14 @@ add_library(EngineHeadless STATIC
     Graphics/Draw/EffectQuality.cpp
     Graphics/Draw/GridViewport.cpp
     Graphics/Draw/TextLayout.cpp
+    Graphics/Gpu/Internals/NullDevice.cpp
+    Graphics/Paint/Internals/DrawList.cpp
+    Graphics/Paint/Internals/Tessellator.cpp
+    Graphics/Paint/Painter.cpp
+    Graphics/Paint/Path.cpp
+    Graphics/Render/Internals/FrameExecutor.cpp
+    Graphics/Render/Internals/RenderResources.cpp
+    Graphics/Surface/Surface.cpp
     Input/Internals/CollectionPointer.cpp
     Input/Internals/DragPointer.cpp
     Input/Internals/InputNavigation.cpp
