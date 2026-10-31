@@ -1,11 +1,13 @@
 #include "Editor/Ui/Commands/EditorCommands.h"
+#include <imgui_internal.h>
+#include <algorithm>
 #include <string>
 #include "Editor/Application/EditorCommandState.h"
-#include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
+constexpr float PrimaryWidthInFonts = 8.0f;
 const EditorCommandInfo& CommandInfo(EditorCommand command) {
     return EditorCommands()[static_cast<std::size_t>(command)];
 }
@@ -17,12 +19,15 @@ EditorGlyph CommandGlyph(EditorCommand command, const EditorSnapshot& snapshot) 
     if (command == EditorCommand::Pause && snapshot.paused) return EditorGlyph::Play;
     return CommandInfo(command).glyph;
 }
+std::string CommandButtonLabel(EditorCommand command, const EditorSnapshot& snapshot) {
+    return std::string(EditorGlyphText(CommandGlyph(command, snapshot))) + "  " + EditorCommandLabel(command, snapshot);
+}
 ImVec4 CommandColor(EditorCommand command, const EditorSnapshot& snapshot) {
     switch (command) {
-    case EditorCommand::Open   : return ToolToneColor(ToolTone::Accent);
+    case EditorCommand::Open   : return ToolToneColor(ToolTone::Success);
     case EditorCommand::Stop   : return ToolToneColor(ToolTone::Error);
     case EditorCommand::Pause  : return ToolToneColor(snapshot.paused ? ToolTone::Success : ToolTone::Warning);
-    case EditorCommand::Refresh: return ToolToneColor(ToolTone::Information);
+    case EditorCommand::Refresh: return {192.0f / 255, 164.0f / 255, 235.0f / 255, 1};
     case EditorCommand::Cancel : return ToolToneColor(ToolTone::Warning);
     case EditorCommand::Reset  :
     case EditorCommand::Step   :
@@ -85,26 +90,54 @@ void EditorCommandMenuItem(EditorCommand command, const EditorSnapshot& snapshot
     ToolTooltip(CommandTooltip(command, snapshot).c_str());
 }
 
+float EditorCommandButtonWidth(EditorCommand command, const EditorSnapshot& snapshot, bool showLabel) {
+    if (!showLabel) return ImGui::GetFrameHeight();
+    const float width = ImGui::CalcTextSize(CommandButtonLabel(command, snapshot).c_str()).x +
+                        ImGui::GetStyle().FramePadding.x * 2;
+    return command == EditorPrimaryCommand(snapshot) ? std::max(width, ImGui::GetFontSize() * PrimaryWidthInFonts)
+                                                     : width;
+}
+
 bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, const EditorUiActions& actions,
                          bool showLabel) {
-    ImGui::PushID(static_cast<int>(command));
-    ImGui::BeginDisabled(!snapshot.capabilities.Can(command));
-    ImGui::PushStyleColor(ImGuiCol_Text, CommandColor(command, snapshot));
+    const auto tone = CommandColor(command, snapshot);
+    const auto base = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+    auto background = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+    auto hovered = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+    auto pressedColor = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+    auto border = ImGui::GetStyleColorVec4(ImGuiCol_Border);
+    auto text = ImGui::GetStyleColorVec4(ImGuiCol_Text);
     const bool active = command == EditorCommand::Pause && snapshot.paused;
-    const auto tooltip = CommandTooltip(command, snapshot);
-    bool pressed = false;
-    if (showLabel) {
-        const std::string label = std::string(EditorGlyphText(CommandGlyph(command, snapshot))) + "  " +
-                                  EditorCommandLabel(command, snapshot);
-        if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Header));
-        pressed = ImGui::Button(label.c_str());
-        if (active) ImGui::PopStyleColor();
-        ToolTooltip(tooltip.c_str());
-    } else {
-        pressed = EditorIconButton("command", CommandGlyph(command, snapshot), tooltip.c_str(), active);
+    if (command == EditorPrimaryCommand(snapshot)) {
+        background = tone;
+        hovered = ImLerp(tone, ToolPalette::Text, 0.12f);
+        pressedColor = ImLerp(tone, ToolPalette::Content, 0.16f);
+        border = tone;
+        text = ToolPalette::Content;
+    } else if (command == EditorCommand::Pause || command == EditorCommand::Refresh) {
+        background = ImLerp(base, tone, active ? 0.32f : 0.22f);
+        hovered = ImLerp(base, tone, active ? 0.42f : 0.34f);
+        pressedColor = ImLerp(base, tone, 0.46f);
+        border = ImLerp(border, tone, 0.48f);
+        text = tone;
     }
-    ImGui::PopStyleColor();
+    ImGui::PushID(static_cast<int>(command));
+    ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
+    ImGui::BeginDisabled(!snapshot.capabilities.Can(command));
+    ImGui::PushStyleColor(ImGuiCol_Button, background);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, pressedColor);
+    ImGui::PushStyleColor(ImGuiCol_Border, border);
+    ImGui::PushStyleColor(ImGuiCol_Text, text);
+    std::string label =
+        showLabel ? CommandButtonLabel(command, snapshot) : EditorGlyphText(CommandGlyph(command, snapshot));
+    label += "###command";
+    const bool pressed = ToolButton(
+        label.c_str(), {EditorCommandButtonWidth(command, snapshot, showLabel), ImGui::GetFrameHeight()});
+    ImGui::PopStyleColor(5);
     ImGui::EndDisabled();
+    ImGui::PopFont();
+    ToolTooltip(CommandTooltip(command, snapshot).c_str());
     ImGui::PopID();
     if (pressed && actions.command) actions.command(command);
     return pressed;

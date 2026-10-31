@@ -5,18 +5,17 @@
 #include <string>
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
-constexpr float SpeedWidthInFonts = 4.5f;
 std::string PlaybackLabel(double speed) {
     std::array<char, 16> label{};
     std::snprintf(label.data(), label.size(), "%.2gx", speed);
     return label.data();
 }
-std::string CommandButtonLabel(EditorCommand command, const EditorSnapshot& snapshot) {
-    const auto& info = EditorCommands()[static_cast<std::size_t>(command)];
-    return std::string(EditorGlyphText(info.glyph)) + "  " + EditorCommandLabel(command, snapshot);
+float PlaybackSpeedWidth() {
+    return ImGui::CalcTextSize("0.25x").x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetFrameHeight();
 }
 void PlaybackSpeed(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool inMenu) {
     ImGui::BeginDisabled(!snapshot.capabilities.playbackEnabled);
@@ -30,7 +29,7 @@ void PlaybackSpeed(const EditorSnapshot& snapshot, const EditorUiActions& action
             ImGui::EndMenu();
         }
     } else {
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * SpeedWidthInFonts);
+        ImGui::SetNextItemWidth(PlaybackSpeedWidth());
         if (ImGui::BeginCombo("##speed", PlaybackLabel(snapshot.playbackSpeed).c_str())) {
             for (const double speed : Speeds)
                 if (ImGui::Selectable(PlaybackLabel(speed).c_str(), speed == snapshot.playbackSpeed) &&
@@ -46,6 +45,17 @@ void PlaybackSpeed(const EditorSnapshot& snapshot, const EditorUiActions& action
 } // namespace
 
 void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
+    const float scale = ToolUiScale();
+    ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                        {EditorToolbarMetrics::ButtonPadding * scale,
+                         (EditorToolbarMetrics::ControlHeight - ToolMetrics::BodySize) * 0.5f * scale});
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, EditorToolbarMetrics::Radius * scale);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+                        {EditorToolbarMetrics::Gap * scale, ImGui::GetStyle().ItemSpacing.y});
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetStyleColorVec4(ImGuiCol_Button));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
     ImGui::PushID("editor-playback");
     ImGui::BeginGroup();
     const auto& style = ImGui::GetStyle();
@@ -53,10 +63,8 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     const float iconWidth = ImGui::GetFrameHeight();
     const float gap = style.ItemSpacing.x;
     const auto primary = EditorPrimaryCommand(snapshot);
-    const float primaryWidth =
-        ImGui::CalcTextSize(CommandButtonLabel(primary, snapshot).c_str()).x + style.FramePadding.x * 2;
-    const float buildLabelWidth =
-        ImGui::CalcTextSize(CommandButtonLabel(EditorCommand::Refresh, snapshot).c_str()).x + style.FramePadding.x * 2;
+    const float primaryWidth = EditorCommandButtonWidth(primary, snapshot, true);
+    const float buildLabelWidth = EditorCommandButtonWidth(EditorCommand::Refresh, snapshot, true);
     bool showSpeed = true;
     bool showReset = true;
     bool showStep = true;
@@ -76,7 +84,7 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
             ++controls;
         }
         if (showSpeed) {
-            width += ImGui::GetFontSize() * SpeedWidthInFonts;
+            width += PlaybackSpeedWidth();
             ++controls;
         }
         if (overflow) {
@@ -104,6 +112,17 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         ImGui::SameLine();
         EditorCommandButton(EditorCommand::Reset, snapshot, actions);
     }
+    if (showBuild) {
+        ImGui::SameLine(0, gap * 2);
+        const auto separator = ImGui::GetCursorScreenPos();
+        const float inset = EditorToolbarMetrics::Gap * scale;
+        ImGui::GetWindowDrawList()->AddLine({separator.x, separator.y + inset},
+                                            {separator.x, separator.y + iconWidth - inset},
+                                            ImGui::GetColorU32(ImGuiCol_Separator));
+        ImGui::Dummy({1, iconWidth});
+        ImGui::SameLine(0, gap * 2);
+        EditorCommandButton(EditorCommand::Refresh, snapshot, actions, showBuildLabel);
+    }
     if (showSpeed) {
         ImGui::SameLine();
         PlaybackSpeed(snapshot, actions, false);
@@ -114,24 +133,17 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         if (ImGui::BeginPopup("more-controls")) {
             if (!showStep) EditorCommandMenuItem(EditorCommand::Step, snapshot, actions);
             if (!showReset) EditorCommandMenuItem(EditorCommand::Reset, snapshot, actions);
-            if (!showSpeed) PlaybackSpeed(snapshot, actions, true);
             if (!showBuild) {
-                ImGui::Separator();
+                if (!showStep || !showReset) ImGui::Separator();
                 EditorCommandMenuItem(EditorCommand::Refresh, snapshot, actions);
             }
+            if (!showSpeed) PlaybackSpeed(snapshot, actions, true);
             ImGui::EndPopup();
         }
     }
-    if (showBuild) {
-        ImGui::SameLine(0, gap * 2);
-        const auto separator = ImGui::GetCursorScreenPos();
-        ImGui::GetWindowDrawList()->AddLine({separator.x, separator.y + style.FramePadding.y},
-                                            {separator.x, separator.y + iconWidth - style.FramePadding.y},
-                                            ImGui::GetColorU32(ImGuiCol_Separator));
-        ImGui::Dummy({1, iconWidth});
-        ImGui::SameLine(0, gap * 2);
-        EditorCommandButton(EditorCommand::Refresh, snapshot, actions, showBuildLabel);
-    }
     ImGui::EndGroup();
     ImGui::PopID();
+    ImGui::PopStyleColor(3);
+    ImGui::PopStyleVar(3);
+    ImGui::PopFont();
 }

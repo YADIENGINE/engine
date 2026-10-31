@@ -16,5 +16,6 @@ struct EditorCommandInfo {
 [[nodiscard]] const char* EditorCommandLabel(EditorCommand command, const EditorSnapshot& snapshot);
 [[nodiscard]] EditorCommand EditorPrimaryCommand(const EditorSnapshot& snapshot);
 void EditorCommandMenuItem(EditorCommand command, const EditorSnapshot& snapshot, const EditorUiActions& actions);
+[[nodiscard]] float EditorCommandButtonWidth(EditorCommand command, const EditorSnapshot& snapshot, bool showLabel);
 bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, const EditorUiActions& actions,
                          bool showLabel = false);
