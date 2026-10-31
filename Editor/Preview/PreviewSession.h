@@ -18,7 +18,7 @@ struct PreviewSessionActions {
 class PreviewSession {
 public:
     PreviewSession(Game& game, const GameSettings& settings, const PreviewRegistry& registry, ControlChannel& channel,
-                   const std::string& session, const TextRenderer& text, AudioSystem& audio,
+                   const std::string& session, const TextRenderer& text, const FontFace* font, AudioSystem& audio,
                    PreviewSessionActions actions);
     ~PreviewSession();
     [[nodiscard]] PreviewScene& Scene() { return _scene; }

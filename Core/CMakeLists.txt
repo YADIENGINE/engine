@@ -139,6 +139,7 @@ add_library(EngineHeadless STATIC
     Tuning/TuningFile.cpp
     Tuning/TuningLive.cpp
     Utilities/UiTransform.cpp
+    Utilities/Utf8.cpp
 )
 target_include_directories(EngineHeadless PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineHeadless PUBLIC cxx_std_20)

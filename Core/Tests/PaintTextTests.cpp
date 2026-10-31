@@ -1,12 +1,15 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include <cmath>
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include "Graphics/Text/FontFace.hpp"
 #include "Graphics/Text/Internals/AtlasPacker.h"
 #include "Graphics/Text/Internals/FontData.h"
+#include "Utilities/Utf8.h"
 #include "Tests/PaintHarness.h"
 
 using Catch::Approx;
@@ -74,6 +77,31 @@ TEST_CASE("Engine.Text.ShrinkFitsTheWidestLine", "[engine][paint][text]") {
     const TextBlock roomy =
         font.Layout("A long title", {.size = 40.0f, .maxWidth = width * 2.0f, .fit = TextFit::Shrink});
     CHECK(roomy.Size() == 40.0f); // Never grows
+    CHECK(font.FittedSize("A long title", 40.0f, width * 0.5f) == Approx(fitted.Size()));
+    CHECK(font.FittedSize("A long title", 40.0f, width * 2.0f) == 40.0f);
+    CHECK(font.FittedSize("A long title", 40.0f, 0.0f) == 40.0f); // No limit
+}
+
+TEST_CASE("Engine.Text.ShrunkTextKeepsItsVerticalCentre", "[engine][paint][text]") {
+    const FontFace& font = TestFont();
+    const float width = font.Measure("Title", 40.0f).x;
+    const auto middle = [&](float maxWidth) {
+        PaintHarness h;
+        h.Begin();
+        h.paint.Text(font, "Title", {10.0f, 20.0f}, {.size = 40.0f, .maxWidth = maxWidth, .fit = TextFit::Shrink});
+        h.End();
+        float top = 1e9f;
+        float bottom = -1e9f;
+        for (const PaintVertex& vertex : h.Drawn()) {
+            top = std::min(top, vertex.y);
+            bottom = std::max(bottom, vertex.y);
+        }
+        return std::pair{(top + bottom) * 0.5f, bottom - top};
+    };
+    const auto [fullMiddle, fullHeight] = middle(0.0f);
+    const auto [shrunkMiddle, shrunkHeight] = middle(width * 0.5f);
+    CHECK(shrunkHeight < fullHeight * 0.75f);
+    CHECK(shrunkMiddle == Approx(fullMiddle).margin(fullHeight * 0.05f));
 }
 
 TEST_CASE("Engine.Text.MissingCharactersFallBackToQuestionMark", "[engine][paint][text]") {

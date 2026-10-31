@@ -20,14 +20,15 @@ struct CapturedImage {
 
 PreviewSession::PreviewSession(Game& game, const GameSettings& settings, const PreviewRegistry& registry,
                                ControlChannel& channel, const std::string& session, const TextRenderer& text,
-                               AudioSystem& audio, PreviewSessionActions actions)
+                               const FontFace* font, AudioSystem& audio, PreviewSessionActions actions)
     : _registry(registry)
     , _channel(channel)
     , _canvas{settings.canvasWidth, settings.canvasHeight}
     , _frames(session, false)
     , _actions(std::move(actions))
-    , _scene(_canvas, text, audio,
-             [this](const std::string& text) { _channel.Send({{}, _generation, 0, "log", {{"text", text}}}); })
+    , _scene(
+          _canvas, text, audio,
+          [this](const std::string& text) { _channel.Send({{}, _generation, 0, "log", {{"text", text}}}); }, font)
     , _profiler(game, _scene, channel, _canvas,
                 [this] {
                     _actions.reset();

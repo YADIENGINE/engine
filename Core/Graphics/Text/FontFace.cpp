@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <vector>
 #include "Graphics/Text/Internals/FontData.h"
+#include "Utilities/Utf8.h"
 
 namespace {
 constexpr float TabSpaces = 4.0f;
@@ -169,6 +170,12 @@ Float2 FontFace::Measure(std::string_view text, float size, float letterSpacing)
     const float width = Widest(*_data, text, size, letterSpacing, false);
     return {width > 0.0f ? width - letterSpacing : 0.0f,
             LineHeightOf(*_data, size) * static_cast<float>(lines - 1) + size};
+}
+
+float FontFace::FittedSize(std::string_view text, float size, float maxWidth, float letterSpacing) const {
+    if (!(size > 0.0f) || !std::isfinite(size) || !(maxWidth > 0.0f)) return size;
+    const float widest = Widest(*_data, text, size, letterSpacing, false) - letterSpacing;
+    return widest > maxWidth ? size * maxWidth / widest : size;
 }
 
 TextBlock FontFace::Layout(std::string_view text, const TextStyle& style) const {

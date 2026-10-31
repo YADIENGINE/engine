@@ -86,7 +86,9 @@ void Painter::TextBox(std::string_view text, const FloatRect& area, const TextSt
 void Painter::Text(const FontFace& font, std::string_view text, Float2 position, const TextStyle& style) {
     if (!_context.text) throw std::logic_error("Painter::Text: no text services in this renderer");
     if (text.empty()) return;
-    Text(font, _context.text->layouts.Get(font, text, style), position, style);
+    const TextBlock& block = _context.text->layouts.Get(font, text, style);
+    // A shrunk text keeps the vertical centre of a line at the requested size (it stays centred in its slot).
+    Text(font, block, {position.x, position.y + (style.size - block.Size()) * 0.5f}, style);
 }
 
 void Painter::TextBox(const FontFace& font, std::string_view text, const FloatRect& area, const TextStyle& style) {

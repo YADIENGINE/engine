@@ -66,6 +66,11 @@ TEST_CASE("Engine.PaintMath.ColorHelpers", "[engine][paint]") {
     CHECK(ScaleAlpha(Rgb(0xFFFFFF, 100), 0.5f).a == 50);
     CHECK(Mix(Color4{0, 0, 0, 0}, Color4{200, 100, 50, 255}, 0.5f) == Color4{100, 50, 25, 128});
     CHECK(Mix(Color4{}, Color4{200, 0, 0, 255}, 3.0f).r == 200);
+    CHECK(Hsv(0.0f, 1.0f, 1.0f) == Color4{255, 0, 0, 255});
+    CHECK(Hsv(120.0f, 1.0f, 1.0f) == Color4{0, 255, 0, 255});
+    CHECK(Hsv(240.0f, 1.0f, 1.0f, 7) == Color4{0, 0, 255, 7});
+    CHECK(Hsv(-120.0f, 1.0f, 1.0f) == Hsv(240.0f, 1.0f, 1.0f));  // Hue wraps
+    CHECK(Hsv(60.0f, 0.0f, 0.5f) == Color4{128, 128, 128, 255}); // No saturation: grey
 }
 
 TEST_CASE("Engine.Tessellator.StrokeCoversItsWidth", "[engine][paint]") {

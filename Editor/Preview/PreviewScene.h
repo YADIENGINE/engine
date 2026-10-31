@@ -5,8 +5,8 @@
 
 class PreviewScene : public Scene {
 public:
-    PreviewScene(Vec2 canvas, const TextRenderer& text, AudioSystem& audio,
-                 std::function<void(const std::string&)> log);
+    PreviewScene(Vec2 canvas, const TextRenderer& text, AudioSystem& audio, std::function<void(const std::string&)> log,
+                 const FontFace* font);
     ~PreviewScene() override;
     void Open(const PreviewDefinition& definition, const PreviewParameters& parameters);
     void Reset();

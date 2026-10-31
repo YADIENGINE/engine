@@ -26,7 +26,8 @@ kenarı yumuşatılmış çizilir; çizim kare sonuna kadar gönderilmez ama ça
 
 `Utilities/` altında, headless: `Float2` (işlemleri, `Length`, `Normalized`, `Rotated`, `Float2::FromAngle` ...),
 `FloatRect` (`FromCenter`, `Center`, `Inset`, `Intersect`, `Union` ...), `Affine2` (`Translate`, `Rotate`, `Scale`,
-`Camera`, `*`, `Inverse`), `Color4` (straight alpha; `Rgb(0xRRGGBB)`, `WithAlpha`, `ScaleAlpha`, `Mix`).
+`Camera`, `*`, `Inverse`), `Color4` (straight alpha; `Rgb(0xRRGGBB)`, `Hsv(hue, s, v)`, `WithAlpha`, `ScaleAlpha`,
+`Mix`).
 
 ## Şekiller
 
@@ -81,7 +82,10 @@ const TextBlock block = paint.Font().Layout(longText, style); // Bir kez yerleş
 
 Konum ilk satırın tepesidir; yatayda `align`'a göre satırın sol ucu, ortası ya da sağ ucu. `TextStyle`: boy, renk,
 hizalama, `maxWidth` + `TextWrap::Word` / `TextFit::Shrink`, satır ve harf aralığı, `glow`, `outline`, `shadow`,
-`emission`. `font.Measure(text, size)` sarmasız ölçüdür. Aynı metin her kare yeniden ölçülmez (yerleşim önbelleği).
+`emission`. `TextFit::Shrink` ile küçülen yazı istenen boydaki satırın dikey ortasında kalır. `font.Measure(text, size)`
+sarmasız ölçüdür; `font.FittedSize(text, size, maxWidth)` Shrink'in vereceği boydur (hit-test ve yan yana yazılar için).
+Aynı metin her kare yeniden ölçülmez (yerleşim önbelleği). UTF-8 karakterlerini tek tek gezmek: `Utilities/Utf8.h`
+(`NextCodepoint`).
 
 ## Kapsamlar
 

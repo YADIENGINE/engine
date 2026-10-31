@@ -7,7 +7,8 @@
 enum class TextAlign { Left, Center, Right };
 // None: lines break only at '\n'; Word: also between words (long words between characters) to stay within maxWidth.
 enum class TextWrap { None, Word };
-// None: text may exceed maxWidth; Shrink: the size goes down until the widest line fits (never up).
+// None: text may exceed maxWidth; Shrink: the size goes down until the widest line fits (never up), keeping the
+// vertical centre of a line at the requested size (Painter::Text / TextBox with a string).
 enum class TextFit { None, Shrink };
 
 struct TextShadow {

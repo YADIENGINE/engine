@@ -33,8 +33,9 @@ Kurallar:
 - Kayıt yalnız metadata / fabrika ekler; pencere, asset, örnek kurulmaz. Kimlikler benzersizdir.
 - Fabrika GL, metin ve ses hazırken engine thread'inde çağrılır; başlangıç değerleri tam harita olarak verilir,
   kurulumda `ApplyParameter` çağrılmasına güvenilmez.
-- `PreviewServices` canvas boyutunu, metin / ses referanslarını, log ve uygulama komutu callback'lerini verir. Referanslar
-  örnekten uzun yaşar; içerik durduktan sonra tutulmaz.
+- `PreviewServices` canvas boyutunu, metin / ses referanslarını, oyunun fontunu (`font`; çizim dışında ölçmek için,
+  ör. hit-test; yoksa null), log ve uygulama komutu callback'lerini verir. Referanslar örnekten uzun yaşar; içerik
+  durduktan sonra tutulmaz.
 - `Update` ölçeklenmiş saniye alır. Görsel zaman `DrawTime()`'dır: `PreviewScene::Seconds()` her Reset'te 0'lanır ve
   `PreviewGame::DrawSeconds()` ile sunum saatine verilir; içerik saat bağlamaz.
 - `Stop` ve destructor istisna atmaz. Fabrika / hook hataları worker'ı sonlandırabilir; editör hatayı ve çıkış

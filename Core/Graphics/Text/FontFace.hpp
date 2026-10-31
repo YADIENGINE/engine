@@ -23,6 +23,8 @@ public:
 
     // Size of 'text' on one line per '\n', without wrapping.
     [[nodiscard]] Float2 Measure(std::string_view text, float size, float letterSpacing = 0.0f) const;
+    // The size TextFit::Shrink draws 'text' at (no wrapping): 'size', or smaller so the widest line fits 'maxWidth'.
+    [[nodiscard]] float FittedSize(std::string_view text, float size, float maxWidth, float letterSpacing = 0.0f) const;
     // Lines, wrapping and fitting according to 'style' (size, maxWidth, wrap, fit, spacing).
     [[nodiscard]] TextBlock Layout(std::string_view text, const TextStyle& style) const;
     [[nodiscard]] float LineHeight(float size) const;
