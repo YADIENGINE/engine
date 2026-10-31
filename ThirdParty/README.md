@@ -12,11 +12,13 @@ derleme için gerekmeyen klasörler (örnekler, belgeler, testler) alınmaz.
 | `imgui/` | 1.92.7-docking | https://github.com/ocornut/imgui/archive/refs/tags/v1.92.7-docking.tar.gz | Editör | Hayır |
 | `rlImGui/` | 118221c | https://github.com/raylib-extras/rlImGui/archive/118221c8a532501a3c2c236b62950877cbefc2b4.tar.gz | Editör | Hayır |
 | `Catch2/` | 3.16.0 | https://github.com/catchorg/Catch2/archive/refs/tags/v3.16.0.tar.gz | Testler (`engine_use_catch2()`) | Hayır |
+| `libvterm/` | 0.3.3 | https://www.leonerd.org.uk/code/libvterm/libvterm-0.3.3.tar.gz | Araçların konsolu (`EngineTerminal`) | Hayır |
 | `NotoSans/` | 2.008 | https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSans | ToolUi yedek fontları (Regular / Medium / SemiBold, OFL 1.1) | Hayır |
 
 Alınan parçalar: raylib `CMakeLists.txt`, `CMakeOptions.txt`, `cmake/`, `src/`, `raylib.pc.in`, lisans;
 nlohmann_json release paketinin tamamı; imgui kökteki `.cpp` / `.h` ve lisans; rlImGui kökteki kaynaklar,
-`extras/` ve lisans; Catch2 `CMakeLists.txt`, `CMake/`, `src/`, `extras/` ve lisans.
+`extras/` ve lisans; Catch2 `CMakeLists.txt`, `CMake/`, `src/`, `extras/` ve lisans; libvterm `include/`, `src/` (üretilmiş `.inc`
+tabloları sürüm paketinde hazır gelir) ve `LICENSE`.
 
 ## Lisans bildirimi
 

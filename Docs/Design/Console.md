@@ -1,6 +1,6 @@
 # Console paneli (tasarım)
 
-Durum: plan, uygulanmadı. Karar kaydı: [README → D18](README.md#d18-console-paneli-editörde-gerçek-terminal).
+Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliyor; aşama 2 sırada. Karar kaydı: [README → D18](README.md#d18-console-paneli-editörde-gerçek-terminal).
 
 ## Amaç
 
@@ -40,17 +40,20 @@ Terminal/                    EngineTerminal (EngineToolUi + libvterm'e link'leni
   TerminalView.h/.cpp        ImGui çizimi ve input (hücre ızgarası, imleç, seçim, kaydırma, klavye, yapıştırma)
   Internals/
     PseudoConsole.h/.cpp     ConPTY + pipe'lar + süreç + job object + okuyucu thread
-    VtScreen.h/.cpp          libvterm sarmalayıcısı: hücreler, imleç, başlık, alt ekran, geçmişe itilen satırlar
+    VtScreen.h/.cpp          libvterm sarmalayıcısı: hücreler, imleç, başlık, alt ekran, tuş kodlama
     Scrollback.h/.cpp        Sınırlı satır halkası (aşama 2)
-    KeyEncoding.h/.cpp       ImGui tuşu → libvterm tuşu / özel diziler (Shift+Enter, yapıştırma)
   Tests/                     EngineTerminalTests (etiket `terminal`)
 ThirdParty/libvterm/         Değiştirilmemiş kaynak; ayrı STATIC hedef, uyarılar kapalı (EngineToolImGui gibi)
 Editor/Ui/Panels/Console/    ConsolePanel: TerminalSession + TerminalView değer üyeleri, araç çubuğu
 ```
 
 `TerminalSession` ImGui bilmez (ekran ve süreç mantığı headless test edilir); `TerminalView` onu okur ve input'u
-ona yazar. Windows yardımcıları (`NativeHandle`, UTF-8 ↔ UTF-16) bugün `Editor/Internals/Platform/Windows/`'ta;
-kopya yazılmaz, uygulamada ortak bir yere taşınır.
+ona yazar. `KeyEncoding` ayrı dosya olmadı: kodlama libvterm'in işi, ConPTY'ye özel istisnalar `VtScreen`'de.
+Handle'lar `PseudoConsole`'da `unique_ptr` + kapatıcıyla tutulur; editörün `NativeHandle`'ı `Editor/Internals`'ta
+olduğu için kullanılmadı (ortak bir Windows yardımcı katmanı çıkarsa ikisi birleşir).
+
+Kabuğun çalışma klasörü editör tarifinden gelir: `EngineEditor.project.json`'a `sourceDirectory` (CMake'in
+`CMAKE_SOURCE_DIR`'ı) eklendi; eski tarifte alan yoksa editörün çalışma klasörü kullanılır.
 
 ## Süreç ve thread'ler
 
@@ -70,8 +73,9 @@ kopya yazılmaz, uygulamada ortak bir yere taşınır.
 
 ## Çizim
 
-- **Font:** Cascadia Mono (Windows 11 ile gelir) → yoksa Consolas → ImGui varsayılanı. AI TUI'lerinin sembolleri
-  (`⏺ ⎿ ✻`, kutu çizgileri, braille) için Segoe UI Symbol birleştirilir. ToolUi'nin sistem font yükleyicisi kullanılır.
+- **Font:** ToolUi'nin teknik fontu (Consolas, yoksa ImGui varsayılanı); AI TUI'lerinin sembolleri (`⏺ ⎿ ✻`, oklar,
+  braille) için teknik fonta Segoe UI Symbol birleştirildi (Output da yararlanır). Kalın kesim yok: kalın metin
+  1 px kaydırılıp iki kez çizilir. Düz ASCII koşu olarak, diğer karakterler kendi hücresine hizalı tek tek çizilir.
 - **Hücre boyutu** fontun `M` genişliği ve satır yüksekliğinden; sütun / satır panel içeriğinden hesaplanır, değişince
   `Resize` (karede en çok bir kez).
 - **Satır başına birleştirme:** Aynı özellikli komşu hücreler tek arka plan dikdörtgeni + tek metin çağrısı.
@@ -81,14 +85,14 @@ kopya yazılmaz, uygulamada ortak bir yere taşınır.
 
 ## Input
 
-- Panel odaktayken klavye terminale gider. Editör kısayollarından sadece `Ctrl+J` (alt alan), ``Ctrl+` `` (konsola
-  odaklan / geri dön) ve `Ctrl+Shift+P` (komut paleti) terminalin önüne geçer. Geri kalan her şey (`Ctrl+R`,
-  `Ctrl+P` ...) kabuğa gider. ImGui key owner / shortcut routing ile.
+- Panel odaktayken klavye terminale gider. Editör kısayollarından sadece `Ctrl+J` (alt alan), ``Ctrl+` `` (konsolu
+  aç / kapat) ve `Ctrl+Shift+P` (komut paleti) çalışır; `TerminalView` bunları ayrılmış akor olarak almaz. Workspace
+  önceki karede konsol odaktaysa diğer kısayollarını (`Ctrl+R`, `Ctrl+P`, `F5` ...) çalıştırmaz, tuş kabuğa gider.
 - Yazılan karakterler (Türkçe ve IME dahil) ImGui'nin karakter kuyruğundan `vterm_keyboard_unichar`'a; özel tuşlar
   `vterm_keyboard_key`'e.
 - **Ctrl+C:** seçim varsa kopyalar, yoksa programa kesme gönderir (Windows Terminal davranışı). `Ctrl+Shift+C` her
-  zaman kopyalar.
-- **Yapıştırma:** `Ctrl+V`, `Ctrl+Shift+V`, `Shift+Insert`, sağ tık menüsü. Satır sonları CR'ye çevrilir; program
+  zaman kopyalar; aşama 1'de seçim olmadığından hiçbir şey yapmaz (kopyalama alışkanlığı programı kesmesin).
+- **Yapıştırma:** `Ctrl+V`, `Ctrl+Shift+V`, `Shift+Insert`, sağ tık menüsü (Paste, Restart). Satır sonları CR'ye çevrilir; program
   bracketed paste açtıysa sarılır (çok satırlı metin tek seferde gider, satır satır çalıştırılmaz).
 - **Shift+Enter:** `ESC CR` gönderir; AI CLI'larının çok satırlı girişi böyle bekler (VS Code'da da aynı ayar).
 
@@ -105,7 +109,7 @@ kopya yazılmaz, uygulamada ortak bir yere taşınır.
 ## Testler (`--label terminal`)
 
 - `VtScreen`: bayt dizisi → hücreler (renk, kalın, geniş karakter, imleç), satırın geçmişe itilmesi, alt ekran.
-- `KeyEncoding`: Shift+Enter, Ctrl+harf, yön tuşları, bracketed paste sarması, CRLF dönüşümü.
+- Tuş kodlama (`VtScreen`): Shift+Enter, Ctrl+harf, yön tuşları, bracketed paste sarması, CRLF dönüşümü.
 - `Scrollback`: sınır, sarmalı satır birleştirme, seçimden metin.
 - `PseudoConsole` duman testi: `cmd /c echo` çıktısı okunur, süreç çıkış kodu alınır, kapanış kilitlenmez.
 - Çizim ve gerçek input testte yoktur; manuel kontrol listesi aşağıda.
@@ -128,7 +132,7 @@ Her adım derlenebilir kalır; aşama sonlarında kullanıcı test eder ve commi
 1. **libvterm:** `ThirdParty/libvterm` (son sürüm, değiştirilmeden) + STATIC hedef. Sadece editörde kullanıldığı
    için `Notices.json`'a girmez; `ThirdParty/README.md` tarifine göre kaynak ve sürüm kaydı. Kontrol: sürüm paketinde
    kodlama tablolarının üretilmiş `.inc` dosyaları var mı; yoksa bir kez üretilir ve nasıl üretildiği yazılır.
-2. **Çekirdek:** `PseudoConsole`, `VtScreen`, `KeyEncoding`, `TerminalSession` + testler.
+2. **Çekirdek:** `PseudoConsole`, `VtScreen`, `TerminalSession` + testler.
 3. **Görünüm:** `TerminalView` (çizim, input, font).
 4. **Editör:** `EditorPanel::Console`, ayar kaydı, layout'lar, panel menüsü / komut paleti, `Ctrl+``.
    → Aşama 1 manuel test, commit.

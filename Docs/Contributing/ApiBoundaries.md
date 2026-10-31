@@ -10,7 +10,7 @@ public facade so that ownership is obvious from the path.
 | --- | --- | --- |
 | Public | any engine path without an `Internals/` segment | everyone, games included |
 | Engine-private | core `X/Internals/` (`Input/Internals/`, `Audio/Internals/` ...) | any code in the engine repository: core, modules, editor, engine tests |
-| Owner-private | `Modules/X/Internals/`, `Editor/Internals/` | only `Modules/X/` (its tests included) or `Editor/` |
+| Owner-private | `Modules/X/Internals/`, `Editor/Internals/`, `Terminal/Internals/` | only `Modules/X/` (its tests included), `Editor/` or `Terminal/` |
 
 Engine-private exists because core subsystems implement each other: the runtime drives the input reader, the
 editor host feeds input samples, modules use core file storage (`Platform/Internals/`). A folder with no public

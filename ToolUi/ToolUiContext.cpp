@@ -76,6 +76,10 @@ void LoadToolFonts(ImFontAtlas& atlas) {
     technicalConfig.PixelSnapH = false;
     auto* technical = LoadSystemFont(atlas, L"consola.ttf", technicalConfig);
     if (!technical) technical = atlas.AddFontDefaultVector(&technicalConfig);
+    // Consolas'ta olmayan semboller (terminal TUI'lerinin ⏺ ✻ ⎿, oklar, braille) Segoe UI Symbol'den.
+    ImFontConfig symbolConfig = technicalConfig;
+    symbolConfig.MergeMode = true;
+    static_cast<void>(LoadSystemFont(atlas, L"seguisym.ttf", symbolConfig));
     RegisterToolFonts(ui, technical, medium, heading);
 }
 void FilterFontTextures(const ImDrawList*, const ImDrawCmd*) {

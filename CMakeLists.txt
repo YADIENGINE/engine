@@ -70,6 +70,9 @@ add_subdirectory(Core)
 if(ENGINE_BUILD_RUNTIME AND WIN32)
     add_subdirectory(ToolUi) # Editor and launcher UI; EXCLUDE_FROM_ALL targets
 endif()
+if(WIN32)
+    add_subdirectory(Terminal) # Tools' console panel (ConPTY + libvterm); EXCLUDE_FROM_ALL targets
+endif()
 if(ENGINE_BUILD_EDITOR OR ENGINE_BUILD_EDITOR_TESTS)
     add_subdirectory(Editor)
 endif()

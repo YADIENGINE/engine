@@ -1,0 +1,1 @@
+engine_tests(EngineTerminalTests SOURCES TerminalTests.cpp LINKS EngineTerminal EngineVterm)

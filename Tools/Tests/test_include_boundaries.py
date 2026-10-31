@@ -7,7 +7,7 @@ from pathlib import Path
 from Tools.include_boundaries import violations
 
 HEADERS = ["Core/Input/Internals/Reader.h", "Core/Modules/Saves/Internals/State.h", "Editor/Internals/Session.h",
-           "Core/Input/Input.hpp"]
+           "Terminal/Internals/Screen.h", "Core/Input/Input.hpp"]
 
 
 class BoundaryTests(unittest.TestCase):
@@ -62,6 +62,14 @@ class BoundaryTests(unittest.TestCase):
         found = self.check()
         self.assertEqual(len(found), 1)
         self.assertIn("private to Editor", found[0])
+
+    def test_terminal_internals_stay_in_terminal(self):
+        self.write("Engine/Terminal/Tests/ScreenTests.cpp", '#include "Terminal/Internals/Screen.h"\n')
+        self.write("Engine/Editor/Ui/Console.cpp", '#include "Terminal/Internals/Screen.h"\n')
+        found = self.check()
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0].startswith("Engine/Editor/Ui/Console.cpp:1:"))
+        self.assertIn("private to Terminal", found[0])
 
     def test_build_trees_are_not_scanned(self):
         self.write("build/CMakeCache.txt", "")

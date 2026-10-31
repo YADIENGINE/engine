@@ -58,8 +58,9 @@ std::string EditorSettingsStore::Load(const std::string& project, EditorPreferen
                 loaded.customVisible = loaded.visible;
             }
             const int bottom = value.value("lastBottomPanel", static_cast<int>(EditorPanel::Output));
-            loaded.lastBottomPanel =
-                bottom == static_cast<int>(EditorPanel::Profiler) ? EditorPanel::Profiler : EditorPanel::Output;
+            loaded.lastBottomPanel = EditorPanel::Output;
+            for (const auto panel : EditorBottomPanels)
+                if (bottom == static_cast<int>(panel)) loaded.lastBottomPanel = panel;
             loaded.favorites = value.value("favorites", std::vector<std::string>{});
             loaded.recent = value.value("recent", std::vector<std::string>{});
             ValidateIds(loaded.favorites, 2048);

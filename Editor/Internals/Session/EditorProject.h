@@ -7,6 +7,7 @@ struct EditorProject {
     ProcessCommand worker;
     ProcessCommand build;
     std::filesystem::path buildDirectory;
+    std::filesystem::path sourceDirectory; // proje kökü (konsolun çalışma klasörü); eski tariflerde boş
 };
 
 [[nodiscard]] EditorProject ReadEditorProject(const std::filesystem::path& file);

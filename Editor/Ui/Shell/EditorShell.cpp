@@ -131,6 +131,10 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
         if (ToolSegment("Profiler", preferences.visible[static_cast<std::size_t>(EditorPanel::Profiler)]))
             result.bottomPanel = EditorPanel::Profiler;
         ImGui::SameLine();
+        if (ToolSegment("Console", preferences.visible[static_cast<std::size_t>(EditorPanel::Console)]))
+            result.bottomPanel = EditorPanel::Console;
+        ToolTooltip("Terminal in the project folder (Ctrl+`)");
+        ImGui::SameLine();
         const char* phase = snapshot.profiler.busy ? (snapshot.benchmarkCancelPending ? "Canceling benchmark"
                                                                                       : snapshot.profiler.phase.c_str())
                                                    : EditorPhaseLabel(snapshot.phase);

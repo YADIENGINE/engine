@@ -2,6 +2,7 @@
 #include <vector>
 #include "Editor/Ui/Commands/EditorCommandPalette.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
+#include "Editor/Ui/Panels/Console/ConsolePanel.h"
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
 #include "Editor/Ui/Panels/Output/OutputPanel.h"
 #include "Editor/Ui/Panels/Viewport/ViewportPanel.h"
@@ -25,6 +26,8 @@ public:
     void ReleaseInput() { _viewport.ReleaseFocus(); }
     // File menu offers "Back to project list" (the host knows the launcher).
     void OfferProjectList(bool offer) { _offerProjectList = offer; }
+    // Konsolun kabuğu bu klasörde başlar (proje kökü).
+    void SetConsoleDirectory(const std::filesystem::path& directory) { _console.SetDirectory(directory); }
 
 private:
     void SetMaximized(bool maximized, EditorPreferences& preferences);
@@ -39,6 +42,7 @@ private:
     OutputPanel _output;
     ProfilerPanel _profiler;
     TuningPanel _tuning;
+    ConsolePanel _console;
     EditorShell _shell;
     EditorCommandPalette _palette;
     std::string _restoreLayout;
@@ -47,6 +51,7 @@ private:
     bool _offerProjectList = false;
     bool _pendingToggle = false;
     bool _focusCatalog = false;
+    bool _consoleFocused = false; // önceki karede klavye konsoldaydı
     std::optional<EditorPanel> _focusBottom;
     std::uint64_t _failureAttempt = 0;
     std::vector<char> _failureDetail;

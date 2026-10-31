@@ -86,11 +86,13 @@ if(ENGINE_BUILD_EDITOR)
         engine_editor_escape_json(name "${WORKER_NAME}")
         engine_editor_escape_json(cmake "${CMAKE_COMMAND}")
         engine_editor_escape_json(build_dir "${CMAKE_BINARY_DIR}")
+        engine_editor_escape_json(source_dir "${CMAKE_SOURCE_DIR}")
         file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>/EngineEditor.project.json" CONTENT
 "{
   \"version\": 1,
   \"name\": \"${name}\",
   \"buildDirectory\": \"${build_dir}\",
+  \"sourceDirectory\": \"${source_dir}\",
   \"worker\": {
     \"executable\": \"$<TARGET_FILE:${target}>\",
     \"arguments\": [], \"directory\": \"$<TARGET_FILE_DIR:${target}>\", \"environment\": {}
@@ -120,9 +122,10 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Panels/Viewport/ViewportPanel.cpp
         Ui/Panels/Inspector/InspectorPanel.cpp
         Ui/Panels/Tuning/TuningPanel.cpp
-        Ui/Panels/Output/OutputPanel.cpp)
+        Ui/Panels/Output/OutputPanel.cpp
+        Ui/Panels/Console/ConsolePanel.cpp)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)
-    target_link_libraries(EngineEditorUi PUBLIC EngineToolUi EngineEditorSupport)
+    target_link_libraries(EngineEditorUi PUBLIC EngineToolUi EngineTerminalUi EngineEditorSupport)
     engine_warnings(EngineEditorUi)
     add_executable(EngineEditor WIN32 Host/Main.cpp Host/EditorApplication.cpp Host/PreviewDisplay.cpp
         Host/ProjectListLauncher.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp

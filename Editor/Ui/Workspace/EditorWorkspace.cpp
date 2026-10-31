@@ -28,8 +28,9 @@ ImGuiID SavedPanelDock(const EditorPanelDefinition& panel) {
     return 0;
 }
 bool BottomVisible(const EditorPreferences& preferences) {
-    return preferences.visible[static_cast<std::size_t>(EditorPanel::Output)] ||
-           preferences.visible[static_cast<std::size_t>(EditorPanel::Profiler)];
+    for (const auto panel : EditorBottomPanels)
+        if (preferences.visible[static_cast<std::size_t>(panel)]) return true;
+    return false;
 }
 } // namespace
 void EditorWorkspace::CaptureLayout(EditorPreferences& preferences) const {
@@ -90,8 +91,8 @@ void EditorWorkspace::ApplyLayout(EditorWorkspaceLayout layout, EditorPreference
 void EditorWorkspace::ToggleBottom(EditorPreferences& preferences, std::optional<EditorPanel> panel) {
     const bool close = BottomVisible(preferences) && (!panel || *panel == preferences.lastBottomPanel);
     if (panel) preferences.lastBottomPanel = *panel;
-    preferences.Visible(EditorPanel::Output) = false;
-    preferences.Visible(EditorPanel::Profiler) = false;
+    for (const auto bottom : EditorBottomPanels)
+        preferences.Visible(bottom) = false;
     if (!close) {
         preferences.Visible(preferences.lastBottomPanel) = true;
         _focusBottom = preferences.lastBottomPanel;
@@ -104,16 +105,22 @@ bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiAc
     const bool palette = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P, route);
     const bool catalog = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, route);
     const bool bottom = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_J, route);
+    const bool console = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_GraveAccent, route);
     const bool primary = ImGui::Shortcut(ImGuiKey_F5, route);
     const auto& io = ImGui::GetIO();
     const bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
-    const bool blocked = popup || io.WantTextInput;
+    // Konsol odaktayken tuşlar kabuğundur (Ctrl+R, Ctrl+P ...); sadece alt alan, konsol ve palet editörde kalır.
+    const bool blocked = popup || io.WantTextInput || _consoleFocused;
     bool consumed = false;
     if (palette && !popup) {
         result.openCommands = true;
         consumed = true;
     }
-    if (catalog && !popup) {
+    if (console && !popup) {
+        result.bottomPanel = EditorPanel::Console;
+        consumed = true;
+    }
+    if (catalog && !popup && !_consoleFocused) {
         result.focusCatalog = true;
         consumed = true;
     }
@@ -227,6 +234,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         SetMaximized(!_maximized, preferences);
         _pendingToggle = false;
     }
+    _console.Update();
     const auto oldVisibility = preferences.visible;
     EditorWorkspaceResult result;
     if (_showFailedOutput) {
@@ -278,7 +286,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     }
     if (menu.layout) ApplyLayout(*menu.layout, preferences);
     if (_maximized && oldVisibility != preferences.visible) SetMaximized(false, preferences);
-    for (const auto panel : {EditorPanel::Output, EditorPanel::Profiler})
+    for (const auto panel : EditorBottomPanels)
         if (!oldVisibility[static_cast<std::size_t>(panel)] && preferences.Visible(panel)) {
             _focusBottom = panel;
             preferences.lastBottomPanel = panel;
@@ -304,6 +312,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     } else {
         constexpr auto flags = ImGuiWindowFlags_NoCollapse;
         bool viewportDrawn = false;
+        bool consoleDrawn = false;
         for (const auto& panel : EditorPanels) {
             if (!preferences.Visible(panel.id)) continue;
             if ((_focusBottom && *_focusBottom == panel.id) || (_focusCatalog && panel.id == EditorPanel::Catalog))
@@ -324,13 +333,18 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 case EditorPanel::Output   : _output.Draw(snapshot, actions, preferences); break;
                 case EditorPanel::Profiler : _profiler.Draw(snapshot, actions); break;
                 case EditorPanel::Tuning   : _tuning.Draw(snapshot, actions); break;
-                case EditorPanel::Count    : break;
+                case EditorPanel::Console:
+                    _console.Draw();
+                    consoleDrawn = true;
+                    break;
+                case EditorPanel::Count: break;
                 }
             }
             ImGui::End();
         }
         _focusBottom.reset();
         _focusCatalog = false;
+        _consoleFocused = consoleDrawn && _console.Focused();
         if (!viewportDrawn) {
             _viewport.ReleaseFocus();
             result.interaction = {};

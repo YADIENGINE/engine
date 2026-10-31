@@ -48,6 +48,7 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     _observedFontSize = _fontSize;
     _launcher = LauncherFromEnvironment();
     _workspace.OfferProjectList(!_launcher.empty());
+    if (const auto& project = _controller.Project()) _workspace.SetConsoleDirectory(project->sourceDirectory);
 }
 EditorApplication::~EditorApplication() { Stop(); }
 DeviceInput EditorApplication::ReadInput() {

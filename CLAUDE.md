@@ -40,6 +40,9 @@ Core/      Oyuna giren engine kodu; include kökü (#include "Runtime/Game.h"). 
   Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
 ToolUi/    EngineToolUi: araçların (editör, launcher) ortak ImGui katmanı: tema, font, bağlam, genel widget'lar; oyuna
            girmez, include'ları engine köküne göre (#include "ToolUi/ToolTheme.h"). Docs/ToolUi.md
+Terminal/  EngineTerminal: ConPTY'de çalışan program + libvterm ekranı (TerminalSession, headless test edilir);
+           EngineTerminalUi: ImGui çizimi ve klavye (TerminalView). Araçların konsol paneli; oyuna girmez.
+           Internals/ sadece Terminal/'a. Tasarım Docs/Design/Console.md
 Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_add_editor_worker. Oyuna girmez;
            include'ları engine köküne göre (#include "Editor/Api/...").
 Docs/      Kullanım ve katkı belgeleri

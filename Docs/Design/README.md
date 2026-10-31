@@ -478,7 +478,7 @@ Editör AI'a özel arayüz ya da komut yazmaz; AI CLI'ı kendi TUI'siyle olduğu
 **Neden:** AI ile prototipleme editörden çıkmadan yapılabilmeli. Kendi sohbet arayüzümüz CLI'ın komutlarını, izin
 akışını ve her yeni özelliğini yeniden yazmayı gerektirir, hep geride kalır; gerçek terminal hiçbir şeyi yeniden
 yazmaz ve bakımı küçüktür (ConPTY işletim sisteminin, libvterm kararlı). D6 ile konsoldaki derleme editöre gider.
-Durum: kabul edildi, uygulanmadı.
+Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliyor.
 
 ## v1 iş sırası
 

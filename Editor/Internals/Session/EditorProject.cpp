@@ -33,5 +33,7 @@ EditorProject ReadEditorProject(const std::filesystem::path& file) {
     project.worker = ReadCommand(json.at("worker"), root);
     project.build = ReadCommand(json.at("build"), root);
     project.buildDirectory = Resolve(root, json.at("buildDirectory").get<std::string>());
+    if (const auto source = json.value("sourceDirectory", std::string{}); !source.empty())
+        project.sourceDirectory = Resolve(root, source);
     return project;
 }

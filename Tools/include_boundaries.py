@@ -3,7 +3,7 @@
 - Çekirdek `X/Internals/` (Runtime, Input, Audio, Graphics ...): Engine-private; Engine reposundaki her kod
   (çekirdek, modüller, editör, Engine testleri) include edebilir, oyun/proje kodu edemez.
 - `Modules/X/Internals/`: sadece `Modules/X/` (testleri dahil).
-- `Editor/Internals/`: sadece Engine `Editor/`.
+- `Editor/Internals/`, `Terminal/Internals/`: sadece Engine `Editor/` / `Terminal/`.
 
 Sadece engine'in include köklerine göre çözülen ve engine'de var olan `#include "..."` yolları denetlenir; projenin
 kendi `Internals/` klasörleri bu denetimin konusu değildir. Komut: `python Engine check` (CTest `Engine.IncludeBoundaries`).
@@ -47,8 +47,8 @@ def _owner(include: str, engine_root: Path) -> tuple[Path, str] | None:
         return None
     if parts[0] == "Modules" and len(parts) > 2:
         return engine_root / CORE / "Modules" / parts[1], f"Modules/{parts[1]}"
-    if parts[0] == "Editor":
-        return engine_root / "Editor", "Editor"
+    if parts[0] in ("Editor", "Terminal"):
+        return engine_root / parts[0], parts[0]
     return engine_root, "Engine"
 
 
