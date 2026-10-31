@@ -12,9 +12,12 @@
 #include "Utilities/Float2.h"
 #include "Utilities/FloatRect.h"
 
+class FontFace;
 class Painter;
 class Path;
 class Surface;
+class TextBlock;
+struct TextStyle;
 struct PaintContext;
 
 // A temporary Painter state (transform, clip, opacity, blend, group, target, marker, legacy drawing). It lasts until
@@ -82,6 +85,15 @@ public:
     // Whole surface into 'dest'; the surface must have been drawn into this frame or earlier.
     void Image(const Surface& surface, const FloatRect& dest, const ImageStyle& style = {});
     void NineSlice(const TextureRef& texture, const FloatRect& dest, const NineSliceStyle& style);
+
+    // --- Text --------------------------------------------------------------------------------------------------
+    // 'position' is the top of the first line; horizontally the line's left end, centre or right end (style.align).
+    // Repeated strings are laid out once (cached); glyphs are rasterized for the size they cover on screen.
+    void Text(const FontFace& font, std::string_view text, Float2 position, const TextStyle& style);
+    // A block from font.Layout (its size, wrapping and fitting win over 'style'; colour and effects come from it).
+    void Text(const FontFace& font, const TextBlock& block, Float2 position, const TextStyle& style);
+    // Text wrapped or fitted to 'area' (style.maxWidth = area width), aligned inside it, starting at its top.
+    void TextBox(const FontFace& font, std::string_view text, const FloatRect& area, const TextStyle& style);
 
     // --- State scopes ------------------------------------------------------------------------------------------
     // Following drawing goes through 'transform' (applied before the current one).

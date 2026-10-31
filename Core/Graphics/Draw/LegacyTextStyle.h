@@ -8,7 +8,7 @@ struct MultilineTextStyle {
     int lineSpacing = 0; // added to the layout's nominal font size
 };
 
-struct TextStyle {
+struct LegacyTextStyle {
     int fontSize = 16;
     Vector2 anchor{0.5f, 0.0f}; // normalized anchor within the nominal text bounds
     int maxWidth = 0;

@@ -170,7 +170,7 @@ void TextRenderer::DrawCentered(const char* text, int centerX, int y, int fontSi
     Draw(text, centerX - Measure(text, fittedSize) / 2, y + (fontSize - fittedSize) / 2, fittedSize, color);
 }
 
-void TextRenderer::DrawAnchored(const char* text, Vector2 position, Color color, const TextStyle& style) const {
+void TextRenderer::DrawAnchored(const char* text, Vector2 position, Color color, const LegacyTextStyle& style) const {
     if (style.fontSize <= 0) return;
     const int fitted = FittedSize(text, style.fontSize, style.maxWidth);
     const int x =

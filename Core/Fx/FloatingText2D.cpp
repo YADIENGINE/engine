@@ -28,7 +28,7 @@ void FloatingText2D::Clear() { _entries.clear(); }
 
 void FloatingText2D::Draw(const TextRenderer& textRenderer) const {
     for (const Entry& entry : _entries) {
-        TextStyle text = entry.style.text;
+        LegacyTextStyle text = entry.style.text;
         if (entry.style.popSeconds > 0.0f) {
             text.fontSize = static_cast<int>(
                 std::lround(static_cast<float>(text.fontSize) *

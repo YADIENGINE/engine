@@ -19,7 +19,7 @@ Vector2 Position(const Rect& bounds, Vector2 position, Vector2 offset) {
     return {static_cast<float>(bounds.x) + static_cast<float>(bounds.width) * position.x + offset.x,
             static_cast<float>(bounds.y) + static_cast<float>(bounds.height) * position.y + offset.y};
 }
-TextStyle BoundedText(TextStyle style, const Rect& bounds) {
+LegacyTextStyle BoundedText(LegacyTextStyle style, const Rect& bounds) {
     if (style.maxWidth <= 0) style.maxWidth = bounds.width;
     return style;
 }

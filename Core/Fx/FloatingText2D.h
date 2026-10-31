@@ -2,7 +2,7 @@
 #include <raylib.h>
 #include <string>
 #include <vector>
-#include "Graphics/Draw/TextStyle.h"
+#include "Graphics/Draw/LegacyTextStyle.h"
 
 class TextRenderer;
 
@@ -11,7 +11,7 @@ struct FloatingTextStyle {
     Vector2 velocity{};
     float fadeSeconds = 0.0f;
     float popSeconds = 0.0f; // zero disables the EaseOutBack entrance
-    TextStyle text;
+    LegacyTextStyle text;
 };
 
 class FloatingText2D {

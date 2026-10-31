@@ -4,6 +4,7 @@
 #include <cmath>
 #include <stdexcept>
 #include "Graphics/Paint/Internals/PaintContext.h"
+#include "Graphics/Paint/Internals/PaintShared.h"
 #include "Graphics/Paint/Path.hpp"
 #include "Graphics/Render/Internals/FrameExecutor.h"
 #include "Graphics/Render/Internals/RenderResources.h"
@@ -13,26 +14,14 @@
 #include "Utilities/MathUtils.h"
 
 namespace {
-constexpr float AntiAliasPixels = 1.5f;   // Quad margin beyond a shape's coverage, device pixels
-constexpr float FlattenPixels = 0.25f;    // Curve flattening tolerance, device pixels
-constexpr float ReducedGlowRadius = 0.7f; // GlowQuality::Reduced
-constexpr float ReducedGlowStrength = 0.6f;
+constexpr float AntiAliasPixels = 1.5f; // Quad margin beyond a shape's coverage, device pixels
+constexpr float FlattenPixels = 0.25f;  // Curve flattening tolerance, device pixels
 constexpr float FullTurn = 2.0f * Pi;
 constexpr Color4 White{255, 255, 255, 255};
 constexpr PremultipliedColor Transparent{};
 
-bool Finite(float value) { return std::isfinite(value); }
-bool Finite(Float2 point) { return std::isfinite(point.x) && std::isfinite(point.y); }
 bool Drawable(const FloatRect& rect) {
     return Finite(rect.x) && Finite(rect.y) && Finite(rect.width) && Finite(rect.height) && !rect.Empty();
-}
-
-void RequireWidth(float value, const char* what) {
-    if (!(value >= 0.0f)) throw std::invalid_argument(what);
-}
-
-std::uint8_t EmissionByte(float emission) {
-    return static_cast<std::uint8_t>(std::lround(std::clamp(emission, 0.0f, 1.0f) * 255.0f));
 }
 
 std::uint8_t ModeFlags(PaintMode mode) { return static_cast<std::uint8_t>(mode); }
@@ -50,19 +39,6 @@ PremultipliedColor Premultiply(Color4 color) {
     const float alpha = static_cast<float>(color.a) / 255.0f;
     return {static_cast<float>(color.r) / 255.0f * alpha, static_cast<float>(color.g) / 255.0f * alpha,
             static_cast<float>(color.b) / 255.0f * alpha, alpha};
-}
-
-// The glow a style asks for after the quality setting; nullopt when nothing is drawn.
-std::optional<GlowStyle> EffectiveGlow(const GlowStyle& glow, const RenderQuality& quality) {
-    RequireWidth(glow.radius, "Glow radius must not be negative");
-    if (glow.radius <= 0.0f || glow.color.a == 0 || glow.strength <= 0.0f) return std::nullopt;
-    switch (quality.glow) {
-    case GlowQuality::Full: return glow;
-    case GlowQuality::Reduced:
-        return GlowStyle{glow.radius * ReducedGlowRadius, glow.color, glow.strength * ReducedGlowStrength};
-    case GlowQuality::Off: return std::nullopt;
-    }
-    return glow;
 }
 
 // A distance shape in its own frame: 'frame' maps shape-local coordinates (centred on the shape) to the current

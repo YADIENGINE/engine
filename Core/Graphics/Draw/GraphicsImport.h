@@ -5,4 +5,4 @@
 #include "Graphics/Anim/Easing.h"
 #include "Graphics/Draw/Neon.h"
 #include "Graphics/Draw/TextRenderer.h"
-#include "Graphics/Draw/TextStyle.h"
+#include "Graphics/Draw/LegacyTextStyle.h"

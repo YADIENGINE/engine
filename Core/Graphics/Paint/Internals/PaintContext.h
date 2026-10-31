@@ -12,7 +12,14 @@
 class FrameExecutor;
 class RenderResources;
 class GlyphCache;
+class TextLayoutCache;
 class Surface;
+
+// Glyph rasterization and layout caching for Painter::Text (owned by the renderer).
+struct TextServices {
+    GlyphCache& glyphs;
+    TextLayoutCache& layouts;
+};
 
 struct PaintFrameInfo {
     double time = 0.0;
@@ -33,18 +40,18 @@ struct PaintScopeRecord {
 // Everything a Painter draws with during one frame. Owned by the renderer (or a test); plain data: the behaviour is
 // in Painter and FrameExecutor.
 struct PaintContext {
-    PaintContext(DrawList& list, RenderResources& resources, FrameExecutor& executor, GlyphCache* glyphs,
+    PaintContext(DrawList& list, RenderResources& resources, FrameExecutor& executor, TextServices* text,
                  LegacyHost* legacy)
         : list(list)
         , resources(resources)
         , executor(executor)
-        , glyphs(glyphs)
+        , text(text)
         , legacy(legacy) {}
 
     DrawList& list;
     RenderResources& resources;
     FrameExecutor& executor;
-    GlyphCache* glyphs; // Null: text is not available (tests without fonts)
+    TextServices* text; // Null: Painter::Text is not available
     LegacyHost* legacy; // Null: Painter::Legacy is not available
     PaintFrameInfo frame;
 

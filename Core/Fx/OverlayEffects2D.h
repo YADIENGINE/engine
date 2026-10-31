@@ -4,7 +4,7 @@
 #include <deque>
 #include <optional>
 #include <string>
-#include "Graphics/Draw/TextStyle.h"
+#include "Graphics/Draw/LegacyTextStyle.h"
 #include "Utilities/Rect.h"
 
 class TextRenderer;
@@ -22,7 +22,7 @@ struct BannerStyle {
     Color color = WHITE;
     Vector2 position{0.5f, 0.5f}; // normalized within supplied bounds
     Vector2 offset{};
-    TextStyle text;
+    LegacyTextStyle text;
 };
 
 struct ToastStyle {
@@ -31,7 +31,7 @@ struct ToastStyle {
     float fadeSeconds = 0.0f;
     Vector2 position{0.5f, 0.0f};
     Vector2 offset{};
-    TextStyle text;
+    LegacyTextStyle text;
 };
 
 class OverlayEffects2D {

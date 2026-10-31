@@ -43,6 +43,7 @@ engine_tests(EngineTests
         ObjectListSafetyTests.cpp
         PaintTests.cpp
         PaintGeometryTests.cpp
+        PaintTextTests.cpp
         SceneManagerTests.cpp
         SceneObjectsTests.cpp
         SceneSafetyTests.cpp
@@ -56,7 +57,8 @@ engine_tests(EngineTests
 engine_add_tuning(EngineTests ROOT Tuning)
 target_compile_definitions(EngineTests PRIVATE
     ENGINE_TUNING_TEST_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Tuning/TestValues.tuning.json"
-    ENGINE_TUNING_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/Tests/TuningCases")
+    ENGINE_TUNING_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/Tests/TuningCases"
+    ENGINE_TEST_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf")
 
 # Offline audio authoring (Python): one CTest per suite, label "audio-generation". Registered only when the
 # interpreter has NumPy and SciPy, so configuring without them does not fail; the review player suite needs Node.

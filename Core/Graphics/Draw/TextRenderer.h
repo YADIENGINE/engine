@@ -6,7 +6,7 @@
 #include <string_view>
 #include <vector>
 #include "Graphics/Draw/TextLayout.h"
-#include "Graphics/Draw/TextStyle.h"
+#include "Graphics/Draw/LegacyTextStyle.h"
 
 struct Rect;
 
@@ -25,7 +25,7 @@ public:
     [[nodiscard]] int Measure(const char* text, int fontSize) const;
     [[nodiscard]] int FittedSize(const char* text, int fontSize, int maxWidth) const;
     void DrawCentered(const char* text, int centerX, int y, int fontSize, Color color, int maxWidth = 0) const;
-    void DrawAnchored(const char* text, Vector2 position, Color color, const TextStyle& style) const;
+    void DrawAnchored(const char* text, Vector2 position, Color color, const LegacyTextStyle& style) const;
     [[nodiscard]] TextLayout Layout(std::string_view text, const TextLayoutOptions& options) const;
     void DrawMultiline(const TextLayout& layout, Rect bounds, Color color, const MultilineTextStyle& style = {}) const;
 

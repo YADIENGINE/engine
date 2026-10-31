@@ -6,13 +6,15 @@
 #include "Graphics/Paint/Painter.hpp"
 #include "Graphics/Render/Internals/FrameExecutor.h"
 #include "Graphics/Render/Internals/RenderResources.h"
+#include "Graphics/Text/Internals/GlyphCache.h"
+#include "Graphics/Text/Internals/TextLayoutCache.h"
 
 // A Painter over the NullDevice drawing into a canvas target: Begin, draw with 'paint', End, inspect 'device'.
 struct PaintHarness {
     explicit PaintHarness(Float2 size = {400.0f, 200.0f}, float scale = 2.0f, LegacyHost* legacy = nullptr)
         : size(size)
         , scale(scale)
-        , context(list, resources, executor, nullptr, legacy)
+        , context(list, resources, executor, &text, legacy)
         , canvas(device.CreateTarget({static_cast<int>(size.x * scale), static_cast<int>(size.y * scale),
                                       GpuFormat::Rgba8, GpuFilter::Linear, false, nullptr})) {}
 
@@ -20,6 +22,7 @@ struct PaintHarness {
         if (pixelScale > 0.0f) scale = pixelScale;
         device.BeginFrame();
         resources.BeginFrame({scale, scale});
+        glyphs.BeginFrame();
         list.Reset({canvas, size, {0, 0, static_cast<int>(size.x * scale), static_cast<int>(size.y * scale)}, false},
                    PremultipliedColor{});
         device.ClearCommands();
@@ -29,6 +32,7 @@ struct PaintHarness {
         FlushPaint(context);
         device.EndFrame();
         resources.EndFrame();
+        layouts.EndFrame();
     }
     [[nodiscard]] std::vector<const NullCommand*> Draws() const {
         return device.CommandsOf(NullCommandType::DrawIndexed);
@@ -43,6 +47,9 @@ struct PaintHarness {
     RenderResources resources{device};
     DrawList list;
     FrameExecutor executor{device};
+    GlyphCache glyphs{device};
+    TextLayoutCache layouts;
+    TextServices text{glyphs, layouts};
     PaintContext context;
     Painter paint{context};
     GpuTarget canvas;

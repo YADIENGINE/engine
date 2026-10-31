@@ -88,10 +88,16 @@ add_library(EngineHeadless STATIC
     Graphics/Paint/Internals/DrawList.cpp
     Graphics/Paint/Internals/Tessellator.cpp
     Graphics/Paint/Painter.cpp
+    Graphics/Paint/PainterText.cpp
     Graphics/Paint/Path.cpp
     Graphics/Render/Internals/FrameExecutor.cpp
     Graphics/Render/Internals/RenderResources.cpp
     Graphics/Surface/Surface.cpp
+    Graphics/Text/FontFace.cpp
+    Graphics/Text/Internals/AtlasPacker.cpp
+    Graphics/Text/Internals/FontData.cpp
+    Graphics/Text/Internals/GlyphCache.cpp
+    Graphics/Text/Internals/TextLayoutCache.cpp
     Input/Internals/CollectionPointer.cpp
     Input/Internals/DragPointer.cpp
     Input/Internals/InputNavigation.cpp
@@ -117,6 +123,9 @@ set_target_properties(EngineHeadless PROPERTIES POSITION_INDEPENDENT_CODE ON CXX
 target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}"
     ENGINE_TUNING_LIVE=$<IF:$<CONFIG:Release,MinSizeRel,RelWithDebInfo>,0,1>)
 target_link_libraries(EngineHeadless PUBLIC EnginePersistence PRIVATE EngineStorage)
+# Glyph rasterization compiles a private copy of stb_truetype from raylib's bundled headers (header only, no raylib).
+set_source_files_properties(Graphics/Text/Internals/FontData.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${ENGINE_THIRD_PARTY_DIR}/raylib/src/external")
 engine_warnings(EngineHeadless)
 
 # engine_add_tuning(<target> ROOT <folder>): ROOT altındaki her *.tuning.json derleme sırasında
