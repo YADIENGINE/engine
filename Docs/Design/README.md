@@ -97,7 +97,14 @@ sessizce ayrışmasını ve AI'ın engine'i "düzeltmesini" önler. Durum: kabul
 **Neden:** elle yazılan kimlik ile makinenin ürettiği uzun liste ayrı kalır; manifest kendi özetini taşıyamazdı,
 ayrı kayıtta o da denetlenir; engine araçları manifest'i değişmeden okur.
 
-**Developer modunun açılması (2026-10-31):** Ayarlar'da şifreyle.
+**Developer modunun açılması (2026-10-31; D19 ile değişti):** engine public olunca şifre kalkar; developer modu
+Ayarlar'da uyarılı düz bir anahtardır ("`main`'deki kararsız engine; engine'e katkı için. Göndermek engine reposuna
+push yetkisi ister"). `DeveloperAccess`, şifre betiği, gömülü özet ve testleri silinir. Aşağıdaki şifre maddeleri
+o güne kadar geçerlidir. **Neden:** `main` herkesin klonlayabildiği bir dal olur, göndermeyi zaten GitHub yetkisi
+korur; public exe'ye gömülü özet çevrimdışı kırılabilir, bir şey korumaz. Dışarıdan katkı için "kendi fork'una gönder
++ PR aç" gerekirse sonra eklenir.
+
+Eski karar: Ayarlar'da şifreyle.
 - Launcher reposunda şifrenin kendisi değil, ondan türetilen özet durur (`DeveloperAccess.json`: PBKDF2-SHA256,
   salt, tur sayısı ≥ 600 000, özet); launcher derlenirken içine gömülür. Özeti launcher reposunun betiği üretir;
   şifre değiştirmek = betiği yeniden çalıştırmak. Launcher Windows'un kripto API'siyle (BCrypt) denetler.
@@ -545,6 +552,19 @@ Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliy
   `yadien-engine/engine` (engine kaynağı; README'si "kullanmak için launcher'ı kur" der). Godot'nun
   `godotengine/godot` düzeni: organizasyon adı ne olduğunu, ana repo ürün adını söyler. Repolar taşınarak
   (transfer) gelir; eski adresler yönlenir. Manifest `repository`'si, submodule adresleri ve belgeler güncellenir.
+- **Lisans:** iki repo da **MIT**. Engine kodu oyunlara derlendiği için kapalı kaynak ticari oyunlara izin veren
+  bir lisans gerekir; MIT'in tek şartı (bildirim) `release`'in yazdığı `ThirdPartyNotices.txt`'e engine'in kendi
+  satırı eklenerek kendiliğinden karşılanır. Paket, gömdüğü araçların lisans metinlerini de taşır (Python PSF,
+  CMake BSD-3, Ninja Apache-2.0, Velopack MIT). GPL ticari oyunu kapattığı için, zlib daha az bilindiği, MIT +
+  Apache-2.0 tek kişilik proje için ağır olduğu için seçilmedi. Telif satırı
+  `Copyright (c) 2026 YADIEN contributors` (Godot gibi kişi adı yok; ürün adı burada hukuki metin olduğu için
+  yazılıdır, ad değişirse `LICENSE` de değişir).
+- **Belge dili:** engine ve launcher belgeleri bundan sonra **İngilizce**. Engine `Docs/`'u her projenin
+  `Engine/`'ine girdiği için kullanıcının okuduğu dil odur. İlk public yayından önce kullanıcıya dönük olanlar
+  çevrilir (engine `Docs/` — `Design/` hariç —, iki README, launcher belgeleri, yeni CONTRIBUTING); `Docs/Design/` ve
+  `CLAUDE.md`'ler aynı kuralla sonra. İki repodaki "belgeler Türkçe" kuralı İngilizce olur. Oyun repoları kendi
+  dillerini seçer.
+- **Developer modu:** şifresiz, uyarılı düz anahtar (D4).
 - Oyun repoları (ör. bir oyunun kendisi) private kalabilir; public engine / launcher'ı submodule olarak alır.
 - **Altyapı:** GitHub Actions (public repoda ücretsiz): her push'ta derleme + test; `v*` tag'inde paket
   (`dev.py package`, D15) → SignPath imzası → launcher reposunda Release (Setup.exe + Velopack güncelleme dosyaları).
@@ -553,7 +573,7 @@ Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliy
 - **Neden:** organizasyon iki repoyu tek ürün gibi gösterir, büyüyebilir (belge, örnek, site) ve ortak eklemek
   kolaydır; kişisel hesapta kalmak taşımayı sonraya ertelerdi.
 
-Durum: kabul edildi; lisans, belge dili, developer modu ve açılmadan önceki temizlik açık sorularda.
+Durum: kabul edildi; açılmadan önceki temizlik açık sorularda.
 
 ## v1 iş sırası
 
@@ -591,9 +611,9 @@ Aşama 4 (dağıtım) için, tek tek konuşulur:
    orada görülür.
 5. ~~"Ses araçlarını kur"~~ → D7 (istendiğinde, özeti sabit wheel'ler, `current/` dışına).
 6. ~~Yayın yeri ve CI~~ → D19 (hemen public; `yadien-engine` organizasyonu, Actions, SignPath).
-7. Lisans (engine, launcher) ve pakete giren araçların lisans metinleri.
-8. Public belgelerin dili (belgeler, tasarım kararları, commit kuralları bugün Türkçe).
-9. Developer modu: engine public olunca şifre kapısının anlamı (D4).
+7. ~~Lisans~~ → D19 (iki repo da MIT, "YADIEN contributors").
+8. ~~Public belgelerin dili~~ → D19 (İngilizce; önce kullanıcıya dönük belgeler).
+9. ~~Developer modu~~ → D4 / D19 (şifre kalkar, uyarılı düz anahtar).
 10. Açılmadan önceki temizlik: commit e-postası, engine belgelerindeki oyun adları, geçmiş.
 
 Kapanan ilk liste:
