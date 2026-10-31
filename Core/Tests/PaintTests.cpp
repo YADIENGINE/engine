@@ -198,6 +198,31 @@ TEST_CASE("Engine.Paint.DestroyedSurfaceIsFreedAfterTheFrame", "[engine][paint]"
     CHECK(h.device.LiveTargets() == before);
 }
 
+TEST_CASE("Engine.Paint.ImagePolygonSamplesTheSurfaceInLogicalUnits", "[engine][paint]") {
+    PaintHarness h;
+    Surface surface({100.0f, 50.0f});
+    h.Begin();
+    const std::vector<Float2> points{{10.0f, 10.0f}, {60.0f, 10.0f}, {60.0f, 40.0f}, {10.0f, 40.0f}};
+    const std::vector<Float2> sources{{0.0f, 0.0f}, {50.0f, 0.0f}, {50.0f, 50.0f}, {0.0f, 50.0f}};
+    h.paint.ImagePolygon(surface, points, sources); // Not drawn yet: nothing
+    {
+        auto into = h.paint.Target(surface, Red);
+    }
+    h.paint.ImagePolygon(surface, points, sources, Blue);
+    CHECK_THROWS_AS(h.paint.ImagePolygon(surface, points, std::vector<Float2>{{0.0f, 0.0f}}), std::invalid_argument);
+    h.End();
+    const auto draws = h.Draws();
+    REQUIRE(draws.size() == 1);
+    const auto vertices = h.device.DrawnVertices(*draws[0]);
+    REQUIRE(vertices.size() == 6); // Fan of two triangles
+    for (const PaintVertex& vertex : vertices) {
+        CHECK(vertex.kind == PaintKind::Texture);
+        CHECK(vertex.color.b == 255);
+        if (vertex.x > 30.0f) CHECK(vertex.u == Approx(0.5f));
+        if (vertex.y < 20.0f) CHECK(vertex.v == Approx(1.0f)); // Top of the surface, stored bottom-up
+    }
+}
+
 TEST_CASE("Engine.Paint.GroupsCompositeOnceAndReusePooledImages", "[engine][paint]") {
     PaintHarness h;
     h.Begin();

@@ -471,6 +471,40 @@ void Painter::Image(const Surface& surface, const FloatRect& dest, const ImageSt
     }
 }
 
+void Painter::ImagePolygon(const Surface& surface, std::span<const Float2> points, std::span<const Float2> sources,
+                           Color4 tint, float emission) {
+    if (sources.size() != points.size()) throw std::invalid_argument("ImagePolygon needs one source per point");
+    const SurfaceAccess::State& state = SurfaceAccess::Of(surface);
+    if (!state.drawn || points.size() < 3) return;
+    DrawList& list = _context.list;
+    const Affine2& transform = list.State().transform;
+    const PaintColor color = list.Shade(tint);
+    const bool composite = state.emission.Valid();
+    MeshBuffer& mesh = _context.mesh;
+    for (std::size_t i = 0; i < points.size(); ++i) {
+        const Float2 at = transform.Apply(points[i]);
+        PaintVertex vertex{.x = at.x,
+                           .y = at.y,
+                           .u = sources[i].x / state.size.x,
+                           .v = 1.0f - sources[i].y / state.size.y, // Surfaces are stored bottom-up
+                           .shape0 = 1.0f,                          // Composite emission: textures[1]
+                           .color = color,
+                           .kind = composite ? PaintKind::Composite : PaintKind::Texture,
+                           .emission = EmissionByte(emission)};
+        mesh.vertices.push_back(vertex);
+    }
+    for (std::uint32_t i = 1; i + 1 < points.size(); ++i)
+        mesh.indices.insert(mesh.indices.end(), {0U, i, i + 1});
+    if (composite) {
+        const std::array textures{state.color, state.emission};
+        list.Add(mesh.vertices, mesh.indices, textures);
+    } else {
+        const std::array textures{state.color};
+        list.Add(mesh.vertices, mesh.indices, textures);
+    }
+    mesh.Clear();
+}
+
 void Painter::NineSlice(const TextureRef& texture, const FloatRect& dest, const NineSliceStyle& style) {
     if (!texture.Valid() || !Drawable(dest)) return;
     const auto width = static_cast<float>(texture.Width());

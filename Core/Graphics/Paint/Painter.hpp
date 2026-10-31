@@ -89,6 +89,11 @@ public:
     void Image(const TextureRef& texture, const FloatRect& dest, const ImageStyle& style = {});
     // Whole surface into 'dest'; the surface must have been drawn into this frame or earlier.
     void Image(const Surface& surface, const FloatRect& dest, const ImageStyle& style = {});
+    // Convex polygon showing part of 'surface': 'sources[i]' is where 'points[i]' samples the surface, in its logical
+    // units (as ImageStyle::source), so a piece of an image can be warped onto any convex shape (shards, ripples).
+    // Not anti-aliased. Point and source counts must match (invalid_argument); fewer than three draws nothing.
+    void ImagePolygon(const Surface& surface, std::span<const Float2> points, std::span<const Float2> sources,
+                      Color4 tint = {255, 255, 255, 255}, float emission = 0.0f);
     void NineSlice(const TextureRef& texture, const FloatRect& dest, const NineSliceStyle& style);
 
     // --- Text --------------------------------------------------------------------------------------------------

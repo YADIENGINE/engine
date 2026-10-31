@@ -66,7 +66,8 @@ paint.Image(_background, field);
 ```
 
 `ImageStyle`: kaynak bölge, merkez etrafında dönüş, renk tonu. `NineSlice(texture, dest, style)` kenarları sabit
-kalan panel çizer. Surface, oyunun renderer'ından uzun yaşamaz (sahibi sahne / View olur).
+kalan panel çizer. `ImagePolygon(surface, points, sources)` surface'in bir parçasını dışbükey bir çokgene geçirir
+(kırılan ayna parçaları, dalgalanan alan); kaynaklar surface'in mantıksal birimindedir. Surface, oyunun renderer'ından uzun yaşamaz (sahibi sahne / View olur).
 
 ## Metin
 
