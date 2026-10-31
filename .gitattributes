@@ -9,7 +9,7 @@
 
 # Engine geliştirmeye ait dosyalar launcher'ın kullanıcı kopyasına girmez (içe aktarma `git archive` kullanır)
 /CLAUDE.md export-ignore
-/Docs/Design/** export-ignore
+/Docs/Design export-ignore
 
 # Bağımlılık kaynakları bayt bayt upstream'deki gibi saklanır (ThirdParty/README.md)
 /ThirdParty/raylib/** -text
