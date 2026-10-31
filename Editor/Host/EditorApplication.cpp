@@ -60,10 +60,10 @@ void EditorApplication::SavePreferences(bool force) {
     if (_preferences != _observedPreferences || _fontSize != _observedFontSize) {
         _observedPreferences = _preferences;
         _observedFontSize = _fontSize;
-        _saveAt = GetTime() + SettingsSaveDelay;
+        _saveAt = PreviewTimestamp() + SettingsSaveDelay;
         _dirty = true;
     }
-    if (!_dirty || (!force && GetTime() < _saveAt)) return;
+    if (!_dirty || (!force && PreviewTimestamp() < _saveAt)) return;
     if (auto error = _settings->Save(_projectKey, _preferences, _fontSize); !error.empty())
         _controller.Log(error, EditorLogLevel::Warning);
     _dirty = false;
@@ -94,7 +94,8 @@ void EditorApplication::Stop() {
     _controller.Shutdown();
     _stopped = true;
 }
-void EditorApplication::DrawWindow() const {
+void EditorApplication::DrawWindow(Painter& paint) const {
+    (void)paint; // ToolUi owns its native ImGui rendering after the canvas has been presented.
     if (auto frame = _controller.TakeFrame()) {
         const bool timed = _controller.Snapshot().profiler.liveEnabled;
         const auto transferStarted = timed ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};

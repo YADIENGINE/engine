@@ -1,5 +1,4 @@
 #pragma once
-#include <array>
 #include <string_view>
 #include "Graphics/Anim/ButtonAnim.h"
 #include "Utilities/Color4.h"
@@ -23,23 +22,12 @@ struct NeonFrameStyle {
     float coreMinWidth = 0.0f;
     float coreWhiten = 0.0f;
 };
-// One soft halo ring of the legacy text glow (Graphics/Draw/Neon.h; removed after the migration).
-struct NeonTextRing {
-    float radius = 0.0f;
-    float alpha = 0.0f;
-    float phase = 0.0f;
-};
 // Glowing text: a halo of 'haloRadius' at 'haloAlpha' times the text's alpha, and the text whitened towards its
 // centre by 'coreWhiten'. Both scale with the call's 'glow'.
 struct NeonTextStyle {
     float haloRadius = 0.0f;
     float haloAlpha = 0.0f;
     float coreWhiten = 0.0f;
-    // Legacy (raylib) path only, which fakes the halo with shifted copies; removed after the migration.
-    int glowOffset = 0;
-    float glowAlpha = 0.0f;
-    std::array<NeonTextRing, 2> rings{};
-    int samples = 0;
 };
 struct NeonPanelStyle {
     Color4 body{0, 0, 0, 0};
@@ -98,7 +86,6 @@ struct RoundButtonStyle {
     float glowAlpha = 0.0f;
     float labelWhiten = 0.0f;
     float textGlow = 0.0f;
-    int segments = 32; // Legacy path only
     float padding = 0.0f;
     NeonTextStyle text;
 };
@@ -108,7 +95,6 @@ struct KeyCapStyle {
     Color4 frame{0, 0, 0, 0};
     Color4 label{255, 255, 255, 255};
     float roundness = 0.0f; // Corner radius as a share of half the shorter side
-    int segments = 0;       // Legacy path only
     float frameWidth = 0.0f;
 };
 // Arcade progress bar: dark track, leading ghost band, glowing fill, top shine, block gaps, neon frame. A zero width

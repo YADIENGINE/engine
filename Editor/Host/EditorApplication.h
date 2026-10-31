@@ -18,7 +18,7 @@ public:
 protected:
     [[nodiscard]] DeviceInput ReadInput() override;
     void Update(float realSeconds) override;
-    void DrawWindow() const override;
+    void DrawWindow(Painter& paint) const override;
     void Stop() override;
 
 private:

@@ -63,13 +63,10 @@ stay local; exported reports include this machine information.
 
 ## Execution policy and counters
 
-Renderer owns RenderExecutionOptions per frame. Batched is the default; Individual makes GlowBatch use the
-existing DrawGlow path with the same geometry and composition order. Game::ConfigureFrameExecution changes
-FPS, VSync and drawing policy transiently, without writing player options.
-
-The scoped RenderExecutionContext forwards optional Glows and GlowBlendRequests counters to the observer.
-They count glow-helper submissions and requested blend changes, including potentially redundant requests.
-They are not total OpenGL draw calls. No global Profiler instance is used.
+Game::ConfigureFrameExecution changes FPS and VSync transiently without writing player options.
+Painter batches lights automatically. Runtime observation records stage timing; custom counters remain
+available through the Profiler API. `Game::RenderStatistics()` reports renderer submissions and resource work.
+No global Profiler instance is used.
 
 ## Statistics and reports
 

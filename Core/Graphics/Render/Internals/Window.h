@@ -12,6 +12,10 @@ public:
     // Gizli açılan pencereyi gösterir (ilk kare çizildikten sonra); görünürse bir şey yapmaz.
     void Show();
     [[nodiscard]] bool ShouldClose() const;
+    [[nodiscard]] static bool Focused();
+    [[nodiscard]] static double ClockSeconds();
+    [[nodiscard]] static float FrameSeconds();
+    [[nodiscard]] static int FramesPerSecond();
     [[nodiscard]] int Width() const;
     [[nodiscard]] int Height() const;
     // Back buffer size in device pixels (differs from Width/Height on high-DPI displays).

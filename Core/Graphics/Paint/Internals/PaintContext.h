@@ -3,7 +3,6 @@
 #include <optional>
 #include <vector>
 #include "Graphics/Paint/Internals/DrawList.h"
-#include "Graphics/Paint/Internals/LegacyHost.h"
 #include "Graphics/Paint/Internals/Tessellator.h"
 #include "Graphics/Paint/Painter.hpp"
 #include "Graphics/Post/PostSettings.hpp"
@@ -40,27 +39,18 @@ struct PaintScopeRecord {
 // Everything a Painter draws with during one frame. Owned by the renderer (or a test); plain data: the behaviour is
 // in Painter and FrameExecutor.
 struct PaintContext {
-    PaintContext(DrawList& list, RenderResources& resources, FrameExecutor& executor, TextServices* text,
-                 LegacyHost* legacy)
+    PaintContext(DrawList& list, RenderResources& resources, FrameExecutor& executor, TextServices* text)
         : list(list)
         , resources(resources)
         , executor(executor)
-        , text(text)
-        , legacy(legacy) {}
+        , text(text) {}
 
     DrawList& list;
     RenderResources& resources;
     FrameExecutor& executor;
     TextServices* text;             // Null: Painter::Text is not available
-    LegacyHost* legacy;             // Null: Painter::Legacy is not available
     const FontFace* font = nullptr; // The game's font (Painter::Font); borrowed, outlives the frames
     PaintFrameInfo frame;
-
-    // Legacy bridge state.
-    bool legacyDirty = false; // Raylib may hold drawing the GPU has not seen yet
-    std::optional<LegacyBinding> legacyBound;
-    std::uint64_t legacyRevision = 0;
-    std::uint32_t legacySwitches = 0;
 
     std::vector<PaintScopeRecord> scopes;
     MeshBuffer mesh;            // Tessellation scratch
@@ -71,5 +61,5 @@ struct PaintContext {
     PaintContext& operator=(const PaintContext&) = delete;
 };
 
-// Executes the drawing recorded so far, after raylib's pending drawing (legacy bridge) if there is any.
+// Executes the drawing recorded so far.
 void FlushPaint(PaintContext& context);

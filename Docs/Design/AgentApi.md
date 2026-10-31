@@ -39,7 +39,7 @@ bir worker modu, ve bunu dışarıya açan komut.
 ## Gereken özellikler
 
 - **Determinizm:** sabit zaman adımı, tohumlu RNG, kayıtlı input; aynı komut her seferinde aynı görseli verir.
-- **Sunum saati:** `render --time` saati doğrudan ayarlar (`DrawTime()` zaten worker'da kontrol edilebilir).
+- **Sunum saati:** `render --time` saati doğrudan ayarlar (`Painter::Time()` worker'da kontrol edilebilir).
 - **Makine okunur çıktı:** hatalar, log'lar, inspection ve test sonuçları JSON.
 - **Sürüm uyumu:** komut launcher'dan çağrılır, iş projenin kendi editörüne / worker'ına devredilir (D3).
 

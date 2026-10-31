@@ -1,19 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
-#include <concepts>
 #include <cstdint>
-
-struct Color4;
-
-// Migration only (removed with the raylib bridge): a byte RGBA struct other than Color4, i.e. raylib's Color.
-template <class T>
-concept LegacyRgba = !std::same_as<T, Color4> && requires(T color) {
-    requires std::same_as<decltype(color.r), unsigned char>;
-    requires std::same_as<decltype(color.g), unsigned char>;
-    requires std::same_as<decltype(color.b), unsigned char>;
-    requires std::same_as<decltype(color.a), unsigned char>;
-};
 
 // A raylib-independent RGBA colour, 0..255 per channel, straight (not premultiplied) alpha. Headless code, tuning
 // values and the Painter API use it.
@@ -22,10 +10,6 @@ struct Color4 {
     std::uint8_t g = 0;
     std::uint8_t b = 0;
     std::uint8_t a = 255;
-
-    // Migration only: converts to raylib's Color so code not yet on Painter can use Color4 constants. One way on
-    // purpose (raylib colours convert with ToColor4), so 'condition ? Color4 : Color' stays unambiguous.
-    template <LegacyRgba T> constexpr operator T() const { return T{r, g, b, a}; }
 
     friend constexpr bool operator==(const Color4&, const Color4&) = default;
 };

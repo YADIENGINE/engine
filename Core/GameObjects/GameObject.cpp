@@ -1,6 +1,5 @@
 #include "GameObjects/GameObject.h"
 #include <cassert>
-#include "Graphics/Paint/Painter.hpp"
 
 GameObject::GameObject() = default;
 GameObject::~GameObject() {
@@ -8,9 +7,5 @@ GameObject::~GameObject() {
 }
 void GameObject::Start() {}
 void GameObject::Update(float deltaSeconds) { (void)deltaSeconds; }
-void GameObject::Draw(Painter& paint) const {
-    auto legacy = paint.Legacy();
-    Draw();
-}
-void GameObject::Draw() const {}
+void GameObject::Draw(Painter& paint) const { (void)paint; }
 void GameObject::Stop() {}

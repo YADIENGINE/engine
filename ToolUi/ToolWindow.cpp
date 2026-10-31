@@ -1,7 +1,7 @@
 #include "ToolUi/ToolWindow.h"
 
 namespace {
-constexpr Color ToolWindowBackground{20, 22, 28, 255};
+constexpr Color4 ToolWindowBackground{20, 22, 28, 255};
 } // namespace
 GameSettings ToolGameSettings(const std::filesystem::path& applicationId, const WindowSettings& window) {
     GameSettings settings;

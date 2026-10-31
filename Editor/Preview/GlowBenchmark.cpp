@@ -1,7 +1,7 @@
 #include "Editor/Preview/GlowBenchmark.h"
 #include <cmath>
 #include <random>
-#include "Graphics/Draw/GlowBatch.h"
+#include "Graphics/Paint/Painter.hpp"
 
 namespace {
 class GlowBenchmark final : public EditorPreview {
@@ -18,29 +18,29 @@ public:
         const auto width = static_cast<float>(canvas.x), height = static_cast<float>(canvas.y);
         const auto gridColumns = static_cast<float>(columns), gridRows = static_cast<float>(rows);
         for (int i = 0; i < count; ++i) {
-            _positions.push_back(cluster ? Vector2{width * 0.5f + offset(rng) * width * 0.2f,
-                                                   height * 0.5f + offset(rng) * height * 0.2f}
-                                         : Vector2{(static_cast<float>(i % columns) + 0.5f) * width / gridColumns,
-                                                   (static_cast<float>(i / columns) + 0.5f) * height / gridRows});
+            _positions.push_back(
+                cluster ? Float2{width * 0.5f + offset(rng) * width * 0.2f, height * 0.5f + offset(rng) * height * 0.2f}
+                        : Float2{(static_cast<float>(i % columns) + 0.5f) * width / gridColumns,
+                                 (static_cast<float>(i / columns) + 0.5f) * height / gridRows});
         }
     }
 
 private:
-    void Draw() const override {
-        GlowBatch glows;
-        for (const Vector2 center : _positions)
-            glows.Draw(center, _radius, {80, 210, 255, 100});
+    void Draw(Painter& paint) const override {
+        for (const Float2 center : _positions)
+            paint.Glow(center, _radius, {.color = {80, 210, 255, 100}});
     }
-    std::vector<Vector2> _positions;
+    std::vector<Float2> _positions;
     float _radius = 24;
 };
 } // namespace
 PreviewDefinition GlowBenchmarkDefinition() {
     PreviewDefinition definition;
     definition.id = "engine.benchmark.glow-batching";
-    definition.name = "Glow Batching";
+    definition.name = "Painter Glows";
     definition.category = "Profiler";
-    definition.description = "Identical radial glows through the production Individual/Batched execution policy.";
+    definition.description =
+        "Radial lights recorded and batched by Painter; A/B variants can override workload parameters.";
     definition.parameters = {{.id = "count",
                               .label = "Glows",
                               .kind = PreviewParameterKind::Choice,
@@ -66,7 +66,7 @@ PreviewDefinition GlowBenchmarkDefinition() {
                               .minimum = 0,
                               .maximum = 2147483647,
                               .apply = PreviewApplyMode::OnReset}};
-    definition.benchmark = PreviewBenchmark{definition.id};
+    definition.benchmark = PreviewBenchmark{definition.id, 2};
     definition.create = [](const PreviewServices& services, const PreviewParameters& parameters) {
         return std::make_unique<GlowBenchmark>(services.canvas, parameters);
     };

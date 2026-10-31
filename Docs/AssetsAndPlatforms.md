@@ -30,11 +30,10 @@ Texture'ı kullanan View kaynağı GL bağlamı yaşarken yükleyip bırakır.
 | `window.visible`, `alwaysRun` | true / false; gizli context ve minimize iken çalışma |
 | `window.maximized` | false |
 | `canvasWidth/Height` | 1280 / 720 mantıksal koordinat |
-| `background`, `letterbox` | BLACK / BLACK |
-| `canvasTextureFilter`, `fontTextureFilter` | bilinear |
+| `background`, `letterbox` | opaque black `Color4` |
+| `smoothCanvas` | true; linear filtering for canvas presentation |
 | `applicationId` | Game; kullanıcı verisinin kalıcı kimliği |
-| `font`, `fontCodepoints` | boş yol varsayılan font; özel glyph kapsamı |
-| `fontAtlasSizes` | 40,48,56,64,80,96,120,144; [font rehberi](Graphics/Text.md) |
+| `font` | empty means no game font; otherwise an asset path, with glyphs loaded on demand; [font guide](Graphics/Text.md) |
 | `assets`, `audio` | boş manifest / katalog |
 | `audioVolume` | [ses adımları ve grupları](Audio.md) |
 | `save` | [SaveSettings](Modules/Persistence/README.md); dosya bazında override destekli |

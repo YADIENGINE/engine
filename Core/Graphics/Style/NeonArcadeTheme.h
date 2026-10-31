@@ -12,12 +12,7 @@ inline constexpr NeonFrameStyle NeonArcadeFrame{.outerWidth = 4.5f,
                                                 .coreWidth = 0.4f,
                                                 .coreMinWidth = 1.0f,
                                                 .coreWhiten = 0.6f};
-inline constexpr NeonTextStyle NeonArcadeText{
-    .haloRadius = 5.0f,
-    .haloAlpha = 0.45f,
-    .coreWhiten = 0.2f,
-    .rings = {{{.radius = 2.0f, .alpha = 0.06f}, {.radius = 4.0f, .alpha = 0.03f, .phase = 0.5f}}},
-    .samples = 8};
+inline constexpr NeonTextStyle NeonArcadeText{.haloRadius = 5.0f, .haloAlpha = 0.45f, .coreWhiten = 0.2f};
 inline constexpr Color4 NeonArcadeButtonBody{24, 19, 50, 255};
 inline constexpr Color4 NeonArcadeButtonShadow{5, 3, 14, 255};
 
@@ -223,7 +218,6 @@ inline constexpr Theme NeonArcadeTheme{
                            .glowAlpha = 0.28f,
                            .labelWhiten = 0.4f,
                            .textGlow = 0.6f,
-                           .segments = 40,
                            .padding = 28.0f,
                            .text = NeonArcadeText},
            // Gövde yüzey renginde, çerçeve ve harf ikincil yazı renginde (yarı saydam).
@@ -231,7 +225,6 @@ inline constexpr Theme NeonArcadeTheme{
                       .frame = {190, 186, 220, 178},
                       .label = {190, 186, 220, 255},
                       .roundness = 0.3f,
-                      .segments = 6,
                       .frameWidth = 1.5f},
            // Koyu yuva, parlayan blok blok dolum, mor neon çerçeve.
            .progressBar = {.track = {12, 9, 28, 255},

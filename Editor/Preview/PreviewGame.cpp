@@ -3,7 +3,7 @@
 PreviewGame::PreviewGame(const GameSettings& settings, const PreviewRegistry& registry, ControlChannel& channel,
                          const std::string& session)
     : Game(settings)
-    , _preview(*this, settings, registry, channel, session, Text(), HasFont() ? &Font() : nullptr, Audio(),
+    , _preview(*this, settings, registry, channel, session, HasFont() ? &Font() : nullptr, Audio(),
                {[this] { RequestQuit(); },
                 [this] { Time().Clear(); },
                 [this](PreviewScene& scene) { SetScene(scene); },

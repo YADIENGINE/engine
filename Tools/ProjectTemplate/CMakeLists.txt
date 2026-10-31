@@ -23,7 +23,7 @@ endif()
 add_subdirectory(Engine)
 
 # Game/ ve Editor/ altındaki .cpp'ler kendiliğinden bulunur (yeni dosya eklenince CMake yeniden yapılandırır).
-# Klasör boşken Engine'in starter oyunu / starter worker'ı derlenir.
+# Klasör boşken Painter kullanan starter oyunu / worker'ı ve lisanslı fontu hazırlanır.
 file(GLOB_RECURSE APP_GAME_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Game/*.cpp")
 file(GLOB_RECURSE APP_EDITOR_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Editor/*.cpp")
 

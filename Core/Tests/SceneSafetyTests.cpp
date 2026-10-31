@@ -76,7 +76,7 @@ private:
         (void)seconds;
         _log.push_back("scene.update");
     }
-    void Draw() const override { _log.push_back("scene.draw"); }
+    void Draw(Painter&) const override { _log.push_back("scene.draw"); }
     void Stop() override {
         _log.push_back("scene.stop");
         if (duringStop) duringStop();

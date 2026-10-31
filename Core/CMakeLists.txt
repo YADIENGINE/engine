@@ -101,7 +101,6 @@ add_library(EngineHeadless STATIC
     Graphics/Draw/GridViewport.cpp
     Graphics/Draw/Neon.cpp
     Graphics/Draw/ParticleDraw.cpp
-    Graphics/Draw/TextLayout.cpp
     Graphics/Icons/Icons.cpp
     Graphics/Style/Theme.cpp
     Graphics/Ui/Backdrop.cpp
@@ -289,29 +288,13 @@ add_library(Engine STATIC
     Audio/Internals/AudioMusicStream.cpp
     Audio/Internals/EffectVoices.cpp
     Audio/Internals/State.cpp
-    Graphics/Icons/IconsLegacy.cpp
-    Graphics/Draw/BackgroundDrawLegacy.cpp
     Graphics/Gpu/Internals/GlDevice.cpp
-    Graphics/Render/Internals/LegacyBridge.cpp
-    Graphics/Draw/DrawUtilsLegacy.cpp
-    Graphics/Draw/DrawTime.cpp
-    Graphics/Draw/GlowBatch.cpp
-    Graphics/Draw/ParticleDrawLegacy.cpp
-    Graphics/Draw/NeonLegacy.cpp
-    Graphics/Render/LegacyTexture.cpp
-    Graphics/Render/RenderLayer.cpp
-    Graphics/Render/Internals/RenderTargetStack.cpp
-    Graphics/Render/Internals/RenderExecutionContext.cpp
-    Graphics/Render/ShadowMask.cpp
     Graphics/Render/Internals/Renderer.cpp
-    Graphics/Draw/TextRenderer.cpp
-    Graphics/Render/UiRegion.cpp
     Graphics/Render/Internals/Window.cpp
     Input/Internals/InputReader.cpp
     Platform/Internals/ApplicationFiles.cpp
-    Graphics/Ui/BackdropLegacy.cpp
+    Platform/Internals/Shell.cpp
     Graphics/Ui/UiButton.cpp
-    Graphics/Ui/UiDrawLegacy.cpp
     Runtime/Game.cpp
 )
 target_link_libraries(Engine PUBLIC EngineHeadless raylib)
@@ -338,13 +321,27 @@ target_link_libraries(EngineRunTrackingRuntime PUBLIC EngineRunTracking PRIVATE 
 set_target_properties(EngineRunTrackingRuntime PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_warnings(EngineRunTrackingRuntime)
 
+# Starter placeholders use Painter text; ship their font and its license beside the executable.
+function(engine_copy_starter_font target)
+    set(starterFontRoot "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../ThirdParty/NotoSans")
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${target}>/Assets/Fonts"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${starterFontRoot}/NotoSans-Regular.ttf"
+            "$<TARGET_FILE_DIR:${target}>/Assets/Fonts/Starter.ttf"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${starterFontRoot}/OFL.txt"
+            "$<TARGET_FILE_DIR:${target}>/Assets/Fonts/Starter-OFL.txt"
+        VERBATIM)
+endfunction()
+
 # A project supplies CreateGame, its source list, and an optional asset directory.
 # With no sources (a fresh project) the engine's starter game stands in until the first source is added.
 function(engine_add_game target)
     cmake_parse_arguments(GAME "" "ASSETS" "SOURCES;LIBRARIES" ${ARGN})
+    set(useStarter FALSE)
     if(NOT GAME_SOURCES)
         message(STATUS "${target}: no game sources yet; building the engine starter game")
         set(GAME_SOURCES "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Runtime/Starter/StarterGame.cpp")
+        set(useStarter TRUE)
     endif()
     add_executable(${target} ${GAME_SOURCES} "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Main.cpp")
     target_link_libraries(${target} PRIVATE Engine ${GAME_LIBRARIES})
@@ -353,5 +350,8 @@ function(engine_add_game target)
     if(GAME_ASSETS)
         add_custom_command(TARGET ${target} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory "${GAME_ASSETS}" "$<TARGET_FILE_DIR:${target}>/Assets")
+    endif()
+    if(useStarter)
+        engine_copy_starter_font(${target})
     endif()
 endfunction()

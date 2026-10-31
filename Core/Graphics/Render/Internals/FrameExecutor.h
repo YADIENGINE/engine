@@ -4,9 +4,8 @@
 #include "Graphics/Gpu/Internals/GpuDevice.h"
 #include "Graphics/Paint/Internals/DrawList.h"
 
-// Turns recorded drawing into device calls. A frame may execute in several segments (whenever raylib drawing has to
-// come in between during the migration); open targets carry over between segments. Redundant pipeline, scissor and
-// texture changes are skipped.
+// Turns recorded drawing into device calls. Target flushes and native tool overlays may split a frame into
+// segments; open targets carry over. Redundant pipeline, scissor and texture changes are skipped.
 class FrameExecutor {
 public:
     explicit FrameExecutor(GpuDevice& device);

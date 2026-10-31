@@ -5,8 +5,7 @@
 
 Renderer::Frame::Frame(Renderer& renderer, Painter& canvas)
     : _renderer(renderer)
-    , _canvas(canvas)
-    , _execution(renderer._execution, renderer._observer) {}
+    , _canvas(canvas) {}
 
 Renderer::Frame::~Frame() {
     if (_completed) return;
@@ -17,7 +16,7 @@ Renderer::Frame::~Frame() {
     }
 }
 
-void Renderer::Frame::Complete(const std::function<void(const GpuNativeTarget&)>& canvasReady,
+void Renderer::Frame::Complete(const std::function<void(const Texture2D&)>& canvasReady,
                                const std::function<void(Painter&)>& windowDraw) {
     if (_completed) return;
     _completed = true;
@@ -30,7 +29,8 @@ void Renderer::Frame::Complete(const std::function<void(const GpuNativeTarget&)>
         observer->BeginRegion(FrameRegion::PreviewBridge);
     }
     if (canvasReady) {
-        canvasReady(renderer._device->Native(image));
+        const auto native = renderer._device->Native(image);
+        canvasReady({native.colorTexture, native.width, native.height, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8});
         renderer._device->InvalidateState(); // The capture may read through other GL state
     }
     if (observer) {
@@ -39,8 +39,8 @@ void Renderer::Frame::Complete(const std::function<void(const GpuNativeTarget&)>
     }
     Painter& window = pipeline.BeginWindow();
     if (windowDraw) windowDraw(window);
+    renderer._device->InvalidateState(); // Tool overlays may render directly through their own GL backend.
     pipeline.EndFrame();
-    renderer._legacy.Release();
     if (observer) {
         observer->EndRegion(FrameRegion::Present);
         observer->BeginRegion(FrameRegion::EndDrawing);
@@ -52,7 +52,7 @@ void Renderer::Frame::Complete(const std::function<void(const GpuNativeTarget&)>
 Renderer::Renderer(const WindowSettings& window, const RenderPipelineSettings& settings)
     : _window(window)
     , _device(std::make_unique<GlDevice>())
-    , _pipeline(std::make_unique<RenderPipeline>(*_device, settings, &_legacy)) {}
+    , _pipeline(std::make_unique<RenderPipeline>(*_device, settings)) {}
 
 Renderer::~Renderer() {
     _pipeline.reset();

@@ -13,13 +13,13 @@ PremultipliedColor Premultiply(Color4 color) {
 }
 } // namespace
 
-RenderPipeline::RenderPipeline(GpuDevice& device, const RenderPipelineSettings& settings, LegacyHost* legacy)
+RenderPipeline::RenderPipeline(GpuDevice& device, const RenderPipelineSettings& settings)
     : _device(device)
     , _settings(settings)
     , _resources(device)
     , _glyphs(device)
     , _executor(device)
-    , _context(_list, _resources, _executor, &_text, legacy)
+    , _context(_list, _resources, _executor, &_text)
     , _post(device) {
     if (!(settings.canvasSize.x > 0.0f) || !(settings.canvasSize.y > 0.0f))
         throw std::invalid_argument("RenderPipeline: the canvas needs a positive size");
@@ -81,15 +81,12 @@ void RenderPipeline::PrepareCanvas(Vec2 windowSize, bool emission) {
 void RenderPipeline::BeginRecording(const PaintTarget& root, std::optional<PremultipliedColor> clear) {
     _list.Reset(root, clear);
     _context.scopes.clear();
-    _context.legacyDirty = false;
-    _context.legacyBound.reset();
 }
 
 Painter& RenderPipeline::BeginFrame(Vec2 windowSize, double time, float delta) {
     if (_phase != Phase::Idle) throw std::logic_error("RenderPipeline: frame already begun");
     _windowSize = windowSize;
     _stats = {};
-    _context.legacySwitches = 0;
     _context.frame = {time, delta, _quality, _settings.post};
     // The canvas keeps a bloom layer while the defaults or the last frame asked for bloom (a frame that turns bloom
     // on through Painter::Post blooms from the next frame on).
@@ -135,6 +132,7 @@ GpuTarget RenderPipeline::FinishCanvas() {
 
 Painter& RenderPipeline::BeginWindow() {
     if (_phase != Phase::Window) throw std::logic_error("RenderPipeline: finish the canvas first");
+    FlushPaint(_context); // Present before native tool overlays (rlImGui) draw into the window.
     return _painter;
 }
 
@@ -153,7 +151,6 @@ void RenderPipeline::EndFrame() {
     _stats.scissorChanges = counters.scissorChanges;
     _stats.textureBinds = counters.textureBinds;
     _stats.batches = _executor.BatchesExecuted();
-    _stats.legacySwitches = _context.legacySwitches;
     _stats.glyphsRasterized = _glyphs.RasterizedThisFrame();
     _stats.surfacesAllocated = _resources.SurfacesAllocatedThisFrame();
     _device.EndFrame();

@@ -40,7 +40,7 @@ public:
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const PreviewValue& value) override;
 
 private:
-    void Draw() const override;
+    void Draw(Painter& paint) const override;
     float _radius;
 };
 
@@ -51,11 +51,10 @@ private:
 
 ```cpp
 #include "FirstPreview.h"
-#include <raylib.h>
 #include <cmath>
 #include <memory>
 #include <variant>
-#include "Graphics/Draw/DrawTime.h"
+#include "Graphics/Paint/Painter.hpp"
 
 FirstPreview::FirstPreview(const PreviewParameters& parameters)
     : _radius(static_cast<float>(std::get<double>(parameters.at("radius")))) {}
@@ -66,9 +65,9 @@ std::string FirstPreview::ApplyParameter(const std::string& id, const PreviewVal
     return {};
 }
 
-void FirstPreview::Draw() const {
-    const float phase = static_cast<float>(DrawTime());
-    DrawCircleV({640.0f, 360.0f}, _radius, Fade(ORANGE, 0.6f + 0.4f * std::sin(phase)));
+void FirstPreview::Draw(Painter& paint) const {
+    const float phase = static_cast<float>(paint.Time());
+    paint.Circle({640.0f, 360.0f}, _radius, Fill(WithAlpha(Rgb(0xffa500), 0.6f + 0.4f * std::sin(phase))));
 }
 
 PreviewDefinition FirstPreviewDefinition() {

@@ -26,7 +26,7 @@ void Frame(RenderPipeline& pipeline, Vec2 window) {
 
 TEST_CASE("Engine.RenderPipeline.LetterboxKeepsAspectOnWholePixels", "[engine][paint][render]") {
     NullDevice device;
-    const RenderPipeline pipeline(device, Settings(), nullptr);
+    const RenderPipeline pipeline(device, Settings());
     CHECK(pipeline.Letterbox({800, 400}) == FloatRect{0.0f, 0.0f, 800.0f, 400.0f});
     CHECK(pipeline.Letterbox({1000, 400}) == FloatRect{100.0f, 0.0f, 800.0f, 400.0f});
     CHECK(pipeline.Letterbox({801, 601}) == FloatRect{0.0f, 100.0f, 801.0f, 401.0f}); // Odd sizes: centred, whole
@@ -36,7 +36,7 @@ TEST_CASE("Engine.RenderPipeline.LetterboxKeepsAspectOnWholePixels", "[engine][p
 
 TEST_CASE("Engine.RenderPipeline.CanvasFollowsTheWindowAndTheHeightLimit", "[engine][paint][render]") {
     NullDevice device;
-    RenderPipeline pipeline(device, Settings(), nullptr);
+    RenderPipeline pipeline(device, Settings());
     Frame(pipeline, {1600, 800});
     const auto canvasPass = device.CommandsOf(NullCommandType::BeginPass).front();
     CHECK(canvasPass->pass.viewport == PixelRect{0, 0, 1600, 800}); // Upscaled: window resolution
@@ -54,8 +54,14 @@ TEST_CASE("Engine.RenderPipeline.CanvasFollowsTheWindowAndTheHeightLimit", "[eng
 
 TEST_CASE("Engine.RenderPipeline.PresentsTheCanvasLetterboxedIntoTheBackBuffer", "[engine][paint][render]") {
     NullDevice device;
-    RenderPipeline pipeline(device, Settings(), nullptr);
-    Frame(pipeline, {1000, 400});
+    RenderPipeline pipeline(device, Settings());
+    Painter& paint = pipeline.BeginFrame({1000, 400}, 1.0, 0.016f);
+    paint.Circle({200.0f, 100.0f}, 20.0f, Fill({255, 0, 0, 255}));
+    (void)pipeline.FinishCanvas();
+    (void)pipeline.BeginWindow();
+    // Native tool overlays must see the completed presentation before drawing into the window.
+    CHECK(device.CommandsOf(NullCommandType::DrawIndexed).size() == 2);
+    pipeline.EndFrame();
     const auto passes = device.CommandsOf(NullCommandType::BeginPass);
     REQUIRE(passes.size() == 2); // Canvas, window (no post-processing configured)
     CHECK(passes[0]->pass.clear->a == Approx(1.0f));
@@ -81,7 +87,7 @@ TEST_CASE("Engine.RenderPipeline.BloomRunsFromTheEmissionLayer", "[engine][paint
     NullDevice device;
     PostSettings post;
     post.bloom.intensity = 0.8f;
-    RenderPipeline pipeline(device, Settings(post), nullptr);
+    RenderPipeline pipeline(device, Settings(post));
     Frame(pipeline, {800, 400});
     const auto passes = device.CommandsOf(NullCommandType::BeginPass);
     CHECK(device.Describe(passes.front()->pass.target).emission);
@@ -109,7 +115,7 @@ TEST_CASE("Engine.RenderPipeline.BloomRunsFromTheEmissionLayer", "[engine][paint
 
 TEST_CASE("Engine.RenderPipeline.FramePostChangesLastOneFrame", "[engine][paint][render]") {
     NullDevice device;
-    RenderPipeline pipeline(device, Settings(), nullptr);
+    RenderPipeline pipeline(device, Settings());
     Painter& paint = pipeline.BeginFrame({800, 400}, 0.0, 0.0f);
     paint.Post().vignette = 0.5f;
     (void)pipeline.FinishCanvas();
@@ -125,7 +131,7 @@ TEST_CASE("Engine.RenderPipeline.FramePostChangesLastOneFrame", "[engine][paint]
 
 TEST_CASE("Engine.RenderPipeline.FrameRequestedBloomStartsOnTheNextFrame", "[engine][paint][render]") {
     NullDevice device;
-    RenderPipeline pipeline(device, Settings(), nullptr); // Defaults: no bloom, no bloom layer
+    RenderPipeline pipeline(device, Settings()); // Defaults: no bloom, no bloom layer
     const auto bloomFrame = [&] {
         device.ClearCommands();
         Painter& paint = pipeline.BeginFrame({800, 400}, 0.0, 0.0f);

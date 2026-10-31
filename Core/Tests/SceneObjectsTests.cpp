@@ -28,7 +28,7 @@ private:
         ++_calls.updates;
         if (duringUpdate) duringUpdate();
     }
-    void Draw() const override { ++_calls.draws; }
+    void Draw(Painter&) const override { ++_calls.draws; }
     void Stop() override { ++_calls.stops; }
     SceneObjectCalls& _calls;
 };

@@ -36,7 +36,7 @@ private:
         ++_calls.updates;
         if (onUpdate) onUpdate();
     }
-    void Draw() const override {
+    void Draw(Painter&) const override {
         ++_calls.draws;
         if (onDraw) onDraw();
     }

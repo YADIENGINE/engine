@@ -5,20 +5,17 @@
 #include <vector>
 #include <array>
 #include <optional>
-#include "Graphics/Render/RenderExecutionOptions.h"
 #include "Editor/Api/EditorPreview.h"
 #include "Editor/Api/PreviewServices.h"
 
 struct PreviewBenchmarkVariant {
     std::string name;
-    RenderExecutionOptions execution;
     PreviewParameters parameters;
 };
 struct PreviewBenchmark {
     std::string id;
     int version = 1;
-    std::array<PreviewBenchmarkVariant, 2> variants{
-        {{"Individual", {GlowBatching::Individual}, {}}, {"Batched", {GlowBatching::Batched}, {}}}};
+    std::array<PreviewBenchmarkVariant, 2> variants{{{"A", {}}, {"B", {}}}};
 };
 struct PreviewDefinition {
     std::string id;

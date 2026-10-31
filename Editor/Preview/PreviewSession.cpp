@@ -19,15 +19,15 @@ struct CapturedImage {
 } // namespace
 
 PreviewSession::PreviewSession(Game& game, const GameSettings& settings, const PreviewRegistry& registry,
-                               ControlChannel& channel, const std::string& session, const TextRenderer& text,
-                               const FontFace* font, AudioSystem& audio, PreviewSessionActions actions)
+                               ControlChannel& channel, const std::string& session, const FontFace* font,
+                               AudioSystem& audio, PreviewSessionActions actions)
     : _registry(registry)
     , _channel(channel)
     , _canvas{settings.canvasWidth, settings.canvasHeight}
     , _frames(session, false)
     , _actions(std::move(actions))
     , _scene(
-          _canvas, text, audio,
+          _canvas, audio,
           [this](const std::string& text) { _channel.Send({{}, _generation, 0, "log", {{"text", text}}}); }, font)
     , _profiler(game, _scene, channel, _canvas,
                 [this] {

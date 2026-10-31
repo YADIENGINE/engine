@@ -40,9 +40,6 @@ void FrameExecutor::Execute(DrawList& list) {
             _indices.push_back(index - static_cast<std::uint32_t>(vertexStart));
         geometry = _device.Upload(vertices, _indices);
     }
-    // A segment after raylib drawing resumes the target that was open.
-    if (!_passOpen && !_targets.empty()) Begin(_targets.back(), std::nullopt);
-
     const auto& commands = list.Commands();
     for (std::size_t i = list.ExecutedCommands(); i < commands.size(); ++i) {
         std::visit(
@@ -64,7 +61,10 @@ void FrameExecutor::Execute(DrawList& list) {
                     _device.PopMarker();
                 } else {
                     if (command.indexCount == 0) return;
-                    if (!_passOpen) throw std::logic_error("FrameExecutor: drawing without a target");
+                    if (!_passOpen) {
+                        if (_targets.empty()) throw std::logic_error("FrameExecutor: drawing without a target");
+                        Begin(_targets.back(), std::nullopt);
+                    }
                     if (_blend != command.blend) {
                         _device.SetPipeline(GpuProgram::Paint, command.blend);
                         _blend = command.blend;
@@ -89,7 +89,7 @@ void FrameExecutor::Execute(DrawList& list) {
             commands[i]);
     }
     list.MarkExecuted();
-    // Raylib may draw before the next segment: leave no pass open.
+    // A target flush or native tool overlay may follow: leave no pass open.
     if (_passOpen) {
         _device.EndPass();
         _passOpen = false;

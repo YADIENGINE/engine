@@ -259,9 +259,8 @@ nlohmann::json EncodePreviewCatalog(const std::vector<PreviewDefinition>& defini
         if (definition.benchmark) {
             auto variants = nlohmann::json::array();
             for (const auto& variant : definition.benchmark->variants)
-                variants.push_back({{"name", variant.name},
-                                    {"batch", variant.execution.glowBatching == GlowBatching::Batched},
-                                    {"parameters", EncodePreviewParameters(variant.parameters)}});
+                variants.push_back(
+                    {{"name", variant.name}, {"parameters", EncodePreviewParameters(variant.parameters)}});
             entries.back()["benchmark"] = {
                 {"id", definition.benchmark->id}, {"version", definition.benchmark->version}, {"variants", variants}};
         }
@@ -292,8 +291,6 @@ std::vector<PreviewDefinition> DecodePreviewCatalog(const nlohmann::json& json) 
             for (std::size_t i = 0; i < value.variants.size(); ++i) {
                 const auto& item = benchmark.at("variants").at(i);
                 value.variants[i].name = item.at("name").get<std::string>();
-                value.variants[i].execution.glowBatching =
-                    item.at("batch").get<bool>() ? GlowBatching::Batched : GlowBatching::Individual;
                 value.variants[i].parameters = DecodePreviewParameters(item.at("parameters"));
                 if (value.variants[i].name.empty() || value.variants[i].name.size() > 1024)
                     throw std::runtime_error("Invalid benchmark variant name");

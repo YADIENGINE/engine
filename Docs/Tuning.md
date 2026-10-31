@@ -72,10 +72,11 @@ projede oyun hedefi bunu zaten çağırır. Üretici Python 3.10+ ister (`python
 
 ```cpp
 #include "Effects/Glow.tuning.h"
+#include "Graphics/Paint/Painter.hpp"
 
-void GlowView::Draw() const {
+void GlowView::Draw(Painter& paint) const {
     const auto& tuning = Tuning<GlowTuning>();
-    DrawCircleV(_center, tuning.radius, ToColor(tuning.tint));
+    paint.Circle(_center, tuning.radius, Fill(tuning.tint));
 }
 ```
 

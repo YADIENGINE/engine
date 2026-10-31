@@ -43,7 +43,7 @@ hareketli katman.
 5. **İlk kullanımda pişir:** önceden toplu pişirme yok.
 6. **Çözünürlük:** dokular pencere çözünürlüğünde pişirilir (canvas dokusuyla aynı ilke); pencere boyutu değişince
    önbellek temizlenir.
-7. **Saf fonksiyon:** çizim fonksiyonu sadece parametrelerine bağlıdır; global durum, saat (`DrawTime()`) ya da
+7. **Saf fonksiyon:** çizim fonksiyonu sadece parametrelerine bağlıdır; global durum, saat (`Painter::Time()`) ya da
    oyun durumu okumaz. Zaman gerekiyorsa canlı parametredir ya da parça `Live`'dır.
 
 ## Editör
@@ -75,4 +75,4 @@ Apple.Draw(look, {.pos = p, .scale = breath, .alpha = fade});   // + canlı para
 - Pişirme parametresinin anahtarı nasıl üretilir (struct hash'i; float'ların yuvarlanması).
 - Dokunun sınırları (bounds) ve parıltı gibi taşan efektlerin payı.
 - Mevcut çizimlerin (ikonlar, portreler, harita arka planları) kataloğa göçü ve sırası.
-- Önbelleğin Engine'deki yeri (`Graphics/` altındaki katman) ve `RenderLayer` ile ilişkisi.
+- Önbelleğin Engine'deki yeri (`Graphics/` altındaki katman) ve `Surface` ile ilişkisi.

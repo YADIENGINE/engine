@@ -4,10 +4,10 @@
 #include <utility>
 #include "Input/Input.hpp"
 
-PreviewScene::PreviewScene(Vec2 canvas, const TextRenderer& text, AudioSystem& audio,
-                           std::function<void(const std::string&)> log, const FontFace* font)
+PreviewScene::PreviewScene(Vec2 canvas, AudioSystem& audio, std::function<void(const std::string&)> log,
+                           const FontFace* font)
     : Scene(TimeDomain::Game)
-    , _services{canvas, text, audio, std::move(log), font} {}
+    , _services{canvas, audio, std::move(log), font} {}
 PreviewScene::~PreviewScene() { ShutdownNoThrow(); }
 void PreviewScene::Open(const PreviewDefinition& definition, const PreviewParameters& parameters) {
     _definition = &definition;

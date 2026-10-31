@@ -9,14 +9,14 @@ Open any preview or application flow, then select Record live. Worker FPS measur
 Stream FPS measures image publication. The worker normally runs at 30 FPS. Live data includes image
 transport, frame limiting and profiler communication; use Benchmarks for controlled comparisons.
 
-The panel shows frame/CPU/GPU statistics, glow counters, a frame graph and selected-frame inclusive/self
+The panel shows frame/CPU/GPU statistics, custom counters, a frame graph and selected-frame inclusive/self
 CPU times. The live history holds at most 600 frames, with at most ten publications per second. Host upload
 measures editor texture upload; the viewport transfer metric additionally contains transport latency.
 CPU and GPU execute concurrently and their timings must not be added together.
 
 ## Benchmarks
 
-Select a Scenario, Open scenario, adjust Inspector parameters, then Compare Individual / Batched. Staged
+Select a Scenario, Open scenario, adjust Inspector parameters, then Compare its named A/B variants. Staged
 OnReset values are applied to each new instance. Glow Full/Reduced/Off affects only the worker, is recorded
 in metadata and does not touch player settings.
 
@@ -29,16 +29,15 @@ stop; input, parameter changes and playback are locked. The editor renders at 10
 frozen. Cancel remains available. GPU collection polls for at most two seconds without blocking reads.
 Results are transferred afterwards in bounded, backpressured chunks.
 
-Completion/cancel restores FPS, VSync, rendering and playback, and recreates the previous preview recipe.
+Completion/cancel restores FPS, VSync and playback, and recreates the previous preview recipe.
 The old transient simulation state is reset. A worker crash leaves an incomplete capture; it cannot become
 a successful baseline. The host returns to its prior frame limit when the operation ends. Use a Release
 worker for conclusions; reports label Debug explicitly and reject Debug/Release automatic comparisons.
 Build & Refresh uses the configuration of the current editor recipe. Building/launching remains manual.
 
-Results show FPS, mean/median/P95/P99/max durations, CPU stages, canvas GPU time, coverage, helper counters,
-absolute/percentage A/B changes and per-repeat results. Fewer blend requests may improve CPU cost while FPS
-stays unchanged under another bottleneck. No fixed FPS gain is an acceptance condition. Unsupported GPU
-queries show Unavailable. Glow Off should submit zero glow requests in both variants.
+Results show FPS, mean/median/P95/P99/max durations, CPU stages, canvas GPU time, coverage, custom counters,
+absolute/percentage A/B changes and per-repeat results. No fixed FPS gain is an acceptance condition.
+Unsupported GPU queries show Unavailable. Glow Off disables light drawing in both variants.
 
 ## Baselines and exports
 
@@ -54,19 +53,19 @@ must match for automatic labels. Mismatches still display raw values and reasons
 ## Registering workloads
 
 PreviewDefinition has optional benchmark metadata: stable ID, contract version and two named variants,
-each with RenderExecutionOptions and optional authored parameter overrides. Default variants select
-Individual/Batched glows. Registry validation checks identity and overrides. Increment the workload contract
+each with optional authored parameter overrides. Default variants are A/B repeats of the same workload.
+Painter always handles batching. Registry validation checks identity and overrides. Increment the workload contract
 version when its meaning changes, retaining the version for ordinary implementation optimizations.
 
 A benchmark opts into fixed-step operation explicitly. Its factory must reconstruct repeatable state from
-parameters and fixed seeds, use DrawTime for decorative time and call production models/Views. Other
+parameters and fixed seeds, use Painter::Time for decorative time and call production models/Views. Other
 previews still support Live. PreviewServices exposes a borrowed Profiler pointer for optional custom CPU
 scopes/counters; register names during setup and never retain the pointer past Stop/destruction.
 
-Engine supplies Glow Batching (20/100/500 glows, grid/cluster, radius, seed) without any Game dependency.
+Engine supplies Painter Glows (20/100/500 lights, grid/cluster, radius, seed) without any Game dependency.
 Projects add production workloads through their normal preview registry.
 
-Protocol v5 associates profiler messages with generation/capture IDs. Stale messages are ignored. Ordered
+Protocol v9 associates profiler messages with generation/capture IDs and carries parameter-only A/B variants. Stale messages are ignored. Ordered
 chunks and expected run/frame counts are validated before making results visible. The existing 1 MiB IPC
 message limit remains. Rebuild host and worker together after the protocol/API change.
 

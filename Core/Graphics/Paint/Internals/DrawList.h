@@ -45,7 +45,7 @@ struct PushMarkerCommand {
 struct PopMarkerCommand {};
 using DrawCommand = std::variant<DrawBatch, BeginTargetCommand, EndTargetCommand, PushMarkerCommand, PopMarkerCommand>;
 
-enum class ScopeKind { Transform, Clip, Opacity, Blend, Group, Target, Marker, Legacy };
+enum class ScopeKind { Transform, Clip, Opacity, Blend, Group, Target, Marker };
 
 // Drawing state; scopes save and restore it whole.
 struct PaintState {

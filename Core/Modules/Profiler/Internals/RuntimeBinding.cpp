@@ -25,7 +25,6 @@ ProfilerRuntimeBinding::ProfilerRuntimeBinding(Profiler& profiler, Game& game)
                                "Canvas CPU", "Preview bridge", "Present",     "EndDrawing / wait"};
     for (std::size_t i = 0; i < Names.size(); ++i)
         _regions[i] = profiler.RegisterScope(Names[i]);
-    _counters = {profiler.RegisterCounter("Glows"), profiler.RegisterCounter("Glow blend requests")};
     game.ObserveFrames(this);
 }
 ProfilerRuntimeBinding::~ProfilerRuntimeBinding() { _game.ObserveFrames(nullptr); }
@@ -60,13 +59,6 @@ void ProfilerRuntimeBinding::EndRegion(FrameRegion region) noexcept {
     try {
         if (region == FrameRegion::Canvas) _gpu.End();
         _profiler.EndScope();
-    } catch (...) {
-    }
-}
-void ProfilerRuntimeBinding::CountRender(RenderCounter counter, std::uint64_t amount) noexcept {
-    if (!_active) return;
-    try {
-        _profiler.RecordCounter(_counters[static_cast<std::size_t>(counter)], static_cast<double>(amount));
     } catch (...) {
     }
 }

@@ -89,8 +89,8 @@ void Comparison(const Profiler::Comparison& comparison) {
         }
         ImGui::EndTable();
     }
-    ImGui::TextWrapped("CPU and GPU overlap. Glow blend requests are helper requests, not total GL draw calls. Labels "
-                       "are conservative observations, not statistical significance.");
+    ImGui::TextWrapped("CPU and GPU overlap. Custom counters describe workload activity. Labels are conservative "
+                       "observations, not statistical significance.");
 }
 } // namespace
 void ProfilerPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
@@ -186,7 +186,7 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
                        "preview resets afterwards. Release builds are recommended; Debug results stay labeled Debug.");
     ImGui::BeginDisabled(!snapshot.ready || !snapshot.selected || !snapshot.selected->benchmark ||
                          !snapshot.pending.empty());
-    if (ImGui::Button("Compare Individual / Batched")) actions.profiler(EditorProfilerCommand::Start, _recipe, {});
+    if (ImGui::Button("Compare A / B")) actions.profiler(EditorProfilerCommand::Start, _recipe, {});
     ImGui::EndDisabled();
     ImGui::EndDisabled();
     if (snapshot.profiler.busy) {

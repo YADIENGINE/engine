@@ -30,7 +30,7 @@ struct RenderPipelineSettings {
 // presented letterboxed.
 class RenderPipeline {
 public:
-    RenderPipeline(GpuDevice& device, const RenderPipelineSettings& settings, LegacyHost* legacy);
+    RenderPipeline(GpuDevice& device, const RenderPipelineSettings& settings);
     ~RenderPipeline();
 
     [[nodiscard]] Painter& BeginFrame(Vec2 windowSize, double time, float delta);

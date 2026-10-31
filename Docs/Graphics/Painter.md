@@ -1,8 +1,7 @@
 # Painter
 
 Engine'in çizim API'si. Raylib'siz, GPU'dan bağımsız kaydedilir; kare sonunda Engine'in OpenGL 3.3 cihazına
-gönderilir. Tasarım ve kararlar: [Render sistemi](../Design/Rendering.md). Eski raylib tabanlı yardımcılar
-(`Graphics/Draw`, `Neon`, `TextRenderer`, `RenderLayer` ...) geçiş bitene kadar [köprüden](#geçiş-köprüsü) çalışır.
+gönderilir. Tasarım ve kararlar: [Render sistemi](../Design/Rendering.md).
 
 ## Nereden gelir
 
@@ -147,48 +146,8 @@ DrawUiText(paint, "SETTINGS", {_area.Center().x, 40.0f}, {.size = 36.0f, .color 
 Tek seferlik varyant: `CurrentTheme().ui.X` kopyalanır, değiştirilir, açık stilli fonksiyona verilir. Kendi saatini
 oynatan çizim (ör. önizleme kartı) de açık stilli fonksiyonu `time` ile çağırır.
 
-### Eski yoldan taşırken
-
-Aynı ada sahip eski (raylib) fonksiyonlar `.h` başlıklarındadır ve göç bitince silinir; Painter sürümleri aynı adın
-`.hpp`'sindedir. Stil tipleri (`NeonPanelStyle`, `ButtonLook`, `BackdropStyle` ...) ve tema ikisinde ortaktır,
-renkler `Color4`'tür. Göç süresince tek yönlü örtük dönüşümler vardır: `Color4` → raylib `Color` (yeni sabitler eski
-çizime), raylib `Vector2` → `Float2` ve `Rectangle` → `FloatRect` (eski değerler Painter'a); karşı yönler
-`ToColor4(color)` / `ToVector2(point)` ile açıktır. İkonlarda eski `DrawIcon` raylib renkli `LegacyIconStyle` alır,
-Painter'lı `DrawIcon` `IconStyle` alır. Taşınmamış kod bir `Surface`'in görüntüsünü raylib dokusu olarak
-`LegacyTexture(paint, surface)` ile alır (`Graphics/Render/LegacyTexture.h`, `Legacy()` kapsamında).
-
-| Eski | Painter |
-| --- | --- |
-| `TextRenderer& text`, `text.DrawCentered(...)` | `paint.Text(label, position, {.align = TextAlign::Center ...})` |
-| `DrawGlow`, `GlowBatch` | `paint.Glow` (batch kendiliğinden) |
-| `FillNotched` | `paint.ChamferRect` |
-| `FillTriangle`, `FillQuad`, `FillPolygon` | `paint.Triangle`, `paint.Polygon` |
-| `BeginClip`, `BeginUiClip` | `auto clip = paint.Clip(rect)` |
-| `UiRegion::Draw` | `auto region = paint.Transform(UiTransform(source, target).Affine())` |
-| `RenderLayer` | `Surface` + `paint.Target` (const çizimdeki önbellek: `mutable Surface`) |
-| `Camera2D`, `BeginMode2D` | `CameraView` + `paint.Transform(camera.Transform())` |
-| `DrawMergedShadow` | `auto group = paint.Group({.opacity = darkness})` |
-| `DrawTime()` | `paint.Time()` |
-
 ## Ölçüm
 
 `Game::RenderStatistics()` son karenin maliyetini verir: draw call, batch, köşe, yüklenen bayt, durum değişimleri,
-köprü geçişleri, rasterize edilen glif, yeniden ayrılan yüzey. Editörde **Engine > Render Gallery** bütün özellikleri
+rasterize edilen glif, yeniden ayrılan yüzey. Editörde **Engine > Render Gallery** bütün özellikleri
 tek ekranda gösterir.
-
-## Geçiş köprüsü
-
-Painter'a taşınmamış kod raylib ile çizmeye devam eder: `GameObject::Draw()` (parametresiz) ve `Game::Draw()`
-varsayılan olarak `paint.Legacy()` kapsamında çağrılır. Bir nesnenin içinde kısmi geçiş:
-
-```cpp
-void MenuView::Draw(Painter& paint) const {
-    paint.RoundRect(_frame, 8.0f, Fill(panel)); // Yeni
-    auto legacy = paint.Legacy();                // Bu kapsamda raylib (DrawUiButton, TextRenderer ...)
-    DrawOldButtons();
-}
-```
-
-Köprü raylib'e o anki hedefi, dönüşümü ve clip'i verir. Painter ile raylib arasındaki her geçiş bir batch boşaltması
-demektir (`RenderStats::legacySwitches`); ardışık eski nesneler tek geçişte çizilir. Son eski çizim taşınınca köprü
-ve eski yol silinir.

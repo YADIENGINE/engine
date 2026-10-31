@@ -12,7 +12,6 @@ struct RenderStats {
     std::uint32_t pipelineChanges = 0;
     std::uint32_t scissorChanges = 0;
     std::uint32_t textureBinds = 0;
-    std::uint32_t legacySwitches = 0;    // Hand-overs to raylib drawing during the migration
     std::uint32_t glyphsRasterized = 0;  // Glyphs that were not cached yet
     std::uint32_t surfacesAllocated = 0; // Surface / group images (re)allocated
     float gpuMilliseconds = 0.0f;        // GPU time of the frame (a few frames late; 0 when unknown)

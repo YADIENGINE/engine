@@ -1,58 +1,45 @@
-# Text and fonts (eski yol)
+# Text and fonts
 
-Yeni metin çizimi `FontFace` + `Painter::Text`'tir ([Painter → Metin](Painter.md#metin)). Bu rehber eski
-`TextRenderer`'ı anlatır.
-
-`Game::Text()` ortak `TextRenderer` servisidir. Boş `GameSettings::font` raylib varsayılan fontunu kullanır.
-Özel font asset köküne göre yoldur; başlangıçta doğrulanması için `settings.assets` listesine de ekleyin.
-İstenen Unicode glyph'lerini `fontCodepoints` ile verin; sadece çeviri metnini eklemek font kapsamını genişletmez.
-
-Önceden yüklenen `fontAtlasSizes` varsayılanı 40, 48, 56, 64, 80, 96, 120, 144'tür.
-Yazı ekranda kapladığı piksel boyuna göre uygun atlastan çizilir; en küçük atlastan küçük boylar
-ilk kullanımda rasterize edilir. Ölçümler pencere boyutundan bağımsızdır.
-Font seçimi veya metin değişirse saklanan layout'u yeniden oluşturun.
-
-## Text layout
-
-`TextRenderer::Layout(label, TextLayoutOptions)` wraps text at word boundaries using the renderer's
-raylib font. `fontSize` must be positive; `maxWidth = 0` leaves width unrestricted and `maxLines = 0`
-allows unlimited lines. Repeated spaces collapse; LF/CRLF breaks and blank lines are preserved. Words
-remain intact, including UTF-8 words. `TextWidthOverflow::Allow` retains the nominal size even for
-oversized words; `ShrinkToFit` fits each completed line using the same calculation as `FittedSize`.
-Fitting stops at font size one, which can still exceed exceptionally narrow bounds.
-
-`TextLineOverflow::Discard` drops content beyond the line limit. `AppendToLastLine` joins the remainder
-onto the last allowed line, including text after subsequent hard breaks; combine it with `ShrinkToFit`
-to preserve all text in a limited number of rows. Defaults are unlimited lines, unrestricted width,
-and `Allow`/`Discard` overflow policies.
+Text uses `FontFace` and `Painter::Text` / `Painter::TextBox` ([Painter](Painter.md#metin)).
+Set `GameSettings::font` to a path relative to the asset root and include it in `settings.assets` for startup
+validation. An empty path means no game font: shapes still work, but font-dependent drawing requires a font.
+The starter game and worker ship a Noto Sans font and its OFL license automatically.
 
 ```cpp
-const auto layout = text.Layout(label, {.fontSize = 20, .maxWidth = bounds.width, .maxLines = 3,
-                                       .widthOverflow = TextWidthOverflow::ShrinkToFit,
-                                       .lineOverflow = TextLineOverflow::AppendToLastLine});
-text.DrawMultiline(layout, bounds, WHITE, {.alignment = TextAlignment::Center, .lineSpacing = 4});
+settings.font = "Fonts/MyFont.ttf";
+settings.assets = {settings.font};
 ```
 
-`DrawMultiline` starts at `bounds.y`, aligns each line left or centered within `bounds.width`, and
-advances by the nominal font size plus nonnegative `lineSpacing`. Smaller fitted text is vertically
-centered within its nominal row, matching `DrawCentered`. The caller controls clipping; `bounds.height`
-does not truncate text. Colors and spacing are drawing choices, separate from line breaking.
+Glyphs are rasterized at their on-screen size when first needed. The full font character set is available;
+there is no authored codepoint list or preloaded size list. Missing characters use the font's fallback glyph.
 
-`Graphics/Draw/TextLayout.h` also exposes `LayoutText` and `FittedTextSize` to headless consumers through
-a `TextMeasure` callback taking a null-terminated string and font size and returning integer width.
-Both calculations use the production renderer's measurements at runtime. A `TextLayout` owns its
-strings and resolved widths/font sizes, retaining no callback or font reference. Rebuild it if the
-font or input/options change; there is no automatic cache. Tests may supply deterministic measurements.
+## Drawing and layout
 
+```cpp
+paint.Text("Ready", {640.0f, 80.0f}, CenteredText(32.0f, Rgb(0xffffff), 600.0f));
+paint.TextBox(description, bounds,
+              {.size = 20.0f, .color = Rgb(0xdddddd), .wrap = TextWrap::Word, .lineHeight = 24.0f});
+```
 
-## Yerelleştirme
+Positions are the top of the first line. `TextAlign` selects left, center or right anchoring.
+`TextWrap::Word` wraps within `maxWidth`; `TextFit::Shrink` fits without enlarging. `TextBox` takes its width
+from the supplied area; use a `paint.Clip(area)` scope when height must also be constrained.
+`lineHeight` is an explicit distance between lines; otherwise `lineSpacing` scales the font's line height.
+
+Measure with `paint.Font().Measure(label, size)` or `FontFace::FittedSize`. Measurements need no GPU and
+do not depend on the window size. `FontFace::Layout` returns an owned `TextBlock` for repeated drawing with
+`paint.Text(font, block, position, style)`. Rebuild a retained block when its text, font or layout changes;
+string-based Painter calls already use the renderer's layout cache. Effects are `TextStyle::glow`, `outline`,
+`shadow` and `emission`.
+
+## Localization
 
 Use the standalone [Localization module](../Modules/Localization/README.md), linked as `EngineLocalization`.
-Its sole entry point is `Modules/Localization/Localization.hpp`. The module owns persisted `Language`
-identities, native display names and percentage style. The consumer supplies authored language declarations,
-fallback and constexpr translation rows, then constructs an immutable `Localization` catalogue.
+Its public entry point is `Modules/Localization/Localization.hpp`. The module owns persisted language identities,
+native display names, translation fallback, placeholders and number formatting. The consumer supplies language
+declarations, fallback and constexpr translation rows, then constructs an immutable catalogue.
 
-Call `Lookup(language, key)` or `Format(language, key, arguments)` with consumer enum keys directly.
+Call `Lookup(language, key)` or `Format(language, key, arguments)` with consumer enum keys.
 `AvailableLanguages()` supplies enabled options in authored order; `NormalizeLanguage` and `StepLanguage`
-handle selection without storing the active language. Game content, tip pools, gameplay-to-key mappings
-and persistence remain outside the module. See its README for ownership, validation and a complete example.
+handle selection without storing the active language. Game content, gameplay mappings and persistence
+remain outside the module.

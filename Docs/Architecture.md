@@ -14,12 +14,11 @@ Türeyen oyun içerik ve sahne yönlendirmesini sağlar; Engine ana döngü ve s
 | Derived game | Initial scene, navigation, rules, models, views, content definitions, its own option and save keys |
 
 `GameSettings` configures the window/title, logical canvas, clear color, application identity, font
-and glyphs, and an asset manifest. With no font configured, the engine uses raylib's default font.
+and an asset manifest. With no font configured, shapes remain available but font-dependent drawing requires a font.
 When the window is larger than the logical canvas, the canvas texture is allocated at the window's pixel size and
 drawing keeps logical coordinates through the projection, so shapes and text rasterize at screen resolution and
-presentation is a 1:1 copy; smaller windows draw at the logical size and downscale. Pixel-based raylib calls
-therefore need the engine wrappers: `BeginClip` / `BeginUiClip` instead of `BeginScissorMode`. `TextRenderer`
-rasterizes small text at its on-screen pixel size (on first use) and snaps glyphs to the pixel grid; layout
+presentation is a 1:1 copy; smaller windows draw at the logical size and downscale. Clipping uses scoped
+`paint.Clip` in logical coordinates. `FontFace` rasterizes text at its on-screen size on first use; layout
 measurements are independent of the window size.
 Set `ENGINE_BUILD_RUNTIME=OFF` to use the headless targets without fetching/linking raylib.
 
@@ -35,8 +34,9 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | Folder | Contents | Depends on |
 | --- | --- | --- |
 | `Graphics/Anim` | `Easing`, `SpringPoint`, `AnimatedCounter`, `ButtonAnim` (headless) | `Utilities` |
-| `Graphics/Render` | `RenderLayer`, `ShadowMask`, `UiRegion`; `Internals/`: `Window`, `Canvas`, `Renderer`, `RenderTargetStack`, `RenderExecutionContext` | `Utilities` |
-| `Graphics/Draw` | `DrawUtils`, `VectorMath`, `Neon`, `TextRenderer`, `TextLayout`, `BackgroundDraw`, `EffectQuality` | `Render`, `Anim` |
+| `Graphics/Render` | `RenderStats`; `Internals/`: `Window`, `Renderer`, `RenderPipeline`, `FrameExecutor`, `RenderResources` | `Utilities` |
+| `Graphics/Paint`, `Text`, `Surface`, `Post`, `Gpu` | Drawing API, fonts, images, finishing and GPU backends | `Utilities`, private renderer services |
+| `Graphics/Draw` | Painter helpers (`DrawUtils.hpp`, `Neon.hpp`, `BackgroundDraw.hpp`, `ParticleDraw.hpp`), headless grid geometry and `EffectQuality` | `Paint`, `Anim` |
 | `Graphics/Icons` | Shared icon library: shape-named `Icon` + `DrawIcon` | `Draw` |
 | `Graphics/Style` | `Theme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
 | `Graphics/Ui` | Themed widgets (`DrawUi*`, `UiButton`, `Backdrop`) | `Style`, `Draw` |
@@ -44,13 +44,12 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 Particle shape drawing is shared by `Fx/ParticleSystem2D` and static previews through
 `Graphics/Draw/ParticleDraw`; it accepts explicit pose/style and never reads a theme.
 
-Render migration (`Docs/Design/Rendering.md` → R13): `Graphics/Paint` (Painter), `Text`, `Surface`, `Post` and `Gpu`
-are the new render core; the helpers above have Painter versions in `.hpp` headers next to their raylib `.h`
-originals, which are removed when the migration ends. `Fx/` is Painter-only and headless.
+The render migration is complete (`Docs/Design/Rendering.md` → R13). Public drawing helpers keep their `.hpp`
+names. `Fx/` is Painter-only and headless. Raylib is limited to platform and native tool integration.
 
-Only `Ui` reads the theme. Shared shapes take explicit colors/styles: `DrawDiamond(Lines)`, `RowSlot` (centre of
-item `i` in a centred row of pips/stars/badges), `DrawLightning(from, to, seed, color, alpha, LightningStyle)`,
-`DrawNeonRing`, and `DrawProgressBar(bar, ProgressBarLook, ProgressBarStyle)` (themed: `DrawUiProgressBar`). When a
+Only `Ui` reads the theme. Shared shapes take explicit colors/styles and `Painter&` as their first parameter:
+`DrawDiamond`, `RowSlot` (centre of item `i` in a row), `DrawLightning`, `DrawNeonRing`, and `DrawProgressBar`
+(themed: `DrawUiProgressBar`). When a
 game needs a shape another game could use, it is added here (shape-named, style-parametric) rather than in the game.
 
 
@@ -80,7 +79,6 @@ Game code that uses several components can include a focused umbrella header:
 | Header | Public components |
 | --- | --- |
 | `Fx/FxImport.h` | FX stage, particle recipes, particles, floating text, rings, camera effects, overlays, speed lines, iris drawing |
-| `Graphics/Draw/GraphicsImport.h` | DrawUtils, Easing, Neon, TextRenderer, TextStyle |
 | `Runtime/RuntimeImport.h` | Game, GameSettings, GameObject, Scene |
 
 These are explicit include lists, not effect registration or object creation. Add a new public
@@ -88,9 +86,8 @@ component's header to the relevant umbrella and its `.cpp` to `Engine/CMakeLists
 Keep game presets and views outside engine umbrellas. Window/canvas/renderer setup, background drawing,
 and pointer gestures retain separate includes to keep these groups focused.
 
-`Graphics/Draw/VectorMath.h` (Vector2 operators from raymath plus `Length`, `Distance`, `Dot`, `Normalized`, `Rotated`,
-`Perpendicular`, `Polar`, `ToVector2`) is included explicitly, not through `GraphicsImport`, because raymath adds
-global names such as `Clamp` and `Lerp`.
+Include `Utilities/Float2.h` for vector operations (`Length`, `Distance`, `Dot`, `Normalized`, `Rotated`,
+`Perpendicular`, `Float2::FromAngle`) and the focused `.hpp` drawing header for each helper.
 
 Specific headers remain supported and should be used inside Engine and by headless consumers.
 In particular, include `Fx/TimeScale.h`, `Fx/TransitionClock.h`, `Scene/Scene.h`, or

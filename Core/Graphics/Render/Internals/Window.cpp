@@ -25,6 +25,10 @@ void Window::Show() {
 }
 
 bool Window::ShouldClose() const { return WindowShouldClose(); }
+bool Window::Focused() { return IsWindowFocused(); }
+double Window::ClockSeconds() { return GetTime(); }
+float Window::FrameSeconds() { return GetFrameTime(); }
+int Window::FramesPerSecond() { return GetFPS(); }
 
 int Window::Width() const { return GetScreenWidth(); }
 

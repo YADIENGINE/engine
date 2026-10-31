@@ -1,20 +1,7 @@
 #pragma once
 #include <algorithm>
-#include <concepts>
 #include "Utilities/Float2.h"
 #include "Utilities/Rect.h"
-
-struct FloatRect;
-
-// Migration only (removed with the raylib bridge): a {float x, y, width, height} struct other than FloatRect, i.e.
-// raylib's Rectangle.
-template <class T>
-concept LegacyRectangle = !std::same_as<T, FloatRect> && requires(const T& r) {
-    requires std::same_as<decltype(r.x), float>;
-    requires std::same_as<decltype(r.y), float>;
-    requires std::same_as<decltype(r.width), float>;
-    requires std::same_as<decltype(r.height), float>;
-};
 
 // Axis-aligned rectangle in continuous coordinates; x/y is the top-left corner (y grows downwards). Header-only.
 struct FloatRect {
@@ -29,13 +16,6 @@ struct FloatRect {
         , y(top)
         , width(w)
         , height(h) {}
-    // Migration only: raylib's Rectangle converts implicitly (one way), like Float2 from Vector2.
-    template <LegacyRectangle T>
-    constexpr FloatRect(const T& r)
-        : x(r.x)
-        , y(r.y)
-        , width(r.width)
-        , height(r.height) {}
 
     [[nodiscard]] static constexpr FloatRect FromCenter(Float2 center, Float2 size) {
         return {center.x - size.x * 0.5f, center.y - size.y * 0.5f, size.x, size.y};

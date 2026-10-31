@@ -6,14 +6,12 @@
 
 class AudioSystem;
 class FontFace;
-class TextRenderer;
 class Profiler;
 
 // References outlive the preview. Never retain these services after Stop/destruction.
-// Presentation time is the engine draw clock (DrawTime), which the preview host pauses and scales.
+// Presentation time is Painter::Time(), which the preview host pauses and scales.
 struct PreviewServices {
     Vec2 canvas;
-    const TextRenderer& text;
     AudioSystem& audio;
     std::function<void(const std::string&)> log;
     // The game's font (Painter::Font()); null when the game has none. For measuring text outside drawing (hit tests).

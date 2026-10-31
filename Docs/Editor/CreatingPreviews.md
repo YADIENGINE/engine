@@ -2,7 +2,7 @@
 
 ## İçerik türünü seçmek
 
-Basit çizim için `EditorPreview::Draw() const` yeterlidir. Animasyon/durum için
+Basit çizim için `EditorPreview::Draw(Painter&) const` yeterlidir. Animasyon/durum için
 `Update(dt)`, kullanıcı etkileşimi için `HandleInput`, trigger için `ExecuteAction` ekleyin.
 Her katalog girişi bir `PreviewDefinition` ve fabrika ile açıkça kaydedilir.
 Genel engine otomatik dosya tarayarak preview kaydetmez.
@@ -19,7 +19,7 @@ Liste/galeri düzeni ve proje içi kısa kayıt yardımcıları tüketicinin gel
 3. ObjectList Start/Update/Draw/Stop'u yönetir; içerik bu hook'ları elle dispatch etmez.
 4. Reset kabul edilen tarifle yeni örnek oluşturur; eski kaynaklar context yaşarken temizlenir.
 
-`PreviewServices` metin/ses referansları örnekten uzun yaşar. View'lar texture sahipliğini
+`PreviewServices` font/ses referansları örnekten uzun yaşar. View'lar texture sahipliğini
 açıkça tutar; dependent efektler texture'dan önce temizlenir.
 Stop/destructor exception atmaz. Fabrika/hook istisnası worker'ı kapatabilir.
 
@@ -39,7 +39,7 @@ Ret açıklaması döndüren setter mevcut içeriği değiştirmemelidir.
 
 ## Saat, input ve gerçek oyun akışı
 
-Dekoratif zaman `DrawTime()`, durum ilerletme zamanı Update dt'dir.
+Dekoratif zaman `paint.Time()`, durum ilerletme zamanı Update dt'dir.
 Sahne saatini View'lara elle bağlamayın; Pause, Step ve hız host tarafından uygulanır.
 Rastgele zamana scrub desteklenmez; stateful preview için Reset + Step kullanın.
 View alanına odaklanıldığında ürün input'u gelir; Inspector odağını veya OS input'unu yeniden okumayın.

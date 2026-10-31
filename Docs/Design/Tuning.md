@@ -54,11 +54,12 @@ Kod değeri okur:
 
 ```cpp
 #include "MyEffect.tuning.h"
+#include "Graphics/Paint/Painter.hpp"
 
-void MyEffect::Draw() const
+void MyEffect::Draw(Painter& paint) const
 {
     const auto& t = Tuning<MyEffectTuning>();
-    DrawGlow(_pos, t.glowRadius, t.tint);
+    paint.Glow(_pos, t.glowRadius, {.color = t.tint});
 }
 ```
 

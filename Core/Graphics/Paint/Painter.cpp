@@ -246,15 +246,7 @@ void AddImageQuad(PaintContext& context, const Affine2& frame, Float2 half, cons
 } // namespace
 
 void FlushPaint(PaintContext& context) {
-    if (context.legacyDirty && context.legacy) {
-        context.legacy->Flush();
-        context.resources.Device().InvalidateState();
-        context.legacyDirty = false;
-    }
-    if (context.list.HasPending()) {
-        context.executor.Execute(context.list);
-        context.legacyBound.reset();
-    }
+    if (context.list.HasPending()) context.executor.Execute(context.list);
 }
 
 Painter::Painter(PaintContext& context)
@@ -592,42 +584,6 @@ PaintScope Painter::Target(Surface& surface, std::optional<Color4> clear) {
 PaintScope Painter::Marker(std::string_view name) {
     const std::uint32_t depth = _context.list.PushScope(ScopeKind::Marker);
     _context.list.PushMarker(name);
-    return {*this, depth};
-}
-
-unsigned Painter::LegacyTextureName(const Surface& surface) const {
-    const SurfaceAccess::State& state = SurfaceAccess::Of(surface);
-    if (!state.drawn || !state.target.Valid()) return 0;
-    return _context.resources.Device().Native(state.target).colorTexture;
-}
-
-PaintScope Painter::Legacy() {
-    PaintContext& context = _context;
-    DrawList& list = context.list;
-    if (!context.legacy) return {*this, list.PushScope(ScopeKind::Legacy)}; // Headless: nothing to hand over
-    const PaintTarget& target = list.CurrentTarget();
-    LegacyBinding binding;
-    binding.target = target.target.Valid() ? context.resources.Device().Native(target.target)
-                                           : GpuNativeTarget{0, 0, target.viewport.width, target.viewport.height};
-    binding.size = target.size;
-    binding.viewport = target.viewport;
-    binding.transform = list.State().transform;
-    if (const auto& clip = list.State().clip) {
-        const Float2 scale = target.PixelScale();
-        const int left = static_cast<int>(std::floor(clip->x * scale.x));
-        const int top = static_cast<int>(std::floor(clip->y * scale.y));
-        binding.scissor = PixelRect{target.viewport.x + left, target.viewport.y + top,
-                                    static_cast<int>(std::ceil(clip->Right() * scale.x)) - left,
-                                    static_cast<int>(std::ceil(clip->Bottom() * scale.y)) - top};
-    }
-    if (list.HasPending()) FlushPaint(context);
-    if (!context.legacyBound || *context.legacyBound != binding) {
-        context.legacy->Bind(binding);
-        context.legacyBound = binding;
-        ++context.legacySwitches;
-    }
-    context.legacyDirty = true;
-    const std::uint32_t depth = list.PushScope(ScopeKind::Legacy);
     return {*this, depth};
 }
 

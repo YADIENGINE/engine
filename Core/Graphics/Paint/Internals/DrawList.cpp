@@ -64,8 +64,7 @@ void DrawList::PopScope(std::uint32_t depth) {
         case ScopeKind::Transform:
         case ScopeKind::Clip     :
         case ScopeKind::Opacity  :
-        case ScopeKind::Blend    :
-        case ScopeKind::Legacy   : break;
+        case ScopeKind::Blend    : break;
         }
         _scopes.pop_back();
         _states.pop_back();

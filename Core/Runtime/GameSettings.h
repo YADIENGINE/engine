@@ -1,5 +1,4 @@
 #pragma once
-#include <raylib.h>
 #include <filesystem>
 #include <vector>
 #include "Graphics/Post/PostSettings.hpp"
@@ -7,24 +6,20 @@
 #include "Audio/AudioSystem.hpp"
 #include "Modules/Persistence/Persistence.hpp"
 #include "Graphics/Style/NeonArcadeTheme.h"
+#include "Utilities/Color4.h"
 
 struct GameSettings {
     WindowSettings window;
     int canvasWidth = 1280;
     int canvasHeight = 720;
-    Color background = BLACK;
-    Color letterbox = BLACK;
-    TextureFilter canvasTextureFilter = TEXTURE_FILTER_BILINEAR;
+    Color4 background{0, 0, 0, 255};
+    Color4 letterbox{0, 0, 0, 255};
+    bool smoothCanvas = true;
     // Full-screen finish (bloom, vignette, scanlines); a frame may change it through Painter::Post. The canvas keeps a
     // bloom layer only while bloom is asked for (here, or by the previous frame).
     PostSettings post;
     std::filesystem::path applicationId = "Game";
     std::filesystem::path font;
-    // Açılışta yüklenen atlaslar (ekrandaki piksel boyu); yazı kendinden büyük en küçük atlastan çizilir, komşu boyut
-    // oranı ~1.25 kalmalı. En küçüğünden küçük yazılar ilk kullanımda tam piksel boyunda rasterize edilir.
-    std::vector<int> fontAtlasSizes{40, 48, 56, 64, 80, 96, 120, 144};
-    TextureFilter fontTextureFilter = TEXTURE_FILTER_BILINEAR;
-    std::vector<int> fontCodepoints;
     std::vector<std::filesystem::path> assets;
     AudioCatalog audio;
     AudioVolumeSettings audioVolume;

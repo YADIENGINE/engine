@@ -1,5 +1,4 @@
 #pragma once
-#include <raylib.h>
 #include "Graphics/Anim/ButtonAnim.h"
 #include "Graphics/Draw/Neon.hpp"
 
@@ -13,8 +12,6 @@ public:
     void Deny();
     void Clear();
     [[nodiscard]] ButtonLook Look(Color4 accent) const;
-    // Eski yol: raylib rengiyle; göç bitince silinir.
-    [[nodiscard]] ButtonLook Look(Color accent) const { return Look(Color4{accent.r, accent.g, accent.b, accent.a}); }
 
 private:
     ButtonAnim _animation;

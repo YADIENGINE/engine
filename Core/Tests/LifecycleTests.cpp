@@ -28,7 +28,7 @@ private:
         _log.push_back(_name + ".update");
         if (duringUpdate) duringUpdate();
     }
-    void Draw() const override { _log.push_back(_name + ".draw"); }
+    void Draw(Painter&) const override { _log.push_back(_name + ".draw"); }
     void Stop() override { _log.push_back(_name + ".stop"); }
     std::vector<std::string>& _log;
     std::string _name;

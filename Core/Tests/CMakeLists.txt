@@ -52,7 +52,6 @@ engine_tests(EngineTests
         SceneSafetyTests.cpp
         SceneTimeTests.cpp
         ShatterTests.cpp
-        TextLayoutTests.cpp
         TuningTests.cpp
         UiTransformTests.cpp
     LINKS EngineHeadless EngineStorage

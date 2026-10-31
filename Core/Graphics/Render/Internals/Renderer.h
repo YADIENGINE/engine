@@ -1,18 +1,18 @@
 #pragma once
+#include <raylib.h>
 #include <functional>
 #include <memory>
 #include <optional>
 #include "Graphics/Gpu/Internals/GpuTypes.h"
-#include "Graphics/Render/Internals/LegacyBridge.h"
-#include "Graphics/Render/Internals/RenderExecutionContext.h"
 #include "Graphics/Render/Internals/RenderPipeline.h"
 #include "Graphics/Render/Internals/Window.h"
+#include "Utilities/FrameObserver.h"
 
 class GlDevice;
 class Painter;
 
 // The window plus everything that draws into it: the OpenGL device, the frame pipeline (canvas, post-processing,
-// presentation) and the raylib bridge for code not yet migrated to Painter.
+// presentation).
 class Renderer {
 public:
     // RAII frame: opens the canvas Painter; Complete (or destruction) executes, post-processes and presents it.
@@ -22,7 +22,7 @@ public:
         [[nodiscard]] Painter& Canvas() { return _canvas; }
         // 'canvasReady' borrows the finished canvas image (for capture) during the call; 'windowDraw' draws over the
         // whole window in device pixels after the canvas was presented.
-        void Complete(const std::function<void(const GpuNativeTarget&)>& canvasReady = {},
+        void Complete(const std::function<void(const Texture2D&)>& canvasReady = {},
                       const std::function<void(Painter&)>& windowDraw = {});
 
     private:
@@ -30,7 +30,6 @@ public:
         Frame(Renderer& renderer, Painter& canvas);
         Renderer& _renderer;
         Painter& _canvas;
-        RenderExecutionContext _execution;
         bool _completed = false;
 
     public:
@@ -46,7 +45,6 @@ public:
     [[nodiscard]] bool ShouldClose() const;
     [[nodiscard]] Frame BeginFrame(double time, float delta);
     void SetObserver(FrameObserver* observer) { _observer = observer; }
-    void SetExecutionOptions(const RenderExecutionOptions& options) { _execution = options; }
     void SetQuality(const RenderQuality& quality) { _pipeline->SetQuality(quality); }
     void SetPostDefaults(const PostSettings& post) { _pipeline->SetPostDefaults(post); }
     void SetFont(const FontFace* font) { _pipeline->SetFont(font); }
@@ -66,9 +64,7 @@ private:
     // go before the device.
     Window _window;
     std::unique_ptr<GlDevice> _device;
-    LegacyBridge _legacy;
     std::unique_ptr<RenderPipeline> _pipeline;
-    RenderExecutionOptions _execution;
     FrameObserver* _observer = nullptr;
 
 public:

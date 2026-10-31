@@ -1,9 +1,7 @@
 # Themes and UI
 
-> Painter: the widgets below have Painter overloads with the same names in `.hpp` headers
-> (`Graphics/Ui/UiDraw.hpp`, `Graphics/Draw/Neon.hpp`, `Graphics/Ui/Backdrop.hpp`); see
-> [Painter → Yardımcılar ve tema](Painter.md#yardımcılar-ve-tema). Theme and style colours are `Color4`. The raylib
-> functions described here remain until the migration ends.
+Widgets take `Painter&` first and use `.hpp` headers (`Graphics/Ui/UiDraw.hpp`, `Graphics/Draw/Neon.hpp`,
+`Graphics/Ui/Backdrop.hpp`); see [Painter](Painter.md#yardımcılar-ve-tema). Theme/style colors are `Color4`.
 
 ### Themes and UI widgets
 
@@ -21,29 +19,28 @@ settings.theme.palette.accent = {255, 120, 40, 255};
 settings.theme.ui.button.notch = 6.0f;
 ```
 
-`Graphics/Ui/UiDraw.h` draws themed widgets: `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`,
+`Graphics/Ui/UiDraw.hpp` draws themed widgets: `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`,
 `DrawUiButton`, `DrawUiButtonBody` (returns the animated body for custom content), `DrawUiRoundButton`,
 `DrawUiKeyCap`. `Graphics/Ui/UiButton` is a View value member that animates with the theme's button settings and
 produces a `ButtonLook` via `Look(accent)`. For a one-off variant, copy a style from `CurrentTheme().ui`,
-change it and call the explicit-style `Graphics/Draw/Neon.h` function. Dependencies run
+change it and call the explicit-style `Graphics/Draw/Neon.hpp` function. Dependencies run
 `Ui` → `Style` → `Draw` / `Fx`; neither `Draw`, `Render` nor `Fx` reads the theme. New widget kinds add a style field to
 `UiStyle`, a value in `NeonArcadeTheme` and a `DrawUi*` function, so existing games keep compiling.
 
 `Graphics/Draw/EffectQuality.h` holds the player's effect intensity, set by `Game::SetGraphics` (persisted as
-engine options). Helpers read it themselves so callers never branch: Neon drops outer frame glow and text rings
-when glow is reduced and all glow (including `DrawGlow`) when off; `ParticleSystem2D::Emit` scales counts;
+engine options). Its render preferences are mapped to `RenderQuality` and read through Painter; reduced glow
+weakens halos and Off disables them. `ParticleSystem2D::Emit` scales counts;
 `CameraEffects2D` scales shake, kick and punch and ignores `SetMotion` when sprint effects are off; `OverlayEffects2D` flashes and `GlitchEffects2D` are skipped when
 flashes are off; `DrawScanlines` is skipped when background effects are off. `GraphicsSettings::renderHeight` caps
 the upscaled canvas texture (render resolution).
 
-`Graphics/Draw/BackgroundDraw.h` provides separate `DrawGrid2D`, `DrawScanlines` and `DrawVignette` calls, and
-`BackdropStyle` (scrolling grid, vignette, scanline alpha) with `DrawBackdropGrid/Vignette/Scanlines(style, ...)`.
-`Graphics/Ui/Backdrop.h` draws the theme's roles (`DrawBackdropGrid(BackdropRole::Menu, area, time)`) and
-`DrawScanlineOverlay(area, alpha)` for scanlines over a scene; a non-theme background passes its own style.
+`Graphics/Draw/BackgroundDraw.hpp` provides `DrawGrid2D`, `DrawScanlines`, `DrawVignette` and
+`BackdropStyle` (scrolling grid, vignette, scanline alpha). Each drawing call receives `Painter&` first.
+`Graphics/Ui/Backdrop.hpp` draws theme roles (`DrawBackdropGrid(paint, BackdropRole::Menu, area)`) and
+`DrawScanlineOverlay(paint, area, alpha)`; a non-theme background passes its own style.
 Grid/scanline color, spacing and thickness are explicit; nonpositive spacing is invalid and nonpositive
-thickness/size disables drawing. Views determine layer order. `GameSettings::canvasTextureFilter` and
-`fontTextureFilter` default to bilinear; `letterbox` defaults to black. Font filtering applies to loaded
-fonts and does not alter raylib's borrowed default font.
+thickness/size disables drawing. Views determine layer order. `GameSettings::smoothCanvas` defaults to true;
+`letterbox` defaults to opaque black. Font glyphs rasterize at their on-screen size on demand.
 
 
 `AnimatedCounter` also lives in EngineHeadless. Configure approach speed, punch duration and snap distance. `Update(target,

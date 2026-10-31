@@ -49,7 +49,7 @@ private:
         _log.push_back("scene.update");
         gameElapsed += seconds;
     }
-    void Draw() const override { _log.push_back("scene.draw"); }
+    void Draw(Painter&) const override { _log.push_back("scene.draw"); }
     std::vector<std::string>& _log;
     TimeSceneChild _child;
 };

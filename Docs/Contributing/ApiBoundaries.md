@@ -14,7 +14,7 @@ public facade so that ownership is obvious from the path.
 
 Engine-private exists because core subsystems implement each other: the runtime drives the input reader, the
 editor host feeds input samples, modules use core file storage (`Platform/Internals/`). A folder with no public
-facade, like `Platform/`, simply keeps everything under `Internals/`. Owner-private keeps modules independent
+facade simply keeps implementation under `Internals/`. Owner-private keeps modules independent
 ([Module rules](ModuleRules.md)): a module never reaches into another module's internals, and the core never
 reaches into a module's internals.
 
@@ -23,7 +23,8 @@ A game's own `Internals/` folders are the game's business; these rules cover onl
 ## What goes into `Internals/`
 
 A header moves into `Internals/` when the game has no reason to name it: implementation helpers, backends,
-platform glue, instrumentation the engine wires up itself.
+platform glue, instrumentation the engine wires up itself. Public platform actions use `Platform/Shell.h`
+(`OpenExternalUrl`, `CopyToClipboard`); their backend remains under `Platform/Internals/`.
 
 Two things keep a header public even if no game includes it directly:
 

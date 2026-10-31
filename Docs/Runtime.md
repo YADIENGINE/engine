@@ -6,7 +6,7 @@ The headless lifecycle types live in `GameObjects/GameObject.h`, `GameObjects/Ob
 `Scene/Scene.h` and the engine-private `Scene/Internals/SceneManager.h`. `Runtime/Game.h` connects them to
 application services; games select scenes through `Game::RegisterScene` / `SetScene`.
 
-`GameObject` supplies overridable `Start`, `Update(float)`, `Draw() const`, and `Stop` hooks.
+`GameObject` supplies overridable `Start`, `Update(float)`, `Draw(Painter&) const`, and `Stop` hooks.
 `ObjectList` calls `Start` once before an enabled object's first update/draw, skips disabled objects,
 and calls `Stop` once on removal or shutdown. A stopped object is finished; create a new object to
 replace it. Zero time starts new objects but skips updates, while drawing remains available.
@@ -59,7 +59,7 @@ scene tick → scene draw → game overlay draw → completed canvas → window 
 Device polling and window-coordinate samples are private to Runtime; public input uses logical canvas coordinates.
 The editor applies the same normalization with its own viewport mapping. See [Input](Input.md).
 `CanvasReady(const Texture2D&)` receives a borrowed completed canvas before presentation; retain no texture ownership.
-`DrawWindow()` draws after canvas presentation, inside the window drawing pass. `Renderer::Frame::Complete` invokes
+`DrawWindow(Painter&)` draws after canvas presentation, inside the window drawing pass. `Renderer::Frame::Complete` invokes
 these callbacks explicitly; scoped-frame cleanup never invokes user callbacks. Neither hook changes scene ownership.
 `SetPaused` or the active enabled scene's `GameTimePaused()` freezes game time; `Time()` handles hitstop and slow motion.
 Real-time screens and game overlays keep advancing.
@@ -104,7 +104,7 @@ Game'in `SetPaused` kararı bununla OR edilir; örneğin arka plandaki duraklat�
 uygulama ortak oyun saatini dondurabilir. Pause sürerken TimeScale.Advance çağrılmaz; hitstop/slow motion
 süreleri de korunur. Gerçek zamanlı menüleri durdurmak için ayrı politika gerekir.
 `Time()` hitstop/slow motion uygular. `FrameSeconds` host'un frame süresini, `DrawSeconds`
-sunum saatini özelleştirir. Dekoratif View çizimleri [DrawTime](Graphics/Effects.md) kullanır.
+sunum saatini özelleştirir. Dekoratif View çizimleri [Painter::Time](Graphics/Painter.md) kullanır.
 UpdateReal da FrameSeconds dönüşümünden sonraki süreyi alır; preview pause/speed/single-step bu hook'a uygulanır.
 
 `SetScene` doğrudan callback ortasında sahne yıkmaz; geçişi kuyruğa alır.

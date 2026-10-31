@@ -20,7 +20,7 @@ class TextBlock;
 struct TextStyle;
 struct PaintContext;
 
-// A temporary Painter state (transform, clip, opacity, blend, group, target, marker, legacy drawing). It lasts until
+// A temporary Painter state (transform, clip, opacity, blend, group, target, marker). It lasts until
 // the object is destroyed, then the previous state returns. Keep it in a local variable:
 //     auto clip = paint.Clip(area);
 // Scopes end in the reverse order they began; ending one early (by destroying it out of order) is a programming
@@ -128,12 +128,6 @@ public:
     PaintScope Target(Surface& surface, std::optional<Color4> clear = Color4{0, 0, 0, 0});
     // Names the following GPU work in captures and the profiler. 'name' must outlive the frame (a literal).
     PaintScope Marker(std::string_view name);
-    // Lets raylib-based code draw here during the migration to Painter: it sees the current target, transform and
-    // clip. Remove once the caller is migrated.
-    PaintScope Legacy();
-    // Migration only: the OpenGL texture holding 'surface' for raylib-based code (0 while it has no image); see
-    // Graphics/Render/LegacyTexture.h. Use it inside Legacy(), where drawing into the surface has been submitted.
-    [[nodiscard]] unsigned LegacyTextureName(const Surface& surface) const;
 
     // --- Frame information -------------------------------------------------------------------------------------
     // Presentation clock in seconds (frozen while the editor pauses) and the frame's step.

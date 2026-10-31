@@ -2,7 +2,7 @@
 
 Projeyi önce [Proje kurulumu](ProjectSetup.md)'ndaki gibi `python Engine new` ile kurun. Kurulumun açtığı
 `Game/` klasörü boştur; `python Engine run` o hâlde Engine'in starter oyununu ("Game/ has no sources yet") açar.
-Bu rehber `Game/` altına ilk küçük oyunu yazar.
+Starter Painter metni için Noto Sans fontunu ve lisansını exe yanına kopyalar. Bu rehber `Game/` altına ilk küçük oyunu yazar.
 
 ## Dosya yapısı
 
@@ -49,7 +49,7 @@ private:
     void Enter() override;
     void HandleInput(const DeviceInput& input) override;
     void Update(float seconds) override;
-    void Draw() const override;
+    void Draw(Painter& paint) const override;
 
     float _x = 640.0f;
     int _direction = 0;
@@ -60,8 +60,8 @@ private:
 
 ```cpp
 #include "MyScene.h"
-#include <raylib.h>
 #include <algorithm>
+#include "Graphics/Paint/Painter.hpp"
 #include "Input/InputNavigation.hpp"
 
 namespace {
@@ -81,7 +81,7 @@ void MyScene::Update(float seconds) {
     _x = std::clamp(_x + static_cast<float>(_direction) * Speed * seconds, Radius, CanvasWidth - Radius);
     _direction = 0;
 }
-void MyScene::Draw() const { DrawCircleV({_x, CenterY}, Radius, ORANGE); }
+void MyScene::Draw(Painter& paint) const { paint.Circle({_x, CenterY}, Radius, Fill(Rgb(0xffa500))); }
 ```
 
 `Horizontal()` bu frame basılan A/D veya ok tuşunu bildirir; tuş tekrarı olmayan tek basış

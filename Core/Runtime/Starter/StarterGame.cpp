@@ -1,5 +1,6 @@
-#include <raylib.h>
 #include <memory>
+#include "Graphics/Paint/Painter.hpp"
+#include "Graphics/Text/TextStyle.hpp"
 #include "Input/InputNavigation.hpp"
 #include "Runtime/EntryPoint.h"
 #include "Runtime/Game.h"
@@ -10,6 +11,8 @@ constexpr int CanvasHeight = 720;
 constexpr int TitleSize = 48;
 constexpr int HintSize = 24;
 constexpr int LineGap = 64;
+constexpr Color4 TitleColor{245, 245, 245, 255};
+constexpr Color4 HintColor{130, 130, 130, 255};
 
 GameSettings Settings() {
     GameSettings settings;
@@ -18,6 +21,8 @@ GameSettings Settings() {
     settings.canvasWidth = CanvasWidth;
     settings.canvasHeight = CanvasHeight;
     settings.persistentOptions = false;
+    settings.font = "Fonts/Starter.ttf";
+    settings.assets = {settings.font};
     return settings;
 }
 
@@ -31,12 +36,13 @@ private:
     void HandleInput(const DeviceInput& input) override {
         if (InputNavigation(input).Back()) RequestQuit();
     }
-    void Draw() const override {
+    void Draw(Painter& paint) const override {
         constexpr int CenterX = CanvasWidth / 2;
         constexpr int CenterY = CanvasHeight / 2;
-        Text().DrawCentered("Game/ has no sources yet", CenterX, CenterY - LineGap, TitleSize, RAYWHITE);
-        Text().DrawCentered("Add Game/CreateGame.cpp: Engine/Docs/GettingStarted.md", CenterX, CenterY, HintSize, GRAY);
-        Text().DrawCentered("Esc quits", CenterX, CenterY + LineGap, HintSize, GRAY);
+        paint.Text("Game/ has no sources yet", {CenterX, CenterY - LineGap}, CenteredText(TitleSize, TitleColor));
+        paint.Text("Add Game/CreateGame.cpp: Engine/Docs/GettingStarted.md", {CenterX, CenterY},
+                   CenteredText(HintSize, HintColor));
+        paint.Text("Esc quits", {CenterX, CenterY + LineGap}, CenteredText(HintSize, HintColor));
     }
 };
 } // namespace

@@ -1,12 +1,10 @@
 #pragma once
-#include <raylib.h>
 #include <memory>
 #include <optional>
 #include "Modules/Persistence/Persistence.hpp"
 #include "Audio/AudioSystem.hpp"
 #include "Options/GameOptions.h"
 #include "Fx/TimeScale.h"
-#include "Graphics/Draw/TextRenderer.h"
 #include "Graphics/Render/RenderStats.hpp"
 #include "Graphics/Text/FontFace.hpp"
 #include "Input/Input.hpp"
@@ -21,6 +19,8 @@ class Scene;
 class SceneManager;
 class Renderer;
 class InputNormalizer;
+struct Texture;
+using Texture2D = Texture;
 
 // Runtime owns the loop and services. A project's derived game supplies content and scenes.
 class Game {
@@ -47,7 +47,6 @@ protected:
     [[nodiscard]] TimeScale& Time() { return _timeScale; }
     [[nodiscard]] AudioSystem& Audio() { return _audio; }
     [[nodiscard]] const AudioSystem& Audio() const { return _audio; }
-    [[nodiscard]] const TextRenderer& Text() const { return _text; }
     // The game's font (GameSettings::font) for Painter::Text; throws logic_error when the game has none.
     [[nodiscard]] const FontFace& Font() const;
     [[nodiscard]] bool HasFont() const { return _font.has_value(); }
@@ -87,23 +86,18 @@ protected:
     virtual void Update(float realSeconds);
     // External hosts may supply simulation time while rendering and communication continue normally.
     [[nodiscard]] virtual float FrameSeconds(float realSeconds);
-    // Sunum saati (DrawTime) kaynağı; her kare çizilmeden önce okunur. Varsayılan gerçek zaman; host'lar
+    // Painter::Time kaynağı; her kare çizilmeden önce okunur. Varsayılan gerçek zaman; host'lar
     // duraklatılabilir kendi saatini verir.
     [[nodiscard]] virtual double DrawSeconds() const;
-    // Draws over the current scene every frame. The default runs the raylib-based Draw() through Painter::Legacy.
+    // Draws over the current scene every frame.
     virtual void Draw(Painter& paint) const;
-    virtual void Draw() const; // Raylib-based (migration only)
     // Completed canvas is borrowed for this call (frame capture).
     virtual void CanvasReady(const Texture2D& texture) const;
-    // Draws over the whole window (device pixels) after the canvas was presented. The default runs the raylib-based
-    // DrawWindow() through Painter::Legacy.
+    // Draws over the whole window (device pixels) after the canvas was presented.
     virtual void DrawWindow(Painter& window) const;
-    virtual void DrawWindow() const; // Raylib-based (migration only)
     // Yükleme ekranı: Start'tan sonra sesler arka planda yüklenirken ilk sahne ilerlemeden (input ve Tick yok) çizilir,
     // bu onun üstüne çizilir. 'seconds' ekranın açılışından beri; 'outro' yükleme bittikten sonraki kapanış (0..1).
-    // Varsayılan raylib tabanlı DrawLoading(seconds, outro)'yu Painter::Legacy içinde çalıştırır.
     virtual void DrawLoading(Painter& paint, float seconds, float outro) const;
-    virtual void DrawLoading(float seconds, float outro) const; // Raylib-based (migration only)
     // Yükleme bittikten sonra yükleme ekranının kapanma süresi; 'loadSeconds' yüklemenin sürdüğü süre.
     [[nodiscard]] virtual float LoadingOutroSeconds(float loadSeconds) const;
     virtual void Stop();
@@ -117,13 +111,12 @@ private:
     void Present() const;
     void ApplyOptions();
     void ApplyGraphics();
-    void DrawFpsCounter() const;
+    void DrawFpsCounter(Painter& paint) const;
 
     // Context first, content/services afterwards; derived game members are destroyed before these resources.
     // Renderer and SceneManager are engine internals (Graphics/Render/Internals, Scene/Internals).
     std::unique_ptr<Renderer> _renderer;
     std::filesystem::path _assetRoot;
-    TextRenderer _text;
     std::optional<FontFace> _font;
     AudioSystem _audio;
     std::unique_ptr<InputNormalizer> _input;

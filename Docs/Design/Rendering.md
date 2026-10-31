@@ -1,23 +1,23 @@
 # Render sistemi (tasarım)
 
-Durum: uygulandı (2026-10-31; çalışma zamanı doğrulaması bekliyor). Kullanım: [Painter](../Graphics/Painter.md). Karar kaydı: [README → D17](README.md#d17-render-sistemi-kendi-gpu-katmanı-üstünde-yeni-2d-çizim-sistemi).
+Durum: göç ve eski çizim yolunun kaldırılması tamamlandı (2026-10-31; görsel çalışma zamanı doğrulaması geliştiricide). Kullanım: [Painter](../Graphics/Painter.md). Karar kaydı: [README → D17](README.md#d17-render-sistemi-kendi-gpu-katmanı-üstünde-yeni-2d-çizim-sistemi).
 Uygulandıkça kullanım belgesi `Docs/Graphics/`'e taşınır; burada sadece kararlar ve gerekçeleri kalır.
 
 ## Neden
 
-Bugünkü çizim raylib'in anlık API'si üstünde ince bir canvas sarmalayıcısıdır; asıl çizimi Game raylib'i doğrudan
-çağırarak yapar. Engine çizim durumunu (blend, clip, kamera, hedef), batch'lemeyi, kenar yumuşatmayı ve shader'ı
-sahiplenmediği için ne kalite ne performans tek yerden iyileştirilebilir. İnceleme bulguları özetle:
+Göç öncesindeki çizim raylib'in anlık API'si üstünde ince bir canvas sarmalayıcısıydı.
+Engine çizim durumunu, batch'lemeyi, kenar yumuşatmayı ve shader'ı sahiplenmediği için kalite ve performans
+tek yerden iyileştirilemiyordu. İlk incelemenin bulguları:
 
 | Alan | Bugün | Sonuç |
 | --- | --- | --- |
 | Durum | `EndBlendMode` her zaman alpha'ya döner, `EndScissorMode` clip'i kapatır, hedef değişimi kamerayı sıfırlar | Kurallar belgede, kodda değil; iç içe kapsamlar kırılgan |
-| Batch | Her blend / scissor / kamera / hedef değişimi raylib batch'ini boşaltır; 266 `DrawGlow` noktası ikişer kez | `GlowBatch` gibi yerel yamalar |
+| Batch | Her blend / scissor / kamera / hedef değişimi batch'i boşaltıyordu; ışık başına blend değişimi | Yerel batch yamaları |
 | Kenar | Render texture'lar MSAA'sız; şekiller tırtıklı | Kalite sadece çözünürlükle gizleniyor |
 | Konum | Parıltı, yumurta, metin konumu ve yazı boyu `int` | Hareket ve ölçek animasyonu basamaklı |
 | Parıltı | Additive üst üste çizgi / 17 kopya yazı / 36 dilimli yelpaze | Köşelerde parlak noktalar, pahalı |
 | Metin | `GetGlyphIndex` doğrusal arama, ölçüm her çizimde tekrar, atlas kare ortasında | CPU maliyeti, takılma |
-| Katman | `RenderLayer` mantıksal boyutta, canvas pencere çözünürlüğünde | Pause / sinematikte bulanıklaşma |
+| Katman | Ekran dışı hedef mantıksal boyutta, canvas pencere çözünürlüğünde | Pause / sinematikte bulanıklaşma |
 | Shader | Yok | Bloom, post-process, SDF yok |
 | Ölçüm | Sadece parıltı istekleri | Gerçek draw call bilinmiyor |
 
@@ -28,7 +28,7 @@ sahiplenmediği için ne kalite ne performans tek yerden iyileştirilebilir. İn
    GPU'yu beklemeyen buffer'lar; kare içinde bellek tahsisi yok (ısındıktan sonra).
 3. **API:** az sayıda, tahmin edilebilir kavram; raylib'siz; yanlış kullanım derlemede ya da kayıt anında yakalanır.
 4. **Bakım:** arka uç tek bir arayüzün arkasında; çizim kaydının tamamı GPU'suz test edilir; global durum yok.
-5. **Geçiş:** eski raylib çizimi aynı karede çalışmaya devam eder; Snake View View taşınır, sonra eski yol silinir.
+5. **Geçiş:** tüketici View'ları sırayla taşınır; göç sonrasında yalnız Painter çizimi kalır (tamamlandı).
 
 ## Kararlar
 
@@ -45,7 +45,7 @@ sahiplenmediği için ne kalite ne performans tek yerden iyileştirilebilir. İn
 | R9 | Bloom emission kanalından (yarım çözünürlük), parlaklık eşiğinden değil | Neyin parlayacağını sanat seçer; UI yazısı istemeden parlamaz |
 | R10 | Blending gamma (sRGB) uzayında, bugünkü gibi | Renk seçimleri ve görünüş korunur; doğrusal uzay bilinçli olarak yok |
 | R11 | Global durum yok: saat, kalite ve hedef bilgisi Painter'ın bağlamında | Birden fazla Painter (editör, offscreen) mümkün; test edilebilir |
-| R12 | Geçiş köprüsü: taşınmamış nesne `Draw()` yeni sistemde otomatik köprü kapsamında çalışır | Snake hiç değişmeden çalışır; köprü son View taşınınca silinir |
+| R12 | Göç süresince geçici uyumluluk köprüsü; son View'dan sonra kaldırıldı | Tüketici oyunlar aşamalı taşındı; kalıcı API yalnız Painter |
 
 Bilerek yapılmayanlar (v1 dışı, yeri hazır): MSAA, doğrusal renk uzayı / HDR canvas, compute, çok iş parçacıklı kayıt,
 oyunun kendi shader'ları, kendini kesen yol dolgusu (stencil), karmaşık metin şekillendirme (HarfBuzz), flipbook.
@@ -80,17 +80,16 @@ Core/Graphics/
   Surface/             Surface.hpp (offscreen çizim hedefi), StaticTexture, PixelBuffer, TextureRef
   Post/                PostSettings (bloom, vinyet, tarama, renk kayması), RenderQuality
   Render/              (bugünkü) Window/Canvas/Renderer yeni sisteme geçer; RenderStats.hpp public
-    Internals/         Renderer, FrameExecutor, SurfacePool, LegacyBridge
+    Internals/         Renderer, RenderPipeline, FrameExecutor, RenderResources
   Gpu/Internals/       GpuDevice, GpuTypes, GlDevice, NullDevice, Shaders/*.glsl (derlemede gömülür)
 ```
 
-Yeni public header'lar `.hpp` (ApiBoundaries: yeni facade'lar). Eski `Draw/`, `RenderLayer`, `RenderTargetStack`,
-`GlowBatch`, `RenderExecutionOptions`, `TextRenderer` geçiş bitince silinir.
+Yeni public çizim başlıkları `.hpp` (ApiBoundaries: yeni facade'lar). Bu adlar kalıcıdır; eski çizim başlıkları
+ve uyumluluk altyapısı kaldırılmıştır.
 
 **Adlar:** raylib ile çakışan ad kullanılmaz (`Font`, `Image`, `Texture`, `Color`, `Rectangle`, `Camera2D`,
-`Shader`, `Transform`, `BlendMode`, `Matrix`, `TextFormat` ...). Yeni sistem bir adı eski Engine tipinden alacaksa
-(`TextStyle`, `TextLayout`, `TextAlignment`) eski tip geçiş boyunca `Legacy` önekiyle yeniden adlandırılır; kalıcı
-adlar temiz kalır.
+`Shader`, `Transform`, `BlendMode`, `Matrix`, `TextFormat` ...). `TextStyle`, `TextBlock` ve `TextAlign` kalıcı
+metin API'sidir.
 
 ## Public API
 
@@ -181,7 +180,7 @@ Durum her zaman kapsamla değişir; kapsam nesnesi `[[nodiscard]]`, kapanınca �
 ### Bilgi
 
 ```cpp
-paint.Time();          // sunum saati (editör Pause'u dondurur; bugünkü DrawTime'ın yerine)
+paint.Time();          // sunum saati (editör Pause'u dondurur)
 paint.Delta();
 paint.Quality();       // RenderQuality: glow, bloom, arka plan efektleri
 paint.PixelScale();    // mevcut dönüşümde bir birimin kaç cihaz pikseli olduğu (LOD kararları)
@@ -220,12 +219,11 @@ StaticTexture noise = StaticTexture::FromPixels(PixelBuffer::Generate(...));  //
 ### Oyun yaşam döngüsü
 
 ```cpp
-class GameObject { virtual void Draw(Painter& paint) const; };   // yeni
-// Varsayılan uygulama: { auto legacy = paint.Legacy(); Draw(); }  — taşınmamış nesne hiç değişmeden çalışır
+class GameObject { virtual void Draw(Painter& paint) const; };
 ```
 
-`Scene::Render`, `Game::Draw` ve `DrawLoading` aynı şekilde `Painter&` alır. Bir nesnenin içinde kısmi geçiş için
-`auto legacy = paint.Legacy();` açıkça yazılır.
+`Scene::Render`, `Game::Draw`, `DrawWindow` ve `DrawLoading` aynı şekilde `Painter&` alır.
+Parametresiz çizim callback'i yoktur; varsayılan uygulamalar boş kalır.
 
 ## İç yapı
 
@@ -305,24 +303,18 @@ canvas renk + emission ─► bloom (emission'dan, yarım çözünürlük, aşa�
 Etkiler `PostSettings` alanlarıdır (oyunun varsayılanı + `paint.Post()` ile karelik değişiklik). Kalite: Bloom
 Off / Half / Full. Oyunun kendi post shader'ı v1 dışı; zincir yeni aşama eklemeye göre kurulur.
 
-### Geçiş köprüsü (R12)
+### Platform ve araç entegrasyonu (R12 sonrası)
 
-Yeni sistemin batch'i rlgl'ninkinden ayrıdır. `paint.Legacy()` kapsamı:
-1. Açılırken DrawList'in o ana kadarki kaydını gönderir, sonra canvas'ı (ya da etkin yüzeyi) rlgl'ye hedef olarak
-   bağlar: framebuffer, viewport, mantıksal projeksiyon, alpha blend, yüz kırpma açık (rlgl'nin beklediği durum).
-2. Kapanırken rlgl batch'ini boşaltır (`rlDrawRenderBatchActive`) ve GL durumunu `GlDevice`'ın önbelleğiyle
-   eşitler.
-
-Eski kod straight alpha ile çizer; canvas opak olduğu için görünür sonuç aynıdır. Editör ImGui'si (rlImGui) sunumdan
-sonra pencere aşamasında aynı köprüyle çizer. Snake'in son View'ı taşınınca köprü, `Draw()` varsayılanı ve eski
-`Draw/` silinir; raylib sadece pencere, input ve ses için kalır.
+Uyumluluk köprüsü kaldırıldı. Raylib pencere/GL bağlamı, input, ses, platform işlemleri ve ToolUi entegrasyonu
+için kalır. Pencere aşaması canvas görüntüsünü önce gönderir; rlImGui kendi GL arka ucuyla üstüne çizer ve
+renderer durum önbelleği geçersiz kılınır. Önizlemenin Texture2D aktarım zinciri korunur.
 
 ### Ölçüm ve hata ayıklama
 
 `RenderStats` (public, kare başına): draw call, batch, köşe, indeks, yüklenen bayt, hedef / clip / doku / pipeline
-değişimi, köprü geçişi, rasterize edilen glif, atlas doluluğu, yüzey havuzu, pass başına GPU süresi (çift tamponlu
-zaman sorgusu). Profiler bunları `FrameObserver` üzerinden alır; bugünkü `RenderCounter::Glows`/`GlowBlendRequests`
-kalkar. `paint.Marker` RenderDoc'ta grup olur. Editör önizlemesi canvas'ı beklemesiz okur (PBO, bir kare gecikmeli).
+değişimi, rasterize edilen glif ve yüzey tahsisleri. Runtime aşamaları `FrameObserver` ile ölçülür;
+eski yardımcı istek sayaçları yoktur. `paint.Marker` RenderDoc'ta grup olur. PBO ile beklemesiz önizleme okuması
+ve RenderStats GPU süreleri sonraki iştir.
 
 ### Testler
 
@@ -348,9 +340,8 @@ Her adım derlenir ve tek başına çalışır; Snake'in görünüşü değişme
 5. **Yüzey ve post:** `Surface`, `Group`, havuz, bloom ve son birleştirme, kalite ayarları.
 6. **Ölçüm ve araçlar:** `RenderStats`, Profiler, PBO okuma, Render Gallery, `Docs/Graphics/` yeni API'ye göre.
 
-Sonraki oturumlar: Engine yardımcılarının (Neon, Ui, Icons, Backdrop, Fx) yeni API'deki karşılıkları; Snake'in View
-View göçü; köprünün ve eski yolun silinmesi; D10 pişirme önbelleği (pişirilmiş parçalar atlas sayfalarına paketlenir,
-batch'i bölmez).
+Yardımcılar ve tüketici View'ları taşındı; eski yol kaldırıldı. Sonraki iş D10 pişirme önbelleğidir
+(pişirilmiş parçalar atlas sayfalarına paketlenir, batch'i bölmez).
 
 ## Uygulamada netleşenler
 
@@ -365,9 +356,9 @@ batch'i bölmez).
   `UNSYNCHRONIZED` yazılır, GPU'yu beklemek gerekmez. İndeksler her yüklemede segmentin ilk köşesine göre
   yeniden tabanlanır (negatif base vertex yok).
 - **Kare boru hattı GPU'dan bağımsızdır** (`RenderPipeline`: canvas boyutu, post, sunum, istatistik) ve
-  `NullDevice` ile test edilir; raylib'e bağlı kalan sadece pencere, `GlDevice` ve köprüdür.
+  `NullDevice` ile test edilir; platform ve GL iç işleri ayrı kalır.
 - **Pencere aşaması da Painter'dır:** canvas görüntüsü arka tampona Painter ile letterbox'lanır; `DrawWindow`
-  (editör ImGui'si) aynı Painter'ın köprüsünden çizer.
+  Painter alır. Editör ImGui'si sunumdan sonra native araç arka ucunu kullanır.
 - **Bloom katmanı tembel:** canvas emission ekini yalnız varsayılan ayar ya da bir önceki kare bloom isterken tutar
   (`Painter::Post` ile açılan bloom bir kare sonra başlar); bloom yoksa MRT maliyeti yoktur.
 - **Glif önbelleği:** R8 sayfalar (1024², skyline, 2 px boşluk), 48 px'e kadar tam piksel boyu, sonra ~%6 kademe,
@@ -376,50 +367,24 @@ batch'i bölmez).
 - **Yerleşim önbelleği:** `Painter::Text(string)` aynı metni (font + boy + sarma ayarları) 120 kare boyunca tutar.
 - **Kapsam dengesi:** `PaintScope` taşınamaz, bu yüzden kullanıcı kodu kapsamları sırasız kapatamaz; kayıt yine de
   denetler ve kare sonunda `logic_error` atar.
-- **Köprü tembeldir:** Painter ile raylib arasında gerçek bir geçiş olmadıkça boşaltma yapılmaz; taşınmamış ardışık
-  nesneler tek geçişte çizilir. Headless bağlamda (testler) `Legacy()` boş bir kapsamdır.
-- **Eski `TextStyle`** `LegacyTextStyle` oldu; yeni `TextStyle` Painter'ındır.
 - **Çözünürlük:** eski `Canvas` mantığı (`renderHeight` sınırı, küçültmede mantıksal boyut) `RenderPipeline`'a
   taşındı; arka tampon yüksek DPI'da piksel boyutundadır, input dönüşümü ekran boyutundadır.
 
 ## Göç (R13)
 
-Eski yardımcıların (Draw, Neon, Ui, Backdrop, Icons, Fx) Painter karşılıkları ve oyunların göçü. Kararlar:
+**Tamamlandı: 2026-10-31 (madde 6 dahil).**
 
-- **Yukarıdan aşağı.** Painter sahneden View'a parametreyle akar; eski bir fonksiyon Painter'ı göremez. Bir View
-  bütünüyle taşınır; yarım kalan kısım `paint.Legacy()` kapsamında kalır. Ters köprü (eski koddan Painter'a) yok:
-  her küçük çağrı bir boşaltma olurdu (yüzlerce parıltı = yüzlerce draw call).
-- **Aynı ad, `Painter&` ilk parametre.** `DrawUiPanel(paint, rect, accent)` eskisinin (`DrawUiPanel(rect, accent)`)
-  overload'udur; View taşınırken çağrı adı değişmez. Painter sürümleri raylib'siz `.hpp` başlıklarında ve
-  `EngineHeadless`'tadır (NullDevice ile test edilir); eski `.h` başlıkları ve raylib uygulamaları göç bitince silinir.
-- **Stil tipleri ortak ve raylib'siz** (`Color4`, `Float2`): tek tema iki yolu da besler, Painter'lı ve eski View
-  aynı ayarla çizer. Yalnız eski yolun öykünmesi olan alanlar (yazı halesinin kaydırılmış kopyaları) "eski yol"
-  diye işaretlidir; Painter karşılığı yerel haledir (`TextStyle::glow`). Göç bitince silinir. İstisna: oyunlar ikon
-  stilini çoğunlukla hesaplanmış raylib renkleriyle kurar; eski `DrawIcon` bu yüzden raylib renkli
-  `LegacyIconStyle` alır (paylaşılan `IconStyle` `Color4`'tür).
-- **Geçici örtük dönüşümler, hepsi tek yönlü** (raylib'siz şablonlarla, köprüyle birlikte silinir): `Color4` →
-  raylib `Color` (yeni sabitler, ör. oyunun `Color4` paleti, eski çizime gider); raylib `Vector2` → `Float2` ve
-  `Rectangle` → `FloatRect` (taşınan kod eski hesapların değerlerini Painter'a verir). Ters yönler açıktır
-  (`ToColor4`, `ToVector2`), böylece `koşul ? Color4 : Color` ve karışık vektör aritmetiği belirsizleşmez.
-  `Rect` → `FloatRect` örtük dönüşümü kalıcıdır (kayıpsız genişletme).
-- **Fx eski yolsuz taşındı:** efekt sınıfları ikili yol tutmaz, doğrudan Painter'lıdır. Onları çizen sahne kökleri
-  (oyun alanı, mağaza, açılış, tanıtım, ekran geçişi) `Draw(Painter&)`'e geçer; içlerindeki taşınmamış View'lar
-  `paint.Legacy()` kapsamında kalır. Sahnenin `RenderLayer` katmanları `Surface` olur; katmanı raylib dokusu olarak
-  okuyan eski kod `LegacyTexture(paint, surface)` kullanır (geçici, `Painter::LegacyTextureName`).
-- **Varsayılan font:** `paint.Font()` oyunun fontudur (`GameSettings::font`); `paint.Text(text, ...)` ve
-  `paint.TextBox(text, ...)` onu kullanır. Widget'lar font parametresi almaz; başka font `paint.Text(font, ...)`.
-  View'ların `const TextRenderer&` taşıması biter.
-- **Zaman ve kalite Painter'dan:** Painter'lı yardımcılar sunum saatini `paint.Time()`'dan (`DrawTime` karşılığı),
-  parıltı / arka plan kalitesini `paint.Quality()`'den okur. Parçacık adedi, sarsıntı ve flaş `EffectQuality`'de
-  kalır (Fx simülasyonu; çizim değil).
-
-Eski → yeni karşılıklar: `RenderLayer` → `Surface` + `paint.Target`; `UiRegion` → `paint.Transform`;
-`BeginClip` / `BeginUiClip` → `paint.Clip`; `DrawMergedShadow` → `paint.Group({.opacity})`; `GlowBatch` / `DrawGlow`
-→ `paint.Glow` (batch kendiliğinden); `FillNotched` → `ChamferRect`; `Camera2D` → `Affine2::Camera`;
-`TextRenderer` → `FontFace` (`paint.Font()`), `TextLayout` → `TextBlock`.
-
-Sıra: (1) dönüşümler + varsayılan font; (2) Draw şekilleri, Neon, Ui, Backdrop; (3) Icons; (4) Fx; (5) oyun:
-sahne kökleri, sonra View View; (6) eski yolun, köprünün ve geçici dönüşümün silinmesi.
+- Painter sahneden View'a parametreyle akar; çizim callback'leri yalnız `Draw(Painter&)` biçimindedir.
+- Ortak yardımcılar `Painter&` ilk parametresiyle kalıcı `.hpp` başlıklarındadır ve GPU'suz test edilir.
+- Stil tipleri raylib'sizdir (`Color4`, `Float2`, `FloatRect`); metin halesi `TextStyle::glow` ile çizilir.
+- Geçici raylib renk/vektör dönüşümleri kaldırılmıştır. Kayıpsız `Rect` → `FloatRect` genişletmesi kalır.
+- Yüzeyler `Surface` + `paint.Target`, yerleşim `paint.Transform`, kesme `paint.Clip`, toplu saydamlık `paint.Group`
+  kullanır. Ortak ışıklar `paint.Glow` ile otomatik batch'lenir. Metin `FontFace` / `TextBlock` kullanır.
+- Varsayılan font `paint.Font()` üzerinden gelir. Widget'lar font parametresi almaz; farklı font `paint.Text(font, ...)` ile verilir.
+- Saat `paint.Time()`, render kalitesi `paint.Quality()` üzerinden okunur. Parçacık adedi, sarsıntı ve flaş
+  ayarları Fx simülasyonu için `EffectQuality` içinde kalır.
+- Eski çizim dosyaları, köprü, geçici metin atlas ayarları ve eski glow yürütme/sayaç kontrolleri kaldırılmıştır.
+- Platform kabuğu `Platform/Shell.h` üzerinden URL açma ve panoya kopyalama sağlar; önizlemenin Texture2D aktarımı korunur.
 
 ## Sonraya kalanlar
 

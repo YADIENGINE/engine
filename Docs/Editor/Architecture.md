@@ -75,8 +75,8 @@ aynı kapıya ekler.
 
 ## Sunum saati ve playback
 
-- Görsel zaman Engine sunum saatidir: `DrawTime()` (`Graphics/Draw/DrawTime.h`). `Game` her kareyi çizmeden önce
-  sanal `Game::DrawSeconds()`'ı okuyup yazar. Oyunda gerçek zaman; worker'da `PreviewGame`
+- Görsel zaman `Painter::Time()` ile okunur. `Game` her kareyi çizmeden önce
+  sanal `Game::DrawSeconds()`'ı Painter bağlamına verir. Oyunda gerçek zaman; worker'da `PreviewGame`
   override'ı önizleme sahnesinin Reset'te 0'lanan ölçekli saatidir; özel Game adaptörü akış saatini sağlar.
 - View'lar saat tutmaz, aktarmaz, `GetTime()` çağırmaz. Kendi zamanını oynatan çizim (portre, giriş) zamanı
   `float time` parametresiyle verir.

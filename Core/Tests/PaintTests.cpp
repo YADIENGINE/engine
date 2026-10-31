@@ -24,15 +24,6 @@ bool HasPositiveArea(const std::vector<PaintVertex>& vertices) {
     return false;
 }
 
-struct FakeLegacy final : LegacyHost {
-    void Bind(const LegacyBinding& binding) override {
-        log.push_back("bind");
-        last = binding;
-    }
-    void Flush() override { log.push_back("flush"); }
-    std::vector<std::string> log;
-    LegacyBinding last;
-};
 } // namespace
 
 TEST_CASE("Engine.Paint.NormalAdditiveAndGlowShareOneDrawCall", "[engine][paint]") {
@@ -239,31 +230,6 @@ TEST_CASE("Engine.Paint.GroupsCompositeOnceAndReusePooledImages", "[engine][pain
     REQUIRE(composite.size() == 6);
     CHECK(composite[0].kind == PaintKind::Texture);
     CHECK(composite[0].color.a == 128);
-}
-
-TEST_CASE("Engine.Paint.LegacyDrawingKeepsOrderWithoutRedundantSwitches", "[engine][paint]") {
-    FakeLegacy legacy;
-    PaintHarness h({400.0f, 200.0f}, 2.0f, &legacy);
-    h.Begin();
-    h.paint.Rect({0.0f, 0.0f, 10.0f, 10.0f}, Fill(Red));
-    {
-        auto a = h.paint.Legacy();
-    }
-    {
-        auto b = h.paint.Legacy(); // Nothing drawn in between: no hand-over
-    }
-    CHECK(legacy.log == std::vector<std::string>{"bind"});
-    CHECK(h.Draws().size() == 1); // The rectangle executed before raylib drew
-    h.paint.Rect({0.0f, 0.0f, 10.0f, 10.0f}, Fill(Blue));
-    {
-        auto moved = h.paint.Transform(Affine2::Translate({5.0f, 0.0f}));
-        auto c = h.paint.Legacy();
-        CHECK(legacy.last.transform.tx == Approx(5.0f));
-    }
-    CHECK(legacy.log == std::vector<std::string>{"bind", "flush", "bind"});
-    h.End();
-    CHECK(legacy.log.back() == "flush"); // Raylib's drawing goes before the frame closes
-    CHECK(h.context.legacySwitches == 2);
 }
 
 TEST_CASE("Engine.Paint.InvalidStylesThrowDegenerateShapesDrawNothing", "[engine][paint]") {

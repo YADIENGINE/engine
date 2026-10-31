@@ -557,7 +557,8 @@ Aşama 4 (dağıtım) için, tek tek konuşulur:
 3. ~~`Settings.json`'un yeri ve kaldırmanın sildikleri~~ → D15 (Velopack kökü; kaldırma iz bırakmaz, projeler ve
    MSVC kalır).
 4. Kurulum / güncelleme sırasında açık launcher, editör ya da `<engine>` komutu; aynı / eski sürümün tekrar
-   çalıştırılması.
+   çalıştırılması. Deneme paketinden sonra konuşulur: Velopack'in çalışan süreçlere ve tekrar kuruluma ne yaptığı
+   orada görülür.
 5. "Ses araçlarını kur": NumPy / SciPy paketin içinde mi, istendiğinde internetten mi.
 6. Yayın yeri ve CI: SignPath public repodan CI'da derlenmiş ikili ister; repolar açılana kadar paket nerede derlenir,
    exe nereden indirilir (private repo release'leri dışarıdan indirilemez).

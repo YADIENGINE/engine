@@ -65,7 +65,7 @@ TEST_CASE("Editor.Profiler.RejectsStaleFramesAndAtomicTransfer", "[engine-editor
 
 TEST_CASE("Editor.Profiler.ExecutionRestorationOnCancelAndCompletion", "[engine-editor][profiler]") {
     BenchmarkState state;
-    const FrameExecutionSettings original{30, true, {GlowBatching::Individual}};
+    const FrameExecutionSettings original{30, true};
     state.Start({0, 2, 1, 1.0 / 60.0}, original);
     state.BeginRun();
     state.Cancel();
@@ -73,10 +73,9 @@ TEST_CASE("Editor.Profiler.ExecutionRestorationOnCancelAndCompletion", "[engine-
     REQUIRE(restored);
     CHECK(restored->fpsLimit == original.fpsLimit);
     CHECK(restored->vsync == original.vsync);
-    CHECK(restored->drawing == original.drawing);
     CHECK_FALSE(state.TakeSavedExecution());
 
-    state.Start({0, 2, 1, 1.0 / 60.0}, {60, false, {GlowBatching::Batched}});
+    state.Start({0, 2, 1, 1.0 / 60.0}, {60, false});
     for (int run = 0; run < 2; ++run) {
         state.BeginRun();
         REQUIRE(state.Measured(2));
@@ -86,7 +85,6 @@ TEST_CASE("Editor.Profiler.ExecutionRestorationOnCancelAndCompletion", "[engine-
     REQUIRE(completed);
     CHECK(completed->fpsLimit == 60);
     CHECK_FALSE(completed->vsync);
-    CHECK(completed->drawing.glowBatching == GlowBatching::Batched);
     CHECK_FALSE(state.TakeSavedExecution());
 }
 
@@ -108,8 +106,8 @@ TEST_CASE("Editor.Profiler.BenchmarkMetadataRoundTripAndValidation", "[engine-ed
     REQUIRE(decoded.size() == 1);
     REQUIRE(decoded.front().benchmark);
     CHECK(decoded.front().benchmark->id == definition.id);
-    CHECK(decoded.front().benchmark->variants[0].execution.glowBatching == GlowBatching::Individual);
-    CHECK(decoded.front().benchmark->variants[1].execution.glowBatching == GlowBatching::Batched);
+    CHECK(decoded.front().benchmark->variants[0].name == definition.benchmark->variants[0].name);
+    CHECK(decoded.front().benchmark->variants[1].name == definition.benchmark->variants[1].name);
     CHECK(std::get<bool>(decoded.front().benchmark->variants[0].parameters.at("enabled")) == false);
     definition.id = "test.invalid";
     definition.benchmark->variants[0].parameters = {{"missing", true}};

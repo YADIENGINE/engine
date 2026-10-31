@@ -125,9 +125,7 @@ void PreviewProfiler::Start(const PreviewMessage& message) {
                             .dump();
     auto variants = nlohmann::json::array();
     for (const auto& variant : definition->benchmark->variants)
-        variants.push_back({{"name", variant.name},
-                            {"batch", variant.execution.glowBatching == GlowBatching::Batched},
-                            {"parameters", EncodePreviewParameters(variant.parameters)}});
+        variants.push_back({{"name", variant.name}, {"parameters", EncodePreviewParameters(variant.parameters)}});
     metadata.execution = nlohmann::json{{"fpsLimit", 0}, {"vsync", false}, {"variants", variants}}.dump();
     _capture.scopes = _profiler.ScopeNames();
     _capture.counters = _profiler.CounterNames();
@@ -154,7 +152,7 @@ void PreviewProfiler::StartRun() {
     _profiler.SetEnabled(false);
     _activate();
     _scene.Open(*_savedDefinition, parameters);
-    _game.ConfigureFrameExecution({0, false, variant.execution});
+    _game.ConfigureFrameExecution({0, false});
     _profiler.ClearFrames();
     _warmup = 0;
     _profiler.SetEnabled(true);

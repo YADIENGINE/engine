@@ -1,15 +1,5 @@
 #pragma once
 #include <cmath>
-#include <concepts>
-
-struct Float2;
-
-// Migration only (removed with the raylib bridge): a {float x, y} struct other than Float2, i.e. raylib's Vector2.
-template <class T>
-concept LegacyXy = !std::same_as<T, Float2> && requires(const T& v) {
-    requires std::same_as<decltype(v.x), float>;
-    requires std::same_as<decltype(v.y), float>;
-} && !requires(const T& v) { v.z; };
 
 // A raylib-independent point or vector in continuous coordinates (y grows downwards on screen). Header-only.
 struct Float2 {
@@ -20,12 +10,6 @@ struct Float2 {
     constexpr Float2(float px, float py)
         : x(px)
         , y(py) {}
-    // Migration only: raylib's Vector2 converts implicitly so code moving to Painter can pass its values. One way on
-    // purpose, so mixed arithmetic stays unambiguous.
-    template <LegacyXy T>
-    constexpr Float2(const T& v)
-        : x(v.x)
-        , y(v.y) {}
 
     // Vector at 'radians' clockwise from the x axis (on screen), 'length' long.
     [[nodiscard]] static Float2 FromAngle(float radians, float length = 1.0f) {

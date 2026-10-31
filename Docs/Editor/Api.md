@@ -23,7 +23,7 @@ void RegisterProjectPreviews(PreviewRegistry& registry) {
 }
 ```
 
-`MyPreview`, `EditorPreview`'dan (bir `GameObject`) türer. Modelsiz çizimde yalnız `Draw() const` gerekir; `Start`,
+`MyPreview`, `EditorPreview`'dan (bir `GameObject`) türer. Modelsiz çizimde yalnız `Draw(Painter&) const` gerekir; `Start`,
 `Update(float)`, `Stop`, `HandleInput`, `ApplyParameter`, `ExecuteAction`, `CaptureParameters`, `Inspect` gerektiğinde
 override edilir. Kendi frame döngüsü yazılmaz; model ve gerçek View'ı içerik sahiplenir, editör için ikinci çizim
 kopyası yazılmaz.
@@ -33,16 +33,16 @@ Kurallar:
 - Kayıt yalnız metadata / fabrika ekler; pencere, asset, örnek kurulmaz. Kimlikler benzersizdir.
 - Fabrika GL, metin ve ses hazırken engine thread'inde çağrılır; başlangıç değerleri tam harita olarak verilir,
   kurulumda `ApplyParameter` çağrılmasına güvenilmez.
-- `PreviewServices` canvas boyutunu, metin / ses referanslarını, oyunun fontunu (`font`; çizim dışında ölçmek için,
+- `PreviewServices` canvas boyutunu, ses referansını, oyunun fontunu (`font`; çizim dışında ölçmek için,
   ör. hit-test; yoksa null), log ve uygulama komutu callback'lerini verir. Referanslar örnekten uzun yaşar; içerik
   durduktan sonra tutulmaz.
-- `Update` ölçeklenmiş saniye alır. Görsel zaman `DrawTime()`'dır: `PreviewScene::Seconds()` her Reset'te 0'lanır ve
+- `Update` ölçeklenmiş saniye alır. Görsel zaman `paint.Time()`'dır: `PreviewScene::Seconds()` her Reset'te 0'lanır ve
   `PreviewGame::DrawSeconds()` ile sunum saatine verilir; içerik saat bağlamaz.
 - `Stop` ve destructor istisna atmaz. Fabrika / hook hataları worker'ı sonlandırabilir; editör hatayı ve çıkış
   kodunu gösterir.
 
 `PreviewDefinition::benchmark` isteğe bağlı, tekrarlanabilir bir iş yükü sözleşmesidir. Kalıcı kimlik/sürüm,
-iki varyantın adları, geçici render politikaları ve parametre farklarını taşır. Tanım yoksa önizleme yalnız
+iki varyantın adları ve parametre farklarını taşır. Tanım yoksa önizleme yalnız
 canlı ölçüme uygundur. `PreviewServices::profiler`, özel CPU scope/sayaç kaydı için ödünç modül referansıdır;
 işlem yalnız `Modules/Profiler/Profiler.hpp` üzerinden yapılır. [Profiler rehberi](Profiler.md).
 

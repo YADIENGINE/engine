@@ -1,5 +1,4 @@
 #include "Runtime/Game.h"
-#include <raylib.h>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -17,7 +16,7 @@
 #include "Input/Internals/InputNormalizer.h"
 #include "Input/Internals/InputReader.h"
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Draw/DrawTime.h"
+#include "Graphics/Text/TextStyle.hpp"
 #include "Graphics/Style/Theme.h"
 #include "Tuning/TuningLive.h"
 
@@ -40,16 +39,14 @@ constexpr int FpsCounterY = 8;
 constexpr int FpsCounterFontSize = 20;
 constexpr int FpsCounterPadding = 6;
 constexpr float FpsCounterSmoothing = 0.1f; // Her karede iş süresinin yeni ölçüme yaklaşma oranı
-constexpr Color FpsCounterBackground{0, 0, 0, 170};
-constexpr Color FpsCounterText{120, 255, 160, 255};
-
-Color4 ToColor4(Color color) { return {color.r, color.g, color.b, color.a}; }
+constexpr Color4 FpsCounterBackground{0, 0, 0, 170};
+constexpr Color4 FpsCounterText{120, 255, 160, 255};
 
 RenderPipelineSettings PipelineSettings(const GameSettings& settings) {
     return {{static_cast<float>(settings.canvasWidth), static_cast<float>(settings.canvasHeight)},
-            ToColor4(settings.background),
-            ToColor4(settings.letterbox),
-            settings.canvasTextureFilter != TEXTURE_FILTER_POINT,
+            settings.background,
+            settings.letterbox,
+            settings.smoothCanvas,
             settings.post};
 }
 
@@ -65,10 +62,6 @@ RenderQuality QualityOf(const EffectQuality& effects) {
     return quality;
 }
 
-Texture2D CanvasTexture(const GpuNativeTarget& canvas) {
-    return {canvas.colorTexture, canvas.width, canvas.height, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
-}
-
 EffectLevel StoredLevel(std::int64_t stored) {
     return stored >= 0 && stored <= static_cast<std::int64_t>(EffectLevel::Off) ? static_cast<EffectLevel>(stored)
                                                                                 : EffectLevel::Full;
@@ -78,8 +71,6 @@ EffectLevel StoredLevel(std::int64_t stored) {
 Game::Game(const GameSettings& settings)
     : _renderer(std::make_unique<Renderer>(settings.window, PipelineSettings(settings)))
     , _assetRoot(PrepareAssets(AssetManifest(settings)))
-    , _text(settings.font.empty() ? std::filesystem::path{} : _assetRoot / settings.font, settings.fontAtlasSizes,
-            settings.fontCodepoints, settings.fontTextureFilter)
     , _font(settings.font.empty() ? std::optional<FontFace>{} : FontFace::FromFile(_assetRoot / settings.font))
     , _audio(_assetRoot, settings.audioVolume)
     , _input(std::make_unique<InputNormalizer>())
@@ -111,7 +102,7 @@ void Game::Start() {}
 void Game::PrepareFrame() {}
 DeviceInput Game::ReadInput() {
     // External hosts override this method; their hidden windows do not own input focus.
-    const bool focused = IsWindowFocused();
+    const bool focused = Window::Focused();
     if (!focused) {
         if (_inputFocused) CancelInput();
         _input->Cancel();
@@ -122,11 +113,7 @@ DeviceInput Game::ReadInput() {
     });
 }
 void Game::CanvasReady(const Texture2D& texture) const { (void)texture; }
-void Game::DrawWindow(Painter& window) const {
-    auto legacy = window.Legacy();
-    DrawWindow();
-}
-void Game::DrawWindow() const {}
+void Game::DrawWindow(Painter& window) const { (void)window; }
 const RenderStats& Game::RenderStatistics() const { return _renderer->LastFrame(); }
 const FontFace& Game::Font() const {
     if (!_font) throw std::logic_error("Game::Font: GameSettings::font is not set");
@@ -137,17 +124,10 @@ void Game::HandleInput(const DeviceInput& input) {
 }
 void Game::Update(float realSeconds) { (void)realSeconds; }
 float Game::FrameSeconds(float realSeconds) { return realSeconds; }
-double Game::DrawSeconds() const { return GetTime(); }
-void Game::Draw(Painter& paint) const {
-    auto legacy = paint.Legacy();
-    Draw();
-}
-void Game::Draw() const {}
+double Game::DrawSeconds() const { return Window::ClockSeconds(); }
+void Game::Draw(Painter& paint) const { (void)paint; }
 void Game::DrawLoading(Painter& paint, float seconds, float outro) const {
-    auto legacy = paint.Legacy();
-    DrawLoading(seconds, outro);
-}
-void Game::DrawLoading(float seconds, float outro) const {
+    (void)paint;
     (void)seconds;
     (void)outro;
 }
@@ -260,16 +240,12 @@ void Game::CommitScene() {
 }
 void Game::Present() const {
     const double time = DrawSeconds();
-    SetDrawTime(time);
     auto frame = _renderer->BeginFrame(time, _frameSeconds);
     Painter& paint = frame.Canvas();
     if (const Scene* scene = _sceneManager->Current()) scene->Render(paint);
     Draw(paint);
-    if (_showFps) {
-        auto legacy = paint.Legacy();
-        DrawFpsCounter();
-    }
-    frame.Complete([this](const GpuNativeTarget& canvas) { CanvasReady(CanvasTexture(canvas)); },
+    if (_showFps) DrawFpsCounter(paint);
+    frame.Complete([this](const Texture2D& canvas) { CanvasReady(canvas); },
                    [this](Painter& window) { DrawWindow(window); });
 }
 void Game::ConfigureFrameExecution(const FrameExecutionSettings& settings) {
@@ -277,25 +253,27 @@ void Game::ConfigureFrameExecution(const FrameExecutionSettings& settings) {
     _frameExecution = settings;
     _renderer->SetTargetFps(settings.fpsLimit);
     _renderer->SetVSync(settings.vsync);
-    _renderer->SetExecutionOptions(settings.drawing);
 }
-void Game::DrawFpsCounter() const {
+void Game::DrawFpsCounter(Painter& paint) const {
     // Bekleme (FPS sınırı, VSync) hariç bu karenin işi; sayaç kendi çizimini ve kare sonu GPU teslimini saymaz.
-    const auto work = static_cast<float>(GetTime() - _frameStart);
+    const auto work = static_cast<float>(Window::ClockSeconds() - _frameStart);
     _frameWorkSeconds += (work - _frameWorkSeconds) * FpsCounterSmoothing;
     std::array<char, 48> label{};
-    std::snprintf(label.data(), label.size(), "%d FPS  %.1f ms", GetFPS(), _frameWorkSeconds * 1000.0f);
-    const int width = _text.Measure(label.data(), FpsCounterFontSize);
-    DrawRectangle(FpsCounterX - FpsCounterPadding, FpsCounterY - FpsCounterPadding, width + 2 * FpsCounterPadding,
-                  FpsCounterFontSize + 2 * FpsCounterPadding, FpsCounterBackground);
-    _text.Draw(label.data(), FpsCounterX, FpsCounterY, FpsCounterFontSize, FpsCounterText);
+    std::snprintf(label.data(), label.size(), "%d FPS  %.1f ms", Window::FramesPerSecond(),
+                  _frameWorkSeconds * 1000.0f);
+    if (!paint.HasFont()) return;
+    const float width = paint.Font().Measure(label.data(), FpsCounterFontSize).x;
+    paint.Rect({FpsCounterX - FpsCounterPadding, FpsCounterY - FpsCounterPadding, width + 2 * FpsCounterPadding,
+                FpsCounterFontSize + 2 * FpsCounterPadding},
+               Fill(FpsCounterBackground));
+    paint.Text(label.data(), {FpsCounterX, FpsCounterY}, FittedText(FpsCounterFontSize, FpsCounterText));
 }
 bool Game::ShowLoading() {
     const StartupTimer timer("Loading screen");
-    const double start = GetTime();
+    const double start = Window::ClockSeconds();
     std::optional<double> loadedAt;
     while (!_quitRequested && !_renderer->ShouldClose()) {
-        const double now = GetTime();
+        const double now = Window::ClockSeconds();
         if (!loadedAt && _audio.FinishLoading()) loadedAt = now;
         float outro = 0.0f;
         if (loadedAt) {
@@ -306,8 +284,7 @@ bool Game::ShowLoading() {
         }
         {
             const double time = DrawSeconds();
-            SetDrawTime(time);
-            auto frame = _renderer->BeginFrame(time, GetFrameTime());
+            auto frame = _renderer->BeginFrame(time, Window::FrameSeconds());
             Painter& paint = frame.Canvas();
             if (const Scene* scene = _sceneManager->Current()) scene->Render(paint);
             DrawLoading(paint, static_cast<float>(now - start), outro);
@@ -340,7 +317,7 @@ void Game::Run() {
 #if ENGINE_TUNING_LIVE
             PollTuning(); // Değişen tuning dosyaları karenin başında, ya hep ya hiç uygulanır
 #endif
-            _frameStart = GetTime();
+            _frameStart = Window::ClockSeconds();
             FrameObserver* observer = _frameObserver;
             if (observer) {
                 observer->BeginFrame();
@@ -353,7 +330,7 @@ void Game::Run() {
                 HandleInput(input);
             }
             if (observer) observer->EndRegion(FrameRegion::Input);
-            float realSeconds = GetFrameTime();
+            float realSeconds = Window::FrameSeconds();
             if (observer) observer->BeginRegion(FrameRegion::Audio);
             _audio.Update();
             if (observer) {
