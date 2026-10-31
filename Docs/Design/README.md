@@ -311,6 +311,19 @@ Launcher/
   sadece o sürümle yeni proje kurulamaz. Otomatik güncelleme v1 sonrası.
 - Kod imzalama yok; SmartScreen uyarısı kabul edilir.
 
+**Karar (kurulum programı, 2026-10-31):** tek exe bir **Inno Setup** kurulum programıdır (indirilen exe kurulumdur;
+bitince launcher'ı açar). Launcher reposunda bildirimsel bir `.iss` dosyası; paket betiği launcher build'ini,
+`ToolCache/`'i (`Tools/` olarak) ve `Engines/`'i ona verir, `ISCC.exe` exe'yi üretir. ISCC yalnız paketleyen
+makinede gerekir, cmake gibi `Toolchain.lock.json`'da sabitlenir. Kullanıcı başına kurulum (`{localappdata}`,
+yönetici izni yok), LZMA2; kaldırma ve Uygulamalar kaydı, aynı AppId ile üzerine kurma, açık launcher'ı Restart
+Manager ile kapatma ve yarıda kalan kurulumun geri alınması Inno'dandır. PATH işi tek yerde kalır: kurulumun
+son adımı ve kaldırma launcher'ın `UserPath`'ini `<engine>.com` üzerinden çağırır.
+- **Görünüş:** sayfaların hepsi kapalı (hoş geldin, klasör, hazır, bitti); yalnız ilerleme penceresi, bizim ikon ve
+  logo görseliyle, modern sihirbaz stili. Skin eklentisi yok. İlk gerçek ekran launcher'ın Sistem kontrolüdür.
+- **Neden:** kullanıcının gördüğü akış kendini kuran launcher'la neredeyse aynı; o seçenekte çıkarma, exe'nin
+  kendini ayıklaması, çalışırken kendini silen kaldırıcı, kilitli dosya ve antivirüs sezgileri (~1–1,5k satır) bize
+  kalırdı. Bedel: kurulum / kaldırma pencereleri Win32 denetimleridir, ImGui temasında değildir.
+
 **Karar (dil ve giriş noktaları, 2026-10-31):**
 - Launcher C++20'dir. Bütün iş (ayarlar, proje listesi, proje işlemleri, modlar, manifest denetimi, sistem
   kontrolü, CLI'ın devri) **headless bir çekirdek kütüphanededir** ve testleri vardır; arayüz onu çağırır.
@@ -504,7 +517,13 @@ Aşama 3 (launcher çekirdeği) için, tek tek konuşulur; karar alınınca ilgi
     kurulup kabul testi geçince).
 11. ~~Launcher'ın kendi komutları ile devredilenlerin ayrımı~~ → D6 (`<engine> launcher <iş>`; gerisi aynen devir).
 
-Şu an açık soru yok.
+Aşama 4 (dağıtım) için, tek tek konuşulur:
+
+1. ~~Paketin biçimi: kurulumu kim yapar~~ → D15 (Inno Setup; yalnız ilerleme penceresi).
+2. Paketin sürümü: exe adındaki sürüm launcher'ınki mi (`LAUNCHER_VERSION`), engine'inki mi.
+3. Kurulum / güncelleme sırasında açık launcher, editör ya da `<engine>` komutu.
+4. Kaldırmanın sildikleri (`Settings.json`, PATH; projeler hiçbir zaman) ve aynı / eski sürümün tekrar çalıştırılması.
+5. "Ses araçlarını kur": NumPy / SciPy paketin içinde mi, istendiğinde internetten mi.
 
 Kapanan ilk liste:
 

@@ -57,6 +57,11 @@ Uygulandı (2026-10-31). Kullanım: [Tuning](../Tuning.md); kararlar: [Tuning ta
 
 ## Aşama 3: Launcher MVP (yeni repo)
 
+Uygulandı (2026-10-31, launcher `c571dd3` "Launcher UI", push'lu). Çekirdek + `<engine>.com` + `<engine>.exe`
+ekranları derlendi; `LauncherCoreTests` ve ekran görüntüsü üreten `LauncherUiSmoke` (ölçek 75–200 %, taşma denetimi)
+çalıştı. Ayrıntı launcher `Docs/Architecture.md`, `Docs/CoreApi.md`, `Docs/UiScreens.md`. Aşama 4'e geçenler:
+var olan oyunun geçişi (kurulu launcher ister) ve "ses araçlarını kur" (D7).
+
 - Launcher reposu; engine içe aktarma betiği (D16) ve ilk `Engines/` kopyası.
 - `<engine>` CLI: `build`, `test`, `run`, `release`, `editor`; işi projenin `Engine/Tools`'una gömülü Python ile devreder
   (D6, D7); editör açıksa Aşama 1'deki kanalı kullanır.
@@ -82,9 +87,16 @@ Uygulandı (2026-10-31). Kullanım: [Tuning](../Tuning.md); kararlar: [Tuning ta
 
 ## Aşama 4: Dağıtım
 
+Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, tek tek kapanır.
+
 - Tek exe kurulum: `%LOCALAPPDATA%\<Engine>`, masaüstü kısayolu, PATH, Uygulamalar kaydı, üzerine kurulan
-  güncelleme (D15).
-- Engine güncellemesi: manifest notlarının gösterimi ve onaylı güncelleme (D16).
+  güncelleme, kaldırma (D15). Paketi launcher reposunun betiği üretir (`ToolCache/` + `Engines/` + launcher
+  build'i).
+- Engine güncellemesi (D16): notların gösterimi ve onaylı güncelleme Aşama 3'te yapıldı (`PlanEngineUpdate` /
+  `ApplyEngineUpdate`, Engine update paneli). Kalan: iki gerçek sürümle (`Engine0.1` → sonraki) uçtan uca deneme.
+- "Ses araçlarını kur" (D7): AudioGeneration'ın NumPy / SciPy'si gömülü Python'a, isteğe bağlı.
+- Kabul testi: paket temiz bir kullanıcı hesabında kurulur, yeni proje açılır, derlenir, güncellenir, kaldırılır;
+  sonra var olan oyunun geçişi (Aşama 3'teki madde): oyunun belgeleri `<engine> <komut>`'a geçer.
 
 **Sonuç:** indirilip çalıştırılabilen ürün.
 
