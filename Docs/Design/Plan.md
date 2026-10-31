@@ -100,11 +100,13 @@ Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, te
   araçların lisans metinleri → `vpk pack`, imza adımının yeri boş; (3) Ayarlar'daki Licenses bölümü paketteki
   bütün lisansları gösterir.
 - Engine güncellemesi (D16): notların gösterimi ve onaylı güncelleme Aşama 3'te yapıldı (`PlanEngineUpdate` /
-  `ApplyEngineUpdate`, Engine update paneli). Kalan: iki gerçek sürümle (`Engine0.1` → sonraki) uçtan uca deneme.
+  `ApplyEngineUpdate`, Engine update paneli). **TODO (ertelendi 2026-11-01):** iki gerçek sürümle (`Engine0.1` →
+  0.2) uçtan uca deneme; engine şimdilik 0.1.1'de kalır, Painter göçü oturunca 0.2.0 tag'lenip içe aktarılır.
 - ~~"Ses araçlarını kur" (D7)~~ yapıldı (2026-10-31): Ayarlar'da düğme + `launcher audio-tools`, betik için
   `launcher python`.
-- Kabul testi: paket temiz bir kullanıcı hesabında kurulur, yeni proje açılır, derlenir, güncellenir, kaldırılır;
-  sonra var olan oyunun geçişi (Aşama 3'teki madde): oyunun belgeleri `<engine> <komut>`'a geçer.
+- ~~Kabul testi~~ geçti sayıldı (2026-11-01; kurulum / kullanım / kaldırma elle denendi, çıkan hata sonra ele alınır).
+  Var olan oyunun geçişi: oyunun belgeleri `<engine> <komut>`'a geçer.
+- İlk public yayın (launcher `v0.1.0`, Releases'a Setup): konuşulacak.
 
 **Sonuç:** indirilip çalıştırılabilen ürün.
 
