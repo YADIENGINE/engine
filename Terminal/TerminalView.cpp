@@ -86,7 +86,18 @@ struct Grid {
     }
 };
 
-void DrawRow(ImDrawList& draw, const Grid& grid, int row, const std::vector<TerminalCell>& cells) {
+TerminalPosition PositionAt(const Grid& grid, ImVec2 mouse, const TerminalSession& session) {
+    const int row =
+        std::clamp(static_cast<int>(std::floor((mouse.y - grid.origin.y) / grid.cellHeight)), 0, session.Rows() - 1);
+    const float column = (mouse.x - grid.origin.x) / grid.cellWidth;
+    int boundary = std::clamp(static_cast<int>(std::round(column)), 0, session.Columns());
+    if (boundary < session.Columns() && session.Cell(row, boundary).continuation)
+        boundary += column < static_cast<float>(boundary) ? -1 : 1;
+    return {row, boundary};
+}
+
+void DrawRow(ImDrawList& draw, const Grid& grid, int row, const std::vector<TerminalCell>& cells,
+             TerminalPosition selectionStart, TerminalPosition selectionEnd) {
     const int columns = static_cast<int>(cells.size());
     // Arka planlar: aynı renkli komşu hücreler tek dikdörtgen.
     for (int column = 0; column < columns;) {
@@ -101,6 +112,13 @@ void DrawRow(ImDrawList& draw, const Grid& grid, int row, const std::vector<Term
             draw.AddRectFilled(from, to, ToImColor(cell.background));
         }
         column = end;
+    }
+    if (row >= selectionStart.row && row <= selectionEnd.row) {
+        const int first = row == selectionStart.row ? selectionStart.column : 0;
+        const int last = row == selectionEnd.row ? selectionEnd.column : columns;
+        if (first < last)
+            draw.AddRectFilled(grid.At(row, first), grid.At(row + 1, last),
+                               ImGui::GetColorU32(ImGuiCol_TextSelectedBg));
     }
     // Metin: düz ASCII'ler aynı özellikte koşu olarak, diğerleri kendi hücresine hizalı tek tek.
     std::string run;
@@ -186,33 +204,58 @@ void TerminalView::Draw(TerminalSession& session) {
     const auto available = ImGui::GetContentRegionAvail();
     session.Resize(std::max(1, static_cast<int>(available.y / grid.cellHeight)),
                    std::max(1, static_cast<int>(available.x / grid.cellWidth)));
+    if (_rows != session.Rows() || _columns != session.Columns()) {
+        _selectionAnchor = _selectionEnd = {};
+        _rows = session.Rows();
+        _columns = session.Columns();
+    }
     ImGui::InvisibleButton("##terminal", {std::max(1.0f, available.x), std::max(1.0f, available.y)},
                            ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-    _focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-    if (_focused) HandleInput(session);
+    if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        _selectionAnchor = _selectionEnd = PositionAt(grid, ImGui::GetMousePos(), session);
+    if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        _selectionEnd = PositionAt(grid, ImGui::GetMousePos(), session);
+    _focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+               !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
+    if (_focused) {
+        // rlImGui karakterleri yalnız WantCaptureKeyboard true iken kuyruğa alır. InvisibleButton klavye
+        // odağını tutmaz; backend NewFrame'den önce okuduğu için bayrak şimdi de yayınlanır.
+        ImGui::SetNextFrameWantCaptureKeyboard(true);
+        ImGui::GetIO().WantCaptureKeyboard = true;
+        HandleInput(session);
+    }
 
     auto& draw = *ImGui::GetWindowDrawList();
     const auto& palette = session.Palette();
     draw.AddRectFilled(grid.origin, {grid.origin.x + available.x, grid.origin.y + available.y},
                        ToImColor(palette.background));
+    const auto selectionStart = std::min(_selectionAnchor, _selectionEnd);
+    const auto selectionEnd = std::max(_selectionAnchor, _selectionEnd);
     std::vector<TerminalCell> cells(static_cast<std::size_t>(session.Columns()));
     for (int row = 0; row < session.Rows(); ++row) {
         for (int column = 0; column < session.Columns(); ++column)
             cells[static_cast<std::size_t>(column)] = session.Cell(row, column);
-        DrawRow(draw, grid, row, cells);
+        DrawRow(draw, grid, row, cells, selectionStart, selectionEnd);
     }
     DrawCursor(draw, grid, session, _focused);
     ImGui::PopFont();
 
     if (ImGui::BeginPopupContextItem("##terminal-menu")) {
+        if (ImGui::MenuItem("Copy", "Ctrl+C", false, _selectionAnchor != _selectionEnd)) CopySelection(session);
         if (ImGui::MenuItem("Paste", "Ctrl+V", false, session.Running()))
-            if (const char* text = ImGui::GetClipboardText()) session.Paste(text);
-        if (ImGui::MenuItem("Restart")) session.Restart();
+            if (const char* text = ImGui::GetClipboardText()) {
+                _selectionAnchor = _selectionEnd = {};
+                session.Paste(text);
+            }
+        if (ImGui::MenuItem("Restart")) {
+            _selectionAnchor = _selectionEnd = {};
+            session.Restart();
+        }
         ImGui::EndPopup();
     }
 }
 
-void TerminalView::HandleInput(TerminalSession& session) const {
+void TerminalView::HandleInput(TerminalSession& session) {
     const auto& io = ImGui::GetIO();
     const TerminalModifiers modifiers{.shift = io.KeyShift, .alt = io.KeyAlt, .ctrl = io.KeyCtrl};
     const auto chord = Modifiers(io);
@@ -221,29 +264,54 @@ void TerminalView::HandleInput(TerminalSession& session) const {
     const auto pressed = [&](ImGuiKey key, bool repeat = true) {
         return ImGui::IsKeyPressed(key, repeat) && !Reserved(chord | key);
     };
+    const bool hasSelection = _selectionAnchor != _selectionEnd;
+    const bool copy = control && pressed(ImGuiKey_C, false) && (hasSelection || io.KeyShift);
+    if (copy) CopySelection(session);
+    if (hasSelection && pressed(ImGuiKey_Escape)) {
+        _selectionAnchor = _selectionEnd = {};
+        return;
+    }
 
     // Basılı tutulan yapıştırma tekrarlanmaz.
-    const bool paste = (control && pressed(ImGuiKey_V, false)) ||
-                       (io.KeyShift && !io.KeyCtrl && pressed(ImGuiKey_Insert, false));
+    const bool paste =
+        (control && pressed(ImGuiKey_V, false)) || (io.KeyShift && !io.KeyCtrl && pressed(ImGuiKey_Insert, false));
     if (paste)
-        if (const char* text = ImGui::GetClipboardText()) session.Paste(text);
+        if (const char* text = ImGui::GetClipboardText()) {
+            _selectionAnchor = _selectionEnd = {};
+            session.Paste(text);
+        }
     for (const auto& binding : KeyBindings)
-        if (pressed(binding.key) && !(paste && binding.key == ImGuiKey_Insert))
+        if (pressed(binding.key) && !(paste && binding.key == ImGuiKey_Insert)) {
+            _selectionAnchor = _selectionEnd = {};
             session.SendKey(binding.terminal, modifiers);
+        }
     for (int number = 1; number <= FunctionKeys; ++number)
-        if (pressed(static_cast<ImGuiKey>(ImGuiKey_F1 + number - 1))) session.SendFunctionKey(number, modifiers);
+        if (pressed(static_cast<ImGuiKey>(ImGuiKey_F1 + number - 1))) {
+            _selectionAnchor = _selectionEnd = {};
+            session.SendFunctionKey(number, modifiers);
+        }
     if (control)
         for (int key = ImGuiKey_A; key <= ImGuiKey_Z; ++key) {
-            // Ctrl+V yapıştırır; Ctrl+Shift+C kopyalama alışkanlığıdır, programı kesmemeli.
-            if (key == ImGuiKey_V || (key == ImGuiKey_C && io.KeyShift)) continue;
-            if (pressed(static_cast<ImGuiKey>(key)))
+            // Seçim varken Ctrl+C kopyalar; yokken programa kesme gider. Ctrl+Shift+C daima kopyalar.
+            if (key == ImGuiKey_V || (key == ImGuiKey_C && (hasSelection || io.KeyShift))) continue;
+            if (pressed(static_cast<ImGuiKey>(key))) {
+                _selectionAnchor = _selectionEnd = {};
                 session.SendCharacter(static_cast<char32_t>(U'a' + (key - ImGuiKey_A)), modifiers);
+            }
         }
     if (!control) {
         const TerminalModifiers characterModifiers{.alt = io.KeyAlt && !io.KeyCtrl};
-        for (const char32_t character : QueuedCharacters(io))
+        for (const char32_t character : QueuedCharacters(io)) {
+            _selectionAnchor = _selectionEnd = {};
             session.SendCharacter(character, characterModifiers);
+        }
     }
+}
+
+void TerminalView::CopySelection(const TerminalSession& session) const {
+    if (_selectionAnchor == _selectionEnd) return;
+    const auto text = session.Text(_selectionAnchor, _selectionEnd);
+    ImGui::SetClipboardText(text.c_str());
 }
 
 bool TerminalView::Reserved(ImGuiKeyChord chord) const {

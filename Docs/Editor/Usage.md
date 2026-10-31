@@ -39,6 +39,9 @@ Tuning'i (Inspector'la aynı sağ alanda sekme) gösterir; Output ve Profiler ka
   varsa build exit code'u ve ilk hata mesajını birlikte kopyalar. Show Output,
   büyütülmüş preview'dan çıkıp Output'u öne getirir, Last Build Try'ı açar ve ilk hataya kaydırır. Bu görünümde
   önceki arama/seviye tercihleri geçici olarak kaldırılır; kapsam değiştirilince kayıtlı tercihler geri gelir.
+- **Console:** proje kökünde gerçek bir PowerShell oturumu. Görünen metni fareyle sürükleyerek seçebilir,
+  Ctrl+C / Ctrl+Shift+C veya sağ tık Copy ile kopyalayabilirsin. Seçim yokken Ctrl+C çalışan programı keser;
+  Ctrl+V yapıştırır, Escape seçimi temizler. Kaydırma geçmişi ve çift tıkla kelime seçimi henüz yoktur.
 - **Tuning:** projenin `*.tuning.json` dosyaları ([Tuning](../Tuning.md)); liste build'in `Tuning/TuningFiles.json`'undan
   gelir, yeni dosya bir sonraki configure'dan sonra görünür. Üstte dosya seçimi, altında önizlemenin o dosya için son
   durumu: Live, Not applied (dosya geçersiz; satırı ve nedeni), Build needed (alan / uzunluk değişti; Build & Refresh

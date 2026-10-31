@@ -1,5 +1,6 @@
 #include "Terminal/TerminalSession.h"
 #include <windows.h>
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include "Terminal/Internals/PseudoConsole.h"
@@ -92,6 +93,9 @@ void TerminalSession::Pump() {
 }
 
 void TerminalSession::Resize(int rows, int columns) {
+    rows = std::max(rows, 1);
+    columns = std::max(columns, 1);
+    if (rows == _screen->Rows() && columns == _screen->Columns()) return;
     _screen->Resize(rows, columns);
     if (_console) _console->Resize(_screen->Rows(), _screen->Columns());
 }
@@ -127,6 +131,7 @@ bool TerminalSession::Running() const { return _console != nullptr; }
 int TerminalSession::Rows() const { return _screen->Rows(); }
 int TerminalSession::Columns() const { return _screen->Columns(); }
 TerminalCell TerminalSession::Cell(int row, int column) const { return _screen->Cell(row, column); }
+std::string TerminalSession::Text(TerminalPosition from, TerminalPosition to) const { return _screen->Text(from, to); }
 TerminalCursor TerminalSession::Cursor() const { return _screen->Cursor(); }
 const std::string& TerminalSession::Title() const { return _screen->Title(); }
 const TerminalPalette& TerminalSession::Palette() const { return _screen->Palette(); }

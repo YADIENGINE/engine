@@ -204,4 +204,32 @@ TerminalCell VtScreen::Cell(int row, int column) const {
     return result;
 }
 
+std::string VtScreen::Text(TerminalPosition from, TerminalPosition to) const {
+    const auto clamp = [&](TerminalPosition position) {
+        return TerminalPosition{std::clamp(position.row, 0, _rows - 1), std::clamp(position.column, 0, _columns)};
+    };
+    from = clamp(from);
+    to = clamp(to);
+    if (to < from) std::swap(from, to);
+    if (from == to) return {};
+    // Geniş karakterin ortasındaki sınır karakteri bölmez.
+    if (from.column < _columns && Cell(from.row, from.column).continuation) --from.column;
+    if (to.column < _columns && Cell(to.row, to.column).continuation) ++to.column;
+
+    const auto* state = vterm_obtain_state(_vterm.get());
+    std::string text;
+    for (int row = from.row; row <= to.row; ++row) {
+        const int first = row == from.row ? from.column : 0;
+        const int last = row == to.row ? to.column : _columns;
+        const VTermRect rect{row, row + 1, first, last};
+        std::string line(vterm_screen_get_text(_screen, nullptr, 0, rect), '\0');
+        vterm_screen_get_text(_screen, line.data(), line.size(), rect);
+        const bool wrapped = row < to.row && vterm_state_get_lineinfo(state, row + 1)->continuation;
+        if (!wrapped) line.erase(line.find_last_not_of(' ') + 1);
+        text += line;
+        if (row < to.row && !wrapped) text += '\n';
+    }
+    return text;
+}
+
 TerminalCursor VtScreen::Cursor() const { return _cursor; }

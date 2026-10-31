@@ -101,6 +101,33 @@ TEST_CASE("Terminal.Keys.EncodingForConPty", "[terminal]") {
     CHECK(screen.TakeInput() == "\xC4\x9F");
 }
 
+TEST_CASE("Terminal.Screen.SelectedTextTrimsLinesAndAcceptsReverseDrag", "[terminal]") {
+    VtScreen screen(4, 12, {});
+    screen.Feed("hello  \r\nworld");
+    CHECK(screen.Text({0, 1}, {1, 3}) == "ello\nwor");
+    CHECK(screen.Text({1, 3}, {0, 1}) == "ello\nwor");
+    CHECK(screen.Text({0, 0}, {0, 0}).empty());
+    CHECK(screen.Text({0, 0}, {1, 0}) == "hello\n");
+}
+
+TEST_CASE("Terminal.Screen.SelectedTextJoinsWrappedLines", "[terminal]") {
+    VtScreen screen(4, 4, {});
+    screen.Feed("abc def\r\nnext");
+    // İlk satırın sonundaki gerçek boşluk, sarılan kelimeleri ayırmaya devam eder.
+    CHECK(screen.Text({0, 0}, {1, 3}) == "abc def");
+    CHECK(screen.Text({0, 0}, {2, 4}) == "abc def\nnext");
+}
+
+TEST_CASE("Terminal.Screen.SelectedTextPreservesUnicodeAndWholeWideCharacters", "[terminal]") {
+    VtScreen screen(4, 12, {});
+    const std::string text = "\xC4\x9F\xE7\x95\x8C"
+                             "e\xCC\x81"; // ğ界é (birleşen aksan)
+    screen.Feed(text);
+    CHECK(screen.Text({0, 0}, {0, 4}) == text);
+    CHECK(screen.Text({0, 2}, {0, 3}) == "\xE7\x95\x8C");
+    CHECK(screen.Text({0, 1}, {0, 2}) == "\xE7\x95\x8C");
+}
+
 TEST_CASE("Terminal.Keys.PasteNormalizesLinesAndBrackets", "[terminal]") {
     VtScreen screen(4, 20, {});
     screen.Paste("a\r\nb\nc");

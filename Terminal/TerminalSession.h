@@ -47,6 +47,8 @@ public:
     [[nodiscard]] int Rows() const;
     [[nodiscard]] int Columns() const;
     [[nodiscard]] TerminalCell Cell(int row, int column) const;
+    // İki hücre sınırı arasındaki UTF-8 metin; son sınır dahil değildir. Sarılmış satırlar birleştirilir.
+    [[nodiscard]] std::string Text(TerminalPosition from, TerminalPosition to) const;
     [[nodiscard]] TerminalCursor Cursor() const;
     [[nodiscard]] const std::string& Title() const;
     [[nodiscard]] const TerminalPalette& Palette() const;

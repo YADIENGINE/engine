@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <utility>
 #include <vector>
+#include "Terminal/TerminalTypes.h"
 
 class TerminalSession;
 
@@ -17,9 +18,14 @@ public:
     [[nodiscard]] bool Focused() const { return _focused; }
 
 private:
-    void HandleInput(TerminalSession& session) const;
+    void HandleInput(TerminalSession& session);
+    void CopySelection(const TerminalSession& session) const;
     [[nodiscard]] bool Reserved(ImGuiKeyChord chord) const;
 
     std::vector<ImGuiKeyChord> _reserved;
+    TerminalPosition _selectionAnchor;
+    TerminalPosition _selectionEnd;
+    int _rows = 0;
+    int _columns = 0;
     bool _focused = false;
 };

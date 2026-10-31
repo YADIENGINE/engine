@@ -26,6 +26,7 @@ public:
     [[nodiscard]] int Rows() const { return _rows; }
     [[nodiscard]] int Columns() const { return _columns; }
     [[nodiscard]] TerminalCell Cell(int row, int column) const;
+    [[nodiscard]] std::string Text(TerminalPosition from, TerminalPosition to) const;
     [[nodiscard]] TerminalCursor Cursor() const;
     [[nodiscard]] const std::string& Title() const { return _title; }
     [[nodiscard]] bool AlternateScreen() const { return _alternateScreen; }

@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <compare>
 #include <cstdint>
 
 // Renkler 0xRRGGBB. İlk 16'sı ANSI paleti (0-7 normal, 8-15 parlak).
@@ -27,6 +28,13 @@ struct TerminalCursor {
     int column = 0;
     bool visible = true;
     TerminalCursorShape shape = TerminalCursorShape::Block;
+};
+
+// Hücre sınırı: column satırın sonunu göstermek için Columns() olabilir.
+struct TerminalPosition {
+    int row = 0;
+    int column = 0;
+    [[nodiscard]] auto operator<=>(const TerminalPosition&) const = default;
 };
 
 // Bir ekran hücresi. text en çok bir taban karakter + birleşen işaretler (UTF-32, 0 ile biter); geniş karakterin

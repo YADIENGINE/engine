@@ -1,6 +1,8 @@
 # Console paneli (tasarım)
 
-Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliyor; aşama 2 sırada. Karar kaydı: [README → D18](README.md#d18-console-paneli-editörde-gerçek-terminal).
+Durum: aşama 1 ve görünen ekranda sürükleyerek seçim / kopyalama uygulandı (2026-10-31), çalışma zamanı
+doğrulaması bekliyor. Aşama 2'nin kaydırma geçmişi ve kelime / satır seçimi sırada.
+Karar kaydı: [README → D18](README.md#d18-console-paneli-editörde-gerçek-terminal).
 
 ## Amaç
 
@@ -14,7 +16,7 @@ güncellemeleri kendiliğinden gelir. D6 sayesinde konsoldan verilen `build` edi
 | Aşama | İçerik |
 | --- | --- |
 | 1. MVP | Tek oturum; ConPTY + libvterm; renkli çizim, imleç, geniş karakter; klavye, Türkçe karakter, yapıştırma; yeniden boyutlama; çıkınca yeniden başlatma |
-| 2. Konfor | Kaydırma geçmişi (tekerlek, kaydırma çubuğu, alta yapışma); fareyle seçim, çift tıkla kelime, kopyalama; sağ tık menüsü |
+| 2. Konfor | Görünen ekranda fareyle seçim, kopyalama ve sağ tık Copy uygulandı. Kaydırma geçmişi (tekerlek, kaydırma çubuğu, alta yapışma), çift tıkla kelime seçimi sırada |
 
 Kapsam dışı (şimdilik): birden fazla sekme / oturum, dosya yolu ve URL algılama, programa fare iletimi (mouse
 reporting), metin arama, hazır komut düğmeleri, MCP köprüsü ([Agent API](AgentApi.md) ayrı iş), Windows dışı platform.
@@ -90,8 +92,11 @@ Kabuğun çalışma klasörü editör tarifinden gelir: `EngineEditor.project.js
   önceki karede konsol odaktaysa diğer kısayollarını (`Ctrl+R`, `Ctrl+P`, `F5` ...) çalıştırmaz, tuş kabuğa gider.
 - Yazılan karakterler (Türkçe ve IME dahil) ImGui'nin karakter kuyruğundan `vterm_keyboard_unichar`'a; özel tuşlar
   `vterm_keyboard_key`'e.
+- **Karakter yakalama:** terminal odaktayken `WantCaptureKeyboard` istenir ve backend'in `NewFrame` öncesi
+  okuması için aynı karede de açılır. Yalnız `InvisibleButton` kullanmak yeterli değildir: basılı fare yokken
+  rlImGui harfleri kuyruğa almaz; özel tuşlar (ör. Enter) yine ulaşır.
 - **Ctrl+C:** seçim varsa kopyalar, yoksa programa kesme gönderir (Windows Terminal davranışı). `Ctrl+Shift+C` her
-  zaman kopyalar; aşama 1'de seçim olmadığından hiçbir şey yapmaz (kopyalama alışkanlığı programı kesmesin).
+  zaman kopyalar; seçim yokken hiçbir şey yapmaz. Seçim görünür ekranda sürükleyerek yapılır; Escape temizler.
 - **Yapıştırma:** `Ctrl+V`, `Ctrl+Shift+V`, `Shift+Insert`, sağ tık menüsü (Paste, Restart). Satır sonları CR'ye çevrilir; program
   bracketed paste açtıysa sarılır (çok satırlı metin tek seferde gider, satır satır çalıştırılmaz).
 - **Shift+Enter:** `ESC CR` gönderir; AI CLI'larının çok satırlı girişi böyle bekler (VS Code'da da aynı ayar).
@@ -123,7 +128,9 @@ Kabuğun çalışma klasörü editör tarifinden gelir: `EngineEditor.project.js
 - Konsoldan `<engine> build`: derleme editörün Output'unda görünüyor, önizleme yenileniyor (D6).
 - Editör kapanınca Görev Yöneticisi'nde kabuk / node süreci kalmıyor.
 - `exit` → çıkış kodu görünüyor, Enter ile yeniden başlıyor.
-- Aşama 2: geçmişte kaydırma, yeni çıktıda yapışma, seçim + kopyalama, çift tık kelime.
+- Görünen metinde ileri / geri sürükleme, Ctrl+C / Ctrl+Shift+C ve sağ tık Copy; Türkçe, geniş karakter ve
+  sarılan satırları kopyalama. Seçim yokken Ctrl+C çalışan programı kesiyor.
+- Aşama 2'nin kalanı: geçmişte kaydırma, yeni çıktıda yapışma, çift tık kelime.
 
 ## Uygulama sırası
 
