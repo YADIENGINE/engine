@@ -158,6 +158,11 @@ test, release ve editör komutları launcher'ın içinde yeniden yazılmaz: laun
 - Engine araçları sadece standart kütüphane kullanır (bugün de böyle); bu kural korunur.
 - AudioGeneration (numpy / scipy) varsayılan Python'a gelmez; isteyen geliştirici için launcher "ses araçlarını
   kur" seçeneği sunar. Oyunun derlenmesi / çalışması bunu gerektirmez.
+- **Ses araçlarını kur (2026-10-31):** istendiğinde indirilir, pakete girmez. Ayarlar'daki düğme NumPy / SciPy
+  wheel'lerini sürümü ve SHA-256'sı sabit bir kilit dosyasından (`Toolchain.lock.json` gibi; özet tutmazsa
+  kurulmaz) indirir ve Velopack kökünde `current/`'in dışına açar (launcher güncellemesi silmez); pip yok, wheel bir
+  zip'tir. Gömülü Python'un `._pth` dosyası o klasörü baştan içerir. İnternet ister (Sistem kontrolünün MSVC
+  kurulumu gibi); paket herkes için ~60 MB büyümez.
 
 **Neden:** Derleme mantığı engine ile birlikte sürümlenir; her proje kendi engine sürümünün araçlarıyla derlenir
 (D3 ile aynı ilke). Launcher ince ve kararlı kalır; mevcut araçlar ve testleri olduğu gibi kullanılır.
@@ -182,6 +187,14 @@ dosyasında bir satır. Çalışırken launcher kendi `cmake` / `ninja` klasörl
 başına ekler; engine araçları onları zaten `PATH`'ten aradığı için engine değişmez. Sistem kontrolü araçları
 kilit dosyasındaki sürümlere göre doğrular. **Neden:** ikililer git geçmişinde kalıcı olarak birikirdi (her
 yükseltmede ~55 MB); özet, indirilenin tam o dosya olduğunu garanti eder. Durum: kabul edildi.
+
+**Paketin içeriği ve boyutu (2026-10-31):** araçların ve engine kopyalarının hepsi pakette kalır (çevrimdışı derleme;
+sonradan inen yalnız MSVC ve istenirse ses araçları, D7). CMake budanır: kilit dosyasında araç başına `exclude`
+listesi (`doc/`, `man/`, `bin/cmake-gui.exe`, `bin/cpack.exe`); paket betiği onları almaz, engine yalnız `cmake` ve
+`ctest` kullanır. Ölçüm (0.1, deflate): CMake 121 → 44 MB, Python 21 → 11, `Engine0.1` 26 → 5,4 (24 MB'ı
+`ThirdParty/`), Ninja 0,6 → 0,3; budamayla paket ~60 MB'tan ~30 MB'a, kurulum ~170 MB'tan ~85 MB'a iner.
+**Neden:** araçlar olmadan ilk derleme bile çalışmaz; sonradan indirmek D8'in sabitlenmiş, çevrimdışı ilkesini
+bozar. Engine kopyası küçüktür ve eksiksiz kalmalıdır (D4).
 
 **Bağımlılıklar engine içinde:** raylib, nlohmann_json, ImGui, rlImGui ve Catch2'nin kaynakları `FetchContent`
 ile internetten inmez, engine reposunda durur (ör. `Engine/ThirdParty/`). Derleme internet istemez, D4'teki
@@ -298,7 +311,7 @@ Launcher/
   submodule işleri onsuz yapılamaz.
 
 **Karar (dağıtım ve kurulum):**
-- **Tek exe dağıtılır** (`<Engine>-Setup-<launcher sürümü>.exe`, ~100–150 MB): launcher + gömülü paket (Python, CMake, Ninja,
+- **Tek exe dağıtılır** (`<Engine>-Setup-<launcher sürümü>.exe`, ~30 MB; ölçüm D8 "Paketin içeriği"): launcher + gömülü paket (Python, CMake, Ninja,
   `Engines/`).
 - **İlk çalıştırma kurulumdur:** paketi `%LOCALAPPDATA%\<Engine>\`'e çıkarır (yönetici izni istemez), masaüstüne
   kısayol koyar (exe kopyası değil: tek exe, güncellemede ayrışmaz), isteğe bağlı `<engine>`'yi PATH'e ekler (varsayılan
@@ -559,7 +572,7 @@ Aşama 4 (dağıtım) için, tek tek konuşulur:
 4. Kurulum / güncelleme sırasında açık launcher, editör ya da `<engine>` komutu; aynı / eski sürümün tekrar
    çalıştırılması. Deneme paketinden sonra konuşulur: Velopack'in çalışan süreçlere ve tekrar kuruluma ne yaptığı
    orada görülür.
-5. "Ses araçlarını kur": NumPy / SciPy paketin içinde mi, istendiğinde internetten mi.
+5. ~~"Ses araçlarını kur"~~ → D7 (istendiğinde, özeti sabit wheel'ler, `current/` dışına).
 6. Yayın yeri ve CI: SignPath public repodan CI'da derlenmiş ikili ister; repolar açılana kadar paket nerede derlenir,
    exe nereden indirilir (private repo release'leri dışarıdan indirilemez).
 
