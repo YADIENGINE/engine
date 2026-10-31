@@ -75,18 +75,8 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("View")) {
-        for (const auto& panel : EditorPanels)
-            ImGui::MenuItem(panel.title, nullptr, &preferences.Visible(panel.id));
-        ImGui::Separator();
         result.toggleMaximize = ImGui::MenuItem(maximized ? "Restore workspace" : "Focus preview");
-        result.toggleBottom = ImGui::MenuItem("Toggle last bottom tool", "Ctrl+J");
-        if (ImGui::BeginMenu("Layout")) {
-            for (const auto& layout : EditorLayouts)
-                if (ImGui::MenuItem(layout.title, nullptr, preferences.layout == layout.id,
-                                    layout.id != EditorWorkspaceLayout::Custom || !preferences.customDocking.empty()))
-                    result.layout = layout.id;
-            ImGui::EndMenu();
-        }
+        ImGui::Separator();
         if (ImGui::BeginMenu("Interface scale")) {
             for (const int percent : EditorFontSizes) {
                 const auto label = std::to_string(percent) + "%";
@@ -95,6 +85,21 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
             ImGui::EndMenu();
         }
         ImGui::MenuItem("Preview performance metrics", nullptr, &preferences.showMetrics);
+        ImGui::EndMenu();
+    }
+    if (ImGui::BeginMenu("Window")) {
+        for (const auto& panel : EditorPanels)
+            ImGui::MenuItem(panel.title, nullptr, &preferences.Visible(panel.id));
+        ImGui::Separator();
+        if (ImGui::BeginMenu("Layouts")) {
+            for (const auto& layout : EditorLayouts)
+                if (ImGui::MenuItem(layout.title, nullptr, preferences.layout == layout.id,
+                                    layout.id != EditorWorkspaceLayout::Custom || !preferences.customDocking.empty()))
+                    result.layout = layout.id;
+            ImGui::EndMenu();
+        }
+        ImGui::Separator();
+        result.toggleBottom = ImGui::MenuItem("Toggle last bottom tool", "Ctrl+J");
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Tools")) {

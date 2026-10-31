@@ -15,8 +15,10 @@ Gerçek pencere/input/görsel kontrolleri kullanıcı yapar; yalnız değişen b
 
 ## Editör arayüzü
 
-1. İlk tercihlerde Develop: Project / View / Inspector açık, Output / Profiler kapalı. Panelleri dock et / sekmede
-   birleştir; kapatıp View menüsünden aç. View menüsüyle Fit / Focus / 100%, zoom ve geçici büyüt / geri dön çalışıyor.
+1. İlk tercihlerde Develop: Project / Viewport / Inspector açık, Output / Profiler kapalı. Panelleri dock et / sekmede
+   birleştir; kapatıp Window menüsünden aç. Window → Layouts hazır / özel düzenleri, Window → Toggle last bottom tool
+   ve Ctrl+J son alt paneli yönetiyor. Viewport'un yerel View menüsünde Fit / Focus / 100% ve zoom çalışıyor;
+   üst View menüsüyle Focus preview / Restore workspace, arayüz ölçeği ve performans ölçüleri değiştirilebiliyor.
 2. %75 / %100 / %125 / %150 arayüz ölçeği ve monitör DPI değişimi; dar panellerde uzun adlar sarılıyor veya
    tooltip ile kısalıyor. Toolbar'ın ikincil eylemleri taşma menüsünde; yatay toolbar kaydırması yok.
 3. Ctrl+P Project aramasını, gizliyken de, açıp odaklıyor. Favori yıldızı içerik açmıyor; Recent yalnız başarılı

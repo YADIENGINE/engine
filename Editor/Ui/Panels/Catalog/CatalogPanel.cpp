@@ -1,10 +1,75 @@
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
 #include <imgui.h>
 #include <algorithm>
+#include <array>
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
+
+namespace {
+constexpr float FilterButtonSize = 36;
+constexpr float FilterIconSize = 16;
+constexpr float FilterCornerRadius = 8;
+constexpr float FilterStrokeWidth = 1.6f;
+enum class CatalogFilterIcon { Star, Clock };
+
+void DrawCatalogFilterIcon(CatalogFilterIcon icon, ImVec2 center, float scale, ImU32 color) {
+    auto* draw = ImGui::GetWindowDrawList();
+    const float size = FilterIconSize * scale;
+    const float stroke = FilterStrokeWidth * scale;
+    if (icon == CatalogFilterIcon::Star) {
+        // Center the visible outline, independently of font bearings and baseline.
+        static constexpr std::array Points{
+            ImVec2{0, -0.5f},      ImVec2{0.15f, -0.17f}, ImVec2{0.5f, -0.12f}, ImVec2{0.24f, 0.14f},
+            ImVec2{0.31f, 0.5f},   ImVec2{0, 0.31f},      ImVec2{-0.31f, 0.5f}, ImVec2{-0.24f, 0.14f},
+            ImVec2{-0.5f, -0.12f}, ImVec2{-0.15f, -0.17f}};
+        for (const auto& point : Points)
+            draw->PathLineTo({center.x + point.x * size, center.y + point.y * size});
+        draw->PathStroke(color, ImDrawFlags_Closed, stroke);
+    } else {
+        draw->AddCircle(center, size * 0.47f, color, 32, stroke);
+        draw->PathLineTo({center.x, center.y - size * 0.25f});
+        draw->PathLineTo(center);
+        draw->PathLineTo({center.x + size * 0.2f, center.y + size * 0.12f});
+        draw->PathStroke(color, ImDrawFlags_None, stroke);
+    }
+}
+
+bool CatalogFilterButton(const char* id, CatalogFilterIcon icon, const char* tooltip, bool selected) {
+    const float scale = ToolUiScale();
+    const float size = FilterButtonSize * scale;
+    const auto accent = ToolToneColor(ToolTone::Accent);
+    auto background = selected ? accent : ToolPalette::Control;
+    auto hovered = selected ? accent : ToolPalette::Hover;
+    auto pressedColor = selected ? accent : ToolPalette::Pressed;
+    auto border = selected ? accent : ToolPalette::Border;
+    if (selected) {
+        background.w = 0.22f;
+        hovered.w = 0.30f;
+        pressedColor.w = 0.38f;
+    } else {
+        border.w = 0.45f;
+    }
+    ImGui::PushID(id);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {0, 0});
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, FilterCornerRadius * scale);
+    ImGui::PushStyleColor(ImGuiCol_Button, background);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, pressedColor);
+    ImGui::PushStyleColor(ImGuiCol_Border, border);
+    const bool pressed = ImGui::Button("##filter", {size, size});
+    const auto start = ImGui::GetItemRectMin();
+    const auto end = ImGui::GetItemRectMax();
+    DrawCatalogFilterIcon(icon, {(start.x + end.x) * 0.5f, (start.y + end.y) * 0.5f}, scale,
+                          ImGui::GetColorU32(selected ? accent : ToolPalette::Secondary));
+    ToolTooltip(tooltip);
+    ImGui::PopStyleColor(4);
+    ImGui::PopStyleVar(2);
+    ImGui::PopID();
+    return pressed;
+}
+} // namespace
 
 void CatalogPanel::Entry(const PreviewDefinition& entry, const EditorSnapshot& snapshot, const EditorUiActions& actions,
                          EditorPreferences& preferences) {
@@ -36,11 +101,15 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
         _focusSearch = false;
     }
     ImGui::InputTextWithHint("##search", "Search previews (Ctrl+P)", _search.data(), _search.size());
-    constexpr std::array Labels{"All", "Favorites", "Recent"};
-    for (int i = 0; i < static_cast<int>(Labels.size()); ++i) {
-        if (i) ContinueToolToolbar(Labels[static_cast<std::size_t>(i)]);
-        if (ToolSegment(Labels[static_cast<std::size_t>(i)], _view == i)) _view = i;
-    }
+    if (CatalogFilterButton("favorites-filter", CatalogFilterIcon::Star,
+                            _view == 1 ? "Favorites on. Click to show all previews." : "Show favorite previews.",
+                            _view == 1))
+        _view = _view == 1 ? 0 : 1;
+    ContinueToolToolbar(FilterButtonSize * ToolUiScale());
+    if (CatalogFilterButton("recent-filter", CatalogFilterIcon::Clock,
+                            _view == 2 ? "Recent on. Click to show all previews." : "Show recent previews.",
+                            _view == 2))
+        _view = _view == 2 ? 0 : 2;
     std::vector<const PreviewDefinition*> entries;
     const auto query = EditorSearchText(_search.data());
     for (const auto& entry : snapshot.catalog) {

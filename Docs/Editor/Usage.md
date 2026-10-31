@@ -2,14 +2,14 @@
 
 ## Pencere
 
-Kayıtlı dock yerleşimi ve panel görünürlüğü korunur; View her editör açılışında açık ve önde başlar.
-İlk açılışta Develop düzeni Project, View, Inspector ve Tuning'i (Inspector'la aynı sağ alanda sekme) gösterir;
+Kayıtlı dock yerleşimi ve panel görünürlüğü korunur; Viewport her editör açılışında açık ve önde başlar.
+İlk açılışta Develop düzeni Project, Viewport, Inspector ve Tuning'i (Inspector'la aynı sağ alanda sekme) gösterir;
 Output, Profiler ve Console kapalıdır. Alt durum çubuğunda Output ve Console düğmeleri bulunur.
 
 - **Sol (Project):** arama, kategori, All / Favorites / Recent. İçerik tek tıklamayla açılır; Ctrl+P aramaya odaklanır.
   Yıldız favoriyi değiştirir. Recent son başarılı 10 açılışı tutar.
-- **Orta (View):** worker'ın gerçek görüntüsü. Panelin View menüsünde Fit tüm canvas'ı, Focus content içeriğin
-  bildirdiği alanı, 100% mantıksal ölçüyü gösterir. Aynı menüdeki Zoom veya Ctrl+tekerlek yakınlaştırır,
+- **Orta (Viewport):** worker'ın gerçek görüntüsü. Panelin yerel View menüsünde Fit tüm canvas'ı, Focus content
+  içeriğin bildirdiği alanı, 100% mantıksal ölçüyü gösterir. Aynı menüdeki Zoom veya Ctrl+tekerlek yakınlaştırır,
   orta tuşla sürükleme kaydırır; Reset pan and zoom görünüm ayarlarını sıfırlar.
   Ctrl basılı değilken tekerlek ürüne gider. Büyüt düğmesi veya görünüm özetine çift tıklama geçici odak modunu açar.
   Kapalı, yüklenen veya hatalı önizlemelerde durum açıklaması ve uygulanabilen başlatma / yeniden deneme / iptal
@@ -56,19 +56,19 @@ Output, Profiler ve Console kapalıdır. Alt durum çubuğunda Output ve Console
 - **Profiler:** Live / Benchmarks / Compare. Benchmark örneği seçildiğinde açılır; warmup / ölçüm kareleri / tekrar
   çiftleri Advanced benchmark settings altındadır. Glow override tek bir seçim grubudur; vurgu son istenen değeri
   gösterir. Compare içindeki Export menüsü JSON ve Markdown sunar. Ayrıntılar: [Profiler](Profiler.md).
-- Paneller dock edilebilir, sekmede birleştirilebilir, kapatılıp View menüsünden açılabilir. Preview → Language
+- Paneller dock edilebilir, sekmede birleştirilebilir, kapatılıp Window menüsünden açılabilir. Preview → Language
   seçili önizlemenin dilini değiştirir; önizleme açılmadan da seçilebilir ve açılış tarifinde kullanılır. Dil kontrolü
-  Inspector'da gösterilmez. Menü her zaman açılır; dil desteklemeyen önizlemelerde açıklama gösterir. View ayrıca
-  arayüz ölçeğini (%75 / %100 / %125 / %150) ve önizleme performans ölçülerini yönetir. Varsayılan %100,
-  önceki %125 boyutundadır;
-  arayüz ve teknik metin fontları kullanıcı ölçeğiyle ve monitör DPI'ıyla birlikte ölçeklenir.
+  Inspector'da gösterilmez. Menü her zaman açılır; dil desteklemeyen önizlemelerde açıklama gösterir. Üst menüdeki View,
+  Focus preview / Restore workspace, arayüz ölçeği (%75 / %100 / %125 / %150) ve önizleme performans ölçülerini yönetir.
+  Varsayılan %100, önceki %125 boyutundadır; arayüz ve teknik metin fontları kullanıcı ölçeğiyle ve monitör DPI'ıyla
+  birlikte ölçeklenir.
 
-View → Layout altında Develop genel önizleme, Inspect daha geniş Inspector, Profile ise Profiler odaklı düzeni
+Window → Layouts altında Develop genel önizleme, Inspect daha geniş Inspector, Profile ise Profiler odaklı düzeni
 açar. Elle oluşturulan son yerleşim Last custom layout ile geri çağrılabilir; hazır düzene geçmek onu silmez.
 Alt çubuktaki Output / Console düğmeleri yalnız ilgili paneli açar veya kapatır; birden fazlası açık kalabilir.
-Ctrl+J de son kullanılan alt paneli diğerlerine dokunmadan açıp kapatır. Profiler, View menüsünden veya komut
-paletinden açılır. Okunmamış hata veya uyarı gelince Output düğmesi yanıp söner; Output gerçekten
-görüntülendiğinde bildirim temizlenir. Vurgu temanın hata veya uyarı rengini kullanır; hata varsa önceliklidir.
+Window → Toggle last bottom tool veya Ctrl+J son kullanılan alt paneli diğerlerine dokunmadan açıp kapatır.
+Profiler, Window menüsünden veya komut paletinden açılır. Okunmamış hata veya uyarı gelince Output düğmesi yanıp söner;
+Output gerçekten görüntülendiğinde bildirim temizlenir. Vurgu temanın hata veya uyarı rengini kullanır; hata varsa önceliklidir.
 
 ## Toolbar
 

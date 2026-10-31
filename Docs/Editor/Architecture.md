@@ -124,9 +124,9 @@ aynı kapıya ekler.
   Profile düzenleri ve geçici büyütmeyi yönetir. Panel kimlikleri görünür başlıktan bağımsızdır; görünürlük ve
   varsayılan dock konumu ortak `EditorPanelDefinition` tablosundadır. DockBuilder'ın internal API'si yalnız
   Workspace'te kullanılır. Hazır düzene geçiş son özel düzeni korur; kayıtlı kullanıcı düzeni açılışta korunur,
-  View açık ve önde başlatılır.
-- `Ui/Panels` yerel araçları sahiplenir: View görünüm / zoom menüsü, Output tek Copy menüsü, Profiler gelişmiş
-  ölçüm ayarları ve Export menüsü. Output / Profiler / Console varsayılan olarak kapalıdır; alt durum çubuğu
+  Viewport açık ve önde başlatılır. Window panel görünürlüğü / yerleşimleri, View görüntüleme seçeneklerini yönetir.
+- `Ui/Panels` yerel araçları sahiplenir: Viewport'un yerel View görünüm / zoom menüsü, Output tek Copy menüsü,
+  Profiler gelişmiş ölçüm ayarları ve Export menüsü. Output / Profiler / Console varsayılan olarak kapalıdır; alt durum çubuğu
   Output ve Console'u bağımsız açıp kapatır, süreç durumunu ve okunmamış hata / uyarı bildirimini sunar.
 - `Internals/Diagnostics` ve `Internals/Settings` ImGui / raylib bilmez. Tercihler
   `UserDataDirectory()/EngineEditor/preferences.json` altında atomik saklanır (yerleşim, son özel düzen,

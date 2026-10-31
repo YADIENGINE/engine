@@ -16,7 +16,8 @@ struct EditorPanelDefinition {
 
 inline constexpr std::array EditorPanels{
     EditorPanelDefinition{EditorPanel::Catalog, "Project", "Project###editor.catalog", true, EditorDockGroup::Left},
-    EditorPanelDefinition{EditorPanel::Viewport, "View", "View###editor.viewport", true, EditorDockGroup::Center},
+    EditorPanelDefinition{EditorPanel::Viewport, "Viewport", "Viewport###editor.viewport", true,
+                          EditorDockGroup::Center},
     EditorPanelDefinition{EditorPanel::Inspector, "Inspector", "Inspector###editor.inspector", true,
                           EditorDockGroup::Right},
     EditorPanelDefinition{EditorPanel::Output, "Output", "Output###editor.output", false, EditorDockGroup::Bottom},

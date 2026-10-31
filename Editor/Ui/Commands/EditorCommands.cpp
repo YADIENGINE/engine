@@ -56,7 +56,7 @@ const std::array<EditorCommandInfo, static_cast<std::size_t>(EditorCommand::Coun
         EditorCommandInfo{EditorCommand::Stop, "Stop", EditorGlyph::Stop, 0, nullptr},
         EditorCommandInfo{EditorCommand::Pause, "Pause", EditorGlyph::Pause, ImGuiKey_F6, "F6"},
         EditorCommandInfo{EditorCommand::Reset, "Reset", EditorGlyph::Reset, ImGuiMod_Ctrl | ImGuiKey_R, "Ctrl+R"},
-        EditorCommandInfo{EditorCommand::Refresh, "Build & Refresh", EditorGlyph::Build,
+        EditorCommandInfo{EditorCommand::Refresh, "Build", EditorGlyph::Build,
                           ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_B, "Ctrl+Shift+B"},
         EditorCommandInfo{EditorCommand::Cancel, "Cancel operation", EditorGlyph::Cancel, 0, nullptr},
         EditorCommandInfo{EditorCommand::Step, "Step one frame", EditorGlyph::Step, ImGuiKey_F7, "F7"}};

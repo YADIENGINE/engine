@@ -92,7 +92,8 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
             ++controls;
         }
         width += gap * static_cast<float>(controls - 1);
-        if (showBuild) width += (showBuildLabel ? buildLabelWidth : iconWidth) + gap * 4 + 1;
+        if (showBuild) width += (showBuildLabel ? buildLabelWidth : iconWidth) + gap;
+        if (showBuild && showSpeed) width += gap * 3 + 1;
         return width;
     };
     if (rowWidth() > available) showSpeed = false;
@@ -113,18 +114,22 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         EditorCommandButton(EditorCommand::Reset, snapshot, actions);
     }
     if (showBuild) {
-        ImGui::SameLine(0, gap * 2);
-        const auto separator = ImGui::GetCursorScreenPos();
-        const float inset = EditorToolbarMetrics::Gap * scale;
-        ImGui::GetWindowDrawList()->AddLine({separator.x, separator.y + inset},
-                                            {separator.x, separator.y + iconWidth - inset},
-                                            ImGui::GetColorU32(ImGuiCol_Separator));
-        ImGui::Dummy({1, iconWidth});
-        ImGui::SameLine(0, gap * 2);
+        ImGui::SameLine();
         EditorCommandButton(EditorCommand::Refresh, snapshot, actions, showBuildLabel);
     }
     if (showSpeed) {
-        ImGui::SameLine();
+        if (showBuild) {
+            ImGui::SameLine(0, gap * 2);
+            const auto separator = ImGui::GetCursorScreenPos();
+            const float inset = EditorToolbarMetrics::Gap * scale;
+            ImGui::GetWindowDrawList()->AddLine({separator.x, separator.y + inset},
+                                                {separator.x, separator.y + iconWidth - inset},
+                                                ImGui::GetColorU32(ImGuiCol_Separator));
+            ImGui::Dummy({1, iconWidth});
+            ImGui::SameLine(0, gap * 2);
+        } else {
+            ImGui::SameLine();
+        }
         PlaybackSpeed(snapshot, actions, false);
     }
     if (!showSpeed || !showReset || !showStep || !showBuild) {
@@ -133,11 +138,11 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         if (ImGui::BeginPopup("more-controls")) {
             if (!showStep) EditorCommandMenuItem(EditorCommand::Step, snapshot, actions);
             if (!showReset) EditorCommandMenuItem(EditorCommand::Reset, snapshot, actions);
-            if (!showBuild) {
-                if (!showStep || !showReset) ImGui::Separator();
-                EditorCommandMenuItem(EditorCommand::Refresh, snapshot, actions);
+            if (!showBuild) EditorCommandMenuItem(EditorCommand::Refresh, snapshot, actions);
+            if (!showSpeed) {
+                if (!showStep || !showReset || !showBuild) ImGui::Separator();
+                PlaybackSpeed(snapshot, actions, true);
             }
-            if (!showSpeed) PlaybackSpeed(snapshot, actions, true);
             ImGui::EndPopup();
         }
     }
