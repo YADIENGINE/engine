@@ -48,6 +48,16 @@ void DrawDiamond(Painter& paint, Float2 center, Float2 half, const ShapeStyle& s
     paint.Polygon(corners, style);
 }
 
+void DrawRegularPolygon(Painter& paint, Float2 center, int sides, float radius, float radians,
+                        const ShapeStyle& style) {
+    if (sides < 3) return;
+    std::vector<Float2> corners(static_cast<std::size_t>(sides));
+    for (std::size_t i = 0; i < corners.size(); ++i)
+        corners[i] =
+            center + Float2::FromAngle(radians + static_cast<float>(i) * 2.0f * Pi / static_cast<float>(sides), radius);
+    paint.Polygon(corners, style);
+}
+
 void DrawRotatedRect(Painter& paint, Float2 center, Float2 half, float radians, const ShapeStyle& style) {
     const std::array corners{Float2{-half.x, -half.y}, Float2{half.x, -half.y}, Float2{half.x, half.y},
                              Float2{-half.x, half.y}};
