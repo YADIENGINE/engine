@@ -1,9 +1,18 @@
 {
   "name": "YADIEN",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "toolsContract": 1,
   "repository": "https://github.com/yagizdkurt/YDArcadeEngine.git",
   "notes": [
+    {
+      "version": "0.1.1",
+      "date": "2026-10-31",
+      "changes": [
+        "Tools run with isolated Python interpreters (the launcher's embedded Python); CMake uses the same interpreter",
+        "check skips other engine copies inside a project"
+      ],
+      "breaking": []
+    },
     {
       "version": "0.1.0",
       "date": "2026-10-31",
