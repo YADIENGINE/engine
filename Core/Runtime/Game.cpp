@@ -102,6 +102,15 @@ void Game::CanvasReady(const Texture2D& texture) const { (void)texture; }
 void Game::DrawWindow(Painter& window) const { (void)window; }
 void Game::DrawToolOverlay() const {}
 const RenderStats& Game::RenderStatistics() const { return _renderer->LastFrame(); }
+void Game::OverrideRenderQuality(const RenderQuality& quality) {
+    _renderOverride = quality;
+    _renderer->SetQuality(quality);
+}
+GraphicsSettings Game::AppliedGraphics() const {
+    GraphicsSettings graphics = Graphics();
+    if (_renderOverride) graphics.render = *_renderOverride;
+    return graphics;
+}
 const FontFace& Game::Font() const {
     if (!_font) throw std::logic_error("Game::Font: GameSettings::font is not set");
     return *_font;
@@ -190,7 +199,7 @@ void Game::ApplyGraphics() {
     _renderer->SetVSync(graphics.vsync);
     _frameExecution.vsync = graphics.vsync;
     _effects = graphics.fx;
-    _renderer->SetQuality(graphics.render);
+    _renderer->SetQuality(_renderOverride.value_or(graphics.render));
     _showFps = graphics.showFps;
 }
 

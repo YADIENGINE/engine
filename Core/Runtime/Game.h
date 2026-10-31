@@ -34,6 +34,10 @@ public:
     void ConfigureFrameExecution(const FrameExecutionSettings& settings);
     // What the last presented frame cost the renderer (draw calls, uploads, glyphs ...).
     [[nodiscard]] const RenderStats& RenderStatistics() const;
+    // Development hosts (profiler) may change the render quality for this session; options are not written.
+    void OverrideRenderQuality(const RenderQuality& quality);
+    // The graphics choices in effect, an override included.
+    [[nodiscard]] GraphicsSettings AppliedGraphics() const;
 
 protected:
     explicit Game(const GameSettings& settings);
@@ -133,9 +137,10 @@ private:
     bool _fixedWindow;
     bool _showFps = false;
     FxQuality _effects;
-    double _frameStart = 0.0;               // Frame start (GetTime); origin for the FPS counter's work duration
-    float _frameSeconds = 0.0f;             // This frame's real duration (Painter::Delta)
-    mutable float _frameWorkSeconds = 0.0f; // Smoothed update + drawing duration (excluding waits)
+    std::optional<RenderQuality> _renderOverride; // OverrideRenderQuality (development hosts)
+    double _frameStart = 0.0;                     // Frame start (GetTime); origin for the FPS counter's work duration
+    float _frameSeconds = 0.0f;                   // This frame's real duration (Painter::Delta)
+    mutable float _frameWorkSeconds = 0.0f;       // Smoothed update + drawing duration (excluding waits)
     std::unique_ptr<SceneManager> _sceneManager;
     bool _quitRequested = false;
     bool _paused = false;

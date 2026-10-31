@@ -85,10 +85,9 @@ void PreviewProfiler::Command(const PreviewMessage& message) {
     if (operation == "glow" && !Busy()) {
         const int level = message.data.at("level").get<int>();
         if (level < 0 || level > 2) throw std::invalid_argument("Invalid glow quality");
-        // The worker's options are not persisted: the player's settings stay untouched.
-        GraphicsSettings graphics = _game.Graphics();
-        graphics.render.glow = static_cast<GlowQuality>(level);
-        _game.SetGraphics(graphics);
+        RenderQuality quality = _game.AppliedGraphics().render;
+        quality.glow = static_cast<GlowQuality>(level);
+        _game.OverrideRenderQuality(quality); // The player's options stay untouched
         _profiler.ClearFrames();
         State();
     }
@@ -118,7 +117,7 @@ void PreviewProfiler::Start(const PreviewMessage& message) {
     if (const auto seed = _savedParameters.find("seed"); seed != _savedParameters.end())
         if (const auto* value = std::get_if<std::int64_t>(&seed->second))
             metadata.seed = static_cast<std::uint32_t>(*value);
-    const GraphicsSettings graphics = _game.Graphics();
+    const GraphicsSettings graphics = _game.AppliedGraphics();
     metadata.graphics = nlohmann::json{{"glow", graphics.render.glow},
                                        {"bloom", graphics.render.bloom},
                                        {"background", graphics.render.backgroundEffects},
