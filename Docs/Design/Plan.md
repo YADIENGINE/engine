@@ -89,6 +89,9 @@ var olan oyunun geçişi (kurulu launcher ister) ve "ses araçlarını kur" (D7)
 
 Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, tek tek kapanır.
 
+- Açık kaynağa geçiş (D19): lisans, temizlik, `yadien-engine` organizasyonu ve taşıma, CI (derleme + test), yayın
+  iş akışı, SignPath başvurusu. Velopack deneme paketi buna paralel yürür.
+
 - Tek exe kurulum: `%LOCALAPPDATA%\<Engine>`, masaüstü kısayolu, PATH, Uygulamalar kaydı, üzerine kurulan
   güncelleme, kaldırma (D15): Velopack `Setup.exe`'si; ilk iş var olan build'le deneme paketi. Paketi launcher
   reposunun betiği üretir (`ToolCache/` + `Engines/` + launcher build'i → `vpk pack`), imza adımının yeri boş durur.

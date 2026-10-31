@@ -538,6 +538,23 @@ akışını ve her yeni özelliğini yeniden yazmayı gerektirir, hep geride kal
 yazmaz ve bakımı küçüktür (ConPTY işletim sisteminin, libvterm kararlı). D6 ile konsoldaki derleme editöre gider.
 Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliyor.
 
+### D19. Açık kaynak ve yayın altyapısı
+**Karar (2026-10-31):** engine ve launcher **public** olur; geliştirme döngüleri ayrı olduğu için ayrı repolar kalır.
+- **Ev:** GitHub organizasyonu **`yadien-engine`** (`yadien` adı başka bir kullanıcının). İçinde
+  `yadien-engine/yadien` (launcher; ön kapı, organizasyonda sabitlenir, README'sinde indirme) ve
+  `yadien-engine/engine` (engine kaynağı; README'si "kullanmak için launcher'ı kur" der). Godot'nun
+  `godotengine/godot` düzeni: organizasyon adı ne olduğunu, ana repo ürün adını söyler. Repolar taşınarak
+  (transfer) gelir; eski adresler yönlenir. Manifest `repository`'si, submodule adresleri ve belgeler güncellenir.
+- Oyun repoları (ör. bir oyunun kendisi) private kalabilir; public engine / launcher'ı submodule olarak alır.
+- **Altyapı:** GitHub Actions (public repoda ücretsiz): her push'ta derleme + test; `v*` tag'inde paket
+  (`dev.py package`, D15) → SignPath imzası → launcher reposunda Release (Setup.exe + Velopack güncelleme dosyaları).
+  İndirme sayfası launcher'ın Releases'ıdır (`releases/latest`). SignPath başvurusu repolar açılıp yayın iş akışı
+  kurulunca; onaya kadar yayınlar imzasız.
+- **Neden:** organizasyon iki repoyu tek ürün gibi gösterir, büyüyebilir (belge, örnek, site) ve ortak eklemek
+  kolaydır; kişisel hesapta kalmak taşımayı sonraya ertelerdi.
+
+Durum: kabul edildi; lisans, belge dili, developer modu ve açılmadan önceki temizlik açık sorularda.
+
 ## v1 iş sırası
 
 Kabul edildi: [Plan](Plan.md) (Aşama 0 hazırlık → 1 editör döngüsü → 2 tuning → 3 launcher MVP → 4 dağıtım;
@@ -573,8 +590,11 @@ Aşama 4 (dağıtım) için, tek tek konuşulur:
    çalıştırılması. Deneme paketinden sonra konuşulur: Velopack'in çalışan süreçlere ve tekrar kuruluma ne yaptığı
    orada görülür.
 5. ~~"Ses araçlarını kur"~~ → D7 (istendiğinde, özeti sabit wheel'ler, `current/` dışına).
-6. Yayın yeri ve CI: SignPath public repodan CI'da derlenmiş ikili ister; repolar açılana kadar paket nerede derlenir,
-   exe nereden indirilir (private repo release'leri dışarıdan indirilemez).
+6. ~~Yayın yeri ve CI~~ → D19 (hemen public; `yadien-engine` organizasyonu, Actions, SignPath).
+7. Lisans (engine, launcher) ve pakete giren araçların lisans metinleri.
+8. Public belgelerin dili (belgeler, tasarım kararları, commit kuralları bugün Türkçe).
+9. Developer modu: engine public olunca şifre kapısının anlamı (D4).
+10. Açılmadan önceki temizlik: commit e-postası, engine belgelerindeki oyun adları, geçmiş.
 
 Kapanan ilk liste:
 
