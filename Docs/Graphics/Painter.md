@@ -39,6 +39,7 @@ kenarı yumuşatılmış çizilir; çizim kare sonuna kadar gönderilmez ama ça
 | `Line(from, to, LineStyle)` | `Butt` / `Round` / `Square` uç |
 | `Polyline(points, LineStyle, closed)` | `Miter` (sınırı aşınca `Bevel`) / `Bevel` / `Round` birleşim |
 | `Polygon(points, ShapeStyle)`, `Triangle` | Kendini kesmeyen çokgen (iki sarım yönü de olur) |
+| `Mesh(points, colors, indices)` | Köşe başına renkli üçgenler, renk üçgen boyunca karışır (ışık maskesi gibi yumuşak alanlar); kenar yumuşatma yok |
 | `FillPath(path, ShapeStyle)`, `StrokePath(path, LineStyle)` | `Path`: `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ArcTo`, `Close` |
 | `Glow(center, radius, LightStyle)` | Yumuşak, eklemeli ışık |
 

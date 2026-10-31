@@ -280,6 +280,30 @@ TEST_CASE("Engine.Paint.PolylinesAndPathsProduceSolidGeometry", "[engine][paint]
         CHECK(vertex.kind == PaintKind::Solid);
 }
 
+TEST_CASE("Engine.Paint.MeshKeepsPerPointColoursUnderTheTransform", "[engine][paint]") {
+    PaintHarness h;
+    h.Begin();
+    const std::vector<Float2> points{{0.0f, 0.0f}, {10.0f, 0.0f}, {10.0f, 10.0f}, {0.0f, 10.0f}};
+    const std::vector<Color4> colors{Red, Red, Blue, Blue};
+    const std::vector<std::uint32_t> indices{0, 1, 2, 0, 2, 3};
+    {
+        auto move = h.paint.Transform(Affine2::Translate({5.0f, 0.0f}));
+        h.paint.Mesh(points, colors, indices);
+    }
+    CHECK_THROWS_AS(h.paint.Mesh(points, std::vector<Color4>{Red}, indices), std::invalid_argument);
+    CHECK_THROWS_AS(h.paint.Mesh(points, colors, std::vector<std::uint32_t>{0, 1}), std::invalid_argument);
+    CHECK_THROWS_AS(h.paint.Mesh(points, colors, std::vector<std::uint32_t>{0, 1, 4}), std::invalid_argument);
+    h.End();
+    REQUIRE(h.Draws().size() == 1);
+    const auto vertices = h.Drawn();
+    REQUIRE(vertices.size() == 6);
+    for (const PaintVertex& vertex : vertices) {
+        CHECK(vertex.kind == PaintKind::Solid);
+        CHECK(vertex.x >= 5.0f);
+        CHECK((vertex.y < 5.0f ? vertex.color.r : vertex.color.b) == 255); // Top red, bottom blue
+    }
+}
+
 TEST_CASE("Engine.Paint.ArcQuadsCoverTheirSectorOnly", "[engine][paint]") {
     constexpr Float2 Center{100.0f, 100.0f};
     constexpr float Radius = 50.0f;

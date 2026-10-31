@@ -75,6 +75,11 @@ public:
     // Simple (non-self-intersecting) polygon: fill (no gradient), stroke and glow are supported.
     void Polygon(std::span<const Float2> points, const ShapeStyle& style);
     void Triangle(Float2 a, Float2 b, Float2 c, const ShapeStyle& style);
+    // Triangles ('indices' in threes) with one colour per point, blended across each triangle: soft fields such as
+    // light masks. Not anti-aliased, so neighbouring triangles meet without seams. Index out of range, a count not a
+    // multiple of three or 'colors' not matching 'points' is invalid_argument.
+    void Mesh(std::span<const Float2> points, std::span<const Color4> colors, std::span<const std::uint32_t> indices,
+              float emission = 0.0f);
     void FillPath(const Path& path, const ShapeStyle& style);
     void StrokePath(const Path& path, const LineStyle& style);
     // Soft round light fading from 'center' to 'radius', added on top (follows RenderQuality::glow).

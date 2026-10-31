@@ -375,6 +375,24 @@ void Painter::Triangle(Float2 a, Float2 b, Float2 c, const ShapeStyle& style) {
     Polygon(points, style);
 }
 
+void Painter::Mesh(std::span<const Float2> points, std::span<const Color4> colors,
+                   std::span<const std::uint32_t> indices, float emission) {
+    if (colors.size() != points.size()) throw std::invalid_argument("Mesh needs one colour per point");
+    if (indices.size() % 3 != 0) throw std::invalid_argument("Mesh indices must come in threes");
+    for (const std::uint32_t index : indices)
+        if (index >= points.size()) throw std::invalid_argument("Mesh index out of range");
+    if (indices.empty()) return;
+    DrawList& list = _context.list;
+    const Affine2& transform = list.State().transform;
+    MeshBuffer& mesh = _context.mesh;
+    for (std::size_t i = 0; i < points.size(); ++i) {
+        const Float2 at = transform.Apply(points[i]);
+        mesh.vertices.push_back({.x = at.x, .y = at.y, .color = list.Shade(colors[i]), .kind = PaintKind::Solid});
+    }
+    mesh.indices.assign(indices.begin(), indices.end());
+    SubmitMesh(_context, EmissionByte(emission));
+}
+
 void Painter::FillPath(const Path& path, const ShapeStyle& style) {
     if (path.Empty()) return;
     DrawList& list = _context.list;
