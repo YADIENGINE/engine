@@ -565,6 +565,11 @@ Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliy
   `CLAUDE.md`'ler aynı kuralla sonra. İki repodaki "belgeler Türkçe" kuralı İngilizce olur. Oyun repoları kendi
   dillerini seçer.
 - **Developer modu:** şifresiz, uyarılı düz anahtar (D4).
+- **Açılmadan önce temizlik:** yeni commit'ler GitHub'ın gizli adresiyle (`<id>+<kullanıcı>@users.noreply.github.com`,
+  repo git ayarında; GitHub'da "Keep my email addresses private" + "Block command line pushes that expose my email").
+  Geçmiş yeniden yazılmaz: hash'ler değişse oyunların eski submodule pointer'ları var olmayan commit'leri gösterirdi.
+  Engine belgelerindeki / testlerindeki oyun adları genelleşir (`MyGame`). Repolarda şifre / anahtar yok (kayıt
+  anahtarı kodda saklanmaz).
 - Oyun repoları (ör. bir oyunun kendisi) private kalabilir; public engine / launcher'ı submodule olarak alır.
 - **Altyapı:** GitHub Actions (public repoda ücretsiz): her push'ta derleme + test; `v*` tag'inde paket
   (`dev.py package`, D15) → SignPath imzası → launcher reposunda Release (Setup.exe + Velopack güncelleme dosyaları).
@@ -573,7 +578,7 @@ Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliy
 - **Neden:** organizasyon iki repoyu tek ürün gibi gösterir, büyüyebilir (belge, örnek, site) ve ortak eklemek
   kolaydır; kişisel hesapta kalmak taşımayı sonraya ertelerdi.
 
-Durum: kabul edildi; açılmadan önceki temizlik açık sorularda.
+Durum: kabul edildi (2026-10-31); uygulama Aşama 4'te.
 
 ## v1 iş sırası
 
@@ -614,7 +619,7 @@ Aşama 4 (dağıtım) için, tek tek konuşulur:
 7. ~~Lisans~~ → D19 (iki repo da MIT, "YADIEN contributors").
 8. ~~Public belgelerin dili~~ → D19 (İngilizce; önce kullanıcıya dönük belgeler).
 9. ~~Developer modu~~ → D4 / D19 (şifre kalkar, uyarılı düz anahtar).
-10. Açılmadan önceki temizlik: commit e-postası, engine belgelerindeki oyun adları, geçmiş.
+10. ~~Açılmadan önceki temizlik~~ → D19 (gizli commit adresi, geçmiş yeniden yazılmaz, oyun adları genelleşir).
 
 Kapanan ilk liste:
 
