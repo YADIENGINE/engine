@@ -65,6 +65,8 @@ protected:
     // kalıcı olur. Kayıttaki geçersiz değerler varsayılana döner.
     void SetGraphics(const GraphicsSettings& graphics);
     [[nodiscard]] GraphicsSettings Graphics() const;
+    // The applied effect choice; scenes hand it to their Fx (FxStage::SetQuality and the Fx classes' SetQuality).
+    [[nodiscard]] const FxQuality& Effects() const { return _effects; }
 
     // Tercih dosyası (settings.json) kurulumda yüklenir; ses, FPS, ekran ve grafik engine'indir. Oyun kendi
     // anahtarlarını Options()'a yazar; engine sahne geçişinde ve Stop'tan sonra değişiklikleri kaydeder.
@@ -95,6 +97,8 @@ protected:
     virtual void CanvasReady(const Texture2D& texture) const;
     // Draws over the whole window (device pixels) after the canvas was presented.
     virtual void DrawWindow(Painter& window) const;
+    // Tools only: native ImGui (ToolUi) over the finished window, after DrawWindow's drawing.
+    virtual void DrawToolOverlay() const;
     // Yükleme ekranı: Start'tan sonra sesler arka planda yüklenirken ilk sahne ilerlemeden (input ve Tick yok) çizilir,
     // bu onun üstüne çizilir. 'seconds' ekranın açılışından beri; 'outro' yükleme bittikten sonraki kapanış (0..1).
     virtual void DrawLoading(Painter& paint, float seconds, float outro) const;
@@ -128,6 +132,7 @@ private:
     bool _persistentOptions;
     bool _fixedWindow;
     bool _showFps = false;
+    FxQuality _effects;
     double _frameStart = 0.0;               // Karenin başı (GetTime); FPS sayacının iş süresi buradan ölçülür
     float _frameSeconds = 0.0f;             // Bu karenin gerçek süresi (Painter::Delta)
     mutable float _frameWorkSeconds = 0.0f; // Güncelleme + çizim süresi (bekleme hariç), yumuşatılmış

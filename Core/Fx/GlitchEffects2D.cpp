@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <cmath>
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Draw/EffectQuality.h"
 #include "Graphics/Paint/Painter.hpp"
 #include "Utilities/MathUtils.h"
 
@@ -10,7 +9,7 @@ GlitchEffects2D::GlitchEffects2D(const GlitchStyle& style)
     : _style(style) {}
 
 void GlitchEffects2D::Trigger(float seconds) {
-    if (!std::isfinite(seconds) || !CurrentEffectQuality().flashes) return;
+    if (!std::isfinite(seconds) || !_quality.flashes) return;
     _duration = std::max(seconds, _life);
     _life = _duration;
 }

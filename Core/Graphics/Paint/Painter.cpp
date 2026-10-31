@@ -103,10 +103,10 @@ void EmitShape(PaintContext& context, const ShapeGeometry& shape, const ShapeLay
 
 // Glow below, fill, stroke on top.
 void DrawShape(PaintContext& context, const ShapeGeometry& shape, const ShapeStyle& style) {
-    RequireWidth(style.stroke.width, "Stroke width must not be negative");
     DrawList& list = context.list;
+    if (!ValidWidth(list, style.stroke.width, "Stroke width must not be negative")) return;
     const std::uint8_t emission = EmissionByte(style.emission);
-    if (const auto glow = EffectiveGlow(style.glow, context.frame.quality)) {
+    if (const auto glow = EffectiveGlow(list, style.glow, context.frame.quality)) {
         ShapeLayer layer;
         layer.mode = PaintMode::Halo;
         layer.outside = glow->radius;
@@ -187,7 +187,7 @@ void SubmitMesh(PaintContext& context, std::uint8_t emission) {
 }
 
 void StrokeTargetPoints(PaintContext& context, std::span<const Float2> points, bool closed, const LineStyle& style) {
-    RequireWidth(style.width, "Line width must not be negative");
+    if (!ValidWidth(context.list, style.width, "Line width must not be negative")) return;
     if (style.width <= 0.0f || style.color.a == 0) return;
     const TargetScale scale = Measure(context.list);
     const StrokeParams params{style.width * scale.scale, style.cap, style.join, std::max(style.miterLimit, 1.0f),
@@ -198,9 +198,10 @@ void StrokeTargetPoints(PaintContext& context, std::span<const Float2> points, b
 
 void ShadeTargetPolygon(PaintContext& context, std::span<const Float2> points, const ShapeStyle& style) {
     DrawList& list = context.list;
+    if (!ValidWidth(list, style.stroke.width, "Stroke width must not be negative")) return;
     const TargetScale scale = Measure(list);
     const std::uint8_t emission = EmissionByte(style.emission);
-    if (const auto glow = EffectiveGlow(style.glow, context.frame.quality)) {
+    if (const auto glow = EffectiveGlow(list, style.glow, context.frame.quality)) {
         PolygonHalo(context.mesh, points, glow->radius * scale.scale, list.Shade(glow->color, true, glow->strength));
         SubmitMesh(context, emission);
     }
@@ -209,7 +210,6 @@ void ShadeTargetPolygon(PaintContext& context, std::span<const Float2> points, c
         FillPolygon(context.mesh, points, list.Shade(fill), scale.aa);
         SubmitMesh(context, emission);
     }
-    RequireWidth(style.stroke.width, "Stroke width must not be negative");
     if (style.stroke.width > 0.0f && style.stroke.color.a > 0) {
         StrokeTargetPoints(context, points, true,
                            {.width = style.stroke.width,
@@ -253,6 +253,7 @@ Painter::Painter(PaintContext& context)
     : _context(context) {}
 
 PaintScope::~PaintScope() {
+    if (!_painter) return;
     try {
         _painter->EndScope(_depth);
     } catch (const std::exception& error) {
@@ -300,7 +301,7 @@ void Painter::Ellipse(Float2 center, Float2 radii, const ShapeStyle& style) {
 }
 
 void Painter::Arc(Float2 center, float radius, float startAngle, float sweep, const LineStyle& style) {
-    RequireWidth(style.width, "Line width must not be negative");
+    if (!ValidWidth(_context.list, style.width, "Line width must not be negative")) return;
     if (!Finite(center) || !(radius > 0.0f) || !Finite(startAngle) || !Finite(sweep) || sweep == 0.0f) return;
     if (style.width <= 0.0f) return;
     if (std::abs(sweep) >= FullTurn) {
@@ -331,7 +332,7 @@ void Painter::Arc(Float2 center, float radius, float startAngle, float sweep, co
 }
 
 void Painter::Line(Float2 from, Float2 to, const LineStyle& style) {
-    RequireWidth(style.width, "Line width must not be negative");
+    if (!ValidWidth(_context.list, style.width, "Line width must not be negative")) return;
     if (!Finite(from) || !Finite(to) || style.width <= 0.0f) return;
     const Float2 delta = to - from;
     const float length = Length(delta);
@@ -369,12 +370,12 @@ void Painter::Triangle(Float2 a, Float2 b, Float2 c, const ShapeStyle& style) {
 
 void Painter::Mesh(std::span<const Float2> points, std::span<const Color4> colors,
                    std::span<const std::uint32_t> indices, float emission) {
-    if (colors.size() != points.size()) throw std::invalid_argument("Mesh needs one colour per point");
-    if (indices.size() % 3 != 0) throw std::invalid_argument("Mesh indices must come in threes");
-    for (const std::uint32_t index : indices)
-        if (index >= points.size()) throw std::invalid_argument("Mesh index out of range");
-    if (indices.empty()) return;
     DrawList& list = _context.list;
+    if (colors.size() != points.size()) return list.Reject("Mesh needs one colour per point");
+    if (indices.size() % 3 != 0) return list.Reject("Mesh indices must come in threes");
+    for (const std::uint32_t index : indices)
+        if (index >= points.size()) return list.Reject("Mesh index out of range");
+    if (indices.empty()) return;
     const Affine2& transform = list.State().transform;
     MeshBuffer& mesh = _context.mesh;
     for (std::size_t i = 0; i < points.size(); ++i) {
@@ -465,10 +466,10 @@ void Painter::Image(const Surface& surface, const FloatRect& dest, const ImageSt
 
 void Painter::ImagePolygon(const Surface& surface, std::span<const Float2> points, std::span<const Float2> sources,
                            Color4 tint, float emission) {
-    if (sources.size() != points.size()) throw std::invalid_argument("ImagePolygon needs one source per point");
+    DrawList& list = _context.list;
+    if (sources.size() != points.size()) return list.Reject("ImagePolygon needs one source per point");
     const SurfaceAccess::State& state = SurfaceAccess::Of(surface);
     if (!state.drawn || points.size() < 3) return;
-    DrawList& list = _context.list;
     const Affine2& transform = list.State().transform;
     const PaintColor color = list.Shade(tint);
     const bool composite = state.emission.Valid();
@@ -538,10 +539,12 @@ PaintScope Painter::Transform(const Affine2& transform) {
 PaintScope Painter::Clip(const FloatRect& rect) {
     DrawList& list = _context.list;
     const Affine2& transform = list.State().transform;
-    if (transform.b != 0.0f || transform.c != 0.0f)
-        throw std::invalid_argument("Painter::Clip: the current transform rotates");
+    // A rotated clip is an error; without strict checks the rectangle's bounding box clips instead.
+    if (transform.b != 0.0f || transform.c != 0.0f) list.Reject("Painter::Clip: the current transform rotates");
     const FloatRect mapped =
-        FloatRect::FromCorners(transform.Apply(rect.Position()), transform.Apply({rect.Right(), rect.Bottom()}));
+        FloatRect::FromCorners(transform.Apply(rect.Position()), transform.Apply({rect.Right(), rect.Bottom()}))
+            .Union(FloatRect::FromCorners(transform.Apply({rect.Right(), rect.y}),
+                                          transform.Apply({rect.x, rect.Bottom()})));
     const FloatRect bounds{0.0f, 0.0f, list.CurrentTarget().size.x, list.CurrentTarget().size.y};
     const FloatRect current = list.State().clip.value_or(bounds);
     const std::uint32_t depth = list.PushScope(ScopeKind::Clip);
@@ -646,3 +649,5 @@ FloatRect Painter::Bounds() const {
 bool Painter::Stale(const Surface& surface) const { return _context.resources.Stale(surface); }
 
 PostSettings& Painter::Post() { return _context.frame.post; }
+
+void Painter::Reject(std::string_view message) { _context.list.Reject(message); }

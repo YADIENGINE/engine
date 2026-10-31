@@ -160,7 +160,7 @@ GlDevice::GlDevice() {
         glDebugMessageCallback(DebugMessage, nullptr);
     }
 #endif
-    InvalidateState();
+    ForgetState();
 }
 
 GlDevice::~GlDevice() {
@@ -279,7 +279,7 @@ GpuNativeTarget GlDevice::Native(GpuTarget handle) const {
 
 void GlDevice::BeginFrame() {
     _counters = {};
-    InvalidateState();
+    ForgetState();
 }
 
 void GlDevice::SetBackBufferSize(int width, int height) {
@@ -435,11 +435,24 @@ void GlDevice::DrawFullscreen(const PostUniforms& uniforms) {
     ++_counters.drawCalls;
 }
 
-void GlDevice::InvalidateState() {
+void GlDevice::ForgetState() {
     _program.reset();
     _blend.reset();
     _scissor.reset();
     _boundKnown = false;
+}
+
+void GlDevice::ReleaseState() {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, _backBufferWidth, _backBufferHeight);
+    glDisable(GL_SCISSOR_TEST);
+    glUseProgram(0);
+    glBindVertexArray(0);
+    glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    ForgetState();
 }
 
 void GlDevice::PushMarker(std::string_view name) {

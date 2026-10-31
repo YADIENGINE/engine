@@ -14,5 +14,6 @@ struct RenderStats {
     std::uint32_t textureBinds = 0;
     std::uint32_t glyphsRasterized = 0;  // Glyphs that were not cached yet
     std::uint32_t surfacesAllocated = 0; // Surface / group images (re)allocated
+    std::uint32_t paintErrors = 0;       // Drawing calls skipped as invalid (Release builds; Debug throws)
     float gpuMilliseconds = 0.0f;        // GPU time of the frame (a few frames late; 0 when unknown)
 };

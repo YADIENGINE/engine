@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdio>
 #include <stdexcept>
 #include "Graphics/Surface/Internals/TextureRefAccess.h"
 
@@ -83,6 +84,18 @@ void RenderPipeline::BeginRecording(const PaintTarget& root, std::optional<Premu
     _context.scopes.clear();
 }
 
+void RenderPipeline::FinishRecording() {
+    _list.Finish();
+    FlushPaint(_context);
+    _stats.vertices += static_cast<std::uint32_t>(_list.Vertices().size());
+    _stats.indices += static_cast<std::uint32_t>(_list.Indices().size());
+    _stats.paintErrors += _list.Rejected();
+    if (_list.Rejected() > 0 && _list.FirstRejection() != _reportedError) {
+        _reportedError = _list.FirstRejection();
+        std::fprintf(stderr, "Painter: %s (%u skipped this frame)\n", _reportedError.c_str(), _list.Rejected());
+    }
+}
+
 Painter& RenderPipeline::BeginFrame(Vec2 windowSize, double time, float delta) {
     if (_phase != Phase::Idle) throw std::logic_error("RenderPipeline: frame already begun");
     _windowSize = windowSize;
@@ -107,10 +120,7 @@ Painter& RenderPipeline::BeginFrame(Vec2 windowSize, double time, float delta) {
 
 GpuTarget RenderPipeline::FinishCanvas() {
     if (_phase != Phase::Canvas) throw std::logic_error("RenderPipeline: no canvas to finish");
-    _list.Finish();
-    FlushPaint(_context);
-    _stats.vertices += static_cast<std::uint32_t>(_list.Vertices().size());
-    _stats.indices += static_cast<std::uint32_t>(_list.Indices().size());
+    FinishRecording();
     PostSettings post = _context.frame.post;
     _bloomRequested = PostChain::Blooms(post, _quality);
     if (!_canvasEmission) post.bloom.intensity = 0.0f;
@@ -132,17 +142,19 @@ GpuTarget RenderPipeline::FinishCanvas() {
 
 Painter& RenderPipeline::BeginWindow() {
     if (_phase != Phase::Window) throw std::logic_error("RenderPipeline: finish the canvas first");
-    FlushPaint(_context); // Present before native tool overlays (rlImGui) draw into the window.
+    FlushPaint(_context); // The canvas lands in the window first; window drawing goes on top of it.
     return _painter;
+}
+
+void RenderPipeline::FlushWindow() {
+    if (_phase != Phase::Window) throw std::logic_error("RenderPipeline: finish the canvas first");
+    FlushPaint(_context);
 }
 
 void RenderPipeline::EndFrame() {
     if (_phase != Phase::Window) throw std::logic_error("RenderPipeline: finish the canvas first");
     _phase = Phase::Idle;
-    _list.Finish();
-    FlushPaint(_context);
-    _stats.vertices += static_cast<std::uint32_t>(_list.Vertices().size());
-    _stats.indices += static_cast<std::uint32_t>(_list.Indices().size());
+    FinishRecording();
     const GpuFrameCounters& counters = _device.Counters();
     _stats.drawCalls = counters.drawCalls;
     _stats.passes = counters.passes;

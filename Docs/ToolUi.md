@@ -35,6 +35,6 @@ target is defined in Windows builds with `ENGINE_BUILD_RUNTIME` enabled and buil
   px (default 12); dense toolbars can use 8. Corner radius is 3 px. Below 100% scale, panel, window, popup, and control
   borders remain at least 1 physical px. Tools derive their state colors from `ToolTone` (editor: `EditorPhaseColor`).
 - **Window:** the tool derives from `Game`, uses `ToolGameSettings`, and draws the whole window as ImGui with
-  `ToolUiContext` inside `DrawWindow`.
+  `ToolUiContext` inside `DrawToolOverlay` (after the window's Painter drawing).
 - A new shared widget belongs here only if it serves multiple tools; tool-specific widgets stay in that tool's folder
   (editor parameter / Inspector widgets: `Editor/Ui/Widgets`).

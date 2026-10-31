@@ -86,7 +86,7 @@ struct GpuGeometry {
     std::uint32_t firstIndex = 0;
 };
 
-// Native identifiers of a render target, for the legacy raylib bridge only.
+// Native identifiers of a render target, for platform code that reads it directly (the editor's frame capture).
 struct GpuNativeTarget {
     unsigned framebuffer = 0;
     unsigned colorTexture = 0;

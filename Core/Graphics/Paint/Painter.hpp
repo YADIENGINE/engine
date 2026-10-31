@@ -3,6 +3,7 @@
 #include <optional>
 #include <span>
 #include <string_view>
+#include <utility>
 #include "Graphics/Paint/PaintStyle.hpp"
 #include "Graphics/Post/PostSettings.hpp"
 #include "Graphics/Post/RenderQuality.hpp"
@@ -23,10 +24,16 @@ struct PaintContext;
 // A temporary Painter state (transform, clip, opacity, blend, group, target, marker). It lasts until
 // the object is destroyed, then the previous state returns. Keep it in a local variable:
 //     auto clip = paint.Clip(area);
-// Scopes end in the reverse order they began; ending one early (by destroying it out of order) is a programming
-// error reported when the frame ends.
+// It can be moved (the moved-from scope ends nothing), so a scope can be conditional or returned by a helper:
+//     std::optional<PaintScope> into;
+//     if (layered) into.emplace(paint.Target(layer));
+// Scopes end in the reverse order they began; ending one early (destroying it out of order) is a programming error
+// reported when the frame ends.
 class [[nodiscard]] PaintScope {
 public:
+    PaintScope(PaintScope&& other) noexcept
+        : _painter(std::exchange(other._painter, nullptr))
+        , _depth(other._depth) {}
     ~PaintScope();
 
 private:
@@ -34,13 +41,13 @@ private:
     PaintScope(Painter& painter, std::uint32_t depth)
         : _painter(&painter)
         , _depth(depth) {}
-    Painter* _painter;
+    Painter* _painter; // Null once moved from
     std::uint32_t _depth;
 
 public:
     PaintScope(const PaintScope&) = delete;
     PaintScope& operator=(const PaintScope&) = delete;
-    PaintScope(PaintScope&&) = delete;
+    // Assigning would end the replaced scope at an arbitrary point: use std::optional::emplace.
     PaintScope& operator=(PaintScope&&) = delete;
 };
 
@@ -54,8 +61,10 @@ struct GroupStyle {
 
 // Records drawing for one frame (or one offscreen surface). Coordinates are logical canvas units (y down), angles
 // radians clockwise. Every shape is anti-aliased and positioned with sub-pixel precision; nothing is drawn until the
-// frame ends, but the order of calls is always kept. Degenerate input (zero size, NaN) draws nothing; invalid style
-// values (negative widths) throw invalid_argument.
+// frame ends, but the order of calls is always kept. Degenerate input (zero size, NaN position) draws nothing.
+// Programmer errors (negative widths, mismatched spans, a clip under rotation, scopes ended out of order) throw in
+// Debug builds (invalid_argument at the call, logic_error for scopes at the frame's end); Release builds skip the
+// drawing and count it (RenderStats::paintErrors).
 class Painter {
 public:
     explicit Painter(PaintContext& context);
@@ -142,6 +151,11 @@ public:
     [[nodiscard]] bool Stale(const Surface& surface) const;
     // This frame's post-processing (starts as the game's defaults every frame).
     [[nodiscard]] PostSettings& Post();
+
+    // --- Errors ------------------------------------------------------------------------------------------------
+    // Drawing helpers report invalid arguments the way Painter does: Debug builds throw invalid_argument here;
+    // Release builds count it and return, and the helper draws nothing.
+    void Reject(std::string_view message);
 
 private:
     friend class PaintScope;

@@ -3,7 +3,8 @@
 #include <cmath>
 #include <cstdint>
 #include <optional>
-#include <stdexcept>
+#include <string_view>
+#include "Graphics/Paint/Internals/DrawList.h"
 #include "Graphics/Paint/PaintStyle.hpp"
 #include "Graphics/Post/RenderQuality.hpp"
 #include "Utilities/Float2.h"
@@ -15,8 +16,11 @@ inline constexpr float ReducedGlowStrength = 0.6f;
 [[nodiscard]] inline bool Finite(float value) { return std::isfinite(value); }
 [[nodiscard]] inline bool Finite(Float2 point) { return std::isfinite(point.x) && std::isfinite(point.y); }
 
-inline void RequireWidth(float value, const char* what) {
-    if (!(value >= 0.0f)) throw std::invalid_argument(what);
+// Widths and radii: negative (or NaN) is a programmer error (DrawList::Reject); false: draw nothing.
+[[nodiscard]] inline bool ValidWidth(DrawList& list, float value, std::string_view what) {
+    if (value >= 0.0f) return true;
+    list.Reject(what);
+    return false;
 }
 
 [[nodiscard]] inline std::uint8_t EmissionByte(float emission) {
@@ -24,8 +28,9 @@ inline void RequireWidth(float value, const char* what) {
 }
 
 // The glow a style asks for after the quality setting; nullopt when nothing is drawn.
-[[nodiscard]] inline std::optional<GlowStyle> EffectiveGlow(const GlowStyle& glow, const RenderQuality& quality) {
-    RequireWidth(glow.radius, "Glow radius must not be negative");
+[[nodiscard]] inline std::optional<GlowStyle> EffectiveGlow(DrawList& list, const GlowStyle& glow,
+                                                            const RenderQuality& quality) {
+    if (!ValidWidth(list, glow.radius, "Glow radius must not be negative")) return std::nullopt;
     if (glow.radius <= 0.0f || glow.color.a == 0 || glow.strength <= 0.0f) return std::nullopt;
     switch (quality.glow) {
     case GlowQuality::Full: return glow;

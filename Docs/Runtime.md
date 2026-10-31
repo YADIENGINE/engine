@@ -54,7 +54,8 @@ overlay draw → completed canvas → window presentation. `ReadInput()` default
 supply external `DeviceInput` snapshots. Device polling and window-coordinate samples are private to Runtime; public
 input uses logical canvas coordinates. The editor applies the same normalization with its own viewport mapping. See
 [Input](Input.md). `CanvasReady(const Texture2D&)` receives a borrowed completed canvas before presentation; retain no
-texture ownership. `DrawWindow(Painter&)` draws after canvas presentation, inside the window drawing pass.
+texture ownership. `DrawWindow(Painter&)` draws after canvas presentation, inside the window drawing pass; tools render native
+ImGui in `DrawToolOverlay()`, which runs after that drawing executed.
 `Renderer::Frame::Complete` invokes these callbacks explicitly; scoped-frame cleanup never invokes user callbacks.
 Neither hook changes scene ownership. `SetPaused` or the active enabled scene's `GameTimePaused()` freezes game time;
 `Time()` handles hitstop and slow motion. Real-time screens and game overlays keep advancing.

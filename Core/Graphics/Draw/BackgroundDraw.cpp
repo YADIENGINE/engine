@@ -1,11 +1,10 @@
 #include "Graphics/Draw/BackgroundDraw.hpp"
 #include <algorithm>
 #include <cmath>
-#include <stdexcept>
 #include "Graphics/Paint/Painter.hpp"
 
 void DrawGrid2D(Painter& paint, const FloatRect& bounds, float spacing, Float2 offset, Color4 color, float thickness) {
-    if (!(spacing > 0.0f)) throw std::invalid_argument("Grid spacing must be positive");
+    if (!(spacing > 0.0f)) return paint.Reject("Grid spacing must be positive");
     if (bounds.Empty() || !(thickness > 0.0f) || color.a == 0) return;
     const float shiftX = std::fmod(std::fmod(offset.x, spacing) + spacing, spacing);
     const float shiftY = std::fmod(std::fmod(offset.y, spacing) + spacing, spacing);
@@ -16,7 +15,7 @@ void DrawGrid2D(Painter& paint, const FloatRect& bounds, float spacing, Float2 o
 }
 
 void DrawScanlines(Painter& paint, const FloatRect& bounds, Color4 color, float spacing, float thickness) {
-    if (!(spacing > 0.0f)) throw std::invalid_argument("Scanline spacing must be positive");
+    if (!(spacing > 0.0f)) return paint.Reject("Scanline spacing must be positive");
     if (bounds.Empty() || !(thickness > 0.0f) || color.a == 0 || !paint.Quality().backgroundEffects) return;
     for (float y = bounds.y; y < bounds.Bottom(); y += spacing)
         paint.Rect({bounds.x, y, bounds.width, std::min(thickness, bounds.Bottom() - y)}, Fill(color));

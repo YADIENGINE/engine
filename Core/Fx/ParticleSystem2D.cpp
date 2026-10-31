@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include "Graphics/Draw/EffectQuality.h"
 #include "Graphics/Paint/Painter.hpp"
 
 namespace {
@@ -39,7 +38,7 @@ ParticleSystem2D::ParticleSystem2D(const ParticleSystemSettings& settings)
 void ParticleSystem2D::Emit(Float2 position, int count, const ParticleEmission& emission,
                             const ParticleAppearance& appearance) {
     Validate(emission, appearance);
-    count = ScaledParticleCount(count);
+    count = _quality.ParticleCount(count);
     if (count <= 0) return;
     const auto available = std::min(static_cast<std::size_t>(count), _capacity - _particles.size());
     for (std::size_t i = 0; i < available; ++i) {

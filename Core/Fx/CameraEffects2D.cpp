@@ -3,7 +3,6 @@
 #include <cmath>
 #include <stdexcept>
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Draw/EffectQuality.h"
 
 CameraEffects2D::CameraEffects2D(const CameraEffectsSettings& settings)
     : _settings(settings) {
@@ -35,8 +34,8 @@ void CameraEffects2D::Kick(Float2 direction) {
 }
 
 void CameraEffects2D::SetMotion(float intensity, Float2 direction) {
-    // Sprint efektleri kapalıyken kamera hareketi (ve ona bağlı hız çizgileri) söner.
-    _motionTarget = CurrentEffectQuality().sprintEffects ? Clamp01(intensity) : 0.0f;
+    // With motion effects off the camera stays still at speed (and the speed lines that follow it fade).
+    _motionTarget = _quality.motion ? Clamp01(intensity) : 0.0f;
     _motionLeadTarget = {direction.x * _motionTarget, direction.y * _motionTarget};
 }
 
@@ -76,8 +75,8 @@ CameraView CameraEffects2D::Apply(const CameraView& base, float timeSeconds) con
         camera.offset = base.ToScreen(*_punchFocus);
         camera.target = *_punchFocus;
     }
-    // Oyuncunun sarsıntı tercihi sarsıntıyı, tekmeyi ve zoom vuruşunu ölçekler; hareket önü (sprint) etkilenmez.
-    const float scale = ShakeScale();
+    // The player's shake choice scales shake, kick and punch zoom; the motion lead is not affected.
+    const float scale = _quality.ShakeScale();
     Float2 shake{};
     if (_shakeLife > 0.0f) {
         const float fade =

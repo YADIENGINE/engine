@@ -13,7 +13,7 @@ enum class NullCommandType {
     BindTextures,
     DrawIndexed,
     DrawFullscreen,
-    Invalidate,
+    Release,
     PushMarker,
     PopMarker
 };
@@ -60,7 +60,7 @@ public:
     void BindTextures(std::span<const GpuTexture> textures) override;
     void DrawIndexed(const GpuGeometry& geometry, std::uint32_t firstIndex, std::uint32_t indexCount) override;
     void DrawFullscreen(const PostUniforms& uniforms) override;
-    void InvalidateState() override;
+    void ReleaseState() override;
     void PushMarker(std::string_view name) override;
     void PopMarker() override;
     [[nodiscard]] const GpuFrameCounters& Counters() const override { return _counters; }

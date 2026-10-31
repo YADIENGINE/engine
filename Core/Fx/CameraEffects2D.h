@@ -1,5 +1,6 @@
 #pragma once
 #include <optional>
+#include "Fx/FxQuality.h"
 #include "Utilities/CameraView.h"
 #include "Utilities/Float2.h"
 
@@ -21,6 +22,8 @@ struct CameraEffectsSettings {
 class CameraEffects2D {
 public:
     explicit CameraEffects2D(const CameraEffectsSettings& settings);
+    // Shake scales shake, punch and kick; motion off keeps the camera still at speed.
+    void SetQuality(const FxQuality& quality) { _quality = quality; }
     void Shake(float seconds);
     void Punch(float amount, std::optional<Float2> focus = std::nullopt);
     void Kick(Float2 direction);
@@ -33,6 +36,7 @@ public:
 
 private:
     CameraEffectsSettings _settings;
+    FxQuality _quality;
     float _shakeLife = 0.0f;
     float _punch = 0.0f;
     std::optional<Float2> _punchFocus;

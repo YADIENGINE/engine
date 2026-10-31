@@ -3,6 +3,7 @@
 #include <deque>
 #include <optional>
 #include <string>
+#include "Fx/FxQuality.h"
 #include "Fx/FxText.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
@@ -38,6 +39,8 @@ struct ToastStyle {
 class OverlayEffects2D {
 public:
     explicit OverlayEffects2D(std::size_t toastCapacity);
+    // Flashes off: Flash does nothing (banners and toasts stay).
+    void SetQuality(const FxQuality& quality) { _quality = quality; }
     void Flash(Color4 color, const FlashStyle& style);
     void Banner(const std::string& text, const BannerStyle& style);
     void Toast(const std::string& text, Color4 color, const ToastStyle& style);
@@ -67,6 +70,7 @@ private:
     };
     void ShowToast(ToastEntry entry);
     std::size_t _toastCapacity;
+    FxQuality _quality;
     std::optional<FlashEntry> _flash;
     std::optional<BannerEntry> _banner;
     std::optional<ToastEntry> _toast;

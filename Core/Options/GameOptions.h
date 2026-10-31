@@ -7,7 +7,7 @@
 
 // Engine'in kendi kaydettiği tercihler; dosya anahtarları GameOptions.cpp tablosunda.
 // clang-format off
-enum class EngineOption { EffectsVolume, MusicVolume, MenuMusicVolume, FpsLimit, BorderlessFullscreen, WindowWidth, WindowHeight, RenderHeight, VSync, ShowFps, Glow, ParticlePercent, Shake, SprintEffects, Flashes, BackgroundEffects, Count };
+enum class EngineOption { EffectsVolume, MusicVolume, MenuMusicVolume, FpsLimit, BorderlessFullscreen, WindowWidth, WindowHeight, RenderHeight, VSync, ShowFps, Glow, ParticlePercent, Shake, MotionEffects, Flashes, BackgroundEffects, Bloom, Count };
 // clang-format on
 // Missing: dosya yoktu ya da eski şema silindi. Recovered: yedekten kurtarıldı.
 // Reset: bozuk dosya arşivlendi, boş başlandı.

@@ -47,8 +47,13 @@ Under `Utilities/`, headless: `Float2` (operations, `Length`, `Normalized`, `Rot
 local to the shape's center; `Gradient::Radial(radius, from, to)` starts at the center; `Gradient::Vertical(height, top,
 bottom)`. Polygon and path fills use `gradient.from` instead of the gradient.
 
-Lines thinner than one pixel fade instead of becoming thinner. Zero sizes or NaN do not draw; negative thickness throws
-`invalid_argument`.
+Lines thinner than one pixel fade instead of becoming thinner. Zero sizes or NaN positions do not draw.
+
+Programmer errors (negative widths or radii, mismatched spans, a clip under a rotating transform, scopes ended out
+of order) throw in Debug builds: `invalid_argument` at the call, `logic_error` for scopes when the frame ends. Release
+builds never throw for them: the call draws nothing (a rotated clip uses its bounding box), the frame goes on,
+`RenderStats::paintErrors` counts it and the first message is written to stderr. Drawing helpers report their own
+invalid arguments the same way with `paint.Reject("...")`.
 
 ## Images and surfaces
 
@@ -99,7 +104,7 @@ State changes are always scoped; destroying the scope object restores the previo
 ```cpp
 {
     auto moved = paint.Transform(Affine2::Rotate(angle, center)); // Multiplied by the current transform
-    auto clip = paint.Clip(area);       // Intersects current clip; invalid_argument under a rotated transform
+    auto clip = paint.Clip(area);       // Intersects current clip; an error under a rotated transform
     auto faded = paint.Opacity(0.5f);   // Cheap; overlapping areas darken
     auto light = paint.Blending(Blend::Add);
     auto group = paint.Group({.opacity = 0.5f}); // Draws to a temporary image first, composites as one piece
@@ -107,6 +112,17 @@ State changes are always scoped; destroying the scope object restores the previo
     auto mark = paint.Marker("HUD");    // Region name in RenderDoc (literal)
 }
 ```
+
+A scope can be moved; the moved-from object ends nothing. A conditional scope is a `std::optional<PaintScope>` filled
+with `emplace` (assignment is deleted), and a helper may return a scope:
+
+```cpp
+std::optional<PaintScope> into;
+if (layered) into.emplace(paint.Target(layer));
+DrawField(paint); // Into the layer or straight onto the canvas
+```
+
+Scopes still end in reverse order; a moved scope outliving a later one is reported when the frame ends.
 
 `Blend::Normal` and `Blend::Add` share a draw call (premultiplied alpha); `Multiply` / `Screen` split the batch.
 

@@ -25,9 +25,10 @@ constexpr std::array EngineOptionRows{
     EngineOptionRow{EngineOption::Glow, "graphics.glow"},
     EngineOptionRow{EngineOption::ParticlePercent, "graphics.particles_percent"},
     EngineOptionRow{EngineOption::Shake, "graphics.shake"},
-    EngineOptionRow{EngineOption::SprintEffects, "graphics.sprint_effects"},
+    EngineOptionRow{EngineOption::MotionEffects, "graphics.motion_effects"},
     EngineOptionRow{EngineOption::Flashes, "graphics.flashes"},
     EngineOptionRow{EngineOption::BackgroundEffects, "graphics.background_effects"},
+    EngineOptionRow{EngineOption::Bloom, "graphics.bloom"},
 };
 static_assert(RowsInIdOrder(EngineOptionRows));
 

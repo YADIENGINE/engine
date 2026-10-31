@@ -53,8 +53,10 @@ public:
     // Post programs: a full-viewport triangle sampling slot 0 (and 1).
     virtual void DrawFullscreen(const PostUniforms& uniforms) = 0;
 
-    // Another renderer (the legacy raylib bridge) changed GPU state behind the device's back.
-    virtual void InvalidateState() = 0;
+    // Hands the context to native code (frame capture, tool overlays): default bindings (back buffer over the whole
+    // window, no program, vertex array or scissor, texture unit 0) and nothing cached, so whatever the native code
+    // changes is set again on the device's next use. Only between passes.
+    virtual void ReleaseState() = 0;
     virtual void PushMarker(std::string_view name) = 0;
     virtual void PopMarker() = 0;
     [[nodiscard]] virtual const GpuFrameCounters& Counters() const = 0;

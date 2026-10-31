@@ -5,6 +5,7 @@
 #include <optional>
 #include <random>
 #include <vector>
+#include "Fx/FxQuality.h"
 #include "Graphics/Draw/ParticleDraw.hpp"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
@@ -50,6 +51,8 @@ struct ParticleSystemSettings {
 class ParticleSystem2D {
 public:
     explicit ParticleSystem2D(const ParticleSystemSettings& settings);
+    // Emit makes particlePercent of the requested particles.
+    void SetQuality(const FxQuality& quality) { _quality = quality; }
     void Emit(Float2 position, int count, const ParticleEmission& emission, const ParticleAppearance& appearance);
     void Update(float deltaSeconds);
     void Clear();
@@ -72,6 +75,7 @@ private:
     };
     void DrawPass(Painter& paint, ParticleBlend blend) const;
     std::size_t _capacity;
+    FxQuality _quality;
     std::vector<Particle> _particles;
     std::mt19937 _rng;
 };

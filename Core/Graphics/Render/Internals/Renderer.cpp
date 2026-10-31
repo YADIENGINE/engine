@@ -5,15 +5,11 @@
 #include "Graphics/Paint/Painter.hpp"
 
 namespace {
-// The Painter's device changed GL state behind rlgl's cache (framebuffer, viewport, premultiplied blending). Native
-// tool overlays (rlImGui) draw through rlgl right after: give them the window with raylib's own state.
-void PrepareNativeOverlay() {
-    rlDrawRenderBatchActive();
-    rlDisableFramebuffer();
-    rlViewport(0, 0, GetRenderWidth(), GetRenderHeight());
-    rlDisableScissorTest();
-    rlDisableDepthTest();
-    // rlgl skips setting a blend mode it believes is current: switching away and back makes it apply alpha blending.
+// Native code (frame capture, rlImGui) draws through rlgl next. The device has restored GL's default bindings
+// (ReleaseState); rlgl also caches its blend mode and skips setting the one it believes is current: switching away
+// and back makes it apply alpha blending.
+void HandOverToRlgl(GpuDevice& device) {
+    device.ReleaseState();
     rlSetBlendMode(RL_BLEND_ADDITIVE);
     rlSetBlendMode(RL_BLEND_ALPHA);
 }
@@ -33,7 +29,8 @@ Renderer::Frame::~Frame() {
 }
 
 void Renderer::Frame::Complete(const std::function<void(const Texture2D&)>& canvasReady,
-                               const std::function<void(Painter&)>& windowDraw) {
+                               const std::function<void(Painter&)>& windowDraw,
+                               const std::function<void()>& toolOverlay) {
     if (_completed) return;
     _completed = true;
     Renderer& renderer = _renderer;
@@ -45,19 +42,23 @@ void Renderer::Frame::Complete(const std::function<void(const Texture2D&)>& canv
         observer->BeginRegion(FrameRegion::PreviewBridge);
     }
     if (canvasReady) {
+        HandOverToRlgl(*renderer._device);
         const auto native = renderer._device->Native(image);
         canvasReady({native.colorTexture, native.width, native.height, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8});
-        renderer._device->InvalidateState(); // The capture may read through other GL state
+        rlDrawRenderBatchActive();
     }
     if (observer) {
         observer->EndRegion(FrameRegion::PreviewBridge);
         observer->BeginRegion(FrameRegion::Present);
     }
     Painter& window = pipeline.BeginWindow();
-    PrepareNativeOverlay();
     if (windowDraw) windowDraw(window);
-    rlDrawRenderBatchActive();
-    renderer._device->InvalidateState(); // Tool overlays may render directly through their own GL backend.
+    pipeline.FlushWindow(); // Window drawing lies under the tool overlay
+    if (toolOverlay) {
+        HandOverToRlgl(*renderer._device);
+        toolOverlay();
+        rlDrawRenderBatchActive();
+    }
     pipeline.EndFrame();
     if (observer) {
         observer->EndRegion(FrameRegion::Present);

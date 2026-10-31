@@ -30,7 +30,7 @@ particles.Draw(paint);
 ```
 
 Capacity is per particle-system instance; excess new particles are dropped, and the player's particle setting
-(`EffectQuality::particlePercent`) scales every emission. An omitted seed uses `std::random_device`. Shapes are geometry
+(`FxQuality::particlePercent`, given with `SetQuality`) scales every emission. An omitted seed uses `std::random_device`. Shapes are geometry
 choices, not stylistic recipes. A callback replaces built-in drawing and receives resolved colour/size plus velocity,
 rotation (degrees) and normalized age; it draws only (the blend is already set). Emission direction/spread are radians,
 positions/sizes are canvas units, acceleration is units/second squared, spin is degrees/second. Alpha particles are
@@ -48,7 +48,7 @@ the text, width fitting and shadow (`Fx/FxText.h`; drawn with the game's font). 
 waiting-toast capacity at construction and explicit styles per trigger. It draws flash, banner, then toast within
 caller-supplied bounds. New toasts shorten the current toast to its queued duration; a full waiting queue drops its
 oldest entry. Dequeued toasts use queued duration while more entries wait, otherwise full duration. Capacity zero
-disables waiting. Flashes (and glitches) follow the player's `EffectQuality::flashes`.
+disables waiting. Flashes (and glitches) follow the player's `FxQuality::flashes` (`SetQuality`).
 
 ### Effect stage and particle recipes
 

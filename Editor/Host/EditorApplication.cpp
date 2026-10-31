@@ -94,8 +94,7 @@ void EditorApplication::Stop() {
     _controller.Shutdown();
     _stopped = true;
 }
-void EditorApplication::DrawWindow(Painter& paint) const {
-    (void)paint; // ToolUi owns its native ImGui rendering after the canvas has been presented.
+void EditorApplication::DrawToolOverlay() const {
     if (auto frame = _controller.TakeFrame()) {
         const bool timed = _controller.Snapshot().profiler.liveEnabled;
         const auto transferStarted = timed ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};

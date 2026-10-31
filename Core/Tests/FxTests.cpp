@@ -3,10 +3,10 @@
 #include <stdexcept>
 #include "Fx/CameraEffects2D.h"
 #include "Fx/CameraShot.h"
+#include "Fx/FxQuality.h"
 #include "Fx/FxStage.h"
 #include "Fx/IrisTransition.h"
 #include "Fx/ParticleSystem2D.h"
-#include "Graphics/Draw/EffectQuality.h"
 #include "Graphics/Text/FontFace.hpp"
 #include "Tests/PaintHarness.h"
 
@@ -32,12 +32,6 @@ constexpr CameraEffectsSettings Camera{.shakeAmplitude = 8.0f,
                                        .kickStiffness = 400.0f,
                                        .kickDamping = 20.0f};
 
-// Restores the player's effect settings after a test changes them.
-struct QualityGuard {
-    EffectQuality saved = CurrentEffectQuality();
-    ~QualityGuard() { SetEffectQuality(saved); }
-};
-
 FxStyle TestFx() {
     FxStyle style;
     style.particleCapacity = 50;
@@ -54,18 +48,17 @@ FxStyle TestFx() {
 } // namespace
 
 TEST_CASE("Engine.Fx.ParticlesRespectCapacityQualityAndLifetime", "[engine][fx]") {
-    const QualityGuard guard;
     ParticleSystem2D particles({.capacity = 10, .seed = 7U});
     particles.Emit({10.0f, 10.0f}, 25, Emission, {.color = Pink});
     CHECK(particles.ActiveCount() == 10);
     particles.Update(1.1f); // Longer than the longest lifetime
     CHECK(particles.ActiveCount() == 0);
 
-    SetEffectQuality({.particlePercent = 50});
+    particles.SetQuality({.particlePercent = 50});
     particles.Emit({10.0f, 10.0f}, 8, Emission, {.color = Pink});
     CHECK(particles.ActiveCount() == 4);
     particles.Clear();
-    SetEffectQuality({.particlePercent = 0});
+    particles.SetQuality({.particlePercent = 0});
     particles.Emit({10.0f, 10.0f}, 8, Emission, {.color = Pink});
     CHECK(particles.ActiveCount() == 0);
 
@@ -88,8 +81,6 @@ TEST_CASE("Engine.Fx.ParticlesOfBothBlendsDrawInOneBatch", "[engine][fx]") {
 }
 
 TEST_CASE("Engine.Fx.CameraEffectsMoveTheViewAndSettle", "[engine][fx]") {
-    const QualityGuard guard;
-    SetEffectQuality({});
     const CameraView base{.offset = {200.0f, 100.0f}, .target = {200.0f, 100.0f}};
     CameraEffects2D camera(Camera);
     const CameraView still = camera.Apply(base, 1.0f);
@@ -111,10 +102,16 @@ TEST_CASE("Engine.Fx.CameraEffectsMoveTheViewAndSettle", "[engine][fx]") {
     CHECK(punched.ToScreen(focus).x == Approx(base.ToScreen(focus).x).margin(0.05f));
     CHECK(punched.ToScreen(focus).y == Approx(base.ToScreen(focus).y).margin(0.05f));
 
-    SetEffectQuality({.shake = EffectLevel::Off});
     CameraEffects2D calm(Camera);
+    calm.SetQuality({.shake = EffectLevel::Off});
     calm.Shake(0.5f);
     CHECK(calm.Apply(base, 0.3f).offset == base.offset);
+
+    CameraEffects2D steady(Camera);
+    steady.SetQuality({.motion = false});
+    steady.SetMotion(1.0f, {1.0f, 0.0f});
+    steady.Update(0.5f);
+    CHECK(steady.MotionIntensity() == 0.0f);
 }
 
 TEST_CASE("Engine.Fx.CameraShotsFrameTheirBoundsInsideTheSafeArea", "[engine][fx]") {
@@ -142,8 +139,6 @@ TEST_CASE("Engine.Fx.CameraShotsFrameTheirBoundsInsideTheSafeArea", "[engine][fx
 }
 
 TEST_CASE("Engine.Fx.StageDrawsItsLayersAndHonoursFlashSetting", "[engine][fx]") {
-    const QualityGuard guard;
-    SetEffectQuality({});
     FxStage stage(Area, Area, TestFx());
     stage.Burst({100.0f, 100.0f}, Pink, 10);
     stage.Ring({100.0f, 100.0f}, Pink);
@@ -165,8 +160,8 @@ TEST_CASE("Engine.Fx.StageDrawsItsLayersAndHonoursFlashSetting", "[engine][fx]")
         CHECK_FALSE(h.Draws().empty());
     }
 
-    SetEffectQuality({.flashes = false});
     FxStage quiet(Area, Area, TestFx());
+    quiet.SetQuality({.flashes = false});
     quiet.Flash(Pink);
     quiet.Glitch(0.5f);
     quiet.Update(0.05f);

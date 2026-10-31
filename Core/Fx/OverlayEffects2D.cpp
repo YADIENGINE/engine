@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <utility>
 #include "Graphics/Anim/Easing.h"
-#include "Graphics/Draw/EffectQuality.h"
 #include "Graphics/Paint/Painter.hpp"
 
 namespace {
@@ -30,7 +29,7 @@ void OverlayEffects2D::Flash(Color4 color, const FlashStyle& style) {
     if (!std::isfinite(style.opacity) || style.opacity < 0.0f || style.opacity > 1.0f) {
         throw std::invalid_argument("Invalid flash opacity");
     }
-    if (!CurrentEffectQuality().flashes) return;
+    if (!_quality.flashes) return;
     _flash = FlashEntry{color, style, style.duration};
 }
 void OverlayEffects2D::Banner(const std::string& text, const BannerStyle& style) {

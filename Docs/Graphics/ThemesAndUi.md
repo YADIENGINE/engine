@@ -27,11 +27,12 @@ via `Look(accent)`. For a one-off variant, copy a style from `CurrentTheme().ui`
 reads the theme. New widget kinds add a style field to `UiStyle`, a value in `NeonArcadeTheme` and a `DrawUi*` function,
 so existing games keep compiling.
 
-`Graphics/Draw/EffectQuality.h` holds the player's effect intensity, set by `Game::SetGraphics` (persisted as engine
-options). Its render preferences are mapped to `RenderQuality` and read through Painter; reduced glow weakens halos and
-Off disables them. `ParticleSystem2D::Emit` scales counts; `CameraEffects2D` scales shake, kick and punch and ignores
-`SetMotion` when sprint effects are off; `OverlayEffects2D` flashes and `GlitchEffects2D` are skipped when flashes are
-off; `DrawScanlines` is skipped when background effects are off. `GraphicsSettings::renderHeight` caps the upscaled
+`GraphicsSettings` holds the player's choices, set by `Game::SetGraphics` (persisted as engine options) and split in
+two. `render` (`RenderQuality`) is applied by the Painter: reduced glow weakens halos and Off disables them,
+`DrawScanlines` is skipped when background effects are off. `fx` (`Fx/FxQuality.h`) is the current
+`Game::Effects()`; scenes hand it to their Fx with `SetQuality` (`FxStage` forwards it): `ParticleSystem2D::Emit`
+scales counts; `CameraEffects2D` scales shake, kick and punch and ignores `SetMotion` when motion effects are off;
+`OverlayEffects2D` flashes and `GlitchEffects2D` are skipped when flashes are off. There is no global quality state. `GraphicsSettings::renderHeight` caps the upscaled
 canvas texture (render resolution).
 
 `Graphics/Draw/BackgroundDraw.hpp` provides `DrawGrid2D`, `DrawScanlines`, `DrawVignette` and `BackdropStyle` (scrolling

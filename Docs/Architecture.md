@@ -35,7 +35,7 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | `Graphics/Anim` | `Easing`, `SpringPoint`, `AnimatedCounter`, `ButtonAnim` (headless) | `Utilities` |
 | `Graphics/Render` | `RenderStats`; `Internals/`: `Window`, `Renderer`, `RenderPipeline`, `FrameExecutor`, `RenderResources` | `Utilities` |
 | `Graphics/Paint`, `Text`, `Surface`, `Post`, `Gpu` | Drawing API, fonts, images, finishing and GPU backends | `Utilities`, private renderer services |
-| `Graphics/Draw` | Painter helpers (`DrawUtils.hpp`, `Neon.hpp`, `BackgroundDraw.hpp`, `ParticleDraw.hpp`), headless grid geometry and `EffectQuality` | `Paint`, `Anim` |
+| `Graphics/Draw` | Painter helpers (`DrawUtils.hpp`, `Neon.hpp`, `BackgroundDraw.hpp`, `ParticleDraw.hpp`), headless grid geometry | `Paint`, `Anim` |
 | `Graphics/Icons` | Shared icon library: shape-named `Icon` + `DrawIcon` | `Draw` |
 | `Graphics/Style` | `Theme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
 | `Graphics/Ui` | Themed widgets (`DrawUi*`, `UiButton`, `Backdrop`) | `Style`, `Draw` |

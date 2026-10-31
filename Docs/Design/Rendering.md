@@ -46,6 +46,8 @@ tek yerden iyileştirilemiyordu. İlk incelemenin bulguları:
 | R10 | Blending gamma (sRGB) uzayında, bugünkü gibi | Renk seçimleri ve görünüş korunur; doğrusal uzay bilinçli olarak yok |
 | R11 | Global durum yok: saat, kalite ve hedef bilgisi Painter'ın bağlamında | Birden fazla Painter (editör, offscreen) mümkün; test edilebilir |
 | R12 | Göç süresince geçici uyumluluk köprüsü; son View'dan sonra kaldırıldı | Tüketici oyunlar aşamalı taşındı; kalıcı API yalnız Painter |
+| R14 | Çizim çağrısındaki programcı hatası Debug'da hata atar, Release'te çizimi atlar ve sayılır (`RenderStats::paintErrors`); yardımcılar `paint.Reject` ile aynı yoldan | Hata yeri geliştirmede bulunur; animasyondan taşan bir değer oyuncunun oyununu çökertmez |
+| R15 | `PaintScope` taşınabilir; taşınan kaynak boşalır, sıra denetimi kayıtta kalır | Koşullu kapsam (`std::optional<PaintScope>`) ve kapsam döndüren yardımcılar kod tekrarı olmadan yazılır |
 
 Bilerek yapılmayanlar (v1 dışı, yeri hazır): MSAA, doğrusal renk uzayı / HDR canvas, compute, çok iş parçacıklı kayıt,
 oyunun kendi shader'ları, kendini kesen yol dolgusu (stencil), karmaşık metin şekillendirme (HarfBuzz), flipbook.
@@ -155,7 +157,9 @@ ShapeStyle Fill(Color4 color);     // kısa yol; stil alanları designated initi
 Kurallar:
 - Geometri parametre, görünüş stil. Aynı stil her şekle aynı anlamla uygulanır (daire, dikdörtgen, yay, çizgi).
 - Hale (`glow`) ve `Glow` kalite ayarını kendisi okur (Off: çizilmez, Reduced: yarıçap ve yoğunluk azalır).
-- Sıfır ya da negatif boyut, NaN koordinat: çizilmez (sessiz); geçersiz stil (negatif kalınlık): `invalid_argument`.
+- Sıfır ya da negatif boyut, NaN koordinat: çizilmez (sessiz). Programcı hatası (negatif kalınlık, uyuşmayan dizi,
+  dönen dönüşümde clip, sırasız kapsam): Debug'da hata (`invalid_argument` çağrıda, kapsam için kare sonunda
+  `logic_error`); Release'te atılmaz, çizim atlanır ve `RenderStats::paintErrors` sayar (R14).
 
 ### Kapsamlar
 
@@ -173,7 +177,7 @@ Durum her zaman kapsamla değişir; kapsam nesnesi `[[nodiscard]]`, kapanınca �
 }
 ```
 
-- Kapsamlar açıldığı sıranın tersinde kapanmazsa DrawList kayıt anında `logic_error` atar.
+- Kapsamlar açıldığı sıranın tersinde kapanmazsa kare sonunda hata olur (Debug `logic_error`, Release sayaç).
 - `Opacity` ucuzdur ama üst üste binen çizimler koyulaşır; tek parça solma için `Group` (geçici yüzey havuzu).
 - `Blend::Normal` ve `Blend::Add` aynı batch'tedir (R3); `Multiply` / `Screen` batch'i böler.
 
@@ -358,15 +362,16 @@ Yardımcılar ve tüketici View'ları taşındı; eski yol kaldırıldı. Sonrak
 - **Kare boru hattı GPU'dan bağımsızdır** (`RenderPipeline`: canvas boyutu, post, sunum, istatistik) ve
   `NullDevice` ile test edilir; platform ve GL iç işleri ayrı kalır.
 - **Pencere aşaması da Painter'dır:** canvas görüntüsü arka tampona Painter ile letterbox'lanır; `DrawWindow`
-  Painter alır. Editör ImGui'si sunumdan sonra native araç arka ucunu kullanır.
+  Painter alır ve kendi kaydı önce yürütülür; araçların ImGui'si sonra `DrawToolOverlay`'de native arka uçla çizer
+  (`GpuDevice::ReleaseState` GL'yi varsayılan bağlarla devreder).
 - **Bloom katmanı tembel:** canvas emission ekini yalnız varsayılan ayar ya da bir önceki kare bloom isterken tutar
   (`Painter::Post` ile açılan bloom bir kare sonra başlar); bloom yoksa MRT maliyeti yoktur.
 - **Glif önbelleği:** R8 sayfalar (1024², skyline, 2 px boşluk), 48 px'e kadar tam piksel boyu, sonra ~%6 kademe,
   192 px üstü ölçeklenir. Uzaklık glifleri 32 px'te 16 px alanla üretilir: hale yazı boyunun yarısına kadar uzanır.
   Bütçe dolunca bu karede kullanılmamış en eski sayfa geri alınır.
 - **Yerleşim önbelleği:** `Painter::Text(string)` aynı metni (font + boy + sarma ayarları) 120 kare boyunca tutar.
-- **Kapsam dengesi:** `PaintScope` taşınamaz, bu yüzden kullanıcı kodu kapsamları sırasız kapatamaz; kayıt yine de
-  denetler ve kare sonunda `logic_error` atar.
+- **Kapsam dengesi:** `PaintScope` taşınabilir (R15); taşınmış bir kapsamı sırasız kapatmak mümkün olduğundan kayıt
+  denetler, kare sonunda Debug'da `logic_error` atar, Release'te sayar (R14).
 - **Çözünürlük:** eski `Canvas` mantığı (`renderHeight` sınırı, küçültmede mantıksal boyut) `RenderPipeline`'a
   taşındı; arka tampon yüksek DPI'da piksel boyutundadır, input dönüşümü ekran boyutundadır.
 
@@ -382,7 +387,7 @@ Yardımcılar ve tüketici View'ları taşındı; eski yol kaldırıldı. Sonrak
   kullanır. Ortak ışıklar `paint.Glow` ile otomatik batch'lenir. Metin `FontFace` / `TextBlock` kullanır.
 - Varsayılan font `paint.Font()` üzerinden gelir. Widget'lar font parametresi almaz; farklı font `paint.Text(font, ...)` ile verilir.
 - Saat `paint.Time()`, render kalitesi `paint.Quality()` üzerinden okunur. Parçacık adedi, sarsıntı ve flaş
-  ayarları Fx simülasyonu için `EffectQuality` içinde kalır.
+  ayarları Fx simülasyonu için `FxQuality` içindedir (`Game::Effects()`, Fx sınıflarının `SetQuality`si; global yok).
 - Eski çizim dosyaları, köprü, geçici metin atlas ayarları ve eski glow yürütme/sayaç kontrolleri kaldırılmıştır.
 - Platform kabuğu `Platform/Shell.h` üzerinden URL açma ve panoya kopyalama sağlar; önizlemenin Texture2D aktarımı korunur.
 

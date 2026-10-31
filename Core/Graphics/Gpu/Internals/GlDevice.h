@@ -6,8 +6,8 @@
 #include "Graphics/Gpu/Internals/HandlePool.h"
 
 // GpuDevice over OpenGL 3.3 core. Needs a current context (the window's) for its whole life; owns every GL object it
-// creates and tracks GL state, so it is the only code that changes GL state (except the legacy raylib bridge, which
-// calls InvalidateState afterwards). GL functions come from the loader raylib already initialised.
+// creates and tracks GL state; native code (frame capture, tool overlays) runs only after ReleaseState. GL functions
+// come from the loader raylib already initialised.
 class GlDevice final : public GpuDevice {
 public:
     GlDevice();
@@ -33,7 +33,7 @@ public:
     void BindTextures(std::span<const GpuTexture> textures) override;
     void DrawIndexed(const GpuGeometry& geometry, std::uint32_t firstIndex, std::uint32_t indexCount) override;
     void DrawFullscreen(const PostUniforms& uniforms) override;
-    void InvalidateState() override;
+    void ReleaseState() override;
     void PushMarker(std::string_view name) override;
     void PopMarker() override;
     [[nodiscard]] const GpuFrameCounters& Counters() const override { return _counters; }
@@ -70,6 +70,7 @@ private:
     [[nodiscard]] std::size_t Write(Stream& stream, const void* data, std::size_t bytes);
     [[nodiscard]] int TargetHeight() const;
     void ApplyBlend(GpuBlend blend);
+    void ForgetState();
 
     HandlePool<GpuTextureTag, Texture> _textures;
     HandlePool<GpuTargetTag, Target> _targets;

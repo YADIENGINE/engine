@@ -65,7 +65,7 @@ public:
 
     // Starts a frame drawing into 'root'.
     void Reset(const PaintTarget& root, std::optional<PremultipliedColor> clear);
-    // Closes the root target; throws logic_error if scopes are still open or ended out of order.
+    // Closes the root target. Scopes still open or ended out of order: logic_error when strict, else one rejection.
     void Finish();
     [[nodiscard]] bool Finished() const { return _finished; }
 
@@ -83,6 +83,15 @@ public:
     // target / marker. A scope above it still open is an error: it is closed too and the frame fails at Finish.
     void PopScope(std::uint32_t depth);
     void Fail(std::string message);
+
+    // --- Programmer errors in drawing calls ---
+    // Strict (the default in Debug builds): Reject throws invalid_argument at the call and Finish throws for scope
+    // errors. Otherwise (Release) the call draws nothing, the error is counted and the frame goes on.
+    void SetStrict(bool strict) { _strict = strict; }
+    [[nodiscard]] bool Strict() const { return _strict; }
+    void Reject(std::string_view message);
+    [[nodiscard]] std::uint32_t Rejected() const { return _rejected; }
+    [[nodiscard]] const std::string& FirstRejection() const { return _firstRejection; }
 
     // --- Targets and markers ---
     // Inside a just-pushed Target or Group scope: opens 'target' as the current target. 'fresh' resets the state
@@ -130,5 +139,12 @@ private:
     std::size_t _executedIndices = 0;
     std::uint64_t _revision = 0;
     std::string _error;
+    std::string _firstRejection;
+    std::uint32_t _rejected = 0;
+#ifdef NDEBUG
+    bool _strict = false;
+#else
+    bool _strict = true;
+#endif
     bool _finished = true;
 };

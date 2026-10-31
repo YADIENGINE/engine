@@ -52,6 +52,25 @@ TEST_CASE("Engine.RenderPipeline.CanvasFollowsTheWindowAndTheHeightLimit", "[eng
     CHECK(device.CommandsOf(NullCommandType::BeginPass).front()->pass.viewport == PixelRect{0, 0, 400, 200});
 }
 
+TEST_CASE("Engine.RenderPipeline.WindowDrawingExecutesBeforeToolOverlays", "[engine][paint][render]") {
+    NullDevice device;
+    RenderPipeline pipeline(device, Settings());
+    (void)pipeline.BeginFrame({400, 200}, 1.0, 0.016f);
+    (void)pipeline.FinishCanvas();
+    Painter& window = pipeline.BeginWindow();
+    const std::size_t presented = device.CommandsOf(NullCommandType::DrawIndexed).size();
+    window.Rect({0.0f, 0.0f, 50.0f, 20.0f}, Fill({255, 255, 255, 255}));
+    pipeline.FlushWindow();
+    // A native overlay drawing now lands on top of the window drawing.
+    CHECK(device.CommandsOf(NullCommandType::DrawIndexed).size() > presented);
+    device.ReleaseState();
+    const std::size_t flushed = device.Commands().size();
+    pipeline.EndFrame();
+    // Nothing of the window drawing is left for after the overlay.
+    for (std::size_t i = flushed; i < device.Commands().size(); ++i)
+        CHECK(device.Commands()[i].type != NullCommandType::DrawIndexed);
+}
+
 TEST_CASE("Engine.RenderPipeline.PresentsTheCanvasLetterboxedIntoTheBackBuffer", "[engine][paint][render]") {
     NullDevice device;
     RenderPipeline pipeline(device, Settings());

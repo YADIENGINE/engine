@@ -22,6 +22,8 @@ void DrawList::Reset(const PaintTarget& root, std::optional<PremultipliedColor> 
     _executedIndices = 0;
     _revision = 0;
     _error.clear();
+    _firstRejection.clear();
+    _rejected = 0;
     _finished = false;
     _commands.emplace_back(BeginTargetCommand{root, clear});
 }
@@ -33,7 +35,9 @@ void DrawList::Finish() {
         PopScope(Depth());
     _commands.emplace_back(EndTargetCommand{});
     _finished = true;
-    if (!_error.empty()) throw std::logic_error("Painter: " + _error);
+    if (_error.empty()) return;
+    if (_strict) throw std::logic_error("Painter: " + _error);
+    Reject(_error);
 }
 
 float DrawList::PixelScale() const {
@@ -74,6 +78,12 @@ void DrawList::PopScope(std::uint32_t depth) {
 
 void DrawList::Fail(std::string message) {
     if (_error.empty()) _error = std::move(message);
+}
+
+void DrawList::Reject(std::string_view message) {
+    if (_strict) throw std::invalid_argument(std::string(message));
+    if (_rejected == 0) _firstRejection = message;
+    ++_rejected;
 }
 
 void DrawList::BeginTarget(const PaintTarget& target, std::optional<PremultipliedColor> clear, bool fresh) {

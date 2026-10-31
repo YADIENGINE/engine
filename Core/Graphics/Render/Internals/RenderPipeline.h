@@ -1,5 +1,6 @@
 #pragma once
 #include <optional>
+#include <string>
 #include "Graphics/Gpu/Internals/GpuDevice.h"
 #include "Graphics/Paint/Internals/DrawList.h"
 #include "Graphics/Paint/Internals/PaintContext.h"
@@ -25,7 +26,7 @@ struct RenderPipelineSettings {
 
 // One frame of the renderer, GPU-independent (works on any GpuDevice):
 //   BeginFrame -> draw with the canvas Painter -> FinishCanvas (executes, post-processes) ->
-//   BeginWindow -> draw window overlays -> EndFrame (presents into the back buffer).
+//   BeginWindow -> draw window overlays -> FlushWindow -> (native tool overlays) -> EndFrame.
 // The canvas keeps its logical size; it is rasterized at the window's pixel size (up to MaxRenderHeight), and
 // presented letterboxed.
 class RenderPipeline {
@@ -38,6 +39,8 @@ public:
     [[nodiscard]] GpuTarget FinishCanvas();
     // Painter over the whole window (device pixels), after the canvas was presented into it.
     [[nodiscard]] Painter& BeginWindow();
+    // Executes the window drawing recorded so far, so native tool overlays drawn next land on top of it.
+    void FlushWindow();
     void EndFrame();
     [[nodiscard]] bool InFrame() const { return _phase != Phase::Idle; }
 
@@ -59,6 +62,8 @@ private:
     enum class Phase { Idle, Canvas, Window };
     void PrepareCanvas(Vec2 windowSize, bool emission);
     void BeginRecording(const PaintTarget& root, std::optional<PremultipliedColor> clear);
+    // Closes the recording, executes it and counts what it rejected.
+    void FinishRecording();
 
     GpuDevice& _device;
     RenderPipelineSettings _settings;
@@ -82,6 +87,7 @@ private:
     Vec2 _windowSize;
     Phase _phase = Phase::Idle;
     RenderStats _stats;
+    std::string _reportedError; // Last rejection written to stderr (each distinct one once in a row)
 
 public:
     RenderPipeline(const RenderPipeline&) = delete;

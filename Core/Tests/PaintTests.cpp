@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <optional>
+#include <utility>
 #include <stdexcept>
 #include "Graphics/Paint/Path.hpp"
 #include "Graphics/Surface/Surface.hpp"
@@ -108,7 +109,28 @@ TEST_CASE("Engine.Paint.TransformsComposeInnerFirst", "[engine][paint]") {
     CHECK(maxX - minX > 20.0f);                    // Radius 5 doubled, plus anti-aliasing margin
 }
 
-// PaintScope cannot be moved, so user code always ends scopes in order; the recorder still guards the stack.
+TEST_CASE("Engine.Paint.MovedScopesEndOnceWhereTheyLand", "[engine][paint]") {
+    PaintHarness h;
+    h.Begin();
+    {
+        std::optional<PaintScope> faded;
+        faded.emplace(h.paint.Opacity(0.5f));
+        const auto inner = [&] { return h.paint.Transform(Affine2::Translate({10.0f, 0.0f})); };
+        {
+            PaintScope moved = inner();
+            CHECK(h.list.Depth() == 2);
+        }
+        CHECK(h.list.Depth() == 1);
+        CHECK(h.list.State().opacity == Approx(0.5f));
+        PaintScope taken = std::move(*faded);
+        faded.reset(); // The moved-from scope ends nothing
+        CHECK(h.list.Depth() == 1);
+    }
+    CHECK(h.list.Depth() == 0);
+    h.End(); // Balanced: no error
+}
+
+// A moved scope can outlive a later one; the recorder guards the stack.
 TEST_CASE("Engine.Paint.ScopesEndedOutOfOrderFailTheFrame", "[engine][paint]") {
     PaintHarness h;
     h.Begin();
@@ -243,6 +265,38 @@ TEST_CASE("Engine.Paint.InvalidStylesThrowDegenerateShapesDrawNothing", "[engine
     h.paint.Polygon(std::vector<Float2>{{0.0f, 0.0f}, {1.0f, 1.0f}}, Fill(Red));
     h.End();
     CHECK(h.Draws().empty());
+}
+
+TEST_CASE("Engine.Paint.WithoutStrictChecksInvalidCallsAreSkippedAndCounted", "[engine][paint]") {
+    PaintHarness h;
+    h.Begin();
+    h.list.SetStrict(false); // Release builds
+    h.paint.Circle({0.0f, 0.0f}, 5.0f, {.fill = Red, .stroke = {-1.0f, Red}});
+    h.paint.Line({0.0f, 0.0f}, {1.0f, 1.0f}, {.width = -2.0f});
+    const std::vector<Float2> points{{0.0f, 0.0f}, {10.0f, 0.0f}, {0.0f, 10.0f}};
+    h.paint.Mesh(points, std::vector<Color4>{Red}, std::vector<std::uint32_t>{0, 1, 2});
+    h.paint.Reject("Helper argument");
+    CHECK(h.list.Rejected() == 4);
+    CHECK(h.list.FirstRejection() == "Stroke width must not be negative");
+    (void)h.list.PushScope(ScopeKind::Transform); // Left open: no throw at the frame's end, one more rejection
+    h.End();
+    CHECK(h.list.Rejected() == 5);
+    CHECK(h.Draws().empty());
+}
+
+TEST_CASE("Engine.Paint.WithoutStrictChecksARotatedClipUsesItsBoundingBox", "[engine][paint]") {
+    PaintHarness h;
+    h.Begin();
+    h.list.SetStrict(false);
+    {
+        auto rotated = h.paint.Transform(Affine2::Rotate(Pi * 0.25f, {50.0f, 50.0f}));
+        auto clip = h.paint.Clip({40.0f, 40.0f, 20.0f, 20.0f});
+        const FloatRect box = h.list.State().clip.value_or(FloatRect{});
+        CHECK(box.Center().x == Approx(50.0f));
+        CHECK(box.width == Approx(20.0f * std::sqrt(2.0f)));
+    }
+    CHECK(h.list.Rejected() == 1);
+    h.End();
 }
 
 TEST_CASE("Engine.Paint.GlowQualityReducesOrRemovesGlows", "[engine][paint]") {

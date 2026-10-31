@@ -21,9 +21,11 @@ public:
         ~Frame();
         [[nodiscard]] Painter& Canvas() { return _canvas; }
         // 'canvasReady' borrows the finished canvas image (for capture) during the call; 'windowDraw' draws over the
-        // whole window in device pixels after the canvas was presented.
+        // whole window in device pixels after the canvas was presented; 'toolOverlay' renders natively (ImGui) on
+        // top of both.
         void Complete(const std::function<void(const Texture2D&)>& canvasReady = {},
-                      const std::function<void(Painter&)>& windowDraw = {});
+                      const std::function<void(Painter&)>& windowDraw = {},
+                      const std::function<void()>& toolOverlay = {});
 
     private:
         friend class Renderer;

@@ -3,6 +3,8 @@
 #include <array>
 #include <cmath>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include "Graphics/Paint/Internals/PaintContext.h"
 #include "Graphics/Paint/Internals/PaintShared.h"
 #include "Graphics/Text/FontFace.hpp"
@@ -11,6 +13,8 @@
 #include "Graphics/Text/Internals/TextLayoutCache.h"
 
 namespace {
+constexpr std::string_view NoFont = "Painter: the game has no font (GameSettings::font)";
+
 float AlignOffset(TextAlign align, float width) {
     switch (align) {
     case TextAlign::Left  : return 0.0f;
@@ -69,18 +73,28 @@ void EmitGlyph(DrawList& list, Float2 topLeft, Float2 size, const CachedGlyph& g
 } // namespace
 
 const FontFace& Painter::Font() const {
-    if (!_context.font) throw std::logic_error("Painter::Font: the game has no font (GameSettings::font)");
+    if (!_context.font) throw std::logic_error(std::string(NoFont));
     return *_context.font;
 }
 
 bool Painter::HasFont() const { return _context.font != nullptr; }
 
 Float2 Painter::Text(std::string_view text, Float2 position, const TextStyle& style) {
-    return text.empty() ? Float2{} : Text(Font(), text, position, style);
+    if (text.empty()) return {};
+    if (!HasFont()) {
+        _context.list.Reject(NoFont);
+        return {};
+    }
+    return Text(Font(), text, position, style);
 }
 
 Float2 Painter::TextBox(std::string_view text, const FloatRect& area, const TextStyle& style) {
-    return text.empty() ? Float2{} : TextBox(Font(), text, area, style);
+    if (text.empty()) return {};
+    if (!HasFont()) {
+        _context.list.Reject(NoFont);
+        return {};
+    }
+    return TextBox(Font(), text, area, style);
 }
 
 Float2 Painter::Text(const FontFace& font, std::string_view text, Float2 position, const TextStyle& style) {
@@ -103,13 +117,15 @@ Float2 Painter::TextBox(const FontFace& font, std::string_view text, const Float
 Float2 Painter::Text(const FontFace& font, const TextBlock& block, Float2 position, const TextStyle& style) {
     PaintContext& context = _context;
     if (!context.text) throw std::logic_error("Painter::Text: no text services in this renderer");
-    if (block.FontId() != font.Id())
-        throw std::invalid_argument("Painter::Text: the block was laid out with another font");
-    RequireWidth(style.outline.width, "Text outline width must not be negative");
+    DrawList& list = context.list;
+    if (block.FontId() != font.Id()) {
+        list.Reject("Painter::Text: the block was laid out with another font");
+        return block.Extent();
+    }
+    if (!ValidWidth(list, style.outline.width, "Text outline width must not be negative")) return block.Extent();
     if (block.Glyphs().empty() || !Finite(position)) return block.Extent();
     const FontData& data = FontAccess::Data(font);
     GlyphCache& glyphs = context.text->glyphs;
-    DrawList& list = context.list;
     const Affine2& transform = list.State().transform;
     const float size = block.Size();
     const float pixels = size * list.PixelScale();
@@ -151,7 +167,7 @@ Float2 Painter::Text(const FontFace& font, const TextBlock& block, Float2 positi
 
     if (style.shadow.color.a > 0)
         coverage(style.shadow.offset, {.color = list.Shade(style.shadow.color), .emission = 0});
-    if (const auto glow = EffectiveGlow(style.glow, context.frame.quality)) {
+    if (const auto glow = EffectiveGlow(list, style.glow, context.frame.quality)) {
         distance({.kind = PaintKind::GlyphHalo,
                   .mode = PaintMode::Halo,
                   .color = list.Shade(glow->color, true, glow->strength),

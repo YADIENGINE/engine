@@ -50,21 +50,9 @@ RenderPipelineSettings PipelineSettings(const GameSettings& settings) {
             settings.post};
 }
 
-// The renderer's share of the player's effect settings.
-RenderQuality QualityOf(const EffectQuality& effects) {
-    RenderQuality quality;
-    switch (effects.glow) {
-    case EffectLevel::Full   : quality.glow = GlowQuality::Full; break;
-    case EffectLevel::Reduced: quality.glow = GlowQuality::Reduced; break;
-    case EffectLevel::Off    : quality.glow = GlowQuality::Off; break;
-    }
-    quality.backgroundEffects = effects.backgroundEffects;
-    return quality;
-}
-
-EffectLevel StoredLevel(std::int64_t stored) {
-    return stored >= 0 && stored <= static_cast<std::int64_t>(EffectLevel::Off) ? static_cast<EffectLevel>(stored)
-                                                                                : EffectLevel::Full;
+// A stored level enum value up to 'last'; anything else (an edited or old file) falls back to 'fallback'.
+template <class Level> Level StoredLevel(std::int64_t stored, Level last, Level fallback) {
+    return stored >= 0 && stored <= static_cast<std::int64_t>(last) ? static_cast<Level>(stored) : fallback;
 }
 } // namespace
 
@@ -89,8 +77,6 @@ Game::Game(const GameSettings& settings)
     if (_persistentOptions) {
         _options.Load();
         ApplyOptions();
-    } else {
-        SetEffectQuality({});
     }
 }
 Game::~Game() = default;
@@ -114,6 +100,7 @@ DeviceInput Game::ReadInput() {
 }
 void Game::CanvasReady(const Texture2D& texture) const { (void)texture; }
 void Game::DrawWindow(Painter& window) const { (void)window; }
+void Game::DrawToolOverlay() const {}
 const RenderStats& Game::RenderStatistics() const { return _renderer->LastFrame(); }
 const FontFace& Game::Font() const {
     if (!_font) throw std::logic_error("Game::Font: GameSettings::font is not set");
@@ -172,12 +159,13 @@ void Game::SetGraphics(const GraphicsSettings& graphics) {
     _options.Set(EngineOption::RenderHeight, graphics.renderHeight);
     _options.Set(EngineOption::VSync, graphics.vsync ? 1 : 0);
     _options.Set(EngineOption::ShowFps, graphics.showFps ? 1 : 0);
-    _options.Set(EngineOption::Glow, static_cast<std::int64_t>(graphics.effects.glow));
-    _options.Set(EngineOption::ParticlePercent, graphics.effects.particlePercent);
-    _options.Set(EngineOption::Shake, static_cast<std::int64_t>(graphics.effects.shake));
-    _options.Set(EngineOption::SprintEffects, graphics.effects.sprintEffects ? 1 : 0);
-    _options.Set(EngineOption::Flashes, graphics.effects.flashes ? 1 : 0);
-    _options.Set(EngineOption::BackgroundEffects, graphics.effects.backgroundEffects ? 1 : 0);
+    _options.Set(EngineOption::Glow, static_cast<std::int64_t>(graphics.render.glow));
+    _options.Set(EngineOption::Bloom, static_cast<std::int64_t>(graphics.render.bloom));
+    _options.Set(EngineOption::BackgroundEffects, graphics.render.backgroundEffects ? 1 : 0);
+    _options.Set(EngineOption::ParticlePercent, graphics.fx.particlePercent);
+    _options.Set(EngineOption::Shake, static_cast<std::int64_t>(graphics.fx.shake));
+    _options.Set(EngineOption::MotionEffects, graphics.fx.motion ? 1 : 0);
+    _options.Set(EngineOption::Flashes, graphics.fx.flashes ? 1 : 0);
     ApplyGraphics();
 }
 GraphicsSettings Game::Graphics() const {
@@ -186,20 +174,23 @@ GraphicsSettings Game::Graphics() const {
     return {.renderHeight = renderHeight > 0 && renderHeight <= MaxWindowSide ? static_cast<int>(renderHeight) : 0,
             .vsync = _options.Get(EngineOption::VSync, 0) == 1,
             .showFps = _options.Get(EngineOption::ShowFps, 0) == 1,
-            .effects = {.glow = StoredLevel(_options.Get(EngineOption::Glow, 0)),
-                        .particlePercent = particles >= 0 && particles <= 100 ? static_cast<int>(particles) : 100,
-                        .shake = StoredLevel(_options.Get(EngineOption::Shake, 0)),
-                        .sprintEffects = _options.Get(EngineOption::SprintEffects, 1) == 1,
-                        .flashes = _options.Get(EngineOption::Flashes, 1) == 1,
-                        .backgroundEffects = _options.Get(EngineOption::BackgroundEffects, 1) == 1}};
+            .render = {.glow = StoredLevel(_options.Get(EngineOption::Glow, 0), GlowQuality::Off, GlowQuality::Full),
+                       .bloom =
+                           StoredLevel(_options.Get(EngineOption::Bloom, static_cast<std::int64_t>(BloomQuality::Half)),
+                                       BloomQuality::Full, BloomQuality::Half),
+                       .backgroundEffects = _options.Get(EngineOption::BackgroundEffects, 1) == 1},
+            .fx = {.particlePercent = particles >= 0 && particles <= 100 ? static_cast<int>(particles) : 100,
+                   .shake = StoredLevel(_options.Get(EngineOption::Shake, 0), EffectLevel::Off, EffectLevel::Full),
+                   .motion = _options.Get(EngineOption::MotionEffects, 1) == 1,
+                   .flashes = _options.Get(EngineOption::Flashes, 1) == 1}};
 }
 void Game::ApplyGraphics() {
     const GraphicsSettings graphics = Graphics();
     _renderer->SetMaxRenderHeight(_fixedWindow ? 0 : graphics.renderHeight);
     _renderer->SetVSync(graphics.vsync);
     _frameExecution.vsync = graphics.vsync;
-    SetEffectQuality(graphics.effects);
-    _renderer->SetQuality(QualityOf(CurrentEffectQuality()));
+    _effects = graphics.fx;
+    _renderer->SetQuality(graphics.render);
     _showFps = graphics.showFps;
 }
 
@@ -246,7 +237,7 @@ void Game::Present() const {
     Draw(paint);
     if (_showFps) DrawFpsCounter(paint);
     frame.Complete([this](const Texture2D& canvas) { CanvasReady(canvas); },
-                   [this](Painter& window) { DrawWindow(window); });
+                   [this](Painter& window) { DrawWindow(window); }, [this] { DrawToolOverlay(); });
 }
 void Game::ConfigureFrameExecution(const FrameExecutionSettings& settings) {
     if (settings.fpsLimit < 0) throw std::invalid_argument("Invalid frame limit");
@@ -288,7 +279,7 @@ bool Game::ShowLoading() {
             Painter& paint = frame.Canvas();
             if (const Scene* scene = _sceneManager->Current()) scene->Render(paint);
             DrawLoading(paint, static_cast<float>(now - start), outro);
-            frame.Complete({}, [this](Painter& window) { DrawWindow(window); });
+            frame.Complete({}, [this](Painter& window) { DrawWindow(window); }, [this] { DrawToolOverlay(); });
         }
         RevealWindow();
     }

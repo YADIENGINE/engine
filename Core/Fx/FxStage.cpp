@@ -17,6 +17,12 @@ FxStage::FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle
     , _glitch(style.glitch) {
     _style.text.text.maxWidth = area.width;
 }
+void FxStage::SetQuality(const FxQuality& quality) {
+    _particles.SetQuality(quality);
+    _camera.SetQuality(quality);
+    _overlays.SetQuality(quality);
+    _glitch.SetQuality(quality);
+}
 void FxStage::Update(float deltaSeconds) {
     if (!(deltaSeconds > 0.0f) || !std::isfinite(deltaSeconds)) return;
     _particles.Update(deltaSeconds);

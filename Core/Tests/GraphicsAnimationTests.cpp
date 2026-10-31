@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include "Graphics/Anim/AnimatedCounter.h"
 #include "Graphics/Anim/ButtonAnim.h"
-#include "Graphics/Draw/EffectQuality.h"
+#include "Fx/FxQuality.h"
 
 TEST_CASE("Engine.ButtonAnim.DefaultsAndNonpositiveTime", "[engine][graphics]") {
     ButtonAnim button;
@@ -81,23 +81,20 @@ TEST_CASE("Engine.AnimatedCounter.IncreasesDecreasesAndClears", "[engine][animat
     CHECK(counter.Target() == 0);
     CHECK(counter.Punch() == 0.0f);
 }
-TEST_CASE("Engine.EffectQuality.ScalesParticlesAndShake", "[engine][graphics]") {
-    const EffectQuality defaults;
-    CHECK(ScaledParticleCount(40) == 40);
-    CHECK(ShakeScale() == 1.0f);
+TEST_CASE("Engine.FxQuality.ScalesParticlesAndShake", "[engine][graphics]") {
+    const FxQuality defaults;
+    CHECK(defaults.ParticleCount(40) == 40);
+    CHECK(defaults.ShakeScale() == 1.0f);
 
-    SetEffectQuality({.particlePercent = 50, .shake = EffectLevel::Reduced});
-    CHECK(ScaledParticleCount(40) == 20);
-    CHECK(ScaledParticleCount(1) == 1); // Tek parçacıklık iz kaybolmaz
-    CHECK(ScaledParticleCount(0) == 0);
-    CHECK(ShakeScale() > 0.0f);
-    CHECK(ShakeScale() < 1.0f);
+    const FxQuality reduced{.particlePercent = 50, .shake = EffectLevel::Reduced};
+    CHECK(reduced.ParticleCount(40) == 20);
+    CHECK(reduced.ParticleCount(1) == 1); // A one-particle trail does not vanish
+    CHECK(reduced.ParticleCount(0) == 0);
+    CHECK(reduced.ShakeScale() > 0.0f);
+    CHECK(reduced.ShakeScale() < 1.0f);
 
-    SetEffectQuality({.particlePercent = 250, .shake = EffectLevel::Off});
-    CHECK(CurrentEffectQuality().particlePercent == 100);
-    CHECK(ShakeScale() == 0.0f);
-
-    SetEffectQuality({.particlePercent = 0});
-    CHECK(ScaledParticleCount(40) == 0);
-    SetEffectQuality(defaults);
+    const FxQuality beyond{.particlePercent = 250, .shake = EffectLevel::Off};
+    CHECK(beyond.ParticleCount(40) == 40); // Clamped to 100%
+    CHECK(beyond.ShakeScale() == 0.0f);
+    CHECK(FxQuality{.particlePercent = 0}.ParticleCount(40) == 0);
 }

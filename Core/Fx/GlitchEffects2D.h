@@ -1,4 +1,5 @@
 #pragma once
+#include "Fx/FxQuality.h"
 #include "Utilities/Color4.h"
 #include "Utilities/FloatRect.h"
 
@@ -29,6 +30,8 @@ struct GlitchStyle {
 class GlitchEffects2D {
 public:
     explicit GlitchEffects2D(const GlitchStyle& style);
+    // Flashes off: Trigger does nothing.
+    void SetQuality(const FxQuality& quality) { _quality = quality; }
     void Trigger(float seconds);
     void Update(float deltaSeconds);
     void Clear();
@@ -37,6 +40,7 @@ public:
 
 private:
     GlitchStyle _style;
+    FxQuality _quality;
     float _life = 0.0f;
     float _duration = 0.0f;
 };

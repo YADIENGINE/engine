@@ -220,7 +220,10 @@ void NullDevice::DrawFullscreen(const PostUniforms& uniforms) {
     Record(std::move(command));
 }
 
-void NullDevice::InvalidateState() { Record({.type = NullCommandType::Invalidate}); }
+void NullDevice::ReleaseState() {
+    Require(!_inPass, "NullDevice: state released inside a pass");
+    Record({.type = NullCommandType::Release});
+}
 
 void NullDevice::PushMarker(std::string_view name) {
     ++_markerDepth;

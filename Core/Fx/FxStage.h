@@ -2,6 +2,7 @@
 #include <optional>
 #include <string>
 #include "Fx/CameraShot.h"
+#include "Fx/FxQuality.h"
 #include "Fx/FxStyle.h"
 #include "Utilities/CameraView.h"
 #include "Utilities/Color4.h"
@@ -18,6 +19,8 @@ class Painter;
 class FxStage {
 public:
     FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle& style);
+    // The player's effect choice (Game::Effects()) for particles, camera, flashes and glitches.
+    void SetQuality(const FxQuality& quality);
     void Update(float deltaSeconds);
     void Clear();
     void Burst(Float2 at, Color4 color, int count, ParticleRecipe recipe = ParticleRecipe::Soft);
