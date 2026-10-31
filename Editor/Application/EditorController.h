@@ -8,6 +8,7 @@
 #include "Editor/Application/PreviewWorker.h"
 #include "Editor/Internals/Session/EditorProject.h"
 #include "Editor/Internals/Session/RefreshState.h"
+#include "Editor/Internals/Session/TuningWorkspace.h"
 #include "Editor/Internals/Session/WorkerSnapshots.h"
 
 // The editor session: the catalog, the selected preview with its parameters, and the workers behind it.
@@ -25,6 +26,7 @@ public:
     void Playback(double speed, bool step);
     void Input(const DeviceInput& input);
     void Profile(EditorProfilerCommand command, const Profiler::Recipe& recipe, const std::string& file);
+    void Tune(std::size_t file, const TuningLocation& at, const TuningValue& value);
     void HostTransfer(double ms) { _hostTransferMs = ms; }
     void Log(const std::string& text, EditorLogLevel level = EditorLogLevel::Info,
              EditorLogSource source = EditorLogSource::Editor);
@@ -50,6 +52,7 @@ private:
         std::optional<std::vector<PreviewDefinition>> catalog;
         std::map<std::string, PreviewParameters> accepted;
         bool selectionMissing = false; // The new catalog lacks the selected preview: it only refreshes the catalog
+        std::vector<PreviewTuningStatus> tuning;
     };
 
     void Open();
@@ -77,6 +80,8 @@ private:
     void Receive(const PreviewMessage& message);
     void ApplyReady(const PreviewMessage& message);
     void ActiveExited(PreviewWorkerMode mode, unsigned long code);
+    // Worker'ın tuning raporu: panelin durumu ve Output (ilk başarılı okuma hariç).
+    void ReceiveTuning(const PreviewTuningStatus& status);
 
     void TickBuild();
     void BuildFinished(const PreviewBuildExit& exit);
@@ -133,4 +138,5 @@ private:
     std::uint64_t _profilerRequest = 0;
     bool _benchmarkCancelPending = false;
     double _hostTransferMs = 0;
+    TuningWorkspace _tuning; // Durumu aktif worker'ın; worker değişince sıfırlanır
 };

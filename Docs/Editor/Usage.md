@@ -2,8 +2,8 @@
 
 ## Pencere
 
-Kayıtlı dock yerleşimi ve panel görünürlüğü korunur. İlk açılışta Develop düzeni Project, View ve Inspector'ı
-gösterir; Output ve Profiler kapalıdır. Alt durum çubuğu bu araçları ve okunmamış hata sayısını erişilebilir tutar.
+Kayıtlı dock yerleşimi ve panel görünürlüğü korunur. İlk açılışta Develop düzeni Project, View, Inspector ve
+Tuning'i (Inspector'la aynı sağ alanda sekme) gösterir; Output ve Profiler kapalıdır. Alt durum çubuğu bu araçları ve okunmamış hata sayısını erişilebilir tutar.
 
 - **Sol (Project):** arama, kategori, All / Favorites / Recent. İçerik tek tıklamayla açılır; Ctrl+P aramaya odaklanır.
   Yıldız favoriyi değiştirir. Recent son başarılı 10 açılışı tutar.
@@ -39,6 +39,16 @@ gösterir; Output ve Profiler kapalıdır. Alt durum çubuğu bu araçları ve o
   varsa build exit code'u ve ilk hata mesajını birlikte kopyalar. Show Output,
   büyütülmüş preview'dan çıkıp Output'u öne getirir, Last Build Try'ı açar ve ilk hataya kaydırır. Bu görünümde
   önceki arama/seviye tercihleri geçici olarak kaldırılır; kapsam değiştirilince kayıtlı tercihler geri gelir.
+- **Tuning:** projenin `*.tuning.json` dosyaları ([Tuning](../Tuning.md)); liste build'in `Tuning/TuningFiles.json`'undan
+  gelir, yeni dosya bir sonraki configure'dan sonra görünür. Üstte dosya seçimi, altında önizlemenin o dosya için son
+  durumu: Live, Not applied (dosya geçersiz; satırı ve nedeni), Build needed (alan / uzunluk değişti; Build & Refresh
+  düğmesi), Unreadable. Önizleme dosyayı kullanmıyorsa ya da açık değilse bu yazılır. Değer alanları etiket / kutu
+  satırlarıdır, tablolar ızgaradır. Sayı, vec2, range ve renk (`#RRGGBB[AA]`) kutuya yazılır ve Enter'la girer;
+  Enter'sız yazılan kutudan çıkınca geri alınır; onay kutusu tıklanınca yazılır. Sınır dışı ya da geçersiz değer
+  gönderilmez, kutu kırmızı kalır, neden tooltip'tedir. Kabul edilen değer diskteki güncel dosyaya tek değer olarak
+  yamanıp atomik yazılır (dışarıdan yapılan değişiklikler ezilmez); dosya o an geçersizse yazılmaz ve Output'a uyarı
+  düşer. Dosya dışarıdan (elle ya da AI ile) değişince panel tazelenir. Satır / alan eklemek panelde değil dosyada
+  yapılır.
 - **Profiler:** Live / Benchmarks / Compare. Benchmark örneği seçildiğinde açılır; warmup / ölçüm kareleri / tekrar
   çiftleri Advanced benchmark settings altındadır. Glow override tek bir seçim grubudur; vurgu son istenen değeri
   gösterir. Compare içindeki Export menüsü JSON ve Markdown sunar. Ayrıntılar: [Profiler](Profiler.md).

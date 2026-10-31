@@ -5,6 +5,9 @@
 #include "Editor/Api/PreviewRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
 #include "Editor/Internals/Session/ProfilerSession.h"
+#include "Tuning/TuningFile.h"
+
+class TuningWorkspace;
 
 enum class EditorCommand { Open, Stop, Pause, Reset, Refresh, Cancel, Step, Count };
 // The preview's phase. Building only while no preview runs; a running preview stays Ready / Paused while it builds.
@@ -51,6 +54,7 @@ struct EditorSnapshot {
     ProfilerSessionSnapshot profiler;
     double hostTransferMs = 0.0;
     bool benchmarkCancelPending = false;
+    const TuningWorkspace* tuning = nullptr; // Projenin tuning dosyaları; proje yoksa null
 };
 
 // References/callbacks are borrowed for the current UI frame; panels never retain session data.
@@ -64,4 +68,6 @@ struct EditorUiActions {
     std::function<void(double, bool)> playback;
     std::function<void(EditorProfilerCommand, Profiler::Recipe, const std::string&)> profiler;
     std::function<void(bool)> openOutputLog;
+    // Tuning dosyasındaki bir değeri diske yamar (Enter); dosya sırası TuningWorkspace::Files'tır.
+    std::function<void(std::size_t, const TuningLocation&, const TuningValue&)> tune;
 };

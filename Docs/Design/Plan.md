@@ -44,12 +44,14 @@ Uygulandı (2026-10-31). Ayrıntı: [Editor architecture](../Editor/Architecture
 
 ## Aşama 2: Tuning
 
-- `*.tuning.json` biçimi, derleme sırasında header üretimi, geliştirmede canlı okuma + dosya izleme, Release'de
-  `constexpr` (D2).
-- Editör: tuning değerlerini Inspector'da gösterme ve JSON'a geri yazma; desteklenen tipler (D11: uzamsal değerler
-  sayı olarak).
+Uygulandı (2026-10-31). Kullanım: [Tuning](../Tuning.md); kararlar: [Tuning tasarımı](Tuning.md).
+
+- ~~`*.tuning.json` biçimi, header üretimi, canlı okuma + dosya izleme, Release'de `constexpr`~~ (D2): üretici
+  `Tools/tuning/`, CMake `engine_add_tuning`, çalışma zamanı `Core/Tuning/`, `check --fix`.
+- ~~Editör~~: ayrı Tuning paneli (Enter ile giriş, diske atomik yama), worker'ın canlı durumu protokol v8 `tuning`
+  mesajıyla; tipler D11'e uygun (uzamsal değerler sayı).
 - Göç yok: tuning yeni kod içindir; var olan projeler `constexpr` sabitlerinde kalır. Doğrulama engine testleri
-  ve `new` ile kurulan deneme projesiyle; kullanım `GettingStarted` rehberinde.
+  (Python ve C++ ortak örnekler) ve `new` ile kurulan deneme projesiyle; proje şablonu `engine_add_tuning`'i çağırır.
 
 **Sonuç:** değer ayarı derlemesiz ve kalıcı; editörde yapılan ayar git'te görünür.
 

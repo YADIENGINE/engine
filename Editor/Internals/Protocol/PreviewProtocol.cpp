@@ -1,5 +1,6 @@
 #include "Editor/Internals/Protocol/PreviewProtocol.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <set>
@@ -65,6 +66,8 @@ PreviewInspection DecodePreviewInspection(const nlohmann::json& json) {
 }
 
 namespace {
+constexpr std::array<std::string_view, 4> PreviewTuningStateNames{"applied", "invalid", "needs-build", "unreadable"};
+
 std::uint64_t Unsigned(const nlohmann::json& json) {
     if (!json.is_number_integer() || (!json.is_number_unsigned() && json.get<std::int64_t>() < 0))
         throw std::runtime_error("Expected unsigned protocol integer");
@@ -203,6 +206,22 @@ PreviewOpenState DecodePreviewOpen(const nlohmann::json& json) {
     if (state.id.empty()) throw std::runtime_error("Missing preview id");
     if (!ValidPlaybackSpeed(state.speed)) throw std::runtime_error("Invalid playback speed");
     return state;
+}
+nlohmann::json EncodePreviewTuning(const PreviewTuningStatus& status) {
+    const auto state = PreviewTuningStateNames[static_cast<std::size_t>(status.state)];
+    return {{"source", status.source},
+            {"state", std::string(state)},
+            {"line", status.line},
+            {"text", status.text},
+            {"reload", status.reload}};
+}
+PreviewTuningStatus DecodePreviewTuning(const nlohmann::json& json) {
+    const auto state = json.at("state").get<std::string>();
+    const auto found = std::ranges::find(PreviewTuningStateNames, state);
+    if (found == PreviewTuningStateNames.end()) throw std::runtime_error("Unknown tuning state: " + state);
+    return {json.at("source").get<std::string>(),
+            static_cast<PreviewTuningState>(found - PreviewTuningStateNames.begin()), json.at("line").get<int>(),
+            json.at("text").get<std::string>(), json.at("reload").get<bool>()};
 }
 nlohmann::json EncodePreviewCatalog(const std::vector<PreviewDefinition>& definitions) {
     auto entries = nlohmann::json::array();

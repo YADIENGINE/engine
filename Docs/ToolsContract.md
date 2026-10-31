@@ -28,7 +28,7 @@ Proje kökü: `--project` verilmişse o; yoksa engine'in üst klasörü (`Projec
 | `refresh` | | Projenin açık editöründe Build & Refresh (sürüyorsa ona katılır); çıktısını akıtır, sonucuyla çıkar. Önizleme derleme boyunca açık kalır. Editör açık değilse 2 ([kontrol kapısı](Editor/Architecture.md#kontrol-kapısı)) |
 | `new` | `--name AD`, `--dry-run` | Engine'in üst klasörünü yeni proje olarak kurar; `--name` yoksa adı sorar |
 | `info` | | Engine ve proje bilgisi, JSON (aşağıda) |
-| `check` | | Internals include sınırı ([API boundaries](Contributing/ApiBoundaries.md)) |
+| `check` | `--fix` | Internals include sınırı ([API boundaries](Contributing/ApiBoundaries.md)) ve tuning dosyalarının geçerliliği / kanonik biçimi ([Tuning](Tuning.md)); `--fix` geçerli tuning dosyalarını biçime sokar |
 
 Ayarlar `Project.json`'dadır ([ProjectSetup](ProjectSetup.md)).
 
@@ -50,7 +50,7 @@ Proje kökünde `Project.json` yoksa `project` `null`'dır. Launcher bir projeyi
 | Kod | Anlamı |
 | --- | --- |
 | 0 | Başarı |
-| 1 | Projenin işi başarısız: derleme hatası, başarısız test, release denetimi, oyun / editör hata koduyla kapandı, `check` ihlal buldu, `refresh` başarısız ya da iptal edildi |
+| 1 | Projenin işi başarısız: derleme hatası, başarısız test, release denetimi, oyun / editör hata koduyla kapandı, `check` ihlal ya da tuning sorunu buldu, `refresh` başarısız ya da iptal edildi |
 | 2 | Kullanım ya da altyapı: yanlış argüman, eksik araç (MSVC, CMake, Ninja), bozuk `Project.json`, test raporu kurulamadı |
 | 130 | Ctrl+C ile kesildi |
 

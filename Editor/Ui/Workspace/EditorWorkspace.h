@@ -6,6 +6,7 @@
 #include "Editor/Ui/Panels/Output/OutputPanel.h"
 #include "Editor/Ui/Panels/Viewport/ViewportPanel.h"
 #include "Editor/Ui/Panels/Profiler/ProfilerPanel.h"
+#include "Editor/Ui/Panels/Tuning/TuningPanel.h"
 #include "Editor/Ui/Shell/EditorShell.h"
 
 struct EditorWorkspaceResult {
@@ -34,6 +35,7 @@ private:
     InspectorPanel _inspector;
     OutputPanel _output;
     ProfilerPanel _profiler;
+    TuningPanel _tuning;
     EditorShell _shell;
     EditorCommandPalette _palette;
     std::string _restoreLayout;

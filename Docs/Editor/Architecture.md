@@ -36,12 +36,22 @@ Reset instance'ı yeniler.
   build'in kataloğu okunur. Yeni katalogda seçili önizleme yoksa katalog alınır, önizleme durur.
 - Sunum saati aktarılmaz: oyun durumu saatten türetilemez (sahne Update ile ilerler), Reset gibi baştan başlar.
 
-IPC protokolü v7, odak kaybı / pause / input süresi aşımını normal release yerine cancellation olarak taşır.
+IPC protokolü v8, odak kaybı / pause / input süresi aşımını normal release yerine cancellation olarak taşır.
 Profiler mesajları generation/capture kimliği taşır; sınırlı parçalar tamamlanmadan kayıt yayımlanmaz.
 Public snapshot'ın kimlikli touch verisi ve canvas dışındaki boş pozisyonları da aktarılır. Host, private pencere
 örneklerini Input normalizer ile canvas'a dönüştürür; worker aynı public sözleşmeyi tüketir.
 İptalden önce birikmiş eylemler silinir; sonraki yeni basışlar iptal bildiriminin ardından teslim edilir.
 Host ve worker aynı protokol sürümüyle birlikte güncellenmelidir; proje tarifi sürümü değişmez.
+
+## Tuning
+
+Tuning dosyalarının ([Tuning](../Tuning.md)) tek yazma yolu dosyanın kendisidir; editör değeri worker'a göndermez.
+`Internals/Session/TuningWorkspace` build'in `Tuning/TuningFiles.json` listesini (CMake `engine_add_tuning`) ve
+dosyaları okur, dış değişiklikte tazeler; değeri o anki diskteki dosyaya `PatchTuningValue` ile yamar ve atomik yazar.
+Worker geliştirme derlemesinde dosyayı kendisi izler (`PollTuning`); `PreviewHost` canlı tuning raporlarını
+`tuning` mesajıyla (`PreviewTuningStatus`: kaynak, durum, satır, metin) host'a iletir. Durum aktif worker'ındır:
+worker değişince sıfırlanır, Build & Refresh'te yeni worker'ın raporları değişimle birlikte geçer. Release derlenmiş
+worker canlı okumaz, rapor da göndermez. Sunum `Ui/Panels/Tuning/TuningPanel`.
 
 ## Kontrol kapısı
 

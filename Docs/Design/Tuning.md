@@ -1,6 +1,7 @@
 # Tuning dosyaları (tasarım)
 
-Durum: kabul edildi, ayrıntılar kapandı (2026-10-31), uygulanmadı. Karar kaydı: [README → D2](README.md#d2-ayar-değerleri-tuning-dosyaları).
+Durum: uygulandı (2026-10-31). Kullanım rehberi: [Tuning](../Tuning.md). Karar kaydı:
+[README → D2](README.md#d2-ayar-değerleri-tuning-dosyaları). Uygulamada netleşenler en altta.
 
 ## Amaç
 
@@ -135,15 +136,15 @@ Header'ın yolu JSON'un yolunun aynısıdır, build içinde:
 
 ```
 Game/Configs/WorldConfig.tuning.json
-build/<preset>/Tuning/Game/Configs/WorldConfig.tuning.h
+build/<preset>/Tuning/<hedef>/Configs/WorldConfig.tuning.h   (ROOT = Game)
 ```
 
 ```cpp
 #include "Configs/WorldConfig.tuning.h" // kaynak header'larla aynı kök ve yazım
 ```
 
-- **Sahiplik:** tuning dosyası, kaynak kökü onu içeren CMake hedefine aittir (`Core/` → `EngineHeadless`, oyunun
-  kaynakları → oyun hedefi). Üretim klasörü o hedefin include dizinine eklenir.
+- **Sahiplik:** hedef kökünü `engine_add_tuning(<hedef> ROOT <klasör>)` ile bildirir; o kökteki tuning dosyaları
+  hedefindir. Üretim klasörü hedefin PUBLIC include dizinidir.
 - **Bulma:** configure sırasında hedefin kaynak kökünde `*.tuning.json` taranır (`CONFIGURE_DEPENDS`); CMake'e elle
   yazılmaz.
 - **Üretim:** JSON başına bir `add_custom_command`; üretici `Tools/` içinde, sadece standart kütüphane. İçerik
@@ -170,7 +171,7 @@ Geliştirme ve Release'de kural aynıdır; hiçbir değer sessizce kırpılmaz y
 
 - **Tek yol dosyadır:** editör değeri çalışan oyuna ayrıca göndermez, JSON'a yazar; oyun dosyayı izler. Elle, ajanla
   ve editörle yapılan değişiklik aynı yoldan geçer. Worker build snapshot'ından çalışsa da tuning dosyalarını kaynak
-  ağacından okur (kaynak kökü worker'a açılışta verilir).
+  ağacından okur (kaynak yolu geliştirme exe'sine derlenir).
 - **Kanonik biçim:** 2 boşluk girinti; alan sırası dosyadaki sıradır (yeniden sıralanmaz); her alan kendi satırında,
   kısa listeler tek satırda, tablo satırları satır başına bir. Editör hep bu biçimde yazar, tek değer değişikliği tek
   satırlık diff'tir. `python Engine check` biçime uymayan tuning dosyalarını bildirir, `--fix` düzeltir.
@@ -186,6 +187,20 @@ Göç yapılmaz: tuning yeni yazılan kod içindir. Var olan `constexpr` sabitle
 kalır; iki yöntem aynı projede yan yana yaşayabilir (sistem opt-in'dir, tuning dosyası olmayan hedefe hiçbir şey
 eklenmez). Kalıcı göç aracı yazılmaz. Yeni kodda adlandırma: alanlar camelCase (`baseProgressToComplete`), dosya
 değerleri kullanan header / class'ın yanında.
+
+## Uygulamada netleşenler
+
+- Header yolu `build/Tuning/<hedef>/<ROOT'a göre yol>.tuning.h`; editörün dosya listesi `build/Tuning/TuningFiles.json`.
+  Engine'in kendi kodu henüz tuning kullanmıyor (`engine_add_tuning` yalnız Engine testlerinde).
+- Kaynak yolu worker'a açılışta verilmez: üretilen struct geliştirme derlemesinde dosyanın mutlak yolunu taşır
+  (`TuningSource`); snapshot'tan çalışan worker da kaynak ağacını okur.
+- Inspector yerine ayrı Tuning paneli: tuning proje geneldir, seçili önizlemeye bağlı değildir. Renk seçici yerine
+  `#RRGGBB[AA]` kutusu + renk örneği (Enter kuralıyla aynı).
+- Kanonik biçimde alan içi anahtarların sırası sabittir (`type, value, min, max`; tablo `type, columns, rows`;
+  satır hücreleri sütun sırasıyla); sayılar yazıldığı gibi kalır; satır sonu (CRLF / LF) biçim farkı sayılmaz.
+- Kurallar iki kez uygulanır: derlemede Python (`Tools/tuning`), çalışırken ve editörde C++ (`Core/Tuning/TuningFile`);
+  `Tools/Tests/TuningCases/` ikisinin de koştuğu ortak örneklerdir.
+- Canlı mod `ENGINE_TUNING_LIVE`: Release, MinSizeRel ve RelWithDebInfo'da kapalı.
 
 ## Açık ayrıntılar
 

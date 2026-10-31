@@ -1,7 +1,8 @@
 #pragma once
 #include <array>
 
-enum class EditorPanel { Catalog, Viewport, Inspector, Output, Profiler, Count };
+// Sıra kayıtlı tercihlerin (görünürlük) sırasıdır: yeni panel sona, Count'tan önce eklenir.
+enum class EditorPanel { Catalog, Viewport, Inspector, Output, Profiler, Tuning, Count };
 enum class EditorDockGroup { Left, Center, Right, Bottom };
 enum class EditorWorkspaceLayout { Develop, Inspect, Profile, Custom };
 
@@ -20,7 +21,8 @@ inline constexpr std::array EditorPanels{
                           EditorDockGroup::Right},
     EditorPanelDefinition{EditorPanel::Output, "Output", "Output###editor.output", false, EditorDockGroup::Bottom},
     EditorPanelDefinition{EditorPanel::Profiler, "Profiler", "Profiler###editor.profiler", false,
-                          EditorDockGroup::Bottom}};
+                          EditorDockGroup::Bottom},
+    EditorPanelDefinition{EditorPanel::Tuning, "Tuning", "Tuning###editor.tuning", true, EditorDockGroup::Right}};
 
 struct EditorLayoutDefinition {
     EditorWorkspaceLayout id;

@@ -20,6 +20,7 @@ EditorController::EditorController(const std::filesystem::path& projectFile) {
         _project = ReadEditorProject(projectFile);
         _snapshots.emplace(_project->worker);
         _output.StartArchive(_project->buildDirectory / "editor-logs" / (NewPreviewSession() + ".log"));
+        _tuning.Open(_project->buildDirectory);
         Log("Project: " + _project->name);
         if (!_output.ArchiveError().empty()) Log(_output.ArchiveError(), EditorLogLevel::Warning);
         if (!_snapshots->BuildAvailable()) {
@@ -151,6 +152,29 @@ void EditorController::Action(const std::string& id) {
         FailPreview(error.what());
     }
 }
+void EditorController::Tune(std::size_t file, const TuningLocation& at, const TuningValue& value) {
+    if (const auto error = _tuning.Set(file, at, value); !error.empty())
+        Log("Tuning not written: " + error, EditorLogLevel::Warning);
+}
+void EditorController::ReceiveTuning(const PreviewTuningStatus& status) {
+    const std::string label = _tuning.Report(status);
+    const std::string where = label.empty() ? status.source : label;
+    switch (status.state) {
+    case PreviewTuningState::Applied:
+        if (status.reload) Log("Tuning applied: " + where, EditorLogLevel::Info, EditorLogSource::Worker);
+        break;
+    case PreviewTuningState::Invalid:
+        Log(where + ":" + std::to_string(status.line) + ": tuning not applied: " + status.text, EditorLogLevel::Warning,
+            EditorLogSource::Worker);
+        break;
+    case PreviewTuningState::NeedsBuild:
+        Log(where + ": tuning not applied: " + status.text, EditorLogLevel::Warning, EditorLogSource::Worker);
+        break;
+    case PreviewTuningState::Unreadable:
+        Log(where + ": tuning file unreadable: " + status.text, EditorLogLevel::Warning, EditorLogSource::Worker);
+        break;
+    }
+}
 void EditorController::Playback(double speed, bool step) {
     const auto capabilities = Snapshot().capabilities;
     if (!capabilities.playbackEnabled || (step && !capabilities.Can(EditorCommand::Step)) || !ValidPlaybackSpeed(speed))
@@ -226,7 +250,8 @@ EditorSnapshot EditorController::Snapshot() const {
             _playbackSpeed,
             _profiler.Snapshot(),
             _hostTransferMs,
-            benchmarkCancelPending};
+            benchmarkCancelPending,
+            _project ? &_tuning : nullptr};
 }
 std::string EditorController::ProjectKey() const {
     if (!_project) return "unconfigured";
@@ -275,6 +300,7 @@ void EditorController::Launch(PreviewWorkerMode mode) {
     _profiler.Disconnected();
     Retire(std::move(_active));
     Invalidate(NextGeneration());
+    _tuning.ClearWorkerStatus();
     _active = std::make_unique<PreviewWorker>(*_snapshots->Current(), mode);
     _gotCatalog = false;
     _restPhase = EditorPhase::Stopped;
@@ -291,6 +317,7 @@ void EditorController::StopActive(const std::string& status) {
     _profiler.Disconnected();
     Retire(std::move(_active));
     Invalidate(NextGeneration());
+    _tuning.ClearWorkerStatus();
     _status = status;
     _restPhase = EditorPhase::Stopped;
 }
@@ -335,6 +362,10 @@ void EditorController::Receive(const PreviewMessage& message) {
     if (message.type == "fatal") throw std::runtime_error(message.data.at("text").get<std::string>());
     if (message.type == "log") {
         Log(message.data.at("text").get<std::string>(), EditorLogLevel::Info, EditorLogSource::Worker);
+        return;
+    }
+    if (message.type == "tuning") {
+        ReceiveTuning(DecodePreviewTuning(message.data));
         return;
     }
     if (message.type == "catalog") {
@@ -509,6 +540,8 @@ void EditorController::ReceiveReplacement(const PreviewMessage& message) {
     if (message.type == "fatal") throw std::runtime_error(message.data.at("text").get<std::string>());
     if (message.type == "log") {
         Log(message.data.at("text").get<std::string>(), EditorLogLevel::Info, EditorLogSource::Worker);
+    } else if (message.type == "tuning") {
+        replacement.tuning.push_back(DecodePreviewTuning(message.data));
     } else if (message.type == "catalog") {
         replacement.catalog = DecodePreviewCatalog(message.data);
         replacement.accepted = RestoreParameters(*replacement.catalog);
@@ -534,6 +567,9 @@ void EditorController::CommitReplacement(const PreviewMessage& ready) {
     _accepted = std::move(replacement.accepted);
     _gotCatalog = true;
     Invalidate(replacement.generation);
+    _tuning.ClearWorkerStatus();
+    for (const auto& status : replacement.tuning)
+        ReceiveTuning(status);
     _recordOpen = false;
     ApplyReady(ready);
     _refresh.Started();
@@ -629,6 +665,7 @@ void EditorController::FinishFailedAttempt() {
     _attemptFailure.reset();
 }
 void EditorController::Tick() {
+    _tuning.Poll();
     try {
         TickBuild();
     } catch (const std::exception& error) {

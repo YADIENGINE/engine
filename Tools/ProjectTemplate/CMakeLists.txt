@@ -30,6 +30,8 @@ file(GLOB_RECURSE APP_EDITOR_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_D
 if(APP_BUILD_GAME)
     engine_add_game(${PROJECT_NAME} SOURCES ${APP_GAME_SOURCES} ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/Game/Assets")
     target_include_directories(${PROJECT_NAME} PRIVATE Game)
+    # Game/ altındaki *.tuning.json dosyaları (Engine/Docs/Tuning.md); dosya yokken hiçbir şey eklemez.
+    engine_add_tuning(${PROJECT_NAME} ROOT Game)
 endif()
 
 if(APP_BUILD_EDITOR)

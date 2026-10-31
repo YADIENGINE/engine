@@ -9,6 +9,45 @@
 #include "Editor/Internals/Platform/Windows/ControlChannel.h"
 #include "Editor/Preview/PreviewGame.h"
 #include "Editor/Preview/GlowBenchmark.h"
+#include "Tuning/TuningLive.h"
+
+#if ENGINE_TUNING_LIVE
+namespace {
+PreviewTuningState StateOf(TuningOutcome outcome) {
+    switch (outcome) {
+    case TuningOutcome::Applied   : return PreviewTuningState::Applied;
+    case TuningOutcome::Invalid   : return PreviewTuningState::Invalid;
+    case TuningOutcome::NeedsBuild: return PreviewTuningState::NeedsBuild;
+    case TuningOutcome::Unreadable: return PreviewTuningState::Unreadable;
+    }
+    return PreviewTuningState::Unreadable;
+}
+
+// Canlı tuning raporları (Docs/Tuning.md) editörün Tuning paneline ve Output'una gider; kanal kapanmadan önce
+// varsayılan rapor yeri geri gelir.
+class TuningForwarding {
+public:
+    explicit TuningForwarding(ControlChannel& channel) {
+        SetTuningReporter([&channel](const TuningReport& report) {
+            if (channel.Closed()) return;
+            try {
+                channel.Send({{},
+                              0,
+                              0,
+                              "tuning",
+                              EncodePreviewTuning(
+                                  {report.source, StateOf(report.outcome), report.line, report.text, report.reload})});
+            } catch (const std::exception&) { // Bağlantı koptuysa önizleme zaten kapanıyor
+            }
+        });
+    }
+    ~TuningForwarding() { SetTuningReporter({}); }
+
+    TuningForwarding(const TuningForwarding&) = delete;
+    TuningForwarding& operator=(const TuningForwarding&) = delete;
+};
+} // namespace
+#endif
 
 int RunPreviewHost(int argc, char** argv, const std::function<void(PreviewRegistry&)>& registerPreviews,
                    GameSettings settings, PreviewApplicationFactory createApplication) {
@@ -41,6 +80,9 @@ int RunPreviewHost(int argc, char** argv, const std::function<void(PreviewRegist
                 std::this_thread::sleep_for(std::chrono::milliseconds(2));
             }
         }
+#if ENGINE_TUNING_LIVE
+        const TuningForwarding tuning(*channel); // Oyun kurulurken kaydolan dosyaların ilk raporu da gitsin
+#endif
         // Readback's per-frame INFO messages must not displace useful diagnostics in the output panel.
         SetTraceLogLevel(LOG_WARNING);
         settings.window.visible = false;

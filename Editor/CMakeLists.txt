@@ -20,6 +20,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Protocol/EditorControlProtocol.cpp
     Internals/Session/EditorProject.cpp
     Internals/Session/RefreshState.cpp
+    Internals/Session/TuningWorkspace.cpp
     Internals/Session/WorkerSnapshots.cpp
     Internals/Session/ProfilerSession.cpp
     Internals/Session/BenchmarkState.cpp
@@ -128,6 +129,7 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Panels/Catalog/CatalogPanel.cpp
         Ui/Panels/Viewport/ViewportPanel.cpp
         Ui/Panels/Inspector/InspectorPanel.cpp
+        Ui/Panels/Tuning/TuningPanel.cpp
         Ui/Panels/Output/OutputPanel.cpp)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)
     target_link_libraries(EngineEditorUi PUBLIC EngineEditorImGui EngineEditorSupport)

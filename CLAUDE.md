@@ -32,6 +32,7 @@ Core/      Oyuna giren engine kodu; include kökü (#include "Runtime/Game.h"). 
   Scene/     Scene, Internals/SceneManager; headless sahne lifecycle'ı, seçimi ve kapanışı
   Graphics/  Render/ (Window/Canvas/Renderer Internals/'da) Draw/ Anim/ Icons/ Style/ Ui/ (görünüşün tamamı; renkler/stiller parametre)
   Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Utilities/
+  Tuning/    *.tuning.json biçimi (TuningFile), canlı okuma (TuningLive, ENGINE_TUNING_LIVE), Tuning<T>(); Docs/Tuning.md
   Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, ScoreBoard, RunTracking ...); Modules/X/Tests/
   Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
 Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_add_editor_worker. Oyuna girmez;
@@ -46,6 +47,8 @@ Tools/     Python paketi, sadece standart kütüphane (Docs/ToolsContract.md):
                çıkış kodları (ToolError)
   commands/    build.py (build, run), test.py, editor.py, release.py (paket; büyürse alt paket), new.py (proje kurulumu)
   include_boundaries.py   Internals sınırı (check)
+  tuning/      Tuning header üretici (CMake engine_add_tuning), doğrulama, kanonik biçim (check --fix). Kurallar
+               C++'ta da var (Core/Tuning/TuningFile.cpp); ikisi Tests/TuningCases ortak örnekleriyle birlikte değişir.
   AudioGeneration/  Çevrimdışı Python ses üretimi (NumPy / SciPy); tek public import AudioGeneration.SoundGenerator,
                tarifler ve asset yolları çağırandadır. API ve genişletme: Docs/AudioGeneration.md.
   ProjectTemplate/  `new`'in kopyaladığı proje dosyaları; @PROJECT_NAME@, gitignore/gitattributes noktasız saklanır.

@@ -7,7 +7,7 @@
 #include "Editor/Api/PreviewRegistry.h"
 #include "Input/Input.hpp"
 
-inline constexpr std::uint32_t PreviewProtocolVersion = 7;
+inline constexpr std::uint32_t PreviewProtocolVersion = 8;
 inline constexpr std::size_t PreviewMaxInputPoints = 32;
 inline constexpr std::size_t PreviewMaxMessageBytes = 1024 * 1024;
 inline constexpr std::size_t PreviewMaxQueuedMessages = 256;
@@ -31,6 +31,18 @@ struct PreviewOpenState {
     double speed = 1.0;
 };
 
+// Worker'ın canlı tuning raporu ("tuning", Docs/Tuning.md): Applied değerler yazıldı; Invalid dosya geçersiz;
+// NeedsBuild yapı değişti, derleme gerekir; Unreadable dosya okunamadı. Source UTF-8 dosya yolu.
+enum class PreviewTuningState { Applied, Invalid, NeedsBuild, Unreadable };
+
+struct PreviewTuningStatus {
+    std::string source;
+    PreviewTuningState state = PreviewTuningState::Applied;
+    int line = 0;
+    std::string text;
+    bool reload = false; // false: önizleme açılırken ilk okuma
+};
+
 [[nodiscard]] std::vector<std::byte> EncodePreviewMessage(const PreviewMessage& message);
 [[nodiscard]] PreviewMessage DecodePreviewMessage(const nlohmann::json& json, const std::string& expectedSession);
 [[nodiscard]] nlohmann::json EncodePreviewValue(const PreviewValue& value);
@@ -46,3 +58,5 @@ struct PreviewOpenState {
 [[nodiscard]] DeviceInput DecodePreviewInput(const nlohmann::json& json);
 [[nodiscard]] nlohmann::json EncodePreviewInspection(const PreviewInspection& inspection);
 [[nodiscard]] PreviewInspection DecodePreviewInspection(const nlohmann::json& json);
+[[nodiscard]] nlohmann::json EncodePreviewTuning(const PreviewTuningStatus& status);
+[[nodiscard]] PreviewTuningStatus DecodePreviewTuning(const nlohmann::json& json);

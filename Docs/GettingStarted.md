@@ -24,6 +24,10 @@ MyProject/
 `engine_add_game(${PROJECT_NAME} SOURCES ... ASSETS Game/Assets)` ile oyunu kurar. Yeni dosya ekleyince bir sonraki
 build CMake'i yeniden yapılandırır; ilk `.cpp` geldiğinde starter oyunun yerini projenin kodu alır.
 
+Aynı dosya `engine_add_tuning(${PROJECT_NAME} ROOT Game)` ile `Game/` altındaki `*.tuning.json` ayar dosyalarını
+derlemeye bağlar ([Tuning](Tuning.md)): yarıçap, hız, renk gibi elle ayarlanan sayıları kod yerine orada tutmak,
+onları oyun açıkken ya da editörün Tuning panelinden derlemeden değiştirmeyi sağlar.
+
 `engine_add_game` Engine'in `Main.cpp` dosyasını ve Engine link'ini ekler; `CreateGame()` fabrikası projenindir.
 Desteklenen argümanlar: `SOURCES`, ek hedefler için `LIBRARIES` (ör. `EngineLocalization`), masaüstünde exe
 yanına kopyalanacak klasör için `ASSETS`. Kendi `main` fonksiyonunuzu eklemeyin.

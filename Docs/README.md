@@ -28,6 +28,7 @@ Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları o
 | Font, Unicode, ölçüm ve satır düzeni | [Text](Graphics/Text.md) |
 | Tema, widget ve arka planlar | [Themes and UI](Graphics/ThemesAndUi.md) |
 | Parçacık, kamera, geçiş ve overlay | [Effects](Graphics/Effects.md) |
+| Derlemeden ayarlanan değerler (`*.tuning.json`) | [Tuning](Tuning.md) |
 | Genel JSON run arşivi | [RunTracking](Modules/RunTracking/README.md) |
 | Python ile çevrimdışı ses üretimi | [Audio generation](AudioGeneration.md) |
 | Release paketi, lisans/credits bildirimleri | [Release](Release.md) |

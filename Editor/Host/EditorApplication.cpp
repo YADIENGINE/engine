@@ -134,7 +134,10 @@ void EditorApplication::DrawWindow() const {
             editorInput = true;
             commands.emplace_back([this, command, recipe, file] { _controller.Profile(command, recipe, file); });
         },
-        [&](bool attempt) { commands.emplace_back([this, attempt] { _controller.OpenOutputLog(attempt); }); }};
+        [&](bool attempt) { commands.emplace_back([this, attempt] { _controller.OpenOutputLog(attempt); }); },
+        [&](std::size_t file, const TuningLocation& at, const TuningValue& value) {
+            commands.emplace_back([this, file, at, value] { _controller.Tune(file, at, value); });
+        }};
     const auto result = _workspace.Draw(_controller.Snapshot(), actions, _display.Image(), _preferences, _fontSize);
     _quit = result.quit;
     const auto& io = ImGui::GetIO();

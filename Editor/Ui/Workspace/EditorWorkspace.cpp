@@ -78,6 +78,7 @@ void EditorWorkspace::ApplyLayout(EditorWorkspaceLayout layout, EditorPreference
         if (layout == EditorWorkspaceLayout::Inspect) preferences.Visible(EditorPanel::Catalog) = false;
         if (layout == EditorWorkspaceLayout::Profile) {
             preferences.Visible(EditorPanel::Inspector) = false;
+            preferences.Visible(EditorPanel::Tuning) = false;
             preferences.Visible(EditorPanel::Profiler) = true;
             preferences.lastBottomPanel = EditorPanel::Profiler;
         }
@@ -154,7 +155,8 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
         if (catalog)
             groups[static_cast<std::size_t>(EditorDockGroup::Left)] =
                 ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.20f, nullptr, &center);
-        if (preferences.visible[static_cast<std::size_t>(EditorPanel::Inspector)]) {
+        if (preferences.visible[static_cast<std::size_t>(EditorPanel::Inspector)] ||
+            preferences.visible[static_cast<std::size_t>(EditorPanel::Tuning)]) {
             const float ratio = preferences.layout == EditorWorkspaceLayout::Inspect ? 0.32f : 0.24f;
             groups[static_cast<std::size_t>(EditorDockGroup::Right)] =
                 ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, ratio / (catalog ? 0.80f : 1.0f), nullptr, &center);
@@ -320,6 +322,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 case EditorPanel::Inspector: _inspector.Draw(snapshot, actions); break;
                 case EditorPanel::Output   : _output.Draw(snapshot, actions, preferences); break;
                 case EditorPanel::Profiler : _profiler.Draw(snapshot, actions); break;
+                case EditorPanel::Tuning   : _tuning.Draw(snapshot, actions); break;
                 case EditorPanel::Count    : break;
                 }
             }
