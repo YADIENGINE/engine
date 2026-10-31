@@ -143,6 +143,10 @@ void Game::Draw(Painter& paint) const {
     Draw();
 }
 void Game::Draw() const {}
+void Game::DrawLoading(Painter& paint, float seconds, float outro) const {
+    auto legacy = paint.Legacy();
+    DrawLoading(seconds, outro);
+}
 void Game::DrawLoading(float seconds, float outro) const {
     (void)seconds;
     (void)outro;
@@ -306,10 +310,7 @@ bool Game::ShowLoading() {
             auto frame = _renderer->BeginFrame(time, GetFrameTime());
             Painter& paint = frame.Canvas();
             if (const Scene* scene = _sceneManager->Current()) scene->Render(paint);
-            {
-                auto legacy = paint.Legacy();
-                DrawLoading(static_cast<float>(now - start), outro);
-            }
+            DrawLoading(paint, static_cast<float>(now - start), outro);
             frame.Complete({}, [this](Painter& window) { DrawWindow(window); });
         }
         RevealWindow();

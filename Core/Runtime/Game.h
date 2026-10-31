@@ -101,7 +101,9 @@ protected:
     virtual void DrawWindow() const; // Raylib-based (migration only)
     // Yükleme ekranı: Start'tan sonra sesler arka planda yüklenirken ilk sahne ilerlemeden (input ve Tick yok) çizilir,
     // bu onun üstüne çizilir. 'seconds' ekranın açılışından beri; 'outro' yükleme bittikten sonraki kapanış (0..1).
-    virtual void DrawLoading(float seconds, float outro) const;
+    // Varsayılan raylib tabanlı DrawLoading(seconds, outro)'yu Painter::Legacy içinde çalıştırır.
+    virtual void DrawLoading(Painter& paint, float seconds, float outro) const;
+    virtual void DrawLoading(float seconds, float outro) const; // Raylib-based (migration only)
     // Yükleme bittikten sonra yükleme ekranının kapanma süresi; 'loadSeconds' yüklemenin sürdüğü süre.
     [[nodiscard]] virtual float LoadingOutroSeconds(float loadSeconds) const;
     virtual void Stop();

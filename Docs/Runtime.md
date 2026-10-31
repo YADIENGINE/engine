@@ -84,7 +84,7 @@ forward one from InputCancelled to cancel and drain the old gesture without losi
 `Game` kurucusu renderer/asset/font servislerini kurar, temayı etkinleştirir ve ses kataloğunu
 arka planda yüklemeye başlar. Kalıcı seçenekler açıksa `Start()` öncesinde yüklenir ve uygulanır.
 `Start()` ilk sahneyi seçer; sesin hazır olduğunu varsayarak burada playback çağrısı yapmayın.
-Yükleme ekranı ilk sahneyi simülasyon/input ilerletmeden çizer; `DrawLoading(seconds, outro)`
+Yükleme ekranı ilk sahneyi simülasyon/input ilerletmeden çizer; `DrawLoading(paint, seconds, outro)`
 ve `LoadingOutroSeconds(loadSeconds)` ile sunum özelleştirilir. Normal sahne akışı yükleme sonrasında başlar.
 Varsayılan giriş noktası başlangıç istisnalarını raporlar; içerik hook'ları kendi hata politikasını belirler.
 
