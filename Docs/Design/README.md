@@ -345,11 +345,14 @@ verir.
 - **Launcher'a girenler:** Velopack'in hazır C kütüphanesi (`velopack_libc`, launcher reposunda sürümü sabit) ve
   `<engine>.exe` / `<engine>.com` başında `VelopackApp::Build().Run()`. Kurulum / kaldırma hook'ları orada çalışır;
   PATH ekleme / silme launcher'ın kendi `UserPath`'iyle hook'tadır (tek uygulama).
-- **Düzen:** Velopack uygulamayı `<id>\current\`'e koyar ve güncellemede onu bütünüyle değiştirir; bu yüzden
-  `Settings.json` `current/`'in dışında, Velopack kökündedir: `%LOCALAPPDATA%\<id>\Settings.json` (kurulu launcher'ın
-  veri klasörü exe klasörünün üstü). `Engines/` ve `Tools/` `current/`'in içindedir (sürümle gelir).
-- **Kaldırma (2026-10-31):** iz bırakmaz: Velopack kökü (ayarlar dahil) ve kısayollar gider, PATH satırı kaldırma
-  hook'unda silinir. Projelere hiç dokunulmaz; yeniden kurulumda liste Projects Folder taramasıyla geri gelir, ilk
+- **Düzen (2026-11-01'de düzeltildi):** Velopack uygulamayı `<id>\current\`'e koyar; güncellemede `current/`'i,
+  yeni bir Setup üzerine çalıştırılınca **bütün kökü** değiştirir (eski kökü yana alır, temiz kurar, kurulum hook'unu
+  çalıştırır, eskiyi siler; kaldırma hook'u çalışmaz). Bu yüzden veriler (`Settings.json`, `AudioTools/`) kökün
+  yanındaki `%LOCALAPPDATA%\<id> Data\`'dadır (`LauncherLayout::velopackInstall`). `Engines/` ve `Tools/`
+  `current/`'in içindedir (sürümle gelir). İlk karar (veriler kökte) denemede yanlış çıktı: üzerine kurulum audio
+  tools'u sildi.
+- **Kaldırma (2026-10-31):** iz bırakmaz: Velopack kökü ve kısayollar gider, kaldırma hook'u PATH satırını ve veri
+  klasörünü siler (yalnız gerçek kaldırmada çalışır, üzerine kurulumda değil). Projelere hiç dokunulmaz; yeniden kurulumda liste Projects Folder taramasıyla geri gelir, ilk
   açılış (Sistem kontrolü) yeniden çalışır. MSVC (VS Build Tools) kalır: sistem geneli kurulumdur, başka uygulamalar
   da kullanabilir; kaldırmak isteyen Visual Studio Installer'dan kaldırır (belgede yazılı). Velopack'in kaldırmada
   kökü bütünüyle sildiği deneme paketinde doğrulanır. **Neden:** temiz kaldırma; kaybolan liste tek taramayla
