@@ -10,6 +10,10 @@ from AudioGeneration import SoundGenerator
 Requirements: Python 3.10+, `python -m pip install numpy scipy`; add `soundfile` only to load non-WAV sources
 (OGG, FLAC ...). Game binaries never use this library.
 
+With the launcher, no Python install is needed: Settings → Audio tools (or `<engine> launcher audio-tools install`)
+downloads NumPy and SciPy for the launcher's bundled Python, and `<engine> launcher python Sounds/Robot.py` runs a
+sound script with them. `soundfile` is not included.
+
 Paths, sound names, recipes and artistic choices belong to the caller. The library never discovers a game's
 assets, updates a catalog, downloads recordings or builds anything. Keep game content out of the library; add
 only general-purpose operations.

@@ -93,15 +93,16 @@ Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, te
   şifresiz, repolar `YADIENGINE/engine` ve `YADIENGINE/yadien` olarak public, kullanıcıya dönük belgeler
   İngilizce. Yayın elle (`dev.py package` + Releases'a yükleme).
 - ~~Velopack deneme paketi~~ yapıldı (2026-10-31, bulgular D15).
-- Tek exe kurulum (D15), sırayla (1–3 yazıldı 2026-10-31, launcher derlemesi ve paket denemesi bekliyor; ayrıntı
-  launcher `Docs/Packaging.md`): (1) launcher entegrasyonu: `velopack_libc`, `VelopackApp::Run()`, kurulum /
+- ~~Tek exe kurulum (D15)~~ yapıldı (2026-10-31; kuruldu, kullanıldı, kaldırıldı; ikon ve açılış görseli koddan;
+  ayrıntı launcher `Docs/Packaging.md`): (1) launcher entegrasyonu: `velopack_libc`, `VelopackApp::Run()`, kurulum /
   kaldırma hook'larında PATH ve günlük, `Settings.json` `current/`'in dışına (`LauncherLayout`); (2) paket betiği
   `dev.py package`: Release build + budanmış CMake (`Toolchain.lock.json` `exclude`) + `Engines/` + gömülü
   araçların lisans metinleri → `vpk pack`, imza adımının yeri boş; (3) Ayarlar'daki Licenses bölümü paketteki
   bütün lisansları gösterir.
 - Engine güncellemesi (D16): notların gösterimi ve onaylı güncelleme Aşama 3'te yapıldı (`PlanEngineUpdate` /
   `ApplyEngineUpdate`, Engine update paneli). Kalan: iki gerçek sürümle (`Engine0.1` → sonraki) uçtan uca deneme.
-- "Ses araçlarını kur" (D7): AudioGeneration'ın NumPy / SciPy'si gömülü Python'a, isteğe bağlı.
+- ~~"Ses araçlarını kur" (D7)~~ yapıldı (2026-10-31): Ayarlar'da düğme + `launcher audio-tools`, betik için
+  `launcher python`.
 - Kabul testi: paket temiz bir kullanıcı hesabında kurulur, yeni proje açılır, derlenir, güncellenir, kaldırılır;
   sonra var olan oyunun geçişi (Aşama 3'teki madde): oyunun belgeleri `<engine> <komut>`'a geçer.
 

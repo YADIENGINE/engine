@@ -168,8 +168,13 @@ test, release ve editör komutları launcher'ın içinde yeniden yazılmaz: laun
 - **Ses araçlarını kur (2026-10-31):** istendiğinde indirilir, pakete girmez. Ayarlar'daki düğme NumPy / SciPy
   wheel'lerini sürümü ve SHA-256'sı sabit bir kilit dosyasından (`Toolchain.lock.json` gibi; özet tutmazsa
   kurulmaz) indirir ve Velopack kökünde `current/`'in dışına açar (launcher güncellemesi silmez); pip yok, wheel bir
-  zip'tir. Gömülü Python'un `._pth` dosyası o klasörü baştan içerir. İnternet ister (Sistem kontrolünün MSVC
-  kurulumu gibi); paket herkes için ~60 MB büyümez.
+  zip'tir. İnternet ister (Sistem kontrolünün MSVC kurulumu gibi); paket herkes için ~60 MB büyümez.
+  **Uygulandı (2026-10-31):** kilit launcher'ın `Toolchain.lock.json` `audio` bölümü (NumPy 2.5.4, SciPy 1.18.1;
+  PyPI'nin özetleri), çıkarma Windows'un `tar.exe`'si, yer `<veri>/AudioTools/site/`. `._pth` değiştirilmedi:
+  gömülü Python kullanıcının PATH'inde değildir, ses betiğini çalıştırmanın bir yolu gerekiyordu; bu yol
+  `<engine> launcher python SCRIPT [ARGS]`'tır ve betiğin klasörünü + `site/`'ı `sys.path`'e kendisi koyar
+  (`._pth` yaması geliştirme build'inde çalışmaz, klasörü kuruluma bağlardı). CLI'da `launcher audio-tools
+  [status|install|remove]` da var (AI / betik için).
 
 **Neden:** Derleme mantığı engine ile birlikte sürümlenir; her proje kendi engine sürümünün araçlarıyla derlenir
 (D3 ile aynı ilke). Launcher ince ve kararlı kalır; mevcut araçlar ve testleri olduğu gibi kullanılır.
