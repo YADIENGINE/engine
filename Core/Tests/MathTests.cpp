@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "Graphics/Anim/Easing.h"
 #include "Utilities/MathUtils.h"
+#include "Utilities/Vec2.h"
 
 using Catch::Approx;
 
@@ -37,6 +38,13 @@ TEST_CASE("Engine.Easing.StaggeredStartsEachItemOneStepLater", "[engine][math]")
     static_assert(Staggered(1.0f, 0.5f, 2.0f, 0.25f, 1.0f) == 0.0f); // 2. öğe 1.0'da başlar
     static_assert(Staggered(9.0f, 0.5f, 2.0f, 0.25f, 1.0f) == 1.0f);
     CHECK(Staggered(0.75f, 0.0f, 2.0f, 0.25f, 1.0f) == Approx(0.25f));
+}
+
+TEST_CASE("Engine.Math.GridPointsAndDirectionsBecomeFloat2", "[engine][math]") {
+    static_assert(ToFloat2(Vec2{3, -2}) == Float2{3.0f, -2.0f});
+    static_assert(ToFloat2(Direction::Up) == Float2{0.0f, -1.0f}); // y aşağı
+    static_assert(ToFloat2(Direction::Right) == Float2{1.0f, 0.0f});
+    CHECK(ToFloat2(Direction::Left) == Float2{-1.0f, 0.0f});
 }
 
 TEST_CASE("Engine.Math.MixFractAndRandomRange", "[engine][math]") {

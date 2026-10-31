@@ -126,7 +126,7 @@ saati Painter'dan okur, yazıyı oyunun fontuyla çizer:
 
 | Başlık | İçerik |
 | --- | --- |
-| `Graphics/Draw/DrawUtils.hpp` | `DrawStar`, `DrawEgg`, `DrawDiamond`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
+| `Graphics/Draw/DrawUtils.hpp` | `DrawStar`, `DrawEgg`, `DrawDiamond`, `DrawRotatedRect`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
 | `Graphics/Draw/Neon.hpp` | Açık stilli neon widget'lar ve stilleri: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
 | `Graphics/Ui/UiDraw.hpp` | Temalı widget'lar (`CurrentTheme().ui`): `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`, `DrawUiButton(Body)`, `DrawUiRoundButton`, `DrawUiKeyCap`, `DrawUiProgressBar` |
 | `Graphics/Draw/BackgroundDraw.hpp` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `BackdropStyle` ile `DrawBackdrop*` |

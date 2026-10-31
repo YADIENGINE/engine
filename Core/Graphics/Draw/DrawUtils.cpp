@@ -48,6 +48,15 @@ void DrawDiamond(Painter& paint, Float2 center, Float2 half, const ShapeStyle& s
     paint.Polygon(corners, style);
 }
 
+void DrawRotatedRect(Painter& paint, Float2 center, Float2 half, float radians, const ShapeStyle& style) {
+    const std::array corners{Float2{-half.x, -half.y}, Float2{half.x, -half.y}, Float2{half.x, half.y},
+                             Float2{-half.x, half.y}};
+    std::array<Float2, 4> turned{};
+    for (std::size_t i = 0; i < corners.size(); ++i)
+        turned[i] = center + Rotated(corners[i], radians);
+    paint.Polygon(turned, style);
+}
+
 void DrawLightning(Painter& paint, Float2 from, Float2 to, int seed, Color4 color, float alpha,
                    const LightningStyle& style) {
     if (style.segments <= 0) return;

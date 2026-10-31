@@ -31,6 +31,8 @@ void DrawStar(Painter& paint, Float2 center, float outerRadius, const ShapeStyle
 void DrawEgg(Painter& paint, Float2 center, float height, Color4 color, Color4 shine);
 // Rhombus with its corners above, below and beside 'center'; 'half' is half its width and height.
 void DrawDiamond(Painter& paint, Float2 center, Float2 half, const ShapeStyle& style);
+// Rectangle turned 'radians' (clockwise on screen) around its centre; 'half' is half its width and height.
+void DrawRotatedRect(Painter& paint, Float2 center, Float2 half, float radians, const ShapeStyle& style);
 // 'alpha' replaces the colours' alpha (fading the whole bolt).
 void DrawLightning(Painter& paint, Float2 from, Float2 to, int seed, Color4 color, float alpha,
                    const LightningStyle& style);

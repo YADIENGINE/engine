@@ -1,4 +1,5 @@
 #pragma once
+#include "Utilities/Float2.h"
 
 // Grid koordinatı. Trivial ve constexpr olduğu için header-only.
 struct Vec2 {
@@ -29,6 +30,10 @@ constexpr Vec2 ToVec2(Direction direction) {
     }
     return {};
 }
+
+// Sürekli koordinatta aynı nokta / birim yön (çizim için).
+[[nodiscard]] constexpr Float2 ToFloat2(Vec2 v) { return {static_cast<float>(v.x), static_cast<float>(v.y)}; }
+[[nodiscard]] constexpr Float2 ToFloat2(Direction direction) { return ToFloat2(ToVec2(direction)); }
 
 constexpr Direction Opposite(Direction direction) {
     switch (direction) {
