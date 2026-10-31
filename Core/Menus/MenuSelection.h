@@ -2,8 +2,8 @@
 #include <array>
 #include <cstddef>
 
-// Dikey bir menünün seçim durumu: 'Items' sırasıyla dizilen seçeneklerden biri seçilidir. Saf mantık: input'u Game
-// verir, çizimi menünün View'ı yapar. Header-only.
+// Selection state of a vertical menu: one option ordered by 'Items' is selected. Pure logic: Game supplies input,
+// the menu's view draws it. Header-only.
 template <class Item, Item... Items> class MenuSelection {
 public:
     void SelectNext() { _selectedIndex = (_selectedIndex + 1) % ItemList.size(); }

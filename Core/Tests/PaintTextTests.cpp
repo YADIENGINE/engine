@@ -123,15 +123,21 @@ TEST_CASE("Engine.Text.DrawsInOneBatchAndCachesGlyphs", "[engine][paint][text]")
     h.paint.Circle({50.0f, 50.0f}, 5.0f, Fill({255, 0, 0, 255}));
     h.paint.Text(TestFont(), "Score 120", {10.0f, 40.0f}, {.size = 16.0f});
     CHECK(h.glyphs.RasterizedThisFrame() > 0);
+    CHECK(h.layouts.HitsThisFrame() == 1);
+    CHECK(h.layouts.MissesThisFrame() == 1);
     h.End();
     REQUIRE(h.Draws().size() == 1);
     CHECK(h.layouts.Size() == 1);
+    CHECK(h.layouts.HitsThisFrame() == 0);
+    CHECK(h.layouts.MissesThisFrame() == 0);
 
     h.Begin();
     h.paint.Text(TestFont(), "Score 120", {10.0f, 10.0f}, {.size = 16.0f});
     CHECK(h.glyphs.RasterizedThisFrame() == 0); // Same size on screen: everything cached
     h.paint.Text(TestFont(), "Score 120", {10.0f, 10.0f}, {.size = 24.0f});
     CHECK(h.glyphs.RasterizedThisFrame() > 0);
+    CHECK(h.layouts.HitsThisFrame() == 1);
+    CHECK(h.layouts.MissesThisFrame() == 1);
     h.End();
 }
 

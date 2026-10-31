@@ -5,26 +5,26 @@
 #include <string_view>
 #include "Modules/Persistence/Persistence.h"
 
-// Engine'in kendi kaydettiği tercihler; dosya anahtarları GameOptions.cpp tablosunda.
+// Options saved by the engine itself; file keys are in the GameOptions.cpp table.
 // clang-format off
 enum class EngineOption { EffectsVolume, MusicVolume, MenuMusicVolume, FpsLimit, BorderlessFullscreen, WindowWidth, WindowHeight, RenderHeight, VSync, ShowFps, Glow, ParticlePercent, Shake, MotionEffects, Flashes, BackgroundEffects, Bloom, Count };
 // clang-format on
-// Missing: dosya yoktu ya da eski şema silindi. Recovered: yedekten kurtarıldı.
-// Reset: bozuk dosya arşivlendi, boş başlandı.
+// Missing: file was absent or an old schema was removed. Recovered: restored from backup.
+// Reset: corrupt file was archived and an empty state was started.
 enum class OptionsLoadResult { Missing, Loaded, Recovered, Reset };
 
-// Oyuncunun elle düzenleyebileceği tek, şifresiz tercih dosyası; değerler tamsayıdır. Engine tercihleri EngineOption
-// ile, oyununkiler kendi anahtarlarıyla yazılır; engine anahtarlarının ad alanları (ilk noktaya kadar) oyuna kapalıdır.
-// Yazma sadece Save'de ve sadece değişiklik varsa olur.
+// One unencrypted options file editable by the player; values are integers. Engine options use EngineOption;
+// game options use their own keys. Engine key namespaces (up to the first dot) are reserved from the game.
+// Writing occurs only in Save and only when there are changes.
 class GameOptions {
 public:
     explicit GameOptions(std::filesystem::path file);
-    // Okunamayan dosyayı arşivleyip boş başlar; sadece IO / platform hataları fırlatır.
+    // Archives unreadable files and starts empty; throws only on IO / platform errors.
     OptionsLoadResult Load();
     [[nodiscard]] OptionsLoadResult LoadResult() const { return _loadResult; }
 
     [[nodiscard]] std::int64_t GetInt(std::string_view key, std::int64_t fallback = 0) const;
-    // Engine ad alanındaki anahtar std::invalid_argument fırlatır.
+    // A key in an engine namespace throws std::invalid_argument.
     void SetInt(std::string key, std::int64_t value);
     [[nodiscard]] bool Contains(std::string_view key) const;
     void Erase(std::string_view key);
@@ -33,7 +33,7 @@ public:
     [[nodiscard]] bool Contains(EngineOption option) const;
     void Set(EngineOption option, std::int64_t value);
 
-    // Değişiklik varsa dosyayı yazar.
+    // Writes the file if there are changes.
     bool Save();
     [[nodiscard]] bool Dirty() const { return _dirty; }
 

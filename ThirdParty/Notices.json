@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "intro": "Components linked into games or shipped with the engine's starter applications. Noto Sans is copied only for starter applications. raylib's bundled libraries are listed conservatively, including optional file format readers that may not be linked into the executable.",
+  "intro": "Components linked into this application or shipped with its assets. raylib's bundled libraries are listed conservatively, including optional file format readers that may not be linked into the executable.",
   "components": [
     {
       "name": "nlohmann/json",
@@ -17,6 +17,7 @@
     },
     {
       "name": "Noto Sans",
+      "scope": "starter",
       "version": "2.008",
       "text": "Notices/noto-sans.txt",
       "pin": { "file": "README.md", "contains": "| `NotoSans/` | {version} |" },

@@ -2,8 +2,8 @@
 #include "Graphics/Anim/ButtonAnim.h"
 #include "Graphics/Draw/Neon.h"
 
-// Temanın buton animasyonuyla (CurrentTheme().ui.buttonAnimation) seçim yayı, basış ve ret sarsıntısı; Look,
-// DrawUiButton'ın beklediği görünümü verir. View'ın değer üyesidir.
+// Selection spring, press and rejection shake using the theme's button animation (CurrentTheme().ui.buttonAnimation).
+// Look supplies the appearance expected by DrawUiButton. Stored as a view's value member.
 class UiButton {
 public:
     UiButton();

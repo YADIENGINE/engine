@@ -42,12 +42,15 @@ const TextBlock& TextLayoutCache::Get(const FontFace& font, std::string_view tex
                        style.lineSpacing, style.lineHeight, style.letterSpacing,
                        style.wrap,        style.fit,        text};
     if (const auto found = _entries.find(view); found != _entries.end()) {
+        ++_hits;
         found->second.lastUsed = _frame;
         return found->second.block;
     }
     Key key{view.font,          view.size, view.maxWidth, view.lineSpacing, view.lineHeight,
             view.letterSpacing, view.wrap, view.fit,      std::string(text)};
-    return _entries.emplace(std::move(key), Entry{font.Layout(text, style), _frame}).first->second.block;
+    const auto& block = _entries.emplace(std::move(key), Entry{font.Layout(text, style), _frame}).first->second.block;
+    ++_misses;
+    return block;
 }
 
 void TextLayoutCache::EndFrame() {
@@ -55,4 +58,6 @@ void TextLayoutCache::EndFrame() {
     std::erase_if(_entries,
                   [&](const auto& entry) { return _frame - entry.second.lastUsed > (full ? 0 : KeepFrames); });
     ++_frame;
+    _hits = 0;
+    _misses = 0;
 }

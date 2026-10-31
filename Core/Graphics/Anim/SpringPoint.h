@@ -1,7 +1,7 @@
 #pragma once
 #include "Utilities/Float2.h"
 
-// Hedefe yayla yaklaşan 2B nokta (menü imleçleri gibi). Header-only.
+// 2D point approaching its target with a spring (e.g. menu cursors). Header-only.
 struct SpringPoint {
     Float2 position{};
     Float2 velocity{};
@@ -10,7 +10,7 @@ struct SpringPoint {
         position = target;
         velocity = {};
     }
-    // 'maxStep'ten uzun frame'ler kırpılır: takılmadan sonra nokta fırlamaz.
+    // Frames longer than 'maxStep' are clamped so the point does not jump after a stall.
     constexpr void Follow(Float2 target, float deltaSeconds, float stiffness, float damping, float maxStep) {
         const float step = deltaSeconds < maxStep ? deltaSeconds : maxStep;
         velocity.x += ((target.x - position.x) * stiffness - velocity.x * damping) * step;

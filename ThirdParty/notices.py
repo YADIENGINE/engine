@@ -29,11 +29,19 @@ def normalized(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def scoped_components(manifest: dict, *, starter: bool = False) -> dict:
+    """Select notices for a distribution; unscoped components ship in every application."""
+    return {**manifest, "components": [c for c in manifest["components"]
+                                      if c.get("scope") != "starter" or starter]}
+
+
 def check_components(manifest: dict, third_party: Path = THIRD_PARTY) -> list[str]:
     """Bildirimin güncel olmadığını gösteren hatalar."""
     errors = []
     for component in manifest["components"]:
         name, version = component["name"], component["version"]
+        if component.get("scope") not in (None, "starter"):
+            errors.append(f"{name}: unknown notice scope {component['scope']!r}")
         text_path = third_party / component["text"]
         if not text_path.is_file():
             errors.append(f"{name}: missing notice text {text_path}")

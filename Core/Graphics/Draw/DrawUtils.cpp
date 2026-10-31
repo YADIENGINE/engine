@@ -9,10 +9,6 @@
 namespace {
 constexpr float StarInnerRatio = 0.45f;
 constexpr int StarPoints = 5;
-constexpr int EggSegments = 48;
-constexpr float EggWidthRatio = 0.75f;           // Width / height
-constexpr Float2 EggShineOffset{-0.35f, -0.35f}; // Times the half width / half height
-constexpr Float2 EggShineRadii{0.25f, 0.3f};
 } // namespace
 
 void DrawStar(Painter& paint, Float2 center, float outerRadius, const ShapeStyle& style) {
@@ -22,24 +18,6 @@ void DrawStar(Painter& paint, Float2 center, float outerRadius, const ShapeStyle
         corners[i] = center + Float2::FromAngle(-Pi / 2.0f + static_cast<float>(i) * Pi / StarPoints, radius);
     }
     paint.Polygon(corners, style);
-}
-
-// The top is half an ellipse, the bottom half a circle of the egg's half width: one smooth convex outline.
-void DrawEgg(Painter& paint, Float2 center, float height, Color4 color, Color4 shine) {
-    if (!(height > 0.0f)) return;
-    const float halfWidth = height * EggWidthRatio * 0.5f;
-    const float top = height - halfWidth; // Vertical radius of the upper half
-    const float equator = center.y - height * 0.5f + top;
-    std::array<Float2, EggSegments> outline{};
-    for (std::size_t i = 0; i < outline.size(); ++i) {
-        const float angle = 2.0f * Pi * static_cast<float>(i) / static_cast<float>(outline.size());
-        const float s = std::sin(angle);
-        outline[i] = {center.x + halfWidth * std::cos(angle), equator + (s < 0.0f ? top : halfWidth) * s};
-    }
-    paint.Polygon(outline, Fill(color));
-    const Float2 halfSize{halfWidth, height * 0.5f};
-    paint.Ellipse(center + Float2{EggShineOffset.x * halfSize.x, EggShineOffset.y * halfSize.y},
-                  {EggShineRadii.x * halfSize.x, EggShineRadii.y * halfSize.y}, Fill(shine));
 }
 
 void DrawDiamond(Painter& paint, Float2 center, Float2 half, const ShapeStyle& style) {

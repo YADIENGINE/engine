@@ -415,9 +415,12 @@ void Painter::Glow(Float2 center, float radius, const LightStyle& light) {
     if (!Finite(center) || !(radius > 0.0f) || light.color.a == 0) return;
     float strength = light.strength;
     switch (_context.frame.quality.glow) {
-    case GlowQuality::Full   : break;
-    case GlowQuality::Reduced: strength *= ReducedGlowStrength; break;
-    case GlowQuality::Off    : return;
+    case GlowQuality::Full: break;
+    case GlowQuality::Reduced:
+        radius *= ReducedGlowRadius;
+        strength *= ReducedGlowStrength;
+        break;
+    case GlowQuality::Off: return;
     }
     if (!(strength > 0.0f)) return;
     ShapeGeometry shape;

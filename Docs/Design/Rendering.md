@@ -9,7 +9,7 @@ Göç öncesindeki çizim raylib'in anlık API'si üstünde ince bir canvas sarm
 Engine çizim durumunu, batch'lemeyi, kenar yumuşatmayı ve shader'ı sahiplenmediği için kalite ve performans
 tek yerden iyileştirilemiyordu. İlk incelemenin bulguları:
 
-| Alan | Bugün | Sonuç |
+| Alan | Göç öncesi | Sonuç |
 | --- | --- | --- |
 | Durum | `EndBlendMode` her zaman alpha'ya döner, `EndScissorMode` clip'i kapatır, hedef değişimi kamerayı sıfırlar | Kurallar belgede, kodda değil; iç içe kapsamlar kırılgan |
 | Batch | Her blend / scissor / kamera / hedef değişimi batch'i boşaltıyordu; ışık başına blend değişimi | Yerel batch yamaları |
@@ -104,7 +104,8 @@ struct Affine2 {   // 2x3; Translate, Rotate(radians, pivot), Scale(s, pivot), o
 };
 // Color4: straight (normal) alpha, 0..255. Premultiply iç ayrıntıdır.
 constexpr Color4 Rgb(std::uint32_t rgb, std::uint8_t alpha = 255);
-Color4 WithAlpha(Color4 color, float alpha);   // rengin kendi alfasıyla çarpar
+Color4 WithAlpha(Color4 color, float alpha);   // alfayı ayarlar
+Color4 ScaleAlpha(Color4 color, float alpha);  // rengin kendi alfasıyla çarpar
 Color4 Mix(Color4 a, Color4 b, float t);
 ```
 
@@ -170,7 +171,7 @@ Durum her zaman kapsamla değişir; kapsam nesnesi `[[nodiscard]]`, kapanınca �
     auto moved = paint.Transform(Affine2::Rotate(angle, center));  // mevcut dönüşümle çarpılır
     auto clip  = paint.Clip(area);        // mevcut clip'le kesişir (dönüşümden geçer; dönmüş dönüşümde hata)
     auto faded = paint.Opacity(0.5f);     // her çizimin alfası çarpılır (ucuz; üst üste binen yerler koyulaşır)
-    auto add   = paint.Blend(Blend::Add); // Normal | Add | Multiply | Screen
+    auto add   = paint.Blending(Blend::Add); // Normal | Add | Multiply | Screen
     auto group = paint.Group({.opacity = 0.5f});  // önce geçici yüzeye çizer, sonra tek parça birleştirir
     auto into  = paint.Target(fieldSurface);      // hedef: yüzey; içeride dönüşüm/clip/opaklık sıfırdan
     auto mark  = paint.Marker("HUD");             // RenderDoc / Profiler bölge adı

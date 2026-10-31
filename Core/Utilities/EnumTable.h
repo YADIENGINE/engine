@@ -3,9 +3,8 @@
 #include <iterator>
 #include <type_traits>
 
-// Enum sırasıyla yazılmış satır tabloları: her satırın 'id' alanı kendi sırasına eşit ve tablo enum'un bütün
-// değerlerini (Id::Count) kapsar. Kullanım: static_assert(RowsInIdOrder(Rows)); yeni enum değeri satırı olmadan
-// derlenmez. Header-only.
+// Row tables in enum order: each row's 'id' equals its index and the table covers all enum values (Id::Count).
+// Usage: static_assert(RowsInIdOrder(Rows)); a new enum value without its row fails to compile. Header-only.
 template <class Rows> constexpr bool RowsInIdOrder(const Rows& rows) {
     using Id = std::remove_cvref_t<decltype(std::begin(rows)->id)>;
     std::size_t index = 0;

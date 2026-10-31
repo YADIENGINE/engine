@@ -11,7 +11,8 @@
 #include "Fx/SpeedLines.h"
 #include "Utilities/Color4.h"
 
-// Ağır çekim: alan rengine çalar, kenarlar kararır, ağır ışık izleri akar; süresinin 'fadeStart' oranından sonra söner.
+// Slow motion: tints the area, darkens the edges and streams slow light trails; fades after 'fadeStart' of its
+// duration.
 struct SlowMotionStyle {
     float fadeStart = 1.0f;
     float tintAlpha = 0.0f;
@@ -20,24 +21,24 @@ struct SlowMotionStyle {
     SpeedLineStyle lines;
 };
 
-// FxStage'in bütün efekt stilleri; tema (Theme::fx) ya da oyun verir. Ayrı sistemleri doğrudan kullanan sahneler
-// (önizleme, tanıtım) de aynı stilleri buradan okur.
+// All FxStage effect styles, supplied by the theme (Theme::fx) or game. Scenes using individual systems directly
+// (previews, showcases) read the same styles here.
 struct FxStyle {
     std::size_t particleCapacity = 0;
     std::size_t toastCapacity = 0;
     ParticleRecipeTuning particles;
     CameraEffectsSettings camera;
-    FloatingTextStyle text;      // maxWidth'i FxStage alan genişliğiyle doldurur
-    float textPopSeconds = 0.0f; // PopText girişi
+    FloatingTextStyle text;      // FxStage fills maxWidth with its area width
+    float textPopSeconds = 0.0f; // PopText entrance
     RingStyle ring;
     FlashStyle flash;
     BannerStyle banner;
     ToastStyle toast;
-    SpeedLineStyle speedLines; // Hızlanma (SetMotion)
+    SpeedLineStyle speedLines; // Motion (SetMotion)
     PulseOverlayStyle pulse;
     ShockwaveStyle shockwave;
     GlitchStyle glitch;
     SlowMotionStyle slowMotion;
-    float vignetteSize = 0.0f; // Görüş alanının kalıcı kenar karartması; 0: yok
+    float vignetteSize = 0.0f; // Persistent viewport edge darkening; 0: none
     Color4 vignetteColor{0, 0, 0, 0};
 };

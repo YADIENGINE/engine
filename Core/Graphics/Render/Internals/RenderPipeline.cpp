@@ -164,6 +164,8 @@ void RenderPipeline::EndFrame() {
     _stats.textureBinds = counters.textureBinds;
     _stats.batches = _executor.BatchesExecuted();
     _stats.glyphsRasterized = _glyphs.RasterizedThisFrame();
+    _stats.layoutHits = _layouts.HitsThisFrame();
+    _stats.layoutMisses = _layouts.MissesThisFrame();
     _stats.surfacesAllocated = _resources.SurfacesAllocatedThisFrame();
     _device.EndFrame();
     _resources.EndFrame();

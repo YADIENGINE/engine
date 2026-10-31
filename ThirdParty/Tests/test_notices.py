@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # ThirdParty
 
 from notices import (  # noqa: E402
-    NOTICES, THIRD_PARTY, check_components, compose_notices, engine_notice, load_components)
+    NOTICES, THIRD_PARTY, check_components, compose_notices, engine_notice, load_components, scoped_components)
 
 
 def copy_notices(destination: Path) -> Path:
@@ -67,6 +67,21 @@ class NoticeCheckTests(unittest.TestCase):
         self.assertNotIn("PART 2", notices)
         for component in manifest["components"]:
             self.assertIn(component["version"], notices)
+
+    def test_game_scope_omits_starter_notices(self):
+        manifest = scoped_components(load_components())
+        self.assertNotIn("Noto Sans", compose_notices(manifest, "MyGame", None))
+        self.assertTrue(all(c.get("scope") != "starter" for c in manifest["components"]))
+
+    def test_starter_scope_keeps_all_notices(self):
+        manifest = load_components()
+        self.assertEqual(scoped_components(manifest, starter=True), manifest)
+        self.assertIn("Noto Sans", compose_notices(scoped_components(manifest, starter=True), "MyGame", None))
+
+    def test_unknown_scope_is_reported(self):
+        manifest = load_components()
+        manifest["components"][0]["scope"] = "unknown"
+        self.assertTrue(any("unknown notice scope" in error for error in check_components(manifest)))
 
     def test_engine_license_opens_the_engine_part(self):
         manifest = load_components()

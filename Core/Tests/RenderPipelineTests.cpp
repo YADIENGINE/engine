@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "Graphics/Gpu/Internals/NullDevice.h"
 #include "Graphics/Render/Internals/RenderPipeline.h"
+#include "Graphics/Text/FontFace.h"
 
 using Catch::Approx;
 
@@ -32,6 +33,30 @@ TEST_CASE("Engine.RenderPipeline.LetterboxKeepsAspectOnWholePixels", "[engine][p
     CHECK(pipeline.Letterbox({801, 601}) == FloatRect{0.0f, 100.0f, 801.0f, 401.0f}); // Odd sizes: centred, whole
     CHECK(pipeline.ToCanvas({500, 200}, {1000, 400}) == Vec2{200, 100});
     CHECK_FALSE(pipeline.ToCanvas({50, 200}, {1000, 400}).has_value()); // In the letterbox
+}
+
+TEST_CASE("Engine.RenderPipeline.LayoutCountersDescribeOnlyTheCompletedFrame", "[engine][paint][render][text]") {
+    const FontFace font = FontFace::FromFile(ENGINE_TEST_FONT);
+    NullDevice device;
+    RenderPipeline pipeline(device, Settings());
+    const auto frame = [&](bool repeat) {
+        Painter& paint = pipeline.BeginFrame({400, 200}, 1.0, 0.016f);
+        paint.Text(font, "Label", {10.0f, 10.0f}, {.size = 20.0f});
+        if (repeat) paint.Text(font, "Label", {10.0f, 40.0f}, {.size = 20.0f});
+        (void)pipeline.FinishCanvas();
+        Painter& window = pipeline.BeginWindow();
+        window.Text(font, "Overlay", {10.0f, 10.0f}, {.size = 20.0f});
+        pipeline.EndFrame();
+    };
+    frame(true);
+    CHECK(pipeline.LastFrame().layoutHits == 1);
+    CHECK(pipeline.LastFrame().layoutMisses == 2);
+    frame(false);
+    CHECK(pipeline.LastFrame().layoutHits == 2);
+    CHECK(pipeline.LastFrame().layoutMisses == 0);
+    Frame(pipeline, {400, 200});
+    CHECK(pipeline.LastFrame().layoutHits == 0);
+    CHECK(pipeline.LastFrame().layoutMisses == 0);
 }
 
 TEST_CASE("Engine.RenderPipeline.CanvasFollowsTheWindowAndTheHeightLimit", "[engine][paint][render]") {

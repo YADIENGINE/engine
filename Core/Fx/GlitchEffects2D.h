@@ -5,8 +5,8 @@
 
 class Painter;
 
-// Ekran glitch'i: her 'fps'te yeniden dağılan renk şeritleri, koyu yırtıklar ve statik pikseller. Yükseklikler
-// [min, max) aralığından seçilir; yoğunluk kalan süreyle söner.
+// Screen glitch: color strips, dark tears and static pixels redistributed at 'fps'. Heights are chosen from
+// [min, max); intensity fades with remaining time.
 struct GlitchStyle {
     float fps = 24.0f;
     int bands = 0;

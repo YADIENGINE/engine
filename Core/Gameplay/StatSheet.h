@@ -4,19 +4,19 @@
 #include <cstddef>
 #include <span>
 
-// Oyuncu / birim stat'ları: her değer (temel + toplam Add + anlık bonus) × çarpım Multiply. Oyun stat kimliklerini
-// kendi enum'uyla (Id::Count sonda) ve küçük bir kural tipiyle verir; Engine oyunun stat'larını bilmez. Header-only.
+// Player / unit stats: each value is (base + sum of Add + instant bonus) × product of Multiply. The game supplies
+// stat IDs through its enum (Id::Count last) and a small rules type; the engine does not know game stats. Header-only.
 //
 //   struct MyStatRules {
-//       static float Base(MyStat stat);                // Modifier uygulanmamış temel değer
-//       static float Finalize(MyStat stat, float v);   // Son kırpma (ör. şans 0..1); gerekmiyorsa 'v'
+//       static float Base(MyStat stat);                // Base value without modifiers
+//       static float Finalize(MyStat stat, float v);   // Final clamp (e.g. chance 0..1); 'v' if unnecessary
 //   };
 //   using MyStats = StatSheet<MyStat, MyStatRules>;
 
-// Add: temele eklenir. Multiply: toplamı çarpar.
+// Add: added to the base. Multiply: multiplies the sum.
 enum class ModOp { Add, Multiply };
 
-// Bir stat'ı değiştiren tek etki (wildcard, kart, buff ...).
+// One effect modifying a stat (wildcard, card, buff ...).
 template <class Id> struct StatModifierOf {
     Id stat;
     ModOp op;
@@ -30,7 +30,7 @@ public:
 
     StatSheet() { Clear(); }
 
-    // Tüm modifier'ları kaldırır, stat'lar temel değerlerine döner.
+    // Removes all modifiers, restoring stats to their base values.
     void Clear() {
         _add.fill(0.0f);
         _multiply.fill(1.0f);
@@ -44,12 +44,12 @@ public:
         }
     }
 
-    // Anlık bonus da diğer Add etkileriyle birlikte, Multiply etkilerinden önce eklenir.
+    // The instant bonus is added alongside other Add effects, before Multiply effects.
     [[nodiscard]] float Get(Id stat, float additiveBonus = 0.0f) const {
         const float value = (Rules::Base(stat) + _add[Index(stat)] + additiveBonus) * _multiply[Index(stat)];
         return Rules::Finalize(stat, value);
     }
-    // Sayı olarak kullanılan stat (yarıçap, adet, seviye): en yakın tam sayı.
+    // A stat used as a count (radius, quantity, level): nearest integer.
     [[nodiscard]] int GetRounded(Id stat) const { return static_cast<int>(std::lround(Get(stat))); }
 
 private:

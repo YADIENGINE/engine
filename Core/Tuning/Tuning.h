@@ -1,13 +1,13 @@
 #pragma once
 #include "Tuning/TuningLive.h"
 
-// Bir tuning dosyasının değerleri (Docs/Tuning.md). T, `X.tuning.json`'dan üretilen `XTuning` struct'ıdır:
+// Values of a tuning file (Docs/Tuning.md). T is the `XTuning` struct generated from `X.tuning.json`:
 //
 //     #include "Effects/Glow.tuning.h"
 //     const auto& tuning = Tuning<GlowTuning>();
 //
-// Geliştirmede (ENGINE_TUNING_LIVE) ilk çağrı dosyayı kaydeder ve okur; dosya değişince değerler bir sonraki karenin
-// başında yenilenir. Okuma ana iş parçacığındadır. Release'de derlenmiş `constexpr` değerlerdir.
+// In development (ENGINE_TUNING_LIVE), the first call registers and reads the file; changes refresh values at the
+// start of the next frame. Reading runs on the main thread. Release uses compiled `constexpr` values.
 template <class T> [[nodiscard]] const T& Tuning() {
 #if ENGINE_TUNING_LIVE
     static TuningSlot<T> slot;

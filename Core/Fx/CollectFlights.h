@@ -4,14 +4,15 @@
 #include <vector>
 #include "Utilities/Float2.h"
 
-// Toplanan şeylerin (puan, para, egg ...) toplandığı yerden HUD sayacına uçuşları. Uçuş yolda iken miktarı sayaca
-// henüz yansımaz: sayaç 'gerçek değer - Pending(kind)' gösterir (AnimatedCounter ile). Çizim ve hedef konumu oyundadır.
-// 'Kind' sayacı seçer (ör. oyunun HUD ikon enum'u). Header-only, raylib'siz.
+// Flights of collected items (score, currency, eggs ...) from their collection point to the HUD counter. In-flight
+// amounts are not reflected yet: the counter shows 'actual value - Pending(kind)' (with AnimatedCounter). The game
+// supplies drawing and destination positions. 'Kind' selects the counter (e.g. a HUD icon enum). Header-only, no
+// raylib.
 template <class Kind> struct CollectFlight {
     Kind kind;
     Float2 from;
     int amount;
-    float age = 0.0f; // Eksi: henüz kalkmadı (gecikme)
+    float age = 0.0f; // Negative: not launched yet (delay)
 };
 
 template <class Kind> class CollectFlights {
@@ -19,14 +20,14 @@ public:
     explicit CollectFlights(float flightSeconds)
         : _flightSeconds(flightSeconds) {}
 
-    // 'delay' saniye sonra 'from'dan kalkar.
+    // Launches from 'from' after 'delay' seconds.
     void Emit(Kind kind, Float2 from, int amount, float delay) { _flights.push_back({kind, from, amount, -delay}); }
     void Update(float deltaSeconds) {
         for (auto& flight : _flights)
             flight.age += deltaSeconds;
         std::erase_if(_flights, [&](const CollectFlight<Kind>& flight) { return flight.age >= _flightSeconds; });
     }
-    // Yolda olan (sayaca henüz yansımamış) toplam miktar.
+    // Total amount in flight (not yet reflected in the counter).
     [[nodiscard]] int Pending(Kind kind) const {
         int amount = 0;
         for (const auto& flight : _flights)

@@ -4,26 +4,26 @@
 #include "Utilities/Vec2.h"
 
 struct DeviceInput;
-// Tek birincil temasın (dokunma ya da sol fare tuşu) bir frame'deki durumu.
+// State of one primary contact (touch or left mouse button) during a frame.
 struct DragPointerResult {
-    std::optional<Vec2> pressed;  // Temas bu frame'de başladı (başlangıç noktası)
-    std::optional<Vec2> position; // Temas sürüyor: şu anki konumu
-    std::optional<Vec2> origin;   // Temas sürüyor ya da bu frame'de bitti: başladığı nokta
-    std::optional<Vec2> released; // Temas bu frame'de bitti: son konumu
-    std::optional<Vec2> hover;    // Basılı temas yokken farenin hover'ı
-    bool dragging = false;        // Temas eşikten fazla kaydı (bittiği frame'de de true)
-    bool tap = false;             // Temas eşiği aşmadan bitti
-    bool cancelled = false;       // Temas iptal edildi; activation/drop ve yerel sürükleme görünüşü temizlenir.
+    std::optional<Vec2> pressed;  // Contact began this frame (starting position)
+    std::optional<Vec2> position; // Contact is ongoing: current position
+    std::optional<Vec2> origin;   // Contact is ongoing or ended this frame: starting position
+    std::optional<Vec2> released; // Contact ended this frame: final position
+    std::optional<Vec2> hover;    // Mouse hover when no contact is held
+    bool dragging = false;        // Contact moved beyond the threshold (also true in the ending frame)
+    bool tap = false;             // Contact ended without crossing the threshold
+    bool cancelled = false;       // Contact was cancelled; clear activation/drop and local drag visuals.
 };
 
-// Sürükle-bırak: tek birincil temasın başlangıcını, konumunu ve bitişini izler. Dokunuşun ürettiği sahte fare
-// olaylarını yok sayar; diğer parmaklar birincil teması bozmaz. Canvas dışına çıkan temas iptal edilir.
+// Drag and drop: tracks the start, position and end of one primary contact. Ignores synthetic mouse events from
+// touch; other fingers do not disrupt the primary contact. A contact leaving the canvas is cancelled.
 class DragPointer {
 public:
     explicit DragPointer(int threshold);
     ~DragPointer();
     [[nodiscard]] DragPointerResult Update(const DeviceInput& input);
-    // Süren teması iptal eder; bırakılışı (ve sahte fare olayları) yok sayılır.
+    // Cancels the ongoing contact; its release (and synthetic mouse events) is ignored.
     void Cancel();
 
 private:

@@ -6,7 +6,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from ThirdParty.notices import load_components
+from ThirdParty.notices import load_components, scoped_components
 from Tools.commands.release import ENGINE_LICENSE, NOTICES_FILE, package
 from Tools.errors import ToolError
 from Tools.manifest import load_manifest
@@ -49,8 +49,9 @@ class PackageTests(unittest.TestCase):
         engine = load_manifest()
         self.assertIn(f"{engine.name} {engine.version}", notices)
         self.assertIn(ENGINE_LICENSE.read_text(encoding="utf-8").strip(), notices)
-        for component in load_components()["components"]:
+        for component in scoped_components(load_components())["components"]:
             self.assertIn(component["version"], notices)
+        self.assertNotIn("Noto Sans", notices)
         self.assertIn("PART 2: MYGAME", notices)
         self.assertIn("Font: see Assets/Fonts/OFL.txt.", notices)
         self.assertTrue((target / "Credits.txt").is_file())
@@ -63,6 +64,24 @@ class PackageTests(unittest.TestCase):
         notices = (self.root / "Release" / "MyGame" / NOTICES_FILE).read_text(encoding="utf-8")
         self.assertIn("PART 1: ENGINE", notices)
         self.assertNotIn("PART 2", notices)
+
+    def test_starter_font_includes_its_notice(self):
+        (self.exe.parent / "Assets/Fonts/Starter.ttf").write_bytes(b"font")
+        package(self.project(), self.exe)
+        notices = (self.root / "Release/MyGame" / NOTICES_FILE).read_text(encoding="utf-8")
+        self.assertIn("Noto Sans", notices)
+
+    def test_hook_can_select_the_starter_font_directory(self):
+        (self.exe.parent / "Assets/Fonts/Starter.ttf").write_bytes(b"font")
+        package(self.project("def package_assets(root):\n    return ['Fonts']\n"), self.exe)
+        notices = (self.root / "Release/MyGame" / NOTICES_FILE).read_text(encoding="utf-8")
+        self.assertIn("Noto Sans", notices)
+
+    def test_hook_omitting_starter_font_omits_its_notice(self):
+        (self.exe.parent / "Assets/Fonts/Starter.ttf").write_bytes(b"font")
+        package(self.project("def package_assets(root):\n    return ['Fonts/OFL.txt']\n"), self.exe)
+        notices = (self.root / "Release/MyGame" / NOTICES_FILE).read_text(encoding="utf-8")
+        self.assertNotIn("Noto Sans", notices)
 
     def test_missing_game_notices_stop_before_touching_the_old_package(self):
         old = self.root / "Release" / "MyGame" / "old.txt"

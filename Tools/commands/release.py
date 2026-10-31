@@ -8,7 +8,7 @@ paketleme mevcut paketi silmeden durur. Sistem büyürse (imza, mağaza depot'u)
 import shutil
 from pathlib import Path
 
-from ThirdParty.notices import check_components, compose_notices, engine_notice, load_components
+from ThirdParty.notices import check_components, compose_notices, engine_notice, load_components, scoped_components
 
 from ..errors import EXIT_FAILED, ToolError
 from ..manifest import ENGINE_ROOT, load_manifest
@@ -31,7 +31,13 @@ def package(project: Project, exe: Path) -> Path:
     `package_assets(root)` hook'u seçer; hook yoksa Assets'in tamamı girer."""
     settings = project.section("release")
     name = settings.get("name", project.name)
-    manifest = load_components()
+    built_assets = exe.parent / "Assets"
+    select = project.hook("package_assets") if built_assets.is_dir() else None
+    assets = select(project.root) if select is not None else []
+    starter_font = Path("Fonts/Starter.ttf")
+    starter = (built_assets / starter_font).is_file() and (
+        select is None or any(Path(entry) == starter_font or Path(entry) in starter_font.parents for entry in assets))
+    manifest = scoped_components(load_components(), starter=starter)
     errors = check_components(manifest)
     if not ENGINE_LICENSE.is_file():
         errors.append(f"Missing engine license: {ENGINE_LICENSE}")
@@ -42,9 +48,6 @@ def package(project: Project, exe: Path) -> Path:
     errors += [f"Missing package file: {extra}" for extra in extras if not extra.is_file()]
     errors += [f"{extra}: {NOTICES_FILE} is generated; list the game's part as release.notices"
                for extra in extras if extra.name == NOTICES_FILE]
-    built_assets = exe.parent / "Assets"
-    select = project.hook("package_assets") if built_assets.is_dir() else None
-    assets = select(project.root) if select is not None else []
     errors += [f"Missing package file: {built_assets / entry}" for entry in assets
                if not (built_assets / entry).exists()]
     if errors:

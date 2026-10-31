@@ -27,8 +27,6 @@ struct LightningStyle {
 
 // Five-pointed star around 'center'.
 void DrawStar(Painter& paint, Float2 center, float outerRadius, const ShapeStyle& style);
-// Egg, wider at the bottom, 'height' tall; a 'shine' highlight on its upper left.
-void DrawEgg(Painter& paint, Float2 center, float height, Color4 color, Color4 shine);
 // Rhombus with its corners above, below and beside 'center'; 'half' is half its width and height.
 void DrawDiamond(Painter& paint, Float2 center, Float2 half, const ShapeStyle& style);
 // Regular polygon with 'sides' corners on a circle of 'radius'; the first corner points 'radians' clockwise from +x.

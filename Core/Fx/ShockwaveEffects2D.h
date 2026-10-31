@@ -6,8 +6,8 @@
 
 class Painter;
 
-// Şok dalgası: verilen erişime (0: alanın köşegeni) kadar genişleyen halka; arkasından 'trailDelay' sonra ikinci,
-// ince bir halka gelir.
+// Shockwave: a ring expanding to the given reach (0: area diagonal), followed by a second, thin ring after
+// 'trailDelay'.
 struct ShockwaveStyle {
     float duration = 1.0f;
     float trailDelay = 0.0f;

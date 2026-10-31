@@ -22,13 +22,13 @@ enum class InputKey {
 
 struct InputTouch {
     int id = 0;
-    std::optional<Vec2> position; // Canvas dışındaki dokunuşun kimliği de korunur.
+    std::optional<Vec2> position; // Touch identity is preserved outside the canvas too.
 };
 
 // One frame of normalized input. Public positions are logical canvas coordinates.
 // Scenes borrow this value as const; hosts and tests can construct it without raylib.
 struct DeviceInput {
-    // Temas/odak kaybı: bu snapshot'taki eylemler işlenmez, bekleyen gesture'lar iptal edilir.
+    // Contact/focus loss: actions in this snapshot are skipped and pending gestures are cancelled.
     bool cancelled = false;
     std::array<bool, static_cast<std::size_t>(InputKey::Count)> keysPressed{};
     std::array<bool, static_cast<std::size_t>(InputKey::Count)> keysDown{};
@@ -38,7 +38,7 @@ struct DeviceInput {
     bool mouseDown = false;
     std::optional<Vec2> mousePress; // Eligible left-button press; touch-generated mouse events are suppressed.
     std::optional<Vec2> mouseHover; // Eligible mouse movement, not a stationary hover that steals keyboard focus.
-    float wheel = 0.0f;             // Fare tekerleğinin bu frame'deki dönüşü (artı: yukarı).
+    float wheel = 0.0f;             // Mouse wheel movement this frame (positive: up).
     std::vector<InputTouch> touches;
     // Contact beginnings, not release taps. Includes independent new fingers, or an eligible mouse press.
     std::vector<Vec2> pressPoints;

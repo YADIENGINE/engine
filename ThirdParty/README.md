@@ -26,10 +26,13 @@ Components shipped in games ("Yes" in the table) enter the engine section of eve
 
 - `Notices.json`: component list. `text` is the notice text, `pin` the file and text proving the source version
   (`{version}` is replaced by the version), `license` the license file the text must contain verbatim. Paths are
-  relative to this folder.
+  relative to this folder. Optional `scope: "starter"` entries apply only when the distribution ships the starter
+  font (`Assets/Fonts/Starter.ttf`); entries without a scope apply to every application. Other scopes are rejected.
 - `Notices/<component>.txt`: first line `<name> <version> (<license>)`, then `Source:`, copyright lines, and license text;
   sublibraries bundled in the component have their own headings in the same file.
-- `notices.py`: validation and text generation; used by `ReleaseSystem/release.py` during packaging.
+- `notices.py`: validation, scope selection and text generation; used by `Tools/commands/release.py` during packaging.
+  Release selects the scope before validation and composition. Standalone notice tests validate all entries,
+  including starter dependencies. Asset hooks that omit the starter font also omit its notice.
 
 ## Adding or upgrading a dependency
 

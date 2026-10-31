@@ -1,7 +1,7 @@
 #pragma once
-// Tuning değerlerinin canlı tarafı (Docs/Tuning.md): yalnız geliştirme derlemelerinde (ENGINE_TUNING_LIVE) vardır.
-// Üretilen struct'ın alanları çalışma zamanına tanıtılır; dosya değişince Game her karenin başında PollTuning ile
-// okur ve ya hep ya hiç uygular. Release'de bu header boştur, okuma / izleme kodu derlenmez.
+// Live side of tuning values (Docs/Tuning.md): available only in development builds (ENGINE_TUNING_LIVE).
+// Generated struct fields are registered at runtime; when a file changes, Game reads it through PollTuning at
+// frame start and applies all values or none. This header is empty in Release; reading / watching code is not compiled.
 #if ENGINE_TUNING_LIVE
 #include <array>
 #include <cstddef>
@@ -33,8 +33,8 @@ template <> struct TuningTypeOf<FloatRange> {
     static constexpr TuningType Value = TuningType::Range;
 };
 
-// Derlenmiş struct'taki bir alan. Değer / liste: 'data' 'length' ardışık elemanı gösterir. Tablo: satır başına
-// sütunların kendi referansları.
+// A field in the compiled struct. Value / list: 'data' points to 'length' consecutive elements. Table: columns have
+// their own references for each row.
 struct TuningFieldRef {
     std::string_view name;
     TuningType type = TuningType::Float;
@@ -45,7 +45,7 @@ struct TuningFieldRef {
     std::vector<std::vector<TuningFieldRef>> rows;
 };
 
-// Üretilen VisitTuning'in ziyaretçisi: alanları TuningFieldRef listesine çevirir.
+// Visitor for generated VisitTuning: converts fields to a TuningFieldRef list.
 class TuningCollector {
 public:
     explicit TuningCollector(std::vector<TuningFieldRef>& fields)
@@ -71,25 +71,25 @@ private:
     std::vector<TuningFieldRef>& _fields;
 };
 
-// Applied: değerler yazıldı. Invalid: dosya geçersiz, son geçerli değerler sürer. NeedsBuild: alan eklendi / silindi /
-// tipi ya da uzunluğu değişti, derleme gerekir. Unreadable: dosya okunamadı.
+// Applied: values written. Invalid: invalid file, last valid values remain. NeedsBuild: a field was added / removed /
+// changed in type or length, requiring a build. Unreadable: file could not be read.
 enum class TuningOutcome { Applied, Invalid, NeedsBuild, Unreadable };
 
 struct TuningReport {
     std::string source; // Dosya yolu, UTF-8
     TuningOutcome outcome = TuningOutcome::Applied;
-    int line = 0; // Invalid'de hatanın satırı
+    int line = 0; // Error line for Invalid
     std::string text;
-    bool reload = false; // false: açılıştaki ilk okuma
+    bool reload = false; // false: initial startup read
 };
 
-// Metni derlenmiş alanlara karşı doğrular; her şey geçerli ve yapı aynıysa bütün değerleri yazar, yoksa hiçbirine
-// dokunmaz. Dönen raporun source / reload alanları boştur.
+// Validates text against compiled fields; writes all values if valid with matching structure, otherwise changes
+// none. The returned report's source / reload fields are empty.
 [[nodiscard]] TuningReport ApplyTuningText(std::string_view text, std::span<const TuningFieldRef> fields);
-// "dosya:satır: ..." biçiminde tek satır.
+// One line in "file:line: ..." format.
 [[nodiscard]] std::string DescribeTuningReport(const TuningReport& report);
 
-// Kayıtlı bir tuning struct'ı; Tuning<T>() TuningSlot<T> olarak kurar.
+// A registered tuning struct; Tuning<T>() creates it as TuningSlot<T>.
 class TuningBinding {
 public:
     virtual ~TuningBinding() = default;
@@ -104,14 +104,15 @@ public:
     TuningBinding& operator=(const TuningBinding&) = delete;
 };
 
-// Kaydı ekler ve dosyayı hemen bir kez okur (açılış değeri derlendiği andaki değerdir; dosya sonra değiştiyse o).
+// Registers and reads the file once immediately (initial values are compiled defaults, or file values if changed
+// since).
 void RegisterTuning(TuningBinding& binding);
 void UnregisterTuning(TuningBinding& binding);
-// Kayıtlı dosyalardan değişenleri yeniden uygular; Game her karenin başında çağırır (ana iş parçacığı). Dosya
-// durumuna en çok 200 ms'de bir bakar.
+// Reapplies changed registered files; Game calls this at each frame start (main thread). Checks file status at most
+// once every 200 ms.
 void PollTuning();
-// Raporların gideceği yer; boş fonksiyon varsayılanı (stderr) geri yükler. Varsayılan, açılıştaki başarılı okumayı
-// yazmaz.
+// Report destination; an empty function restores the default (stderr). The default does not report a successful
+// initial read.
 void SetTuningReporter(std::function<void(const TuningReport&)> reporter);
 
 template <class T> class TuningSlot final : public TuningBinding {

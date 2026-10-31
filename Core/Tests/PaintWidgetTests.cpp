@@ -196,7 +196,6 @@ TEST_CASE("Engine.Widgets.ShapesProduceGeometryAndLightningGlowFollowsQuality", 
     PaintHarness h;
     h.Begin();
     DrawStar(h.paint, {40.0f, 40.0f}, 20.0f, Fill(Cyan));
-    DrawEgg(h.paint, {100.0f, 40.0f}, 40.0f, Cyan, Dark);
     DrawDiamond(h.paint, {160.0f, 40.0f}, {10.0f, 16.0f}, {.fill = Cyan, .stroke = {2.0f, Dark}});
     DrawRotatedRect(h.paint, {200.0f, 40.0f}, {12.0f, 4.0f}, Pi / 4.0f, Fill(Cyan));
     DrawTabbedPanelOutline(h.paint, {20.0f, 100.0f, 200.0f, 80.0f}, {40.0f, 80.0f, 60.0f, 20.0f}, 2.0f, Cyan);

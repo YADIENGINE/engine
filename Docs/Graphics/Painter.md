@@ -144,7 +144,7 @@ draw text with the game's font:
 
 | Header | Contents |
 | --- | --- |
-| `Graphics/Draw/DrawUtils.h` | `DrawStar`, `DrawEgg`, `DrawDiamond`, `DrawRegularPolygon`, `DrawRotatedRect`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
+| `Graphics/Draw/DrawUtils.h` | `DrawStar`, `DrawDiamond`, `DrawRegularPolygon`, `DrawRotatedRect`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
 | `Graphics/Draw/Neon.h` | Explicit-style neon widgets and styles: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
 | `Graphics/Ui/UiDraw.h` | Themed widgets (`CurrentTheme().ui`): `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`, `DrawUiButton(Body)`, `DrawUiRoundButton`, `DrawUiKeyCap`, `DrawUiProgressBar` |
 | `Graphics/Draw/BackgroundDraw.h` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `DrawBackdrop*` with `BackdropStyle` |

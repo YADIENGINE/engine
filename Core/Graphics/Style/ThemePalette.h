@@ -1,16 +1,16 @@
 #pragma once
 #include "Utilities/Color4.h"
 
-// Temanın rol renkleri: arayüzün her yerinde aynı anlamla kullanılır. Oyuna özgü vurgu renkleri (nesne, kademe,
-// kategori renkleri) oyunun kendi paletindedir.
+// Theme role colors, used with the same meaning throughout the UI. Game-specific accent colors (objects, tiers,
+// categories) belong to the game's own palette.
 struct ThemePalette {
-    Color4 background{0, 0, 0, 255};         // Ekran zemini
-    Color4 surface{0, 0, 0, 255};            // Panel, kart, önizleme gövdesi
-    Color4 surfaceFrame{130, 130, 130, 255}; // Seçili olmayan / kilitli panel çerçevesi
-    Color4 text{255, 255, 255, 255};         // Ana yazı
-    Color4 textSoft{200, 200, 200, 255};     // İkincil yazı: koyu yüzeyde okunaklı
-    Color4 textDim{130, 130, 130, 255};      // Sönük yazı, ipucu
-    Color4 overlay{0, 0, 0, 0};              // Ekranı karartan perde
-    Color4 accent{255, 255, 255, 255};       // Birincil vurgu (onay, ilerleme)
-    Color4 warning{230, 41, 55, 255};        // Tehlike, uyarı
+    Color4 background{0, 0, 0, 255};         // Screen background
+    Color4 surface{0, 0, 0, 255};            // Panel, card, preview body
+    Color4 surfaceFrame{130, 130, 130, 255}; // Unselected / locked panel border
+    Color4 text{255, 255, 255, 255};         // Primary text
+    Color4 textSoft{200, 200, 200, 255};     // Secondary text: readable on dark surfaces
+    Color4 textDim{130, 130, 130, 255};      // Dim text, hints
+    Color4 overlay{0, 0, 0, 0};              // Screen-dimming curtain
+    Color4 accent{255, 255, 255, 255};       // Primary accent (confirmation, progress)
+    Color4 warning{230, 41, 55, 255};        // Danger, warning
 };

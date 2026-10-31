@@ -3,7 +3,7 @@
 enum class GridMenuFocus { Grid, Footer };
 enum class GridMenuMove { Unchanged, Changed, ExitAbove };
 
-// Satır/sütun gezinmesi ve tek alt düğme odağı; öğelerin anlamı ve üst bölge çağırana aittir.
+// Row/column navigation and focus on a single bottom button; item meanings and the upper region belong to the caller.
 class GridMenuSelection {
 public:
     explicit GridMenuSelection(int itemCount);

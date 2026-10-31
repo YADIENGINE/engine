@@ -4,7 +4,7 @@
 
 class Painter;
 
-// Kalp atışı gibi iki vuruşla nabız atan renk örtüsü ve kenar karartması; etkinken yoğunluk 'fadeSpeed' ile yükselir.
+// Color overlay and edge darkening pulsing twice like a heartbeat; intensity rises at 'fadeSpeed' while active.
 struct PulseOverlayStyle {
     float fadeSpeed = 1.0f;
     float period = 1.0f;

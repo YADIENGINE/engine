@@ -1,7 +1,7 @@
 #pragma once
 #include "Utilities/Float2.h"
 
-// Grid koordinatı. Trivial ve constexpr olduğu için header-only.
+// Grid coordinate. Header-only because it is trivial and constexpr.
 struct Vec2 {
     int x = 0;
     int y = 0;
@@ -31,7 +31,7 @@ constexpr Vec2 ToVec2(Direction direction) {
     return {};
 }
 
-// Sürekli koordinatta aynı nokta / birim yön (çizim için).
+// The same point / unit direction in continuous coordinates (for drawing).
 [[nodiscard]] constexpr Float2 ToFloat2(Vec2 v) { return {static_cast<float>(v.x), static_cast<float>(v.y)}; }
 [[nodiscard]] constexpr Float2 ToFloat2(Direction direction) { return ToFloat2(ToVec2(direction)); }
 
@@ -45,7 +45,7 @@ constexpr Direction Opposite(Direction direction) {
     return direction;
 }
 
-// 'direction'a göre ekranda sola / sağa dönüş (y aşağı doğru artar).
+// Screen-space left / right turn relative to 'direction' (y increases downward).
 constexpr Direction TurnLeft(Direction direction) {
     switch (direction) {
     case Direction::Up   : return Direction::Left;

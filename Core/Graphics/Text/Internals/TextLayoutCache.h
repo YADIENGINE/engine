@@ -14,6 +14,8 @@ public:
     [[nodiscard]] const TextBlock& Get(const FontFace& font, std::string_view text, const TextStyle& style);
     void EndFrame();
     [[nodiscard]] std::size_t Size() const { return _entries.size(); }
+    [[nodiscard]] std::uint32_t HitsThisFrame() const { return _hits; }
+    [[nodiscard]] std::uint32_t MissesThisFrame() const { return _misses; }
 
 private:
     // The style fields layout depends on, plus the text.
@@ -58,4 +60,6 @@ private:
 
     std::unordered_map<Key, Entry, Hash, Equal> _entries;
     std::uint64_t _frame = 0;
+    std::uint32_t _hits = 0;
+    std::uint32_t _misses = 0;
 };

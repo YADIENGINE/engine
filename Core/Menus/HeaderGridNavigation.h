@@ -5,12 +5,12 @@
 
 enum class HeaderGridFocus { Header, Grid, Empty, Footer };
 
-// Grid seçimi + üstündeki başlık satırları (filtreler), boş durum eylemi ve footer arasında odak.
-// Her başlık satırının en az bir öğesi olmalı.
+// Focus between the grid selection, header rows (filters) above it, empty-state action and footer.
+// Each header row must have at least one item.
 class HeaderGridNavigation {
 public:
     HeaderGridNavigation(int count, std::initializer_list<int> headerSizes);
-    // Her başlık satırının imleci ilk öğeye döner; odak değişmez.
+    // Resets each header row's cursor to the first item; focus is unchanged.
     void ResetHeaders();
     [[nodiscard]] int ItemCount() const { return _grid.ItemCount(); }
     void SetItemCount(int count);

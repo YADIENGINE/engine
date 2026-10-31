@@ -10,13 +10,13 @@ struct CameraShot {
     float zoom = 1.0f;
     float rotation = 0.0f; // Radians, clockwise
     float weight = 0.0f;
-    // true: yakın çekimde görünen alan arenada kalır (odak içeri çekilir); false: arena kenarındaki bir şeyi bütünüyle
-    // kadraja almak için odak arenanın dışına taşabilir.
+    // true: the visible area stays inside the arena when zoomed in (focus is pulled inward); false: focus may move
+    // outside the arena to fully frame an object at its edge.
     bool keepInArena = true;
 };
 
-// Kadraj: 'safeArea' (ör. sinema şeritlerinin arası) 'viewport' ile kesişir, kenarlardan 'padding' kadar içeride
-// kalınır; zoom [minZoom, maxZoom] aralığında.
+// Framing: intersects 'safeArea' (e.g. between cinematic bars) with 'viewport', inset by 'padding' from the edges;
+// zoom stays in [minZoom, maxZoom].
 struct CameraFraming {
     FloatRect viewport;
     FloatRect safeArea;
@@ -25,9 +25,9 @@ struct CameraFraming {
     float maxZoom = 1.0f;
 };
 
-// 'bounds'u güvenli alanın ortasına oturtan çekim (weight 1); boş 'bounds' etkisiz çekim döndürür.
+// Shot centering 'bounds' in the safe area (weight 1); empty 'bounds' returns an inactive shot.
 [[nodiscard]] CameraShot FrameCameraShot(const FloatRect& bounds, const CameraFraming& framing);
-// İki çekim arası: odak, zoom, dönüş ve ağırlık 't' (0..1) oranında.
+// Blends focus, zoom, rotation and weight between two shots by 't' (0..1).
 [[nodiscard]] CameraShot BlendShots(const CameraShot& from, const CameraShot& to, float t);
-// Sinematik temel kamera; kamera efektleri (CameraEffects2D) bunun üstüne uygulanır.
+// Base cinematic camera; camera effects (CameraEffects2D) are applied on top.
 [[nodiscard]] CameraView ShotCamera(const CameraShot& shot, const FloatRect& viewport, const FloatRect& arena);

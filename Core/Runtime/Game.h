@@ -50,29 +50,29 @@ protected:
     // The game's font (GameSettings::font) for Painter::Text; throws logic_error when the game has none.
     [[nodiscard]] const FontFace& Font() const;
     [[nodiscard]] bool HasFont() const { return _font.has_value(); }
-    // FPS sınırı, ekran modu ve pencere boyutu engine tercihidir: uygulanır ve kalıcı olur. 0: sınırsız FPS.
+    // FPS limit, display mode and window size are engine options: applied and persisted. 0: unlimited FPS.
     void SetFpsLimit(int fps);
     [[nodiscard]] int FpsLimit() const;
     void SetBorderlessFullscreen(bool enabled);
     [[nodiscard]] bool BorderlessFullscreen() const;
-    // Pencere modundaki boyut; {0, 0}: ekranı kaplayacak şekilde büyütülmüş. Kenarlıksız tam ekranda saklanır,
-    // pencereye dönünce uygulanır.
+    // Windowed size; {0, 0}: maximized to fill the screen. Stored during borderless fullscreen and applied when
+    // returning to windowed mode.
     void SetWindowSize(Vec2 size);
     [[nodiscard]] Vec2 WindowSize() const;
-    // Pencerenin bulunduğu monitörün çözünürlüğü.
+    // Resolution of the monitor containing the window.
     [[nodiscard]] Vec2 MonitorSize() const;
-    // Grafik tercihleri (çizim çözünürlüğü, VSync, FPS sayacı, efekt yoğunluğu) engine tercihidir: uygulanır ve
-    // kalıcı olur. Kayıttaki geçersiz değerler varsayılana döner.
+    // Graphics choices (render resolution, VSync, FPS counter, effect intensity) are engine options: applied and
+    // persisted. Invalid saved values fall back to defaults.
     void SetGraphics(const GraphicsSettings& graphics);
     [[nodiscard]] GraphicsSettings Graphics() const;
     // The applied effect choice; scenes hand it to their Fx (FxStage::SetQuality and the Fx classes' SetQuality).
     [[nodiscard]] const FxQuality& Effects() const { return _effects; }
 
-    // Tercih dosyası (settings.json) kurulumda yüklenir; ses, FPS, ekran ve grafik engine'indir. Oyun kendi
-    // anahtarlarını Options()'a yazar; engine sahne geçişinde ve Stop'tan sonra değişiklikleri kaydeder.
+    // The options file (settings.json) loads at setup; audio, FPS, display and graphics belong to the engine.
+    // The game writes its own keys to Options(); the engine saves changes on scene transitions and after Stop.
     [[nodiscard]] GameOptions& Options() { return _options; }
     [[nodiscard]] const GameOptions& Options() const { return _options; }
-    // Kayıt noktasını beklemeden yazar (ör. kapanmaya dayanması gereken bir seçim).
+    // Writes without waiting for a save point (e.g. a choice that must survive shutdown).
     void SaveOptions();
 
     [[nodiscard]] std::filesystem::path SavePath(const std::filesystem::path& filename) const;
@@ -88,8 +88,8 @@ protected:
     virtual void Update(float realSeconds);
     // External hosts may supply simulation time while rendering and communication continue normally.
     [[nodiscard]] virtual float FrameSeconds(float realSeconds);
-    // Painter::Time kaynağı; her kare çizilmeden önce okunur. Varsayılan gerçek zaman; host'lar
-    // duraklatılabilir kendi saatini verir.
+    // Source of Painter::Time, read before each frame is drawn. Defaults to real time; hosts supply their own
+    // pausable clock.
     [[nodiscard]] virtual double DrawSeconds() const;
     // Draws over the current scene every frame.
     virtual void Draw(Painter& paint) const;
@@ -99,17 +99,17 @@ protected:
     virtual void DrawWindow(Painter& window) const;
     // Tools only: native ImGui (ToolUi) over the finished window, after DrawWindow's drawing.
     virtual void DrawToolOverlay() const;
-    // Yükleme ekranı: Start'tan sonra sesler arka planda yüklenirken ilk sahne ilerlemeden (input ve Tick yok) çizilir,
-    // bu onun üstüne çizilir. 'seconds' ekranın açılışından beri; 'outro' yükleme bittikten sonraki kapanış (0..1).
+    // Loading screen: after Start, the first scene draws without advancing (no input or Tick) while audio loads
+    // in the background; this draws on top. 'seconds' is time since opening; 'outro' is closing progress (0..1).
     virtual void DrawLoading(Painter& paint, float seconds, float outro) const;
-    // Yükleme bittikten sonra yükleme ekranının kapanma süresi; 'loadSeconds' yüklemenin sürdüğü süre.
+    // Loading screen closing duration after loading finishes; 'loadSeconds' is the loading duration.
     [[nodiscard]] virtual float LoadingOutroSeconds(float loadSeconds) const;
     virtual void Stop();
 
 private:
     friend class EngineGodAccessor;
     void CommitScene();
-    // Yükleme bitip kapanış süresi dolana kadar yükleme ekranını çizer; pencere kapatılırsa false.
+    // Draws the loading screen until loading and its outro finish; false if the window is closed.
     bool ShowLoading();
     void RevealWindow();
     void Present() const;
@@ -133,14 +133,14 @@ private:
     bool _fixedWindow;
     bool _showFps = false;
     FxQuality _effects;
-    double _frameStart = 0.0;               // Karenin başı (GetTime); FPS sayacının iş süresi buradan ölçülür
-    float _frameSeconds = 0.0f;             // Bu karenin gerçek süresi (Painter::Delta)
-    mutable float _frameWorkSeconds = 0.0f; // Güncelleme + çizim süresi (bekleme hariç), yumuşatılmış
+    double _frameStart = 0.0;               // Frame start (GetTime); origin for the FPS counter's work duration
+    float _frameSeconds = 0.0f;             // This frame's real duration (Painter::Delta)
+    mutable float _frameWorkSeconds = 0.0f; // Smoothed update + drawing duration (excluding waits)
     std::unique_ptr<SceneManager> _sceneManager;
     bool _quitRequested = false;
     bool _paused = false;
     bool _ran = false;
-    bool _revealed = false; // Gizli açılan pencere ilk kareden sonra gösterildi
+    bool _revealed = false; // Initially hidden window was shown after the first frame
     bool _inputFocused = true;
     FrameObserver* _frameObserver = nullptr;
     FrameExecutionSettings _frameExecution;

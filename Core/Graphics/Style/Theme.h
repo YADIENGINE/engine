@@ -5,7 +5,7 @@
 #include "Graphics/Draw/Neon.h"
 #include "Graphics/Style/ThemePalette.h"
 
-// Arayüz widget'larının stilleri (Ui/UiDraw, Ui/UiButton bunları okur).
+// UI widget styles (read by Ui/UiDraw and Ui/UiButton).
 struct UiStyle {
     NeonFrameStyle frame;
     NeonTextStyle text;
@@ -18,8 +18,8 @@ struct UiStyle {
     ButtonAnimSettings buttonAnimation;
 };
 
-// Ekran arka planlarının rolleri (Ui/Backdrop bunları okur): menü ekranları, oyun alanının çevresi, önizleme /
-// galeri ekranları; tarama çizgilerinin geometrisi hepsinde ortak.
+// Screen background roles (read by Ui/Backdrop): menus, surroundings of the game field, preview / gallery screens;
+// scanline geometry is shared by all.
 struct BackdropTheme {
     BackdropStyle menu;
     BackdropStyle play;
@@ -27,10 +27,10 @@ struct BackdropTheme {
     ScanlineStyle scanlines;
 };
 
-// Oyunun görsel kimliği. Game GameSettings::theme ile seçer (varsayılan NeonArcadeTheme); engine sahneler
-// kurulmadan önce etkinleştirir. Temalı çizim (DrawUi*) her çağrıda etkin temayı okur; tek seferlik bir varyant
-// için stil kopyalanıp açık stil alan çizim fonksiyonuna (DrawNeon*, DrawArcadeButton) verilir. Fx temayı okumaz:
-// efekt sahnesi (FxStage) ve ayrı efekt sistemleri stillerini 'fx'ten açıkça alır.
+// The game's visual identity, selected through GameSettings::theme (default NeonArcadeTheme) and activated by the
+// engine before scenes are created. Themed drawing (DrawUi*) reads the active theme on each call; for a one-off
+// variant, copy the style and pass it to a drawing function taking an explicit style (DrawNeon*, DrawArcadeButton).
+// Fx does not read the theme: FxStage and individual effect systems receive styles explicitly from 'fx'.
 struct Theme {
     ThemePalette palette;
     UiStyle ui;

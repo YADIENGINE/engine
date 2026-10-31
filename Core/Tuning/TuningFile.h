@@ -10,17 +10,17 @@
 #include "Utilities/Float2.h"
 #include "Utilities/FloatRange.h"
 
-// Tuning dosyası biçimi (Docs/Tuning.md): okuma, doğrulama ve tek değer yamama. Canlı çalışma zamanı ve editör
-// kullanır. Derleme sırasındaki üretici aynı kuralları Python'da uygular (Tools/tuning/document.py); iki tarafı
-// Tools/Tests/TuningCases'teki ortak örnekler denetler. Kurallardan birini değiştiren ikisini birlikte değiştirir.
+// Tuning file format (Docs/Tuning.md): reading, validation and single-value patching. Used by the live runtime and
+// editor. The build-time generator applies the same rules in Python (Tools/tuning/document.py); shared cases in
+// Tools/Tests/TuningCases check both sides. A rule change must update both implementations together.
 
-// Tek değerli tipler; liste ve tablo sütunu bunlardan kurulur. Sıra TuningValue'nun alternatif sırasıdır.
+// Scalar types used to build lists and table columns. Order matches TuningValue's alternatives.
 enum class TuningType { Float, Int, Bool, Color, Vec2, Range };
 using TuningValue = std::variant<float, int, bool, Color4, Float2, FloatRange>;
 
 [[nodiscard]] std::string_view TuningTypeName(TuningType type);
 
-// min / max geçerlilik sınırıdır; listede her elemana, vec2 / range'de her sayıya uygulanır.
+// min / max are validity bounds; applied to each list element and each number in vec2 / range.
 struct TuningSpec {
     TuningType type = TuningType::Float;
     bool list = false;
@@ -33,8 +33,8 @@ struct TuningColumn {
     TuningSpec spec;
 };
 
-// Değer / liste alanı: spec + values (tek değerde bir eleman). Tablo: columns + rows; rows[satır][sütun] o hücrenin
-// değerleridir (liste sütununda birden çok).
+// Value / list field: spec + values (one element for a scalar). Table: columns + rows; rows[row][column] holds that
+// cell's values (multiple for a list column).
 struct TuningField {
     std::string name;
     int line = 1;
@@ -45,7 +45,7 @@ struct TuningField {
     std::vector<std::vector<std::vector<TuningValue>>> rows;
 };
 
-// Bir değerin yeri: alan; tabloda satır + sütun ('column' boş değilse); listede eleman.
+// Value location: field; row + column for a table (when 'column' is not empty); element for a list.
 struct TuningLocation {
     std::string field;
     std::size_t row = 0;
@@ -53,7 +53,7 @@ struct TuningLocation {
     std::size_t element = 0;
 };
 
-// Dosyadaki ilk hata; satır 1'den başlar.
+// First error in the file; lines start at 1.
 class TuningFormatError final : public std::runtime_error {
 public:
     TuningFormatError(int line, const std::string& text);
@@ -63,8 +63,8 @@ private:
     int _line;
 };
 
-// Doğrulanmış alanlar, dosyadaki sırayla.
+// Validated fields in file order.
 [[nodiscard]] std::vector<TuningField> ParseTuningFile(std::string_view text);
-// Geçerli 'text'te yalnız o değerin yazımını değiştirir; geri kalan bayt bayt aynı kalır. Dosya ya da sonuç geçersizse
-// (tip uyuşmazlığı, sınır dışı) TuningFormatError.
+// Changes only that value's spelling in valid 'text'; the rest stays byte-identical. Throws TuningFormatError if
+// the file or result is invalid (type mismatch, out of bounds).
 [[nodiscard]] std::string PatchTuningValue(std::string_view text, const TuningLocation& at, const TuningValue& value);

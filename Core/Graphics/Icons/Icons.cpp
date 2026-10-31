@@ -672,6 +672,22 @@ void Mask(Painter& p, Float2 c, float s, const IconStyle& style) {
          hole);
 }
 
+// Egg silhouette for the icon set; the upper half is taller than the lower half.
+void Egg(Painter& p, Float2 c, float s, Color4 color, Color4 detail) {
+    constexpr std::size_t Segments = 48;
+    constexpr float Width = 0.75f;
+    const float top = (2.0f - Width) * s;
+    const float equator = c.y + s - Width * s;
+    std::array<Float2, Segments> outline{};
+    for (std::size_t i = 0; i < outline.size(); ++i) {
+        const float angle = 2.0f * Pi * static_cast<float>(i) / static_cast<float>(Segments);
+        const float y = std::sin(angle);
+        outline[i] = {c.x + Width * s * std::cos(angle), equator + (y < 0.0f ? top : Width * s) * y};
+    }
+    p.Polygon(outline, Fill(color));
+    p.Ellipse(c + Float2{-0.35f * Width * s, -0.35f * s}, {0.25f * Width * s, 0.3f * s}, Fill(detail));
+}
+
 // Hen: round body, head, comb, beak and an egg beside it.
 void Hen(Painter& p, Float2 c, float s, const IconStyle& style) {
     const Float2 body{c.x - s * 0.2f, c.y + s * 0.2f};
@@ -685,7 +701,7 @@ void Hen(Painter& p, Float2 c, float s, const IconStyle& style) {
     Tri(p, body + Float2{-s * 0.5f, -s * 0.2f}, body + Float2{-s * 0.95f, -s * 0.6f},
         body + Float2{-s * 0.6f, s * 0.1f}, style.color);
     Disc(p, head + Float2{s * 0.06f, -s * 0.04f}, s * 0.06f, DetailOr(style));
-    DrawEgg(p, {c.x + s * 0.68f, c.y + s * 0.6f}, s * 0.7f, Faded(style, 0.8f), DetailOr(style));
+    Egg(p, {c.x + s * 0.68f, c.y + s * 0.6f}, s * 0.35f, Faded(style, 0.8f), DetailOr(style));
 }
 
 // Studded tyre: thick ring, rim and studs around it.
@@ -762,7 +778,7 @@ void DrawIcon(Painter& paint, Icon icon, Float2 center, float size, const IconSt
     const float s = size;
     switch (icon) {
     case Icon::Star       : DrawStar(p, c, s, Fill(style.color)); break;
-    case Icon::Egg        : DrawEgg(p, c, s * 2.0f, style.color, style.detail); break;
+    case Icon::Egg        : Egg(p, c, s, style.color, style.detail); break;
     case Icon::Hourglass  : Hourglass(p, c, s, style.color); break;
     case Icon::Plus       : Plus(p, c, s, style.color); break;
     case Icon::Minus      : Minus(p, c, s, style.color); break;

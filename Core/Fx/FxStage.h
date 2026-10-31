@@ -11,11 +11,11 @@
 
 class Painter;
 
-// Bir oyun alanının hazır efekt sahnesi: parçacık, uçan yazı, halka, şok dalgası, kamera (sarsıntı, vuruş, tekme,
-// hızlanma, sinematik çekim), flaş / banner / toast, nabız, glitch ve ağır çekim. Konumlar canvas koordinatındadır;
-// stiller kurulurken verilir (genelde CurrentTheme().fx). 'area' efektlerin oynadığı alan, 'viewArea' kenar
-// efektlerinin (vinyet, flaş) kapladığı görüş alanı. Ömürler Update'in zamanıyla ilerler; sarsıntı, hız çizgileri ve
-// glitch deseni çizimin saatinden (Painter::Time) türetilir.
+// Ready-made effects stage for a game field: particles, flying text, rings, shockwaves, camera (shake, punch, kick,
+// motion, cinematic shot), flash / banner / toast, pulse, glitch and slow motion. Positions use canvas coordinates;
+// styles are supplied at setup (usually CurrentTheme().fx). 'area' is where effects play; 'viewArea' is the viewport
+// covered by edge effects (vignette, flash). Lifetimes advance with Update time; shake, speed lines and glitch
+// patterns derive from the drawing clock (Painter::Time).
 class FxStage {
 public:
     FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle& style);
@@ -25,11 +25,11 @@ public:
     void Clear();
     void Burst(Float2 at, Color4 color, int count, ParticleRecipe recipe = ParticleRecipe::Soft);
     void Trail(Float2 at, Color4 color);
-    // 'facing': hareket yönü; kıvılcımlar arkaya saçılır.
+    // 'facing': movement direction; sparks scatter behind it.
     void Dash(Float2 at, Float2 facing, Color4 color);
     void Steam(Float2 at, Color4 color);
     void FloatText(Float2 at, const std::string& text, Color4 color);
-    // Patlayarak giren, 'size' boyunda uçan yazı.
+    // Flying text of 'size' with a popping entrance.
     void PopText(Float2 at, const std::string& text, Color4 color, float size);
     void Ring(Float2 at, Color4 color);
     void Toast(const std::string& text, Color4 color);
@@ -38,21 +38,21 @@ public:
     void Shake(float seconds);
     void Punch(float amount, std::optional<Float2> focus = std::nullopt);
     void Kick(Float2 direction);
-    // Her frame: hızlanma yoğunluğu (0-1); kamera öne kayar, hız çizgileri 'color' renginde akar.
+    // Each frame: motion intensity (0-1); camera shifts forward, speed lines flow in 'color'.
     void SetMotion(float intensity, Color4 color, Float2 facing);
-    // Her frame: alan 'color'a çalar, kenarlar kalp atışı gibi nabız atar (yumuşak geçiş).
+    // Each frame: tints the area toward 'color', edges pulse like a heartbeat (smooth transition).
     void SetPulse(bool active, Color4 color);
-    // 'at'tan yayılan çift halkalı şok dalgası; 'reach' > 0 ise o kadar birime, değilse bütün alana.
+    // Double-ring shockwave from 'at'; spans 'reach' units when > 0, otherwise the whole area.
     void Shockwave(Float2 at, Color4 color, float reach = 0.0f);
     void Glitch(float seconds);
     void SlowMotion(float seconds, Color4 color);
-    // Her frame: sinematik kamera çekimi; weight 0 iken normal kamera.
+    // Each frame: cinematic camera shot; weight 0 gives the normal camera.
     void SetShot(const CameraShot& shot) { _shot = shot; }
-    // Alanın kamerası: çekim + sarsıntı / vuruş / tekme / hızlanma; çizim: paint.Transform(camera.Transform()).
+    // Field camera: shot + shake / punch / kick / motion; draw with paint.Transform(camera.Transform()).
     [[nodiscard]] CameraView WorldCamera(float timeSeconds) const;
-    // Dünya kamerası içinde, alanın nesnelerinin üstüne.
+    // Inside the world camera, over the field's objects.
     void DrawWorldLayer(Painter& paint) const;
-    // Kamerasız, görüş alanının üstüne.
+    // Without the camera, over the viewport.
     void DrawOverlay(Painter& paint) const;
 
 private:

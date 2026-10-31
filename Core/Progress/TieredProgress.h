@@ -7,16 +7,16 @@
 #include <string>
 #include "Modules/Persistence/Persistence.h"
 
-// Kademeli hedeflerin (başarım, görev, rozet) kalıcı durumu: her hedefin tamamlanan kademe sayısı, ekranda görülmüş
-// kademe sayısı ve bitmiş oturumlardan taşınan ilerleme değeri. Hedefleri ve neyin sayıldığını oyun tanımlar; bu sınıf
-// sadece durumu tutar ve Persistence'e "<anahtar>.tier/seen/progress" alanlarıyla yazar. Header-only.
+// Persistent state of tiered goals (achievements, quests, badges): each goal's completed tiers, tiers seen on screen,
+// and progress carried over from finished sessions. The game defines goals and what counts; this class only stores
+// state and writes it to Persistence using "<key>.tier/seen/progress" fields. Header-only.
 template <std::size_t N> class TieredProgress {
 public:
-    // Kayıttaki ilerleme üst sınırı (float'ta tam sayı olarak kalır).
+    // Maximum saved progress (remains an exact integer in float).
     static constexpr std::int64_t MaxStoredProgress = 1 << 24;
 
-    // 'keyOf(i)': hedefin kayıt anahtarı kökü; 'tierCountOf(i)': kademe sayısı. Değerler kırpılır: kademe
-    // 0..kademe sayısı, görülme 0..kademe, ilerleme 0..MaxStoredProgress.
+    // 'keyOf(i)': goal's save key root; 'tierCountOf(i)': tier count. Values are clamped: tiers 0..tier count,
+    // seen 0..tiers, progress 0..MaxStoredProgress.
     template <class KeyOf, class TierCountOf> void Load(const Persistence& save, KeyOf keyOf, TierCountOf tierCountOf) {
         for (std::size_t i = 0; i < N; ++i) {
             const std::string key = keyOf(i);
@@ -27,7 +27,7 @@ public:
                 static_cast<float>(std::clamp<std::int64_t>(save.GetInt(key + ".progress"), 0, MaxStoredProgress));
         }
     }
-    // 'storesProgress(i)' false olan hedeflerin ilerlemesi yazılmaz (oturum içinde biten hedefler).
+    // Progress is not written for goals where 'storesProgress(i)' is false (goals completed within a session).
     template <class KeyOf, class StoresProgress>
     void Store(Persistence& save, KeyOf keyOf, StoresProgress storesProgress) const {
         for (std::size_t i = 0; i < N; ++i) {
@@ -41,13 +41,13 @@ public:
         }
     }
 
-    // Tamamlanan kademe sayısı.
+    // Number of completed tiers.
     [[nodiscard]] int Tier(std::size_t index) const { return _tiers[index]; }
     void CompleteTier(std::size_t index) { ++_tiers[index]; }
-    // Bitmiş oturumlardan taşınan ilerleme.
+    // Progress carried over from finished sessions.
     [[nodiscard]] float Progress(std::size_t index) const { return _progress[index]; }
     void SetProgress(std::size_t index, float value) { _progress[index] = value; }
-    // Henüz görülmemiş kademe sayısı.
+    // Number of unseen tiers.
     [[nodiscard]] int Unseen(std::size_t index) const { return _tiers[index] - _seen[index]; }
     [[nodiscard]] int UnseenCount() const {
         int count = 0;
@@ -55,7 +55,7 @@ public:
             count += Unseen(i);
         return count;
     }
-    // Tamamlanan bütün kademeler görüldü.
+    // All completed tiers have been seen.
     void MarkSeen() { _seen = _tiers; }
 
 private:

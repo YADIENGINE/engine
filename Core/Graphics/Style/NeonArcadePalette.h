@@ -1,7 +1,7 @@
 #pragma once
 #include "Graphics/Style/ThemePalette.h"
 
-// Neon arcade görünüşünün rol renkleri: koyu mor zemin, yeşil vurgu.
+// Role colors for the neon arcade look: dark purple background, green accent.
 inline constexpr ThemePalette NeonArcadePalette{.background = {11, 9, 26, 255},
                                                 .surface = {18, 14, 40, 250},
                                                 .surfaceFrame = {70, 66, 100, 255},

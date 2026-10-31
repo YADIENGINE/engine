@@ -3,8 +3,8 @@
 #include "Graphics/Style/Theme.h"
 #include "Utilities/MathUtils.h"
 
-// Neon arcade hazır teması: çentikli koyu paneller, parlayan çerçeveler, basınca çöken 3B butonlar. Yeni bir tema bunu
-// kopyalayıp alanlarını değiştirerek başlar.
+// Ready-made neon arcade theme: notched dark panels, glowing borders, 3D buttons that depress on press. Start a
+// new theme by copying this and changing its fields.
 inline constexpr NeonFrameStyle NeonArcadeFrame{.outerWidth = 4.5f,
                                                 .innerWidth = 2.2f,
                                                 .outerAlpha = 0.12f,
@@ -20,7 +20,7 @@ inline constexpr TextShadow NeonArcadeTextShadow{.offset = {2.0f, 2.0f}, .color 
 inline constexpr float NeonArcadeVignetteSize = 102.0f;
 inline constexpr Color4 NeonArcadeWhite{255, 255, 255, 255};
 
-// Efektler: hızlı, parlak, kısa ömürlü parçacıklar; sert ama çabuk sönen kamera darbeleri.
+// Effects: fast, bright, short-lived particles; strong but quickly fading camera punches.
 inline constexpr FxStyle NeonArcadeFx{
     .particleCapacity = 600,
     .toastCapacity = 3,
@@ -100,18 +100,18 @@ inline constexpr FxStyle NeonArcadeFx{
                    .opacity = 0.45f,
                    .whiten = 0.55f,
                    .minIntensity = 0.01f},
-    // Nabız: alan hafifçe parlar (eklemeli), kenarlar kalp atışı gibi iki vuruşla atar.
-    .pulse = {.fadeSpeed = 1.5f,    // Yoğunluk saniyede bu kadar değişir
-              .period = 0.85f,      // Bir "güm-güm"ün süresi (s)
-              .secondBeatAt = 0.2f, // İkinci vuruşun gecikmesi (s)
+    // Pulse: the area glows slightly (additive), edges beat twice like a heartbeat.
+    .pulse = {.fadeSpeed = 1.5f,    // Intensity change per second
+              .period = 0.85f,      // Duration of one double beat (s)
+              .secondBeatAt = 0.2f, // Second beat delay (s)
               .secondBeatScale = 0.6f,
-              .decay = 11.0f, // Vuruşun sönme hızı
+              .decay = 11.0f, // Beat decay rate
               .tintAlpha = 0.05f,
               .tintBeatAlpha = 0.06f,
               .vignetteSize = NeonArcadeVignetteSize,
               .vignetteAlpha = 0.18f,
               .vignetteBeatAlpha = 0.32f},
-    // Şok dalgası: alanın köşegeni (ya da verilen erişim) kadar genişler; arkasından ikinci, ince bir halka gelir.
+    // Shockwave: expands to the area diagonal (or supplied reach), followed by a second, thin ring.
     .shockwave = {.duration = 0.9f,
                   .trailDelay = 0.12f,
                   .width = 14.0f,
@@ -120,14 +120,14 @@ inline constexpr FxStyle NeonArcadeFx{
                   .trailOpacity = 0.5f,
                   .rimWidth = 2.0f,
                   .rim = NeonArcadeWhite},
-    // Glitch: her karede yeniden dağılan kırmızı / camgöbeği şeritler, koyu yırtıklar ve statik noktalar.
+    // Glitch: red / cyan strips, dark tears and static dots redistributed each frame.
     .glitch = {.fps = 24.0f,
                .bands = 9,
                .minHeight = 3,
                .maxHeight = 26,
                .tearMinHeight = 3,
                .tearMaxHeight = 29,
-               .shift = 60.0f, // px; yoğunlukla ölçeklenir
+               .shift = 60.0f, // px; scales with intensity
                .bandAlpha = 0.35f,
                .tears = 4,
                .tearAlpha = 0.75f,
@@ -152,7 +152,7 @@ inline constexpr FxStyle NeonArcadeFx{
     .vignetteSize = NeonArcadeVignetteSize,
     .vignetteColor = {0, 0, 0, 110}};
 
-// Arka planlar: aşağı kayan mor grid; menüde koyu vinyet.
+// Backgrounds: purple grid scrolling downward; dark vignette in menus.
 inline constexpr BackdropTheme NeonArcadeBackdrop{
     .menu = {.gridCell = 50,
              .gridScrollSpeed = 18.0f,
@@ -220,13 +220,13 @@ inline constexpr Theme NeonArcadeTheme{
                            .textGlow = 0.6f,
                            .padding = 28.0f,
                            .text = NeonArcadeText},
-           // Gövde yüzey renginde, çerçeve ve harf ikincil yazı renginde (yarı saydam).
+           // Body in the surface color, border and letter in the secondary text color (translucent).
            .keyCap = {.body = {18, 14, 40, 229},
                       .frame = {190, 186, 220, 178},
                       .label = {190, 186, 220, 255},
                       .roundness = 0.3f,
                       .frameWidth = 1.5f},
-           // Koyu yuva, parlayan blok blok dolum, mor neon çerçeve.
+           // Dark slot, glowing block fill, purple neon border.
            .progressBar = {.track = {12, 9, 28, 255},
                            .ghost = {255, 255, 255, 90},
                            .previewAlpha = 0.3f,

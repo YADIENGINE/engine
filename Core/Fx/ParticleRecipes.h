@@ -2,14 +2,15 @@
 #include <array>
 #include "Fx/ParticleSystem2D.h"
 
-// Hazır parçacık patlamaları. Soft: yumuşak daire + kıvılcım; Spark: kıvılcım; Sparkle: yükselen yıldız; Debris: düşen
-// kare + kıvılcım; Pixel: düşen piksel; Confetti: süzülen kare.
+// Ready-made particle bursts. Soft: soft circle + spark; Spark: spark; Sparkle: rising star; Debris: falling square
+// + spark; Pixel: falling pixel; Confetti: drifting square.
 enum class ParticleRecipe { Soft, Spark, Sparkle, Debris, Pixel, Confetti };
 
-// Tariflerin ortak ölçüleri; görünüşü tema verir (Theme::fx.particles). Hız çarpanları emission.speed'i ölçekler,
-// yerçekimleri aşağı doğru ivmedir (negatif: yükselir), oranlar ikinci katmanın ana katmana göre adedidir.
+// Shared recipe dimensions; the theme supplies appearance (Theme::fx.particles). Speed factors scale emission.speed,
+// gravities are downward acceleration (negative: rising), ratios give secondary-layer counts relative to the main
+// layer.
 struct ParticleRecipeTuning {
-    ParticleEmission emission; // Patlama katmanlarının ortak yayılımı
+    ParticleEmission emission; // Shared emission of burst layers
     float endSizeScale = 1.0f;
     float sparkTrailSeconds = 0.0f;
     float sparkThickness = 1.0f;
@@ -27,19 +28,19 @@ struct ParticleRecipeTuning {
     float pixelGravity = 0.0f;
     float confettiSpeed = 1.0f;
     float confettiGravity = 0.0f;
-    int trailCount = 0; // İz: hareket eden nesnenin arkasında kalan ışık
+    int trailCount = 0; // Trail: light left behind a moving object
     float trailSpeed = 1.0f;
-    int dashCount = 0; // Atılma: bakılan yönün tersine kıvılcım
+    int dashCount = 0; // Dash: sparks opposite the facing direction
     float dashSpeed = 1.0f;
     float dashSpread = 0.0f;
-    int steamCount = 0; // Buhar: yukarı süzülen, büyüyerek sönen pus
+    int steamCount = 0; // Steam: rising haze that grows and fades
     ParticleEmission steam;
     float steamEndSizeScale = 1.0f;
     float steamWhiten = 0.0f;
     float steamOpacity = 1.0f;
 };
 
-// Tek bir yayım katmanı; 'share' patlamada katmanın istenen adetten aldığı pay.
+// One emission layer; 'share' is the layer's portion of the requested burst count.
 struct ParticleLayer {
     float share = 0.0f;
     ParticleEmission emission;
@@ -49,12 +50,12 @@ using ParticleBurst = std::array<ParticleLayer, 2>;
 
 [[nodiscard]] ParticleBurst BurstRecipe(ParticleRecipe recipe, const ParticleRecipeTuning& tuning);
 [[nodiscard]] ParticleLayer TrailRecipe(const ParticleRecipeTuning& tuning);
-// 'direction': hareket yönü; kıvılcımlar tersine saçılır.
+// 'direction': movement direction; sparks scatter in the opposite direction.
 [[nodiscard]] ParticleLayer DashRecipe(Float2 direction, const ParticleRecipeTuning& tuning);
 [[nodiscard]] ParticleLayer SteamRecipe(const ParticleRecipeTuning& tuning);
 
-// Katmanı 'color' renginde 'count' adet yayar.
+// Emits 'count' particles of the layer in 'color'.
 void EmitLayer(ParticleSystem2D& particles, Float2 position, Color4 color, int count, const ParticleLayer& layer);
-// 'count' adedi tarifin katmanlarına paylarıyla dağıtır.
+// Distributes 'count' among the recipe's layers according to their shares.
 void EmitBurst(ParticleSystem2D& particles, Float2 position, Color4 color, int count, ParticleRecipe recipe,
                const ParticleRecipeTuning& tuning);

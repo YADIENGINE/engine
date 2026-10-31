@@ -24,7 +24,7 @@ struct GameSettings {
     AudioCatalog audio;
     AudioVolumeSettings audioVolume;
     SaveSettings save;
-    // Görsel kimlik; oyunun sahneleri ve View'ları kurulmadan önce etkinleşir (bkz. Style/Theme.h).
+    // Visual identity; activated before the game's scenes and views are created (see Style/Theme.h).
     Theme theme = NeonArcadeTheme;
     // Transient tools/offscreen runs can use their supplied settings without reading or writing preferences.
     bool persistentOptions = true;

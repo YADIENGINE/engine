@@ -1,5 +1,6 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include <cmath>
 #include <optional>
 #include <utility>
@@ -300,6 +301,33 @@ TEST_CASE("Engine.Paint.WithoutStrictChecksARotatedClipUsesItsBoundingBox", "[en
 }
 
 TEST_CASE("Engine.Paint.GlowQualityReducesOrRemovesGlows", "[engine][paint]") {
+    const auto glowBounds = [](GlowQuality quality) {
+        PaintHarness glow;
+        glow.context.frame.quality.glow = quality;
+        glow.Begin();
+        glow.paint.Glow({10.0f, 10.0f}, 5.0f, {});
+        glow.End();
+        const auto vertices = glow.Drawn();
+        REQUIRE_FALSE(vertices.empty());
+        FloatRect bounds{vertices.front().x, vertices.front().y, 0.0f, 0.0f};
+        for (const auto& vertex : vertices) {
+            bounds.x = std::min(bounds.x, vertex.x);
+            bounds.y = std::min(bounds.y, vertex.y);
+        }
+        for (const auto& vertex : vertices) {
+            bounds.width = std::max(bounds.width, vertex.x - bounds.x);
+            bounds.height = std::max(bounds.height, vertex.y - bounds.y);
+        }
+        return bounds;
+    };
+    const FloatRect full = glowBounds(GlowQuality::Full);
+    const FloatRect reduced = glowBounds(GlowQuality::Reduced);
+    CHECK(reduced.width > 0.0f);
+    CHECK(reduced.height > 0.0f);
+    CHECK(reduced.width < full.width);
+    CHECK(reduced.height < full.height);
+    CHECK(reduced.Center().x == Approx(full.Center().x));
+    CHECK(reduced.Center().y == Approx(full.Center().y));
     PaintHarness h;
     h.context.frame.quality.glow = GlowQuality::Off;
     h.Begin();
