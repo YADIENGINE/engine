@@ -4,6 +4,8 @@
 #include <array>
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "ToolUi/ToolTheme.h"
+#include "ToolUi/ToolWidgets.h"
 
 bool ViewportPanel::Toolbar(bool maximized) {
     bool toggleMaximize = false;
@@ -21,7 +23,7 @@ bool ViewportPanel::Toolbar(bool maximized) {
         ImGui::Separator();
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 10.0f);
         ImGui::SliderFloat("Zoom", &_zoom, 0.25f, 4.0f, "%.2fx");
-        EditorTooltip("Middle-drag to pan; Ctrl+wheel to zoom. Product input uses the displayed image coordinates.");
+        ToolTooltip("Middle-drag to pan; Ctrl+wheel to zoom. Product input uses the displayed image coordinates.");
         if (ImGui::MenuItem("Reset pan and zoom")) {
             _pan = {};
             _zoom = 1;
@@ -34,7 +36,7 @@ bool ViewportPanel::Toolbar(bool maximized) {
         ImGui::AlignTextToFramePadding();
         ImGui::TextDisabled("%s / %.0f%%", Modes[static_cast<std::size_t>(_mode)], _zoom * 100.0f);
         toggleMaximize = ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-        EditorTooltip("Double-click to maximize or restore the preview.");
+        ToolTooltip("Double-click to maximize or restore the preview.");
         ImGui::SameLine();
     }
     const float gap = ImGui::GetContentRegionAvail().x - maximizeWidth;
@@ -55,7 +57,7 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
     }
     result.toggleMaximize = Toolbar(maximized);
     if (metrics && snapshot.ready) {
-        ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
+        ImGui::PushFont(ToolFont(ToolFontRole::Technical), 0);
         ImGui::TextWrapped("%dx%d | #%llu | %.1f Stream FPS", image.width, image.height,
                            static_cast<unsigned long long>(image.sequence), snapshot.streamFps);
         ImGui::TextWrapped("Readback %.1f | publish %.1f | transfer %.1f ms", snapshot.captureMs, snapshot.publishMs,
@@ -143,14 +145,14 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
     } else {
         _focused = false;
         if (!snapshot.selected) {
-            EditorEmptyState("Choose a preview", "Select an item from the Catalog to start a preview.");
+            ToolEmptyState("Choose a preview", "Select an item from the Catalog to start a preview.");
         } else if (snapshot.phase == EditorPhase::Error) {
-            EditorEmptyState("Preview unavailable", "See Output for details, then retry or build and refresh.");
+            ToolEmptyState("Preview unavailable", "See Output for details, then retry or build and refresh.");
         } else if (snapshot.phase == EditorPhase::Stopped) {
-            EditorEmptyState("Preview stopped", "Start the selected preview when you are ready.");
+            ToolEmptyState("Preview stopped", "Start the selected preview when you are ready.");
         } else {
-            EditorEmptyState(snapshot.ready ? "Waiting for a frame" : EditorPhaseLabel(snapshot.phase),
-                             snapshot.status.c_str());
+            ToolEmptyState(snapshot.ready ? "Waiting for a frame" : EditorPhaseLabel(snapshot.phase),
+                           snapshot.status.c_str());
         }
         if (snapshot.selected && snapshot.capabilities.Can(EditorCommand::Open)) {
             if (ImGui::Button(snapshot.phase == EditorPhase::Error ? "Retry preview" : "Start preview"))

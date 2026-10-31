@@ -2,27 +2,24 @@
 #include <imgui.h>
 #include <vector>
 #include "Editor/Host/EditorEntryPoint.h"
+#include "Editor/Host/ProjectListLauncher.h"
 #include "Input/Internals/InputReader.h"
 #include "Platform/Internals/UserData.h"
+#include "ToolUi/ToolWindow.h"
 
 namespace {
 constexpr double SettingsSaveDelay = 0.5;
 GameSettings EditorSettings() {
-    GameSettings settings;
-    settings.applicationId = "EngineEditor";
-    settings.persistentOptions = false;
-    settings.window.title = "Engine Editor";
-    settings.window.width = 1440;
-    settings.window.height = 900;
-    settings.window.minWidth = 1000;
-    settings.window.minHeight = 650;
-    settings.window.targetFps = 60;
-    settings.window.alwaysRun = true;
-    settings.window.maximized = true;
-    settings.canvasWidth = 1280;
-    settings.canvasHeight = 720;
-    settings.background = {20, 22, 28, 255};
-    return settings;
+    WindowSettings window;
+    window.title = "Engine Editor";
+    window.width = 1440;
+    window.height = 900;
+    window.minWidth = 1000;
+    window.minHeight = 650;
+    window.targetFps = 60;
+    window.alwaysRun = true;
+    window.maximized = true;
+    return ToolGameSettings("EngineEditor", window);
 }
 } // namespace
 int RunEngineEditor(const std::filesystem::path& projectFile) {
@@ -32,7 +29,8 @@ int RunEngineEditor(const std::filesystem::path& projectFile) {
 }
 EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     : Game(EditorSettings())
-    , _controller(projectFile) {
+    , _controller(projectFile)
+    , _ui(ToolUiOptions{.docking = true}) {
     try {
         if (const auto& project = _controller.Project()) _control.emplace(project->buildDirectory);
     } catch (const std::exception& error) {
@@ -48,6 +46,8 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     }
     _observedPreferences = _preferences;
     _observedFontSize = _fontSize;
+    _launcher = LauncherFromEnvironment();
+    _workspace.OfferProjectList(!_launcher.empty());
 }
 EditorApplication::~EditorApplication() { Stop(); }
 DeviceInput EditorApplication::ReadInput() {
@@ -140,6 +140,12 @@ void EditorApplication::DrawWindow() const {
         }};
     const auto result = _workspace.Draw(_controller.Snapshot(), actions, _display.Image(), _preferences, _fontSize);
     _quit = result.quit;
+    if (result.returnToProjectList) {
+        if (auto error = StartLauncher(_launcher); error.empty())
+            _quit = true;
+        else
+            _controller.Log(error, EditorLogLevel::Error);
+    }
     const auto& io = ImGui::GetIO();
     const bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
     const bool keyboardBlocked =

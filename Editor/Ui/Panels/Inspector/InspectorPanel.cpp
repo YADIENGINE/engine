@@ -1,9 +1,9 @@
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
 #include <imgui.h>
 #include <algorithm>
-#include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/InspectorWidgets.h"
-#include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "ToolUi/ToolTheme.h"
+#include "ToolUi/ToolWidgets.h"
 
 namespace {
 constexpr std::size_t SearchThreshold = 6;
@@ -25,7 +25,7 @@ std::string ApplyHint(const PreviewParameter& parameter, const std::vector<Previ
 void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     BeginInspectorStyle();
     if (!snapshot.selected) {
-        EditorEmptyState("No preview selected", "Choose a preview in Project to see its properties and actions.");
+        ToolEmptyState("No preview selected", "Choose a preview in Project to see its properties and actions.");
         EndInspectorStyle();
         return;
     }
@@ -67,7 +67,7 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
     const bool compactSearch = visibleCount <= SearchThreshold;
     bool focusSearch = false;
     if (compactSearch) {
-        if (EditorSegment("Search", _searchVisible)) {
+        if (ToolSegment("Search", _searchVisible)) {
             _searchVisible = !_searchVisible;
             if (!_searchVisible) _search.fill('\0');
             focusSearch = _searchVisible;
@@ -76,14 +76,14 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
     }
     const bool searchShown = !compactSearch || _searchVisible;
     const bool inlineSearch =
-        !compactSearch && ImGui::GetContentRegionAvail().x >= MinimumSearchWidth * EditorUiScale() + filterWidth + gap;
+        !compactSearch && ImGui::GetContentRegionAvail().x >= MinimumSearchWidth * ToolUiScale() + filterWidth + gap;
     if (inlineSearch) {
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - filterWidth - gap);
         ImGui::InputTextWithHint("##property-search", "Search properties...", _search.data(), _search.size());
         ImGui::SameLine();
     }
-    if (EditorSegment(modifiedLabel.c_str(), _modifiedOnly)) _modifiedOnly = !_modifiedOnly;
-    EditorTooltip("Show only visible properties that differ from their defaults.");
+    if (ToolSegment(modifiedLabel.c_str(), _modifiedOnly)) _modifiedOnly = !_modifiedOnly;
+    ToolTooltip("Show only visible properties that differ from their defaults.");
     if (searchShown && !inlineSearch) {
         ImGui::SetNextItemWidth(-1);
         if (focusSearch) ImGui::SetKeyboardFocusHere();
@@ -152,7 +152,7 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
             ImGui::PopID();
         }
         if (groups.empty() && (_search.front() != '\0' || _modifiedOnly))
-            EditorEmptyState("No matching properties", "Change the search or turn off Modified only.");
+            ToolEmptyState("No matching properties", "Change the search or turn off Modified only.");
         const bool secondary =
             std::ranges::any_of(selected.actions, [](const auto& action) { return !action.primary; });
         if (secondary && InspectorSection("Actions"))

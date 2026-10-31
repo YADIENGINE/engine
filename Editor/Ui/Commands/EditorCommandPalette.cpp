@@ -6,8 +6,8 @@
 #include <string_view>
 #include <vector>
 #include "Editor/Ui/Commands/EditorCommands.h"
-#include "Editor/Ui/Style/EditorTheme.h"
-#include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "ToolUi/ToolTheme.h"
+#include "ToolUi/ToolWidgets.h"
 
 namespace {
 constexpr const char* PaletteId = "Command palette###editor.commands";
@@ -46,7 +46,7 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
         ImGui::OpenPopup(PaletteId);
     }
     const auto* viewport = ImGui::GetMainViewport();
-    const float scale = EditorUiScale();
+    const float scale = ToolUiScale();
     const float width = std::max(1.0f, std::min(640.0f * scale, viewport->Size.x - 32.0f * scale));
     ImGui::SetNextWindowPos(
         {viewport->Pos.x + viewport->Size.x * 0.5f, viewport->Pos.y + ImGui::GetFrameHeight() * 3.0f},
@@ -111,7 +111,7 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
     }
     bool execute = enter && count > 0 && entries[static_cast<std::size_t>(_selected)].enabled;
     if (ImGui::BeginChild("command-results", {0, std::min(320.0f * scale, viewport->Size.y * 0.5f)})) {
-        if (entries.empty()) EditorEmptyState("No matching commands", "Try a preview, panel or layout name.");
+        if (entries.empty()) ToolEmptyState("No matching commands", "Try a preview, panel or layout name.");
         for (int index = 0; index < count; ++index) {
             auto& entry = entries[static_cast<std::size_t>(index)];
             ImGui::PushID(index);
@@ -123,9 +123,9 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
             if (index == _selected && moved) ImGui::SetScrollHereY();
             ImGui::EndDisabled();
             if (!entry.enabled)
-                EditorTooltip(entry.reason.c_str());
+                ToolTooltip(entry.reason.c_str());
             else if (entry.shortcut && *entry.shortcut)
-                EditorTooltip(entry.shortcut);
+                ToolTooltip(entry.shortcut);
             ImGui::PopID();
         }
     }

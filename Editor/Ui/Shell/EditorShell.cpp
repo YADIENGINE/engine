@@ -4,7 +4,8 @@
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorPlaybackControls.h"
-#include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "ToolUi/ToolTheme.h"
+#include "ToolUi/ToolWidgets.h"
 
 namespace {
 constexpr ImGuiWindowFlags BarFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
@@ -45,13 +46,16 @@ void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions
 }
 } // namespace
 EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                    EditorPreferences& preferences, int& fontSize, bool maximized) const {
+                                    EditorPreferences& preferences, int& fontSize, bool maximized,
+                                    bool offerProjectList) const {
     EditorShellResult result;
     if (!ImGui::BeginMainMenuBar()) return result;
     if (ImGui::BeginMenu("File")) {
         result.focusCatalog = ImGui::MenuItem("Find preview", "Ctrl+P");
         EditorCommandMenuItem(EditorCommand::Open, snapshot, actions);
         ImGui::Separator();
+        // Only when a launcher started this editor (ENGINE_LAUNCHER; Docs/ToolsContract.md).
+        if (offerProjectList) result.returnToProjectList = ImGui::MenuItem("Back to project list");
         result.quit = ImGui::MenuItem("Exit");
         ImGui::EndMenu();
     }
@@ -98,7 +102,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
 }
 float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
                            float width) const {
-    const float scale = EditorUiScale();
+    const float scale = ToolUiScale();
     const float height = std::max(32.0f * scale, ImGui::GetFrameHeight() + 4.0f * scale);
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize({width, height});
@@ -110,7 +114,7 @@ float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions
 }
 float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreferences& preferences, ImVec2 position,
                           float width, EditorShellResult& result) const {
-    const float scale = EditorUiScale();
+    const float scale = ToolUiScale();
     const float height = std::max(24.0f * scale, ImGui::GetTextLineHeight() + 8.0f * scale);
     ImGui::SetNextWindowPos({position.x, position.y - height});
     ImGui::SetNextWindowSize({width, height});
@@ -120,17 +124,17 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
         const auto errors = snapshot.diagnostics.UnreadErrors();
         const auto output =
             (errors ? "Output (" + std::to_string(errors) + ")" : std::string("Output")) + "###editor.output-status";
-        if (EditorSegment(output.c_str(), preferences.visible[static_cast<std::size_t>(EditorPanel::Output)]))
+        if (ToolSegment(output.c_str(), preferences.visible[static_cast<std::size_t>(EditorPanel::Output)]))
             result.bottomPanel = EditorPanel::Output;
-        if (errors) EditorTooltip("Unread errors. Open Output for details.");
+        if (errors) ToolTooltip("Unread errors. Open Output for details.");
         ImGui::SameLine();
-        if (EditorSegment("Profiler", preferences.visible[static_cast<std::size_t>(EditorPanel::Profiler)]))
+        if (ToolSegment("Profiler", preferences.visible[static_cast<std::size_t>(EditorPanel::Profiler)]))
             result.bottomPanel = EditorPanel::Profiler;
         ImGui::SameLine();
         const char* phase = snapshot.profiler.busy ? (snapshot.benchmarkCancelPending ? "Canceling benchmark"
                                                                                       : snapshot.profiler.phase.c_str())
                                                    : EditorPhaseLabel(snapshot.phase);
-        EditorStatusBadge(phase, EditorPhaseColor(snapshot.profiler.busy ? EditorPhase::Starting : snapshot.phase));
+        ToolStatusBadge(phase, EditorPhaseColor(snapshot.profiler.busy ? EditorPhase::Starting : snapshot.phase));
         ImGui::SameLine();
         const auto cursor = ImGui::GetCursorScreenPos();
         const auto available = ImGui::GetContentRegionAvail();
@@ -140,7 +144,7 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
             draw->PushClipRect(cursor, {cursor.x + available.x, cursor.y + ImGui::GetTextLineHeight()}, true);
             draw->AddText(cursor, ImGui::GetColorU32(ImGuiCol_TextDisabled), snapshot.status.c_str());
             draw->PopClipRect();
-            EditorTooltip(snapshot.status.c_str());
+            ToolTooltip(snapshot.status.c_str());
         }
     }
     ImGui::End();

@@ -5,7 +5,8 @@
 | Public API | EngineEditorApi / Engine/Editor/Api | Metadata, parametre, inspection; ImGui/IPC bilmez |
 | Support | EngineEditorSupport / Internals | Proje tarifi, protokol, süreç, viewport, tercihler |
 | Worker runtime | EnginePreviewRuntime / Preview | Game tabanlı preview ve session |
-| Arayüz | EngineEditorUi / Ui | Shell, docking, paneller ve widget'lar |
+| Ortak arayüz | EngineToolUi / ToolUi | Tema, font, ImGui bağlamı, genel widget'lar (launcher ile ortak) |
+| Arayüz | EngineEditorUi / Ui | Shell, docking, paneller ve editöre özgü widget'lar |
 | Uygulama | EngineEditor / Host, Application | Windows süreçleri ve UI lifecycle |
 | Proje worker'ı | tüketicinin hedefi | Oyun View/model ve açık katalog kaydı |
 
@@ -66,6 +67,9 @@ kendisininse siler. Mesajlar satır başına bir JSON nesnesidir (UTF-8, `\n`); 
 | `{"version": 1, "command": "refresh"}` | Build & Refresh başlatır (sürüyorsa ona katılır); denemenin `{"type": "log", "level", "source", "text"}` satırları, sonra `{"type": "result", "result": "succeeded" \| "build-failed" \| "refresh-failed" \| "canceled"}` |
 | geçersiz / bilinmeyen | `{"type": "error", "text"}` |
 
+Launcher editörü `ENGINE_LAUNCHER` ile başlatırsa File menüsü "Back to project list" sunar
+(`Host/ProjectListLauncher`; [ToolsContract](../ToolsContract.md#ortam-değişkenleri)).
+
 İstemcisi `python Engine refresh`'tir ([ToolsContract](../ToolsContract.md)). Launcher ve ajan API'si yeni komutları
 aynı kapıya ekler.
 
@@ -94,15 +98,10 @@ aynı kapıya ekler.
 
 - Host Game / ImGui yaşam döngüsünü, GPU görüntü köprüsünü ve input yönlendirmesini sahiplenir; ImGui bağlamı ve
   görüntü dokusu RAII ile GL bağlamı yaşarken temizlenir.
-- `EditorUiContext` font ve ölçekleme politikasının tek sahibidir: arayüzde Windows Segoe UI + Font Awesome,
-  teknik değerlerde Consolas; sistem fontu bulunamazsa gömülü font. `EditorFontRole` atlas sırasından bağımsız
-  Ui / Technical erişimi sağlar. Varsayılan ölçek 1.25'tir; kullanıcı yüzdesi × varsayılan ölçek × DPI hem
-  fontlara hem taban stile uygulanır (%100 önceki %125 boyutundadır).
-- `Ui/Style` lacivert alt tonlu koyu yüzeyler, turkuaz vurgu, `EditorTone` işlev renkleri ve ortak ölçüleri;
-  favori / değiştirilmiş değerler amber, başarı yeşil, bilgi mavi, hata mercan tonundadır.
-  `Ui/Widgets/EditorWidgets`
-  bölüm başlığı, durum rozeti, seçim grubu ve boş durum sunumunu paylaşır. Ortak bileşenler dar genişlikte
-  metni kısaltır / sarar; bilgi tooltip ile korunur.
+- Tema, fontlar, ImGui bağlamı / ölçek ve genel widget'lar araçların ortak katmanıdır: [ToolUi](../ToolUi.md)
+  (`EngineToolUi`; launcher da kullanır). Editör bağlamı docking açık, klavye gezinmesi kapalı kurar (önizleme
+  kontrolleri klavyeyi paylaşır). Editöre özgü olanlar `Ui/Style/EditorTheme` (durum renkleri / etiketleri, `EditorGlyph`)
+  ve `Ui/Widgets/EditorWidgets`'tadır (glyph'li ikon düğmesi, önizleme parametresi).
 - `Ui/Widgets/InspectorWidgets` bütün önizlemelerin ortak Inspector sunumudur: sade açılır bölüm başlıkları,
   panel genelinde ortak etiket / değer / sıfırlama sütunları; dar panelde üstte etiket, altta tam genişlikli kontrol,
   sığan checkbox için tek satır. Değişmemiş alanlarda sıfırlama hover / odakta görünür; ayrılan yer değişmez.

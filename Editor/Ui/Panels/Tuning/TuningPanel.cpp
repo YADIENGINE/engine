@@ -7,9 +7,9 @@
 #include <optional>
 #include <vector>
 #include "Editor/Internals/Session/TuningWorkspace.h"
-#include "Editor/Ui/Style/EditorTheme.h"
-#include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "Editor/Ui/Widgets/InspectorWidgets.h"
+#include "ToolUi/ToolTheme.h"
+#include "ToolUi/ToolWidgets.h"
 
 namespace {
 constexpr float ValueWidth = 92.0f; // Tek sayı kutusu (ölçeksiz)
@@ -104,7 +104,7 @@ Edit Control(const char* id, TuningValue& value, float width) {
     std::array<char, 16> text{};
     const std::string current = ColorText(color);
     std::copy(current.begin(), current.end(), text.begin());
-    ImGui::SetNextItemWidth(ColorTextWidth * EditorUiScale());
+    ImGui::SetNextItemWidth(ColorTextWidth * ToolUiScale());
     if (!ImGui::InputText(id, text.data(), text.size(), Enter | ImGuiInputTextFlags_CharsNoBlank)) return Edit::None;
     const auto parsed = ParseColor(text.data());
     if (!parsed) return Edit::Invalid;
@@ -116,14 +116,14 @@ void Value(Editing& editing, const TuningLocation& at, const TuningSpec& spec, T
     const std::string key = Key(at);
     const bool rejected = editing.rejected == key;
     if (rejected) {
-        auto tone = EditorToneColor(EditorTone::Error);
+        auto tone = ToolToneColor(ToolTone::Error);
         tone.w = RejectedAlpha;
         ImGui::PushStyleColor(ImGuiCol_FrameBg, tone);
     }
-    const auto edit = Control(("##" + key).c_str(), value, ValueWidth * EditorUiScale());
+    const auto edit = Control(("##" + key).c_str(), value, ValueWidth * ToolUiScale());
     if (rejected) {
         ImGui::PopStyleColor();
-        if (ImGui::IsItemHovered()) EditorTooltip(editing.rejectedText.c_str());
+        if (ImGui::IsItemHovered()) ToolTooltip(editing.rejectedText.c_str());
     }
     if (edit == Edit::None) return;
     const auto problem =
@@ -144,7 +144,7 @@ void Values(Editing& editing, TuningLocation at, const TuningSpec& spec, const s
         at.element = i;
         if (i > 0) {
             ImGui::SameLine();
-            if (ImGui::GetCursorScreenPos().x + ValueWidth * EditorUiScale() > right) ImGui::NewLine();
+            if (ImGui::GetCursorScreenPos().x + ValueWidth * ToolUiScale() > right) ImGui::NewLine();
         }
         Value(editing, at, spec, values[i]);
     }
@@ -152,7 +152,7 @@ void Values(Editing& editing, TuningLocation at, const TuningSpec& spec, const s
 
 void Status(const TuningFileState& file, const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     if (file.problem) {
-        ImGui::PushStyleColor(ImGuiCol_Text, EditorToneColor(EditorTone::Error));
+        ImGui::PushStyleColor(ImGuiCol_Text, ToolToneColor(ToolTone::Error));
         ImGui::TextWrapped("Line %d: %s", file.problem->line, file.problem->text.c_str());
         ImGui::PopStyleColor();
         ImGui::TextDisabled("Showing the last valid values; fix the file to edit it here.");
@@ -165,19 +165,19 @@ void Status(const TuningFileState& file, const EditorSnapshot& snapshot, const E
     }
     const auto& worker = *file.worker;
     switch (worker.state) {
-    case PreviewTuningState::Applied: EditorStatusBadge("Live", EditorToneColor(EditorTone::Success)); break;
+    case PreviewTuningState::Applied: ToolStatusBadge("Live", ToolToneColor(ToolTone::Success)); break;
     case PreviewTuningState::Invalid:
-        EditorStatusBadge("Not applied", EditorToneColor(EditorTone::Error));
+        ToolStatusBadge("Not applied", ToolToneColor(ToolTone::Error));
         ImGui::TextWrapped("Line %d: %s", worker.line, worker.text.c_str());
         break;
     case PreviewTuningState::NeedsBuild:
-        EditorStatusBadge("Build needed", EditorToneColor(EditorTone::Warning));
+        ToolStatusBadge("Build needed", ToolToneColor(ToolTone::Warning));
         ImGui::TextWrapped("%s", worker.text.c_str());
         if (snapshot.capabilities.Can(EditorCommand::Refresh) && ImGui::Button("Build & Refresh"))
             actions.command(EditorCommand::Refresh);
         break;
     case PreviewTuningState::Unreadable:
-        EditorStatusBadge("Unreadable", EditorToneColor(EditorTone::Error));
+        ToolStatusBadge("Unreadable", ToolToneColor(ToolTone::Error));
         ImGui::TextWrapped("%s", worker.text.c_str());
         break;
     }
@@ -239,9 +239,9 @@ void TuningPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
     BeginInspectorStyle();
     const auto* files = snapshot.tuning ? &snapshot.tuning->Files() : nullptr;
     if (!files || files->empty()) {
-        EditorEmptyState("No tuning files",
-                         "Put X.tuning.json next to a class and give its target engine_add_tuning in CMake; "
-                         "the list refreshes after the next configure.");
+        ToolEmptyState("No tuning files",
+                       "Put X.tuning.json next to a class and give its target engine_add_tuning in CMake; "
+                       "the list refreshes after the next configure.");
         EndInspectorStyle();
         return;
     }
@@ -265,7 +265,7 @@ void TuningPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
     }
     if (ImGui::IsItemHovered()) {
         const auto path = selected->source.generic_u8string();
-        EditorTooltip(std::string(path.begin(), path.end()).c_str());
+        ToolTooltip(std::string(path.begin(), path.end()).c_str());
     }
     Status(*selected, snapshot, actions);
     ImGui::Separator();

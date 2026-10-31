@@ -3,32 +3,33 @@
 #include <array>
 #include <memory>
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
-#include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "Editor/Ui/Widgets/InspectorWidgets.h"
+#include "ToolUi/ToolTheme.h"
+#include "ToolUi/ToolWidgets.h"
 
-TEST_CASE("Editor.FontRoles.FollowTheRegisteredContext", "[engine-editor]") {
+TEST_CASE("ToolUi.FontRoles.FollowTheRegisteredContext", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> editor(ImGui::CreateContext(),
                                                                                  ImGui::DestroyContext);
     auto* ui = ImGui::GetIO().Fonts->AddFontDefaultVector();
     auto* technical = ImGui::GetIO().Fonts->AddFontDefaultVector();
-    RegisterEditorFonts(ui, technical);
-    CHECK(EditorFont(EditorFontRole::Ui) == ui);
-    CHECK(EditorFont(EditorFontRole::Technical) == technical);
+    RegisterToolFonts(ui, technical);
+    CHECK(ToolFont(ToolFontRole::Ui) == ui);
+    CHECK(ToolFont(ToolFontRole::Technical) == technical);
     {
         const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> fixture(ImGui::CreateContext(),
                                                                                       ImGui::DestroyContext);
         ImGui::SetCurrentContext(fixture.get());
         auto& io = ImGui::GetIO();
         io.FontDefault = io.Fonts->AddFontDefaultVector();
-        CHECK(EditorFont(EditorFontRole::Ui) == io.FontDefault);
-        CHECK(EditorFont(EditorFontRole::Technical) == io.FontDefault);
-        ClearEditorFonts();
+        CHECK(ToolFont(ToolFontRole::Ui) == io.FontDefault);
+        CHECK(ToolFont(ToolFontRole::Technical) == io.FontDefault);
+        ClearToolFonts();
     }
     ImGui::SetCurrentContext(editor.get());
-    CHECK(EditorFont(EditorFontRole::Technical) == technical);
-    ClearEditorFonts();
-    CHECK(EditorFont(EditorFontRole::Technical) == ui);
+    CHECK(ToolFont(ToolFontRole::Technical) == technical);
+    ClearToolFonts();
+    CHECK(ToolFont(ToolFontRole::Technical) == ui);
 }
 
 TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]") {
@@ -44,7 +45,7 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
     int atlasHeight = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &atlasWidth, &atlasHeight);
     io.Fonts->SetTexID(ImTextureID{1});
-    ApplyEditorTheme();
+    ApplyToolTheme();
 
     PreviewDefinition definition;
     definition.id = "inspector";
@@ -147,7 +148,7 @@ TEST_CASE("Editor.Inspector.NarrowControlsKeepReadableHeight", "[engine-editor]"
     int atlasWidth = 0, atlasHeight = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &atlasWidth, &atlasHeight);
     io.Fonts->SetTexID(ImTextureID{1});
-    ApplyEditorTheme();
+    ApplyToolTheme();
     PreviewParameter choices{"phase", "Phase", PreviewParameterKind::Choice, std::string("First phase")};
     choices.choices = {"First phase", "Second phase", "Final phase"};
     choices.choiceButtons = true;
@@ -164,7 +165,7 @@ TEST_CASE("Editor.Inspector.NarrowControlsKeepReadableHeight", "[engine-editor]"
             ImGui::Begin("Narrow controls", nullptr, ImGuiWindowFlags_NoCollapse);
             BeginInspectorStyle();
             const float line = ImGui::GetFrameHeightWithSpacing();
-            CHECK_FALSE(EditorSingleLineButton("A long action label that cannot fit in one narrow column"));
+            CHECK_FALSE(ToolSingleLineButton("A long action label that cannot fit in one narrow column"));
             CHECK(ImGui::GetItemRectSize().y <= line);
             CHECK_FALSE(EditorParameterWidget(choices, value));
             // Three choices may occupy three rows; individual labels never add extra rows.

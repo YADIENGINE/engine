@@ -4,6 +4,8 @@
 #include <ctime>
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "ToolUi/ToolTheme.h"
+#include "ToolUi/ToolWidgets.h"
 
 namespace {
 const char* SourceLabel(EditorLogSource source) {
@@ -48,10 +50,10 @@ std::string TimeLabel(std::chrono::system_clock::time_point value) {
 void SeverityFilter(EditorLogLevel level, std::size_t count, bool& value, bool sameLine) {
     const std::string text = std::string(LevelLabel(level)) + " " + std::to_string(count);
     const std::string label = text + "###severity";
-    if (sameLine) ContinueEditorToolbar(text.c_str());
+    if (sameLine) ContinueToolToolbar(text.c_str());
     ImGui::PushID(static_cast<int>(level));
-    if (EditorSegment(label.c_str(), value)) value = !value;
-    EditorTooltip(value ? "Hide this severity" : "Show this severity");
+    if (ToolSegment(label.c_str(), value)) value = !value;
+    ToolTooltip(value ? "Hide this severity" : "Show this severity");
     ImGui::PopID();
 }
 std::string DisplayLine(const EditorLogEntry& entry) {
@@ -80,9 +82,9 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         _failureView = false;
         _initialized = false;
     }
-    const bool last = EditorSegment("Last Build Try", _lastAttempt);
-    ContinueEditorToolbar("Full");
-    const bool full = EditorSegment("Full", !_lastAttempt);
+    const bool last = ToolSegment("Last Build Try", _lastAttempt);
+    ContinueToolToolbar("Full");
+    const bool full = ToolSegment("Full", !_lastAttempt);
     if (last || full) {
         _lastAttempt = last;
         _failureView = false;
@@ -91,13 +93,13 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         _anchor = 0;
         _jumpToError = false;
     }
-    ContinueEditorToolbar("Open Log");
+    ContinueToolToolbar("Open Log");
     const auto& archive = diagnostics.ArchivePath(_lastAttempt);
     std::error_code fileError;
     ImGui::BeginDisabled(archive.empty() || !std::filesystem::is_regular_file(archive, fileError));
     if (ImGui::Button("Open Log")) actions.openOutputLog(_lastAttempt);
     ImGui::EndDisabled();
-    EditorTooltip("Open the complete log file for this scope. Clear only removes the Full view's buffered lines.");
+    ToolTooltip("Open the complete log file for this scope. Clear only removes the Full view's buffered lines.");
     if (_lastAttempt) {
         if (attempt.id) {
             ImGui::TextWrapped("Attempt #%llu | Started %s | %.1f s | %s", static_cast<unsigned long long>(attempt.id),
@@ -150,11 +152,11 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         copyVisible = ImGui::MenuItem("Copy Visible", nullptr, false, !visible.empty());
         ImGui::EndPopup();
     }
-    ContinueEditorToolbar(ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x +
-                          ImGui::CalcTextSize("Follow").x);
+    ContinueToolToolbar(ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x +
+                        ImGui::CalcTextSize("Follow").x);
     ImGui::Checkbox("Follow", &preferences.followOutput);
-    EditorTooltip("Keep new output in view while at the bottom and no lines are selected.");
-    ContinueEditorToolbar(ImGui::GetFrameHeight());
+    ToolTooltip("Keep new output in view while at the bottom and no lines are selected.");
+    ContinueToolToolbar(ImGui::GetFrameHeight());
     ImGui::BeginDisabled(_lastAttempt || entries.empty());
     if (EditorIconButton("clear-output", EditorGlyph::Clear, "Clear Full view buffer (log files are preserved)")) {
         actions.clearOutput();
@@ -164,15 +166,15 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
     ImGui::EndDisabled();
     ImGui::TextWrapped("Click to select | Ctrl: add/remove | Shift: range | Double-click: text details");
     ImGui::Separator();
-    ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
+    ImGui::PushFont(ToolFont(ToolFontRole::Technical), 0);
     bool openDetail = false;
     if (ImGui::BeginChild("lines", {}, ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar)) {
         const bool follow = preferences.followOutput && _selected.empty() && !_jumpToError &&
                             ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f;
         if (visible.empty())
-            EditorEmptyState(scoped.empty() ? "No output yet" : "No matching output",
-                             scoped.empty() ? "Editor, preview, and build messages appear here."
-                                            : "Adjust the severity filters or search text.");
+            ToolEmptyState(scoped.empty() ? "No output yet" : "No matching output",
+                           scoped.empty() ? "Editor, preview, and build messages appear here."
+                                          : "Adjust the severity filters or search text.");
         int jump = -1;
         if (_jumpToError && !visible.empty()) {
             const auto error =
@@ -236,7 +238,7 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
                 draw->AddText({position.x + severityOffset, position.y},
                               ImGui::GetColorU32(EditorLevelColor(entry.level)), severity, message);
                 draw->AddText({position.x + messageOffset, position.y}, ImGui::GetColorU32(ImGuiCol_Text), message);
-                EditorTooltip(entry.text.c_str());
+                ToolTooltip(entry.text.c_str());
                 ImGui::PopID();
             }
         }

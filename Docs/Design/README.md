@@ -325,6 +325,63 @@ Launcher/
 exe hem konsol hem pencere programı olamaz: konsol exe'si çift tıklamada siyah pencere açar, pencere exe'si
 terminalde çıktı vermez ve beklenmez (AI / CI çıkış kodunu okuyamaz).
 
+**UI hazırlığı (2026-10-31):** launcher ekranlarından önce verilen kararlar.
+- **Paylaşılan araç arayüzü katmanı:** `Engine/ToolUi/`, CMake hedefi `EngineToolUi`; include'lar engine köküne göre
+  (`#include "ToolUi/ToolTheme.h"`). İçinde ImGui + rlImGui kaynakları, tema (renkler, ölçüler, `ToolTone`), fontlar
+  (Segoe UI, Consolas, Font Awesome; `ToolFont`), ImGui bağlamı + DPI / ölçek (`ToolUiContext`) ve genel widget'lar
+  (`ToolWidgets`: rozet, bölüm başlığı, boş durum, tooltip, ikon düğmesi, segment). Editöre özgü olanlar
+  (`EditorPhase` renkleri, parametre / Inspector widget'ları, playback, docking) `Editor/`'de kalır; docking bağlam
+  kurulurken seçenektir. Editör ve launcher aynı katmanı kullanır, kopya yoktur.
+  **Neden:** `Core/` oyuna giren koddur, oyunlar ImGui'ye link'lenmez; `Editor/` altında olsa launcher editörün
+  önizleme API'sini de çekerdi. `Ui` adı oyun arayüzüyle (`Core/Graphics/Ui`) karışırdı.
+- **Proje listesine dön:** launcher engine komutu çalıştırırken (Aç ya da `<engine> editor`) çocuk sürece
+  `ENGINE_LAUNCHER=<launcher'ın pencere exe'sinin tam yolu>` koyar; değişken `python Engine editor` üzerinden editöre
+  kendiliğinden geçer (ToolsContract'ta yazılı, araçlar değişmez). Editör değişken varken File menüsünde
+  "Back to project list" gösterir: o exe'yi başlatır, sonra normal kapanışla kapanır (Godot gibi). Değişken yoksa
+  (`python Engine editor`) madde görünmez.
+  **Neden:** editör launcher'ın yerini ve adını bilmez; argüman engine sözleşmesine seçenek ekletir ve araçların
+  aktarmasını gerektirirdi. Editörün kapanması açık editörün `Engine/` klasörünü kilitleyip engine güncellemesini
+  bozmasını ve iki projenin derleme sahipliğinin karışmasını önler.
+- **Arka plan işi:** çekirdekte tek tip `Job<T>` (`Core/Jobs/`): kendi thread'i, durum (`Running` / `Succeeded` /
+  `Failed` / `Canceled`), adım metni + adım sayısı ("Building editor", 2/3), birikmiş çıktı satırları (UI "şu
+  satırdan sonrakiler"i okur; son ~5000 satır tutulur), `Failed`'da tek cümlelik hata, `Cancel()` (bayrak; çalışan
+  süreç ağacı sonlanır), bitince `Result<T>`. Yıkılırken sürüyorsa iptal edip thread'i bekler. Yüzde yoktur;
+  ilerleme adım + "donmadı" göstergesi (dönen çubuk; görsel UI işi) + canlı çıktıdır. Uygulama aynı anda en çok bir
+  ön plan işi gösterir (model kuralı; tip birden fazla örneğe izin verir).
+  **Neden:** derleme süresi önceden bilinmez; Ninja'nın `[12/340]` çıktısını ayrıştırmak launcher'ı engine'in çıktı
+  biçimine bağlardı.
+- **Dil:** launcher şimdilik yalnız İngilizce; yerelleştirme ve dil seçimi yok. Metinler ekran fonksiyonlarında
+  yazılır; gerekirse sonra bir tabloya taşınır (çekirdek etkilenmez).
+  **Neden:** çekirdeğin hata mesajları ve editör İngilizce; karışık dil olmaz.
+- **Düzen ve gezinme (Godot proje yöneticisi benzeri):** bölgeler ve eylemler burada, ölçü / renk / yerleşim UI'ın.
+  Üst gezinme (ad, sekmeler, sistem durumu noktası, Settings), sekmenin içeriği, alt durum çubuğu (launcher sürümü,
+  "Developer mode"). Hepsi tek uygulama modelinde.
+  - **Sekme** (`LauncherTab`, tam ekran, her an bir tane): **Projects**: araç çubuğu (Create, Import = var olanı
+    ekle, Scan = seçilen klasörün altındaki `Project.json`'lu projeleri ekler, filtre: ad ya da yol, sıralama: Last
+    opened / Name / Path, `Settings.json`'da saklanır), tek seçimli liste (çift tıklama = Open), seçili projenin
+    sağ eylem paneli, boş durumda Create / Import. **Engines**: launcher'ın taşıdığı sürümler (sürüm, tarih,
+    notlar; kırıcılar öne çıkar, kullanan proje sayısı); developer modunda "dev (main)" satırı; salt okunur.
+  - **Sağ eylem paneli** (uygun olmayan pasif): Open; Run (`<engine> run` işi: derleme, sonra oyun kapanana kadar
+    "Running" + Stop); Show in folder; kopya projede Update engine / Repair engine, kayıtsız projede Replace engine
+    (onay paneli → iş); developer modu + git projesinde Engine git (Update from remote, Publish changes); Remove /
+    Remove missing (listeden; diske dokunmaz). Bilerek yok: Rename (proje adı engine'in kuralına bağlı), Duplicate
+    (`build/` ve kayıt kimlikleri), Tags (sonra eklenebilir).
+  - **Panel** (`LauncherPanel`, sekmenin üstünde en çok bir tane): New project, Settings, System check (ilk açılışta,
+    `Settings.json` yokken otomatik; üst gezinmedeki nokta durumu gösterir: hazır / uyarı / derlenemez), Engine
+    update onayı (notlar, kırıcı olabilir, üzerine yazılacak / silinecek dosyalar; onay işi başlatır), Job progress
+    (iş sürerken yalnız Cancel ile kapanmaz; bitince başarıda işin hedefine gider: Aç → launcher kapanır, yeni proje →
+    Projects'te seçili; hatada hata + çıktı + Back).
+  - **Onay popup'ı** (`model.pending`): "Remove from list?", developer şifresi gibi küçük onaylar; onayda modelin
+    eylemi çağrılır.
+  - Bozuk `Settings.json`: Projects'in üstünde hata + "Start with defaults"; ayrı ekran yok.
+- **Developer projesinin başlangıcı:** "dev (main)" her zaman dalın en son commit'inden başlar; dal / tag / commit
+  seçimi yok (plan dışı, gerekirse sonra).
+- **Hata ve uyarılar:** seviyeler Error / Warning / Info (`ToolTone`). Uzun iş hatası iş ekranında kalır (başlık,
+  çekirdeğin mesajı, kopyalanabilir tam çıktı, Back). Anlık eylem hatası modelde tek bildirimdir (`model.notice`:
+  seviye + başlık + mesaj; kapatılana ya da yenisi gelene kadar). Projenin kalıcı durumu kendi satırında, çözümü
+  varsa düğmesiyle (Repair, Replace engine, Remove from list). Başlığı UI yazar ("Could not add project"), altına
+  çekirdeğin mesajı aynen gelir; UI mesajı yeniden yazmaz. `MessageBox` yalnız pencere açılamazsa.
+
 ### D16. Sürümleme ve launcher reposu
 **Karar:**
 - **Numara `ANA.ARA.YAMA`:** YAMA hata düzeltmesi, ARA geriye uyumlu ekleme, ANA kırıcı değişiklik. Launcher'daki

@@ -35,6 +35,8 @@ Core/      Oyuna giren engine kodu; include kökü (#include "Runtime/Game.h"). 
   Tuning/    *.tuning.json biçimi (TuningFile), canlı okuma (TuningLive, ENGINE_TUNING_LIVE), Tuning<T>(); Docs/Tuning.md
   Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, ScoreBoard, RunTracking ...); Modules/X/Tests/
   Tests/     Engine testleri + Support/ (TempDirectory, Diagnostics)
+ToolUi/    EngineToolUi: araçların (editör, launcher) ortak ImGui katmanı: tema, font, bağlam, genel widget'lar; oyuna
+           girmez, include'ları engine köküne göre (#include "ToolUi/ToolTheme.h"). Docs/ToolUi.md
 Editor/    EngineEditor (ImGui kabuğu), preview API'si ve runtime'ı; engine_add_editor_worker. Oyuna girmez;
            include'ları engine köküne göre (#include "Editor/Api/...").
 Docs/      Kullanım ve katkı belgeleri

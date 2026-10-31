@@ -12,6 +12,7 @@
 struct EditorWorkspaceResult {
     EditorViewportInteraction interaction;
     bool quit = false;
+    bool returnToProjectList = false;
     bool cancelPreviewInput = false;
 };
 
@@ -22,6 +23,8 @@ public:
                                              int& fontSize);
     void CaptureLayout(EditorPreferences& preferences) const;
     void ReleaseInput() { _viewport.ReleaseFocus(); }
+    // File menu offers "Back to project list" (the host knows the launcher).
+    void OfferProjectList(bool offer) { _offerProjectList = offer; }
 
 private:
     void SetMaximized(bool maximized, EditorPreferences& preferences);
@@ -41,6 +44,7 @@ private:
     std::string _restoreLayout;
     bool _initialized = false;
     bool _maximized = false;
+    bool _offerProjectList = false;
     bool _pendingToggle = false;
     bool _focusCatalog = false;
     std::optional<EditorPanel> _focusBottom;

@@ -5,14 +5,15 @@
 #include <string>
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Style/EditorTheme.h"
-#include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "ToolUi/ToolTheme.h"
+#include "ToolUi/ToolWidgets.h"
 
 namespace {
 void StatisticsRow(const char* name, const Profiler::Statistics& stats) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(name);
-    ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
+    ImGui::PushFont(ToolFont(ToolFontRole::Technical), 0);
     for (const double value : {stats.mean, stats.median, stats.p95, stats.p99, stats.maximum}) {
         ImGui::TableNextColumn();
         if (stats.count)
@@ -58,7 +59,7 @@ void Comparison(const Profiler::Comparison& comparison) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(label);
-            ImGui::PushFont(EditorFont(EditorFontRole::Technical), 0);
+            ImGui::PushFont(ToolFont(ToolFontRole::Technical), 0);
             ImGui::TableNextColumn();
             ImGui::Text("%.3f", a);
             ImGui::TableNextColumn();
@@ -103,8 +104,8 @@ void ProfilerPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& 
                        : profiler.busy         ? EditorPhase::Building
                        : snapshot.ready        ? EditorPhase::Ready
                                                : EditorPhase::Stopped;
-    EditorStatusBadge(profiler.phase.c_str(), EditorPhaseColor(phase));
-    ContinueEditorToolbar("GPU timer supported");
+    ToolStatusBadge(profiler.phase.c_str(), EditorPhaseColor(phase));
+    ContinueToolToolbar("GPU timer supported");
     ImGui::AlignTextToFramePadding();
     ImGui::TextDisabled("%s", profiler.gpuSupported ? "GPU timer supported" : "GPU unavailable / inactive");
     if (!profiler.error.empty()) {
@@ -141,7 +142,7 @@ void ProfilerPanel::Live(const EditorSnapshot& snapshot, const EditorUiActions& 
     if (snapshot.profiler.liveSummary)
         Summary(*snapshot.profiler.liveSummary);
     else
-        EditorEmptyState("No live samples", "Enable Record live while a preview is running to inspect timing.");
+        ToolEmptyState("No live samples", "Enable Record live while a preview is running to inspect timing.");
     if (snapshot.profiler.live) Frames(*snapshot.profiler.live);
 }
 void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
@@ -158,7 +159,7 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
         }
         ImGui::EndCombo();
     }
-    if (EditorSectionHeader("Advanced benchmark settings", false)) {
+    if (ToolSectionHeader("Advanced benchmark settings", false)) {
         ImGui::InputInt("Warmup frames", &_recipe.warmupFrames);
         ImGui::InputInt("Measured frames", &_recipe.measureFrames);
         ImGui::InputInt("Pairs", &_recipe.pairs);
@@ -166,13 +167,13 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
     ImGui::BeginDisabled(!snapshot.ready);
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted("Glow override");
-    EditorTooltip("Apply a preview glow quality override. The highlight shows the last override requested here.");
+    ToolTooltip("Apply a preview glow quality override. The highlight shows the last override requested here.");
     constexpr std::array GlowLabels{"Full", "Reduced", "Off"};
     constexpr std::array GlowCommands{EditorProfilerCommand::GlowFull, EditorProfilerCommand::GlowReduced,
                                       EditorProfilerCommand::GlowOff};
     for (int i = 0; i < static_cast<int>(GlowLabels.size()); ++i) {
-        ContinueEditorToolbar(GlowLabels[static_cast<std::size_t>(i)]);
-        if (EditorSegment(GlowLabels[static_cast<std::size_t>(i)], _glow == i)) {
+        ContinueToolToolbar(GlowLabels[static_cast<std::size_t>(i)]);
+        if (ToolSegment(GlowLabels[static_cast<std::size_t>(i)], _glow == i)) {
             _glow = i;
             actions.profiler(GlowCommands[static_cast<std::size_t>(i)], {}, {});
         }
@@ -261,7 +262,7 @@ void ProfilerPanel::Compare(const EditorSnapshot& snapshot, const EditorUiAction
     ImGui::BeginDisabled(snapshot.profiler.busy);
     ImGui::BeginDisabled(!snapshot.profiler.result);
     if (ImGui::Button("Save Baseline")) actions.profiler(EditorProfilerCommand::SaveBaseline, {}, _filename.data());
-    ContinueEditorToolbar("Export");
+    ContinueToolToolbar("Export");
     if (ImGui::Button("Export")) ImGui::OpenPopup("export-report");
     if (ImGui::BeginPopup("export-report")) {
         if (ImGui::MenuItem("JSON")) actions.profiler(EditorProfilerCommand::ExportJson, {}, _filename.data());

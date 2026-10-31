@@ -5,6 +5,7 @@
 #include <string>
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "ToolUi/ToolWidgets.h"
 
 namespace {
 constexpr float SpeedWidthInFonts = 4.5f;
@@ -39,8 +40,8 @@ void PlaybackSpeed(const EditorSnapshot& snapshot, const EditorUiActions& action
         }
     }
     ImGui::EndDisabled();
-    EditorTooltip(snapshot.capabilities.playbackEnabled ? "Playback speed"
-                                                        : snapshot.capabilities.playbackDisabledReason);
+    ToolTooltip(snapshot.capabilities.playbackEnabled ? "Playback speed"
+                                                      : snapshot.capabilities.playbackDisabledReason);
 }
 } // namespace
 

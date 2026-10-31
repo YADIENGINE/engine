@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <imgui.h>
 #include <memory>
-#include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
+#include "ToolUi/ToolTheme.h"
 
 TEST_CASE("Editor.Workspace.BuildFailurePopupIsOncePerFailedAttempt", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
@@ -18,7 +18,7 @@ TEST_CASE("Editor.Workspace.BuildFailurePopupIsOncePerFailedAttempt", "[engine-e
     int width = 0, height = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     io.Fonts->SetTexID(ImTextureID{1});
-    ApplyEditorTheme();
+    ApplyToolTheme();
     const std::vector<PreviewDefinition> catalog;
     const PreviewParameters parameters;
     EditorDiagnostics diagnostics;
@@ -69,7 +69,7 @@ TEST_CASE("Editor.Workspace.ShortcutsCancelPreviewInputAndPaletteOwnsKeys", "[en
     int width = 0, height = 0;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     io.Fonts->SetTexID(ImTextureID{1});
-    ApplyEditorTheme();
+    ApplyToolTheme();
     const std::vector<PreviewDefinition> catalog;
     const PreviewParameters parameters;
     const EditorDiagnostics diagnostics;

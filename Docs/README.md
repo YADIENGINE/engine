@@ -2,7 +2,8 @@
 
 Bu klasör C++20 / raylib tabanlı engine ile oyun geliştirenler içindir. Engine'in adı ve sürümü
 `EngineManifest.json`'dadır; belgeler adı yazmaz. Engine ayrı bir repodur;
-oyunlar onu `Engine/` submodule'ü olarak alır. Oyuna giren engine kodu `Core/`, editör `Editor/`, dış bağımlılıklar
+oyunlar onu `Engine/` submodule'ü olarak alır. Oyuna giren engine kodu `Core/`, editör `Editor/`, araçların ortak
+ImGui katmanı `ToolUi/` ([ToolUi](ToolUi.md)), dış bağımlılıklar
 `ThirdParty/`, belgeler `Docs/`, build/editör/test araçları ve yeni proje şablonu `Tools/` altındadır; komutlar `python Engine <komut>`
 ([ToolsContract](ToolsContract.md)), yeni proje `python Engine new` ile kurulur.
 Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları oyunun kendi belgelerinde kalır.

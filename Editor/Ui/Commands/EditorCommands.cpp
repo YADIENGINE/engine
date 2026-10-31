@@ -2,6 +2,8 @@
 #include <string>
 #include "Editor/Application/EditorCommandState.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "ToolUi/ToolTheme.h"
+#include "ToolUi/ToolWidgets.h"
 
 namespace {
 const EditorCommandInfo& CommandInfo(EditorCommand command) {
@@ -17,11 +19,11 @@ EditorGlyph CommandGlyph(EditorCommand command, const EditorSnapshot& snapshot) 
 }
 ImVec4 CommandColor(EditorCommand command, const EditorSnapshot& snapshot) {
     switch (command) {
-    case EditorCommand::Open   : return EditorToneColor(EditorTone::Accent);
-    case EditorCommand::Stop   : return EditorToneColor(EditorTone::Error);
-    case EditorCommand::Pause  : return EditorToneColor(snapshot.paused ? EditorTone::Success : EditorTone::Warning);
-    case EditorCommand::Refresh: return EditorToneColor(EditorTone::Information);
-    case EditorCommand::Cancel : return EditorToneColor(EditorTone::Warning);
+    case EditorCommand::Open   : return ToolToneColor(ToolTone::Accent);
+    case EditorCommand::Stop   : return ToolToneColor(ToolTone::Error);
+    case EditorCommand::Pause  : return ToolToneColor(snapshot.paused ? ToolTone::Success : ToolTone::Warning);
+    case EditorCommand::Refresh: return ToolToneColor(ToolTone::Information);
+    case EditorCommand::Cancel : return ToolToneColor(ToolTone::Warning);
     case EditorCommand::Reset  :
     case EditorCommand::Step   :
     case EditorCommand::Count  : return ImGui::GetStyleColorVec4(ImGuiCol_Text);
@@ -80,7 +82,7 @@ void EditorCommandMenuItem(EditorCommand command, const EditorSnapshot& snapshot
                         snapshot.capabilities.Can(command)) &&
         actions.command)
         actions.command(command);
-    EditorTooltip(CommandTooltip(command, snapshot).c_str());
+    ToolTooltip(CommandTooltip(command, snapshot).c_str());
 }
 
 bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, const EditorUiActions& actions,
@@ -97,7 +99,7 @@ bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, 
         if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Header));
         pressed = ImGui::Button(label.c_str());
         if (active) ImGui::PopStyleColor();
-        EditorTooltip(tooltip.c_str());
+        ToolTooltip(tooltip.c_str());
     } else {
         pressed = EditorIconButton("command", CommandGlyph(command, snapshot), tooltip.c_str(), active);
     }

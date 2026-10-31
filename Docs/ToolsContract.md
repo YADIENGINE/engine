@@ -72,6 +72,12 @@ Kurallar `Tools/manifest.py` `note_problems`'tadır; `Tools/Tests/test_manifest.
 sürüm artırılamaz. Launcher'ın kullanıcı kopyasında yanında üretilmiş `EngineCopy.json` (kaynak tag / commit, dosya
 özetleri) durur; engine araçları onu okumaz.
 
+## Ortam değişkenleri
+
+| Değişken | Okuyan | Anlamı |
+| --- | --- | --- |
+| `ENGINE_LAUNCHER` | editör | Editörü başlatan launcher'ın pencere exe'sinin tam yolu. Varsa File menüsünde "Back to project list" görünür: editör o exe'yi başlatıp kapanır. Launcher her engine komutuna koyar; araçlar dokunmadan editöre geçer |
+
 ## Ayrılmış ad
 
 `<engine> launcher ...` launcher'ın kendi komutlarıdır; launcher geri kalan her argümanı projenin engine'ine aynen

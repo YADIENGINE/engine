@@ -256,7 +256,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         _viewport.ReleaseFocus();
         result.cancelPreviewInput = true;
     }
-    auto menu = _shell.Menu(snapshot, actions, preferences, fontSize, _maximized);
+    auto menu = _shell.Menu(snapshot, actions, preferences, fontSize, _maximized, _offerProjectList);
     result.cancelPreviewInput |= Shortcuts(snapshot, actions, menu);
     if (_palette.Draw(snapshot, actions, preferences, _maximized, menu)) {
         result.cancelPreviewInput = true;
@@ -292,6 +292,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     DockHost(workspacePosition, workspaceSize, _resetDock, preferences);
     _resetDock = false;
     result.quit = menu.quit;
+    result.returnToProjectList = menu.returnToProjectList;
     if (_maximized) {
         ImGui::SetNextWindowPos(workspacePosition);
         ImGui::SetNextWindowSize(workspaceSize);

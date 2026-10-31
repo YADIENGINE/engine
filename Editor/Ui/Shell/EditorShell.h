@@ -6,6 +6,7 @@
 
 struct EditorShellResult {
     bool quit = false;
+    bool returnToProjectList = false;
     bool toggleMaximize = false;
     bool openCommands = false;
     bool focusCatalog = false;
@@ -17,7 +18,8 @@ struct EditorShellResult {
 class EditorShell {
 public:
     [[nodiscard]] EditorShellResult Menu(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                         EditorPreferences& preferences, int& fontSize, bool maximized) const;
+                                         EditorPreferences& preferences, int& fontSize, bool maximized,
+                                         bool offerProjectList) const;
     [[nodiscard]] float Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
                                 float width) const;
     [[nodiscard]] float Status(const EditorSnapshot& snapshot, const EditorPreferences& preferences, ImVec2 position,

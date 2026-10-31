@@ -107,16 +107,6 @@ endif()
 
 
 if(ENGINE_BUILD_EDITOR)
-    set(editor_imgui_SOURCE_DIR "${ENGINE_THIRD_PARTY_DIR}/imgui")
-    set(editor_rlimgui_SOURCE_DIR "${ENGINE_THIRD_PARTY_DIR}/rlImGui")
-    add_library(EngineEditorImGui STATIC
-        "${editor_imgui_SOURCE_DIR}/imgui.cpp" "${editor_imgui_SOURCE_DIR}/imgui_draw.cpp"
-        "${editor_imgui_SOURCE_DIR}/imgui_tables.cpp" "${editor_imgui_SOURCE_DIR}/imgui_widgets.cpp"
-        "${editor_rlimgui_SOURCE_DIR}/rlImGui.cpp")
-    target_include_directories(EngineEditorImGui SYSTEM PUBLIC "${editor_imgui_SOURCE_DIR}" "${editor_rlimgui_SOURCE_DIR}")
-    # The host owns font selection and icon merging, including DPI and rasterization settings.
-    target_compile_definitions(EngineEditorImGui PRIVATE NO_FONT_AWESOME)
-    target_link_libraries(EngineEditorImGui PRIVATE Engine)
     add_library(EngineEditorUi STATIC
         Ui/Commands/EditorCommands.cpp
         Ui/Commands/EditorCommandPalette.cpp
@@ -132,10 +122,10 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Panels/Tuning/TuningPanel.cpp
         Ui/Panels/Output/OutputPanel.cpp)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)
-    target_link_libraries(EngineEditorUi PUBLIC EngineEditorImGui EngineEditorSupport)
+    target_link_libraries(EngineEditorUi PUBLIC EngineToolUi EngineEditorSupport)
     engine_warnings(EngineEditorUi)
-    add_executable(EngineEditor WIN32 Host/Main.cpp Host/EditorApplication.cpp Host/EditorUiContext.cpp
-        Host/PreviewDisplay.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp
+    add_executable(EngineEditor WIN32 Host/Main.cpp Host/EditorApplication.cpp Host/PreviewDisplay.cpp
+        Host/ProjectListLauncher.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp
         Application/EditorControlService.cpp Application/PreviewBuild.cpp Application/PreviewWorker.cpp)
     # Resolve raylib's CloseWindow/ShowCursor before the transitive user32 import library.
     target_link_libraries(EngineEditor PRIVATE Engine EngineEditorSupport EngineEditorUi raylib shell32)

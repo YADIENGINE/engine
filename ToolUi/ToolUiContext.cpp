@@ -1,4 +1,4 @@
-#include "Editor/Host/EditorUiContext.h"
+#include "ToolUi/ToolUiContext.h"
 #include <extras/FA6FreeSolidFontData.h>
 #include <extras/IconsFontAwesome6.h>
 #include <imgui.h>
@@ -9,7 +9,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
-#include "Editor/Ui/Style/EditorTheme.h"
+#include "ToolUi/ToolTheme.h"
 
 namespace {
 constexpr float BaseFontSize = 14.0f;
@@ -17,7 +17,7 @@ constexpr float BaseIconSize = 13.0f;
 constexpr float DefaultFontPercent = 100.0f;
 constexpr float DefaultInterfaceScale = 1.25f;
 
-ImFont* LoadEditorSystemFont(ImFontAtlas& atlas, const wchar_t* fileName) {
+ImFont* LoadSystemFont(ImFontAtlas& atlas, const wchar_t* fileName) {
     ImFontConfig config;
     config.SizePixels = BaseFontSize;
     config.PixelSnapH = false;
@@ -35,9 +35,9 @@ ImFont* LoadEditorSystemFont(ImFontAtlas& atlas, const wchar_t* fileName) {
     }
     return atlas.AddFontDefaultVector(&config);
 }
-void LoadEditorFonts(ImFontAtlas& atlas) {
+void LoadToolFonts(ImFontAtlas& atlas) {
     atlas.Clear();
-    auto* ui = LoadEditorSystemFont(atlas, L"segoeui.ttf");
+    auto* ui = LoadSystemFont(atlas, L"segoeui.ttf");
 
     static constexpr std::array<ImWchar, 3> IconRange{ICON_MIN_FA, ICON_MAX_FA, 0};
     ImFontConfig icons;
@@ -45,8 +45,8 @@ void LoadEditorFonts(ImFontAtlas& atlas) {
     icons.PixelSnapH = false;
     atlas.AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, static_cast<int>(fa_solid_900_compressed_size),
                                          BaseIconSize, &icons, IconRange.data());
-    auto* technical = LoadEditorSystemFont(atlas, L"consola.ttf");
-    RegisterEditorFonts(ui, technical);
+    auto* technical = LoadSystemFont(atlas, L"consola.ttf");
+    RegisterToolFonts(ui, technical);
 }
 void FilterFontTextures(const ImDrawList*, const ImDrawCmd*) {
     const auto* textures = ImGui::GetDrawData()->Textures;
@@ -59,26 +59,26 @@ void FilterFontTextures(const ImDrawList*, const ImDrawCmd*) {
     }
 }
 } // namespace
-EditorUiContext::EditorUiContext() {
+ToolUiContext::ToolUiContext(const ToolUiOptions& options) {
     rlImGuiBeginInitImGui();
-    LoadEditorFonts(*ImGui::GetIO().Fonts);
+    LoadToolFonts(*ImGui::GetIO().Fonts);
     rlImGuiEndInitImGui();
-    ApplyEditorTheme();
+    ApplyToolTheme();
     _baseStyle = ImGui::GetStyle();
     auto& io = ImGui::GetIO();
     io.IniFilename = nullptr;
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    // Preview controls share the keyboard with ImGui; keep editor navigation mouse-driven.
     io.ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_ViewportsEnable);
+    if (options.docking) io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    if (options.keyboardNavigation) io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
 }
-EditorUiContext::~EditorUiContext() {
-    ClearEditorFonts();
+ToolUiContext::~ToolUiContext() {
+    ClearToolFonts();
     rlImGuiShutdown();
 }
-void EditorUiContext::BeginFrame(int fontSize) {
+void ToolUiContext::BeginFrame(int scalePercent) {
     const float dpi = std::max(1.0f, GetWindowScaleDPI().x);
-    const float fontScale = static_cast<float>(fontSize) / DefaultFontPercent * DefaultInterfaceScale;
+    const float fontScale = static_cast<float>(scalePercent) / DefaultFontPercent * DefaultInterfaceScale;
     const float scale = dpi * fontScale;
     auto& style = ImGui::GetStyle();
     if (scale != _scale) {
@@ -97,4 +97,4 @@ void EditorUiContext::BeginFrame(int fontSize) {
     // newly created/replaced atlases are filtered before their first draw, without a backend fork.
     ImGui::GetBackgroundDrawList()->AddCallback(FilterFontTextures, nullptr);
 }
-void EditorUiContext::EndFrame() const { rlImGuiEnd(); }
+void ToolUiContext::EndFrame() const { rlImGuiEnd(); }
