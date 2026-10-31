@@ -42,8 +42,37 @@ Ayarlar `Project.json`'dadır ([ProjectSetup](ProjectSetup.md)).
 }
 ```
 
-Proje kökünde `Project.json` yoksa `project` `null`'dır. Launcher bir projeyi açmadan önce `info`'yu çağırır ve
-`toolsContract`'ı denetler.
+Proje kökünde `Project.json` yoksa `project` `null`'dır.
+
+## Manifest
+
+`EngineManifest.json` engine'in kimliğidir ve sözleşmenin parçasıdır: launcher proje listesini doldururken her
+proje için Python başlatmaz, `Engine/EngineManifest.json`'u doğrudan okur ve `toolsContract`'ı denetler.
+
+```json
+{
+  "name": "...", "version": "0.1.0", "toolsContract": 1,
+  "repository": "https://.../engine.git",
+  "notes": [ { "version": "0.1.0", "date": "2026-10-31", "changes": ["..."],
+               "breaking": [ { "change": "...", "migrate": "..." } ] } ]
+}
+```
+
+| Alan | Anlamı |
+| --- | --- |
+| `version` | `ANA.ARA.YAMA`. 0.x'te ARA, 1.0'dan sonra ANA artışı kırıcı değişikliktir: önceki sürümle derlenen bir proje elle değişiklik ister |
+| `toolsContract` | bu belgenin sürümü |
+| `repository` | engine reposunun adresi (developer modunda submodule kaynağı) |
+| `notes` | birikimli güncelleme notları, en yeni üstte; ilki `version`'dır. `breaking` kırıcı değişiklikler ve nasıl uyulacağı (`migrate`); yoksa boş liste. Launcher güncellemede aradaki bütün notları gösterir |
+
+Kurallar `Tools/manifest.py` `note_problems`'tadır; `Tools/Tests/test_manifest.py` gerçek manifest'i denetler, notsuz
+sürüm artırılamaz. Launcher'ın kullanıcı kopyasında yanında üretilmiş `EngineCopy.json` (kaynak tag / commit, dosya
+özetleri) durur; engine araçları onu okumaz.
+
+## Ayrılmış ad
+
+`<engine> launcher ...` launcher'ın kendi komutlarıdır; launcher geri kalan her argümanı projenin engine'ine aynen
+devreder. Engine `launcher` adında komut eklemez (`test_cli.py` denetler).
 
 ## Çıkış kodları
 
@@ -59,6 +88,7 @@ Hata mesajı stderr'e `error: ...` olarak yazılır.
 ## Sözleşmeyi değiştirmek
 
 - Yeni komut, yeni seçenek ya da `info`'ya yeni alan eklemek sözleşmeyi bozmaz.
-- Komut / seçenek silmek ya da anlamını değiştirmek, çıkış kodlarını ya da `info` alanlarını değiştirmek sözleşmeyi
-  bozar: `EngineManifest.json` `toolsContract` bir artar ve bu belge aynı committe güncellenir.
+- Yeni manifest alanı eklemek bozmaz.
+- Komut / seçenek silmek ya da anlamını değiştirmek, çıkış kodlarını, `info` ya da manifest alanlarını değiştirmek
+  sözleşmeyi bozar: `EngineManifest.json` `toolsContract` bir artar ve bu belge aynı committe güncellenir.
 - Sözleşme testi: `Tools/Tests/test_cli.py` (komut ve seçenek listesi, `info`, çıkış kodları).

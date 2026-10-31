@@ -84,8 +84,40 @@ Durum: kabul edildi.
 geliştiren, oyunda çalışırken engine'i düzenleyip değişikliği iki yöne akıtmak ister. Salt okunur kural kopyaların
 sessizce ayrışmasını ve AI'ın engine'i "düzeltmesini" önler. Durum: kabul edildi.
 
-**Açık ayrıntılar:** developer modunun nasıl açıldığı (erişim kontrolü); kullanıcı modundaki launcher'ın
-submodule'lü bir projeyi açınca ne yapacağı; manifest'in adı ve biçimi.
+**Kopyanın kaydı (2026-10-31):** iki dosya.
+- `Engine/EngineManifest.json` engine reposundakiyle aynıdır (elle yazılan kimlik ve notlar); içe aktarma ona
+  dokunmaz.
+- `Engine/EngineCopy.json` içe aktarma betiğinin ürettiği kayıttır:
+  `{"format": 1, "source": {"tag": "v0.2.0", "commit": "<tam sha>"}, "files": {"<engine köküne göre yol>": "sha256:<hex>"}}`.
+  `files` kopyadaki her dosyayı (manifest dahil, `EngineCopy.json` hariç) kapsar; yollar `/` ayraçlı, sıralı.
+- Kopyaya giren her dosya tag'deki haliyle bayt bayt aynıdır; ayıklanan geliştirme dosyaları (D14) hiç girmez.
+- **Projenin türünü dosyalar söyler:** `Engine/EngineCopy.json` varsa kullanıcı modu kopyası; yoksa ve `Engine/` bir
+  git submodule'üyse developer projesi. Launcher bunun için ayrı bir proje ayarı tutmaz.
+
+**Neden:** elle yazılan kimlik ile makinenin ürettiği uzun liste ayrı kalır; manifest kendi özetini taşıyamazdı,
+ayrı kayıtta o da denetlenir; engine araçları manifest'i değişmeden okur.
+
+**Developer modunun açılması (2026-10-31):** Ayarlar'da şifreyle.
+- Launcher reposunda şifrenin kendisi değil, ondan türetilen özet durur (`DeveloperAccess.json`: PBKDF2-SHA256,
+  salt, tur sayısı ≥ 600 000, özet); launcher derlenirken içine gömülür. Özeti launcher reposunun betiği üretir;
+  şifre değiştirmek = betiği yeniden çalıştırmak. Launcher Windows'un kripto API'siyle (BCrypt) denetler.
+- Doğru şifre modu açar ve `Settings.json`'a yazar; kapatmak şifre istemez.
+- Şifre yanlışlıkla / meraktan açılmaya karşı bir kapıdır, güvenlik değildir: asıl koruma engine reposuna GitHub
+  erişimidir (submodule işleri onsuz yapılamaz).
+- Engine reposunun adresi `EngineManifest.json`'da `"repository"` alanıdır (yeni alan; engine'in kendi adresi).
+  Developer modunda Sistem kontrolüne git maddesi eklenir (git kurulu mu, `user.name` / `user.email` ayarlı mı).
+
+**Projenin türü ve launcher'ın modu (2026-10-31):** proje her zaman açılır; derleme, çalıştırma, editör ve CLI her
+türde çalışır (iş projenin `Engine/Tools`'unda, D7). Türe göre değişen sadece engine'e dokunan işlemlerdir:
+
+| Tür (dosyalardan) | Salt okunur denetimi | Engine güncellemesi |
+| --- | --- | --- |
+| Kopya (`Engine/EngineCopy.json`) | var | `Engines/`'dan, üzerine yazılacaklar listelenip onayla (her iki modda) |
+| Submodule (`Engine/` git submodule'ü) | yok (engine git'te) | kullanıcı modunda yok, satırda "engine git ile yönetiliyor" notu; developer modunda submodule işleri |
+| Kayıtsız (ikisi de değil) | yok; "engine'in kaynağı bilinmiyor" uyarısı | "`Engines/`'daki bir sürümle değiştir": üzerine yazılacak her şey listelenir, onayla yapılır |
+
+Mod launcher'ın yetkisini belirler, projenin türünü değil. Kullanıcı modu hiçbir zaman git çalıştırmaz (D14) ve
+submodule'ü kopyaya çevirmeyi önermez (kullanıcının reposunu değiştirirdi).
 
 ### D5. Ajan API'si: v1 sonrası, stratejik öncelik
 **Karar:** AI ajanının değişikliğin sonucunu kendisi görmesini sağlayan komutlar (önizlemeyi PNG'ye render,
@@ -104,6 +136,19 @@ Ayrıntı: [Agent API](AgentApi.md). Durum: kabul edildi (ertelendi).
 ikinci bir derleme aynı `build/` klasöründe çakışır ve Windows çalışan worker exe'sinin üzerine yazdırmaz
 (`LNK1104`). Derlemenin tek sahibi olunca AI'ın derlemesi editörde kendiliğinden yenilenir; AI art arda birçok
 dosya değiştirip tek seferde derler. Durum: kabul edildi.
+
+**Uygulama (2026-10-31):**
+- Aşama 1 bulgusu: oyun (`build/`) ile editör (`build/<editör>`) ayrı klasörlerde derlenir; çakışma yalnız editörün
+  worker build'indeydi ve snapshot'larla bitti. "Editöre ilet" işini engine'in `refresh` komutu yapar; launcher
+  derleme mantığı yazmaz ve editörün açık olup olmadığına bakmaz, sadece devreder.
+- **Launcher'ın kendi komutları `<engine> launcher <iş>` altındadır** (ör. `system-check`, `projects`, `version`);
+  geri kalan her argüman projenin engine'ine aynen devredilir (`<engine> build --release` → `python Engine build
+  --release`). Launcher engine komutlarını tanımaz; engine'e eklenen komut launcher güncellenmeden çalışır. Engine
+  sözleşmesi `launcher` adında komut eklemez (ToolsContract).
+- Proje bulma: `--project KÖK` verilmişse o; yoksa çalışma klasöründen yukarı doğru ilk `Project.json`'lu klasör.
+- Launcher, projeyi çalıştırmadan önce `Engine/EngineManifest.json`'u doğrudan okur (`toolsContract`, sürüm); her
+  satır için Python başlatmaz. Manifest'in alanları bu yüzden sözleşmenin parçasıdır (ToolsContract). Projenin
+  `toolsContract`'ı launcher'ın bildiklerinden değilse komut çalışmaz, "launcher'ı güncelle" der (çıkış 2).
 
 ### D7. Python: launcher gömülü Python taşır, araçlar projenin engine'inden çalışır
 **Karar:** Launcher resmi gömülebilir (embeddable) Python'u yanında taşır; kullanıcı Python kurmaz. Derleme,
@@ -128,6 +173,15 @@ launcher onu taşımaz; açılışta sistem kontrolü yapar (`vswhere`), eksikse
 göçü engine'i ürünleştirirken riski ikiye katlardı. Bedel ilk kurulumda bir kerelik büyük indirmedir.
 **İleride:** kurulumsuz deneyim için launcher ile dağıtılan llvm-mingw (Clang) değerlendirilebilir; derleme
 mantığı `Engine/Tools`'ta olduğu için (D7) bu kapı açık kalır. Şu an öncelik değil.
+
+**Launcher'ın araçları (2026-10-31):** gömülü Python (resmi embeddable), CMake ve Ninja launcher reposuna ikili
+olarak girmez. Repoda sadece bir kilit dosyası durur (araç başına sabit sürüm, indirme adresi, SHA-256); launcher
+reposunun betiği bunları git'e girmeyen bir klasöre indirir ve özet tutmazsa durur. İnternet sadece launcher'ı derleyen
+makinede bir kez gerekir; son kullanıcı hiçbir şey indirmez (kurulum exe'si araçları taşır). Yükseltme = kilit
+dosyasında bir satır. Çalışırken launcher kendi `cmake` / `ninja` klasörlerini devrettiği alt sürecin `PATH`'inin
+başına ekler; engine araçları onları zaten `PATH`'ten aradığı için engine değişmez. Sistem kontrolü araçları
+kilit dosyasındaki sürümlere göre doğrular. **Neden:** ikililer git geçmişinde kalıcı olarak birikirdi (her
+yükseltmede ~55 MB); özet, indirilenin tam o dosya olduğunu garanti eder. Durum: kabul edildi.
 
 **Bağımlılıklar engine içinde:** raylib, nlohmann_json, ImGui, rlImGui ve Catch2'nin kaynakları `FetchContent`
 ile internetten inmez, engine reposunda durur (ör. `Engine/ThirdParty/`). Derleme internet istemez, D4'teki
@@ -199,9 +253,16 @@ odaklı iş akışının (goal 3) parçası. Durum: kabul edildi (v1 sonu).
   Developer modunda git D4'teki gibi.
 - `p.py` / `editor.py` şablondan kalkar; yerlerine `<engine>` komutu (D6 / D7). `.vscode/` D12 ile (v1 sonu) gelir.
 
-**Açık ayrıntılar:** engine reposunun kendi `CLAUDE.md`'si engine geliştirme kurallarıdır (engine'de commit,
-push ...); kullanıcı modundaki kopyaya girerse oradaki AI'ı yanıltır. Kopyadan çıkarılmalı. Developer modunda
-şablonun AI dosyası üretip üretmeyeceği. Durum: kabul edildi.
+**Geliştirme dosyalarının ayıklanması (2026-10-31):** neyin kopyaya girmeyeceğini engine reposu bilir: engine'in
+`.gitattributes`'unda `export-ignore` satırları (`CLAUDE.md`: engine geliştirme kuralları, kopyada AI'ı engine'i
+düzenlemeye yöneltir; `Docs/Design/`: planlar, AI bugünkü özellik sanabilir). İçe aktarma kopyayı `git archive <tag>`
+ile alır: `.git` ve `export-ignore` dosyaları gelmez, çalışma ağacındaki değişiklik sızamaz, içerik tag'le kesin
+aynıdır (temiz ağaç denetimi gereksizleşir; tag'in var olması ve origin'e push'lanmış olması denetlenir). Yeni
+ayıklanacak dosya = engine'de bir satır. Engine testleri (`Core/Tests`, `Tools/Tests` ...) kopyada kalır.
+
+**Developer modunda AI dosyası (2026-10-31):** yok; şablon iki modda aynıdır. Developer projesinde `Engine/` tam
+submodule olduğu için engine'in kendi `CLAUDE.md`'si oradadır; projenin AI dosyasını geliştirici yazar.
+Durum: kabul edildi.
 
 ### D15. Launcher
 **Karar (yapı):** Launcher engine'den ayrı bir üründür ve en üst katmandır; engine sürümlerini içinde taşır:
@@ -233,8 +294,8 @@ Launcher/
   başlat, launcher kapanır. Editör menüsünde "Proje listesine dön".
 - Engine güncellemesi her zaman kullanıcı onayıyla yapılır.
 - Launcher editörle aynı ImGui arayüz katmanını ve temayı kullanır; yeni UI sistemi yazılmaz.
-- **Developer modu kapısı:** engine reposuna GitHub erişimi. Submodule için bu izin zaten şarttır; ayrı şifre /
-  anahtar sistemi yok.
+- **Developer modu kapısı:** Ayarlar'da şifre (ayrıntı D4); asıl koruma engine reposuna GitHub erişimidir,
+  submodule işleri onsuz yapılamaz.
 
 **Karar (dağıtım ve kurulum):**
 - **Tek exe dağıtılır** (`<Engine>-<sürüm>.exe`, ~100–150 MB): launcher + gömülü paket (Python, CMake, Ninja,
@@ -250,31 +311,83 @@ Launcher/
   sadece o sürümle yeni proje kurulamaz. Otomatik güncelleme v1 sonrası.
 - Kod imzalama yok; SmartScreen uyarısı kabul edilir.
 
-Durum: kabul edildi.
+**Karar (dil ve giriş noktaları, 2026-10-31):**
+- Launcher C++20'dir. Bütün iş (ayarlar, proje listesi, proje işlemleri, modlar, manifest denetimi, sistem
+  kontrolü, CLI'ın devri) **headless bir çekirdek kütüphanededir** ve testleri vardır; arayüz onu çağırır.
+- Aynı adlı iki ince giriş: `<engine>.exe` pencere programıdır (çift tıklama, kısayol: proje listesi),
+  `<engine>.com` konsol programıdır (terminalde `<engine> build` yazınca Windows `.com`'u önce seçer; pencere açmaz,
+  çıktı ve çıkış kodu terminale gelir). Visual Studio'nun `devenv.exe` / `devenv.com` modeli. `.com` ImGui'ye
+  link'lenmez. Dağıtım yine tek kurulum exe'sidir.
+- Python launcher'da sadece iki yerde: projenin `Engine/Tools`'u (D7) ve launcher reposunun geliştirici betikleri
+  (içe aktarma); son kullanıcının çalıştırdığı launcher kodu C++'tır.
+
+**Neden:** Arayüz editörün C++ / ImGui katmanıdır (yukarıda); çekirdek de C++ olunca dil köprüsü olmaz. Tek bir
+exe hem konsol hem pencere programı olamaz: konsol exe'si çift tıklamada siyah pencere açar, pencere exe'si
+terminalde çıktı vermez ve beklenmez (AI / CI çıkış kodunu okuyamaz).
 
 ### D16. Sürümleme ve launcher reposu
 **Karar:**
 - **Numara `ANA.ARA.YAMA`:** YAMA hata düzeltmesi, ARA geriye uyumlu ekleme, ANA kırıcı değişiklik. Launcher'daki
   klasörler `Engine<ANA.ARA>` adını taşır ve o serinin son yamasını içerir.
 - **Ayrı repolar:** engine ve launcher ayrı repolarda, ayrı geliştirilir. Bir engine sürümü stabil sayıldığında
-  launcher reposuna kopyalanır (`Engines/Engine<ANA.ARA>/`); launcher reposunda 2–3 sürüm durur. Engine launcher
-  reposunda geliştirilmez, kopyalar orada düzenlenmez. Exe'ler istendiğinde release olarak yayınlanır.
+  launcher reposuna kopyalanır (`Engines/Engine<ANA.ARA>/`); launcher reposunda 2–3 sürüm durur. Kopyalar orada
+  düzenlenmez; aktif engine launcher reposunda submodule'dür (aşağıda). Exe'ler istendiğinde release olarak yayınlanır.
 - **Güncelleme notları engine manifest'indedir** (sürümün yanında); launcher güncellemeden önce gösterir. Ayrıntılı
   tasarım sonra.
 - Developer modundaki projeler sürüm takip etmez, engine reposunun dalını takip eder.
 
-**Ertelenen:** sözleşmenin (kırıcı sayılan değişikliğin) tanımı; ilk yayının 1.0.0 mı 0.x mi olacağı.
+**Launcher reposu (2026-10-31):** `YADIEN`, yerelde `C:\Users\WWW\Desktop\YADIEN` (oyun reposunun içinde değil,
+yanında); GitHub'da private `yagizdkurt/YADIEN`. Repo adı ürünün görünen adı değildir: launcher kodu ve belgeleri adı
+yine sabit yazmaz, gösterdiği ad içe aktarılan engine manifest'inden gelir.
+
+**Aktif engine launcher reposunda submodule (2026-10-31):**
+```
+<launcher reposu>/
+  Engine/        submodule: engine reposu, main (aktif geliştirme; iki adımlı akışla düzenlenir)
+  Engines/
+    Engine0.1/   stable kopyalar (tag'lerden git archive; hiç düzenlenmez)
+```
+- Launcher kendini `Engine/` submodule'üne karşı derler (en yeni stable kopyaya değil): UI'ın engine'den
+  istediği değişiklik tag / içe aktarma beklemeden yapılır; launcher sürümü yine pointer'ın commit'ine bağlıdır.
+- İçe aktarma betiği tag'i submodule'ün git'inden okur (yol argümanı yok).
+- Submodule sadece repodadır; kurulan paket yalnız stable `Engines/` taşır (private / stable olmayan kaynak
+  kullanıcıya gitmez). Kurulmuş launcher'ın developer modunda sürüm listesinde "dev (main)" seçeneği de vardır:
+  proje engine'i manifest'in `repository` adresinden submodule olarak alır (D4 developer projesi). Kullanıcı
+  modunda bu seçenek yoktur: aktif engine stable olmadan (tag + içe aktarma) kullanıcıya görünmez.
+
+**Kırıcı değişiklik (2026-10-31):** bir önceki sürümle derlenen ve çalışan bir proje yeni sürümde elle değişiklik
+istiyorsa kırıcıdır. Örnekler: public header / tip / fonksiyonun silinmesi, adının ya da anlamının değişmesi
+(`Internals/` hariç, orası serbest); CMake fonksiyonlarının (`engine_add_game`, `engine_add_tuning` ...) imzası;
+`Project.json` şema `version`'ı ya da `toolsContract`'ın artması; kayıt / ayar dosyası biçiminin eskiyi okuyamaması;
+editör önizleme API'si (`Editor/Api`). ARA: geriye uyumlu ekleme; YAMA: API'ye dokunmayan düzeltme.
+
+**Güncelleme notlarının biçimi (2026-10-31):** `EngineManifest.json` `"notes"`, birikimli, en yeni sürüm en üstte:
+```json
+"notes": [
+  { "version": "0.3.0", "date": "2026-11-20",
+    "changes": ["Tuning: color type"],
+    "breaking": [ { "change": "DrawUiChip takes a style", "migrate": "Pass CurrentTheme().ui.chip first" } ] }
+]
+```
+Launcher güncellemede projenin sürümünden yeni sürüme kadar aradaki bütün notları gösterir; `breaking` satırlarının
+`migrate` açıklamasını öne çıkarır (AI da okuyup uygular). Engine testi tutarlılığı denetler: `version` notların ilk
+satırıyla aynı, sürümler azalan sırada ve tekrarsız, tarih `YYYY-MM-DD`; böylece notsuz sürüm artırılamaz.
+
+**İlk yayın (2026-10-31):** 0.x ile başlanır. 0.x'te **ARA kırıcıdır** (0.2 → 0.3 kırabilir), YAMA geriye uyumlu
+ekleme ya da düzeltmedir; launcher klasörleri `Engine0.1`, `Engine0.2` ... ve 0.x'te ARA geçişini "kırıcı olabilir"
+diye gösterir. **1.0.0** v1 planı (Aşama 3–6) bitip bir oyun launcher üzerinden yayınlanınca verilir; ondan sonra
+semver tamdır (kırıcı = ANA). Kırıcılık kuralı ve not testi aynıdır, sadece baktığı hane 0.x'te ARA'dır.
 
 **Öneriler (uygulamada):**
-- **İçe aktarma betiği:** launcher reposunda tek bir betik engine reposundaki bir tag'i kopyalar: tag ve temiz
-  çalışma ağacı denetimi, engine geliştirme dosyalarının ayıklanması (`.git`, engine `CLAUDE.md` ...; D14),
-  manifest'in yazılması (sürüm, kaynak commit, dosya özetleri, notlar). Kopyanın kaynağı her zaman izlenebilir.
+- **İçe aktarma betiği:** launcher reposunda tek bir betik engine reposundaki bir tag'i `git archive` ile kopyalar
+  (tag origin'de mi denetimi; geliştirme dosyaları engine'in `export-ignore` satırlarıyla ayıklanır, D14) ve
+  `EngineCopy.json`'u yazar (kaynak tag / commit, dosya özetleri; D4). Kopyanın kaynağı her zaman izlenebilir.
 - **Yama akışı:** eski bir seride hata düzeltmesi engine reposunda o sürümün tag'inden açılan bir dalda yapılır,
   yeni yama tag'lenir ve tekrar içe aktarılır.
 - **Atlanan sürümlerin notları:** 1.1'den 1.3'e geçen kullanıcı 1.2'nin notlarını da görmeli; manifest notları
   sürüm geçmişini birikimli taşır.
-- **Launcher'ın kendi derlemesi:** launcher UI'ı editörün ImGui katmanını kullandığı için (D15) kendini repodaki en
-  yeni engine kopyasına karşı derler; ayrı bir engine bağımlılığı gerekmez.
+- **Launcher'ın kendi derlemesi:** launcher UI'ı editörün ImGui katmanını kullandığı için (D15) kendini `Engine/`
+  submodule'üne karşı derler (yukarıda).
 - **Repo boyutu:** git aynı içerikli dosyaları bir kez saklar; sürümler arasında değişmeyen `ThirdParty/` ve
   dosyalar yer kaplamaz, sadece değişen dosyalar büyütür.
 
@@ -287,7 +400,26 @@ Kabul edildi: [Plan](Plan.md) (Aşama 0 hazırlık → 1 editör döngüsü → 
 
 ## Açık sorular
 
-Şu an açık soru yok. Kapanan ilk liste:
+Aşama 3 (launcher çekirdeği) için, tek tek konuşulur; karar alınınca ilgili D'ye yazılır:
+
+1. ~~Launcher'ın dili; CLI ile UI aynı exe mi~~ → D15 (C++20 çekirdek; `.exe` pencere + `.com` CLI).
+2. ~~Launcher reposunun adı ve diskteki yeri~~ → D16 (`YADIEN`, Desktop).
+3. ~~Gömülü araçların launcher'a nasıl girdiği~~ → D8 (kilit dosyası + özetli indirme betiği).
+4. ~~Kopyadaki manifest'in adı ve biçimi~~ → D4 (`EngineManifest.json` aynen + üretilen `EngineCopy.json`).
+5. ~~Developer modunun nasıl açıldığı~~ → D4 (Ayarlar'da şifre; repoda sadece PBKDF2 özeti).
+6. ~~Kullanıcı modundaki launcher'ın submodule'lü bir projeyi açınca ne yapacağı~~ → D4 (her tür açılır;
+   engine işlemleri türe göre: kopya / submodule / kayıtsız).
+7. ~~Engine `CLAUDE.md`'sinin kopyadan çıkarılması; developer modunda AI dosyası~~ → D14 (`export-ignore` +
+   `git archive`; AI dosyası yok).
+8. ~~Kırıcı değişikliğin tanımı~~ → D16 (elle değişiklik isteyen her şey; birikimli notlar + `migrate`).
+9. ~~İlk yayın 1.0.0 mı 0.x mi~~ → D16 (0.x; 0.x'te ARA kırıcı; 1.0.0 v1 bitince).
+10. ~~Var olan oyunun launcher'a geçişi~~ → [Plan](Plan.md) Aşama 3 (belgeler `<engine>` komutuna, launcher
+    kurulup kabul testi geçince).
+11. ~~Launcher'ın kendi komutları ile devredilenlerin ayrımı~~ → D6 (`<engine> launcher <iş>`; gerisi aynen devir).
+
+Şu an açık soru yok.
+
+Kapanan ilk liste:
 
 Kapananlar:
 

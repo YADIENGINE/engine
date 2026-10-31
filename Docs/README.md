@@ -37,7 +37,8 @@ Oyun kuralları, içerik katalogları ve projeye özel editör yardımcıları o
 | Public API / `Internals/` ayrımı | [API boundaries](Contributing/ApiBoundaries.md) |
 
 Modül README'leri desteklenen API'yi, `Roadmap.md` dosyaları gelecekteki işleri anlatır.
-Engine'in exe-editöre dönüşme planı ve alınan mimari kararlar [Design](Design/README.md) altındadır.
+Engine'in exe-editöre dönüşme planı ve alınan mimari kararlar engine reposunda `Docs/Design/` altındadır (launcher'ın
+proje kopyasına girmez).
 Editörün [geliştirme notları](Editor/Development/Roadmap.md) ve
 [tarihçesi](Editor/Development/History.md) kullanım rehberinden ayrıdır.
 Belgelerdeki komutlar geliştiricinin çalıştırması içindir; belge değişikliği build gerektirmez.

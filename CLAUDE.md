@@ -56,7 +56,9 @@ Tools/     Python paketi, sadece standart kütüphane (Docs/ToolsContract.md):
                Editor/Preview/StarterWorker.cpp. Örnek kod şablonda değil Docs/GettingStarted rehberlerinde.
   Tests/       unittest (python -m unittest discover -s Tools/Tests -t .)
 __main__.py  `python Engine <komut>` → Tools.cli
-EngineManifest.json  Ad, sürüm, toolsContract, notlar
+EngineManifest.json  Ad, sürüm, toolsContract, repo adresi, birikimli notlar (sürüm artırınca notes en üste; kurallar
+           Tools/manifest.py, Docs/ToolsContract.md → Manifest). CLAUDE.md ve Docs/Design/ kullanıcı kopyasına girmez
+           (.gitattributes export-ignore)
 ```
 
 ## Kurallar

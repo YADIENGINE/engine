@@ -3,7 +3,7 @@
 Elle ince ayar yapılan sayılar (yarıçap, hız, renk, süre, olasılık, fiyat) C++ sabiti yerine class'ın yanındaki
 `X.tuning.json` dosyasında durabilir. Değer editörde ya da dosyada değişince çalışan oyun onu derlemeden alır;
 Release'de aynı değerler `constexpr` olarak derlenir. JSON tek kaynaktır: git'te görünür, elle, editörle ya da AI
-ile düzenlenir. Sistem opt-in'dir; tasarım kararları [Design/Tuning](Design/Tuning.md).
+ile düzenlenir. Sistem opt-in'dir; tasarım kararları engine reposunda `Docs/Design/Tuning.md`.
 
 Yapısal sabitler (dizi boyutu, yuva sayısı, enum'a bağlı sayılar) tuning'e girmez, kodda kalır. Var olan
 `constexpr` sabitleri taşımak gerekmez; iki yöntem yan yana yaşar.

@@ -62,7 +62,13 @@ Uygulandı (2026-10-31). Kullanım: [Tuning](../Tuning.md); kararlar: [Tuning ta
   (D6, D7); editör açıksa Aşama 1'deki kanalı kullanır.
 - Launcher UI: Projeler, Yeni proje, Sistem kontrolü (MSVC kurulumu), Ayarlar (D15).
 - Kullanıcı modu: kopya + manifest + salt okunur denetimi; developer modu: submodule işlemleri (D4).
-- Şablon: `p.py` / `editor.py` kalkar, AI dosyası yok, boş proje (D14). Snake `<engine>`'ye geçer.
+- Şablon: `p.py` / `editor.py` kalkar, AI dosyası yok, boş proje (D14).
+- Var olan oyunun geçişi (2026-10-31): oyun listeye "Var olanı ekle" ile submodule projesi olarak girer; oyunun
+  belgeleri `python Engine <komut>` yerine `<engine> <komut>` yazar. Belgeler launcher kurulup (`<engine>` PATH'te)
+  kabul testi geçince değişir: `<engine> build`, `<engine> test`, editör açıkken `<engine> refresh` ve
+  `python Engine` aynı sonucu verir. `python Engine` sözleşme olarak kalır (launcher onu çağırır).
+- Oturumlar: (1) UI dışı çekirdek: repo, içe aktarma, CLI, gömülü araçlar, sistem kontrolü, ayarlar, proje
+  işlemleri, modlar; (2) ekranlar, çekirdeğin public API'si üstüne.
 
 **Sonuç:** projeyi launcher'dan kurmak, açmak ve derlemek; Python / CMake kurmadan.
 

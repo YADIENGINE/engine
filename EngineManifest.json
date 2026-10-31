@@ -2,5 +2,17 @@
   "name": "YADIEN",
   "version": "0.1.0",
   "toolsContract": 1,
-  "notes": []
+  "repository": "https://github.com/yagizdkurt/YDArcadeEngine.git",
+  "notes": [
+    {
+      "version": "0.1.0",
+      "date": "2026-10-31",
+      "changes": [
+        "First versioned engine: one command line (python Engine <command>), offline builds with vendored dependencies",
+        "Editor: Build & Refresh keeps the preview live; control endpoint and the refresh command",
+        "Tuning files: *.tuning.json values edited live in the editor, compiled in for Release"
+      ],
+      "breaking": []
+    }
+  ]
 }

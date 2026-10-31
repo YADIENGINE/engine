@@ -49,6 +49,10 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(run_cli([])[0], EXIT_INFRA)
         self.assertEqual(run_cli(["build", "--no-such-option"])[0], EXIT_INFRA)
 
+    def test_launcher_name_is_reserved(self):
+        # `<engine> launcher ...` launcher'ın kendi komutlarıdır; engine bu adla komut eklemez
+        self.assertNotIn("launcher", cli.build_parser()._subparsers._group_actions[0].choices)
+
     def test_manifest_declares_the_contract_version(self):
         self.assertGreaterEqual(load_manifest().tools_contract, 1)
 
