@@ -118,7 +118,7 @@ packages), this module becomes the `Tools/commands/release/` subpackage. Depende
 Engine/Tools/commands/release.py   package(): checks → package folder → ThirdPartyNotices.txt → ZIP
 Engine/Tools/Tests/test_release.py
 Engine/ThirdParty/
-  <bileşen>/        unmodified sources
+  <component>/        unmodified sources
   Notices.json      Part 1 component list: name, version, text, version pin, license file
   Notices/*.txt     per-component license texts
   notices.py        validation + Part 1 text
@@ -128,5 +128,5 @@ Engine/ThirdParty/
 ## Engine maintenance: adding or upgrading dependencies
 
 The procedure is in `ThirdParty/README.md`. When adding or changing the version of a dependency shipped in games, update
-`Notices/<bileşen>.txt` and `Notices.json` in the same commit. Editor or test dependencies do not ship in games; do not
+`Notices/<component>.txt` and `Notices.json` in the same commit. Editor or test dependencies do not ship in games; do not
 list them in `Notices.json`.

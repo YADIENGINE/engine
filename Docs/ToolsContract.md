@@ -8,8 +8,8 @@ text) can change freely.
 ## Invocation
 
 ```powershell
-python Engine [--project KÖK] <komut> [seçenekler]      # from the project root
-python . [--project KÖK] <komut> [seçenekler]           # from the engine repo root
+python Engine [--project ROOT] <command> [options]      # from the project root
+python . [--project ROOT] <command> [options]           # from the engine repo root
 ```
 
 Python runs the `Engine` folder directly because it contains `__main__.py`. Python 3.10+, standard library only. Tools
@@ -24,7 +24,7 @@ use the same Python. Project root: `--project` if supplied; otherwise the engine
 | --- | --- | --- |
 | `build` | `--release`, `--clean` | Builds the game (Debug; Release with `--release`). `--clean` removes the build folder first |
 | `run` | `--release` | Builds and runs the game; returns when the game closes |
-| `release` | | Builds Release and creates the `Release/<ad>/` package folder and ZIP ([Release](Release.md)) |
+| `release` | | Builds Release and creates the `Release/<name>/` package folder and ZIP ([Release](Release.md)) |
 | `test` | `--filter RE`, `--label RE`, `--list`, `--clean` | Builds and runs headless tests; report `<tests.buildDirectory>/reports/<run-id>/results.json` |
 | `editor` | `--release`, `--build-only`, `--clean` | Builds the editor and project preview worker, opens the editor |
 | `refresh` | | Build & Refresh in the project's open editor (joins an existing refresh); streams output and exits with its result. The preview stays open during the build. Returns 2 if the editor is not open ([control gateway](Editor/Architecture.md#control-gateway)) |

@@ -4,7 +4,7 @@ This folder is for developers making games with the C++20 / raylib-based engine.
 `EngineManifest.json`; the documentation does not spell out the name. The engine is a separate repo; games use it as an
 `Engine/` submodule. Engine code shipped in games is under `Core/`, the editor under `Editor/`, the tools' shared ImGui
 layer under `ToolUi/` ([ToolUi](ToolUi.md)), external dependencies under `ThirdParty/`, documentation under `Docs/`, and
-build/editor/test tools and the new project template under `Tools/`; commands use `python Engine <komut>`
+build/editor/test tools and the new project template under `Tools/`; commands use `python Engine <command>`
 ([ToolsContract](ToolsContract.md)), and `python Engine new` creates a project. Game rules, content catalogs, and
 project-specific editor helpers stay in the game's own documentation.
 

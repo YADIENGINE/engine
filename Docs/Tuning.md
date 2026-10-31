@@ -16,7 +16,7 @@ The target declares once which folder to search for tuning files:
 engine_add_tuning(MyGame ROOT Game)
 ```
 
-Each `*.tuning.json` under `ROOT` generates `<build>/Tuning/MyGame/<ROOT'a göre yol>.tuning.h` during the build; that
+Each `*.tuning.json` under `ROOT` generates `<build>/Tuning/MyGame/<path relative to ROOT>.tuning.h` during the build; that
 folder is the target's include directory. New files are not listed in CMake; the next build finds them. Generated
 headers are not tracked in the repo. Two tuning files with the same name in one target are an error (structs are
 global). The game target in a project created by `python Engine new` already calls this. The generator requires Python
@@ -104,10 +104,10 @@ the file from its compiled source path; rebuild if the project folder moves. Liv
 
 No value is silently clamped or partially applied.
 
-- **Build:** invalid JSON, wrong types, out-of-bounds values, or missing columns stop the build with `dosya:satır:
+- **Build:** invalid JSON, wrong types, out-of-bounds values, or missing columns stop the build with `file:line:
   error: ...`.
 - **Runtime:** invalid files are not applied; the last valid values continue. Errors are written to stderr (Output and
-  the Tuning panel in the editor) with `dosya:satır`.
+  the Tuning panel in the editor) with `file:line`.
 - **Startup:** if the file is invalid, the game starts with compiled values and warns.
 
 ## Editor

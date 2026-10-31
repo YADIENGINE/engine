@@ -27,15 +27,15 @@ Components shipped in games ("Yes" in the table) enter the engine section of eve
 - `Notices.json`: component list. `text` is the notice text, `pin` the file and text proving the source version
   (`{version}` is replaced by the version), `license` the license file the text must contain verbatim. Paths are
   relative to this folder.
-- `Notices/<bileşen>.txt`: first line `<ad> <sürüm> (<lisans>)`, then `Source:`, copyright lines, and license text;
+- `Notices/<component>.txt`: first line `<name> <version> (<license>)`, then `Source:`, copyright lines, and license text;
   sublibraries bundled in the component have their own headings in the same file.
 - `notices.py`: validation and text generation; used by `ReleaseSystem/release.py` during packaging.
 
 ## Adding or upgrading a dependency
 
-1. Download the source, place the table's parts in `ThirdParty/<bileşen>/` (remove the old version completely; do not
+1. Download the source, place the table's parts in `ThirdParty/<component>/` (remove the old version completely; do not
    mix files).
 2. Connect it in CMake (`add_subdirectory` or a source list); do not use `FetchContent`.
 3. Update the table in this README.
-4. If shipped in games, update `Notices/<bileşen>.txt` and `Notices.json` (version, pin, license) in the same commit.
+4. If shipped in games, update `Notices/<component>.txt` and `Notices.json` (version, pin, license) in the same commit.
 5. Run `python -m unittest discover -s ThirdParty/Tests` at the engine root.

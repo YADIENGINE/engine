@@ -95,7 +95,7 @@ prevents Options from changing OS window / capture size.
 
 ## Project recipe and build
 
-Project CMake generates a configuration-specific JSON recipe; select another with `EngineEditor.exe --project <yol>`:
+Project CMake generates a configuration-specific JSON recipe; select another with `EngineEditor.exe --project <path>`:
 
 ```json
 {

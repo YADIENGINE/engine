@@ -6,10 +6,10 @@ target is defined in Windows builds with `ENGINE_BUILD_RUNTIME` enabled and buil
 
 | File | Contents |
 | --- | --- |
-| `ToolUiContext` | ImGui context (rlImGui), fonts, theme, scale. `ToolUiOptions { docking, keyboardNavigation }`. Created after the window (Game), destroyed before it; `BeginFrame(ölçekYüzdesi)` / `EndFrame()` every frame |
+| `ToolUiContext` | ImGui context (rlImGui), fonts, theme, scale. `ToolUiOptions { docking, keyboardNavigation }`. Created after the window (Game), destroyed before it; `BeginFrame(scalePercent)` / `EndFrame()` every frame |
 | `ToolTheme` | Arcade Cabinet theme (`ApplyToolTheme`), central `ToolPalette` colors / `ToolMetrics` dimensions, font roles (`Ui / Medium / Heading / Technical`), font-independent scale (`ToolUiScale()`), semantic colors (`ToolToneColor`), panel surfaces (`ToolSurfaceColor`) |
 | `ToolWidgets` | `BeginToolPanel` / `EndToolPanel`, `ToolTooltip`, `ToolSectionHeader`, `ToolEmptyState`, `ToolStatusBadge`, `ToolButton`, `ToolSegment`, `ToolIconButton`, `ContinueToolToolbar`, `ToolSingleLineButton`, `ToolWrappedSelectable` |
-| `ToolWindow` | `ToolGameSettings(uygulamaKimliği, WindowSettings)`: tool window without a settings file, canvas content, audio, or game font |
+| `ToolWindow` | `ToolGameSettings(applicationId, WindowSettings)`: tool window without a settings file, canvas content, audio, or game font |
 
 - **Fonts:** Windows-installed Segoe UI Regular / Semibold fonts; font files are not packaged. If unavailable, bundled
   Noto Sans Regular / Medium / SemiBold are used. Font Awesome icons merge into each weight (`ICON_FA_*`,

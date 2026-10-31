@@ -17,7 +17,7 @@ target_include_directories(${PROJECT_NAME}Preview PRIVATE Editor)
 
 The helper places the worker executable beside EngineEditor (`<build>/Editor/<Config>/`), links `EnginePreviewRuntime`,
 and generates the `EngineEditor.project.json` recipe in the same folder: the worker path and the `cmake --build` command
-for Build & Refresh. Arguments: `NAME` (catalog title; default `<proje> previews`), `SOURCES` (starter worker if empty),
+for Build & Refresh. Arguments: `NAME` (catalog title; default `<project> previews`), `SOURCES` (starter worker if empty),
 `LIBRARIES`, `ASSETS` (folder to copy beside the worker). One worker per build folder.
 
 If previews draw game Views, move game code to a separate library (`add_library(... Game/...)`) and pass it to both game

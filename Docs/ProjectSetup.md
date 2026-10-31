@@ -14,7 +14,7 @@ MyProject/                  (game repo)
   Project.json              project settings read by engine tools
 ```
 
-There are no engine scripts at the project root; run all commands from the project root with `python Engine <komut>`
+There are no engine scripts at the project root; run all commands from the project root with `python Engine <command>`
 (list and contract: [ToolsContract](ToolsContract.md)).
 
 The include root is `Engine/Core/` (`#include "Runtime/Game.h"`); editor API includes are relative to the engine root
@@ -39,7 +39,7 @@ python Engine new --dry-run        # lists what it would create without writing
 `new` writes `Engine/Tools/ProjectTemplate/` into the project folder: `CMakeLists.txt`, `CMakePresets.json`,
 `Project.json`, `.gitignore`, `.gitattributes`, `Game/Assets/`, `Editor/`, `Game/Distribution/GameNotices.txt`. The
 project name is written to `project(...)` and the `Project.json` `"name"` field; the executable, Release package, and
-editor worker (`<ad>Preview`) derive from this name. The name starts with a letter and contains only letters/digits/`_`.
+editor worker (`<name>Preview`) derive from this name. The name starts with a letter and contains only letters/digits/`_`.
 Existing files are not overwritten (skipped files are listed); if `Project.json` exists at the root, the project is
 considered set up and nothing is done. Finally, it reports missing tools (Python, CMake, Visual Studio C++ tools,
 Ninja). It does not touch Git; to keep Engine as a submodule, see [git](#git) below.
@@ -119,7 +119,7 @@ Commands and options: [ToolsContract](ToolsContract.md). Python package, standar
 
 | Module | Job |
 | --- | --- |
-| `cli.py` | `python Engine <komut>`: arguments, project root, error → exit code |
+| `cli.py` | `python Engine <command>`: arguments, project root, error → exit code |
 | `project.py`, `manifest.py` | `Project.json` (including hook loader), `EngineManifest.json` |
 | `msvc.py` | MSVC environment (vcvars64); cached in `build/.msvc-env.json`, refreshed when VS updates |
 | `cmake.py` | command execution, CMake cache, safe build folder removal |
