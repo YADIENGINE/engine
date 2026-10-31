@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string_view>
 #include "Editor/Ui/Commands/EditorCommands.h"
+#include "ToolUi/ToolTheme.h"
 
 namespace {
 constexpr float PanelMinWidthInFonts = 12.0f;
@@ -297,8 +298,11 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     const ImVec2 workspacePosition{viewport->Pos.x, viewport->Pos.y + menuHeight + toolbarHeight};
     const ImVec2 workspaceSize{viewport->Size.x,
                                std::max(1.0f, viewport->Size.y - menuHeight - toolbarHeight - statusHeight)};
+    const ImVec2 headerPadding{ImGui::GetStyle().FramePadding.x, ToolMetrics::PanelHeaderPadding * ToolUiScale()};
     ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, PanelMinimumSize(workspaceSize));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, headerPadding);
     DockHost(workspacePosition, workspaceSize, _resetDock, preferences);
+    ImGui::PopStyleVar();
     _resetDock = false;
     result.quit = menu.quit;
     result.returnToProjectList = menu.returnToProjectList;
@@ -321,10 +325,14 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 (_focusCatalog && panel.id == EditorPanel::Catalog))
                 ImGui::SetNextWindowFocus();
             if (focusViewport) ImGui::SetNextWindowCollapsed(false);
-            if (ImGui::Begin(panel.window, &preferences.Visible(panel.id),
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, headerPadding);
+            const bool drawPanel =
+                ImGui::Begin(panel.window, &preferences.Visible(panel.id),
                              flags | (panel.id == EditorPanel::Viewport || panel.id == EditorPanel::Inspector
                                           ? ImGuiWindowFlags_NoScrollbar
-                                          : 0))) {
+                                          : 0));
+            ImGui::PopStyleVar(); // Panel contents keep their regular control spacing.
+            if (drawPanel) {
                 if (panel.dock == EditorDockGroup::Bottom && ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows))
                     preferences.lastBottomPanel = panel.id;
                 switch (panel.id) {

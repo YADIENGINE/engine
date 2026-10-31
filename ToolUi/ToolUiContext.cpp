@@ -132,7 +132,12 @@ void ToolUiContext::BeginFrame(int scalePercent) {
     style.FontSizeBase = ToolMetrics::BodySize;
     style.FontScaleDpi = dpi;
     style.FontScaleMain = fontScale;
+    // Floating dock groups draw their tab bars during NewFrame, before the workspace submits its panels.
+    const auto framePadding = style.FramePadding;
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
+        style.FramePadding.y = ToolMetrics::PanelHeaderPadding * scale;
     rlImGuiBegin();
+    style.FramePadding = framePadding;
     // rlImGui uploads dynamic atlases before processing draw callbacks. Apply filtering here so
     // newly created/replaced atlases are filtered before their first draw, without a backend fork.
     ImGui::GetBackgroundDrawList()->AddCallback(FilterFontTextures, nullptr);

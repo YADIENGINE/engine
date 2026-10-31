@@ -9,6 +9,7 @@ struct ToolMetrics {
     static constexpr float SectionGap = 16;
     static constexpr float Radius = 3;
     static constexpr float ControlHeight = 30;
+    static constexpr float PanelHeaderPadding = 5;
     static constexpr float BodySize = 14;
     static constexpr float CaptionSize = 12;
     static constexpr float SectionSize = 14;
