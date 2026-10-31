@@ -6,8 +6,8 @@ struct ToolUiOptions {
     bool keyboardNavigation = false; // Off when the keyboard also drives something else (the editor's preview)
 };
 
-// The ImGui context of a tool window: rlImGui backend, tool fonts (Segoe UI + Font Awesome, Consolas; embedded font
-// when a system font is missing), theme and scaling. Create after the window (Game) and destroy before it.
+// The ImGui context of a tool window: rlImGui backend, Segoe UI with embedded Noto Sans fallback + Font Awesome,
+// Consolas for technical values (embedded fallback), theme and scaling. Create after the window (Game).
 class ToolUiContext {
 public:
     explicit ToolUiContext(const ToolUiOptions& options = {});

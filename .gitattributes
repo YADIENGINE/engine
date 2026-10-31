@@ -17,3 +17,4 @@
 /ThirdParty/imgui/** -text
 /ThirdParty/rlImGui/** -text
 /ThirdParty/Catch2/** -text
+/ThirdParty/NotoSans/** -text

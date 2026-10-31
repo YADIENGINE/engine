@@ -354,14 +354,21 @@ terminalde çıktı vermez ve beklenmez (AI / CI çıkış kodunu okuyamaz).
   yazılır; gerekirse sonra bir tabloya taşınır (çekirdek etkilenmez).
   **Neden:** çekirdeğin hata mesajları ve editör İngilizce; karışık dil olmaz.
 - **Düzen ve gezinme (Godot proje yöneticisi benzeri):** bölgeler ve eylemler burada, ölçü / renk / yerleşim UI'ın.
-  Üst gezinme (ad, sekmeler, sistem durumu noktası, Settings), sekmenin içeriği, alt durum çubuğu (launcher sürümü,
-  "Developer mode"). Hepsi tek uygulama modelinde.
+  Üst gezinme (ad, sekmeler, sistem durumu noktası, Settings), kalıcı araç çubuğu, girintili proje çalışma alanı,
+  ayrı sağ yardımcı panel, alt durum çubuğu (launcher sürümü, proje sayısı, durum, "Developer mode"). Her bölge
+  kendi opak yüzeyi ve sınırıyla ayrılır; ortak tema `ToolUi/`'dadır. Hepsi tek uygulama modelinde.
   - **Sekme** (`LauncherTab`, tam ekran, her an bir tane): **Projects**: araç çubuğu (Create, Import = var olanı
-    ekle, Scan = seçilen klasörün altındaki `Project.json`'lu projeleri ekler, filtre: ad ya da yol, sıralama: Last
-    opened / Name / Path, `Settings.json`'da saklanır), tek seçimli liste (çift tıklama = Open), seçili projenin
-    sağ eylem paneli, boş durumda Create / Import. **Engines**: launcher'ın taşıdığı sürümler (sürüm, tarih,
+    ekle, Projects Folder = klasör seç / varsayılan proje konumu olarak kaydet / otomatik tara, filtre: ad ya da
+    yol, sıralama: Last opened / Name / Path, `Settings.json`'da saklanır), tek seçimli yoğun liste
+    (çift tıklama = Open), sağ proje denetçisi. Boş listede aynı araçlar ve yapı
+    görünür; küçük boş durum mesajı listenin içindedir. **Engines**: launcher'ın taşıdığı sürümler (sürüm, tarih,
     notlar; kırıcılar öne çıkar, kullanan proje sayısı); developer modunda "dev (main)" satırı; salt okunur.
-  - **Sağ eylem paneli** (uygun olmayan pasif): Open; Run (`<engine> run` işi: derleme, sonra oyun kapanana kadar
+  - **Sağ proje denetçisi**: yalnız seçili projenin bilgileri ve eylemleri. Dar pencerede Project details açılır
+    panelinden erişilir. Launcher sekmesi, arayüz ölçeği ayarı ve tarama satırı yoktur. Varsayılan proje klasörü
+    yalnız Projects Folder düğmesinden belirlenir; PATH, kurulum klasörü, developer modu ve lisanslar Settings'tedir.
+    Seçim yokken aynı denetçi geçerli klasörü, Projects Folder / Create / Import kısayollarını ve kısa keşif
+    açıklamasını gösterir. Başlıklar ortak araç temasının tool-window şeritleridir; güncel renk paleti Arcade Cabinet'tir.
+    **Project eylemleri** (uygun olmayan pasif): Open; Run (`<engine> run` işi: derleme, sonra oyun kapanana kadar
     "Running" + Stop); Show in folder; kopya projede Update engine / Repair engine, kayıtsız projede Replace engine
     (onay paneli → iş); developer modu + git projesinde Engine git (Update from remote, Publish changes); Remove /
     Remove missing (listeden; diske dokunmaz). Bilerek yok: Rename (proje adı engine'in kuralına bağlı), Duplicate
@@ -449,6 +456,18 @@ semver tamdır (kırıcı = ANA). Kırıcılık kuralı ve not testi aynıdır, 
   dosyalar yer kaplamaz, sadece değişen dosyalar büyütür.
 
 Durum: kabul edildi.
+
+### D17. Render sistemi: kendi GPU katmanı üstünde yeni 2D çizim sistemi
+**Karar:** Çizim raylib'in anlık API'sinden alınır. Engine'e ait, raylib'siz bir `Painter` API'si çağrıları kare
+boyunca kaydeder (DrawList) ve Engine'e özel `GpuDevice` arayüzü üzerinden doğrudan OpenGL 3.3 core'a gönderir.
+Premultiplied alpha (alpha ve additive aynı batch'te), SDF şekiller, dinamik glif atlası, emission'dan bloom; durum
+RAII kapsamlarla. Raylib pencere, input ve ses için kalır. Eski raylib çizimi geçiş köprüsüyle aynı karede çalışır;
+Snake View View taşınır, sonra köprü ve eski yol silinir. Ayrıntı: [Render sistemi](Rendering.md).
+
+**Neden:** Engine çizim durumunu, batch'lemeyi, kenar yumuşatmayı ve shader'ı sahiplenmeden ne kalite ne performans
+tek yerden iyileşir. rlgl üstüne kurmak sabit köşe biçimi ve kontrolsüz yüklemeyle kalıcı borç bırakırdı; kendi
+katmanımız köşe biçimini, yüklemeyi ve ölçümü bize verir, başka arka uç yeni bir `GpuDevice` uygulamasıdır.
+Durum: taslak (2026-10-31), onay bekliyor.
 
 ## v1 iş sırası
 

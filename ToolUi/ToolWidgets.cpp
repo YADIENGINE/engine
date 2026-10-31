@@ -1,11 +1,28 @@
 #include "ToolUi/ToolWidgets.h"
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include <string_view>
 #include "ToolUi/ToolTheme.h"
 
 namespace {
+bool PushDisabledTextColor() {
+    if ((ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled) == 0) return false;
+    auto color = ToolPalette::Disabled;
+    // Preserve the disabled surface fade without applying a second fade to its explicit text color.
+    color.w /= std::max(ImGui::GetStyle().Alpha, 0.001f);
+    ImGui::PushStyleColor(ImGuiCol_Text, color);
+    return true;
+}
+void PushPrimaryButton() {
+    const auto accent = ToolToneColor(ToolTone::Accent);
+    ImGui::PushStyleColor(ImGuiCol_Button, accent);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ToolPalette::AccentHover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ToolPalette::AccentPressed);
+    ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::AccentText);
+}
 void DrawWrappedLabel(const char* label, ImVec2 position, ImVec2 size) {
     const ImVec4 clip{position.x, position.y, position.x + size.x, position.y + size.y};
     ImGui::GetWindowDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize(), position,
@@ -25,8 +42,22 @@ std::string ClippedLabel(const char* label, float width) {
     return display + "...";
 }
 } // namespace
+bool BeginToolPanel(const char* id, ImVec2 size, ToolSurface surface, ImGuiChildFlags flags,
+                    ImGuiWindowFlags windowFlags, float padding) {
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ToolSurfaceColor(surface));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {padding * ToolUiScale(), padding * ToolUiScale()});
+    return ImGui::BeginChild(id, size, flags | ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding,
+                             windowFlags);
+}
+void EndToolPanel() {
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+}
 void ToolTooltip(const char* text) {
-    if (text && *text && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+    if (text && *text &&
+        ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled | ImGuiHoveredFlags_DelayNormal |
+                             ImGuiHoveredFlags_Stationary)) {
         ImGui::BeginTooltip();
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 32);
         ImGui::TextUnformatted(text);
@@ -35,7 +66,7 @@ void ToolTooltip(const char* text) {
     }
 }
 bool ToolSectionHeader(const char* label, bool defaultOpen, bool forceOpen) {
-    ImGui::PushFont(ToolFont(ToolFontRole::Ui), 0);
+    ImGui::PushFont(ToolFont(ToolFontRole::Heading), ToolMetrics::SectionSize);
     const float scale = ToolUiScale();
     ImGui::Dummy({0, 4 * scale});
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4 * scale, 5 * scale});
@@ -62,10 +93,12 @@ bool ToolSectionHeader(const char* label, bool defaultOpen, bool forceOpen) {
     return expanded;
 }
 void ToolEmptyState(const char* title, const char* detail) {
-    ImGui::PushFont(ToolFont(ToolFontRole::Ui), 0);
+    ImGui::PushFont(ToolFont(ToolFontRole::Heading), ToolMetrics::SectionSize);
     ImGui::Dummy({0, 8 * ToolUiScale()});
     ImGui::PushTextWrapPos(0);
     ImGui::TextUnformatted(title);
+    ImGui::PopFont();
+    ImGui::PushFont(ToolFont(ToolFontRole::Ui), ToolMetrics::BodySize);
     if (*detail) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
         ImGui::TextUnformatted(detail);
@@ -75,7 +108,7 @@ void ToolEmptyState(const char* title, const char* detail) {
     ImGui::PopFont();
 }
 void ToolStatusBadge(const char* label, ImVec4 color) {
-    ImGui::PushFont(ToolFont(ToolFontRole::Ui), 0);
+    ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::CaptionSize);
     const float scale = ToolUiScale();
     const ImVec2 padding{6 * scale, 3 * scale};
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
@@ -93,10 +126,24 @@ void ToolStatusBadge(const char* label, ImVec4 color) {
     if (display != label) ToolTooltip(label);
     ImGui::PopFont();
 }
+bool ToolButton(const char* label, ImVec2 size, bool primary) {
+    ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
+    if (primary) PushPrimaryButton();
+    const bool disabledText = PushDisabledTextColor();
+    const bool pressed = ImGui::Button(label, size);
+    if (disabledText) ImGui::PopStyleColor();
+    if (primary) ImGui::PopStyleColor(4);
+    ImGui::PopFont();
+    return pressed;
+}
 bool ToolSegment(const char* label, bool selected) {
-    ImGui::PushFont(ToolFont(ToolFontRole::Ui), 0);
-    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(selected ? ImGuiCol_Header : ImGuiCol_FrameBg));
+    ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
+    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(selected ? ImGuiCol_TabSelected : ImGuiCol_Tab));
     ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(selected ? ImGuiCol_Text : ImGuiCol_TextDisabled));
+    auto border = selected ? ToolPalette::Accent : ToolPalette::Border;
+    if (selected) border.w = 0.45f;
+    ImGui::PushStyleColor(ImGuiCol_Border, border);
+    const bool disabledText = PushDisabledTextColor();
     const auto padding = ImGui::GetStyle().FramePadding;
     const std::string_view fullLabel(label);
     const std::string visibleLabel(fullLabel.substr(0, fullLabel.find("##")));
@@ -106,13 +153,21 @@ bool ToolSegment(const char* label, bool selected) {
     ImGui::PushID(label);
     const bool pressed = ImGui::Button("##segment", {width, ImGui::GetFrameHeight()});
     const auto position = ImGui::GetItemRectMin();
+    if (selected) {
+        const auto end = ImGui::GetItemRectMax();
+        const float inset = ToolMetrics::Gap * ToolUiScale();
+        const float thickness = std::max(1.0f, std::round(2 * ToolUiScale()));
+        ImGui::GetWindowDrawList()->AddRectFilled({position.x + inset, end.y - thickness}, {end.x - inset, end.y},
+                                                  ImGui::GetColorU32(ToolToneColor(ToolTone::Accent)));
+    }
     DrawWrappedLabel(
         display.c_str(),
         {position.x + std::max(0.0f, (width - ImGui::CalcTextSize(display.c_str()).x) * 0.5f), position.y + padding.y},
         {width, ImGui::GetTextLineHeight()});
     if (display != visibleLabel) ToolTooltip(visibleLabel.c_str());
     ImGui::PopID();
-    ImGui::PopStyleColor(2);
+    if (disabledText) ImGui::PopStyleColor();
+    ImGui::PopStyleColor(3);
     ImGui::PopFont();
     return pressed;
 }
@@ -120,9 +175,11 @@ bool ToolIconButton(const char* id, const char* icon, const char* tooltip, bool 
     ImGui::PushID(id);
     ImGui::PushFont(ToolFont(ToolFontRole::Ui), 0);
     ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImGui::GetStyleColorVec4(ImGuiCol_Header) : ImVec4{0, 0, 0, 0});
+    const bool disabledText = PushDisabledTextColor();
     const float size = ImGui::GetFrameHeight();
     const bool pressed = ImGui::Button(icon, {size, size});
     ToolTooltip(tooltip);
+    if (disabledText) ImGui::PopStyleColor();
     ImGui::PopStyleColor();
     ImGui::PopFont();
     ImGui::PopID();
@@ -137,7 +194,10 @@ void ContinueToolToolbar(float itemWidth, bool separateGroup) {
     const float right = ImGui::GetItemRectMax().x + spacing + itemWidth;
     if (right <= ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x) ImGui::SameLine(0, spacing);
 }
-bool ToolSingleLineButton(const char* label) {
+bool ToolSingleLineButton(const char* label, bool primary) {
+    ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
+    if (primary) PushPrimaryButton();
+    const bool disabledText = PushDisabledTextColor();
     const auto padding = ImGui::GetStyle().FramePadding;
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
     const std::string_view fullLabel(label);
@@ -153,6 +213,9 @@ bool ToolSingleLineButton(const char* label) {
         ImGui::GetColorU32(ImGuiCol_Text), display.c_str(), nullptr, 0, &clip);
     if (display != visibleLabel) ToolTooltip(visibleLabel.c_str());
     ImGui::PopID();
+    if (disabledText) ImGui::PopStyleColor();
+    if (primary) ImGui::PopStyleColor(4);
+    ImGui::PopFont();
     return pressed;
 }
 bool ToolWrappedSelectable(const char* label, bool selected, ImGuiSelectableFlags flags) {

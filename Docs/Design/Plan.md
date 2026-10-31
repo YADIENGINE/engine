@@ -92,6 +92,8 @@ Uygulandı (2026-10-31). Kullanım: [Tuning](../Tuning.md); kararlar: [Tuning ta
 
 - Katalog, galeri, pişirme önbelleği; grafik kodunun göçü ve düzenlenmesiyle birlikte (D10). Tuning'e (Aşama 2)
   dayanır; Aşama 3–4 ile paralel yürüyebilir.
+- Önce yeni render sistemi (D17, [Render sistemi](Rendering.md)): pişirme önbelleği onun yüzeyleri ve atlas
+  sayfaları üstüne kurulur; grafik kodunun göçü yeni `Painter` API'sine yapılır.
 
 ## Aşama 6: Debug (v1'in sonu)
 
