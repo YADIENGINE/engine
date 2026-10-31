@@ -106,7 +106,10 @@ Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, te
   `launcher python`.
 - ~~Kabul testi~~ geçti sayıldı (2026-11-01; kurulum / kullanım / kaldırma elle denendi, çıkan hata sonra ele alınır).
   Var olan oyunun geçişi: oyunun belgeleri `<engine> <komut>`'a geçer.
-- İlk public yayın (launcher `v0.1.0`, Releases'a Setup): konuşulacak.
+- İlk public yayın (launcher `v0.1.0`, Releases'a Setup), konuşuluyor (2026-11-01). Karar: engine'in bugünkü
+  `main`'i **0.2.0** olarak tag'lenir (Painter kırıcı; MIT `LICENSE`, İngilizce belgeler, yeni adres) ve launcher'a
+  `Engine0.2` olarak alınır; `Engine0.1` (0.1.1: lisanssız, Türkçe belgeli, eski adresli) pakete girmez. Şart:
+  `main` kullanıcıya verilecek durumda (Painter göçü bitti, Snake derlenip çalışıyor).
 
 **Sonuç:** indirilip çalıştırılabilen ürün.
 
