@@ -90,9 +90,9 @@ var olan oyunun geçişi (kurulu launcher ister) ve "ses araçlarını kur" (D7)
 Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, tek tek kapanır.
 
 - Açık kaynağa geçiş (D19), sırayla: (1) temizlik + `LICENSE` (MIT) + İngilizce README'ler; (2) developer modu
-  şifresinin kaldırılması; (3) `yadien-engine` organizasyonu (kullanıcı web'den kurar), repoların taşınması, adres
-  güncellemeleri (manifest `repository`, `.gitmodules`), public; (4) CI (derleme + test); (5) kullanıcıya dönük
-  belgelerin İngilizceye çevrilmesi; (6) yayın iş akışı ve SignPath başvurusu. Velopack deneme paketi buna paralel.
+  şifresinin kaldırılması; (3) `YADIENGINE` organizasyonu (kuruldu), repoların taşınması, adres güncellemeleri
+  (manifest `repository`, `.gitmodules`), public; (4) kullanıcıya dönük belgelerin İngilizceye çevrilmesi. Yayın
+  elle (`dev.py package` + Releases'a yükleme). Velopack deneme paketi buna paralel.
 
 - Tek exe kurulum: `%LOCALAPPDATA%\<Engine>`, masaüstü kısayolu, PATH, Uygulamalar kaydı, üzerine kurulan
   güncelleme, kaldırma (D15): Velopack `Setup.exe`'si; ilk iş var olan build'le deneme paketi. Paketi launcher
@@ -119,7 +119,8 @@ Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, te
 ## v1 dışı
 
 - Ajan API'si (D5), sürüklenebilir uzamsal tuning (D11), flipbook / disk önbelleği (D10), otomatik güncelleme
-  (D15; Velopack'in güncelleme API'siyle), SignPath imzası (D15; repolar açık kaynak olunca), llvm-mingw (D8).
+  (D15; Velopack'in güncelleme API'siyle), CI/CD (GitHub Actions: derleme + test, tag'den yayın) ve SignPath imzası
+  (D19; ertelendi), llvm-mingw (D8).
 - **Paylaşılan bağımlılık önbelleği** (derleme süresi dert olursa): kaynaklar `ThirdParty/`'de kalır; launcher ilk
   derlenen bağımlılık kütüphanelerini (raylib, imgui, Catch2 ...) projeler arasında paylaşılan bir önbellekte
   tutar. Anahtar: engine sürümü + bağımlılık + yapılandırma (Debug / Release, runtime) + derleyici sürümü. Yeni

@@ -326,15 +326,15 @@ Engine testleri (headless, `NullDevice`):
 - Yüzey: ölçek değişince `Stale()`; havuz yeniden kullanımı; silinmiş tutamaç hata.
 - Halka buffer: sarma ve fence'ler (NullDevice fence'i simüle eder).
 Görsel doğrulama: Engine'in editör önizlemesi **Render Gallery** (bütün şekiller, stiller, metin, kapsamlar, post;
-Snake'e bağımlılık yok) ve Profiler'da yeni senaryolar (çok şekil, çok metin, çok parıltı).
+oyuna bağımlılık yok) ve Profiler'da yeni senaryolar (çok şekil, çok metin, çok parıltı).
 
 ## Uygulama sırası
 
-Her adım derlenir ve tek başına çalışır; Snake'in görünüşü değişmez (hepsi köprüden geçer).
+Her adım derlenir ve tek başına çalışır; oyunun görünüşü değişmez (hepsi köprüden geçer).
 
 1. **Temel:** headless matematik tipleri, `GpuDevice` + `NullDevice`, DrawList + batch + kapsamlar, testler.
 2. **GL ve kare:** `GlDevice`, gömülü shader'lar, yeni Renderer (canvas, sunum), köprü, `Draw(Painter&)` yaşam döngüsü.
-   Kabul: Snake ve editör aynen çalışır.
+   Kabul: oyun ve editör aynen çalışır.
 3. **Şekiller:** SDF türleri, çizgi / polyline / çokgen / yol, hale, gradyan.
 4. **Metin:** `FontFace`, glif önbelleği, yerleşim, hale / gölge.
 5. **Yüzey ve post:** `Surface`, `Group`, havuz, bloom ve son birleştirme, kalite ayarları.

@@ -367,7 +367,8 @@ verir.
 bağlıdır. İmzasız exe'de itibar her sürümde sıfırdan başlar; Windows 11 Smart App Control imzasız dosyayı hiç
 çalıştırmayabilir. EV sertifikası 2024'ten beri SmartScreen'i aşmaz; imzalı yeni dosya da ilk indirmelerde
 uyarı alır ama yayıncı adı görünür ve itibar aynı sertifikanın sonraki sürümlerine taşınır.
-- **Engine ve launcher açık kaynak olacak** ve paket **SignPath Foundation** ile ücretsiz imzalanır. Şartları: OSI
+- **Engine ve launcher açık kaynak olacak** ve paket **SignPath Foundation** ile ücretsiz imzalanır (CI kurulunca;
+  CI/CD D19'da ertelendi). Şartları: OSI
   lisansı, public repo, pakette kapalı kaynak bileşen yok, imzalayan ekip repo sahibi, MFA, imzalanan ikilinin public
   repodan CI'da derlendiğinin doğrulanması. Sertifikada yayıncı "SignPath Foundation"dır.
 - O güne kadar imzasız (yalnız tanıdık test kullanıcıları; "Yine de çalıştır"). Paket betiğinde imza adımının yeri
@@ -527,7 +528,7 @@ Durum: kabul edildi.
 boyunca kaydeder (DrawList) ve Engine'e özel `GpuDevice` arayüzü üzerinden doğrudan OpenGL 3.3 core'a gönderir.
 Premultiplied alpha (alpha ve additive aynı batch'te), SDF şekiller, dinamik glif atlası, emission'dan bloom; durum
 RAII kapsamlarla. Raylib pencere, input ve ses için kalır. Eski raylib çizimi geçiş köprüsüyle aynı karede çalışır;
-Snake View View taşınır, sonra köprü ve eski yol silinir. Ayrıntı: [Render sistemi](Rendering.md).
+oyunun View'ları tek tek taşınır, sonra köprü ve eski yol silinir. Ayrıntı: [Render sistemi](Rendering.md).
 
 **Neden:** Engine çizim durumunu, batch'lemeyi, kenar yumuşatmayı ve shader'ı sahiplenmeden ne kalite ne performans
 tek yerden iyileşir. rlgl üstüne kurmak sabit köşe biçimi ve kontrolsüz yüklemeyle kalıcı borç bırakırdı; kendi
@@ -547,9 +548,9 @@ Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliy
 
 ### D19. Açık kaynak ve yayın altyapısı
 **Karar (2026-10-31):** engine ve launcher **public** olur; geliştirme döngüleri ayrı olduğu için ayrı repolar kalır.
-- **Ev:** GitHub organizasyonu **`yadien-engine`** (`yadien` adı başka bir kullanıcının). İçinde
-  `yadien-engine/yadien` (launcher; ön kapı, organizasyonda sabitlenir, README'sinde indirme) ve
-  `yadien-engine/engine` (engine kaynağı; README'si "kullanmak için launcher'ı kur" der). Godot'nun
+- **Ev:** GitHub organizasyonu **`YADIENGINE`** (kuruldu 2026-10-31; `yadien` adı başka bir kullanıcının). İçinde
+  `YADIENGINE/yadien` (launcher; ön kapı, organizasyonda sabitlenir, README'sinde indirme) ve
+  `YADIENGINE/engine` (engine kaynağı; README'si "kullanmak için launcher'ı kur" der). Godot'nun
   `godotengine/godot` düzeni: organizasyon adı ne olduğunu, ana repo ürün adını söyler. Repolar taşınarak
   (transfer) gelir; eski adresler yönlenir. Manifest `repository`'si, submodule adresleri ve belgeler güncellenir.
 - **Lisans:** iki repo da **MIT**. Engine kodu oyunlara derlendiği için kapalı kaynak ticari oyunlara izin veren
@@ -571,10 +572,11 @@ Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliy
   Engine belgelerindeki / testlerindeki oyun adları genelleşir (`MyGame`). Repolarda şifre / anahtar yok (kayıt
   anahtarı kodda saklanmaz).
 - Oyun repoları (ör. bir oyunun kendisi) private kalabilir; public engine / launcher'ı submodule olarak alır.
-- **Altyapı:** GitHub Actions (public repoda ücretsiz): her push'ta derleme + test; `v*` tag'inde paket
-  (`dev.py package`, D15) → SignPath imzası → launcher reposunda Release (Setup.exe + Velopack güncelleme dosyaları).
-  İndirme sayfası launcher'ın Releases'ıdır (`releases/latest`). SignPath başvurusu repolar açılıp yayın iş akışı
-  kurulunca; onaya kadar yayınlar imzasız.
+- **Yayın (şimdilik elle):** paket yerelde `dev.py package` (D15) ile üretilir ve launcher reposunun Releases'ına
+  elle yüklenir (Setup.exe + Velopack güncelleme dosyaları); indirme sayfası `releases/latest`. Yayınlar imzasızdır.
+- **CI/CD ertelendi (2026-10-31):** GitHub Actions (her push'ta derleme + test; `v*` tag'inde paket → SignPath
+  imzası → Release) şimdi kurulmaz, v1 dışıdır. SignPath imzası CI'da derlenmiş ikili istediği için o da onunla
+  birlikte bekler. Paket betiği CI'ın sonra aynen çağıracağı tek komut olarak yazılır.
 - **Neden:** organizasyon iki repoyu tek ürün gibi gösterir, büyüyebilir (belge, örnek, site) ve ortak eklemek
   kolaydır; kişisel hesapta kalmak taşımayı sonraya ertelerdi.
 
@@ -615,7 +617,7 @@ Aşama 4 (dağıtım) için, tek tek konuşulur:
    çalıştırılması. Deneme paketinden sonra konuşulur: Velopack'in çalışan süreçlere ve tekrar kuruluma ne yaptığı
    orada görülür.
 5. ~~"Ses araçlarını kur"~~ → D7 (istendiğinde, özeti sabit wheel'ler, `current/` dışına).
-6. ~~Yayın yeri ve CI~~ → D19 (hemen public; `yadien-engine` organizasyonu, Actions, SignPath).
+6. ~~Yayın yeri ve CI~~ → D19 (hemen public; `YADIENGINE` organizasyonu; yayın elle, CI/CD ve SignPath ertelendi).
 7. ~~Lisans~~ → D19 (iki repo da MIT, "YADIEN contributors").
 8. ~~Public belgelerin dili~~ → D19 (İngilizce; önce kullanıcıya dönük belgeler).
 9. ~~Developer modu~~ → D4 / D19 (şifre kalkar, uyarılı düz anahtar).

@@ -450,7 +450,7 @@ TEST_CASE("Editor.Control.RequestsRepliesAndAnnouncement", "[engine-editor]") {
     EditorLogEntry entry;
     entry.level = EditorLogLevel::Error;
     entry.source = EditorLogSource::Build;
-    entry.text = "Snake.cpp(12): error C2065";
+    entry.text = "MyGame.cpp(12): error C2065";
     const auto log = nlohmann::json::parse(EncodeControlLog(entry));
     CHECK(log.at("level") == "error");
     CHECK(log.at("source") == "build");

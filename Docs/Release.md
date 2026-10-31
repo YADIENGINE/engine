@@ -35,7 +35,8 @@ Release/                     (git'e girmez; şablonun .gitignore'unda)
 
 ## Bildirim iki parçadır
 
-**Part 1: Engine** otomatik eklenir, oyun hiçbir şey yazmaz. Kaynağı `Engine/ThirdParty/`:
+**Part 1: Engine** otomatik eklenir, oyun hiçbir şey yazmaz. En başta engine'in kendi lisansı (`Engine/LICENSE`,
+MIT; ad ve sürüm manifest'ten) gelir. Bileşenlerin kaynağı `Engine/ThirdParty/`:
 `Notices.json` bileşen listesi (ad, sürüm, metin dosyası, kaynaktaki sürüm pin'i, lisans dosyası) ve
 `Notices/*.txt` lisans metinleri; üreten kod `ThirdParty/notices.py`. Engine ile derlenen her oyuna giren kütüphaneler buradadır (raylib ve içinde gelenler, JSON, şifreleme).
 Sadece editörde ya da testte kullanılan bağımlılıklar (ImGui, Catch2) oyuna girmediği için listelenmez.

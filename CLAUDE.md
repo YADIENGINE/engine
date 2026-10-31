@@ -96,3 +96,6 @@ EngineManifest.json  Ad, sürüm, toolsContract, repo adresi, birikimli notlar (
   kökte `Internals/` yok. Çekirdek `X/Internals/` Engine-private (oyun include etmez); `Modules/X/Internals/` ve
   `Editor/Internals/` sadece sahibine. Public header'ın include ettiği dosya Internals'a taşınmadan önce gizlenir.
 - Commit mesajları kısa, emir kipinde, İngilizce.
+- Repo public, lisans MIT (`LICENSE`; release bildirimine kendiliğinden girer). Belgeler İngilizce (D19): yeni belge
+  İngilizce yazılır; Türkçe belgeler çevrilene kadar yerinde düzenlenir. Oyun adı, kişisel bilgi, şifre / anahtar
+  yazılmaz.

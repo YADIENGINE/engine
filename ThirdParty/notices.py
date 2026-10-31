@@ -61,8 +61,17 @@ def section(title: str, body: str) -> str:
     return f"{RULE}\n{title}\n{RULE}\n\n{body.strip()}\n"
 
 
-def compose_notices(manifest: dict, game_name: str, game_text: str | None, third_party: Path = THIRD_PARTY) -> str:
+def engine_notice(name: str, version: str, license_text: str) -> str:
+    """Engine'in kendi lisansı, bileşen metinleriyle aynı biçimde (ad + sürüm başlığı, sonra lisans)."""
+    title = f"{name} {version} (MIT)"
+    return f"{title}\n{'-' * len(title)}\n\n{license_text.strip()}"
+
+
+def compose_notices(manifest: dict, game_name: str, game_text: str | None, third_party: Path = THIRD_PARTY,
+                    engine_text: str | None = None) -> str:
     texts = [(third_party / c["text"]).read_text(encoding="utf-8").strip() for c in manifest["components"]]
+    if engine_text is not None:
+        texts.insert(0, engine_text.strip())
     parts = [f"{TITLE}\n{'=' * len(TITLE)}\n\n{PREAMBLE}\n",
              section("PART 1: ENGINE", textwrap.fill(manifest["intro"], 100) + "\n\n" + "\n\n".join(texts))]
     if game_text is not None:

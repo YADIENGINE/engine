@@ -11,7 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # ThirdParty
 
-from notices import NOTICES, THIRD_PARTY, check_components, compose_notices, load_components  # noqa: E402
+from notices import (  # noqa: E402
+    NOTICES, THIRD_PARTY, check_components, compose_notices, engine_notice, load_components)
 
 
 def copy_notices(destination: Path) -> Path:
@@ -66,6 +67,15 @@ class NoticeCheckTests(unittest.TestCase):
         self.assertNotIn("PART 2", notices)
         for component in manifest["components"]:
             self.assertIn(component["version"], notices)
+
+    def test_engine_license_opens_the_engine_part(self):
+        manifest = load_components()
+        engine = engine_notice("MyEngine", "1.2.3", "MIT License\n\nCopyright (c) MyEngine contributors")
+        notices = compose_notices(manifest, "MyGame", None, engine_text=engine)
+        part = notices[notices.index("PART 1: ENGINE"):]
+        self.assertIn("MyEngine 1.2.3 (MIT)", part)
+        first_component = manifest["components"][0]["name"]
+        self.assertLess(part.index("MyEngine contributors"), part.index(first_component))
 
 
 if __name__ == "__main__":

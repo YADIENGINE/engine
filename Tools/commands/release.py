@@ -8,12 +8,14 @@ paketleme mevcut paketi silmeden durur. Sistem büyürse (imza, mağaza depot'u)
 import shutil
 from pathlib import Path
 
-from ThirdParty.notices import check_components, compose_notices, load_components
+from ThirdParty.notices import check_components, compose_notices, engine_notice, load_components
 
 from ..errors import EXIT_FAILED, ToolError
+from ..manifest import ENGINE_ROOT, load_manifest
 from ..project import Project
 
 NOTICES_FILE = "ThirdPartyNotices.txt"  # Paketin kökünde üretilen bildirim
+ENGINE_LICENSE = ENGINE_ROOT / "LICENSE"  # Engine'in kendi lisansı; bildirimin Part 1'inin başına girer
 
 
 def copy_entry(source: Path, destination: Path) -> None:
@@ -31,6 +33,8 @@ def package(project: Project, exe: Path) -> Path:
     name = settings.get("name", project.name)
     manifest = load_components()
     errors = check_components(manifest)
+    if not ENGINE_LICENSE.is_file():
+        errors.append(f"Missing engine license: {ENGINE_LICENSE}")
     notices = settings.get("notices")
     if notices is not None and not project.path(notices).is_file():
         errors.append(f"Missing game notices: {project.path(notices)}")
@@ -54,7 +58,10 @@ def package(project: Project, exe: Path) -> Path:
     target.mkdir(parents=True)
 
     shutil.copy2(exe, target / exe.name)
-    (target / NOTICES_FILE).write_text(compose_notices(manifest, name, game_text), encoding="utf-8", newline="\n")
+    engine = load_manifest()
+    engine_text = engine_notice(engine.name, engine.version, ENGINE_LICENSE.read_text(encoding="utf-8"))
+    (target / NOTICES_FILE).write_text(compose_notices(manifest, name, game_text, engine_text=engine_text),
+                                       encoding="utf-8", newline="\n")
     for extra in extras:
         shutil.copy2(extra, target / extra.name)
     if select is not None:

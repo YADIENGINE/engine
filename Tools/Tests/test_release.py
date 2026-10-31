@@ -7,8 +7,9 @@ import zipfile
 from pathlib import Path
 
 from ThirdParty.notices import load_components
-from Tools.commands.release import NOTICES_FILE, package
+from Tools.commands.release import ENGINE_LICENSE, NOTICES_FILE, package
 from Tools.errors import ToolError
+from Tools.manifest import load_manifest
 from Tools.project import Project
 
 
@@ -45,6 +46,9 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(exe, target / "MyGame.exe")
         notices = (target / NOTICES_FILE).read_text(encoding="utf-8")
         self.assertIn("PART 1: ENGINE", notices)
+        engine = load_manifest()
+        self.assertIn(f"{engine.name} {engine.version}", notices)
+        self.assertIn(ENGINE_LICENSE.read_text(encoding="utf-8").strip(), notices)
         for component in load_components()["components"]:
             self.assertIn(component["version"], notices)
         self.assertIn("PART 2: MYGAME", notices)
