@@ -32,10 +32,10 @@ particles.Draw(paint);
 Capacity is per particle-system instance; excess new particles are dropped, and the player's particle setting
 (`FxQuality::particlePercent`, given with `SetQuality`) scales every emission. An omitted seed uses `std::random_device`. Shapes are geometry
 choices, not stylistic recipes. A callback replaces built-in drawing and receives resolved colour/size plus velocity,
-rotation (degrees) and normalized age; it draws only (the blend is already set). Emission direction/spread are radians,
-positions/sizes are canvas units, acceleration is units/second squared, spin is degrees/second. Alpha particles are
-drawn first, additive ones on top; both stay in one draw call. Sprite particles capture a `TextureRef` or `Surface` and
-draw it with `paint.Image`; the View owns the resource.
+rotation (radians, clockwise) and normalized age; it draws only (the blend is already set). Emission direction/spread
+are radians, positions/sizes are canvas units, acceleration is units/second squared, spin is radians/second, clockwise.
+Alpha particles are drawn first, additive ones on top; both stay in one draw call. Sprite particles capture a
+`TextureRef` or `Surface` and draw it with `paint.Image`; the View owns the resource.
 
 `CameraEffects2D::Apply(base, timeSeconds)` composes shake, kick, motion and punch with a `CameraView`, keeping its base
 transform and rotation. Punch focus is a world position; kick and motion directions use canvas axes. With no explicit
@@ -84,9 +84,9 @@ Neon widgets and their styles are described in [Painter → Helpers and theme](P
 viewport, safe area, padding, and positive ordered zoom limits. Empty bounds produce a neutral shot. The safe area is
 intersected with the viewport before padding. `ShotCamera(shot, viewport, arena)` blends the shot with the neutral
 camera and optionally keeps the zoomed viewport within the arena; it returns a `CameraView`. A shot's rotation is in
-degrees. Supply geometry in the same coordinate space. Apply `CameraEffects2D::Apply` afterward to retain cinematic
-positioning beneath shake, kick and punch. Letterboxes, tile/grid conversion and game layout stay in the caller's
-adapter.
+radians, clockwise. Supply geometry in the same coordinate space. Apply `CameraEffects2D::Apply` afterward to retain
+cinematic positioning beneath shake, kick and punch. Letterboxes, tile/grid conversion and game layout stay in the
+caller's adapter.
 
 `GlitchEffects2D(GlitchStyle)`, `ShockwaveEffects2D(ShockwaveStyle)` and `PulseOverlay2D(PulseOverlayStyle)` are
 independent value-owned components. Their styles configure colour, intensity, timing, sizes and counts. Supply valid

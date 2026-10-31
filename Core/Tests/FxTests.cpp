@@ -1,5 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include "Fx/CameraEffects2D.h"
 #include "Fx/CameraShot.h"
@@ -9,6 +11,7 @@
 #include "Fx/ParticleSystem2D.h"
 #include "Graphics/Text/FontFace.h"
 #include "Tests/PaintHarness.h"
+#include "Utilities/MathUtils.h"
 
 using Catch::Approx;
 
@@ -112,6 +115,46 @@ TEST_CASE("Engine.Fx.CameraEffectsMoveTheViewAndSettle", "[engine][fx]") {
     steady.SetMotion(1.0f, {1.0f, 0.0f});
     steady.Update(0.5f);
     CHECK(steady.MotionIntensity() == 0.0f);
+}
+
+TEST_CASE("Engine.Fx.ParticleRotationAndSpinUseClockwiseRadians", "[engine][fx]") {
+    ParticleSystem2D particles({.capacity = 1, .seed = 7U});
+    float rotation = -1.0f;
+    particles.Emit({50.0f, 50.0f}, 1,
+                   {.lifetime = {2.0f, 2.0f},
+                    .size = {2.0f, 2.0f},
+                    .rotation = {Radians(15.0f), Radians(15.0f)},
+                    .spin = {Radians(30.0f), Radians(30.0f)}},
+                   {.color = Pink, .draw = [&](Painter& paint, const ParticleDrawData& data) {
+                        rotation = data.rotation;
+                        DrawParticleShape(paint, ParticleShape::Square, data);
+                    }});
+    particles.Update(0.5f);
+    PaintHarness h({400.0f, 200.0f}, 1.0f);
+    h.Begin();
+    particles.Draw(h.paint);
+    h.End();
+    CHECK(rotation == Approx(Pi / 6.0f));
+    REQUIRE_FALSE(h.Draws().empty());
+    const auto vertices = h.Drawn();
+    // The top-right diagonal turns clockwise by 30 degrees, independent of the anti-aliasing margin.
+    CHECK(std::any_of(vertices.begin(), vertices.end(), [](const auto& vertex) {
+        return vertex.x > 50.0f && vertex.y < 50.0f &&
+               (50.0f - vertex.y) / (vertex.x - 50.0f) == Approx(2.0f - std::sqrt(3.0f));
+    }));
+}
+
+TEST_CASE("Engine.Fx.CameraShotRotationUsesClockwiseRadiansAndWeight", "[engine][fx]") {
+    static_assert(Radians(180.0f) == Pi);
+    static_assert(Radians(-180.0f) == -Pi);
+    const CameraShot shot{.focus = Area.Center(), .rotation = Radians(180.0f), .weight = 0.5f};
+    const CameraView camera = ShotCamera(shot, Area, Area);
+    CHECK(camera.rotation == Approx(Pi / 2.0f));
+    const Float2 right = camera.ToScreen(Area.Center() + Float2{10.0f, 0.0f});
+    CHECK(right.x == Approx(Area.Center().x));
+    CHECK(right.y == Approx(Area.Center().y + 10.0f));
+    CHECK(ShotCamera({.rotation = Radians(90.0f)}, Area, Area).rotation == 0.0f);
+    CHECK(BlendShots({}, shot, 0.5f).rotation == Approx(Pi / 2.0f));
 }
 
 TEST_CASE("Engine.Fx.CameraShotsFrameTheirBoundsInsideTheSafeArea", "[engine][fx]") {

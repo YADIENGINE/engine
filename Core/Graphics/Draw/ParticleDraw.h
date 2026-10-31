@@ -11,7 +11,7 @@ struct ParticleDrawData {
     Float2 velocity;
     Color4 color;
     float size = 0.0f;
-    float rotation = 0.0f; // Degrees
+    float rotation = 0.0f; // Radians, clockwise
     float normalizedAge = 0.0f;
 };
 struct ParticleShapeStyle {

@@ -4,14 +4,13 @@
 #include "Graphics/Paint/Painter.h"
 #include "Utilities/Affine2.h"
 #include "Utilities/FloatRect.h"
-#include "Utilities/MathUtils.h"
 
 void DrawParticleShape(Painter& paint, ParticleShape shape, const ParticleDrawData& data,
                        const ParticleShapeStyle& style) {
     switch (shape) {
     case ParticleShape::Circle: paint.Circle(data.position, data.size, Fill(data.color)); break;
     case ParticleShape::Square: {
-        auto turned = paint.Transform(Affine2::Rotate(data.rotation * Pi / 180.0f, data.position));
+        auto turned = paint.Transform(Affine2::Rotate(data.rotation, data.position));
         paint.Rect(FloatRect::FromCenter(data.position, {data.size * 2.0f, data.size * 2.0f}), Fill(data.color));
         break;
     }

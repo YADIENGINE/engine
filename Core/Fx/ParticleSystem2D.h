@@ -20,9 +20,9 @@ struct ParticleEmission {
     FloatRange speed;
     FloatRange lifetime;
     FloatRange size;
-    FloatRange rotation;    // degrees
-    FloatRange spin;        // degrees/second
-    float direction = 0.0f; // radians
+    FloatRange rotation;    // radians, clockwise
+    FloatRange spin;        // radians/second, clockwise
+    float direction = 0.0f; // radians, clockwise
     float spread = 2.0f * Pi;
     Float2 acceleration{}; // canvas units/second squared
     float drag = 0.0f;

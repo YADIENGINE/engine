@@ -37,5 +37,5 @@ CameraView ShotCamera(const CameraShot& shot, const FloatRect& viewport, const F
         target.x = std::clamp(target.x, arena.x + halfWidth, arena.Right() - halfWidth);
         target.y = std::clamp(target.y, arena.y + halfHeight, arena.Bottom() - halfHeight);
     }
-    return {.offset = center, .target = target, .rotation = shot.rotation * weight * Pi / 180.0f, .zoom = zoom};
+    return {.offset = center, .target = target, .rotation = shot.rotation * weight, .zoom = zoom};
 }

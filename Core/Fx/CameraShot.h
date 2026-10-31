@@ -3,12 +3,12 @@
 #include "Utilities/Float2.h"
 #include "Utilities/FloatRect.h"
 
-// Sinematik kamera çekimi: oyun alanı 'focus'a (canvas noktası) kayar, 'zoom' katına yakınlaşır, 'rotation' derece
-// döner. 'weight' 0..1: normal kameradan bu çekime geçişin oranı; 0 iken çekim etkisizdir.
+// Cinematic camera shot: the field moves to 'focus' (a canvas point), zooms by 'zoom', and rotates by 'rotation'
+// radians. 'weight' 0..1 blends from the normal camera to this shot; at 0 the shot has no effect.
 struct CameraShot {
     Float2 focus{};
     float zoom = 1.0f;
-    float rotation = 0.0f; // Derece, saat yönünde
+    float rotation = 0.0f; // Radians, clockwise
     float weight = 0.0f;
     // true: yakın çekimde görünen alan arenada kalır (odak içeri çekilir); false: arena kenarındaki bir şeyi bütünüyle
     // kadraja almak için odak arenanın dışına taşabilir.

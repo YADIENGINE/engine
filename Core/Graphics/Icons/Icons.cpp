@@ -11,13 +11,12 @@
 #include "Utilities/MathUtils.h"
 
 namespace {
-constexpr float Deg = Pi / 180.0f;
 constexpr float FillAlpha = 0.3f; // Inner fill of line icons
 constexpr Color4 Black{0, 0, 0, 255};
 constexpr Color4 White{255, 255, 255, 255};
 constexpr std::size_t HalfDiscPoints = 25;
 
-// --- Drawing helpers (angles in degrees: 0 points right, clockwise on screen) ---
+// --- Drawing helpers (angles in radians: 0 points right, clockwise on screen) ---
 
 void Segment(Painter& p, Float2 a, Float2 b, float width, Color4 color, StrokeCap cap = StrokeCap::Butt) {
     p.Line(a, b, {.width = width, .color = color, .cap = cap});
@@ -33,10 +32,9 @@ void Box(Painter& p, const FloatRect& rect, Color4 color) { p.Rect(rect, Fill(co
 void Ring(Painter& p, Float2 center, float inner, float outer, Color4 color) {
     p.Circle(center, outer, Outline(outer - inner, color, StrokeAlign::Inside));
 }
-// Part of a ring between the two radii, from 'startDegrees' to 'endDegrees'.
-void Band(Painter& p, Float2 center, float inner, float outer, float startDegrees, float endDegrees, Color4 color) {
-    p.Arc(center, (inner + outer) * 0.5f, startDegrees * Deg, (endDegrees - startDegrees) * Deg,
-          {.width = outer - inner, .color = color});
+// Part of a ring between the two radii, from 'start' to 'end' (radians, clockwise).
+void Band(Painter& p, Float2 center, float inner, float outer, float start, float end, Color4 color) {
+    p.Arc(center, (inner + outer) * 0.5f, start, end - start, {.width = outer - inner, .color = color});
 }
 // Half disc below its diameter (a bowl).
 void HalfDisc(Painter& p, Float2 center, float radius, Color4 color) {
@@ -64,8 +62,8 @@ void FramedDisc(Painter& p, Float2 center, float radius, const IconStyle& style,
     p.Circle(center, radius,
              {.fill = Faded(style, fillAlpha), .stroke = {style.line, style.color, StrokeAlign::Inside}});
 }
-// Unit direction: 0 degrees up, growing clockwise.
-Float2 Dir(float degrees) { return {std::sin(degrees * Deg), -std::cos(degrees * Deg)}; }
+// Unit direction: 0 radians up, growing clockwise.
+Float2 Dir(float angle) { return {std::sin(angle), -std::cos(angle)}; }
 // Leaf (rhombus) growing from 'base' along 'dir'; widest at 'widest' of its length.
 std::array<Float2, 4> Leaf(Float2 base, Float2 dir, float length, float width, float widest) {
     const Float2 perp = Perpendicular(dir);
@@ -132,7 +130,7 @@ void Apple(Painter& p, Float2 c, float s, Color4 color) {
 
 void Magnet(Painter& p, Float2 c, float s, Color4 color) {
     const float inner = s * 0.5f;
-    Band(p, c, inner, s, 0.0f, 180.0f, color);
+    Band(p, c, inner, s, 0.0f, Radians(180.0f), color);
     Box(p, {c.x - s, c.y - s * 0.75f, s - inner, s * 0.75f}, color);
     Box(p, {c.x + inner, c.y - s * 0.75f, s - inner, s * 0.75f}, color);
 }
@@ -199,7 +197,7 @@ void Clover(Painter& p, Float2 c, float s, Color4 color) {
     const Float2 mid{c.x, c.y - s * 0.1f};
     Segment(p, mid, {c.x + s * 0.35f, c.y + s}, s * 0.14f, color);
     for (int i = 0; i < 4; ++i) {
-        const Float2 d = Dir(45.0f + 90.0f * static_cast<float>(i));
+        const Float2 d = Dir(Radians(45.0f + 90.0f * static_cast<float>(i)));
         const Float2 across = Perpendicular(d);
         const Float2 leaf = mid + d * (s * 0.42f);
         for (const float side : {-1.0f, 1.0f})
@@ -215,7 +213,7 @@ void TurnArrow(Painter& p, Float2 c, float s, Color4 color) {
     const float outer = s * 0.68f;
     const float mid = outer - thick * 0.5f;
     Box(p, {bend.x - outer, bend.y, thick, c.y + s - bend.y}, color);
-    Band(p, bend, outer - thick, outer, 180.0f, 270.0f, color);
+    Band(p, bend, outer - thick, outer, Radians(180.0f), Radians(270.0f), color);
     const float barY = bend.y - outer;
     const float headX = c.x + s * 0.35f;
     Box(p, {bend.x, barY, headX - bend.x, thick}, color);
@@ -266,7 +264,7 @@ void HornedEye(Painter& p, Float2 c, float s, const IconStyle& style) {
 void Sun(Painter& p, Float2 c, float s, const IconStyle& style) {
     Disc(p, c, s * 0.45f, style.color);
     for (int i = 0; i < 8; ++i) {
-        const Float2 dir = Float2::FromAngle(static_cast<float>(i) * 45.0f * Deg);
+        const Float2 dir = Float2::FromAngle(Radians(static_cast<float>(i) * 45.0f));
         Segment(p, c + dir * (s * 0.6f), c + dir * s, style.line, style.color);
     }
 }
@@ -342,7 +340,7 @@ void Rune(Painter& p, Float2 c, float s, const IconStyle& style) {
     Ring(p, c, s - style.line, s, style.color);
     std::array<Float2, 3> triangle{};
     for (std::size_t k = 0; k < triangle.size(); ++k)
-        triangle[k] = c + Float2::FromAngle((static_cast<float>(k) * 120.0f - 90.0f) * Deg, s * 0.7f);
+        triangle[k] = c + Float2::FromAngle(Radians(static_cast<float>(k) * 120.0f - 90.0f), s * 0.7f);
     p.Polyline(triangle, {.width = style.line, .color = style.color}, true);
     Disc(p, c, style.line * 1.2f, style.color);
 }
@@ -364,7 +362,7 @@ void Mountain(Painter& p, Float2 c, float s, const IconStyle& style) {
 void Lock(Painter& p, Float2 c, float s, const IconStyle& style) {
     const FloatRect body{c.x - s * 0.8f, c.y - s * 0.1f, s * 1.6f, s * 1.1f};
     const float shackle = style.line * 1.3f;
-    Band(p, {c.x, body.y}, s * 0.45f, s * 0.45f + shackle, 180.0f, 360.0f, style.color);
+    Band(p, {c.x, body.y}, s * 0.45f, s * 0.45f + shackle, Radians(180.0f), Radians(360.0f), style.color);
     p.RoundRect(body, s * 0.11f, Framed(style));
     const Float2 hole{c.x, body.y + body.height * 0.42f};
     Disc(p, hole, s * 0.16f, style.color);
@@ -386,10 +384,9 @@ void Dice(Painter& p, Float2 c, float s, const IconStyle& style) {
         Disc(p, c + offset, s * 0.16f, style.color);
 }
 
-// Corners of a rectangle turned 'degrees' around the middle of its bottom edge (clockwise from the top left).
-std::array<Float2, 4> TurnedCard(Float2 pivot, float width, float height, float degrees) {
-    const float a = degrees * Deg;
-    const auto at = [&](float x, float y) { return pivot + Rotated({x, y}, a); };
+// Corners of a rectangle turned 'angle' radians around the middle of its bottom edge (clockwise from the top left).
+std::array<Float2, 4> TurnedCard(Float2 pivot, float width, float height, float angle) {
+    const auto at = [&](float x, float y) { return pivot + Rotated({x, y}, angle); };
     return {at(-width * 0.5f, -height), at(width * 0.5f, -height), at(width * 0.5f, 0.0f), at(-width * 0.5f, 0.0f)};
 }
 
@@ -398,7 +395,7 @@ void Cards(Painter& p, Float2 c, float s, const IconStyle& style) {
     const Float2 pivot{c.x, c.y + s * 0.85f};
     const float height = s * 1.55f;
     for (const float degrees : {-24.0f, 24.0f, 0.0f}) {
-        const std::array<Float2, 4> card = TurnedCard(pivot, s * 0.95f, height, degrees);
+        const std::array<Float2, 4> card = TurnedCard(pivot, s * 0.95f, height, Radians(degrees));
         if (degrees == 0.0f) p.Polygon(card, Fill(Tinted(WithAlpha(Black, 0.55f), style)));
         p.Polygon(card, Framed(style));
     }
@@ -413,8 +410,8 @@ void LoopArrow(Painter& p, Float2 c, float s, const IconStyle& style) {
     constexpr float End = 300.0f;
     const float radius = s * 0.8f;
     Disc(p, c, radius, Faded(style, FillAlpha * 0.6f));
-    Band(p, c, radius - style.line, radius, Start, End, style.color);
-    const Float2 normal = Float2::FromAngle(End * Deg);
+    Band(p, c, radius - style.line, radius, Radians(Start), Radians(End), style.color);
+    const Float2 normal = Float2::FromAngle(Radians(End));
     const Float2 tangent = Perpendicular(normal);
     const Float2 tip = c + normal * (radius - style.line * 0.5f);
     const float head = s * 0.42f;
@@ -428,7 +425,7 @@ void Lotus(Painter& p, Float2 c, float s, const IconStyle& style) {
     constexpr std::array<std::pair<float, float>, 5> Petals{
         {{-72.0f, 0.85f}, {72.0f, 0.85f}, {-36.0f, 1.2f}, {36.0f, 1.2f}, {0.0f, 1.5f}}};
     for (const auto& [degrees, length] : Petals)
-        p.Polygon(Leaf(base, Dir(degrees), s * length, s * 0.24f, 0.5f), Framed(style));
+        p.Polygon(Leaf(base, Dir(Radians(degrees)), s * length, s * 0.24f, 0.5f), Framed(style));
     Segment(p, {c.x - s, c.y + s * 0.82f}, {c.x + s, c.y + s * 0.82f}, style.line, style.color);
 }
 
@@ -438,7 +435,7 @@ void Goblet(Painter& p, Float2 c, float s, const IconStyle& style) {
     const float r = s * 0.75f;
     HalfDisc(p, bowl, r, Faded(style));
     HalfDisc(p, {bowl.x, bowl.y + s * 0.12f}, r * 0.72f, Faded(style, 0.65f));
-    Band(p, bowl, r - style.line, r, 0.0f, 180.0f, style.color);
+    Band(p, bowl, r - style.line, r, 0.0f, Radians(180.0f), style.color);
     Segment(p, {bowl.x - r, bowl.y}, {bowl.x + r, bowl.y}, style.line, style.color);
     Segment(p, {c.x, bowl.y + r}, {c.x, c.y + s * 0.82f}, style.line * 1.3f, style.color);
     Segment(p, {c.x - s * 0.5f, c.y + s * 0.85f}, {c.x + s * 0.5f, c.y + s * 0.85f}, style.line * 1.5f, style.color);
@@ -453,12 +450,13 @@ void Stopwatch(Painter& p, Float2 c, float s, const IconStyle& style) {
     FramedDisc(p, face, r, style);
     Box(p, {c.x - s * 0.2f, c.y - s, s * 0.4f, s * 0.18f}, style.color);
     Segment(p, {c.x, c.y - s * 0.84f}, {c.x, face.y - r}, style.line * 1.4f, style.color);
-    Segment(p, onFace(Dir(45.0f), r), onFace(Dir(45.0f), r + s * 0.16f), style.line * 1.6f, style.color);
+    Segment(p, onFace(Dir(Radians(45.0f)), r), onFace(Dir(Radians(45.0f)), r + s * 0.16f), style.line * 1.6f,
+            style.color);
     for (int i = 0; i < 4; ++i) {
-        const Float2 d = Dir(90.0f * static_cast<float>(i));
+        const Float2 d = Dir(Radians(90.0f * static_cast<float>(i)));
         Segment(p, onFace(d, r * 0.6f), onFace(d, r * 0.78f), style.line, style.color);
     }
-    Segment(p, face, onFace(Dir(50.0f), r * 0.62f), style.line * 1.4f, style.color);
+    Segment(p, face, onFace(Dir(Radians(50.0f)), r * 0.62f), style.line * 1.4f, style.color);
     Disc(p, face, style.line * 1.3f, style.color);
 }
 
@@ -483,8 +481,9 @@ void Wings(Painter& p, Float2 c, float s, const IconStyle& style) {
     const Float2 root{c.x, c.y + s * 0.45f};
     for (const float side : {-1.0f, 1.0f})
         for (const auto& [degrees, length] : Feathers)
-            p.Polygon(Leaf({root.x + side * s * 0.12f, root.y}, Dir(side * degrees), s * length, s * 0.15f, 0.6f),
-                      Framed(style));
+            p.Polygon(
+                Leaf({root.x + side * s * 0.12f, root.y}, Dir(Radians(side * degrees)), s * length, s * 0.15f, 0.6f),
+                Framed(style));
     Disc(p, root, s * 0.16f, style.color);
     Tri(p, {c.x, c.y - s}, {c.x - s * 0.24f, c.y - s * 0.58f}, {c.x + s * 0.24f, c.y - s * 0.58f}, style.color);
 }
@@ -508,7 +507,7 @@ void Flag(Painter& p, Float2 c, float s, const IconStyle& style) {
 // Feather: a diagonal vane, the shaft through it and barbs on both sides.
 void Feather(Painter& p, Float2 c, float s, const IconStyle& style) {
     constexpr float Widest = 0.55f;
-    const Float2 dir = Dir(45.0f);
+    const Float2 dir = Dir(Radians(45.0f));
     const Float2 across = Perpendicular(dir);
     const Float2 base{c.x - s * 0.55f, c.y + s * 0.55f};
     const float length = s * 1.55f;
@@ -555,9 +554,9 @@ void Anchor(Painter& p, Float2 c, float s, const IconStyle& style) {
     const float r = s * 0.72f;
     Segment(p, {c.x, eye.y + s * 0.2f}, {c.x, arc.y + r}, w, style.color);
     Segment(p, {c.x - s * 0.45f, c.y - s * 0.3f}, {c.x + s * 0.45f, c.y - s * 0.3f}, w, style.color);
-    Band(p, arc, r - w, r, 15.0f, 165.0f, style.color);
+    Band(p, arc, r - w, r, Radians(15.0f), Radians(165.0f), style.color);
     for (const float side : {-1.0f, 1.0f}) {
-        const Float2 end = arc + Float2::FromAngle((side > 0.0f ? 15.0f : 165.0f) * Deg, r - w * 0.5f);
+        const Float2 end = arc + Float2::FromAngle(Radians(side > 0.0f ? 15.0f : 165.0f), r - w * 0.5f);
         Tri(p, end + Float2{side * s * 0.1f, -s * 0.32f}, end + Float2{-side * s * 0.14f, s * 0.04f},
             end + Float2{side * s * 0.26f, s * 0.06f}, style.color);
     }
@@ -601,7 +600,8 @@ void Swirl(Painter& p, Float2 c, float s, const IconStyle& style) {
     Disc(p, c, s, Faded(style, FillAlpha * 0.6f));
     for (std::size_t k = 0; k < Radii.size(); ++k) {
         const float start = static_cast<float>(k) * 120.0f;
-        Band(p, c, Radii[k] * s - style.line * 1.2f, Radii[k] * s, start, start + 230.0f, style.color);
+        Band(p, c, Radii[k] * s - style.line * 1.2f, Radii[k] * s, Radians(start), Radians(start + 230.0f),
+             style.color);
     }
     Disc(p, c, s * 0.14f, style.color);
 }
@@ -666,8 +666,10 @@ void Mask(Painter& p, Float2 c, float s, const IconStyle& style) {
     Segment(p, {c.x, c.y - s}, {c.x, c.y + s}, style.line, hole);
     for (const float side : {-1.0f, 1.0f})
         p.Ellipse({c.x + side * s * 0.36f, c.y - s * 0.22f}, {s * 0.17f, s * 0.12f}, Fill(hole));
-    Band(p, {c.x - s * 0.02f, c.y + s * 0.1f}, s * 0.42f - style.line, s * 0.42f, 90.0f, 180.0f, hole);
-    Band(p, {c.x + s * 0.02f, c.y + s * 0.75f}, s * 0.42f - style.line, s * 0.42f, 270.0f, 360.0f, hole);
+    Band(p, {c.x - s * 0.02f, c.y + s * 0.1f}, s * 0.42f - style.line, s * 0.42f, Radians(90.0f), Radians(180.0f),
+         hole);
+    Band(p, {c.x + s * 0.02f, c.y + s * 0.75f}, s * 0.42f - style.line, s * 0.42f, Radians(270.0f), Radians(360.0f),
+         hole);
 }
 
 // Hen: round body, head, comb, beak and an egg beside it.
@@ -692,7 +694,7 @@ void Tire(Painter& p, Float2 c, float s, const IconStyle& style) {
     Ring(p, c, s * 0.5f, s * 0.86f, style.color);
     Ring(p, c, s * 0.22f, s * 0.3f, style.color);
     for (int i = 0; i < Studs; ++i) {
-        const Float2 d = Dir(static_cast<float>(i) * (360.0f / Studs));
+        const Float2 d = Dir(Radians(static_cast<float>(i) * (360.0f / Studs)));
         Disc(p, c + d * (s * 0.68f), s * 0.07f, DetailOr(style));
         Disc(p, c + d * (s * 0.93f), s * 0.07f, style.color);
     }
@@ -702,7 +704,7 @@ void Tire(Painter& p, Float2 c, float s, const IconStyle& style) {
 void Bubble(Painter& p, Float2 c, float s, const IconStyle& style) {
     const Float2 big{c.x + s * 0.18f, c.y - s * 0.15f};
     FramedDisc(p, big, s * 0.72f, style);
-    Band(p, big, s * 0.42f, s * 0.42f + style.line, 210.0f, 290.0f, style.color);
+    Band(p, big, s * 0.42f, s * 0.42f + style.line, Radians(210.0f), Radians(290.0f), style.color);
     Ring(p, {c.x - s * 0.62f, c.y + s * 0.62f}, s * 0.24f - style.line, s * 0.24f, style.color);
     Disc(p, {c.x - s * 0.88f, c.y + s * 0.95f}, s * 0.1f, style.color);
 }
@@ -740,7 +742,7 @@ void Flame(Painter& p, Float2 c, float s, const IconStyle& style) {
 void Gear(Painter& p, Float2 c, float s, const IconStyle& style) {
     constexpr int Teeth = 8;
     for (int i = 0; i < Teeth; ++i) {
-        const Float2 dir = Float2::FromAngle(static_cast<float>(i) * (360.0f / Teeth) * Deg);
+        const Float2 dir = Float2::FromAngle(Radians(static_cast<float>(i) * (360.0f / Teeth)));
         Segment(p, c + dir * (s * 0.6f), c + dir * s, s * 0.3f, style.color);
     }
     Ring(p, c, s * 0.3f, s * 0.75f, style.color);
@@ -749,7 +751,7 @@ void Gear(Painter& p, Float2 c, float s, const IconStyle& style) {
 // Power button: a ring open at the top and a vertical line through the gap.
 void Power(Painter& p, Float2 c, float s, const IconStyle& style) {
     const float width = style.line * 1.6f;
-    Band(p, c, s * 0.8f - width, s * 0.8f, -55.0f, 235.0f, style.color);
+    Band(p, c, s * 0.8f - width, s * 0.8f, Radians(-55.0f), Radians(235.0f), style.color);
     Segment(p, {c.x, c.y - s}, {c.x, c.y - s * 0.1f}, width, style.color, StrokeCap::Round);
 }
 } // namespace

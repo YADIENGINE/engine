@@ -5,6 +5,9 @@
 // View'ların ortak sayı yardımcıları (raylib'siz). Header-only.
 inline constexpr float Pi = 3.14159265f;
 
+// Degrees to radians; positive angles turn clockwise in canvas coordinates.
+[[nodiscard]] constexpr float Radians(float degrees) { return degrees * (Pi / 180.0f); }
+
 // a'dan b'ye 't' oranında doğrusal geçiş ('t' kırpılmaz). raymath'in Lerp'iyle çakışmasın diye Mix.
 constexpr float Mix(float a, float b, float t) { return a + (b - a) * t; }
 
