@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..cmake import read_cache, remove_build_dir, run
+from ..cmake import PYTHON_DEFINITION, read_cache, remove_build_dir, run
 from ..errors import EXIT_FAILED, EXIT_OK, ToolError
 from ..msvc import GENERATOR, msvc_env, tool
 from ..project import Project
@@ -60,7 +60,7 @@ def editor(project: Project, release: bool, build_only: bool, clean: bool) -> in
         remove_build_dir(build_dir, project.root)
     if needs_configure(project.root, build_dir, options):
         command = [cmake, "-S", str(project.root), "-B", str(build_dir), "-G", GENERATOR,
-                   "-DCMAKE_C_COMPILER=cl", "-DCMAKE_CXX_COMPILER=cl"]
+                   "-DCMAKE_C_COMPILER=cl", "-DCMAKE_CXX_COMPILER=cl", PYTHON_DEFINITION]
         command.extend(f"-D{name}={value}" for name, value in options.items())
         run(command, project.root, env)
 

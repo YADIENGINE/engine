@@ -13,6 +13,9 @@ python . [--project KÖK] <komut> [seçenekler]           # engine reposunun kö
 ```
 
 `Engine` klasörü `__main__.py` taşıdığı için Python onu doğrudan çalıştırır. Python 3.10+, sadece standart kütüphane.
+Araçlar yalıtılmış bir yorumlayıcıyla da çalışır (`python -I`, launcher'ın `._pth`'li gömülü Python'u): çalışma
+klasörünün `sys.path`'te olmasına güvenmez ve CMake'e kendilerini çalıştıran yorumlayıcıyı verir
+(`Python3_EXECUTABLE`), böylece derleme adımları da aynı Python'u kullanır.
 Proje kökü: `--project` verilmişse o; yoksa engine'in üst klasörü (`Project.json` varsa), değilse engine'in kendisi.
 `--project` komuttan önce yazılır.
 

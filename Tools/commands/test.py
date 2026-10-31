@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ..cmake import clear_stale_build, remove_build_dir
+from ..cmake import PYTHON_DEFINITION, clear_stale_build, remove_build_dir
 from ..errors import EXIT_FAILED, EXIT_INFRA, EXIT_OK
 from ..msvc import msvc_env, tool
 
@@ -105,7 +105,7 @@ def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, 
         return code
 
     try:
-        if execute("configure", [tool("cmake"), "--preset", settings["configurePreset"]]):
+        if execute("configure", [tool("cmake"), "--preset", settings["configurePreset"], PYTHON_DEFINITION]):
             return exit_code
         if execute("build", [tool("cmake"), "--build", "--preset", settings["buildPreset"]]):
             return exit_code

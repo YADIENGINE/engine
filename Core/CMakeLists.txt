@@ -141,7 +141,11 @@ function(engine_add_tuning target)
         endif()
         list(APPEND structs "${name}")
         set(header "${outputRoot}/${relativeHeader}")
-        set(command "${Python3_EXECUTABLE}" -B -m Tools.tuning generate "${source}" "${header}")
+        # Engine kökü sys.path'e açıkça eklenir: yalıtılmış bir yorumlayıcı (launcher'ın gömülü Python'u) `-m` ile
+        # çalışma klasörünü aramaz.
+        set(command "${Python3_EXECUTABLE}" -B -c
+            "import runpy, sys; sys.path.insert(0, sys.argv.pop(1)); runpy.run_module('Tools.tuning', run_name='__main__')"
+            "${ENGINE_TUNING_GENERATOR_ROOT}" generate "${source}" "${header}")
         if(NOT EXISTS "${header}")
             # IntelliSense ilk derlemeden önce de bulsun; hata varsa derleme bildirir.
             execute_process(COMMAND ${command} WORKING_DIRECTORY "${ENGINE_TUNING_GENERATOR_ROOT}"

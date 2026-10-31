@@ -2,10 +2,15 @@
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from .errors import EXIT_FAILED, ToolError
 from .msvc import GENERATOR
+
+# Her configure'a: CMake'in Python adımları (tuning üretimi) araçları çalıştıran yorumlayıcıyı kullanır, PATH'te ya
+# da registry'de bulduğu başka bir Python'u değil (launcher'ın gömülü Python'u, ayrıntı Docs/ToolsContract.md).
+PYTHON_DEFINITION = f"-DPython3_EXECUTABLE={Path(sys.executable).as_posix()}"
 
 
 def run(command: list[str], cwd: Path, env: dict[str, str]) -> None:

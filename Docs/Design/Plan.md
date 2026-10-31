@@ -69,6 +69,10 @@ Uygulandı (2026-10-31). Kullanım: [Tuning](../Tuning.md); kararlar: [Tuning ta
   `python Engine` aynı sonucu verir. `python Engine` sözleşme olarak kalır (launcher onu çağırır).
 - Oturumlar: (1) UI dışı çekirdek: repo, içe aktarma, CLI, gömülü araçlar, sistem kontrolü, ayarlar, proje
   işlemleri, modlar; (2) ekranlar, çekirdeğin public API'si üstüne.
+- (1) yazıldı (2026-10-31), derleme / test onayı bekliyor: launcher reposu `YADIEN` (`Engine/` submodule,
+  `Engines/Engine0.1` = `v0.1.0`), `LauncherCore` + `<engine>.com` + testler. UI session'ının girişi launcher
+  reposunda `Docs/CoreApi.md`. Engine tarafı: manifest `repository` + not kuralları, `export-ignore`, yalıtılmış
+  Python ile çalışan araçlar (`Python3_EXECUTABLE`, tuning üreticisi `-m`'siz).
 
 **Sonuç:** projeyi launcher'dan kurmak, açmak ve derlemek; Python / CMake kurmadan.
 

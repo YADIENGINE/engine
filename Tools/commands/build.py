@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..cmake import clear_stale_build, remove_build_dir, run
+from ..cmake import PYTHON_DEFINITION, clear_stale_build, remove_build_dir, run
 from ..errors import EXIT_FAILED, EXIT_OK
 from ..msvc import msvc_env, tool
 from ..project import Project
@@ -40,7 +40,7 @@ def build(project: Project, release: bool, clean: bool) -> Path:
 
     env = msvc_env(project.msvc_cache)
     if needs_configure(project.root, build_dir):
-        run([tool("cmake"), "--preset", game["configurePreset"]], project.root, env)
+        run([tool("cmake"), "--preset", game["configurePreset"], PYTHON_DEFINITION], project.root, env)
         (build_dir / CONFIGURE_STAMP).touch()
     run([tool("cmake"), "--build", "--preset", game["buildPresets"][config]], project.root, env)
 
