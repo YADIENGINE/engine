@@ -298,13 +298,13 @@ Launcher/
   submodule işleri onsuz yapılamaz.
 
 **Karar (dağıtım ve kurulum):**
-- **Tek exe dağıtılır** (`<Engine>-<sürüm>.exe`, ~100–150 MB): launcher + gömülü paket (Python, CMake, Ninja,
+- **Tek exe dağıtılır** (`<Engine>-Setup-<launcher sürümü>.exe`, ~100–150 MB): launcher + gömülü paket (Python, CMake, Ninja,
   `Engines/`).
 - **İlk çalıştırma kurulumdur:** paketi `%LOCALAPPDATA%\<Engine>\`'e çıkarır (yönetici izni istemez), masaüstüne
   kısayol koyar (exe kopyası değil: tek exe, güncellemede ayrışmaz), isteğe bağlı `<engine>`'yi PATH'e ekler (varsayılan
   açık), Windows "Uygulamalar" listesine kaydolur (kaldırma oradan), sonra launcher'ı ve Sistem kontrolünü açar.
 - **Kurulum klasörü:** `<engine>.exe`, `Tools/` (python, cmake, ninja), `Engines/`, `Settings.json` (proje listesi, mod,
-  tercihler). Ayarlar ekranında "Kurulum klasörünü aç".
+  tercihler); Velopack düzeninde ikisi ayrılır (aşağıda "Karar (kurulum programı)"). Ayarlar ekranında "Kurulum klasörünü aç".
 - **Projeler** varsayılan `Belgeler\<Engine> Projects\` altına; yeni proje ekranında değiştirilebilir.
 - **Güncelleme:** yeni sürümün exe'si var olan kurulumun üzerine kurar; proje listesi ve ayarlar korunur, `Engines/`
   yeni sürümün desteklediklerle değişir. Desteği düşen sürümü kullanan projeler etkilenmez (kendi kopyaları var);
@@ -321,8 +321,20 @@ verir.
   `<engine>.exe` / `<engine>.com` başında `VelopackApp::Build().Run()`. Kurulum / kaldırma hook'ları orada çalışır;
   PATH ekleme / silme launcher'ın kendi `UserPath`'iyle hook'tadır (tek uygulama).
 - **Düzen:** Velopack uygulamayı `<id>\current\`'e koyar ve güncellemede onu bütünüyle değiştirir; bu yüzden
-  `Settings.json` (ve kullanıcı verisi) `current/`'in dışındadır, yeri Aşama 4 açık sorusu. `Engines/` ve `Tools/`
-  `current/`'in içindedir (sürümle gelir).
+  `Settings.json` `current/`'in dışında, Velopack kökündedir: `%LOCALAPPDATA%\<id>\Settings.json` (kurulu launcher'ın
+  veri klasörü exe klasörünün üstü). `Engines/` ve `Tools/` `current/`'in içindedir (sürümle gelir).
+- **Kaldırma (2026-10-31):** iz bırakmaz: Velopack kökü (ayarlar dahil) ve kısayollar gider, PATH satırı kaldırma
+  hook'unda silinir. Projelere hiç dokunulmaz; yeniden kurulumda liste Projects Folder taramasıyla geri gelir, ilk
+  açılış (Sistem kontrolü) yeniden çalışır. MSVC (VS Build Tools) kalır: sistem geneli kurulumdur, başka uygulamalar
+  da kullanabilir; kaldırmak isteyen Visual Studio Installer'dan kaldırır (belgede yazılı). Velopack'in kaldırmada
+  kökü bütünüyle sildiği deneme paketinde doğrulanır. **Neden:** temiz kaldırma; kaybolan liste tek taramayla
+  kurulur. `%APPDATA%` (Roaming) iz bırakır ve etki alanı hesaplarında var olmayan proje yollarını taşır.
+- **Sürüm (2026-10-31):** paketin sürümü launcher'ınkidir (`LAUNCHER_VERSION`, kendi semver'i; Velopack'in
+  güncelleme karşılaştırması, exe adı `<Engine>-Setup-<sürüm>.exe`, Uygulamalar listesi). Yeni engine kopyası,
+  launcher düzeltmesi ya da araç yükseltmesi onu artırır. Taşınan engine sürümleri Engines sekmesinde ve release
+  metninde ("içerir: engine 0.1.1, 0.2.0") görünür; launcher'ın kendi değişiklikleri release metnindedir, engine
+  notları manifest'te kalır (D16). **Neden:** engine sürümüne bağlansa yalnız launcher'ı değiştiren yayının numarası
+  olmazdı ve iki seri taşınırken numara yanıltırdı.
 - **Paketleyen makine:** `vpk` bir .NET aracıdır (.NET SDK gerekir); sürümü launcher'ın kütüphanesiyle aynı tutulur.
 - **İlk iş deneme paketi:** var olan launcher build'i bir kez paketlenip kurulur / kaldırılır; Velopack bir
   engel çıkarırsa geri dönüş Inno Setup 6.6'dır (bildirimsel `.iss`, yalnız ilerleme penceresi, Windows 11 stili).
@@ -541,9 +553,9 @@ Aşama 4 (dağıtım) için, tek tek konuşulur:
 
 1. ~~Paketin biçimi: kurulumu kim yapar~~ → D15 (Velopack; geri dönüş Inno Setup 6.6). ~~İmza~~ → D15
    (açık kaynak + SignPath Foundation; o güne kadar imzasız).
-2. Paketin sürümü: Velopack sürümü ve exe adı launcher'ınki mi (`LAUNCHER_VERSION`), engine'inki mi.
-3. `Settings.json`'un yeri (`current/` dışında: `<id>\` kökü mü, `%APPDATA%` mı) ve kaldırmanın sildikleri (ayarlar,
-   PATH; projeler hiçbir zaman).
+2. ~~Paketin sürümü~~ → D15 (launcher'ın kendi sürümü).
+3. ~~`Settings.json`'un yeri ve kaldırmanın sildikleri~~ → D15 (Velopack kökü; kaldırma iz bırakmaz, projeler ve
+   MSVC kalır).
 4. Kurulum / güncelleme sırasında açık launcher, editör ya da `<engine>` komutu; aynı / eski sürümün tekrar
    çalıştırılması.
 5. "Ses araçlarını kur": NumPy / SciPy paketin içinde mi, istendiğinde internetten mi.
