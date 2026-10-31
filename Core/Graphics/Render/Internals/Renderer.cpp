@@ -1,7 +1,23 @@
 #include "Graphics/Render/Internals/Renderer.h"
 #include <raylib.h>
+#include <rlgl.h>
 #include "Graphics/Gpu/Internals/GlDevice.h"
 #include "Graphics/Paint/Painter.hpp"
+
+namespace {
+// The Painter's device changed GL state behind rlgl's cache (framebuffer, viewport, premultiplied blending). Native
+// tool overlays (rlImGui) draw through rlgl right after: give them the window with raylib's own state.
+void PrepareNativeOverlay() {
+    rlDrawRenderBatchActive();
+    rlDisableFramebuffer();
+    rlViewport(0, 0, GetRenderWidth(), GetRenderHeight());
+    rlDisableScissorTest();
+    rlDisableDepthTest();
+    // rlgl skips setting a blend mode it believes is current: switching away and back makes it apply alpha blending.
+    rlSetBlendMode(RL_BLEND_ADDITIVE);
+    rlSetBlendMode(RL_BLEND_ALPHA);
+}
+} // namespace
 
 Renderer::Frame::Frame(Renderer& renderer, Painter& canvas)
     : _renderer(renderer)
@@ -38,7 +54,9 @@ void Renderer::Frame::Complete(const std::function<void(const Texture2D&)>& canv
         observer->BeginRegion(FrameRegion::Present);
     }
     Painter& window = pipeline.BeginWindow();
+    PrepareNativeOverlay();
     if (windowDraw) windowDraw(window);
+    rlDrawRenderBatchActive();
     renderer._device->InvalidateState(); // Tool overlays may render directly through their own GL backend.
     pipeline.EndFrame();
     if (observer) {

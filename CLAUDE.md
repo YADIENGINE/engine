@@ -31,9 +31,9 @@ Core/      Oyuna giren engine kodu; include kökü (#include "Runtime/Game.h"). 
   GameObjects/ GameObject, ObjectList; headless nesne lifecycle'ı ve isteğe bağlı sahiplik
   Scene/     Scene, Internals/SceneManager; headless sahne lifecycle'ı, seçimi ve kapanışı
   Graphics/  Çizim: Paint/ (Painter API), Text/ (FontFace), Surface/, Post/, Gpu/Internals/ (GpuDevice, GlDevice,
-             NullDevice, Shaders/*.glsl), Render/ (RenderStats; Internals/: Renderer, RenderPipeline, LegacyBridge);
-             Docs/Graphics/Painter.md. Eski raylib yolu (Draw/ Anim/ Icons/ Style/ Ui/, RenderLayer) geçiş bitene
-             kadar Painter::Legacy köprüsünden çalışır; yeni çizim kodu Painter ile yazılır.
+             NullDevice, Shaders/*.glsl), Render/ (RenderStats; Internals/: Window, Renderer, RenderPipeline),
+             Painter üstündeki yardımcılar Draw/ Icons/ Ui/ (.hpp), Style/ (tema), Anim/; Docs/Graphics/Painter.md.
+             Bütün çizim Painter'ladır; raylib çizim API'si kullanılmaz.
   Input/ Audio/ Fx/ Options/ Platform/ Menus/ Gameplay/ Progress/ Utilities/
   Tuning/    *.tuning.json biçimi (TuningFile), canlı okuma (TuningLive, ENGINE_TUNING_LIVE), Tuning<T>(); Docs/Tuning.md
   Modules/   Opt-in sistemler (JsonIO, Persistence, Localization, Version, Steam, ScoreBoard, RunTracking ...); Modules/X/Tests/
@@ -75,11 +75,14 @@ EngineManifest.json  Ad, sürüm, toolsContract, repo adresi, birikimli notlar (
 - Bağımlılık yönleri (`Graphics/`): `Anim`, `Render` → `Utilities`; `Draw` → `Render` + `Anim`; `Icons` → `Draw`;
   `Fx` → `Draw` + `Paint` + `Anim` (headless, Painter'lı); `Style` → `Draw` + `Fx` (sadece stil tipleri); `Ui` →
   `Style` + `Draw`. `Draw`, `Render` ve `Fx` temayı okumaz, stilleri ve saati parametre alır.
-- Render göçü (`Docs/Design/Rendering.md` R13): yardımcıların Painter sürümü aynı adın `.hpp`'sinde, raylib'li eski
-  `.h` + `XLegacy.cpp` göç bitince silinir. Yeni kod `.hpp` API'sini kullanır.
-- Headless kod (`EngineHeadless`, `Utilities/`, mantık yardımcıları) raylib include etmez. `InitWindow`/`CloseWindow`
-  sadece `Window`'da. Canvas koordinatları mantıksaldır; scissor `BeginClip` / `BeginUiClip`.
-- Yeni yardımcı yazmadan önce mevcutları kullan: `Easing.h`, `MathUtils.h`, `DrawUtils.h`, `Neon.h`, `VectorMath.h`.
+- raylib yalnız platform katmanıdır: pencere ve GL bağlamı (`Render/Internals/Window`, `Renderer`), `Input/Internals`,
+  `Audio/Internals`, `Platform/Internals`, `ToolUi` (rlImGui) ve editörün görüntü aktarımı. Public başlıklar ve
+  headless kod (`EngineHeadless`, `Utilities/`, mantık yardımcıları) raylib include etmez; oyunun ihtiyaç duyduğu
+  platform işi public, raylib'siz bir API ile açılır (`Platform/Shell.h`). `InitWindow`/`CloseWindow` sadece `Window`'da.
+- Çizim `Painter` ile, canvas koordinatları mantıksaldır; durum kapsamlarla (`paint.Clip`, `Transform`, `Target` ...),
+  ekran dışı katman `Surface`. Tipler `Color4`, `Float2`, `FloatRect`; açılar radyan, saat yönünde.
+- Yeni yardımcı yazmadan önce mevcutları kullan: `Easing.h`, `MathUtils.h`, `Utilities/Float2.h`, `DrawUtils.hpp`,
+  `Neon.hpp`, `Ui/UiDraw.hpp`.
 - Kod: C++20, `/W4` uyarısız; isimli namespace yok, `.cpp`'ye özel yardımcılar anonim namespace'te; her class kendi
   `.h` + `.cpp`'sinde; `#pragma once`; include'lar `Core/`'a göre (editör: engine köküne göre; `../` yok), sıra: kendi header → üçüncü
   parti → std → proje. `new`/`delete` ve C dizisi yok, RAII. `enum class` tek satır. Tip/fonksiyon `PascalCase`,
