@@ -165,4 +165,6 @@ def new(engine: Path, root: Path, name: str | None, dry_run: bool) -> int:
   python Engine editor   the engine editor with this project's previews
   python Engine test     headless tests
 First game: Engine/Docs/GettingStarted.md, previews: Engine/Docs/Editor/GettingStarted.md""")
+    print("Using an AI agent: reference Engine/AgentDocs/Index.md from your own agent file "
+          "(Claude Code: @Engine/AgentDocs/Index.md in CLAUDE.md).")
     return EXIT_OK

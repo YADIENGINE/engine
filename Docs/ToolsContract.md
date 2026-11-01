@@ -30,7 +30,7 @@ use the same Python. Project root: `--project` if supplied; otherwise the engine
 | `refresh` | | Build & Refresh in the project's open editor (joins an existing refresh); streams output and exits with its result. The preview stays open during the build. Returns 2 if the editor is not open ([control gateway](Editor/Architecture.md#control-gateway)) |
 | `new` | `--name AD`, `--dry-run` | Sets up the engine's parent folder as a new project; asks for the name without `--name` |
 | `info` | | Engine and project information, JSON (below) |
-| `check` | `--fix` | Internals include boundary ([API boundaries](Contributing/ApiBoundaries.md)) and tuning file validity / canonical format ([Tuning](Tuning.md)); `--fix` formats valid tuning files |
+| `check` | `--fix` | Internals include boundary ([API boundaries](Contributing/ApiBoundaries.md)), tuning validity / canonical format ([Tuning](Tuning.md)), and engine AgentDocs API/snippet freshness; `--fix` formats valid tuning files and regenerates API pages / recipe snippets |
 
 Settings are in `Project.json` ([ProjectSetup](ProjectSetup.md)).
 
@@ -87,7 +87,7 @@ project's engine. The engine does not add a command named `launcher` (`test_cli.
 | Code | Meaning |
 | --- | --- |
 | 0 | Success |
-| 1 | Project work failed: build error, failed test, release check, game / editor exited with an error code, `check` found a violation or tuning problem, `refresh` failed or was cancelled |
+| 1 | Project work failed: build error, failed test, release check, game / editor exited with an error code, `check` found a boundary, tuning or AgentDocs problem, `refresh` failed or was cancelled |
 | 2 | Usage or infrastructure: wrong argument, missing tool (MSVC, CMake, Ninja), invalid `Project.json`, test report could not be created |
 | 130 | Interrupted with Ctrl+C |
 

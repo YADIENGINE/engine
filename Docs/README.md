@@ -10,6 +10,8 @@ project-specific editor helpers stay in the game's own documentation.
 
 ## First steps
 
+Material for AI agents is in `AgentDocs/`; start at [AgentDocs/Index.md](../AgentDocs/Index.md).
+
 0. [Project setup](ProjectSetup.md): `python Engine new`, `Project.json`, commands, submodule.
 1. [First game](GettingStarted.md): CMake, factory, game, and first scene.
 2. [Architecture](Architecture.md) and [runtime](Runtime.md): ownership, lifecycle, time, and scene transitions.

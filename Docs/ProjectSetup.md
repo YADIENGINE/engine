@@ -55,6 +55,12 @@ python Engine test      # headless tests (Engine tests)
 yet" screen, and the editor opens the Engine → Starter preview. When the first `.cpp` is added, CMake reconfigures and
 the project's code takes over: [First game](GettingStarted.md), [First editor preview](Editor/GettingStarted.md).
 
+## Using an AI agent
+
+The project template ships no AI file or setting (D14). Add a reference to `Engine/AgentDocs/Index.md` in your own
+agent file. For Claude Code, put `@Engine/AgentDocs/Index.md` in your project's `CLAUDE.md`; use the equivalent
+reference for other agents. Start with the task table there, and read the linked concepts when needed.
+
 ## Project.json
 
 The only place engine tools identify the project. Paths are relative to the project root; preset names are from the

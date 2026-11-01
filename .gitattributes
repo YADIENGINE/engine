@@ -7,11 +7,12 @@
 *.ttf binary
 *.ico binary
 
-# Engine geliştirmeye ait dosyalar launcher'ın kullanıcı kopyasına girmez (içe aktarma `git archive` kullanır)
+# Contributor-only files are excluded from launcher copies (import uses git archive)
 /CLAUDE.md export-ignore
+/AGENTS.md export-ignore
 /Docs/Design export-ignore
 
-# Bağımlılık kaynakları bayt bayt upstream'deki gibi saklanır (ThirdParty/README.md)
+# Preserve vendored sources byte for byte from upstream (ThirdParty/README.md)
 /ThirdParty/raylib/** -text
 /ThirdParty/nlohmann_json/** -text
 /ThirdParty/imgui/** -text

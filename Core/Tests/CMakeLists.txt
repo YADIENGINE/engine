@@ -62,6 +62,32 @@ target_compile_definitions(EngineTests PRIVATE
     ENGINE_TUNING_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/Tests/TuningCases"
     ENGINE_TEST_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf")
 
+# Compile all consumer examples, including runtime-only factories. The static archive lets the headless smoke
+# executable exercise public logic/drawing without pulling the runtime factory or opening a platform window.
+set(recipeRoot "${CMAKE_CURRENT_SOURCE_DIR}/../../AgentDocs/Recipes/Code")
+add_library(EngineRecipes STATIC
+    "${recipeRoot}/AnimatedCharacter.cpp"
+    "${recipeRoot}/CharacterObject.cpp"
+    "${recipeRoot}/CharacterPreview.cpp"
+    "${recipeRoot}/FxBurst.cpp"
+    "${recipeRoot}/IconShape.cpp"
+    "${recipeRoot}/SaveProgress.cpp"
+    "${recipeRoot}/SceneGame.cpp"
+    "${recipeRoot}/SceneTransition.cpp"
+    "${recipeRoot}/SpriteLayer.cpp"
+    "${recipeRoot}/TextLayout.cpp"
+    "${recipeRoot}/ThemedMenu.cpp"
+    "${recipeRoot}/TuningValue.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/EditorPreview.cpp"
+)
+target_include_directories(EngineRecipes PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+target_link_libraries(EngineRecipes PUBLIC EngineHeadless EnginePersistence)
+engine_warnings(EngineRecipes)
+engine_add_tuning(EngineRecipes ROOT "${recipeRoot}")
+engine_tests(EngineRecipeTests SOURCES RecipeTests.cpp LINKS EngineRecipes)
+target_compile_definitions(EngineRecipeTests PRIVATE
+    ENGINE_RECIPE_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf")
+
 # Offline audio authoring (Python): one CTest per suite, label "audio-generation". Registered only when the
 # interpreter has NumPy and SciPy, so configuring without them does not fail; the review player suite needs Node.
 find_package(Python3 3.10 COMPONENTS Interpreter QUIET)

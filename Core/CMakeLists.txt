@@ -103,6 +103,7 @@ add_library(EngineHeadless STATIC
     Graphics/Icons/Icons.cpp
     Graphics/Style/Theme.cpp
     Graphics/Ui/Backdrop.cpp
+    Graphics/Ui/UiButton.cpp
     Graphics/Ui/UiDraw.cpp
     Graphics/Gpu/Internals/NullDevice.cpp
     Graphics/Paint/Internals/DrawList.cpp
@@ -184,7 +185,7 @@ function(engine_add_tuning target)
         # Add the engine root to sys.path explicitly: an isolated interpreter (the launcher's bundled Python) does not
         # search the working directory with `-m`.
         set(command "${Python3_EXECUTABLE}" -B -c
-            "import runpy, sys; sys.path.insert(0, sys.argv.pop(1)); runpy.run_module('Tools.tuning', run_name='__main__')"
+            "__import__('sys').path.insert(0, __import__('sys').argv.pop(1)) or __import__('runpy').run_module('Tools.tuning', run_name='__main__')"
             "${ENGINE_TUNING_GENERATOR_ROOT}" generate "${source}" "${header}")
         if(NOT EXISTS "${header}")
             # Let IntelliSense find it before the first build; the build reports any errors.
@@ -293,7 +294,6 @@ add_library(Engine STATIC
     Input/Internals/InputReader.cpp
     Platform/Internals/ApplicationFiles.cpp
     Platform/Internals/Shell.cpp
-    Graphics/Ui/UiButton.cpp
     Runtime/Game.cpp
 )
 target_link_libraries(Engine PUBLIC EngineHeadless raylib)

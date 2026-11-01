@@ -21,6 +21,7 @@ from .include_boundaries import violations
 from .manifest import ENGINE_ROOT, load_manifest
 from .project import PROJECT_FILE, Project
 from .tuning.check import check_tuning
+from .agentdocs.check import check_agentdocs
 
 INTERRUPTED = 130  # Ctrl+C; kabukların ortak kodu
 
@@ -70,8 +71,8 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--dry-run", action="store_true", help="list what would be created without writing")
 
     commands.add_parser("info", help="engine and project as JSON")
-    command = commands.add_parser("check", help="check the Internals/ include boundaries and the tuning files")
-    command.add_argument("--fix", action="store_true", help="rewrite valid tuning files in the canonical layout")
+    command = commands.add_parser("check", help="check include boundaries, tuning files and AgentDocs freshness")
+    command.add_argument("--fix", action="store_true", help="format tuning files and regenerate AgentDocs")
     return parser
 
 
@@ -120,7 +121,11 @@ def dispatch(args: argparse.Namespace) -> int:
             for line in problems + [f"{path}: rewritten in the canonical layout" for path in fixed]:
                 print(line)
             print(f"Tuning files: {len(problems)} problem(s)" if problems else "Tuning files: OK")
-            return EXIT_FAILED if found or problems else EXIT_OK
+            docs_problems, docs_fixed = check_agentdocs(ENGINE_ROOT, args.fix)
+            for line in docs_problems + [f"{path}: regenerated" for path in docs_fixed]:
+                print(line)
+            print(f"AgentDocs: {len(docs_problems)} problem(s)" if docs_problems else "AgentDocs: OK")
+            return EXIT_FAILED if found or problems or docs_problems else EXIT_OK
     raise AssertionError(f"unhandled command {args.command}")
 
 

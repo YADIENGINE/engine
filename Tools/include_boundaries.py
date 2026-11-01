@@ -17,6 +17,8 @@ from .manifest import ENGINE_ROOT, MANIFEST_FILE
 CORE = "Core"  # Oyuna giren engine kodu; include kökü
 SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".inl"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
+CONSUMER_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]')
+PLATFORM_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:[^>"/]*/)*(raylib|raymath|rlgl)\.h[>"]')
 
 
 def skipped_directory(directory: Path, engine_root: Path = ENGINE_ROOT) -> bool:
@@ -60,12 +62,16 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
             lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
             continue
+        recipe = source.is_relative_to(engine_root / "AgentDocs" / "Recipes" / "Code")
         for number, line in enumerate(lines, 1):
-            match = INCLUDE.match(line)
+            if recipe and PLATFORM_INCLUDE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: recipe includes a platform-only header')
+            match = (CONSUMER_INCLUDE if recipe else INCLUDE).match(line)
             if not match:
                 continue
             owner = _owner(match.group(1), engine_root)
-            if owner is not None and not source.is_relative_to(owner[0]):
+            if owner is not None and (recipe or not source.is_relative_to(owner[0])):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: includes "{match.group(1)}" (private to {owner[1]})')
     return found

@@ -289,6 +289,8 @@ ayıklanacak dosya = engine'de bir satır. Engine testleri (`Core/Tests`, `Tools
 submodule olduğu için engine'in kendi `CLAUDE.md`'si oradadır; projenin AI dosyasını geliştirici yazar.
 Durum: kabul edildi.
 
+The engine provides `AgentDocs/` as readable material; projects opt in by referencing `Engine/AgentDocs/Index.md`.
+
 ### D15. Launcher
 **Karar (yapı):** Launcher engine'den ayrı bir üründür ve en üst katmandır; engine sürümlerini içinde taşır:
 

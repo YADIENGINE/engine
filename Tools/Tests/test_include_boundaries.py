@@ -48,6 +48,15 @@ class BoundaryTests(unittest.TestCase):
         self.write("Engine/Core/Modules/Saves/Saves.cpp", '#include "Input/Internals/Reader.h"\n')
         self.assertEqual(self.check(), [])
 
+    def test_recipes_are_consumers_even_inside_engine(self):
+        self.write("Engine/AgentDocs/Recipes/Code/Example.cpp",
+                   '#include "Input/Internals/Reader.h"\n#include <Modules/Saves/Internals/State.h>\n')
+        self.assertEqual(len(self.check()), 2)
+
+    def test_recipes_cannot_include_raylib_with_either_delimiter(self):
+        self.write("Engine/AgentDocs/Recipes/Code/Example.cpp", '#include <raylib.h>\n#include "rlgl.h"\n')
+        self.assertEqual(len(self.check()), 2)
+
     def test_module_internals_stay_in_their_module(self):
         self.write("Engine/Core/Modules/Saves/Tests/StateTests.cpp", '#include "Modules/Saves/Internals/State.h"\n')
         self.write("Engine/Core/Modules/Other/Other.cpp", '#include "Modules/Saves/Internals/State.h"\n')

@@ -46,6 +46,9 @@ A system with internals has a small public facade beside its `Internals/` folder
 
 ## Enforcement
 
+`AgentDocs/Recipes/Code/` is consumer code even inside the engine repository: it may not include any engine
+`Internals/` header or raylib platform header. Recipes compile in the engine test build.
+
 `Tools/include_boundaries.py` checks every `#include "..."` in the source tree (the game project when the engine is
 a submodule) against the table above. It runs as the CTest `Engine.IncludeBoundaries` (label `engine`), so
 `python Engine test --label engine` fails on a violation. Run it alone without a compiler:
