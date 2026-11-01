@@ -124,10 +124,8 @@ Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, te
 
 ## Aşama 5: Görsel asset'ler (ayrı oturum)
 
-- Katalog, galeri, pişirme önbelleği; grafik kodunun göçü ve düzenlenmesiyle birlikte (D10). Tuning'e (Aşama 2)
-  dayanır; Aşama 3–4 ile paralel yürüyebilir.
-- Önce yeni render sistemi (D17, [Render sistemi](Rendering.md)): pişirme önbelleği onun yüzeyleri ve atlas
-  sayfaları üstüne kurulur; grafik kodunun göçü yeni `Painter` API'sine yapılır.
+- [Asset library](AssetLibrary.md) (D22): Assets paneli, grafik kümeleri, küçük resimler, ses önizleme. Prefab ertelendi.
+- Pişirme önbelleği (D10, [Visual assets](VisualAssets.md)) ertelendi; önce ölçüm gerekir.
 
 ## Aşama 6: Debug (v1'in sonu)
 

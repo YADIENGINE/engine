@@ -239,7 +239,7 @@ dokuya çizilir ve bellek içi, bütçeli bir önbellekten kopyalanır. Sürekli
 **Neden:** "Görseller kodla" diyen bir engine'de görsellere göz atabilmek asset klasörünün karşılığıdır; karmaşık
 çizimlerin maliyeti pişirmeyle düşer. Ciddi bir engine için baştan doğru kurulur.
 **Uygulama:** ayrı oturumda, grafik kodunun göçüyle birlikte (düzenleme + optimizasyon fırsatı).
-Durum: kabul edildi.
+Durum: katalog ve galeri kısmının yerini [D22](#d22-asset-library) aldı; pişirme kısmı ertelendi (ölçüm gerektirir).
 
 ### D11. Uzamsal değerler: v1'de sadece sayı
 **Karar:** v1'de konum, dikdörtgen ve yol gibi uzamsal değerler tuning'de (D2) sayı olarak durur; editörde sayı
@@ -661,6 +661,16 @@ an opt-in and the editor knows agent CLIs by name.
 
 Durum: kabul edildi (2026-11-01); knowledge layer, agent workspace backend and workspace UI implemented
 (grouped menu, session tabs, state badges, setup and Inspector context).
+
+### D22. Asset library
+**Decision:** Ready-made graphics and audio are browsed in a Unity-style Assets panel, separate from the scene catalog
+but sharing its viewport. Folders: read-only `Engine/Assets/Graphics` and free-form `Game/Assets/Graphics`, next to the
+runtime `Audio` and `Fonts`. Every graphic is a set (a single drawing is a set of one). Registration is compiled into
+the editor worker only, so Release has no catalog. Use is optional. Prefabs are deferred. This takes over D10's catalog
+half; baking stays in D10, deferred. Details: [Asset library](AssetLibrary.md).
+
+**Why:** the motivation is organization and reuse, not performance. A code-first engine still needs a place to look.
+Status: accepted (2026-11-01), not implemented.
 
 ## v1 iş sırası
 

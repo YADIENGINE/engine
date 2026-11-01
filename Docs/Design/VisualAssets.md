@@ -1,7 +1,19 @@
 # Görsel asset'ler: katalog, galeri ve pişirme (tasarım)
 
-Durum: kabul edildi, uygulanmadı. Karar kaydı: [README → D10](README.md#d10-görsel-assetler-katalog-galeri-ve-pişirme).
-Uygulama ayrı bir oturumda, grafik kodunun göçü ve düzenlenmesiyle birlikte ele alınır.
+Durum: **pişirme ertelendi**, uygulanmadı. Karar kaydı: [README → D10](README.md#d10-görsel-assetler-katalog-galeri-ve-pişirme).
+Katalog ve galeri kısmının yerini [Asset library](AssetLibrary.md) (D22) aldı; aşağıdaki katalog ve galeri maddeleri
+artık geçerli değildir.
+
+## Erteleme notları (2026-11-01)
+
+- Bu belge Painter'dan (D17) önce yazıldı. Artık tek batch çok sayıda şekil taşıyabiliyor; olası maliyetler CPU'da yol
+  ve metin işleme, köşe yüklemesi ve GPU'da üst üste boyamadır. Hiçbiri henüz ölçülmedi: önce ölçüm.
+- Saat okuyan çizimler kural 7 yüzünden pişirilemez, bu yüzden aday sayısı beklenenden az olabilir. En umut verici
+  aday tam ekran arka planların durağan kısımlarıdır; bunlar atlas'a değil ayrı dokuya girer.
+- Belgede ele alınmayan bedeller: büyütmede bulanıklık, mip olmadan küçültmede tırtık, bloom için ayrı emission eki.
+- Alternatif: piksel yerine kaydedilmiş köşeleri önbelleğe almak. Keskinlik ve bloom korunur, atlas gerekmez, ama
+  yalnız CPU maliyeti düşer. Uygulanabilirliği denetlenmedi.
+- Gerekirse sıra: ölçüm → parça başına `Surface` + LRU bütçe → ancak doku yuvaları dolarsa atlas.
 
 ## Amaç
 
