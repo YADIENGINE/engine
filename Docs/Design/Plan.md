@@ -78,7 +78,7 @@ var olan oyunun geçişi (kurulu launcher ister) ve "ses araçlarını kur" (D7)
   `Engines/Engine0.1` = `v0.1.0`), `LauncherCore` + `<engine>.com` + testler. UI session'ının girişi launcher
   reposunda `Docs/CoreApi.md`. Engine tarafı: manifest `repository` + not kuralları, `export-ignore`, yalıtılmış
   Python ile çalışan araçlar (`Python3_EXECUTABLE`, tuning üreticisi `-m`'siz).
-- UI hazırlığı (2026-10-31, derleme onayı bekliyor): engine'de ortak araç arayüzü `ToolUi/` (`EngineToolUi`, editör
+- UI hazırlığı (bitti): engine'de ortak araç arayüzü `ToolUi/` (`EngineToolUi`, editör
   de kullanır) ve editörün "Back to project list"i (`ENGINE_LAUNCHER`); launcher'da `Job<T>`, Aç / Run akışları,
   proje satırı modeli, Scan, PATH, klasör seçme penceresi ve `Apps/Ui` iskeleti (tek model + boş ekran
   fonksiyonları). Kararlar D15 "UI hazırlığı". Kalan: ekranların görsel tasarımı (launcher `Docs/UiScreens.md`).
