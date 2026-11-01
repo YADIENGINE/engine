@@ -59,19 +59,28 @@ it. Release-built workers neither read live nor send reports. Presentation is `U
 Tools reach an open editor through a local named pipe (`Internals/Protocol/EditorControlProtocol`,
 `Internals/Platform/Windows/EditorControlPipe`, `Application/EditorControlService`). While running, the editor announces
 the pipe name in `EngineEditor.control.json` in the build directory (`version`, `pipe`, `pid`); on exit, it removes the
-file if it still owns it. Messages are one JSON object per line (UTF-8, `\n`); version is `EditorControlVersion` (1). A
-client sends a request and reads until `result` or `error`; only one client connects at a time.
+file if it still owns it. Its Console starts the shell with `ENGINE_EDITOR_CONTROL` set to the pipe, which tools prefer
+over the announcement. Messages are one JSON object per line (UTF-8, `\n`); version is `EditorControlVersion` (2). A
+client sends `{"version": 2, "command": "...", ...arguments}` and reads until `result` or `error`; only one client
+connects at a time, and one request is answered at a time.
 
 | Request | Responses |
 | --- | --- |
-| `{"version": 1, "command": "refresh"}` | Starts Build & Refresh (joins if already running); attempt lines `{"type": "log", "level", "source", "text"}`, then `{"type": "result", "result": "succeeded" \| "build-failed" \| "refresh-failed" \| "canceled"}` |
-| invalid / unknown | `{"type": "error", "text"}` |
+| `refresh` | Starts Build & Refresh (joins if already running); attempt lines `{"type": "log", "sequence", "level", "source", "text"}`, then `{"type": "result", "result": "succeeded" \| "build-failed" \| "refresh-failed" \| "canceled"}` |
+| Automation commands | One `{"type": "result", ...}` ([Editor automation](Automation.md)) |
+| invalid / unknown / refused | `{"type": "error", "text"}` |
+
+Answers that depend on the worker wait (`EditorControlService` keeps one pending answer): the service sends `sync`, the
+worker answers `synced` once every earlier message has applied, and the answer is built from the second frame received
+after that. `seek` makes the worker pause, lift its frame limit and skip readback while it steps playback in 1/60 s
+increments; messages behind it wait until it arrives. The worker records actions since open / reset with their playback
+time and re-runs them when a rewind passes them again. Changes go through `EditorController` like panel actions and set
+the viewport notice.
 
 If the launcher starts the editor with `ENGINE_LAUNCHER`, the File menu offers "Back to project list"
 (`Host/ProjectListLauncher`; [ToolsContract](../ToolsContract.md#environment-variables)).
 
-Its client is `python Engine refresh` ([ToolsContract](../ToolsContract.md)). The launcher and agent API add new
-commands to the same gateway.
+Its clients are `python Engine refresh` and `python Engine ctl` ([ToolsContract](../ToolsContract.md)).
 
 ## Presentation clock and playback
 

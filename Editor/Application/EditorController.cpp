@@ -185,6 +185,38 @@ void EditorController::Playback(double speed, bool step) {
         FailPreview(error.what());
     }
 }
+void EditorController::SetPaused(bool paused) {
+    if (!_ready || _profiler.Snapshot().busy || paused == _paused) return;
+    try {
+        Send("pause", {{"paused", paused}});
+    } catch (const std::exception& error) {
+        FailPreview(error.what());
+    }
+}
+void EditorController::Seek(double seconds, bool relative) {
+    if (!_ready || _profiler.Snapshot().busy) return;
+    try {
+        Send("seek", {{"seconds", seconds}, {"relative", relative}});
+    } catch (const std::exception& error) {
+        FailPreview(error.what());
+    }
+}
+std::uint64_t EditorController::Sync() {
+    if (!_ready) throw std::runtime_error("The preview is not ready");
+    Send("sync");
+    _syncRequest = _request;
+    return _syncRequest;
+}
+PreviewParameters EditorController::Values(const std::string& id) const {
+    if (id == _selected) return _displayed;
+    const auto found = _accepted.find(id);
+    return found == _accepted.end() ? PreviewParameters{} : found->second;
+}
+void EditorController::Notify(const std::string& text) {
+    Log("Control: " + text);
+    _notice = text;
+    _noticeAt = std::chrono::steady_clock::now();
+}
 void EditorController::Input(const DeviceInput& input) {
     if (_profiler.Snapshot().busy || !_ready) return;
     try {
@@ -229,29 +261,33 @@ EditorSnapshot EditorController::Snapshot() const {
     context.profilerBusy = profilerBusy;
     context.phase = phase;
     context.benchmarkCancelPending = benchmarkCancelPending;
-    return {_catalog,
-            Selected(),
-            _displayed,
-            std::move(pending),
-            _output,
-            ResolveEditorCapabilities(context),
-            phase,
-            _status,
-            _ready,
-            _ready && _paused,
-            Busy(),
-            _refresh.Busy(),
-            _canvas,
-            _generation,
-            _streamFps,
-            _captureMilliseconds,
-            _publishMilliseconds,
-            _inspection,
-            _playbackSpeed,
-            _profiler.Snapshot(),
-            _hostTransferMs,
-            benchmarkCancelPending,
-            _project ? &_tuning : nullptr};
+    EditorSnapshot snapshot{_catalog,
+                            Selected(),
+                            _displayed,
+                            std::move(pending),
+                            _output,
+                            ResolveEditorCapabilities(context),
+                            phase,
+                            _status,
+                            _ready,
+                            _ready && _paused,
+                            Busy(),
+                            _refresh.Busy(),
+                            _canvas,
+                            _generation,
+                            _streamFps,
+                            _captureMilliseconds,
+                            _publishMilliseconds,
+                            _inspection,
+                            _playbackSpeed,
+                            _profiler.Snapshot(),
+                            _hostTransferMs,
+                            benchmarkCancelPending,
+                            _project ? &_tuning : nullptr};
+    snapshot.notice = _notice;
+    snapshot.controlAttempt = _controlAttempt;
+    snapshot.noticeAge = std::chrono::duration<double>(std::chrono::steady_clock::now() - _noticeAt).count();
+    return snapshot;
 }
 std::string EditorController::ProjectKey() const {
     if (!_project) return "unconfigured";
@@ -260,7 +296,7 @@ std::string EditorController::ProjectKey() const {
            "|" + _project->name;
 }
 std::optional<std::string> EditorController::TakeOpenedPreview() { return std::exchange(_openedPreview, std::nullopt); }
-std::optional<PreviewPixels> EditorController::TakeFrame() { return std::exchange(_nextFrame, std::nullopt); }
+std::shared_ptr<const PreviewPixels> EditorController::TakeFrame() { return std::exchange(_nextFrame, nullptr); }
 const PreviewDefinition* EditorController::Selected() const {
     const auto found = std::ranges::find(_catalog, _selected, &PreviewDefinition::id);
     return found == _catalog.end() ? nullptr : &*found;
@@ -330,6 +366,10 @@ void EditorController::Invalidate(std::uint64_t generation) {
     _profiler.Reset(_generation);
     _benchmarkCancelPending = false;
     _nextFrame.reset();
+    _latestFrame.reset();
+    _sync = {};
+    _syncRequest = 0;
+    _seconds = 0.0;
     _captureMilliseconds = 0.0;
     _publishMilliseconds = 0.0;
     _streamFps = 0.0;
@@ -348,7 +388,11 @@ void EditorController::TickActive() {
     for (const auto& message : _active->Poll())
         Receive(message);
     if (_active->ConnectionLost()) throw std::runtime_error("Preview control connection lost");
-    if (auto frame = _active->ReadFrame(_generation)) _nextFrame = std::move(frame);
+    if (auto frame = _active->ReadFrame(_generation)) {
+        _nextFrame = std::make_shared<const PreviewPixels>(std::move(*frame));
+        _latestFrame = _nextFrame;
+        ++_sync.frames;
+    }
     if (const auto code = _active->ExitCode()) {
         const auto mode = _active->Mode();
         for (const auto& line : _active->DrainOutput())
@@ -411,6 +455,11 @@ void EditorController::Receive(const PreviewMessage& message) {
     } else if (message.type == "state") {
         _paused = message.data.at("paused").get<bool>();
         _playbackSpeed = message.data.value("speed", _playbackSpeed);
+        _seconds = message.data.value("seconds", _seconds);
+    } else if (message.type == "synced") {
+        _paused = message.data.at("paused").get<bool>();
+        _seconds = message.data.at("seconds").get<double>();
+        if (message.request == _syncRequest) _sync = {message.request, _seconds, _paused, 0};
     } else if (message.type == "accepted" || message.type == "rejected") {
         const auto pending = _pendingParameters.find(message.request);
         if (pending != _pendingParameters.end()) {

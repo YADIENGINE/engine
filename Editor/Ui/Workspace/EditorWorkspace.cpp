@@ -253,7 +253,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     const bool failed =
         attempt.result == EditorBuildResult::BuildFailed || attempt.result == EditorBuildResult::RefreshFailed;
     constexpr const char* FailurePopup = "Build & Refresh failed";
-    if (failed && attempt.id != _failureAttempt &&
+    if (failed && attempt.id != _failureAttempt && attempt.id != snapshot.controlAttempt &&
         !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel)) {
         _failureAttempt = attempt.id;
         std::string detail = attempt.result == EditorBuildResult::RefreshFailed ? "Build succeeded, refresh failed."
@@ -386,6 +386,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     }
     ImGui::SetNextWindowSize({ImGui::GetFontSize() * 40, 0}, ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal(FailurePopup, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (attempt.id != _failureAttempt) ImGui::CloseCurrentPopup(); // A newer Build & Refresh replaced it
         ImGui::TextWrapped("Select text with the mouse, then Ctrl+C. Ctrl+A selects all text.");
         ImGui::InputTextMultiline("##failure-detail", _failureDetail.data(), _failureDetail.size(),
                                   {-1, ImGui::GetTextLineHeightWithSpacing() * 8}, ImGuiInputTextFlags_ReadOnly);

@@ -22,6 +22,6 @@ ConsolePanel::ConsolePanel()
              ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P}) {}
 
 void ConsolePanel::Draw() {
-    if (!_session.Started()) _session.Start({.directory = _directory});
+    if (!_session.Started()) _session.Start({.directory = _directory, .environment = _environment});
     _view.Draw(_session);
 }

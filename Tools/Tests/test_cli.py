@@ -20,6 +20,7 @@ CONTRACT = {
     "test": ["--filter", "X", "--label", "X", "--list", "--clean"],
     "editor": ["--release", "--build-only", "--clean"],
     "refresh": [],
+    "ctl": ["status"],
     "new": ["--name", "X", "--dry-run"],
     "info": [],
     "check": ["--fix"],

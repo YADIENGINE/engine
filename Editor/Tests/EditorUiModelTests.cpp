@@ -90,6 +90,7 @@ TEST_CASE("Editor.Diagnostics.BoundsFiltersAndUnreadDiagnostics", "[engine-edito
     CHECK(ClassifyBuildOutput("source.cpp(4): warning C4100: unused") == EditorLogLevel::Warning);
     CHECK(ClassifyBuildOutput("source.cpp(4): error C2039: missing") == EditorLogLevel::Error);
     CHECK(ClassifyBuildOutput("CMake Error at CMakeLists.txt:4") == EditorLogLevel::Error);
+    CHECK(ClassifyBuildOutput("Error copying directory from \"a\" to \"b\".") == EditorLogLevel::Error);
     CHECK(ClassifyBuildOutput("error count: 0") == EditorLogLevel::Info);
 }
 

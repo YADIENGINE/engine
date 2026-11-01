@@ -24,6 +24,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/WorkerSnapshots.cpp
     Internals/Session/ProfilerSession.cpp
     Internals/Session/BenchmarkState.cpp
+    Internals/Session/FrameCapture.cpp
     Internals/Viewport/PreviewViewport.cpp
     Internals/Viewport/PreviewInputRouter.cpp
     Internals/Diagnostics/EditorDiagnostics.cpp
@@ -80,8 +81,13 @@ if(ENGINE_BUILD_EDITOR)
             CXX_EXTENSIONS OFF RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
         engine_warnings(${target})
         if(WORKER_ASSETS)
+            # Only changed files: the running worker keeps streamed music open, and Build & Refresh builds beside it.
+            set(copyAssets copy_directory)
+            if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.26)
+                set(copyAssets copy_directory_if_different)
+            endif()
             add_custom_command(TARGET ${target} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_directory "${WORKER_ASSETS}" "$<TARGET_FILE_DIR:${target}>/Assets"
+                COMMAND ${CMAKE_COMMAND} -E ${copyAssets} "${WORKER_ASSETS}" "$<TARGET_FILE_DIR:${target}>/Assets"
                 VERBATIM)
         endif()
         if(useStarter)
@@ -132,7 +138,7 @@ if(ENGINE_BUILD_EDITOR)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)
     target_link_libraries(EngineEditorUi PUBLIC EngineToolUi EngineTerminalUi EngineEditorSupport)
     engine_warnings(EngineEditorUi)
-    add_executable(EngineEditor WIN32 Host/Main.cpp Host/EditorApplication.cpp Host/PreviewDisplay.cpp
+    add_executable(EngineEditor WIN32 Host/Main.cpp Host/EditorApplication.cpp Host/FramePng.cpp Host/PreviewDisplay.cpp
         Host/ProjectListLauncher.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp
         Application/EditorControlService.cpp Application/PreviewBuild.cpp Application/PreviewWorker.cpp)
     # Resolve raylib's CloseWindow/ShowCursor before the transitive user32 import library.

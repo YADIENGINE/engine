@@ -55,6 +55,10 @@ struct EditorSnapshot {
     double hostTransferMs = 0.0;
     bool benchmarkCancelPending = false;
     const TuningWorkspace* tuning = nullptr; // Projenin tuning dosyaları; proje yoksa null
+    std::string notice;                      // Last change made through the control endpoint
+    double noticeAge = 0.0;
+    std::uint64_t controlAttempt =
+        0; // Build & Refresh attempt started through the control endpoint                  // Seconds since it was made
 };
 
 // References/callbacks are borrowed for the current UI frame; panels never retain session data.

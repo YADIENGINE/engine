@@ -438,10 +438,23 @@ TEST_CASE("Editor.Snapshots.WorkersRunFromCopiesOfTheBuild", "[engine-editor]") 
 }
 
 TEST_CASE("Editor.Control.RequestsRepliesAndAnnouncement", "[engine-editor]") {
-    CHECK(DecodeControlRequest(R"({"version": 1, "command": "refresh"})") == EditorControlCommand::Refresh);
-    CHECK_THROWS(DecodeControlRequest(R"({"version": 2, "command": "refresh"})"));
-    CHECK_THROWS(DecodeControlRequest(R"({"version": 1, "command": "format-disk"})"));
+    const auto version = std::to_string(EditorControlVersion);
+    CHECK(DecodeControlRequest(R"({"version": )" + version + R"(, "command": "refresh"})").command ==
+          EditorControlCommand::Refresh);
+    const auto seek = DecodeControlRequest(R"({"version": )" + version + R"(, "command": "seek", "seconds": 1.5})");
+    CHECK(seek.command == EditorControlCommand::Seek);
+    CHECK(seek.arguments == nlohmann::json{{"seconds", 1.5}}); // Without version and command
+    for (int i = 0; i < static_cast<int>(EditorControlCommand::Count); ++i) {
+        const auto command = static_cast<EditorControlCommand>(i);
+        const auto line = nlohmann::json{{"version", EditorControlVersion}, {"command", ControlCommandName(command)}};
+        CHECK(DecodeControlRequest(line.dump()).command == command);
+    }
+    CHECK_THROWS(DecodeControlRequest(R"({"version": 1, "command": "refresh"})"));
+    CHECK_THROWS(DecodeControlRequest(R"({"version": )" + version + R"(, "command": "format-disk"})"));
     CHECK_THROWS(DecodeControlRequest("not json"));
+    const auto reply = nlohmann::json::parse(EncodeControlReply({{"path", "C:/shot.png"}}));
+    CHECK(reply.at("type") == "result");
+    CHECK(reply.at("path") == "C:/shot.png");
 
     const auto result = nlohmann::json::parse(EncodeControlResult(EditorBuildResult::BuildFailed));
     CHECK(result.at("type") == "result");

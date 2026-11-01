@@ -1,9 +1,11 @@
 #pragma once
 #include <raylib.h>
 #include <chrono>
+#include <optional>
 #include "Editor/Internals/Platform/Windows/ControlChannel.h"
 #include "Editor/Internals/Platform/Windows/SharedFrames.h"
 #include "Editor/Preview/PreviewScene.h"
+#include "Runtime/FrameExecutionSettings.h"
 #include "Runtime/GameSettings.h"
 #include "Editor/Preview/PreviewProfiler.h"
 
@@ -30,8 +32,23 @@ public:
     [[nodiscard]] float Advance(float realSeconds);
 
 private:
+    // A seek in progress: playback advances in fixed steps, unthrottled and without frame readback, until the clock
+    // reaches the target; commands after it wait (their replies then describe the arrived state).
+    struct Seek {
+        double target = 0.0;
+        std::uint64_t request = 0;
+        int stepsLeft = 0;
+        FrameExecutionSettings execution;
+    };
     void Command(const PreviewMessage& message);
     void Reply(const PreviewMessage& message, const std::string& type, nlohmann::json data);
+    void Restart();
+    void StartSeek(const PreviewMessage& message);
+    void FinishSeek();
+    // Re-runs recorded actions whose time has come again after a rewind.
+    void ReplayDue();
+    [[nodiscard]] nlohmann::json PlaybackState() const;
+    Game& _game;
     const PreviewRegistry& _registry;
     ControlChannel& _channel;
     Vec2 _canvas;
@@ -44,6 +61,15 @@ private:
     std::uint64_t _generation = 0, _openRequest = 0;
     bool _paused = false, _step = false;
     float _speed = 1.0f;
+    double _elapsed = 0.0; // Playback seconds since open / reset (the seek and sync clock)
+    std::optional<Seek> _seek;
+    // Actions since open / reset at their playback time; a rewind replays them as the clock passes them again.
+    struct TimedAction {
+        double seconds = 0.0;
+        std::string id;
+    };
+    std::vector<TimedAction> _timeline;
+    std::size_t _applied = 0; // Entries of _timeline already in effect
     mutable bool _readyPending = false;
     mutable double _statsStartedAt = 0, _inspectionAt = -1;
     mutable std::uint64_t _publishedFrames = 0;

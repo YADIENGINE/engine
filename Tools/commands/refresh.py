@@ -8,6 +8,7 @@ announces a named pipe in its build directory; a request and the replies are JSO
 """
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -16,7 +17,8 @@ from ..project import Project
 from .editor import editor_build_dir
 
 ANNOUNCEMENT = "EngineEditor.control.json"
-VERSION = 1
+ENVIRONMENT = "ENGINE_EDITOR_CONTROL"  # Set by the editor for its console: that editor's pipe
+VERSION = 2
 CONNECT_TIMEOUT = 5.0  # Seconds to wait while another client holds the endpoint
 CONNECT_RETRY = 0.1
 PIPE_BUSY = 231  # ERROR_PIPE_BUSY
@@ -34,6 +36,11 @@ def endpoint(build_dir: Path) -> str:
         return announcement["pipe"]
     except (ValueError, KeyError) as error:
         raise ToolError(f"{path}: {error}") from error
+
+
+def editor_pipe(project: Project) -> str:
+    """The editor this command was started from (its console), else the project's announced one."""
+    return os.environ.get(ENVIRONMENT) or endpoint(editor_build_dir(project))
 
 
 def connect(pipe: str):
@@ -65,7 +72,7 @@ def exit_code(result: str) -> int:
 
 
 def refresh(project: Project) -> int:
-    with connect(endpoint(editor_build_dir(project))) as stream:
+    with connect(editor_pipe(project)) as stream:
         stream.write((json.dumps({"version": VERSION, "command": "refresh"}) + "\n").encode("utf-8"))
         for reply in replies(stream):
             match reply.get("type"):

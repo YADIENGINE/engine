@@ -28,6 +28,9 @@ public:
     void OfferProjectList(bool offer) { _offerProjectList = offer; }
     // Konsolun kabuğu bu klasörde başlar (proje kökü).
     void SetConsoleDirectory(const std::filesystem::path& directory) { _console.SetDirectory(directory); }
+    void SetConsoleEnvironment(std::vector<std::pair<std::string, std::string>> environment) {
+        _console.SetEnvironment(std::move(environment));
+    }
 
 private:
     void SetMaximized(bool maximized, EditorPreferences& preferences);

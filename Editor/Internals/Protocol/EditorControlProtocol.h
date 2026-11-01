@@ -1,14 +1,16 @@
 #pragma once
+#include <nlohmann/json.hpp>
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include "Editor/Api/PreviewRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
 
-// The editor's control endpoint: tools reach a running editor through a local named pipe (`python Engine refresh`;
-// later the launcher and the agent API). While it runs, the editor announces the pipe in EditorControlFile inside its
-// build directory. Messages are JSON objects, one per '\n'-terminated UTF-8 line; a client sends one request and
-// reads replies until a "result" or "error". Reference: Docs/Editor/Architecture.md → Control endpoint.
-inline constexpr int EditorControlVersion = 1;
+// The editor's control endpoint: tools reach a running editor through a local named pipe (`python Engine refresh`,
+// `python Engine ctl ...`). While it runs, the editor announces the pipe in EditorControlFile inside its build
+// directory. Messages are JSON objects, one per '\n'-terminated UTF-8 line; a client sends one request and reads
+// replies until a "result" or "error". Reference: Docs/Editor/Automation.md.
+inline constexpr int EditorControlVersion = 2;
 inline constexpr std::string_view EditorControlFile = "EngineEditor.control.json";
 inline constexpr std::size_t EditorControlMaxLineBytes = 64 * 1024;
 
@@ -17,13 +19,48 @@ struct EditorControlAnnouncement {
     unsigned long processId = 0;
 };
 
-enum class EditorControlCommand { Refresh };
+// Refresh streams build output; the others answer once (Docs/Editor/Automation.md → Commands).
+enum class EditorControlCommand {
+    Refresh,
+    Status,
+    List,
+    Open,
+    Set,
+    Action,
+    Pause,
+    Play,
+    Step,
+    Speed,
+    Reset,
+    Seek,
+    Screenshot,
+    Inspect,
+    Logs,
+    Count
+};
+
+struct EditorControlRequest {
+    EditorControlCommand command = EditorControlCommand::Status;
+    nlohmann::json arguments = nlohmann::json::object(); // The request without "version" and "command"
+};
 
 [[nodiscard]] std::string EncodeControlAnnouncement(const EditorControlAnnouncement& announcement);
 [[nodiscard]] EditorControlAnnouncement DecodeControlAnnouncement(std::string_view json);
 // Throws for malformed JSON, another protocol version or an unknown command.
-[[nodiscard]] EditorControlCommand DecodeControlRequest(std::string_view line);
+[[nodiscard]] EditorControlRequest DecodeControlRequest(std::string_view line);
+[[nodiscard]] std::string_view ControlCommandName(EditorControlCommand command);
 [[nodiscard]] std::string EncodeControlLog(const EditorLogEntry& entry);
 // Only for a finished attempt (Succeeded, BuildFailed, RefreshFailed, Canceled).
 [[nodiscard]] std::string EncodeControlResult(EditorBuildResult result);
+// A command's answer: `data` (an object) with "type": "result".
+[[nodiscard]] std::string EncodeControlReply(nlohmann::json data);
 [[nodiscard]] std::string EncodeControlError(std::string_view text);
+
+// Plain JSON for tools: numbers, booleans, strings; colors as [r, g, b, a].
+[[nodiscard]] nlohmann::json ControlValue(const PreviewValue& value);
+// The value a tool wrote for `parameter`, by its kind; integers accept whole numbers, colors [r, g, b(, a)] or
+// "#rrggbb(aa)". Throws with a readable message when it does not fit (range and choices are checked separately).
+[[nodiscard]] PreviewValue ControlValueOf(const PreviewParameter& parameter, const nlohmann::json& value);
+// One catalog entry with its parameters (kind, range, choices, current value) and actions.
+[[nodiscard]] nlohmann::json ControlCatalogEntry(const PreviewDefinition& definition, const PreviewParameters& values);
+[[nodiscard]] nlohmann::json ControlLogEntry(const EditorLogEntry& entry);

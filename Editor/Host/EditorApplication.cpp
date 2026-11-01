@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <vector>
 #include "Editor/Host/EditorEntryPoint.h"
+#include "Editor/Host/FramePng.h"
 #include "Editor/Host/ProjectListLauncher.h"
 #include "Input/Internals/InputReader.h"
 #include "Platform/Internals/UserData.h"
@@ -32,7 +33,10 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     , _controller(projectFile)
     , _ui(ToolUiOptions{.docking = true}) {
     try {
-        if (const auto& project = _controller.Project()) _control.emplace(project->buildDirectory);
+        if (const auto& project = _controller.Project()) {
+            _control.emplace(project->buildDirectory, EncodeFramePng);
+            _workspace.SetConsoleEnvironment({{"ENGINE_EDITOR_CONTROL", _control->Pipe()}});
+        }
     } catch (const std::exception& error) {
         _controller.Log(std::string("Control endpoint unavailable: ") + error.what(), EditorLogLevel::Warning);
     }

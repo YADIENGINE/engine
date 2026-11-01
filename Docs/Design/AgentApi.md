@@ -3,6 +3,10 @@
 Durum: v1'e girmiyor; engine'in stratejik önceliği. Karar kaydı:
 [README → D5](README.md#d5-ajan-apisi-v1-sonrası-stratejik-öncelik).
 
+**Update (2026-11-01):** for an open editor this is implemented through the control endpoint instead of a separate
+process: [D20](README.md#d20-editor-automation-through-the-control-endpoint), usage `Docs/Editor/Automation.md`.
+Still open here: rendering without an open editor, scripted input scenarios.
+
 ## Sorun
 
 Görsellerin tamamı kodla üretilir ve kodu çoğunlukla AI ajanı yazar. Ajan kodu derleyip testleri geçirebilir ama

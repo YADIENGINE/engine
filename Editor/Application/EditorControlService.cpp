@@ -1,22 +1,108 @@
 #include "Editor/Application/EditorControlService.h"
 #include <windows.h>
+#include <algorithm>
+#include <cmath>
 #include <exception>
+#include <format>
 #include <fstream>
 #include <iterator>
+#include <stdexcept>
 #include <string>
 #include <system_error>
-#include "Editor/Internals/Protocol/EditorControlProtocol.h"
+#include "Editor/Internals/Protocol/PreviewProtocol.h"
+#include "Editor/Internals/Session/FrameCapture.h"
+#include "Editor/Internals/Platform/Windows/WindowsText.h"
 #include "Platform/Internals/FileStorage.h"
 
 namespace {
+constexpr auto ReadyTimeout = std::chrono::seconds(90);  // Worker start, including a game flow's loading
+constexpr auto WorkerTimeout = std::chrono::seconds(15); // Sync and the frames after it
+constexpr double SeekWaitPerSecond = 0.5;                // Extra wait per sought second (unthrottled stepping)
+constexpr double MaxSeekSeconds = 600.0;
+constexpr double StepSeconds = 1.0 / 60.0;
+constexpr int MaxSteps = 600;
+constexpr std::uint64_t FramesAfterSync = 2; // The second frame after the answer was drawn after it
+constexpr std::size_t DefaultLogLimit = 100;
+constexpr std::size_t MaxLogLimit = 1000;
+
 std::string ReadText(const std::filesystem::path& file) {
     std::ifstream input(file, std::ios::binary);
     return {std::istreambuf_iterator<char>(input), {}};
 }
+const char* PhaseName(EditorPhase phase) {
+    switch (phase) {
+    case EditorPhase::ReadingCatalog: return "reading-catalog";
+    case EditorPhase::Starting      : return "starting";
+    case EditorPhase::Ready         : return "ready";
+    case EditorPhase::Paused        : return "paused";
+    case EditorPhase::Building      : return "building";
+    case EditorPhase::Stopped       : return "stopped";
+    case EditorPhase::Error         : return "error";
+    }
+    return "stopped";
+}
+nlohmann::json StatusOf(const EditorController& controller) {
+    const auto snapshot = controller.Snapshot();
+    nlohmann::json status{{"phase", PhaseName(snapshot.phase)},
+                          {"status", snapshot.status},
+                          {"ready", snapshot.ready},
+                          {"building", snapshot.building},
+                          {"preview", snapshot.selected ? nlohmann::json(snapshot.selected->id) : nlohmann::json()}};
+    if (snapshot.ready) {
+        status["paused"] = snapshot.paused;
+        status["speed"] = snapshot.playbackSpeed;
+        status["seconds"] = controller.Seconds();
+        status["canvas"] = {snapshot.canvas.x, snapshot.canvas.y};
+    }
+    return status;
+}
+std::string Text(const nlohmann::json& arguments, const char* key) {
+    const auto found = arguments.find(key);
+    if (found == arguments.end() || !found->is_string() || found->get<std::string>().empty())
+        throw std::runtime_error(std::format("Missing \"{}\"", key));
+    return found->get<std::string>();
+}
+double Number(const nlohmann::json& arguments, const char* key) {
+    const auto found = arguments.find(key);
+    if (found == arguments.end() || !found->is_number() || !std::isfinite(found->get<double>()))
+        throw std::runtime_error(std::format("\"{}\" must be a number", key));
+    return found->get<double>();
+}
+const PreviewDefinition& Selected(const EditorSnapshot& snapshot) {
+    if (!snapshot.selected) throw std::runtime_error("No preview is selected; open one first");
+    return *snapshot.selected;
+}
+void RequireReady(const EditorSnapshot& snapshot) {
+    if (!snapshot.ready)
+        throw std::runtime_error("The preview is not running (" + snapshot.status + "); open it first");
+    if (snapshot.profiler.busy) throw std::runtime_error("A profiler run owns the preview; wait or cancel it");
+}
+FrameCaptureOptions CaptureOptionsOf(const nlohmann::json& arguments, Vec2 canvas) {
+    FrameCaptureOptions options;
+    if (arguments.contains("scale")) options.scale = Number(arguments, "scale");
+    if (!std::isfinite(options.scale) || options.scale < FrameCaptureMinScale || options.scale > FrameCaptureMaxScale)
+        throw std::runtime_error(
+            std::format("Scale must be between {} and {}", FrameCaptureMinScale, FrameCaptureMaxScale));
+    if (const auto crop = arguments.find("crop"); crop != arguments.end()) {
+        if (!crop->is_array() || crop->size() != 4 ||
+            !std::ranges::all_of(*crop, [](const nlohmann::json& value) { return value.is_number(); }))
+            throw std::runtime_error("\"crop\" must be [x, y, width, height] in canvas units");
+        const FloatRect area{(*crop)[0].get<float>(), (*crop)[1].get<float>(), (*crop)[2].get<float>(),
+                             (*crop)[3].get<float>()};
+        if (area.width <= 0.0f || area.height <= 0.0f || area.x < 0.0f || area.y < 0.0f ||
+            area.Right() > static_cast<float>(canvas.x) || area.Bottom() > static_cast<float>(canvas.y))
+            throw std::runtime_error(std::format("Crop must lie inside the {}x{} canvas", canvas.x, canvas.y));
+        options.crop = area;
+    }
+    return options;
+}
+std::string Describe(const PreviewValue& value) { return ControlValue(value).dump(); }
 } // namespace
 
-EditorControlService::EditorControlService(const std::filesystem::path& buildDirectory)
-    : _announcement(buildDirectory / EditorControlFile) {
+EditorControlService::EditorControlService(const std::filesystem::path& buildDirectory, PngEncoder encodePng)
+    : _announcement(buildDirectory / EditorControlFile)
+    , _captures(buildDirectory / "editor-captures")
+    , _encodePng(std::move(encodePng)) {
     std::filesystem::create_directories(buildDirectory);
     (void)WriteBinaryFileAtomic(_announcement, EncodeControlAnnouncement({_pipe.Name(), GetCurrentProcessId()}));
 }
@@ -32,40 +118,286 @@ void EditorControlService::Tick(EditorController& controller) {
     try {
         for (const auto& line : _pipe.Poll())
             Handle(line, controller);
+        Poll(controller);
         if (!_watch) return;
         if (!_pipe.Connected() || _pipe.Client() != _watch->client) {
             _watch.reset(); // The client left; the attempt goes on without it
             return;
         }
-        Stream(controller.Diagnostics());
+        Stream(controller);
     } catch (const std::exception& error) {
         _watch.reset();
+        _pending.reset();
         controller.Log(std::string("Control endpoint: ") + error.what(), EditorLogLevel::Warning);
     }
 }
 void EditorControlService::Handle(std::string_view line, EditorController& controller) {
     try {
-        switch (DecodeControlRequest(line)) {
-        case EditorControlCommand::Refresh: {
-            if (controller.Diagnostics().Attempt().result != EditorBuildResult::Running) {
-                const auto capabilities = controller.Snapshot().capabilities;
-                if (!capabilities.Can(EditorCommand::Refresh)) {
-                    _pipe.Send(EncodeControlError(std::string("Build & Refresh is unavailable: ") +
-                                                  capabilities.Reason(EditorCommand::Refresh)));
-                    return;
-                }
-                controller.Execute(EditorCommand::Refresh);
-            }
-            _watch = Watch{_pipe.Client(), controller.Diagnostics().Attempt().id, 0};
-            Stream(controller.Diagnostics());
-            return;
-        }
-        }
+        if (_watch || _pending) throw std::runtime_error("The editor is still answering the previous request");
+        const auto request = DecodeControlRequest(line);
+        if (auto answer = Run(request, controller)) _pipe.Send(EncodeControlReply(std::move(*answer)));
     } catch (const std::exception& error) {
+        _pending.reset();
         _pipe.Send(EncodeControlError(error.what()));
     }
 }
-void EditorControlService::Stream(const EditorDiagnostics& diagnostics) {
+void EditorControlService::Poll(EditorController& controller) {
+    if (!_pending) return;
+    if (!_pipe.Connected() || _pipe.Client() != _pending->client) {
+        _pending.reset(); // The client left; what it started goes on
+        return;
+    }
+    try {
+        if (auto answer = _pending->poll(controller)) {
+            _pending.reset();
+            _pipe.Send(EncodeControlReply(std::move(*answer)));
+        } else if (std::chrono::steady_clock::now() >= _pending->deadline) {
+            const auto waited = _pending->waitingFor;
+            _pending.reset();
+            _pipe.Send(EncodeControlError("Timed out waiting for " + waited));
+        }
+    } catch (const std::exception& error) {
+        _pending.reset();
+        _pipe.Send(EncodeControlError(error.what()));
+    }
+}
+void EditorControlService::Await(std::string waitingFor, std::chrono::steady_clock::duration timeout,
+                                 std::function<std::optional<nlohmann::json>(EditorController&)> poll) {
+    _pending =
+        Pending{_pipe.Client(), std::chrono::steady_clock::now() + timeout, std::move(waitingFor), std::move(poll)};
+}
+void EditorControlService::AwaitWorker(EditorController& controller, std::chrono::steady_clock::duration timeout,
+                                       Answer answer) {
+    const auto request = controller.Sync();
+    Await("the preview to apply the request", timeout,
+          [request, answer = std::move(answer)](EditorController& session) -> std::optional<nlohmann::json> {
+              const auto snapshot = session.Snapshot();
+              if (!snapshot.ready) throw std::runtime_error("The preview stopped: " + snapshot.status);
+              const auto& sync = session.LastSync();
+              if (sync.request != request || sync.frames < FramesAfterSync) return std::nullopt;
+              return answer(session);
+          });
+}
+void EditorControlService::AwaitReady(const std::string& id) {
+    Await("the preview to start", ReadyTimeout, [id](EditorController& session) -> std::optional<nlohmann::json> {
+        const auto snapshot = session.Snapshot();
+        if (snapshot.phase == EditorPhase::Error) throw std::runtime_error("The preview failed: " + snapshot.status);
+        if (snapshot.phase == EditorPhase::Stopped) throw std::runtime_error("The preview stopped: " + snapshot.status);
+        if (!snapshot.ready || !snapshot.selected || snapshot.selected->id != id) return std::nullopt;
+        return StatusOf(session);
+    });
+}
+std::optional<nlohmann::json> EditorControlService::Run(const EditorControlRequest& request,
+                                                        EditorController& controller) {
+    const auto& arguments = request.arguments;
+    const auto snapshot = controller.Snapshot();
+    switch (request.command) {
+    case EditorControlCommand::Refresh: Refresh(controller); return std::nullopt;
+    case EditorControlCommand::Status : return StatusOf(controller);
+    case EditorControlCommand::List   : {
+        auto previews = nlohmann::json::array();
+        for (const auto& definition : snapshot.catalog)
+            previews.push_back(ControlCatalogEntry(definition, controller.Values(definition.id)));
+        return nlohmann::json{
+            {"previews", std::move(previews)},
+            {"selected", snapshot.selected ? nlohmann::json(snapshot.selected->id) : nlohmann::json()}};
+    }
+    case EditorControlCommand::Open: {
+        const auto id = Text(arguments, "id");
+        const auto found = std::ranges::find(snapshot.catalog, id, &PreviewDefinition::id);
+        if (found == snapshot.catalog.end())
+            throw std::runtime_error("Unknown preview '" + id + "'; `ctl list` shows the catalog");
+        if (snapshot.ready && snapshot.selected && snapshot.selected->id == id) return StatusOf(controller);
+        if (snapshot.busy) throw std::runtime_error("The editor is busy (" + snapshot.status + ")");
+        controller.Select(id);
+        const auto capabilities = controller.Snapshot().capabilities;
+        if (!capabilities.Can(EditorCommand::Open))
+            throw std::runtime_error(std::string("Cannot open: ") + capabilities.Reason(EditorCommand::Open));
+        controller.Execute(EditorCommand::Open);
+        controller.Notify("Opened " + found->name);
+        AwaitReady(id);
+        return std::nullopt;
+    }
+    case EditorControlCommand::Set: {
+        const auto& definition = Selected(snapshot);
+        if (snapshot.busy) throw std::runtime_error("The editor is busy (" + snapshot.status + ")");
+        const auto values = arguments.find("values");
+        if (values == arguments.end() || !values->is_object() || values->empty())
+            throw std::runtime_error("\"values\" must be an object of parameter id → value");
+        std::vector<std::pair<std::string, PreviewValue>> changes;
+        for (const auto& [id, value] : values->items()) {
+            const auto parameter = std::ranges::find(definition.parameters, id, &PreviewParameter::id);
+            if (parameter == definition.parameters.end())
+                throw std::runtime_error("'" + definition.id + "' has no parameter '" + id + "'");
+            auto converted = ControlValueOf(*parameter, value);
+            if (const auto error = ValidatePreviewValue(*parameter, converted); !error.empty())
+                throw std::runtime_error(error);
+            changes.emplace_back(id, std::move(converted));
+        }
+        std::string notice = "Set";
+        for (const auto& [id, value] : changes) {
+            controller.Parameter(id, value);
+            notice += " " + id + "=" + Describe(value);
+        }
+        controller.Notify(notice);
+        const auto answer = [definition = definition.id, changes](EditorController& session) {
+            const auto current = session.Values(definition);
+            nlohmann::json applied = nlohmann::json::object();
+            for (const auto& [id, value] : changes) {
+                (void)value;
+                if (const auto found = current.find(id); found != current.end())
+                    applied[id] = ControlValue(found->second);
+            }
+            return nlohmann::json{{"preview", definition}, {"parameters", applied}};
+        };
+        if (!snapshot.ready) return answer(controller); // Stored for the next start
+        AwaitWorker(controller, WorkerTimeout, answer);
+        return std::nullopt;
+    }
+    case EditorControlCommand::Action: {
+        RequireReady(snapshot);
+        const auto& definition = Selected(snapshot);
+        const auto id = Text(arguments, "id");
+        const auto action = std::ranges::find(definition.actions, id, &PreviewAction::id);
+        if (action == definition.actions.end())
+            throw std::runtime_error("'" + definition.id + "' has no action '" + id + "'");
+        if (std::ranges::find(snapshot.inspection.disabledActions, id) != snapshot.inspection.disabledActions.end())
+            throw std::runtime_error("Action '" + id + "' is disabled right now");
+        controller.Action(id);
+        controller.Notify("Action " + action->label);
+        AwaitWorker(controller, WorkerTimeout, StatusOf);
+        return std::nullopt;
+    }
+    case EditorControlCommand::Pause:
+    case EditorControlCommand::Play : {
+        RequireReady(snapshot);
+        const bool pause = request.command == EditorControlCommand::Pause;
+        controller.SetPaused(pause);
+        controller.Notify(pause ? "Paused" : "Playing");
+        AwaitWorker(controller, WorkerTimeout, StatusOf);
+        return std::nullopt;
+    }
+    case EditorControlCommand::Step: {
+        RequireReady(snapshot);
+        const double frames = arguments.contains("frames") ? Number(arguments, "frames") : 1.0;
+        if (frames < 1.0 || frames > MaxSteps || std::trunc(frames) != frames)
+            throw std::runtime_error(std::format("\"frames\" must be a whole number from 1 to {}", MaxSteps));
+        controller.Seek(frames * StepSeconds, true);
+        controller.Notify(std::format("Step {} frame(s)", frames));
+        AwaitWorker(controller, WorkerTimeout, StatusOf);
+        return std::nullopt;
+    }
+    case EditorControlCommand::Speed: {
+        RequireReady(snapshot);
+        const double speed = Number(arguments, "speed");
+        if (!ValidPlaybackSpeed(speed))
+            throw std::runtime_error(
+                std::format("Speed must be between {} and {}", PreviewMinPlaybackSpeed, PreviewMaxPlaybackSpeed));
+        controller.Playback(speed, false);
+        controller.Notify(std::format("Speed {}x", speed));
+        AwaitWorker(controller, WorkerTimeout, StatusOf);
+        return std::nullopt;
+    }
+    case EditorControlCommand::Reset: {
+        RequireReady(snapshot);
+        const auto& definition = Selected(snapshot);
+        if (!snapshot.capabilities.Can(EditorCommand::Reset))
+            throw std::runtime_error(std::string("Cannot reset: ") +
+                                     snapshot.capabilities.Reason(EditorCommand::Reset));
+        controller.Execute(EditorCommand::Reset);
+        controller.Notify("Reset " + definition.name);
+        AwaitReady(definition.id);
+        return std::nullopt;
+    }
+    case EditorControlCommand::Seek: {
+        RequireReady(snapshot);
+        const double seconds = Number(arguments, "seconds");
+        if (seconds < 0.0 || seconds > MaxSeekSeconds)
+            throw std::runtime_error(std::format("\"seconds\" must be between 0 and {}", MaxSeekSeconds));
+        controller.Seek(seconds);
+        controller.Notify(std::format("Seek {:.2f} s", seconds));
+        const auto travel = std::max(seconds, controller.Seconds());
+        AwaitWorker(controller,
+                    WorkerTimeout + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                        std::chrono::duration<double>(travel * SeekWaitPerSecond)),
+                    StatusOf);
+        return std::nullopt;
+    }
+    case EditorControlCommand::Screenshot: {
+        RequireReady(snapshot);
+        (void)CaptureOptionsOf(arguments, snapshot.canvas); // Report bad options before waiting
+        if (arguments.contains("path") && Text(arguments, "path").empty())
+            throw std::runtime_error("\"path\" must not be empty");
+        AwaitWorker(controller, WorkerTimeout,
+                    [this, arguments](EditorController& session) { return Screenshot(arguments, session); });
+        return std::nullopt;
+    }
+    case EditorControlCommand::Inspect: {
+        RequireReady(snapshot);
+        AwaitWorker(controller, WorkerTimeout, [](EditorController& session) {
+            auto status = StatusOf(session);
+            status["inspection"] = EncodePreviewInspection(session.Snapshot().inspection);
+            return status;
+        });
+        return std::nullopt;
+    }
+    case EditorControlCommand::Logs: {
+        const auto since = arguments.value("since", std::uint64_t{0});
+        const auto limit = std::min(arguments.value("limit", DefaultLogLimit), MaxLogLimit);
+        const auto level = arguments.value("level", std::string("info"));
+        const auto minimum = level == "error"     ? EditorLogLevel::Error
+                             : level == "warning" ? EditorLogLevel::Warning
+                             : level == "info"    ? EditorLogLevel::Info
+                                                  : throw std::runtime_error("\"level\" is info, warning or error");
+        std::vector<nlohmann::json> entries;
+        std::uint64_t last = since;
+        for (const auto& entry : controller.Diagnostics().Entries()) {
+            last = std::max(last, entry.sequence);
+            if (entry.sequence > since && entry.level >= minimum) entries.push_back(ControlLogEntry(entry));
+        }
+        if (entries.size() > limit) entries.erase(entries.begin(), entries.end() - static_cast<std::ptrdiff_t>(limit));
+        return nlohmann::json{{"entries", entries}, {"last", last}};
+    }
+    case EditorControlCommand::Count: break;
+    }
+    throw std::runtime_error("Unsupported command");
+}
+nlohmann::json EditorControlService::Screenshot(const nlohmann::json& arguments, EditorController& controller) {
+    const auto snapshot = controller.Snapshot();
+    const auto frame = controller.LatestFrame();
+    if (!frame) throw std::runtime_error("No frame to capture");
+    const auto captured = CaptureFrame(*frame, snapshot.canvas, CaptureOptionsOf(arguments, snapshot.canvas));
+    const auto png = _encodePng(captured);
+    const bool chosen = arguments.contains("path");
+    std::filesystem::path file =
+        chosen ? std::filesystem::path(PreviewWide(Text(arguments, "path"))) : NewCapturePath(_captures);
+    if (!file.is_absolute()) throw std::runtime_error("\"path\" must be absolute");
+    file = file.lexically_normal().make_preferred();
+    std::filesystem::create_directories(file.parent_path());
+    if (!WriteBinaryFileAtomic(file, {reinterpret_cast<const char*>(png.data()), png.size()}))
+        throw std::runtime_error("Could not write " + PreviewUtf8(file.generic_wstring()));
+    if (!chosen) PruneCaptures(_captures, FrameCaptureKeep);
+    auto status = StatusOf(controller);
+    status["path"] = PreviewUtf8(file.wstring());
+    status["width"] = captured.width;
+    status["height"] = captured.height;
+    return status;
+}
+void EditorControlService::Refresh(EditorController& controller) {
+    if (controller.Diagnostics().Attempt().result != EditorBuildResult::Running) {
+        const auto capabilities = controller.Snapshot().capabilities;
+        if (!capabilities.Can(EditorCommand::Refresh))
+            throw std::runtime_error(std::string("Build & Refresh is unavailable: ") +
+                                     capabilities.Reason(EditorCommand::Refresh));
+        controller.Execute(EditorCommand::Refresh);
+        controller.MarkControlAttempt();
+        controller.Notify("Build & Refresh");
+    }
+    _watch = Watch{_pipe.Client(), controller.Diagnostics().Attempt().id, 0};
+    Stream(controller);
+}
+void EditorControlService::Stream(EditorController& controller) {
+    const auto& diagnostics = controller.Diagnostics();
     const auto& attempt = diagnostics.Attempt();
     if (attempt.id != _watch->attempt) {
         _watch.reset();
@@ -78,5 +410,7 @@ void EditorControlService::Stream(const EditorDiagnostics& diagnostics) {
     }
     if (attempt.result == EditorBuildResult::Running || attempt.result == EditorBuildResult::None) return;
     _pipe.Send(EncodeControlResult(attempt.result));
+    if (attempt.result == EditorBuildResult::BuildFailed || attempt.result == EditorBuildResult::RefreshFailed)
+        controller.Notify("Build & Refresh failed; see Output");
     _watch.reset();
 }

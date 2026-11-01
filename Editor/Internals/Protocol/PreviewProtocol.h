@@ -7,7 +7,7 @@
 #include "Editor/Api/PreviewRegistry.h"
 #include "Input/Input.h"
 
-inline constexpr std::uint32_t PreviewProtocolVersion = 9;
+inline constexpr std::uint32_t PreviewProtocolVersion = 10;
 inline constexpr std::size_t PreviewMaxInputPoints = 32;
 inline constexpr std::size_t PreviewMaxMessageBytes = 1024 * 1024;
 inline constexpr std::size_t PreviewMaxQueuedMessages = 256;

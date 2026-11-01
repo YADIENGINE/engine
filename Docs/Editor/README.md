@@ -10,7 +10,8 @@ targets do not acquire editor/ImGui dependencies.
 4. [Public API and project file](Api.md).
 5. [Architecture](Architecture.md) and [checks](Testing.md).
 6. [Profiler: live measurement, benchmarks, and before/after comparison](Profiler.md).
-7. [Future editor UI capabilities and prerequisites](TODO.md).
+7. [Automation: driving the open editor from scripts and agents (`ctl`)](Automation.md).
+8. [Future editor UI capabilities and prerequisites](TODO.md).
 
 `ENGINE_BUILD_EDITOR=ON` and `ENGINE_BUILD_RUNTIME=ON` enable Windows editor targets; they are disabled by default.
 `ENGINE_BUILD_EDITOR_TESTS` enables independent headless infrastructure tests. Build & Refresh builds only the worker

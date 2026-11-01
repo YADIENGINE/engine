@@ -2,10 +2,31 @@
 #include <imgui.h>
 #include <algorithm>
 #include <array>
+#include <string>
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
+
+namespace {
+constexpr double NoticeSeconds = 3.0; // A control notice stays this long, fading over the last NoticeFade
+constexpr double NoticeFade = 0.75;
+// The last change made through the control endpoint, over the top-left corner of the preview area.
+void DrawNotice(const EditorSnapshot& snapshot, ImVec2 cursor) {
+    if (snapshot.notice.empty() || snapshot.noticeAge >= NoticeSeconds) return;
+    const float alpha = static_cast<float>(std::clamp((NoticeSeconds - snapshot.noticeAge) / NoticeFade, 0.0, 1.0));
+    const auto text = "Control: " + snapshot.notice;
+    const auto& style = ImGui::GetStyle();
+    const ImVec2 size = ImGui::CalcTextSize(text.c_str());
+    const ImVec2 at{cursor.x + style.WindowPadding.x, cursor.y + style.WindowPadding.y};
+    const ImVec2 end{at.x + size.x + style.FramePadding.x * 2.0f, at.y + size.y + style.FramePadding.y * 2.0f};
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->AddRectFilled(at, end, ImGui::GetColorU32(ImGuiCol_PopupBg, alpha), style.FrameRounding);
+    draw->AddRect(at, end, ImGui::GetColorU32(ImGuiCol_Border, alpha), style.FrameRounding);
+    draw->AddText({at.x + style.FramePadding.x, at.y + style.FramePadding.y}, ImGui::GetColorU32(ImGuiCol_Text, alpha),
+                  text.c_str());
+}
+} // namespace
 
 bool ViewportPanel::Toolbar(bool maximized) {
     bool toggleMaximize = false;
@@ -161,5 +182,6 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
             if (ImGui::Button("Cancel")) actions.command(EditorCommand::Cancel);
         }
     }
+    DrawNotice(snapshot, cursor);
     return result;
 }

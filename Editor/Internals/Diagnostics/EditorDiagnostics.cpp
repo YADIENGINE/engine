@@ -137,9 +137,9 @@ void EditorDiagnostics::Acknowledge() {
 }
 EditorLogLevel ClassifyBuildOutput(std::string_view text) {
     if (text.starts_with("CMake Error") || text.starts_with("FAILED:") || text.starts_with("ninja: error:") ||
-        text.find(": error:") != std::string_view::npos || text.find(": fatal error:") != std::string_view::npos ||
-        text.find(": error C") != std::string_view::npos || text.find(": fatal error ") != std::string_view::npos ||
-        text.find(": error LNK") != std::string_view::npos)
+        text.starts_with("Error copying") || text.find(": error:") != std::string_view::npos ||
+        text.find(": fatal error:") != std::string_view::npos || text.find(": error C") != std::string_view::npos ||
+        text.find(": fatal error ") != std::string_view::npos || text.find(": error LNK") != std::string_view::npos)
         return EditorLogLevel::Error;
     if (text.starts_with("CMake Warning") || text.find(": warning:") != std::string_view::npos ||
         text.find(": warning C") != std::string_view::npos || text.find(": warning LNK") != std::string_view::npos)

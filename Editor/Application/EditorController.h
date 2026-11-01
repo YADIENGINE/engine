@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <map>
 #include <memory>
 #include <optional>
@@ -10,6 +11,15 @@
 #include "Editor/Internals/Session/RefreshState.h"
 #include "Editor/Internals/Session/TuningWorkspace.h"
 #include "Editor/Internals/Session/WorkerSnapshots.h"
+
+// The worker's answer to the last Sync(): every command sent before it had applied. `frames` counts the frames received
+// since; the second one was drawn after the answer.
+struct EditorSync {
+    std::uint64_t request = 0;
+    double seconds = 0.0;
+    bool paused = false;
+    std::uint64_t frames = 0;
+};
 
 // The editor session: the catalog, the selected preview with its parameters, and the workers behind it.
 // Workers run from snapshots of the build (WorkerSnapshots), so a build never waits for a worker to exit. At most one
@@ -24,6 +34,20 @@ public:
     void Parameter(const std::string& id, const PreviewValue& value);
     void Action(const std::string& id);
     void Playback(double speed, bool step);
+    void SetPaused(bool paused);
+    // Pauses and advances the playback clock to `seconds`, or by `seconds` when relative (replaying from 0 to go back).
+    void Seek(double seconds, bool relative = false);
+    // Asks the ready worker to confirm the commands sent so far; the answer arrives in LastSync(). Returns its request.
+    [[nodiscard]] std::uint64_t Sync();
+    [[nodiscard]] const EditorSync& LastSync() const { return _sync; }
+    // Playback seconds since open / reset, as last reported by the worker.
+    [[nodiscard]] double Seconds() const { return _seconds; }
+    [[nodiscard]] PreviewParameters Values(const std::string& id) const;
+    // A change made through the control endpoint: logged and shown briefly over the viewport.
+    void Notify(const std::string& text);
+    // The current Build & Refresh attempt was started through the control endpoint: its client gets the result, so a
+    // failure does not open the blocking dialog.
+    void MarkControlAttempt() { _controlAttempt = _output.Attempt().id; }
     void Input(const DeviceInput& input);
     void Profile(EditorProfilerCommand command, const Profiler::Recipe& recipe, const std::string& file);
     void Tune(std::size_t file, const TuningLocation& at, const TuningValue& value);
@@ -41,7 +65,9 @@ public:
     [[nodiscard]] std::optional<std::string> TakeOpenedPreview();
     void Shutdown();
     [[nodiscard]] std::uint64_t Generation() const { return _generation; }
-    [[nodiscard]] std::optional<PreviewPixels> TakeFrame();
+    // The frame not yet shown, once; LatestFrame keeps the last received one of the active generation.
+    [[nodiscard]] std::shared_ptr<const PreviewPixels> TakeFrame();
+    [[nodiscard]] std::shared_ptr<const PreviewPixels> LatestFrame() const { return _latestFrame; }
 
 private:
     // The worker that will replace the active one, with what it brings until the swap.
@@ -128,7 +154,14 @@ private:
     std::optional<EditorBuildResult> _attemptFailure;
     std::optional<std::string> _openedPreview;
     bool _recordOpen = false;
-    std::optional<PreviewPixels> _nextFrame;
+    std::shared_ptr<const PreviewPixels> _nextFrame;
+    std::shared_ptr<const PreviewPixels> _latestFrame;
+    std::uint64_t _syncRequest = 0;
+    EditorSync _sync;
+    double _seconds = 0.0;
+    std::string _notice;
+    std::uint64_t _controlAttempt = 0;
+    std::chrono::steady_clock::time_point _noticeAt;
     std::string _status = "No project";
     EditorPhase _restPhase = EditorPhase::Stopped; // Stopped or Error: the phase while nothing runs
     double _captureMilliseconds = 0.0;

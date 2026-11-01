@@ -1,8 +1,34 @@
 #include "Editor/Internals/Protocol/EditorControlProtocol.h"
-#include <nlohmann/json.hpp>
+#include <array>
+#include <charconv>
+#include <cmath>
 #include <stdexcept>
+#include "Utilities/EnumTable.h"
 
 namespace {
+struct CommandRow {
+    EditorControlCommand id;
+    std::string_view name;
+};
+constexpr std::array CommandRows{
+    CommandRow{EditorControlCommand::Refresh, "refresh"},
+    CommandRow{EditorControlCommand::Status, "status"},
+    CommandRow{EditorControlCommand::List, "list"},
+    CommandRow{EditorControlCommand::Open, "open"},
+    CommandRow{EditorControlCommand::Set, "set"},
+    CommandRow{EditorControlCommand::Action, "action"},
+    CommandRow{EditorControlCommand::Pause, "pause"},
+    CommandRow{EditorControlCommand::Play, "play"},
+    CommandRow{EditorControlCommand::Step, "step"},
+    CommandRow{EditorControlCommand::Speed, "speed"},
+    CommandRow{EditorControlCommand::Reset, "reset"},
+    CommandRow{EditorControlCommand::Seek, "seek"},
+    CommandRow{EditorControlCommand::Screenshot, "screenshot"},
+    CommandRow{EditorControlCommand::Inspect, "inspect"},
+    CommandRow{EditorControlCommand::Logs, "logs"},
+};
+static_assert(RowsInIdOrder(CommandRows));
+
 const char* LevelName(EditorLogLevel level) {
     switch (level) {
     case EditorLogLevel::Info   : return "info";
@@ -19,8 +45,51 @@ const char* SourceName(EditorLogSource source) {
     }
     return "editor";
 }
+const char* KindName(PreviewParameterKind kind) {
+    switch (kind) {
+    case PreviewParameterKind::Integer: return "integer";
+    case PreviewParameterKind::Float  : return "float";
+    case PreviewParameterKind::Boolean: return "boolean";
+    case PreviewParameterKind::Color  : return "color";
+    case PreviewParameterKind::Choice : return "choice";
+    }
+    return "float";
+}
+const char* ApplyName(PreviewApplyMode apply) {
+    switch (apply) {
+    case PreviewApplyMode::Immediate : return "immediate";
+    case PreviewApplyMode::NextAction: return "next-action";
+    case PreviewApplyMode::OnReset   : return "on-reset";
+    }
+    return "immediate";
+}
 std::string Line(const nlohmann::json& json) {
     return json.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+}
+[[noreturn]] void Mismatch(const PreviewParameter& parameter, std::string_view expected) {
+    throw std::runtime_error("Parameter '" + parameter.id + "' expects " + std::string(expected));
+}
+float HexChannel(std::string_view text, std::size_t at) {
+    unsigned value = 0;
+    const auto [end, error] = std::from_chars(text.data() + at, text.data() + at + 2, value, 16);
+    if (error != std::errc{} || end != text.data() + at + 2)
+        throw std::runtime_error("Invalid color: " + std::string(text));
+    return static_cast<float>(value) / 255.0f;
+}
+PreviewColor ColorOf(const PreviewParameter& parameter, const nlohmann::json& value) {
+    if (value.is_string()) {
+        const auto text = value.get<std::string>();
+        if (!text.starts_with('#') || (text.size() != 7 && text.size() != 9)) Mismatch(parameter, "\"#rrggbb(aa)\"");
+        return {HexChannel(text, 1), HexChannel(text, 3), HexChannel(text, 5),
+                text.size() == 9 ? HexChannel(text, 7) : 1.0f};
+    }
+    if (!value.is_array() || (value.size() != 3 && value.size() != 4)) Mismatch(parameter, "[r, g, b(, a)]");
+    std::array<float, 4> channels{1.0f, 1.0f, 1.0f, 1.0f};
+    for (std::size_t i = 0; i < value.size(); ++i) {
+        if (!value[i].is_number()) Mismatch(parameter, "[r, g, b(, a)] numbers");
+        channels[i] = value[i].get<float>();
+    }
+    return {channels[0], channels[1], channels[2], channels[3]};
 }
 } // namespace
 
@@ -33,19 +102,33 @@ EditorControlAnnouncement DecodeControlAnnouncement(std::string_view json) {
         throw std::runtime_error("Unsupported editor control version");
     return {data.at("pipe").get<std::string>(), data.at("pid").get<unsigned long>()};
 }
-EditorControlCommand DecodeControlRequest(std::string_view line) {
-    const auto request = nlohmann::json::parse(line);
+EditorControlRequest DecodeControlRequest(std::string_view line) {
+    auto request = nlohmann::json::parse(line);
     if (!request.is_object() || request.value("version", 0) != EditorControlVersion)
-        throw std::runtime_error("Unsupported editor control version");
-    const auto command = request.at("command").get<std::string>();
-    if (command == "refresh") return EditorControlCommand::Refresh;
-    throw std::runtime_error("Unknown editor control command: " + command);
+        throw std::runtime_error("Unsupported editor control version (this editor speaks " +
+                                 std::to_string(EditorControlVersion) + ")");
+    const auto name = request.at("command").get<std::string>();
+    for (const auto& row : CommandRows) {
+        if (row.name != name) continue;
+        request.erase("version");
+        request.erase("command");
+        return {row.id, std::move(request)};
+    }
+    throw std::runtime_error("Unknown editor control command: " + name);
+}
+std::string_view ControlCommandName(EditorControlCommand command) {
+    return CommandRows.at(static_cast<std::size_t>(command)).name;
+}
+nlohmann::json ControlLogEntry(const EditorLogEntry& entry) {
+    return {{"sequence", entry.sequence},
+            {"level", LevelName(entry.level)},
+            {"source", SourceName(entry.source)},
+            {"text", entry.text}};
 }
 std::string EncodeControlLog(const EditorLogEntry& entry) {
-    return Line({{"type", "log"},
-                 {"level", LevelName(entry.level)},
-                 {"source", SourceName(entry.source)},
-                 {"text", entry.text}});
+    auto line = ControlLogEntry(entry);
+    line["type"] = "log";
+    return Line(line);
 }
 std::string EncodeControlResult(EditorBuildResult result) {
     const char* name = nullptr;
@@ -59,4 +142,75 @@ std::string EncodeControlResult(EditorBuildResult result) {
     }
     return Line({{"type", "result"}, {"result", name}});
 }
+std::string EncodeControlReply(nlohmann::json data) {
+    data["type"] = "result";
+    return Line(data);
+}
 std::string EncodeControlError(std::string_view text) { return Line({{"type", "error"}, {"text", std::string(text)}}); }
+
+nlohmann::json ControlValue(const PreviewValue& value) {
+    nlohmann::json data;
+    std::visit(
+        [&data](const auto& item) {
+            using T = std::decay_t<decltype(item)>;
+            if constexpr (std::is_same_v<T, PreviewColor>)
+                data = nlohmann::json::array({item.r, item.g, item.b, item.a});
+            else
+                data = item;
+        },
+        value);
+    return data;
+}
+PreviewValue ControlValueOf(const PreviewParameter& parameter, const nlohmann::json& value) {
+    switch (parameter.kind) {
+    case PreviewParameterKind::Integer: {
+        if (value.is_number_integer()) return value.get<std::int64_t>();
+        if (value.is_number_float()) {
+            const double number = value.get<double>();
+            if (std::isfinite(number) && std::trunc(number) == number) return static_cast<std::int64_t>(number);
+        }
+        Mismatch(parameter, "a whole number");
+    }
+    case PreviewParameterKind::Float:
+        if (!value.is_number()) Mismatch(parameter, "a number");
+        return value.get<double>();
+    case PreviewParameterKind::Boolean:
+        if (!value.is_boolean()) Mismatch(parameter, "true or false");
+        return value.get<bool>();
+    case PreviewParameterKind::Color: return ColorOf(parameter, value);
+    case PreviewParameterKind::Choice:
+        if (!value.is_string()) Mismatch(parameter, "one of its choices");
+        return value.get<std::string>();
+    }
+    Mismatch(parameter, "a known kind");
+}
+nlohmann::json ControlCatalogEntry(const PreviewDefinition& definition, const PreviewParameters& values) {
+    auto parameters = nlohmann::json::array();
+    for (const auto& parameter : definition.parameters) {
+        nlohmann::json entry{{"id", parameter.id},
+                             {"label", parameter.label},
+                             {"kind", KindName(parameter.kind)},
+                             {"apply", ApplyName(parameter.apply)}};
+        const auto current = values.find(parameter.id);
+        entry["value"] = ControlValue(current == values.end() ? parameter.initial : current->second);
+        if (parameter.kind == PreviewParameterKind::Integer || parameter.kind == PreviewParameterKind::Float) {
+            entry["minimum"] = parameter.minimum;
+            entry["maximum"] = parameter.maximum;
+        }
+        if (parameter.kind == PreviewParameterKind::Choice) entry["choices"] = parameter.choices;
+        if (!parameter.group.empty()) entry["group"] = parameter.group;
+        if (!parameter.description.empty()) entry["description"] = parameter.description;
+        parameters.push_back(std::move(entry));
+    }
+    auto actions = nlohmann::json::array();
+    for (const auto& action : definition.actions) {
+        nlohmann::json entry{{"id", action.id}, {"label", action.label}};
+        if (!action.description.empty()) entry["description"] = action.description;
+        actions.push_back(std::move(entry));
+    }
+    nlohmann::json entry{{"id", definition.id}, {"name", definition.name}, {"category", definition.category}};
+    if (!definition.description.empty()) entry["description"] = definition.description;
+    entry["parameters"] = std::move(parameters);
+    entry["actions"] = std::move(actions);
+    return entry;
+}

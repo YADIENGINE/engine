@@ -1,11 +1,19 @@
 #include "Editor/Preview/PreviewSession.h"
 #include <raylib.h>
+#include <algorithm>
+#include <cmath>
 #include <span>
 #include <utility>
 #include <stdexcept>
 #include "Editor/Internals/Viewport/PreviewInputRouter.h"
+#include "Runtime/Game.h"
 
 namespace {
+constexpr double StepSeconds = 1.0 / 60.0; // One Step, and one seek step
+constexpr double MaxSeekSeconds = 600.0;
+constexpr double SeekTolerance = 1e-6;
+constexpr int SeekStepAllowance = 4; // Steps a seek may take per planned step before it gives up where it is
+constexpr int SeekExtraSteps = 120;
 struct CapturedImage {
     explicit CapturedImage(Image value)
         : image(value) {}
@@ -21,7 +29,8 @@ struct CapturedImage {
 PreviewSession::PreviewSession(Game& game, const GameSettings& settings, const PreviewRegistry& registry,
                                ControlChannel& channel, const std::string& session, const FontFace* font,
                                AudioSystem& audio, PreviewSessionActions actions)
-    : _registry(registry)
+    : _game(game)
+    , _registry(registry)
     , _channel(channel)
     , _canvas{settings.canvasWidth, settings.canvasHeight}
     , _frames(session, false)
@@ -46,14 +55,78 @@ PreviewSession::~PreviewSession() {
 }
 float PreviewSession::Advance(float realSeconds) {
     if (_profiler.Busy()) return _profiler.Advance();
-    if (_step) {
+    ReplayDue();
+    float seconds = _paused ? 0.0f : realSeconds * _speed;
+    if (_seek) {
+        const double remaining = _seek->target - _elapsed;
+        if (remaining <= SeekTolerance || --_seek->stepsLeft < 0) {
+            FinishSeek(); // This frame draws (and publishes) the arrived state
+            seconds = 0.0f;
+        } else {
+            double step = std::min(StepSeconds, remaining);
+            if (_applied < _timeline.size())
+                step = std::min(step, _timeline[_applied].seconds - _elapsed); // Land on it
+            seconds = static_cast<float>(step);
+        }
+    } else if (_step) {
         _step = false;
-        return 1.0f / 60.0f;
+        seconds = static_cast<float>(StepSeconds);
     }
-    return _paused ? 0.0f : realSeconds * _speed;
+    _elapsed += seconds;
+    return seconds;
 }
 void PreviewSession::Reply(const PreviewMessage& message, const std::string& type, nlohmann::json data) {
     _channel.Send({{}, _generation, message.request, type, std::move(data)});
+}
+nlohmann::json PreviewSession::PlaybackState() const {
+    return {{"paused", _paused}, {"speed", _speed}, {"seconds", _elapsed}};
+}
+void PreviewSession::Restart() {
+    _profiler.Reset(_generation);
+    _inputState = {};
+    _statsStartedAt = 0.0;
+    _publishedFrames = 0;
+    _elapsed = 0.0;
+    _actions.reset();
+    _actions.activate(_scene);
+}
+void PreviewSession::StartSeek(const PreviewMessage& message) {
+    const double seconds = message.data.at("seconds").get<double>();
+    const double target = message.data.value("relative", false) ? _elapsed + seconds : seconds;
+    if (!std::isfinite(target) || target < 0.0 || target > MaxSeekSeconds) {
+        Reply(message, "rejected", {{"text", "Seek time must be between 0 and 600 seconds"}});
+        return;
+    }
+    if (target + SeekTolerance < _elapsed) { // Rewinding replays from the start: current parameters, recorded actions
+        Restart();
+        _scene.Reset();
+        _applied = 0;
+    }
+    _paused = true;
+    _step = false;
+    _inputState = {};
+    _inputState.cancelled = true;
+    const int planned = static_cast<int>(std::ceil((target - _elapsed) / StepSeconds));
+    _seek = Seek{target, message.request, planned * SeekStepAllowance + SeekExtraSteps, _game.FrameExecution()};
+    auto unthrottled = _seek->execution;
+    unthrottled.fpsLimit = 0;
+    unthrottled.vsync = false;
+    _game.ConfigureFrameExecution(unthrottled);
+}
+void PreviewSession::ReplayDue() {
+    bool replayed = false;
+    while (_applied < _timeline.size() && _timeline[_applied].seconds <= _elapsed + SeekTolerance) {
+        (void)_scene.Action(_timeline[_applied++].id); // Accepted when it was first run
+        replayed = true;
+    }
+    if (replayed && _scene.CaptureParameters())
+        _channel.Send(
+            {{}, _generation, 0, "parameters", {{"parameters", EncodePreviewParameters(_scene.Parameters())}}});
+}
+void PreviewSession::FinishSeek() {
+    _game.ConfigureFrameExecution(_seek->execution);
+    _channel.Send({{}, _generation, _seek->request, "state", PlaybackState()});
+    _seek.reset();
 }
 void PreviewSession::Command(const PreviewMessage& message) {
     if (message.type == "shutdown") {
@@ -67,12 +140,9 @@ void PreviewSession::Command(const PreviewMessage& message) {
         const auto* definition = _registry.Find(state.id);
         if (!definition) throw std::runtime_error("Selected preview is missing from the new catalog");
         _generation = message.generation;
-        _profiler.Reset(_generation);
-        _inputState = {};
-        _statsStartedAt = 0.0;
-        _publishedFrames = 0;
-        _actions.reset();
-        _actions.activate(_scene);
+        Restart();
+        _timeline.clear();
+        _applied = 0;
         _scene.Open(*definition, state.parameters);
         _paused = state.paused;
         _speed = static_cast<float>(state.speed);
@@ -87,12 +157,9 @@ void PreviewSession::Command(const PreviewMessage& message) {
         }
         if (message.generation <= _generation || !_scene.HasContent()) return;
         _generation = message.generation;
-        _profiler.Reset(_generation);
-        _inputState = {};
-        _statsStartedAt = 0.0;
-        _publishedFrames = 0;
-        _actions.reset();
-        _actions.activate(_scene);
+        Restart();
+        _timeline.clear();
+        _applied = 0;
         _scene.Reset();
         _openRequest = message.request;
         _readyPending = true;
@@ -120,7 +187,7 @@ void PreviewSession::Command(const PreviewMessage& message) {
         _paused = message.data.at("paused").get<bool>();
         _inputState = {};
         _inputState.cancelled = true;
-        Reply(message, "state", {{"paused", _paused}});
+        Reply(message, "state", PlaybackState());
     } else if (message.type == "playback") {
         const double speed = message.data.at("speed").get<double>();
         if (!ValidPlaybackSpeed(speed)) {
@@ -129,7 +196,12 @@ void PreviewSession::Command(const PreviewMessage& message) {
         }
         _speed = static_cast<float>(speed);
         _step = _paused && message.data.value("step", false);
-        Reply(message, "state", {{"paused", _paused}, {"speed", _speed}});
+        Reply(message, "state", PlaybackState());
+    } else if (message.type == "seek") {
+        StartSeek(message);
+    } else if (message.type == "sync") {
+        _inspectionAt = -1.0; // The next frame reports inspection, so a reader after the sync sees current values
+        Reply(message, "synced", PlaybackState());
     } else if (message.type == "parameter") {
         const auto id = message.data.at("id").get<std::string>();
         const auto value = DecodePreviewValue(message.data.at("value"));
@@ -142,9 +214,15 @@ void PreviewSession::Command(const PreviewMessage& message) {
                 {{}, _generation, 0, "parameters", {{"parameters", EncodePreviewParameters(_scene.Parameters())}}});
         }
     } else if (message.type == "action") {
-        if (auto error = _scene.Action(message.data.at("id").get<std::string>()); !error.empty())
+        const auto id = message.data.at("id").get<std::string>();
+        if (auto error = _scene.Action(id); !error.empty()) {
             Reply(message, "rejected", {{"text", error}});
-        else if (_scene.CaptureParameters())
+            return;
+        }
+        _timeline.resize(_applied); // Acting after a rewind replaces what followed
+        _timeline.push_back({_elapsed, id});
+        _applied = _timeline.size();
+        if (_scene.CaptureParameters())
             _channel.Send(
                 {{}, _generation, 0, "parameters", {{"parameters", EncodePreviewParameters(_scene.Parameters())}}});
     } else {
@@ -152,8 +230,9 @@ void PreviewSession::Command(const PreviewMessage& message) {
     }
 }
 void PreviewSession::PrepareFrame() {
-    for (const auto& message : _channel.Poll())
-        Command(message);
+    if (!_seek) // Commands queued behind a seek apply once it arrives
+        for (const auto& message : _channel.Poll())
+            Command(message);
     if (_channel.Closed()) _actions.quit();
     _profiler.Tick(_generation);
 }
@@ -177,7 +256,7 @@ void PreviewSession::Capture() {
             {{}, _generation, 0, "parameters", {{"parameters", EncodePreviewParameters(_scene.Parameters())}}});
 }
 void PreviewSession::CanvasReady(const Texture2D& texture) const {
-    if (_profiler.Busy()) return;
+    if (_profiler.Busy() || _seek) return;
     if (!_scene.HasContent()) return;
     if (texture.width > PreviewMaxFrameWidth || texture.height > PreviewMaxFrameHeight)
         throw std::runtime_error("Preview canvas exceeds the bounded frame transport");

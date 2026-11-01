@@ -70,6 +70,7 @@ editor and recipe includes start at the engine root. Run tools from the project 
 | Open a URL or copy text to clipboard | `Core/Platform/Shell.h` | - | `Docs/AssetsAndPlatforms.md#platform-responsibilities` |
 | Preview a production View in the editor | `Editor/Api/EditorPreview.h`<br>`Editor/Api/PreviewRegistry.h`<br>`Editor/Api/PreviewServices.h`<br>`Editor/Preview/PreviewHost.h` | `Recipes/CharacterPreview.md` | `Docs/Editor/GettingStarted.md#cmake-target` |
 | Expose preview controls, actions or inspection | `Editor/Api/PreviewParameter.h`<br>`Editor/Api/PreviewInspection.h` | `Recipes/CharacterPreview.md` | `Docs/Editor/GettingStarted.md#editorfirstpreviewcpp` |
+| Look at a preview or game flow: open, set, seek, screenshot, inspect; show it to the developer | `Tools/commands/ctl.py` | - | `Docs/Editor/Automation.md#commands` |
 | Set up, run, check or test a project | `Tools/cli.py` | - | `Docs/ToolsContract.md#commands` |
 | Package a release and third-party notices | `Tools/commands/release.py` | - | `Docs/Release.md#checks` |
 | Generate audio assets offline | `Tools/AudioGeneration/generator.py` | - | `Docs/AudioGeneration.md#a-sound-set-in-one-file` |

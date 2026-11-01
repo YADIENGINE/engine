@@ -607,6 +607,29 @@ Durum: aşama 1 uygulandı (2026-10-31), çalışma zamanı doğrulaması bekliy
 
 Durum: kabul edildi (2026-10-31); uygulama Aşama 4'te.
 
+### D20. Editor automation through the control endpoint
+**Decision (2026-11-01):** the open editor is driven and observed through its existing control endpoint (named pipe,
+JSON lines), not a separate headless process. Workflow: the developer runs an AI CLI in the editor's Console; the agent
+lists, opens and adjusts previews (Game Flows are previews), seeks, takes screenshots, reads inspection and logs, and
+brings the screen to the developer. Supersedes the separate-process plan of [AgentApi](AgentApi.md) for an open editor.
+- **Generic automation, not an AI feature:** commands name editor operations; no AI name or AI-specific behaviour (D14,
+  D18). Any script or test can use them.
+- **CLI only:** `python Engine ctl <command>` (JSON on stdout). No MCP server: the CLI works with every agent and needs
+  no AI configuration.
+- **Visible changes:** every state-changing command shows a short "Control: ..." notice in the editor and is logged.
+  Changes apply immediately; the developer's input is never blocked.
+- **Fresh frames:** a screenshot or inspection first syncs with the worker (its reply means every earlier command is
+  applied) and then waits for frames drawn after it; an agent never judges a stale frame.
+- **Reproducible time:** `seek` pauses and advances the worker's playback clock in fixed steps (rewinding through a
+  reset), without frame limit or readback until it arrives.
+- **Discovery:** the console's shell gets `ENGINE_EDITOR_CONTROL` (the pipe), so commands reach that editor even when
+  several are open; otherwise the build directory's announcement file.
+- **Captures:** PNG under `<build>/editor-captures/`, newest 50 kept; optional scale and canvas-space crop.
+- **Later (not in this step):** "send to terminal" from the viewport, frame grids, scripted input scenarios, headless
+  rendering without an open editor, several clients at once.
+
+Durum: kabul edildi (2026-11-01); uygulandı.
+
 ## v1 iş sırası
 
 Kabul edildi: [Plan](Plan.md) (Aşama 0 hazırlık → 1 editör döngüsü → 2 tuning → 3 launcher MVP → 4 dağıtım;

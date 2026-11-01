@@ -9,6 +9,10 @@ class ConsolePanel {
 public:
     ConsolePanel();
     void SetDirectory(const std::filesystem::path& directory) { _directory = directory; }
+    // Kabuğa eklenen ortam (ör. editörün kontrol pipe'ı); kabuk başlamadan verilir.
+    void SetEnvironment(std::vector<std::pair<std::string, std::string>> environment) {
+        _environment = std::move(environment);
+    }
     // Her kare, panel görünmese de: çıktıyı işler, çıkışı fark eder.
     void Update() { _session.Pump(); }
     void Draw();
@@ -19,4 +23,5 @@ private:
     TerminalSession _session;
     TerminalView _view;
     std::filesystem::path _directory;
+    std::vector<std::pair<std::string, std::string>> _environment;
 };
