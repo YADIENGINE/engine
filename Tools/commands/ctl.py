@@ -79,6 +79,8 @@ def add_parser(commands) -> None:
     action = actions.add_parser("note", help="report what the agent is doing; shown in the editor's status bar")
     action.add_argument("text", nargs="*", metavar="WORD")
     action.add_argument("--state", choices=("working", "waiting", "idle"), default="working")
+    action.add_argument("--hook", action="store_true",
+                        help="for agent hooks: no output, always exit 0, nothing outside an editor Console session")
 
 
 def parse_value(text: str):
@@ -314,7 +316,23 @@ def open_scene(pipe: str, args: argparse.Namespace) -> dict:
     return answer
 
 
+def hook_note(project: Project, args: argparse.Namespace) -> int:
+    """`note --hook`: an agent CLI's hook must never fail or print (some hooks block the agent on a non-zero exit),
+    and outside the editor's Console there is no session to report to. A JSON argument some CLIs append to their
+    notify command (a turn's payload) is not note text."""
+    if not os.environ.get(SESSION_ENVIRONMENT):
+        return EXIT_OK
+    args.text = [word for word in args.text if not word.lstrip().startswith("{")]
+    try:
+        send(editor_pipe(project), request_of(args))
+    except Exception:  # noqa: BLE001 - a closed or busy editor must not disturb the agent
+        pass
+    return EXIT_OK
+
+
 def ctl(project: Project, args: argparse.Namespace) -> int:
+    if args.action == "note" and args.hook:
+        return hook_note(project, args)
     pipe = editor_pipe(project)
     if args.action == "open":
         answer = open_scene(pipe, args)

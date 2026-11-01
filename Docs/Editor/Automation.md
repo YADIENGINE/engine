@@ -29,11 +29,37 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 | `frames --from A --to B [--count N] [--columns C] [--out PATH] [--scale S] [--crop X Y W H]` | One grid PNG of N frames between A and B seconds (pauses there); status + `path`, `frames` (times), `columns` ([Animation](#screenshots)) |
 | `inspect` | Status + `inspection` (readout values, tables, focus, disabled controls) |
 | `logs [--since N] [--limit N] [--level L]` | `entries` (sequence, level, source, text) after N, newest `limit` (100, max 1000) at or above L; `last` sequence |
-| `note [WORD...] [--state working\|waiting\|idle]` | Reports what the agent is doing (default `working`). Run from a Console session (`ENGINE_EDITOR_SESSION` set, sent as `session`), it sets that session's state and hover text until the developer types into it again. `state`, `text` (up to 200 bytes), `control` |
+| `note [WORD...] [--state working\|waiting\|idle] [--hook]` | Reports what the agent is doing (default `working`); `--hook`: see Agent hooks below. Run from a Console session (`ENGINE_EDITOR_SESSION` set, sent as `session`), it sets that session's state and hover text until the developer types into it again. `state`, `text` (up to 200 bytes), `control` |
 | `refresh` (top-level command) | Build & Refresh; streams build output ([Tools contract](../ToolsContract.md)) |
 
 Exit codes: 0 answered; 1 the editor refused the request (`error: ...` on stderr: unknown scene, invalid value, not
 running, timed out, agent control off); 2 no editor or wrong arguments.
+
+**Agent hooks:** an agent CLI's own events report a session's state more reliably than the editor's guess (input,
+output, terminal bell). `ctl note --hook` is made for them: it prints nothing, always exits 0 (Claude Code blocks a
+prompt or a stop on exit 2) and does nothing outside an editor Console session. Claude Code, in the project's
+`.claude/settings.json` (Git Bash runs hook commands when installed; `CLAUDE_PROJECT_DIR` is the project root):
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [{"hooks": [{"type": "command", "shell": "bash", "timeout": 10,
+      "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --state working"}]}],
+    "PostToolUse": [{"hooks": [{"type": "command", "shell": "bash", "timeout": 10, "async": true,
+      "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --state working"}]}],
+    "Notification": [{"matcher": "permission_prompt", "hooks": [{"type": "command", "shell": "bash", "timeout": 10,
+      "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --state | `note [WORD...] [--state working|waiting|idle] [--hook]` |"}]}],
+    "Stop": [{"hooks": [{"type": "command", "shell": "bash", "timeout": 10,
+      "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --state idle"}]}]
+  }
+}
+```
+
+`permission_prompt` keeps Claude Code's idle reminder from showing as a question; PostToolUse returns the session to
+working after an approval. An interrupted turn (Esc) runs no Stop hook; the state follows your next input. Codex runs
+`notify` (in `~/.codex/config.toml`) only when a turn completes:
+`notify = ["python", "<project>/Engine", "ctl", "note", "--hook", "--state", "idle"]` (the JSON payload it appends is
+ignored).
 
 **Agent control:** the developer can turn off Agent → Agent control ([Agent workspace](Usage.md#agent-workspace)).
 While it is off, `status` reports `"control": false` and commands that change the editor (`open`, `set`, `action`,

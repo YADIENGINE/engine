@@ -1,12 +1,13 @@
 """`ctl` without an editor: arguments → control requests and finding the editor; no compiler."""
 
+import io
 import os
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from Tools import cli
-from Tools.commands.ctl import brief, describe_scene, find_scenes, open_scene, parse_value, request_of, with_hint
+from Tools.commands.ctl import brief, ctl, describe_scene, find_scenes, open_scene, parse_value, request_of, with_hint
 from Tools.commands.refresh import ENVIRONMENT, editor_pipe
 from Tools.errors import EXIT_FAILED, EXIT_INFRA, ToolError
 
@@ -183,6 +184,45 @@ class AnswerTests(unittest.TestCase):
 
     def test_brief_list(self):
         self.assertEqual(brief(CATALOG)["scenes"][2], {"id": "myproject.shop", "name": "Shop", "category": "Menus"})
+
+
+class HookNoteTests(unittest.TestCase):
+    """`note --hook` never fails and stays silent, so an agent hook can never block the agent."""
+
+    def run_hook(self, environment: dict, send_effect=None) -> tuple[int, list]:
+        sent = []
+
+        def fake_send(_pipe, request_data):
+            sent.append(request_data)
+            if send_effect:
+                raise send_effect
+            return {}
+
+        args = cli.build_parser().parse_args(["ctl", "note", "--hook", "--state", "waiting"])
+        with patch.dict(os.environ, environment, clear=True), patch("Tools.commands.ctl.send", fake_send), \
+                patch("Tools.commands.ctl.editor_pipe", return_value="pipe"), \
+                patch("sys.stdout", new_callable=io.StringIO) as output:
+            code = ctl(None, args)
+        self.assertEqual(output.getvalue(), "")
+        return code, sent
+
+    def test_outside_a_console_session_nothing_is_sent(self):
+        self.assertEqual(self.run_hook({}), (0, []))
+
+    def test_a_session_note_is_sent_and_failures_are_swallowed(self):
+        code, sent = self.run_hook({"ENGINE_EDITOR_SESSION": "4"})
+        self.assertEqual((code, sent[0]["session"], sent[0]["state"]), (0, "4", "waiting"))
+        code, _ = self.run_hook({"ENGINE_EDITOR_SESSION": "4"}, ToolError("No editor is open"))
+        self.assertEqual(code, 0)
+
+    def test_a_notify_payload_is_not_note_text(self):
+        sent = []
+        args = cli.build_parser().parse_args(["ctl", "note", "--hook", "--state", "idle", '{"type": "turn"}'])
+        with patch.dict(os.environ, {"ENGINE_EDITOR_SESSION": "4"}, clear=True), \
+                patch("Tools.commands.ctl.send", lambda _pipe, data: sent.append(data) or {}), \
+                patch("Tools.commands.ctl.editor_pipe", return_value="pipe"):
+            self.assertEqual(ctl(None, args), 0)
+        self.assertEqual(sent[0]["text"], "")
 
 
 class EditorPipeTests(unittest.TestCase):
