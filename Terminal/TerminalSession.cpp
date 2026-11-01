@@ -130,6 +130,9 @@ void TerminalSession::Paste(std::string_view utf8) {
 bool TerminalSession::Running() const { return _console != nullptr; }
 int TerminalSession::Rows() const { return _screen->Rows(); }
 int TerminalSession::Columns() const { return _screen->Columns(); }
+int TerminalSession::HistoryRows() const { return _screen->HistoryRows(); }
+std::int64_t TerminalSession::HistoryEnd() const { return _screen->HistoryEnd(); }
+bool TerminalSession::AlternateScreen() const { return _screen->AlternateScreen(); }
 TerminalCell TerminalSession::Cell(int row, int column) const { return _screen->Cell(row, column); }
 std::string TerminalSession::Text(TerminalPosition from, TerminalPosition to) const { return _screen->Text(from, to); }
 TerminalCursor TerminalSession::Cursor() const { return _screen->Cursor(); }

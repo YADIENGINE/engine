@@ -1,11 +1,12 @@
 #pragma once
+#include <vterm.h>
+#include <cstdint>
+#include <deque>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 #include "Terminal/TerminalTypes.h"
-
-struct VTerm;
-struct VTermScreen;
 
 // libvterm sarmalayıcısı: programın çıktısını ekran hücrelerine çevirir, klavyeyi VT dizilerine kodlar.
 // Programa gidecek baytlar (tuşlar, yapıştırma, imleç sorgusu cevapları) TakeInput ile alınır. Thread güvenli değil.
@@ -25,6 +26,9 @@ public:
 
     [[nodiscard]] int Rows() const { return _rows; }
     [[nodiscard]] int Columns() const { return _columns; }
+    [[nodiscard]] int HistoryRows() const { return _alternateScreen ? 0 : static_cast<int>(_history.size()); }
+    [[nodiscard]] std::int64_t HistoryEnd() const { return _historyEnd; }
+    // Negative rows address scrollback; -1 is the line immediately above the live screen.
     [[nodiscard]] TerminalCell Cell(int row, int column) const;
     [[nodiscard]] std::string Text(TerminalPosition from, TerminalPosition to) const;
     [[nodiscard]] TerminalCursor Cursor() const;
@@ -33,7 +37,13 @@ public:
     [[nodiscard]] const TerminalPalette& Palette() const { return _palette; }
 
 private:
+    struct HistoryLine {
+        std::vector<VTermScreenCell> cells;
+        bool continuation = false;
+    };
     struct Callbacks; // libvterm geri çağrıları (.cpp)
+    [[nodiscard]] bool Continues(int row) const;
+    [[nodiscard]] int LineColumns(int row) const;
     struct VtermDeleter {
         void operator()(VTerm* vterm) const;
     };
@@ -43,9 +53,14 @@ private:
     std::string _input;
     std::string _title;
     TerminalCursor _cursor;
+    std::deque<HistoryLine> _history;
+    std::vector<bool> _continuations;
+    std::int64_t _historyEnd = 0;
+    int _pushedRows = 0;
     int _rows = 0;
     int _columns = 0;
     bool _alternateScreen = false;
+    bool _resizing = false;
 
 public:
     VtScreen(const VtScreen&) = delete;

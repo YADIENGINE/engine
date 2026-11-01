@@ -46,8 +46,14 @@ public:
     [[nodiscard]] std::optional<int> ExitCode() const { return _exitCode; }
     [[nodiscard]] int Rows() const;
     [[nodiscard]] int Columns() const;
+    // History is hidden in alternate-screen applications; HistoryEnd tracks pushed/popped lines for the view.
+    [[nodiscard]] int HistoryRows() const;
+    [[nodiscard]] std::int64_t HistoryEnd() const;
+    [[nodiscard]] bool AlternateScreen() const;
+    // Negative rows read scrollback, with -1 immediately above the live screen.
     [[nodiscard]] TerminalCell Cell(int row, int column) const;
     // İki hücre sınırı arasındaki UTF-8 metin; son sınır dahil değildir. Sarılmış satırlar birleştirilir.
+    // Negative row positions also select scrollback.
     [[nodiscard]] std::string Text(TerminalPosition from, TerminalPosition to) const;
     [[nodiscard]] TerminalCursor Cursor() const;
     [[nodiscard]] const std::string& Title() const;

@@ -3,8 +3,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <utility>
+#include "Terminal/Internals/TerminalText.h"
 
 namespace {
+constexpr std::size_t HistoryLimit = 10000;
+
 VTermColor ToVterm(std::uint32_t rgb) {
     VTermColor color;
     vterm_color_rgb(&color, static_cast<std::uint8_t>(rgb >> 16), static_cast<std::uint8_t>(rgb >> 8),
@@ -48,6 +51,53 @@ bool IsLiteral(TerminalKey key) {
 } // namespace
 
 struct VtScreen::Callbacks {
+    static int Damage(VTermRect rect, void* user) {
+        auto& self = *static_cast<VtScreen*>(user);
+        // During resize libvterm replaces its lineinfo before updating the state's pointers.
+        if (self._resizing || self._alternateScreen) return 1;
+        const auto* state = vterm_obtain_state(self._vterm.get());
+        self._continuations.resize(static_cast<std::size_t>(self._rows));
+        for (int row = rect.start_row; row < std::min(rect.end_row, self._rows); ++row)
+            self._continuations[static_cast<std::size_t>(row)] = vterm_state_get_lineinfo(state, row)->continuation;
+        self._pushedRows = 0;
+        return 1;
+    }
+    static int PushLine(int columns, const VTermScreenCell* cells, void* user) {
+        auto& self = *static_cast<VtScreen*>(user);
+        // libvterm has already moved lineinfo when this callback runs. Damage callbacks keep the outgoing
+        // continuation flags before that move, including multiple lines pushed by a single scroll.
+        const bool continuation = self._pushedRows < static_cast<int>(self._continuations.size()) &&
+                                  self._continuations[static_cast<std::size_t>(self._pushedRows)];
+        self._history.push_back({{cells, cells + columns}, continuation});
+        if (self._history.size() > HistoryLimit) self._history.pop_front();
+        ++self._pushedRows;
+        ++self._historyEnd;
+        return 1;
+    }
+    static int PopLine(int columns, VTermScreenCell* cells, void* user) {
+        auto& self = *static_cast<VtScreen*>(user);
+        if (self._history.empty()) return 0;
+        VTermScreenCell blank{};
+        blank.width = 1;
+        vterm_state_get_default_colors(vterm_obtain_state(self._vterm.get()), &blank.fg, &blank.bg);
+        blank.fg.type |= VTERM_COLOR_DEFAULT_FG;
+        blank.bg.type |= VTERM_COLOR_DEFAULT_BG;
+        std::fill_n(cells, columns, blank);
+        const auto& line = self._history.back().cells;
+        std::copy_n(line.begin(), std::min(static_cast<std::size_t>(columns), line.size()), cells);
+        // A wide glyph cannot straddle the right edge after a width change.
+        if (columns > 0 && cells[columns - 1].width == 2) cells[columns - 1] = blank;
+        self._history.pop_back();
+        --self._historyEnd;
+        return 1;
+    }
+    static int ClearHistory(void* user) {
+        auto& self = *static_cast<VtScreen*>(user);
+        self._history.clear();
+        self._historyEnd = 0;
+        self._pushedRows = 0;
+        return 1;
+    }
     static void Output(const char* bytes, std::size_t length, void* user) {
         static_cast<VtScreen*>(user)->_input.append(bytes, length);
     }
@@ -78,8 +128,12 @@ struct VtScreen::Callbacks {
     static const VTermScreenCallbacks& Table() {
         static const VTermScreenCallbacks table = [] {
             VTermScreenCallbacks callbacks{};
+            callbacks.damage = Damage;
             callbacks.movecursor = MoveCursor;
             callbacks.settermprop = SetProperty;
+            callbacks.sb_pushline = PushLine;
+            callbacks.sb_popline = PopLine;
+            callbacks.sb_clear = ClearHistory;
             return callbacks;
         }();
         return table;
@@ -97,6 +151,8 @@ VtScreen::VtScreen(int rows, int columns, const TerminalPalette& palette)
     vterm_output_set_callback(_vterm.get(), Callbacks::Output, this);
     _screen = vterm_obtain_screen(_vterm.get());
     vterm_screen_set_callbacks(_screen, &Callbacks::Table(), this);
+    // Continuation snapshots must be updated after each glyph, before another line can scroll out.
+    vterm_screen_set_damage_merge(_screen, VTERM_DAMAGE_CELL);
     vterm_screen_enable_altscreen(_screen, 1);
     vterm_screen_enable_reflow(_screen, true);
     Reset();
@@ -104,6 +160,11 @@ VtScreen::VtScreen(int rows, int columns, const TerminalPalette& palette)
 VtScreen::~VtScreen() = default;
 
 void VtScreen::Reset() {
+    _history.clear();
+    _historyEnd = 0;
+    _pushedRows = 0;
+    _continuations.assign(static_cast<std::size_t>(_rows), false);
+    _alternateScreen = false;
     vterm_screen_reset(_screen, 1);
     auto* state = vterm_obtain_state(_vterm.get());
     for (int index = 0; index < static_cast<int>(_palette.ansi.size()); ++index) {
@@ -128,9 +189,18 @@ void VtScreen::Resize(int rows, int columns) {
     rows = std::max(rows, 1);
     columns = std::max(columns, 1);
     if (rows == _rows && columns == _columns) return;
+    _pushedRows = 0;
+    _resizing = true;
+    vterm_set_size(_vterm.get(), rows, columns);
+    _resizing = false;
     _rows = rows;
     _columns = columns;
-    vterm_set_size(_vterm.get(), rows, columns);
+    _continuations.resize(static_cast<std::size_t>(_rows));
+    const auto* state = vterm_obtain_state(_vterm.get());
+    if (!_alternateScreen)
+        for (int row = 0; row < _rows; ++row)
+            _continuations[static_cast<std::size_t>(row)] = vterm_state_get_lineinfo(state, row)->continuation;
+    _pushedRows = 0;
     vterm_screen_flush_damage(_screen);
 }
 
@@ -181,8 +251,15 @@ std::string VtScreen::TakeInput() { return std::exchange(_input, {}); }
 
 TerminalCell VtScreen::Cell(int row, int column) const {
     TerminalCell result;
+    result.foreground = _palette.foreground;
+    result.background = _palette.background;
     VTermScreenCell cell{};
-    if (!vterm_screen_get_cell(_screen, VTermPos{row, column}, &cell)) return result;
+    if (row < 0) {
+        if (row < -HistoryRows() || column < 0 || column >= LineColumns(row)) return result;
+        cell = _history[static_cast<std::size_t>(HistoryRows() + row)].cells[static_cast<std::size_t>(column)];
+    } else if (!vterm_screen_get_cell(_screen, VTermPos{row, column}, &cell)) {
+        return result;
+    }
     if (cell.chars[0] == static_cast<std::uint32_t>(-1)) {
         result.continuation = true;
         return result;
@@ -206,30 +283,43 @@ TerminalCell VtScreen::Cell(int row, int column) const {
 
 std::string VtScreen::Text(TerminalPosition from, TerminalPosition to) const {
     const auto clamp = [&](TerminalPosition position) {
-        return TerminalPosition{std::clamp(position.row, 0, _rows - 1), std::clamp(position.column, 0, _columns)};
+        const int row = std::clamp(position.row, -HistoryRows(), _rows - 1);
+        return TerminalPosition{row, std::clamp(position.column, 0, LineColumns(row))};
     };
     from = clamp(from);
     to = clamp(to);
     if (to < from) std::swap(from, to);
     if (from == to) return {};
     // Geniş karakterin ortasındaki sınır karakteri bölmez.
-    if (from.column < _columns && Cell(from.row, from.column).continuation) --from.column;
-    if (to.column < _columns && Cell(to.row, to.column).continuation) ++to.column;
+    if (from.column < LineColumns(from.row) && Cell(from.row, from.column).continuation) --from.column;
+    if (to.column < LineColumns(to.row) && Cell(to.row, to.column).continuation) ++to.column;
 
-    const auto* state = vterm_obtain_state(_vterm.get());
     std::string text;
     for (int row = from.row; row <= to.row; ++row) {
         const int first = row == from.row ? from.column : 0;
-        const int last = row == to.row ? to.column : _columns;
-        const VTermRect rect{row, row + 1, first, last};
-        std::string line(vterm_screen_get_text(_screen, nullptr, 0, rect), '\0');
-        vterm_screen_get_text(_screen, line.data(), line.size(), rect);
-        const bool wrapped = row < to.row && vterm_state_get_lineinfo(state, row + 1)->continuation;
+        const int last = row == to.row ? to.column : LineColumns(row);
+        std::string line;
+        for (int column = first; column < last; ++column) {
+            const auto cell = Cell(row, column);
+            if (cell.continuation) continue;
+            line += cell.text[0] ? TerminalCellText(cell) : " ";
+        }
+        const bool wrapped = row < to.row && Continues(row + 1);
         if (!wrapped) line.erase(line.find_last_not_of(' ') + 1);
         text += line;
         if (row < to.row && !wrapped) text += '\n';
     }
     return text;
+}
+
+bool VtScreen::Continues(int row) const {
+    if (row < 0) return _history[static_cast<std::size_t>(HistoryRows() + row)].continuation;
+    return vterm_state_get_lineinfo(vterm_obtain_state(_vterm.get()), row)->continuation;
+}
+
+int VtScreen::LineColumns(int row) const {
+    if (row < 0) return static_cast<int>(_history[static_cast<std::size_t>(HistoryRows() + row)].cells.size());
+    return _columns;
 }
 
 TerminalCursor VtScreen::Cursor() const { return _cursor; }

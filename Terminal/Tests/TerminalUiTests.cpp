@@ -1,8 +1,32 @@
 #include <catch2/catch_test_macros.hpp>
 #include <imgui.h>
 #include <memory>
+#include "Terminal/Internals/TerminalInput.h"
 #include "Terminal/TerminalSession.h"
 #include "Terminal/TerminalView.h"
+
+TEST_CASE("Terminal.Input.AltGrProducesTextWhileLeftAltAndCtrlKeepTheirMeaning", "[terminal]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    auto& rightAlt = io.KeysData[ImGuiKey_RightAlt - ImGuiKey_NamedKey_BEGIN];
+    // GLFW reports AltGr as RightAlt without the synthetic Ctrl event.
+    rightAlt.Down = true;
+    io.KeyAlt = true;
+    CHECK_FALSE(ReadTerminalModifiers().alt);
+    CHECK_FALSE(ReadTerminalModifiers().ctrl);
+    // Backends that keep Ctrl+Alt must produce the same unmodified text.
+    io.KeyCtrl = true;
+    CHECK_FALSE(ReadTerminalModifiers().alt);
+    CHECK_FALSE(ReadTerminalModifiers().ctrl);
+    rightAlt.Down = false;
+    io.KeyCtrl = false;
+    CHECK(ReadTerminalModifiers().alt);
+    io.KeyAlt = false;
+    io.KeyCtrl = true;
+    CHECK(ReadTerminalModifiers().ctrl);
+    CHECK_FALSE(ReadTerminalModifiers().alt);
+}
 
 TEST_CASE("Terminal.View.FocusedGridKeepsCharacterCaptureWithoutAnActiveWidget", "[terminal]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),

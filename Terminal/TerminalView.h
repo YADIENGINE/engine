@@ -9,6 +9,7 @@ class TerminalSession;
 // Bir TerminalSession'ı geçerli ImGui penceresinin kalan alanına çizer. Pencere odaktayken klavye ve yapıştırma
 // terminale gider; ekran boyutu alana göre ayarlanır. Aracın kendine ayırdığı akorlar (ör. editörün Ctrl+J'si)
 // terminale gönderilmez.
+// Wheel, scrollbar and Shift+PageUp/PageDown browse history; shell input returns to the live screen.
 class TerminalView {
 public:
     explicit TerminalView(std::vector<ImGuiKeyChord> reserved = {})
@@ -20,6 +21,7 @@ public:
 private:
     void HandleInput(TerminalSession& session);
     void CopySelection(const TerminalSession& session) const;
+    void FollowOutput();
     [[nodiscard]] bool Reserved(ImGuiKeyChord chord) const;
 
     std::vector<ImGuiKeyChord> _reserved;
@@ -27,5 +29,8 @@ private:
     TerminalPosition _selectionEnd;
     int _rows = 0;
     int _columns = 0;
+    int _scrollOffset = 0;
+    std::int64_t _historyEnd = 0;
+    bool _alternateScreen = false;
     bool _focused = false;
 };

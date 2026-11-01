@@ -14,7 +14,7 @@ if(MSVC)
 endif()
 
 add_library(EngineTerminal STATIC EXCLUDE_FROM_ALL
-    TerminalSession.cpp Internals/PseudoConsole.cpp Internals/VtScreen.cpp)
+    TerminalSession.cpp Internals/PseudoConsole.cpp Internals/TerminalText.cpp Internals/VtScreen.cpp)
 # Includes are relative to the engine root (#include "Terminal/TerminalSession.h").
 target_include_directories(EngineTerminal PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_link_libraries(EngineTerminal PRIVATE EngineVterm)
@@ -22,7 +22,7 @@ target_compile_definitions(EngineTerminal PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN U
 engine_warnings(EngineTerminal)
 
 if(TARGET EngineToolUi)
-    add_library(EngineTerminalUi STATIC EXCLUDE_FROM_ALL TerminalView.cpp)
+    add_library(EngineTerminalUi STATIC EXCLUDE_FROM_ALL TerminalView.cpp Internals/TerminalInput.cpp)
     target_link_libraries(EngineTerminalUi PUBLIC EngineTerminal EngineToolUi)
     engine_warnings(EngineTerminalUi)
 endif()

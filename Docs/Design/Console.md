@@ -1,7 +1,7 @@
 # Console paneli (tasarım)
 
-Durum: aşama 1 ve görünen ekranda sürükleyerek seçim / kopyalama uygulandı (2026-10-31), çalışma zamanı
-doğrulaması bekliyor. Aşama 2'nin kaydırma geçmişi ve kelime / satır seçimi sırada.
+Durum: aşama 1, geçmişte kaydırma ve sürükleyerek seçim / kopyalama uygulandı (2026-11-01), çalışma zamanı
+doğrulaması bekliyor. Aşama 2'nin kelime / satır seçimi sırada.
 Karar kaydı: [README → D18](README.md#d18-console-paneli-editörde-gerçek-terminal).
 
 ## Amaç
@@ -16,7 +16,7 @@ güncellemeleri kendiliğinden gelir. D6 sayesinde konsoldan verilen `build` edi
 | Aşama | İçerik |
 | --- | --- |
 | 1. MVP | Tek oturum; ConPTY + libvterm; renkli çizim, imleç, geniş karakter; klavye, Türkçe karakter, yapıştırma; yeniden boyutlama; çıkınca yeniden başlatma |
-| 2. Konfor | Görünen ekranda fareyle seçim, kopyalama ve sağ tık Copy uygulandı. Kaydırma geçmişi (tekerlek, kaydırma çubuğu, alta yapışma), çift tıkla kelime seçimi sırada |
+| 2. Konfor | Fareyle seçim, kopyalama, sağ tık Copy ve kaydırma geçmişi (tekerlek, kaydırma çubuğu, alta yapışma) uygulandı. Çift tıkla kelime seçimi sırada |
 
 Kapsam dışı (şimdilik): birden fazla sekme / oturum, dosya yolu ve URL algılama, programa fare iletimi (mouse
 reporting), metin arama, hazır komut düğmeleri, MCP köprüsü ([Agent API](AgentApi.md) ayrı iş), Windows dışı platform.
@@ -44,7 +44,8 @@ Terminal/                    EngineTerminal (EngineToolUi + libvterm'e link'leni
   Internals/
     PseudoConsole.h/.cpp     ConPTY + pipe'lar + süreç + job object + okuyucu thread
     VtScreen.h/.cpp          libvterm sarmalayıcısı: hücreler, imleç, başlık, alt ekran, tuş kodlama
-    Scrollback.h/.cpp        Sınırlı satır halkası (aşama 2)
+    TerminalText.h/.cpp      Hücrelerin ortak UTF-8 metin dönüşümü
+    TerminalInput.h/.cpp     ImGui değiştiricileri, GLFW AltGr ayrımı
   Tests/                     EngineTerminalTests (etiket `terminal`)
 ThirdParty/libvterm/         Değiştirilmemiş kaynak; ayrı STATIC hedef, uyarılar kapalı (EngineToolImGui gibi)
 Editor/Ui/Panels/Console/    ConsolePanel: TerminalSession + TerminalView değer üyeleri, araç çubuğu
@@ -93,6 +94,8 @@ Kabuğun çalışma klasörü editör tarifinden gelir: `EngineEditor.project.js
   önceki karede konsol odaktaysa diğer kısayollarını (`Ctrl+R`, `Ctrl+P`, `F5` ...) çalıştırmaz, tuş kabuğa gider.
 - Yazılan karakterler (Türkçe ve IME dahil) ImGui'nin karakter kuyruğundan `vterm_keyboard_unichar`'a; özel tuşlar
   `vterm_keyboard_key`'e.
+- AltGr, GLFW'nin yapay Ctrl olayını elemesi nedeniyle sağ Alt tek başınayken de tanınır. Ürettiği metne
+  Alt / Ctrl eklenmez; sol Alt kısayolları korunur.
 - **Karakter yakalama:** terminal odaktayken `WantCaptureKeyboard` istenir ve backend'in `NewFrame` öncesi
   okuması için aynı karede de açılır. Yalnız `InvisibleButton` kullanmak yeterli değildir: basılı fare yokken
   rlImGui harfleri kuyruğa almaz; özel tuşlar (ör. Enter) yine ulaşır.
@@ -104,10 +107,12 @@ Kabuğun çalışma klasörü editör tarifinden gelir: `EngineEditor.project.js
 
 ## Aşama 2 ayrıntıları
 
-- Geçmiş: libvterm'in ekrandan ittiği satırlar halkaya girer (varsayılan 10.000 satır). Alt ekrandaki (tam ekran)
+- Geçmiş: libvterm'in ekrandan ittiği satırlar `VtScreen` içindeki sınırlı kuyruğa girer (10.000 satır). Alt ekrandaki (tam ekran)
   programlar geçmişe yazmaz.
 - Tekerlek ve kaydırma çubuğu geçmişte gezer. Yeni çıktı gelince kullanıcı en alttaysa yapışık kalır; yukarıdaysa
   yeri korunur. Tuşa basınca en alta döner.
+- Shift+PageUp / Shift+PageDown normal ekranda geçmişi sayfa sayfa gezer; düz PageUp / PageDown programa gider.
+- Geçmişteki satırlar kaydedildikleri sütun genişliğini korur; büyüyen canlı ekran geçmişten satır geri alabilir.
 - Seçim hücre bazlıdır, satır sarmasını bilir (sarılmış satır kopyada birleşir), sondaki boşluklar atılır. Çift tık
   kelime, üç tık satır seçer.
 - Sağ tık menüsü: Copy, Paste, Clear, Restart.
@@ -116,7 +121,8 @@ Kabuğun çalışma klasörü editör tarifinden gelir: `EngineEditor.project.js
 
 - `VtScreen`: bayt dizisi → hücreler (renk, kalın, geniş karakter, imleç), satırın geçmişe itilmesi, alt ekran.
 - Tuş kodlama (`VtScreen`): Shift+Enter, Ctrl+harf, yön tuşları, bracketed paste sarması, CRLF dönüşümü.
-- `Scrollback`: sınır, sarmalı satır birleştirme, seçimden metin.
+- `VtScreen` geçmişi: sınır, sarmalı satır birleştirme, Unicode / renk, yeniden boyutlama, sıfırlama ve alt ekran.
+- ImGui input: sağ Alt / Ctrl+Alt metni ile sol Alt ve Ctrl kısayollarının ayrımı.
 - `PseudoConsole` duman testi: `cmd /c echo` çıktısı okunur, süreç çıkış kodu alınır, kapanış kilitlenmez.
 - Çizim ve gerçek input testte yoktur; manuel kontrol listesi aşağıda.
 
@@ -131,7 +137,9 @@ Kabuğun çalışma klasörü editör tarifinden gelir: `EngineEditor.project.js
 - `exit` → çıkış kodu görünüyor, Enter ile yeniden başlıyor.
 - Görünen metinde ileri / geri sürükleme, Ctrl+C / Ctrl+Shift+C ve sağ tık Copy; Türkçe, geniş karakter ve
   sarılan satırları kopyalama. Seçim yokken Ctrl+C çalışan programı kesiyor.
-- Aşama 2'nin kalanı: geçmişte kaydırma, yeni çıktıda yapışma, çift tık kelime.
+- Geçmişte tekerlek / kaydırma çubuğu / Shift+PageUp ve Shift+PageDown; yeni çıktıda yukarıdaki konumu koruma,
+  en altta çıktıyı takip etme ve yazarken canlı ekrana dönme. Geçmişte seçim / kopyalama; AltGr ile @ / € girişi.
+- Aşama 2'nin kalanı: çift tık kelime / üç tık satır seçimi.
 
 ## Uygulama sırası
 

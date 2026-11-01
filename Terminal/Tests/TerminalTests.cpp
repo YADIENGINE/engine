@@ -80,6 +80,66 @@ TEST_CASE("Terminal.Screen.ResizeKeepsText", "[terminal]") {
     CHECK(RowText(screen, 0) == "hello");
 }
 
+TEST_CASE("Terminal.Screen.ScrollbackRetainsRecentLinesAndIsBounded", "[terminal]") {
+    VtScreen screen(2, 16, {});
+    constexpr int lines = 10020;
+    for (int index = 0; index < lines; ++index)
+        screen.Feed("row-" + std::to_string(index) + "\r\n");
+    REQUIRE(screen.HistoryRows() > 0);
+    CHECK(screen.HistoryRows() < lines - screen.Rows());
+    CHECK(screen.HistoryEnd() == lines - 1);
+    CHECK(RowText(screen, -1) == "row-" + std::to_string(lines - 2));
+    CHECK(RowText(screen, 0) == "row-" + std::to_string(lines - 1));
+    CHECK(screen.Cell(-screen.HistoryRows() - 1, 0).text[0] == 0);
+}
+
+TEST_CASE("Terminal.Screen.ScrollbackSelectionJoinsSoftWrapsAcrossTheLiveBoundary", "[terminal]") {
+    VtScreen screen(2, 4, {});
+    screen.Feed("abcdefghij\r\nnext\r\n");
+    REQUIRE(screen.HistoryRows() == 3);
+    CHECK(screen.Text({-3, 0}, {0, 4}) == "abcdefghij\nnext");
+    CHECK(screen.Text({0, 4}, {-3, 0}) == "abcdefghij\nnext");
+}
+
+TEST_CASE("Terminal.Screen.ScrollbackKeepsUnicodeAndColors", "[terminal]") {
+    VtScreen screen(2, 12, {});
+    const std::string text = "\xC4\x9F\xE7\x95\x8C"
+                             "e\xCC\x81";
+    screen.Feed("\x1b[31m" + text + "\x1b[0m\r\nnext\r\nlast");
+    REQUIRE(screen.HistoryRows() == 1);
+    CHECK(screen.Text({-1, 0}, {-1, 4}) == text);
+    CHECK(screen.Text({-1, 2}, {-1, 3}) == "\xE7\x95\x8C");
+    CHECK(screen.Cell(-1, 0).foreground == TerminalPalette{}.ansi[1]);
+}
+
+TEST_CASE("Terminal.Screen.ResizeRestoresHistoryAndAlternateScreenDoesNotPolluteIt", "[terminal]") {
+    VtScreen screen(2, 12, {});
+    screen.Feed("one\r\ntwo\r\nthree");
+    REQUIRE(screen.HistoryRows() == 1);
+    const auto historyEnd = screen.HistoryEnd();
+    screen.Feed("\x1b[?1049h");
+    CHECK(screen.HistoryRows() == 0);
+    screen.Feed("alternate\r\noutput\r\nmore\r\n");
+    CHECK(screen.HistoryEnd() == historyEnd);
+    screen.Feed("\x1b[?1049l");
+    CHECK(RowText(screen, -1) == "one");
+    screen.Resize(4, 12);
+    CHECK(screen.HistoryRows() == 0);
+    CHECK(ScreenContains(screen, "one"));
+    CHECK(ScreenContains(screen, "two"));
+    CHECK(ScreenContains(screen, "three"));
+    screen.Resize(2, 12);
+    screen.Feed("\r\nfour\r\nfive");
+    REQUIRE(screen.HistoryRows() > 0);
+    screen.Feed("\x1b[3J");
+    CHECK(screen.HistoryRows() == 0);
+    screen.Feed("\r\nsix\r\nseven");
+    REQUIRE(screen.HistoryRows() > 0);
+    screen.Reset();
+    CHECK(screen.HistoryRows() == 0);
+    CHECK(screen.HistoryEnd() == 0);
+}
+
 TEST_CASE("Terminal.Keys.EncodingForConPty", "[terminal]") {
     VtScreen screen(4, 20, {});
     screen.SendKey(TerminalKey::Enter, NoModifiers);
