@@ -85,6 +85,7 @@ If no editor is open, say so and suggest opening it; do not launch it unless ask
 | Display a production View in an editor scene | `Editor/Api/EditorScene.h`<br>`Editor/Api/SceneRegistry.h`<br>`Editor/Api/SceneServices.h`<br>`Editor/Worker/WorkerHost.h` | `Recipes/CharacterScene.md` | `Docs/Editor/GettingStarted.md#cmake-target` |
 | Create a focused scene for a task | `Editor/Api/SceneAutoRegistration.h`<br>`Editor/Api/SceneRegistry.h` | `Recipes/WorkScene.md` | `Docs/Editor/Automation.md` |
 | Expose scene controls, actions or inspection | `Editor/Api/SceneParameter.h`<br>`Editor/Api/SceneInspection.h` | `Recipes/CharacterScene.md` | `Docs/Editor/GettingStarted.md#editorfirstscenecpp` |
+| Find the scene that shows a subject (`ctl find WORDS`) | `Tools/commands/ctl.py` | - | `Docs/Editor/Automation.md#finding-a-scene` |
 | Look at a scene or game flow: open, set, seek, screenshot, frame grid, inspect; show it to the developer | `Tools/commands/ctl.py` | - | `Docs/Editor/Automation.md#commands` |
 | Set up, run, check or test a project | `Tools/cli.py` | - | `Docs/ToolsContract.md#commands` |
 | Package a release and third-party notices | `Tools/commands/release.py` | - | `Docs/Release.md#checks` |

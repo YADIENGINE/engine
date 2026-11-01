@@ -65,8 +65,10 @@ TEST_CASE("Editor.Control.CatalogEntryShowsCurrentValuesAndActions", "[engine-ed
     mode.id = "mode";
     mode.initial = std::string("Slow");
     mode.choices = {"Slow", "Fast"};
+    mode.apply = SceneApplyMode::NextAction;
+    mode.applyAction = "spawn";
     definition.parameters = {radius, mode};
-    definition.actions = {{"spawn", "Spawn"}};
+    definition.actions = {{"spawn", "Spawn", "", true}, {"clear", "Clear"}};
     const auto entry = ControlCatalogEntry(definition, {{"radius", 24.0}});
     CHECK(entry.at("id") == "drawing.circle");
     CHECK(entry.at("parameters")[0].at("value") == 24.0); // The current value, not the initial one
@@ -74,6 +76,12 @@ TEST_CASE("Editor.Control.CatalogEntryShowsCurrentValuesAndActions", "[engine-ed
     CHECK(entry.at("parameters")[1].at("value") == "Slow");
     CHECK(entry.at("parameters")[1].at("choices") == nlohmann::json::array({"Slow", "Fast"}));
     CHECK(entry.at("actions")[0].at("id") == "spawn");
+    // Optional links appear only when set, so tools can tell which action applies a value
+    CHECK(entry.at("parameters")[1].at("apply") == "next-action");
+    CHECK(entry.at("parameters")[1].at("applyAction") == "spawn");
+    CHECK_FALSE(entry.at("parameters")[0].contains("applyAction"));
+    CHECK(entry.at("actions")[0].at("primary") == true);
+    CHECK_FALSE(entry.at("actions")[1].contains("primary"));
 }
 
 TEST_CASE("Editor.Capture.CropsInCanvasUnitsAndScales", "[engine-editor]") {

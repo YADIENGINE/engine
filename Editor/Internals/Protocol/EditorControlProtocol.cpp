@@ -201,12 +201,14 @@ nlohmann::json ControlCatalogEntry(const SceneDefinition& definition, const Scen
         if (parameter.kind == SceneParameterKind::Choice) entry["choices"] = parameter.choices;
         if (!parameter.group.empty()) entry["group"] = parameter.group;
         if (!parameter.description.empty()) entry["description"] = parameter.description;
+        if (!parameter.applyAction.empty()) entry["applyAction"] = parameter.applyAction;
         parameters.push_back(std::move(entry));
     }
     auto actions = nlohmann::json::array();
     for (const auto& action : definition.actions) {
         nlohmann::json entry{{"id", action.id}, {"label", action.label}};
         if (!action.description.empty()) entry["description"] = action.description;
+        if (action.primary) entry["primary"] = true;
         actions.push_back(std::move(entry));
     }
     nlohmann::json entry{{"id", definition.id}, {"name", definition.name}, {"category", definition.category}};

@@ -13,7 +13,9 @@ focused work scene, refresh, open it, read screenshots / frame grids, fix obviou
 | Command | Answer |
 | --- | --- |
 | `status` | `phase`, `status`, `ready`, `building`, `scene`; while ready also `paused`, `speed`, `seconds`, `canvas` |
-| `list` | `scenes`: id, name, category, `parameters` (id, kind, apply, current `value`, range or `choices`), `actions` |
+| `list` | `scenes`: id, name, category, `parameters` (id, kind, apply, current `value`, range or `choices`, `applyAction` when set), `actions` (`primary` when set) |
+| `find WORD... [--limit N]` | `matches` (best N, default 5): id, name, category, `matched`, `set` (choices the words select), `action`, `commands` that open it, compact `parameters`, `actions`; `more` when cut ([Finding a scene](#finding-a-scene)) |
+| `describe ID` | `scene`: that scene's `list` entry; exit 1 with close ids when unknown |
 | `open ID` | Selects and starts the scene, waits until it runs (no-op if it already runs); status |
 | `set ID=VALUE ...` | Sets parameters of the open scene; `parameters` as accepted. VALUE is JSON (`24`, `true`, `[1, 0, 0]`, `"#ff8800"`), otherwise text (choices). Before the scene runs, values are stored for its start |
 | `action ID` | Runs a scene action; status |
@@ -30,6 +32,27 @@ focused work scene, refresh, open it, read screenshots / frame grids, fix obviou
 
 Exit codes: 0 answered; 1 the editor refused the request (`error: ...` on stderr: unknown scene, invalid value, not
 running, timed out); 2 no editor or wrong arguments.
+
+## Finding a scene
+
+A request names a subject ("the ice dragon finale"), not a scene id. `ctl find ice dragon finale` searches every
+scene's name, id, category, description, parameters, actions and **parameter choices**, so a subject that is a choice
+of a shared scene (one enemy of a fight scene) is found without project-specific notes. Matches are ranked by how many
+words they contain, then by where: name, id, choice, parameter or action, category, description.
+
+For each match, words not already in the scene's name or id select the choice they match best (`set`). `commands` are
+the calls that show it: `open`, `set`, `reset` for on-reset values, and the action that applies next-action values
+(the parameter's `applyAction`, else the scene's only primary action, else its only action; otherwise a `note`).
+
+```text
+$ python Engine ctl find ice dragon finale
+{"query": "ice dragon finale", "matches": [{"id": "myproject.fight", "set": {"enemy": "Ice Dragon", "stage": "Finale"},
+ "action": "start", "commands": ["python Engine ctl open myproject.fight", "python Engine ctl set \"enemy=Ice Dragon\"
+ stage=Finale", "python Engine ctl action start"], "parameters": {"enemy": "Slime|Fire Dragon|Ice Dragon; now Slime",
+ ...}, ...}]}
+```
+
+Use `describe ID` when the compact `parameters` are not enough; `list` is the whole catalog and can be large.
 
 ## Guarantees
 
