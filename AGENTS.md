@@ -10,7 +10,7 @@ Code reads CMake's `ENGINE_NAME` / `ENGINE_VERSION`; Python reads the manifest.
 ## Workflow
 
 Inspect `git status` first; preserve unrelated work. Work on a branch inside this repository.
-Leave building to the user unless explicitly requested. Commands run as `python . <command>` here,
+Build and test changes yourself. Commands run as `python . <command>` here,
 or `python Engine <command>` in a consuming project: build, run, release, test, editor, refresh, new, info, check.
 Commands, exit codes and manifest compatibility: [Tools contract](Docs/ToolsContract.md#changing-the-contract).
 Breaking contract changes increment `toolsContract` and update that document together.
