@@ -74,7 +74,7 @@ const std::array<EditorCommandInfo, static_cast<std::size_t>(EditorCommand::Coun
                           ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_B, "Ctrl+Shift+B"},
         EditorCommandInfo{EditorCommand::Cancel, "Cancel operation", EditorGlyph::Cancel, 0, nullptr},
         EditorCommandInfo{EditorCommand::Step, "Step one frame", EditorGlyph::Step, ImGuiKey_F7, "F7"},
-        EditorCommandInfo{EditorCommand::BuildAndPlay, "Build And Play", EditorGlyph::Play, 0, nullptr}};
+        EditorCommandInfo{EditorCommand::BuildAndPlay, "Play", EditorGlyph::Play, 0, nullptr}};
     return commands;
 }
 
