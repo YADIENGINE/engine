@@ -35,6 +35,33 @@ std::optional<FloatRect> MarkRegion(const PreviewViewport& viewport, Float2 star
     if (right - left < 1.0f || bottom - top < 1.0f) return std::nullopt;
     return FloatRect{left, top, right - left, bottom - top};
 }
+std::optional<FloatRect> WindowMarkRegion(Float2 start, Float2 end, Float2 windowPosition, Float2 windowSize,
+                                          Float2 scale) {
+    if (windowSize.x <= 0.0f || windowSize.y <= 0.0f || scale.x <= 0.0f || scale.y <= 0.0f) return std::nullopt;
+    const float width = std::round(windowSize.x * scale.x), height = std::round(windowSize.y * scale.y);
+    const auto toPixels = [&](Float2 point) {
+        return Float2{(point.x - windowPosition.x) * scale.x, (point.y - windowPosition.y) * scale.y};
+    };
+    const Float2 from = toPixels(start), to = toPixels(end);
+    if (std::abs(end.x - start.x) < MarkClickPixels && std::abs(end.y - start.y) < MarkClickPixels) {
+        const float side = std::min({MarkWindowPointSize, width, height});
+        return FloatRect{std::round(std::clamp(from.x - side * 0.5f, 0.0f, width - side)),
+                         std::round(std::clamp(from.y - side * 0.5f, 0.0f, height - side)), side, side};
+    }
+    const float left = std::round(std::clamp(std::min(from.x, to.x), 0.0f, width));
+    const float right = std::round(std::clamp(std::max(from.x, to.x), 0.0f, width));
+    const float top = std::round(std::clamp(std::min(from.y, to.y), 0.0f, height));
+    const float bottom = std::round(std::clamp(std::max(from.y, to.y), 0.0f, height));
+    if (right - left < 1.0f || bottom - top < 1.0f) return std::nullopt;
+    return FloatRect{left, top, right - left, bottom - top};
+}
+std::string WindowMarkContext(FloatRect region, Vec2 window, const std::filesystem::path& image,
+                              const std::string& preview) {
+    std::string line = std::format("[editor] window region={},{} {}x{} of {}x{} image=\"{}\"", region.x, region.y,
+                                   region.width, region.height, window.x, window.y, Utf8(image));
+    if (!preview.empty()) line += " open-preview=" + preview;
+    return line + " ";
+}
 std::string MarkContext(const PreviewDefinition& definition, const PreviewParameters& values, double seconds,
                         bool paused, FloatRect region, Vec2 canvas, const std::filesystem::path& image) {
     std::string line = std::format("[editor] preview={} t{}{:.2f}s({}) region={},{} {}x{} of {}x{} image=\"{}\"",

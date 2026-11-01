@@ -36,7 +36,9 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     , _ui(ToolUiOptions{.docking = true}) {
     try {
         if (const auto& project = _controller.Project()) {
-            _control.emplace(project->buildDirectory, EncodeFramePng);
+            _control.emplace(project->buildDirectory,
+                             EditorCaptureHost{EncodeFramePng, [this] { return RequestWindow(); },
+                                               [this](std::uint64_t sequence) { return Window(sequence); }});
             _workspace.SetConsoleEnvironment({{"ENGINE_EDITOR_CONTROL", _control->Pipe()}});
         }
     } catch (const std::exception& error) {
@@ -90,11 +92,43 @@ void EditorApplication::Update(float realSeconds) {
         _beforeBenchmark.reset();
     }
     if (auto opened = _controller.TakeOpenedPreview()) _preferences.Opened(*opened);
+    if (_windowMark) { // Captured at the end of a frame drawn without the marking layer
+        if (!_windowMarkSequence)
+            _windowMarkSequence = RequestWindow();
+        else if (const auto window = Window(_windowMarkSequence)) {
+            PasteWindowMark(*_windowMark, *window);
+            _windowMark.reset();
+            _windowMarkSequence = 0;
+        }
+    }
     if (_mark) {
         PasteMark(*_mark);
         _mark.reset();
     }
     SavePreferences(false);
+}
+std::uint64_t EditorApplication::RequestWindow() const {
+    _windowWanted = true;
+    return _windowSequence + 1;
+}
+std::shared_ptr<const PreviewPixels> EditorApplication::Window(std::uint64_t sequence) const {
+    return _window && _window->sequence >= sequence ? _window : nullptr;
+}
+void EditorApplication::PasteWindowMark(const FloatRect& region, const PreviewPixels& window) {
+    try {
+        if (!_control) return;
+        const Vec2 size{window.width, window.height};
+        const double scale =
+            std::min(1.0, static_cast<double>(MarkMaxImageSide / std::max(region.width, region.height)));
+        const auto image = CaptureFrame(window, size, {region, scale});
+        const auto file = _control->WriteCapture(image, {}, {}, "mark");
+        const auto snapshot = _controller.Snapshot();
+        _workspace.PasteToConsole(
+            WindowMarkContext(region, size, file, snapshot.selected ? snapshot.selected->id : std::string()),
+            _preferences);
+    } catch (const std::exception& error) {
+        _controller.Log(std::string("Mark: ") + error.what(), EditorLogLevel::Warning);
+    }
 }
 void EditorApplication::PasteMark(const FloatRect& region) {
     try {
@@ -168,6 +202,7 @@ void EditorApplication::DrawToolOverlay() const {
     const auto result = _workspace.Draw(_controller.Snapshot(), actions, _display.Image(), _preferences, _fontSize);
     _quit = result.quit;
     if (result.interaction.mark) _mark = result.interaction.mark;
+    if (result.windowMark) _windowMark = result.windowMark;
     if (result.returnToProjectList) {
         if (auto error = StartLauncher(_launcher); error.empty())
             _quit = true;
@@ -192,4 +227,14 @@ void EditorApplication::DrawToolOverlay() const {
     for (const auto& command : commands)
         command();
     _ui.EndFrame();
+    if (_windowWanted) { // The finished frame, before the buffers swap
+        _windowWanted = false;
+        try {
+            auto pixels = ReadWindowPixels();
+            pixels.sequence = ++_windowSequence;
+            _window = std::make_shared<const PreviewPixels>(std::move(pixels));
+        } catch (const std::exception& error) {
+            _controller.Log(std::string("Window capture: ") + error.what(), EditorLogLevel::Warning);
+        }
+    }
 }

@@ -72,8 +72,7 @@ bool ViewportPanel::Toolbar(bool maximized) {
 }
 
 EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                              const EditorPreviewImage& image, bool metrics, bool maximized,
-                                              bool& marking) {
+                                              const EditorPreviewImage& image, bool metrics, bool maximized) {
     EditorViewportInteraction result;
     if (snapshot.selected && _preview != snapshot.selected->id) {
         _preview = snapshot.selected->id;
@@ -162,8 +161,9 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
         draw->AddImage(ImTextureID(image.texture), {position.x, position.y},
                        {position.x + size.x, position.y + size.y});
         draw->PopClipRect();
-        // Mark: drag (or click) a region with the toolbar toggle or Alt; the preview pauses so the frame holds still
-        const bool gesture = (marking || io.KeyAlt) && !navigating;
+        // Alt+drag (or click) marks a region of the preview; it pauses so the frame holds still. The toolbar's Mark
+        // toggle works over the whole window (EditorWorkspace::MarkOverlay).
+        const bool gesture = io.KeyAlt && !navigating;
         const Float2 mouse{io.MousePos.x, io.MousePos.y};
         if (gesture && result.hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             _markStart = mouse;
@@ -178,7 +178,6 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
                 result.mark = MarkRegion(result.viewport, *_markStart, mouse);
                 _markStart.reset();
-                if (result.mark) marking = false; // One mark per toggle; Alt+drag needs none
             }
         }
         result.marking = gesture || _markStart.has_value();

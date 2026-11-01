@@ -46,6 +46,7 @@ class RequestTests(unittest.TestCase):
         self.assertTrue(Path(shot["path"]).is_absolute())
         self.assertEqual(shot["scale"], 0.5)
         self.assertEqual(shot["crop"], [0, 0, 800, 450])
+        self.assertEqual(request("screenshot", "--window"), {"command": "screenshot", "window": True})
 
     def test_frames(self):
         self.assertEqual(request("frames", "--from", "0", "--to", "2"),

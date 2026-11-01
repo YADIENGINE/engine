@@ -22,7 +22,7 @@ repeat; leave the editor showing the result for the developer.
 | `speed X` | Playback speed, 0.1–4; status |
 | `reset` | Restarts the preview with its parameters, waits until it runs; status |
 | `seek SECONDS` | Pauses at that playback time (0–600); status. Going back replays from 0 with the current parameters and re-runs the actions taken since open / reset at their times (an action after a rewind replaces the later ones) |
-| `screenshot [--out PATH] [--scale S] [--crop X Y W H]` | Writes the current frame as PNG; status + `path`, `width`, `height`. Crop is in canvas units, applied before scaling (0.05–4) |
+| `screenshot [--window] [--out PATH] [--scale S] [--crop X Y W H]` | Writes the current frame as PNG; status + `path`, `width`, `height`. Crop is in canvas units, applied before scaling (0.05–4). `--window`: the whole editor window instead (panels included, no preview needed; crop in window pixels; also `window` size) |
 | `frames --from A --to B [--count N] [--columns C] [--out PATH] [--scale S] [--crop X Y W H]` | One grid PNG of N frames between A and B seconds (pauses there); status + `path`, `frames` (times), `columns` ([Animation](#screenshots)) |
 | `inspect` | Status + `inspection` (readout values, tables, focus, disabled controls) |
 | `logs [--since N] [--limit N] [--level L]` | `entries` (sequence, level, source, text) after N, newest `limit` (100, max 1000) at or above L; `last` sequence |
@@ -59,17 +59,27 @@ grid image, each tile labelled with its playback time; the answer lists the time
 
 ## Marking: the developer points at something
 
-The toolbar's Mark button (or Alt+drag on the preview) lets the developer drag a region, or click for a 160-unit square.
-The preview pauses so the frame holds still, the region is saved as `mark-<time>.png`, and one line is pasted into the
-Console's input without Enter, e.g.:
+The toolbar's Mark button covers the editor below the toolbar with a marking layer: drag a region, or click for a small
+square (Esc or right-click cancels; one mark per press). Alt+drag on the preview marks without the button.
 
-```text
-[editor] preview=my.preview t=3.00s(paused) region=420,130 300x200 of 1600x900 image="C:\...\mark-....png" params: speed=2.0
-```
+- **On the preview** (the region starts and ends on the image): the preview pauses so the frame holds still, the region
+  of the preview frame is saved, and the pasted line carries the preview's context:
 
-The developer types their question after it. The image is the marked region only; `params` lists values that differ
-from their initial ones. An agent reproduces the state with `ctl open`, `ctl set` and `ctl seek` and reads the image.
-While the Mark toggle is on (one mark per press), presses on the preview do not reach the product.
+  ```text
+  [editor] preview=my.preview t=3.00s(paused) region=420,130 300x200 of 1600x900 image="C:\...\mark-....png" params: speed=2.0
+  ```
+
+  `region` is in canvas units; `params` lists values that differ from their initial ones. Reproduce the state with
+  `ctl open`, `ctl set` and `ctl seek`.
+- **Anywhere else** (a panel, the Inspector, or no preview running): the editor window is captured after the next frame
+  (without the marking layer) and the line names the window region in framebuffer pixels:
+
+  ```text
+  [editor] window region=12,340 420x260 of 2560x1440 image="C:\...\mark-....png" open-preview=my.preview
+  ```
+
+The line is pasted into the Console's input without Enter; the developer types their question after it. The image is
+the marked region only (scaled down to at most 1000 px on its long side).
 
 ## Build errors
 

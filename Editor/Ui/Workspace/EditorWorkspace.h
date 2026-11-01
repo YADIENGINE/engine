@@ -15,6 +15,7 @@ struct EditorWorkspaceResult {
     bool quit = false;
     bool returnToProjectList = false;
     bool cancelPreviewInput = false;
+    std::optional<FloatRect> windowMark; // A finished mark outside the preview: window framebuffer pixels
 };
 
 class EditorWorkspace {
@@ -38,6 +39,10 @@ private:
     void SetMaximized(bool maximized, EditorPreferences& preferences);
     void ApplyLayout(EditorWorkspaceLayout layout, EditorPreferences& preferences);
     void ToggleBottom(EditorPreferences& preferences, std::optional<EditorPanel> panel);
+    // The Mark toggle's layer over everything below the toolbar: a region wholly on the preview becomes a preview
+    // mark, anything else a window mark.
+    void MarkOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions, float top,
+                     EditorWorkspaceResult& result);
     [[nodiscard]] bool Shortcuts(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                                  EditorShellResult& result) const;
     void DockHost(ImVec2 position, ImVec2 size, bool reset, const EditorPreferences& preferences);
@@ -57,7 +62,8 @@ private:
     bool _pendingToggle = false;
     bool _focusCatalog = false;
     bool _focusViewport = true;
-    bool _marking = false;        // The toolbar's Mark toggle
+    bool _marking = false; // The toolbar's Mark toggle
+    std::optional<ImVec2> _overlayStart;
     bool _consoleFocused = false; // önceki karede klavye konsoldaydı
     std::optional<EditorPanel> _focusBottom;
     std::uint64_t _failureAttempt = 0;

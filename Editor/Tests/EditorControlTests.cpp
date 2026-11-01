@@ -185,3 +185,19 @@ TEST_CASE("Editor.Mark.ContextNamesThePreviewTimeRegionImageAndChangedParameters
     CHECK(MarkContext(definition, {}, 2.0, false, {}, {1600, 900}, "m.png").find("t~2.00s(playing)") !=
           std::string::npos);
 }
+
+TEST_CASE("Editor.Mark.WindowRegionsUseFramebufferPixels", "[engine-editor]") {
+    // A 1000x600 window at (10, 20) whose framebuffer is twice its UI size
+    const auto drag =
+        WindowMarkRegion({110.0f, 120.0f}, {60.0f, 70.0f}, {10.0f, 20.0f}, {1000.0f, 600.0f}, {2.0f, 2.0f});
+    REQUIRE(drag);
+    CHECK(*drag == FloatRect{100.0f, 100.0f, 100.0f, 100.0f});
+    const auto click =
+        WindowMarkRegion({12.0f, 22.0f}, {12.0f, 22.0f}, {10.0f, 20.0f}, {1000.0f, 600.0f}, {1.0f, 1.0f});
+    REQUIRE(click);
+    CHECK(*click == FloatRect{0.0f, 0.0f, MarkWindowPointSize, MarkWindowPointSize});
+    const auto line =
+        WindowMarkContext(FloatRect{5.0f, 6.0f, 70.0f, 80.0f}, {2000, 1200}, "C:/m.png", "drawing.circle");
+    CHECK(line == "[editor] window region=5,6 70x80 of 2000x1200 image=\"C:/m.png\" open-preview=drawing.circle ");
+    CHECK(WindowMarkContext({}, {2000, 1200}, "m.png", {}).find("open-preview") == std::string::npos);
+}

@@ -25,6 +25,10 @@ private:
     void SavePreferences(bool force);
     // Saves the marked region of the latest frame and pastes its context line into the Console.
     void PasteMark(const FloatRect& region);
+    void PasteWindowMark(const FloatRect& region, const PreviewPixels& window);
+    // Window captures: requested for the end of the next drawn frame, then kept as the latest.
+    [[nodiscard]] std::uint64_t RequestWindow() const;
+    [[nodiscard]] std::shared_ptr<const PreviewPixels> Window(std::uint64_t sequence) const;
     // All GPU/UI resources are owned after the base Game has created its window.
     mutable EditorController _controller;
     std::optional<EditorControlService> _control; // Tools reach this editor through it (`python Engine refresh`)
@@ -44,6 +48,11 @@ private:
     bool _dirty = false;
     mutable bool _quit = false;
     mutable std::optional<FloatRect> _mark; // Drawn this frame, handled in the next Update
+    mutable std::optional<FloatRect> _windowMark;
+    std::uint64_t _windowMarkSequence = 0; // The capture it waits for; 0 until requested
+    mutable bool _windowWanted = false;
+    mutable std::uint64_t _windowSequence = 0;
+    mutable std::shared_ptr<const PreviewPixels> _window;
     bool _stopped = false;
     std::optional<FrameExecutionSettings> _beforeBenchmark;
 };

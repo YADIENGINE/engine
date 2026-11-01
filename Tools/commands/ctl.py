@@ -33,6 +33,7 @@ def add_parser(commands) -> None:
     action = actions.add_parser("seek", help="pause at a playback time in seconds (replays from 0 to go back)")
     action.add_argument("seconds", type=float)
     action = actions.add_parser("screenshot", help="write the current frame as PNG and print its path")
+    action.add_argument("--window", action="store_true", help="the whole editor window (crop in window pixels)")
     action.add_argument("--out", help="PNG path (default: the build folder's editor-captures/)")
     action.add_argument("--scale", type=float, help="resize factor (0.05-4)")
     action.add_argument("--crop", type=float, nargs=4, metavar=("X", "Y", "W", "H"), help="canvas-space area")
@@ -90,6 +91,8 @@ def request_of(args: argparse.Namespace) -> dict:
             if args.crop:
                 request["crop"] = args.crop
         case "screenshot":
+            if args.window:
+                request["window"] = True
             if args.out:
                 request["path"] = str(Path(args.out).resolve())
             if args.scale is not None:

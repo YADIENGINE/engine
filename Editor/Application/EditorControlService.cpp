@@ -93,7 +93,7 @@ FrameCaptureOptions CaptureOptionsOf(const nlohmann::json& arguments, Vec2 canva
                              (*crop)[3].get<float>()};
         if (area.width <= 0.0f || area.height <= 0.0f || area.x < 0.0f || area.y < 0.0f ||
             area.Right() > static_cast<float>(canvas.x) || area.Bottom() > static_cast<float>(canvas.y))
-            throw std::runtime_error(std::format("Crop must lie inside the {}x{} canvas", canvas.x, canvas.y));
+            throw std::runtime_error(std::format("Crop must lie inside the {}x{} image", canvas.x, canvas.y));
         options.crop = area;
     }
     return options;
@@ -101,10 +101,10 @@ FrameCaptureOptions CaptureOptionsOf(const nlohmann::json& arguments, Vec2 canva
 std::string Describe(const PreviewValue& value) { return ControlValue(value).dump(); }
 } // namespace
 
-EditorControlService::EditorControlService(const std::filesystem::path& buildDirectory, PngEncoder encodePng)
+EditorControlService::EditorControlService(const std::filesystem::path& buildDirectory, EditorCaptureHost host)
     : _announcement(buildDirectory / EditorControlFile)
     , _captures(buildDirectory / "editor-captures")
-    , _encodePng(std::move(encodePng)) {
+    , _host(std::move(host)) {
     std::filesystem::create_directories(buildDirectory);
     (void)WriteBinaryFileAtomic(_announcement, EncodeControlAnnouncement({_pipe.Name(), GetCurrentProcessId()}));
 }
@@ -326,6 +326,10 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
         return std::nullopt;
     }
     case EditorControlCommand::Screenshot: {
+        if (arguments.value("window", false)) {
+            WindowShot(arguments);
+            return std::nullopt;
+        }
         RequireReady(snapshot);
         (void)CaptureOptionsOf(arguments, snapshot.canvas); // Report bad options before waiting
         if (arguments.contains("path") && Text(arguments, "path").empty())
@@ -371,7 +375,7 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
 std::filesystem::path EditorControlService::WriteCapture(const PreviewPixels& image,
                                                          const std::vector<FrameCaptureLabel>& labels,
                                                          const std::string& path, const std::string& prefix) {
-    const auto png = _encodePng(image, labels);
+    const auto png = _host.encodePng(image, labels);
     std::filesystem::path file =
         path.empty() ? NewCapturePath(_captures, prefix) : std::filesystem::path(PreviewWide(path));
     if (!file.is_absolute()) throw std::runtime_error("\"path\" must be absolute");
@@ -396,6 +400,23 @@ nlohmann::json EditorControlService::Screenshot(const nlohmann::json& arguments,
     if (!frame) throw std::runtime_error("No frame to capture");
     const auto captured = CaptureFrame(*frame, snapshot.canvas, CaptureOptionsOf(arguments, snapshot.canvas));
     return Saved(WriteCapture(captured, {}, arguments.value("path", std::string()), "shot"), captured, controller);
+}
+void EditorControlService::WindowShot(const nlohmann::json& arguments) {
+    if (arguments.contains("scale")) (void)Number(arguments, "scale");
+    if (arguments.contains("path") && Text(arguments, "path").empty())
+        throw std::runtime_error("\"path\" must not be empty");
+    const auto sequence = _host.requestWindow();
+    Await("the editor window", WorkerTimeout,
+          [this, sequence, arguments](EditorController& session) -> std::optional<nlohmann::json> {
+              const auto window = _host.window(sequence);
+              if (!window) return std::nullopt;
+              const Vec2 size{window->width, window->height}; // Crop in window pixels
+              const auto captured = CaptureFrame(*window, size, CaptureOptionsOf(arguments, size));
+              auto status = Saved(WriteCapture(captured, {}, arguments.value("path", std::string()), "window"),
+                                  captured, session);
+              status["window"] = {window->width, window->height};
+              return status;
+          });
 }
 void EditorControlService::Frames(const nlohmann::json& arguments, EditorController& controller) {
     const auto snapshot = controller.Snapshot();

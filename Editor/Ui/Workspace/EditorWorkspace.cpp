@@ -2,10 +2,13 @@
 #include <imgui_internal.h>
 #include <algorithm>
 #include <string_view>
+#include "Editor/Internals/Session/ViewportMark.h"
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "ToolUi/ToolTheme.h"
 
 namespace {
+constexpr float MarkOverlayTint = 0.06f; // Alpha of the tint over the editor while marking
+constexpr float MarkOutline = 2.0f;      // Pixels at 100% UI scale
 constexpr float PanelMinWidthInFonts = 12.0f;
 constexpr float PanelMinHeightInLines = 6.0f;
 constexpr ImGuiWindowFlags HostFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
@@ -88,6 +91,64 @@ void EditorWorkspace::ApplyLayout(EditorWorkspaceLayout layout, EditorPreference
     }
     _ignoreLayoutChanges = 3;
     _viewport.ReleaseFocus();
+}
+void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions, float top,
+                                  EditorWorkspaceResult& result) {
+    const auto* main = ImGui::GetMainViewport();
+    const ImVec2 origin{main->Pos.x, main->Pos.y + top};
+    const ImVec2 size{main->Size.x, std::max(1.0f, main->Size.y - top)};
+    const auto& io = ImGui::GetIO();
+    const auto& preview = result.interaction.viewport;
+    const auto onPreview = [&](ImVec2 point) {
+        return snapshot.ready && MapPreviewPoint(preview, {point.x, point.y}).has_value();
+    };
+    ImGui::SetNextWindowPos(origin);
+    ImGui::SetNextWindowSize(size);
+    ImGui::SetNextWindowFocus(); // Above every docked panel while marking
+    constexpr ImGuiWindowFlags OverlayFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground |
+                                              ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove |
+                                              ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDocking;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+    if (ImGui::Begin("##mark-overlay", nullptr, OverlayFlags)) {
+        ImGui::InvisibleButton("mark-area", size);
+        auto* draw = ImGui::GetWindowDrawList();
+        draw->AddRectFilled(origin, {origin.x + size.x, origin.y + size.y},
+                            ImGui::GetColorU32(ImGuiCol_DragDropTarget, MarkOverlayTint));
+        const char* hint = "Drag (or click) to mark a region for the Console - Esc cancels";
+        const ImVec2 hintSize = ImGui::CalcTextSize(hint);
+        draw->AddText({origin.x + (size.x - hintSize.x) * 0.5f, origin.y + ImGui::GetStyle().WindowPadding.y},
+                      ImGui::GetColorU32(ImGuiCol_Text), hint);
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+            _overlayStart = io.MousePos;
+            // On the preview the frame holds still, as with Alt+drag
+            if (onPreview(io.MousePos) && !snapshot.paused && snapshot.capabilities.Can(EditorCommand::Pause))
+                actions.command(EditorCommand::Pause);
+        }
+        if (_overlayStart) {
+            const ImVec2 from{std::min(_overlayStart->x, io.MousePos.x), std::min(_overlayStart->y, io.MousePos.y)};
+            const ImVec2 to{std::max(_overlayStart->x, io.MousePos.x), std::max(_overlayStart->y, io.MousePos.y)};
+            draw->AddRect(from, to, ImGui::GetColorU32(ImGuiCol_DragDropTarget), 0.0f, 0, MarkOutline * ToolUiScale());
+            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                const ImVec2 start = *_overlayStart, end = io.MousePos;
+                _overlayStart.reset();
+                _marking = false;
+                const bool inside = onPreview(start) && onPreview(end);
+                if (inside) // Entirely on the preview: its pixels and context
+                    result.interaction.mark = MarkRegion(preview, {start.x, start.y}, {end.x, end.y});
+                else
+                    result.windowMark = WindowMarkRegion({start.x, start.y}, {end.x, end.y}, {main->Pos.x, main->Pos.y},
+                                                         {main->Size.x, main->Size.y},
+                                                         {io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y});
+            }
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            _overlayStart.reset();
+            _marking = false;
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+    result.cancelPreviewInput = true;
 }
 void EditorWorkspace::PasteToConsole(const std::string& text, EditorPreferences& preferences) {
     if (_maximized) SetMaximized(false, preferences);
@@ -320,7 +381,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar;
         if (ImGui::Begin("Preview###editor.maximized", nullptr, flags))
-            result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, true, _marking);
+            result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, true);
         ImGui::End();
     } else {
         constexpr auto flags = ImGuiWindowFlags_NoCollapse;
@@ -346,8 +407,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 switch (panel.id) {
                 case EditorPanel::Catalog: _catalog.Draw(snapshot, actions, preferences); break;
                 case EditorPanel::Viewport:
-                    result.interaction =
-                        _viewport.Draw(snapshot, actions, image, preferences.showMetrics, false, _marking);
+                    result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, false);
                     viewportDrawn = preferences.Visible(panel.id);
                     break;
                 case EditorPanel::Inspector: _inspector.Draw(snapshot, actions); break;
@@ -411,6 +471,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         ImGui::EndPopup();
         result.cancelPreviewInput = true;
     }
+    if (_marking) MarkOverlay(snapshot, actions, menuHeight + toolbarHeight, result);
     if (result.cancelPreviewInput) _viewport.ReleaseFocus();
     return result;
 }

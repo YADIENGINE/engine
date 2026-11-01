@@ -28,8 +28,7 @@ struct EditorViewportInteraction {
 class ViewportPanel {
 public:
     [[nodiscard]] EditorViewportInteraction Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                                 const EditorPreviewImage& image, bool metrics, bool maximized,
-                                                 bool& marking);
+                                                 const EditorPreviewImage& image, bool metrics, bool maximized);
     void ReleaseFocus() { _focused = false; }
 
 private:
