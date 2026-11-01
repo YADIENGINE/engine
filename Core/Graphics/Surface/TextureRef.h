@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-// Non-owning reference to a GPU texture (a surface's image, a static texture). Cheap to copy; valid while its owner
+// Non-owning reference to a GPU texture (a surface's image). Cheap to copy; valid while its owner
 // lives and keeps its size. Painter::Image checks it: a reference to a destroyed texture throws.
 class TextureRef {
 public:
@@ -10,7 +10,7 @@ public:
     [[nodiscard]] bool Valid() const { return _index != 0; }
     [[nodiscard]] int Width() const { return _width; }   // Device pixels
     [[nodiscard]] int Height() const { return _height; } // Device pixels
-    // Logical size the texture was drawn at (surfaces) or its pixel size (static textures).
+    // Logical size the texture was drawn at.
     [[nodiscard]] float LogicalWidth() const { return _logicalWidth; }
     [[nodiscard]] float LogicalHeight() const { return _logicalHeight; }
 

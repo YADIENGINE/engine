@@ -7,20 +7,20 @@ On desktop, runtime uses the `Assets/` folder beside the executable; do not rely
 are reserved for source code and are not copied ([Asset library](Design/AssetLibrary.md)).
 
 `GameSettings::assets` is the relative path list of files in use. Audio catalog paths are added automatically; list a
-custom font path explicitly:
+custom font path explicitly. Images are not loaded from files: visuals are produced by code ([D1](Design/README.md#d1-asset-kuralı)),
+and textures come from `Surface`.
 
 ```cpp
 GameSettings settings;
 settings.font = "Fonts/MyFont.ttf";
-settings.assets = {settings.font, "Images/player.png"};
+settings.assets = {settings.font};
 settings.audio.effects = {{SoundId{0}, "Audio/click.wav"}};
 ```
 
 Empty, absolute, or `..` manifest paths are rejected. A missing file is a startup error. If `font` is empty, the
-built-in default font is used. The engine provides manifest preparation and font/audio loading; it does not provide a
-general texture asset manager. Every external (downloaded, licensed) asset has a notice in `Game/Distribution/` and its
-license file included in the package: [Release](Release.md). The View using a texture loads and releases the resource
-while the GL context is alive.
+built-in default font is used. The engine provides manifest preparation and font/audio loading. Every external
+(downloaded, licensed) asset has a notice in `Game/Distribution/` and its license file included in the package:
+[Release](Release.md).
 
 ## GameSettings reference
 

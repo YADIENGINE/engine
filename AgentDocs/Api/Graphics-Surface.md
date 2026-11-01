@@ -16,10 +16,10 @@ Use these generated signatures to locate public declarations; open the header fo
 
 ## `Core/Graphics/Surface/TextureRef.h`
 
-- `class TextureRef` — Non-owning reference to a GPU texture (a surface's image, a static texture).
+- `class TextureRef` — Non-owning reference to a GPU texture (a surface's image).
 - `TextureRef`: `TextureRef() = default`
 - `TextureRef`: `[[nodiscard]] bool Valid() const`
 - `TextureRef`: `[[nodiscard]] int Width() const` — Device pixels
 - `TextureRef`: `[[nodiscard]] int Height() const` — Device pixels
-- `TextureRef`: `[[nodiscard]] float LogicalWidth() const` — Logical size the texture was drawn at (surfaces) or its pixel size (static textures).
+- `TextureRef`: `[[nodiscard]] float LogicalWidth() const` — Logical size the texture was drawn at.
 - `TextureRef`: `[[nodiscard]] float LogicalHeight() const`

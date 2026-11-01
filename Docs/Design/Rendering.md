@@ -216,6 +216,8 @@ if (field.Stale()) { auto into = paint.Target(field); ... }  // ölçek değişi
 StaticTexture noise = StaticTexture::FromPixels(PixelBuffer::Generate(...));  // koddan üretilen doku (D1)
 ```
 
+`StaticTexture` ve `PixelBuffer` tasarımda kaldı, uygulanmadı (2026-11-01): bugün dokuların kaynağı `Surface`'tir.
+
 - Görseller koddan üretilir (D1): dosyadan resim yükleme yok; doku kaynakları yüzeyler, koddan üretilen piksel
   tamponları, glif atlasları ve pişirme önbelleği (D10).
 - Dokular yalnız Window kurulduktan sonra yaratılır; RAII, kopyalanamaz, taşınabilir. `TextureRef` sahip olmayan
