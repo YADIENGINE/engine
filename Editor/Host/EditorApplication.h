@@ -32,6 +32,8 @@ private:
     // Agent → Send scene: saves the latest frame and sends the scene's context line to the agent session.
     void SendScene();
     void HandleAudioPreview(const AudioPreviewRequest& request);
+    // Handled in the next Update; returns the AudioPreviewState::handled count it brings.
+    std::uint64_t QueueAudio(const AudioPreviewRequest& request) const;
     // Window captures: requested for the end of the next drawn frame, then kept as the latest.
     [[nodiscard]] std::uint64_t RequestWindow() const;
     [[nodiscard]] std::shared_ptr<const ViewportPixels> Window(std::uint64_t sequence) const;
@@ -60,6 +62,7 @@ private:
     mutable bool _sendScene = false; // Requested this frame, handled in the next Update
     mutable std::string _agentProblem;
     mutable std::vector<AudioPreviewRequest> _audioRequests; // Made while drawing, handled in the next Update
+    mutable std::uint64_t _audioQueued = 0;
     AudioPreviewState _audio;
     AudioWaveformCache _waveforms{DecodeAudioFile};
     std::uint64_t _windowMarkSequence = 0; // The capture it waits for; 0 until requested

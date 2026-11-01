@@ -98,7 +98,7 @@ Catalog paths stay relative to the asset root. `EffectAsset::name` and `MusicAss
 such as the editor; playback ignores them. [AudioFiles.h](../Core/Audio/AudioFiles.h) is for tools that work on source
 files: `LoadMusicFile(audio, id, file)` is `LoadMusic` for an absolute path (a relative one throws
 `std::invalid_argument`), and `DecodeAudioFile(file)` returns interleaved samples without an audio device, on any
-thread. Games do not need either.
+thread. Games do not need either. Command-line tools for sound files and the editor's preview: [Audio tools](AudioTools.md).
 
 ## Volume and persistence
 

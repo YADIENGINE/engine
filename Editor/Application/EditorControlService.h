@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <optional>
+#include <utility>
 #include <string_view>
 #include <vector>
 #include "Editor/Application/EditorController.h"
@@ -30,6 +31,13 @@ struct EditorCaptureHost {
     std::function<std::shared_ptr<const ViewportPixels>(std::uint64_t)> window;
 };
 
+// The host's Audio Preview, for `ctl audio`. `request` queues like a panel click and returns the `handled` count the
+// state reaches once it has been carried out.
+struct EditorAudioHost {
+    std::function<AudioPreviewState()> state;
+    std::function<std::uint64_t(const AudioPreviewRequest&)> request;
+};
+
 class EditorControlService {
 public:
     EditorControlService(const std::filesystem::path& buildDirectory, EditorCaptureHost host);
@@ -43,6 +51,7 @@ public:
                                        const std::string& path, const std::string& prefix);
     // Off: commands that change the editor are refused (ControlCommandChangesEditor); the developer's switch.
     void SetAgentControl(bool allowed) { _agentControl = allowed; }
+    void SetAudioHost(EditorAudioHost host) { _audio = std::move(host); }
     // A `ctl note`; `sequence` grows with each note.
     struct Activity {
         AgentNote note;
@@ -77,6 +86,8 @@ private:
     void AwaitWorker(EditorController& controller, std::chrono::steady_clock::duration timeout, Answer answer);
     void AwaitReady(const std::string& id);
     [[nodiscard]] nlohmann::json Screenshot(const nlohmann::json& arguments, EditorController& controller);
+    [[nodiscard]] nlohmann::json AudioStatus(const EditorController& controller) const;
+    void AudioControl(const nlohmann::json& arguments);
     // The whole editor window after its next frame (no scene needed).
     void WindowShot(const nlohmann::json& arguments);
     // Seeks to evenly spaced times one after another and answers with one labelled grid image.
@@ -89,6 +100,7 @@ private:
     std::filesystem::path _announcement;
     std::filesystem::path _captures;
     EditorCaptureHost _host;
+    EditorAudioHost _audio;
     std::optional<Watch> _watch;
     std::optional<Pending> _pending;
     Activity _activity;

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from ..errors import EXIT_FAILED, EXIT_OK, ToolError
 from ..project import Project
+from .audio import editor_recipe, resolve_sound
 from .refresh import VERSION, connect, editor_pipe, replies
 
 
@@ -27,6 +28,7 @@ WORKFLOW = """typical use:
   python Engine ctl find ice dragon             which scene shows it; prints the command that opens it
   python Engine ctl open ID --set k=v --action start --screenshot --scale 0.5
   python Engine ctl frames --from 0 --to 2      an animation as one grid image
+  python Engine ctl audio play Audio/hit.ogg    play a sound for the developer in Audio Preview
 answers are one JSON object on stdout; exit 2 means no editor is open (Docs/Editor/Automation.md)"""
 
 
@@ -76,6 +78,19 @@ def add_parser(commands) -> None:
     action.add_argument("--since", type=int, default=0, help="only entries after this sequence number")
     action.add_argument("--limit", type=int, default=100, help="newest entries to return (max 1000)")
     action.add_argument("--level", choices=("info", "warning", "error"), default="info", help="minimum level")
+    action = actions.add_parser("audio", help="the Audio Preview panel: play a sound for the developer, read its state")
+    sound = action.add_subparsers(dest="audio_action", metavar="<audio action>")
+    sound.add_parser("status", help="the loaded sound, position, length, uses (default)")
+    play = sound.add_parser("play", help="load a sound into Audio Preview and play it")
+    play.add_argument("file", metavar="FILE", help="absolute, or relative to the current folder, project or assets")
+    play.add_argument("--at", type=float, help="start at this many seconds")
+    play.add_argument("--loop", action=argparse.BooleanOptionalAction, default=None, help="loop it (default: as set)")
+    sound.add_parser("pause", help="pause the sound")
+    sound.add_parser("resume", help="go on from the pause")
+    sound.add_parser("stop", help="stop and rewind")
+    sound.add_parser("seek", help="go to a time; a stopped sound starts there").add_argument("seconds", type=float)
+    sound.add_parser("volume", help="preview volume 0-1").add_argument("volume", type=float)
+    sound.add_parser("loop", help="loop the sound or not").add_argument("state", choices=("on", "off"))
     action = actions.add_parser("note", help="report what the agent is doing; shown in the editor's status bar")
     action.add_argument("text", nargs="*", metavar="WORD")
     action.add_argument("--state", choices=("working", "waiting", "idle"), default="working")
@@ -279,10 +294,34 @@ def request_of(args: argparse.Namespace) -> dict:
                 request["crop"] = args.crop
         case "logs":
             request.update(since=args.since, limit=args.limit, level=args.level)
+        case "audio":
+            request.update(audio_request(args))
         case "note":
             request.update(text=" ".join(args.text), state=args.state)
             if session := os.environ.get(SESSION_ENVIRONMENT):
                 request["session"] = session
+    return request
+
+
+def audio_request(args: argparse.Namespace) -> dict:
+    """`ctl audio ...`: "audio" reads the panel; the others are "audio-control" with an action."""
+    action = args.audio_action or "status"
+    if action == "status":
+        return {"command": "audio"}
+    request = {"command": "audio-control", "action": action}
+    match action:
+        case "play":
+            request["file"] = args.file  # Made absolute by ctl() before sending
+            if args.at is not None:
+                request["at"] = args.at
+            if args.loop is not None:
+                request["loop"] = args.loop
+        case "seek":
+            request["seconds"] = args.seconds
+        case "volume":
+            request["volume"] = args.volume
+        case "loop":
+            request["on"] = args.state == "on"
     return request
 
 
@@ -334,6 +373,9 @@ def ctl(project: Project, args: argparse.Namespace) -> int:
     if args.action == "note" and args.hook:
         return hook_note(project, args)
     pipe = editor_pipe(project)
+    if args.action == "audio" and args.audio_action == "play":
+        recipe = editor_recipe(project)
+        args.file = str(resolve_sound(args.file, project, Path(recipe["assetsDirectory"]).resolve()))
     if args.action == "open":
         answer = open_scene(pipe, args)
     else:

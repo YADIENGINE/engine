@@ -30,6 +30,9 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 | `inspect` | Status + `inspection` (readout values, tables, focus, disabled controls) |
 | `logs [--since N] [--limit N] [--level L]` | `entries` (sequence, level, source, text) after N, newest `limit` (100, max 1000) at or above L; `last` sequence |
 | `note [WORD...] [--state working\|waiting\|idle] [--hook]` | Reports what the agent is doing (default `working`); `--hook`: see Agent hooks below. Run from a Console session (`ENGINE_EDITOR_SESSION` set, sent as `session`), it sets that session's state and hover text until the developer types into it again. `state`, `text` (up to 200 bytes), `control` |
+| `audio` | The Audio Preview panel: `loaded`, `catalog` (whether a worker has reported the audio catalog), `loop`, `volume`; with a sound also `file`, `asset` (path in the asset folder), `playing`, `paused`, `position`, `length` (seconds), `waveform` (`decoding` / `ready` / `failed`), `uses` (catalog entries: kind, id, name, label), `error` |
+| `audio play FILE [--at S] [--loop\|--no-loop]` | Loads the sound into Audio Preview (shown if hidden) and plays it from its source file; the scene is not touched. FILE is absolute or relative to the current folder, project root or asset folder. Answers the `audio` state once playing; exit 1 when it cannot be loaded |
+| `audio pause`, `resume`, `stop`, `seek S`, `volume V`, `loop on\|off` | The loaded sound's transport; `seek` starts a stopped sound there, `volume` is 0–1; the `audio` state |
 | `refresh` (top-level command) | Build & Refresh; streams build output ([Tools contract](../ToolsContract.md)) |
 
 Exit codes: 0 answered; 1 the editor refused the request (`error: ...` on stderr: unknown scene, invalid value, not
@@ -63,8 +66,8 @@ ignored).
 
 **Agent control:** the developer can turn off Agent → Agent control ([Agent workspace](Usage.md#agent-workspace)).
 While it is off, `status` reports `"control": false` and commands that change the editor (`open`, `set`, `action`,
-`pause`, `play`, `step`, `speed`, `reset`, `seek`, `frames`, `refresh`) are refused; `status`, `list`, `find`,
-`describe`, `screenshot`, `inspect`, `logs` and `note` still answer.
+`pause`, `play`, `step`, `speed`, `reset`, `seek`, `frames`, `refresh`, and `audio` with an action) are refused;
+`status`, `list`, `find`, `describe`, `screenshot`, `inspect`, `logs`, `note` and plain `audio` still answer.
 
 ## Finding a scene
 

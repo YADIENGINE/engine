@@ -46,6 +46,13 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
                              EditorCaptureHost{EncodeFramePng, [this] { return RequestWindow(); },
                                                [this](std::uint64_t sequence) { return Window(sequence); }});
             _workspace.SetConsoleEnvironment({{"ENGINE_EDITOR_CONTROL", _control->Pipe()}});
+            _control->SetAudioHost({[this] { return _audio; },
+                                    [this](const AudioPreviewRequest& request) {
+                                        // An agent's sound comes into view, as Assets' would for a click
+                                        if (request.action == AudioPreviewAction::Play)
+                                            _preferences.Visible(EditorPanel::AudioPreview) = true;
+                                        return QueueAudio(request);
+                                    }});
         }
     } catch (const std::exception& error) {
         _controller.Log(std::string("Control endpoint unavailable: ") + error.what(), EditorLogLevel::Warning);
@@ -209,7 +216,7 @@ void EditorApplication::HandleAudioPreview(const AudioPreviewRequest& request) {
     try {
         switch (request.action) {
         case AudioPreviewAction::Play:
-            _audio = {request.file, false, false, request.loop, request.volume};
+            _audio = {request.file, false, false, request.loop, request.volume, 0, 0, {}, {}, _audio.handled};
             audio.SetMusicVolume(request.volume);
             // From the source file, so a sound added since the last build plays without Build & Refresh.
             LoadMusicFile(audio, PreviewId, request.file);
@@ -242,6 +249,11 @@ void EditorApplication::HandleAudioPreview(const AudioPreviewRequest& request) {
         _audio.error = error.what();
         _controller.Log(std::string("Sound preview: ") + error.what(), EditorLogLevel::Warning);
     }
+    ++_audio.handled;
+}
+std::uint64_t EditorApplication::QueueAudio(const AudioPreviewRequest& request) const {
+    _audioRequests.push_back(request);
+    return ++_audioQueued;
 }
 void EditorApplication::Stop() {
     if (_stopped) return;
@@ -296,7 +308,7 @@ void EditorApplication::DrawToolOverlay() const {
         [&](std::size_t file, const TuningLocation& at, const TuningValue& value) {
             commands.emplace_back([this, file, at, value] { _controller.Tune(file, at, value); });
         },
-        [&](const AudioPreviewRequest& request) { _audioRequests.push_back(request); },
+        [&](const AudioPreviewRequest& request) { (void)QueueAudio(request); },
         [&](const std::filesystem::path& path) {
             const auto text = path.u8string();
             OpenExternalUrl(std::string_view(reinterpret_cast<const char*>(text.data()), text.size()));

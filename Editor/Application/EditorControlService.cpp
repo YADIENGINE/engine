@@ -21,7 +21,8 @@ constexpr double SeekWaitPerSecond = 0.5;                // Extra wait per sough
 constexpr double MaxSeekSeconds = 600.0;
 constexpr double StepSeconds = 1.0 / 60.0;
 constexpr int MaxSteps = 600;
-constexpr std::uint64_t FramesAfterSync = 2; // The second frame after the answer was drawn after it
+constexpr std::uint64_t FramesAfterSync = 2;            // The second frame after the answer was drawn after it
+constexpr auto AudioTimeout = std::chrono::seconds(10); // Loading a long sound from disk
 constexpr std::size_t DefaultLogLimit = 100;
 constexpr std::size_t MaxLogLimit = 1000;
 constexpr int DefaultGridFrames = 9;
@@ -57,6 +58,14 @@ nlohmann::json StatusOf(const EditorController& controller) {
         status["canvas"] = {snapshot.canvas.x, snapshot.canvas.y};
     }
     return status;
+}
+const char* WaveformName(const AudioPreviewState& audio) {
+    switch (audio.waveform.state) {
+    case WaveformState::Decoding: return "decoding";
+    case WaveformState::Ready   : return "ready";
+    case WaveformState::Failed  : return "failed";
+    }
+    return "decoding";
 }
 std::string Text(const nlohmann::json& arguments, const char* key) {
     const auto found = arguments.find(key);
@@ -380,9 +389,106 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
                               {"text", _activity.note.text},
                               {"control", _agentControl}};
     }
-    case EditorControlCommand::Count: break;
+    case EditorControlCommand::Audio       : return AudioStatus(controller);
+    case EditorControlCommand::AudioControl: AudioControl(arguments); return std::nullopt;
+    case EditorControlCommand::Count       : break;
     }
     throw std::runtime_error("Unsupported command");
+}
+nlohmann::json EditorControlService::AudioStatus(const EditorController& controller) const {
+    if (!_audio.state) throw std::runtime_error("This editor has no Audio Preview");
+    const auto audio = _audio.state();
+    nlohmann::json status{{"loaded", !audio.file.empty()}, {"loop", audio.loop}, {"volume", audio.volume}};
+    const auto snapshot = controller.Snapshot();
+    const auto* usage = snapshot.audioUsage;
+    status["catalog"] = usage && usage->reported; // False until a worker has run: no sound counts as unused yet
+    if (audio.file.empty()) {
+        status["next"] = "No sound loaded; play one with: python Engine ctl audio play FILE";
+        return status;
+    }
+    status["file"] = WorkerUtf8(audio.file.wstring());
+    status["playing"] = audio.playing;
+    status["paused"] = audio.paused;
+    status["position"] = audio.position;
+    status["length"] = audio.length;
+    status["waveform"] = WaveformName(audio);
+    if (!audio.error.empty()) status["error"] = audio.error;
+    const auto& project = controller.Project();
+    if (!project) return status;
+    const auto asset = audio.file.lexically_relative(project->assetsDirectory);
+    if (asset.empty() || *asset.begin() == "..") return status;
+    status["asset"] = WorkerUtf8(asset.generic_wstring());
+    if (!usage || !usage->reported) return status;
+    auto uses = nlohmann::json::array();
+    for (const auto* use : AudioUsesOf(*usage, asset))
+        uses.push_back({{"kind", use->kind == AudioUseKind::Music ? "music" : "effect"},
+                        {"id", use->id},
+                        {"name", use->name},
+                        {"label", AudioUseLabel(*use)}});
+    status["uses"] = std::move(uses);
+    return status;
+}
+void EditorControlService::AudioControl(const nlohmann::json& arguments) {
+    if (!_audio.request || !_audio.state) throw std::runtime_error("This editor has no Audio Preview");
+    const auto audio = _audio.state();
+    const auto action = Text(arguments, "action");
+    AudioPreviewRequest request{AudioPreviewAction::Stop, audio.file, audio.loop, audio.volume};
+    const bool loaded = !audio.file.empty();
+    const auto requireLoaded = [&] {
+        if (!loaded) throw std::runtime_error("No sound is loaded; use: python Engine ctl audio play FILE");
+    };
+    bool play = false; // Starts a sound: its load error fails the request
+    std::uint64_t until = 0;
+    const auto seek = [&](double seconds) {
+        if (seconds < 0) throw std::runtime_error("\"seconds\" must not be negative");
+        until =
+            _audio.request({AudioPreviewAction::Seek, {}, request.loop, request.volume, static_cast<float>(seconds)});
+    };
+    if (action == "play") {
+        const std::filesystem::path file(WorkerWide(Text(arguments, "file")));
+        if (!file.is_absolute()) throw std::runtime_error("\"file\" must be absolute");
+        request = {AudioPreviewAction::Play, file.lexically_normal(), arguments.value("loop", audio.loop),
+                   audio.volume};
+        until = _audio.request(request);
+        play = true;
+        if (arguments.contains("at")) seek(Number(arguments, "at"));
+    } else if (action == "pause" || action == "resume" || action == "stop") {
+        requireLoaded();
+        request.action = action == "pause"    ? AudioPreviewAction::Pause
+                         : action == "resume" ? AudioPreviewAction::Resume
+                                              : AudioPreviewAction::Stop;
+        until = _audio.request(request);
+    } else if (action == "seek") {
+        requireLoaded();
+        const double seconds = Number(arguments, "seconds");
+        if (!audio.playing && !audio.paused) { // Like a click on the timeline: a stopped sound starts there
+            request.action = AudioPreviewAction::Play;
+            until = _audio.request(request);
+            play = true;
+        }
+        seek(seconds);
+    } else if (action == "volume") {
+        const double volume = Number(arguments, "volume");
+        if (volume < 0 || volume > 1) throw std::runtime_error("\"volume\" must be between 0 and 1");
+        request.action = AudioPreviewAction::Volume;
+        request.volume = static_cast<float>(volume);
+        until = _audio.request(request);
+    } else if (action == "loop") {
+        const auto on = arguments.find("on");
+        if (on == arguments.end() || !on->is_boolean()) throw std::runtime_error("\"on\" must be true or false");
+        request.action = AudioPreviewAction::Loop;
+        request.loop = on->get<bool>();
+        until = _audio.request(request);
+    } else {
+        throw std::runtime_error("\"action\" is play, pause, resume, stop, seek, volume or loop");
+    }
+    Await("the sound preview", AudioTimeout,
+          [this, until, play](EditorController& session) -> std::optional<nlohmann::json> {
+              const auto now = _audio.state();
+              if (now.handled < until) return std::nullopt;
+              if (play && !now.error.empty()) throw std::runtime_error("Sound preview: " + now.error);
+              return AudioStatus(session);
+          });
 }
 std::filesystem::path EditorControlService::WriteCapture(const ViewportPixels& image,
                                                          const std::vector<FrameCaptureLabel>& labels,

@@ -38,6 +38,8 @@ enum class EditorControlCommand {
     Inspect,
     Logs,
     Note,
+    Audio,        // The Audio Preview panel's state
+    AudioControl, // Plays, pauses, stops, seeks or changes the Audio Preview sound ("action")
     Count
 };
 

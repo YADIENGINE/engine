@@ -443,12 +443,18 @@ DeviceInput DecodeWorkerInput(const nlohmann::json& json) {
 nlohmann::json EncodeAudioCatalog(const AudioCatalog& catalog) {
     auto effects = nlohmann::json::array();
     for (const auto& effect : catalog.effects)
-        effects.push_back(
-            {{"id", static_cast<std::size_t>(effect.id)}, {"file", PathText(effect.file)}, {"name", effect.name}});
+        effects.push_back({{"id", static_cast<std::size_t>(effect.id)},
+                           {"file", PathText(effect.file)},
+                           {"name", effect.name},
+                           {"maxConcurrent", effect.settings.maxConcurrent},
+                           {"volume", effect.settings.volume},
+                           {"overflow", effect.settings.overflow == EffectOverflow::Skip ? "skip" : "restart-next"}});
     auto music = nlohmann::json::array();
     for (const auto& track : catalog.music)
-        music.push_back(
-            {{"id", static_cast<std::size_t>(track.id)}, {"file", PathText(track.file)}, {"name", track.name}});
+        music.push_back({{"id", static_cast<std::size_t>(track.id)},
+                         {"file", PathText(track.file)},
+                         {"name", track.name},
+                         {"group", track.volumeGroup == MusicVolumeGroup::Menu ? "menu" : "default"}});
     return {{"effects", std::move(effects)}, {"music", std::move(music)}};
 }
 

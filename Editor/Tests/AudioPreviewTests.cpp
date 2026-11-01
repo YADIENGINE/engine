@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 #include "Editor/Internals/Protocol/WorkerProtocol.h"
+#include "Editor/Internals/Session/AudioAnalysis.h"
 #include "Editor/Internals/Session/AudioPreview.h"
 #include "Editor/Internals/Session/AudioUsage.h"
 #include "Editor/Internals/Session/AudioWaveformCache.h"
@@ -131,4 +132,47 @@ TEST_CASE("Editor.AudioPreview.WorkerReportsWhichFilesTheCatalogPlays", "[engine
     CHECK(AudioUseLabels(AudioUsesOf(usage, "Audio/Music/Menu.ogg")) == "Music Menu");
     CHECK(AudioUsesOf(usage, "Audio/Unused.ogg").empty());
     CHECK(AudioUsesOf(usage, "Audio/Music/../Hit.wav").size() == 2);
+}
+
+TEST_CASE("Editor.AudioPreview.AnalysisReportsLevelsSilenceAndClipping", "[engine-editor]") {
+    // Mono at 10 Hz: 0.3 s of silence, 0.5 s of sound with one clipped sample, then 0.2 s of silence.
+    std::vector<float> samples(10, 0.0f);
+    for (std::size_t i = 3; i < 8; ++i)
+        samples[i] = 0.5f;
+    samples[5] = -1.0f;
+    const auto facts = AnalyzeAudio(samples, 1, 10);
+    CHECK(facts.seconds == Catch::Approx(1.0f));
+    CHECK(facts.frames == 10);
+    CHECK(facts.peakDb == Catch::Approx(0.0f));
+    CHECK(facts.rmsDb < facts.peakDb);
+    CHECK(facts.leadingSilence == Catch::Approx(0.3f));
+    CHECK(facts.trailingSilence == Catch::Approx(0.2f));
+    CHECK(facts.clipped == 1);
+
+    const std::vector<float> quiet(8, 0.0001f); // Below the -60 dBFS silence level
+    const auto silent = AnalyzeAudio(quiet, 2, 4);
+    CHECK(silent.leadingSilence == Catch::Approx(silent.seconds));
+    CHECK(silent.trailingSilence == 0.0f);
+    CHECK(AnalyzeAudio(quiet, 2, 4, -100.0f).leadingSilence == 0.0f);
+    CHECK(AnalyzeAudio({}, 1, 10).peakDb == AudioFloorDb);
+    CHECK(AudioDecibels(0.0f) == AudioFloorDb);
+    CHECK(AudioDecibels(0.5f) == Catch::Approx(-6.0206f));
+}
+
+TEST_CASE("Editor.AudioPreview.WaveformImageMarksTicksAndLoudColumns", "[engine-editor]") {
+    CHECK(WaveformTickSeconds(1.0f) == Catch::Approx(0.1f));
+    CHECK(WaveformTickSeconds(30.0f) == Catch::Approx(2.0f));
+    CHECK(WaveformTickSeconds(1.0e6f) > 0.0f);
+
+    AudioWaveform waveform{{0.0f, 1.0f}, {0.0f, 0.5f}, 10, 1, 1.0f};
+    const auto image = DrawWaveformImage(waveform, 4, 9);
+    REQUIRE(image.rgba.size() == 4u * 9u * 4u);
+    const auto pixel = [&](int x, int y) {
+        const auto at = (static_cast<std::size_t>(y) * 4 + static_cast<std::size_t>(x)) * 4;
+        return std::vector<std::uint8_t>(image.rgba.begin() + static_cast<std::ptrdiff_t>(at),
+                                         image.rgba.begin() + static_cast<std::ptrdiff_t>(at) + 4);
+    };
+    CHECK(pixel(0, 0) == pixel(1, 0));       // The quiet half stays empty at the top
+    CHECK_FALSE(pixel(3, 0) == pixel(1, 0)); // The loud half reaches the edge
+    CHECK(DrawWaveformImage({}, 0, 0).width == 1);
 }

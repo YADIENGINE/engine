@@ -13,6 +13,7 @@
 #include "Editor/Internals/Session/GraphicAssetCatalog.h"
 #include "Editor/Internals/Session/SceneAutoRegistration.h"
 #include "Editor/Worker/AssetThumbnailGame.h"
+#include "Editor/Worker/AudioReport.h"
 #include "Editor/Worker/WorkerGame.h"
 #include "Editor/Worker/GlowBenchmark.h"
 #include "Editor/Worker/RenderGallery.h"
@@ -89,7 +90,10 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
                 session = argv[++i];
             else if (argument == "--catalog")
                 catalogOnly = true;
-            else if (argument == "--thumbnails" && i + 2 < argc) {
+            else if (argument == "--audio-report" && i + 1 < argc) {
+                WriteAudioReport(argv[++i], settings.audio); // A tool's question; no window, device or editor
+                return 0;
+            } else if (argument == "--thumbnails" && i + 2 < argc) {
                 thumbnails = argv[++i];
                 settings.background = ParseThumbnailBackground(argv[++i]);
             } else

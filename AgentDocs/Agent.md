@@ -22,6 +22,7 @@ Read the matching skill before acting. Each one is a short procedure; follow its
 | change something visual or gameplay-facing and check it | `AgentDocs/Skills/visual-change/SKILL.md` |
 | fix a failed build, test or refresh, or warnings | `AgentDocs/Skills/build-fix/SKILL.md` |
 | write code against the engine API (find headers, recipes, concepts) | `AgentDocs/Skills/api/SKILL.md` |
+| check, compare, clean up or play a sound; find unused or missing sounds | `AgentDocs/Skills/audio/SKILL.md` |
 
 ## Hard invariants
 

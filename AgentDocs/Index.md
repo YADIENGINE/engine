@@ -66,6 +66,10 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Set up, run, check or test a project | `Tools/cli.py` | - | `Docs/ToolsContract.md#commands` |
 | Package a release and third-party notices | `Tools/commands/release.py` | - | `Docs/Release.md#checks` |
 | Generate audio assets offline | `Tools/AudioGeneration/generator.py` | - | `Docs/AudioGeneration.md#a-sound-set-in-one-file` |
+| Check a sound without hearing it: length, loudness, silent edges, clipping, waveform image (`audio info`, `audio waveform`) | `Tools/commands/audio.py` | - | `Docs/AudioTools.md#audio-files-and-catalog` |
+| Find unused sound files, missing catalog files, or which catalog ID plays a file (`audio usage`, `audio catalog`) | `Tools/commands/audio.py` | - | `Docs/AudioTools.md#audio-files-and-catalog` |
+| Play a sound for the developer in the editor's Audio Preview (`ctl audio play FILE`) | `Tools/commands/ctl.py` | - | `Docs/AudioTools.md#ctl-audio-playing-for-the-developer` |
+| Load or decode a sound file outside the asset root (tools only) | `Core/Audio/AudioFiles.h` | - | `Docs/Audio.md#tools-and-source-files` |
 
 ## API index
 

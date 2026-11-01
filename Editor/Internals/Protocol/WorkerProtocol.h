@@ -60,7 +60,8 @@ struct WorkerTuningStatus {
 [[nodiscard]] DeviceInput DecodeWorkerInput(const nlohmann::json& json);
 [[nodiscard]] nlohmann::json EncodeSceneInspection(const SceneInspection& inspection);
 [[nodiscard]] SceneInspection DecodeSceneInspection(const nlohmann::json& json);
-// The project's audio catalog ("audio"), sent before "catalog".
+// The project's audio catalog ("audio"), sent before "catalog"; also in `--audio-report` answers. Effects carry
+// maxConcurrent, volume and overflow ("restart-next" | "skip"); music its group ("default" | "menu").
 [[nodiscard]] nlohmann::json EncodeAudioCatalog(const AudioCatalog& catalog);
 [[nodiscard]] std::vector<AudioUse> DecodeAudioCatalog(const nlohmann::json& json);
 [[nodiscard]] nlohmann::json EncodeWorkerTuning(const WorkerTuningStatus& status);

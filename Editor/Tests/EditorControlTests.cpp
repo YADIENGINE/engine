@@ -226,12 +226,13 @@ TEST_CASE("Editor.Control.NotesAndWhichCommandsChangeTheEditor", "[engine-editor
     CHECK(DecodeAgentNote({{"text", std::string(AgentNoteMaxBytes * 2, 'x')}}).text.size() == AgentNoteMaxBytes);
     CHECK_THROWS(DecodeAgentNote({{"state", "sleeping"}}));
     // The agent-control switch blocks changes, never observation or notes
-    for (const auto command : {EditorControlCommand::Open, EditorControlCommand::Set, EditorControlCommand::Seek,
-                               EditorControlCommand::Frames, EditorControlCommand::Refresh})
-        CHECK(ControlCommandChangesEditor(command));
     for (const auto command :
-         {EditorControlCommand::Status, EditorControlCommand::List, EditorControlCommand::Screenshot,
-          EditorControlCommand::Inspect, EditorControlCommand::Logs, EditorControlCommand::Note})
+         {EditorControlCommand::Open, EditorControlCommand::Set, EditorControlCommand::Seek,
+          EditorControlCommand::Frames, EditorControlCommand::Refresh, EditorControlCommand::AudioControl})
+        CHECK(ControlCommandChangesEditor(command));
+    for (const auto command : {EditorControlCommand::Status, EditorControlCommand::List,
+                               EditorControlCommand::Screenshot, EditorControlCommand::Inspect,
+                               EditorControlCommand::Logs, EditorControlCommand::Note, EditorControlCommand::Audio})
         CHECK_FALSE(ControlCommandChangesEditor(command));
 }
 

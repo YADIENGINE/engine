@@ -112,6 +112,8 @@ hover is not in v1.
 - Usage: the worker sends its `AudioCatalog` ("audio" message, before "catalog"). Assets dims sounds the catalog does
   not list; both panels name the entries that play a sound. The engine knows only IDs and paths: `EffectAsset::name` /
   `MusicAsset::name` are optional labels, and without one the numeric ID is shown.
+- Agents cannot listen: `python Engine audio` (info, waveform PNG, usage, catalog) answers from the built worker
+  without an open editor, and `python Engine ctl audio` drives Audio Preview ([Audio tools](../AudioTools.md)).
 - Audio cannot move in v1: audio catalogs hold file paths as strings.
 
 ## v1 order

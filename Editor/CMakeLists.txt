@@ -23,6 +23,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Protocol/EditorControlProtocol.cpp
     Internals/Session/AssetLibrary.cpp
     Internals/Session/AssetNavigation.cpp
+    Internals/Session/AudioAnalysis.cpp
     Internals/Session/AudioPreview.cpp
     Internals/Session/AudioUsage.cpp
     Internals/Session/AudioWaveformCache.cpp
@@ -63,7 +64,7 @@ endif()
 set(editor_output "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
 if(ENGINE_BUILD_EDITOR)
     add_library(EngineWorkerRuntime STATIC EXCLUDE_FROM_ALL
-        Worker/AssetThumbnailGame.cpp Worker/WorkerScene.cpp Worker/WorkerGame.cpp Worker/WorkerSession.cpp Worker/WorkerHost.cpp
+        Worker/AssetThumbnailGame.cpp Worker/AudioReport.cpp Worker/WorkerScene.cpp Worker/WorkerGame.cpp Worker/WorkerSession.cpp Worker/WorkerHost.cpp
         Worker/WorkerProfiler.cpp Worker/GlowBenchmark.cpp Worker/RenderGallery.cpp)
     target_link_libraries(EngineWorkerRuntime PUBLIC Engine EngineEditorApi EngineEditorSupport EngineProfilerRuntime)
     engine_warnings(EngineWorkerRuntime)

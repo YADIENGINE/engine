@@ -46,6 +46,7 @@ struct AudioPreviewState {
     float length = 0.0f;
     std::string error; // Why the last Play failed
     WaveformEntry waveform;
+    std::uint64_t handled = 0; // Requests the host has carried out, counting from 1
 };
 
 struct EditorSnapshot {
