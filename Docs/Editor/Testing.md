@@ -50,6 +50,10 @@ only the changed section.
 9. Open the palette with Ctrl+Shift+P: search, up / down, Enter, Escape, disabled-command reason, panel / layout
    selection. F5 / F6 / F7 / Ctrl+R / Ctrl+Shift+B follow the same availability as toolbar and menu; they do not run
    during text / popups or leak into the product.
+10. In both Claude and Codex Console sessions, wheel up/down scrolls the conversation under the pointer; small touchpad
+    movements accumulate. Wheel over another panel or an open menu does not reach the session. In a shell with long
+    output, wheel, scrollbar and Shift+PageUp/PageDown browse history; Shift+wheel keeps browsing local history when an
+    application requests mouse input. Typing returns to live output; leaving a full-screen app restores shell history.
 
 ## Infrastructure
 

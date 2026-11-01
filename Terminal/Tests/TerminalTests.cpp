@@ -170,6 +170,60 @@ TEST_CASE("Terminal.Keys.EncodingForConPty", "[terminal]") {
     CHECK(screen.TakeInput() == "\xC4\x9F");
 }
 
+TEST_CASE("Terminal.Wheel.MouseReportingUsesTheRequestedProtocolAndCell", "[terminal]") {
+    VtScreen screen(4, 20, {});
+    CHECK_FALSE(screen.SendWheel(1, {2, 4}, NoModifiers));
+    CHECK(screen.TakeInput().empty());
+
+    // Agent TUIs can request mouse input on either the primary or alternate screen.
+    SECTION("Primary screen") { screen.Feed("\x1b[?1000h\x1b[?1006h"); }
+    SECTION("Alternate screen") { screen.Feed("\x1b[?1049h\x1b[?1002h\x1b[?1006h"); }
+    REQUIRE(screen.SendWheel(2, {2, 4}, NoModifiers));
+    CHECK(screen.TakeInput() == "\x1b[<64;5;3M\x1b[<64;5;3M");
+    REQUIRE(screen.SendWheel(-1, {2, 4}, Ctrl));
+    CHECK(screen.TakeInput() == "\x1b[<81;5;3M");
+    REQUIRE(screen.SendWheel(1, {100, -1}, NoModifiers));
+    CHECK(screen.TakeInput() == "\x1b[<64;1;4M");
+
+    // Shift keeps local scrollback available; wheel events have no synthetic button release.
+    CHECK_FALSE(screen.SendWheel(1, {2, 4}, Shift));
+    CHECK_FALSE(screen.SendWheel(0, {2, 4}, NoModifiers));
+    CHECK(screen.TakeInput().empty());
+    screen.Feed("\x1b[?1000l\x1b[?1002l\x1b[?1049l");
+    CHECK_FALSE(screen.SendWheel(1, {2, 4}, NoModifiers));
+    CHECK(screen.TakeInput().empty());
+}
+
+TEST_CASE("Terminal.Wheel.LegacyMouseAndResetDoNotLeakInputToTheShell", "[terminal]") {
+    VtScreen screen(4, 20, {});
+    screen.Feed("\x1b[?1000h");
+    REQUIRE(screen.SendWheel(1, {0, 0}, NoModifiers));
+    CHECK(screen.TakeInput() == "\x1b[M\x60\x21\x21");
+    REQUIRE(screen.SendWheel(-1, {0, 0}, NoModifiers));
+    CHECK(screen.TakeInput() == "\x1b[M\x61\x21\x21");
+    screen.Reset();
+    CHECK_FALSE(screen.SendWheel(1, {0, 0}, NoModifiers));
+    CHECK(screen.TakeInput().empty());
+}
+
+TEST_CASE("Terminal.Wheel.AlternateScreenFallsBackToTheApplicationCursorKeys", "[terminal]") {
+    VtScreen screen(4, 20, {});
+    screen.Feed("one\r\ntwo\r\nthree\r\nfour\r\nfive");
+    const auto historyEnd = screen.HistoryEnd();
+    screen.Feed("\x1b[?1049h");
+    REQUIRE(screen.SendWheel(2, {0, 0}, NoModifiers));
+    CHECK(screen.TakeInput() == "\x1b[A\x1b[A");
+    screen.Feed("\x1b[?1h");
+    REQUIRE(screen.SendWheel(-1, {0, 0}, NoModifiers));
+    CHECK(screen.TakeInput() == "\x1bOB");
+    CHECK_FALSE(screen.SendWheel(1, {0, 0}, Shift));
+    CHECK(screen.TakeInput().empty());
+    screen.Feed("\x1b[?1049l");
+    CHECK(screen.HistoryEnd() == historyEnd);
+    CHECK_FALSE(screen.SendWheel(1, {0, 0}, NoModifiers));
+    CHECK(screen.TakeInput().empty());
+}
+
 TEST_CASE("Terminal.Screen.SelectedTextTrimsLinesAndAcceptsReverseDrag", "[terminal]") {
     VtScreen screen(4, 12, {});
     screen.Feed("hello  \r\nworld");

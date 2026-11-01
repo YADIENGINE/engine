@@ -56,7 +56,10 @@ Profiler, and Console are closed. The bottom status bar has Output and Console b
   & Refresh, and it leaves the viewport and running scene alone.
 - **Console:** a real PowerShell session at the project root. Drag to select visible text and copy with Ctrl+C /
   Ctrl+Shift+C or right-click Copy. Without selection, Ctrl+C interrupts the running program; Ctrl+V pastes, Escape
-  clears selection. Scrollback and double-click word selection are not yet available.
+  clears selection. Wheel, the scrollbar and Shift+PageUp/PageDown browse shell history; typing returns to live output.
+  In live applications such as Claude and Codex, wheel input follows the requested mouse protocol; full-screen
+  applications without mouse reporting receive cursor keys. Shift+wheel forces local history browsing, and fractional
+  touchpad movement accumulates. Double-click word selection is not yet available.
 - **Tuning:** the project's `*.tuning.json` files ([Tuning](../Tuning.md)); the list comes from the build's
   `Tuning/TuningFiles.json`, with new files appearing after the next configure. File selection is at the top, followed
   by the scene's latest state for that file: Live, Not applied (invalid file; line and reason), Build needed (field /

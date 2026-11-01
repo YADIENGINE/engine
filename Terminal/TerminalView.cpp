@@ -186,7 +186,10 @@ void TerminalView::Draw(TerminalSession& session) {
                    std::max(1, static_cast<int>(width / grid.cellWidth)));
     const auto historyEnd = session.HistoryEnd();
     const auto pushed = historyEnd - _historyEnd;
-    if (pushed < 0 || _alternateScreen != session.AlternateScreen()) FollowOutput();
+    if (pushed < 0 || _alternateScreen != session.AlternateScreen()) {
+        FollowOutput();
+        _wheelRemainder = 0;
+    }
     if (pushed > 0) {
         const int shift = static_cast<int>(std::min<std::int64_t>(pushed, session.HistoryRows() + session.Rows()));
         if (_scrollOffset > 0) _scrollOffset += shift;
@@ -214,9 +217,25 @@ void TerminalView::Draw(TerminalSession& session) {
     }
     ImGui::InvisibleButton("##terminal", {width, std::max(1.0f, available.y)},
                            ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::GetIO().MouseWheel != 0)
-        _scrollOffset = std::clamp(_scrollOffset + static_cast<int>(std::round(ImGui::GetIO().MouseWheel * WheelLines)),
-                                   0, session.HistoryRows());
+    const auto& io = ImGui::GetIO();
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) {
+        _wheelRemainder += io.MouseWheel * WheelLines;
+        const int steps = static_cast<int>(_wheelRemainder);
+        _wheelRemainder -= static_cast<float>(steps);
+        if (steps != 0) {
+            const auto mouse = ImGui::GetMousePos();
+            const TerminalPosition position{
+                static_cast<int>(std::floor((mouse.y - grid.origin.y) / grid.cellHeight)),
+                static_cast<int>(std::floor((mouse.x - grid.origin.x) / grid.cellWidth))};
+            if (_scrollOffset == 0 && ImGui::IsItemHovered() &&
+                session.SendWheel(steps, position, ReadTerminalModifiers()))
+                FollowOutput();
+            else
+                _scrollOffset = std::clamp(_scrollOffset + steps, 0, session.HistoryRows());
+        }
+    } else {
+        _wheelRemainder = 0;
+    }
     if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         _selectionAnchor = _selectionEnd = PositionAt(grid, ImGui::GetMousePos(), session, _scrollOffset);
     if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left))

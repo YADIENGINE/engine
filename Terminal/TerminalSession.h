@@ -40,6 +40,8 @@ public:
     void SendKey(TerminalKey key, TerminalModifiers modifiers);
     void SendCharacter(char32_t character, TerminalModifiers modifiers);
     void SendFunctionKey(int number, TerminalModifiers modifiers); // F1..F12
+    // Positive steps scroll up at a zero-based live cell. False means the view should browse local history.
+    bool SendWheel(int steps, TerminalPosition position, TerminalModifiers modifiers);
     void Paste(std::string_view utf8);
 
     [[nodiscard]] bool Started() const { return _started; }

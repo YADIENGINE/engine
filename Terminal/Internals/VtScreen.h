@@ -22,6 +22,8 @@ public:
     void SendKey(TerminalKey key, TerminalModifiers modifiers);
     void SendCharacter(char32_t character, TerminalModifiers modifiers);
     void SendFunctionKey(int number, TerminalModifiers modifiers); // F1..F12
+    // Positive steps scroll up. False leaves the wheel to local scrollback (including Shift override).
+    bool SendWheel(int steps, TerminalPosition position, TerminalModifiers modifiers);
     void Paste(std::string_view utf8);
     [[nodiscard]] std::string TakeInput();
     // Whether the program rang the bell (BEL) since the last call.
@@ -63,6 +65,7 @@ private:
     int _rows = 0;
     int _columns = 0;
     bool _alternateScreen = false;
+    bool _mouseReporting = false;
     bool _resizing = false;
     bool _bell = false;
 

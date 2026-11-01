@@ -128,6 +128,13 @@ void TerminalSession::SendFunctionKey(int number, TerminalModifiers modifiers) {
     Flush();
 }
 
+bool TerminalSession::SendWheel(int steps, TerminalPosition position, TerminalModifiers modifiers) {
+    if (!Running() || !_screen->SendWheel(steps, position, modifiers)) return false;
+    // Browsing a conversation must not dismiss the agent's waiting-for-input indicator.
+    Flush();
+    return true;
+}
+
 void TerminalSession::Paste(std::string_view utf8) {
     if (!Running() || utf8.empty()) return;
     _screen->Paste(utf8);

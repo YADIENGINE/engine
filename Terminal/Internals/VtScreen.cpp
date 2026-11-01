@@ -113,6 +113,7 @@ struct VtScreen::Callbacks {
         switch (property) {
         case VTERM_PROP_CURSORVISIBLE: self._cursor.visible = value->boolean != 0; return 1;
         case VTERM_PROP_ALTSCREEN    : self._alternateScreen = value->boolean != 0; return 1;
+        case VTERM_PROP_MOUSE       : self._mouseReporting = value->number != VTERM_PROP_MOUSE_NONE; return 1;
         case VTERM_PROP_CURSORSHAPE:
             self._cursor.shape = value->number == VTERM_PROP_CURSORSHAPE_UNDERLINE  ? TerminalCursorShape::Underline
                                  : value->number == VTERM_PROP_CURSORSHAPE_BAR_LEFT ? TerminalCursorShape::Bar
@@ -170,6 +171,7 @@ void VtScreen::Reset() {
     _pushedRows = 0;
     _continuations.assign(static_cast<std::size_t>(_rows), false);
     _alternateScreen = false;
+    _mouseReporting = false;
     vterm_screen_reset(_screen, 1);
     auto* state = vterm_obtain_state(_vterm.get());
     for (int index = 0; index < static_cast<int>(_palette.ansi.size()); ++index) {
@@ -233,6 +235,23 @@ void VtScreen::SendCharacter(char32_t character, TerminalModifiers modifiers) {
 void VtScreen::SendFunctionKey(int number, TerminalModifiers modifiers) {
     if (number >= 1 && number <= 12)
         vterm_keyboard_key(_vterm.get(), static_cast<VTermKey>(VTERM_KEY_FUNCTION(number)), ToVterm(modifiers));
+}
+
+bool VtScreen::SendWheel(int steps, TerminalPosition position, TerminalModifiers modifiers) {
+    if (steps == 0 || modifiers.shift || (!_mouseReporting && !_alternateScreen)) return false;
+    const bool up = steps > 0;
+    const auto mod = ToVterm(modifiers);
+    if (_mouseReporting)
+        vterm_mouse_move(_vterm.get(), std::clamp(position.row, 0, _rows - 1),
+                         std::clamp(position.column, 0, _columns - 1), mod);
+    // Full-screen programs without mouse reporting use the conventional alternate-scroll arrow fallback.
+    for (; steps != 0; steps += up ? -1 : 1) {
+        if (_mouseReporting)
+            vterm_mouse_button(_vterm.get(), up ? 4 : 5, true, mod);
+        else
+            vterm_keyboard_key(_vterm.get(), up ? VTERM_KEY_UP : VTERM_KEY_DOWN, mod);
+    }
+    return true;
 }
 
 void VtScreen::Paste(std::string_view utf8) {
