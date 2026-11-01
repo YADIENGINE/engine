@@ -31,4 +31,4 @@ void DrawRecipeIcons(Painter& paint, Float2 center, float size, Color4 color) {
 
 Pitfalls: Icon size is half its width. Scale all custom offsets and stroke widths with size; name shared icons by shape rather than gameplay meaning.
 
-Concept: [guide](../../Docs/Graphics/Painter.md#helpers-and-theme).
+Concept: `Docs/Graphics/Painter.md#helpers-and-theme`.

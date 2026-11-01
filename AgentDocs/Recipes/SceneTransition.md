@@ -2,7 +2,7 @@ Set up a game factory and queue a scene change behind a fade.
 
 APIs: Core/Runtime/Game.h, Core/Runtime/EntryPoint.h, Core/Fx/TransitionClock.h; scene: AgentDocs/Recipes/Code/SceneTransition.h.
 
-Use [SceneObjects](SceneObjects.md) for RecipeScene; compile this factory once in the game target created by engine_add_game.
+Use `Recipes/SceneObjects.md` for RecipeScene; compile this factory once in the game target created by engine_add_game.
 
 <!-- recipe:SceneGame-header -->
 ```cpp
@@ -77,4 +77,4 @@ std::unique_ptr<Game> CreateGame() {
 
 Pitfalls: Game::Update receives real time; the runtime applies TimeScale to game-domain scenes. TransitionClock::Update returns true on crossing cover. SetScene queues a change; CancelInput drains held input.
 
-Concept: [guide](../../Docs/Runtime.md#input-and-time-selection).
+Concept: `Docs/Runtime.md#input-and-time-selection`.

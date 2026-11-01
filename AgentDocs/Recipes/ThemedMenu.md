@@ -67,4 +67,4 @@ void RecipeMenu::Draw(Painter& paint) const {
 
 Pitfalls: InputNavigation borrows its snapshot; never store it. Forward only normal scene input; cancelled snapshots are cancellation barriers.
 
-Concept: [guide](../../Docs/Input.md#menu-selection-and-viewport).
+Concept: `Docs/Input.md#menu-selection-and-viewport`.

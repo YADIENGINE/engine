@@ -17,4 +17,4 @@ float RecipeRadius() { return Tuning<CharacterTuning>().radius; }
 
 Pitfalls: Use a reference to Tuning<T>() when reading multiple fields. Release uses compiled values; adding/removing fields requires a build. Each target needs unique tuning filenames.
 
-Concept: [guide](../../Docs/Tuning.md#setup).
+Concept: `Docs/Tuning.md#setup`.

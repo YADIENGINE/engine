@@ -63,4 +63,4 @@ void RecipeCharacterView::Draw(Painter& paint) const {
 
 Pitfalls: Core/Graphics/Anim/SpringPoint.h is header-only; Follow clamps long frames. Do not retain Painter or a scope between calls.
 
-Concept: [guide](../../Docs/Graphics/Painter.md#shapes).
+Concept: `Docs/Graphics/Painter.md#shapes`.

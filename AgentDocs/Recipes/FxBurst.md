@@ -38,4 +38,4 @@ void DrawRecipeFx(Painter& paint, const FxStage& fx, const FloatRect& viewArea) 
 
 Pitfalls: Pass Game::Effects() to SetQuality. Clip before applying the rotated camera. Overlay drawing stays outside the camera; Clear on scene/run reset.
 
-Concept: [guide](../../Docs/Graphics/Effects.md#effect-stage-and-particle-recipes).
+Concept: `Docs/Graphics/Effects.md#effect-stage-and-particle-recipes`.

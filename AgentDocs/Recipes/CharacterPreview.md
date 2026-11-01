@@ -48,4 +48,4 @@ PreviewDefinition RecipeCharacterDefinition() {
 
 Pitfalls: The worker links the production View library and excludes the game factory. Do not redraw a separate preview copy; paint.Time() follows editor Pause.
 
-Concept: [guide](../../Docs/Editor/GettingStarted.md#cmake-target).
+Concept: `Docs/Editor/GettingStarted.md#cmake-target`.

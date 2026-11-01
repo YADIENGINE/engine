@@ -53,4 +53,4 @@ void RecipeTextView::Draw(Painter& paint) const {
 
 Pitfalls: TextBlock borrows its font identity: keep FontFace alive. Block layout wins over the size/wrapping in draw style. Text position is the top of the first line.
 
-Concept: [guide](../../Docs/Graphics/Text.md#drawing-and-layout).
+Concept: `Docs/Graphics/Text.md#drawing-and-layout`.

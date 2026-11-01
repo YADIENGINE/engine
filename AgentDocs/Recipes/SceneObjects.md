@@ -2,7 +2,7 @@ Register an owned GameObject in a scene with safe shutdown.
 
 APIs: Core/Scene/Scene.h, Core/GameObjects/GameObject.h; production View: AgentDocs/Recipes/Code/AnimatedCharacter.h.
 
-Use this scene with [SceneTransition](SceneTransition.md).
+Use this scene with `Recipes/SceneTransition.md`.
 
 <!-- recipe:SceneTransition-header -->
 ```cpp
@@ -61,4 +61,4 @@ void RecipeCharacterObject::Draw(Painter& paint) const { _view.Draw(paint); }
 
 Pitfalls: Call ShutdownNoThrow in the concrete scene destructor while members and hooks are alive. Start is once per object; Enter is once per scene visit.
 
-Concept: [guide](../../Docs/Runtime.md#lifecycle).
+Concept: `Docs/Runtime.md#lifecycle`.

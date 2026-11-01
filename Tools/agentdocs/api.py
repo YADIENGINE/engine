@@ -241,7 +241,7 @@ def generate(root: Path) -> tuple[dict[str, str], list[Header]]:
     for area, entries in sorted(areas.items()):
         chunks: list[list[str]] = [[]]
         for header in entries:
-            lines = [f'## [{header.path}](../../{header.path})', '']
+            lines = [f'## `{header.path}`', '']
             if header.summary:
                 lines += [header.summary, '']
             for declaration in header.declarations:

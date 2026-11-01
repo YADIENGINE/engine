@@ -174,6 +174,10 @@ class FreshnessTests(unittest.TestCase):
             self.write(path, 'struct Fixture {};\n')
         paths = [p.relative_to(self.root).as_posix() for p in public_headers(self.root)]
         self.assertEqual(paths, ['Core/Example.h', 'Editor/Api/Visible.h'])
+        pages = generate(self.root)[0]
+        self.assertIn('## `Core/Example.h`\n', pages['Example.h.md'])
+        self.assertIn('## `Editor/Api/Visible.h`\n', pages['Editor.md'])
+        self.assertTrue(all('](../../' not in text for text in pages.values()))
         self.assertEqual(generate(self.root)[0], generate(self.root)[0])
         self.assertTrue(all('\r' not in text for text in generate(self.root)[0].values()))
 

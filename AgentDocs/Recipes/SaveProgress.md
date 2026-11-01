@@ -31,4 +31,4 @@ std::int64_t SaveRecipeProgress(const std::filesystem::path& directory, std::int
 
 Pitfalls: Construction does not load/save Persistence. Handle SaveError at your application boundary. Game option keys cannot use reserved engine namespaces; settings are integers.
 
-Concept: [guide](../../Docs/OptionsAndSaves.md#saves).
+Concept: `Docs/OptionsAndSaves.md#saves`.

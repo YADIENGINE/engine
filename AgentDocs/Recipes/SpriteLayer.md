@@ -41,4 +41,4 @@ void DrawRecipeLayer(Painter& paint, Surface& background, const FloatRect& desti
 
 Pitfalls: Stale detects resolution/content loss, not changes in your model: invalidate authored changes with Surface::Resize or redraw explicitly. End Target before Image; destroy surfaces before the renderer.
 
-Concept: [guide](../../Docs/Graphics/Painter.md#images-and-surfaces).
+Concept: `Docs/Graphics/Painter.md#images-and-surfaces`.
