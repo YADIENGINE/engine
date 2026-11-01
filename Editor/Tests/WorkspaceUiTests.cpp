@@ -3,9 +3,139 @@
 #include <imgui_internal.h>
 #include <memory>
 #include <limits>
+#include "Editor/Ui/Panels/Console/ConsolePanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
 #include "ToolUi/ToolTheme.h"
+
+TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {1000, 700};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    ConsolePanel panel;
+    ImGuiWindow* list = nullptr;
+    ImGuiWindow* terminal = nullptr;
+    ImGuiWindow* rows = nullptr;
+    float rowHeight = 0;
+    float rowStride = 0;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({20, 20});
+        ImGui::SetNextWindowSize({900, 500});
+        ImGui::Begin("Console");
+        rowHeight = ImGui::GetFrameHeight();
+        rowStride = rowHeight + ImGui::GetStyle().ItemSpacing.y;
+        const auto request = panel.Draw();
+        auto* console = ImGui::GetCurrentWindow();
+        for (auto* child : console->DC.ChildWindows) {
+            if (child->ChildId == console->GetID("console-session-list")) list = child;
+            if (child->ChildId == console->GetID("console-terminal")) terminal = child;
+        }
+        if (list)
+            for (auto* child : list->DC.ChildWindows)
+                if (child->ChildId == list->GetID("sessions")) rows = child;
+        ImGui::End();
+        ImGui::Render();
+        return request;
+    };
+    const auto click = [&](ImVec2 point, int button = ImGuiMouseButton_Left) {
+        io.AddMousePosEvent(point.x, point.y);
+        (void)frame();
+        io.AddMouseButtonEvent(button, true);
+        (void)frame();
+        io.AddMouseButtonEvent(button, false);
+        return frame();
+    };
+    (void)frame();
+    (void)frame();
+    REQUIRE(panel.Sessions().size() == 1); // First draw still opens a shell.
+    REQUIRE(list);
+    REQUIRE(terminal);
+    REQUIRE(rows);
+    CHECK(terminal->Pos.x + terminal->Size.x <= list->Pos.x);
+    CHECK(terminal->Size.x > list->Size.x);
+    panel.OpenShell();
+    (void)frame();
+    REQUIRE(panel.Selected() == 1);
+    (void)click({rows->WorkRect.Min.x + 30, rows->WorkRect.Min.y + rowHeight * 0.5f});
+    CHECK(panel.Selected() == 0);
+    CHECK(panel.Sessions()[0].selected);
+
+    const float previousWidth = list->Size.x;
+    const ImVec2 splitter{(terminal->Pos.x + terminal->Size.x + list->Pos.x) * 0.5f, list->Pos.y + 100};
+    io.AddMousePosEvent(splitter.x, splitter.y);
+    (void)frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    (void)frame();
+    io.AddMousePosEvent(splitter.x - 40, splitter.y);
+    (void)frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    (void)frame();
+    CHECK(list->Size.x > previousWidth + 30);
+    const float resizedWidth = list->Size.x;
+    (void)frame();
+    CHECK(list->Size.x == resizedWidth);
+
+    const std::vector<std::optional<AgentKind>> kinds{std::nullopt, AgentKind::ClaudeCode, AgentKind::Codex,
+                                                      AgentKind::Custom};
+    for (std::size_t index = 0; index < kinds.size(); ++index) {
+        CAPTURE(index);
+        (void)click({list->WorkRect.Min.x + 40, list->WorkRect.Min.y + rowHeight * 0.5f});
+        (void)frame(); // Let the popup settle at its final size and position.
+        REQUIRE_FALSE(context->OpenPopupStack.empty());
+        const auto* popup = context->OpenPopupStack.back().Window;
+        REQUIRE(popup);
+        const float stride = ImGui::GetTextLineHeight() + ImGui::GetStyle().ItemSpacing.y;
+        const auto request = click(
+            {popup->WorkRect.Min.x + 40, popup->WorkRect.Min.y + stride * static_cast<float>(index) + stride * 0.5f});
+        REQUIRE(request);
+        CHECK(request->agent == kinds[index]);
+        CHECK(panel.Sessions().size() == 2); // Workspace, not Draw, starts the requested program.
+        (void)frame();
+    }
+    // Closing another row leaves the selected session selected.
+    (void)click({rows->WorkRect.Max.x - rowHeight * 0.5f, rows->WorkRect.Min.y + rowStride + rowHeight * 0.5f});
+    CHECK(panel.Sessions().size() == 1);
+    CHECK(panel.Selected() == 0);
+
+    // A shell labelled as an agent exercises confirmation without requiring an installed agent CLI.
+    panel.AddAgent(AgentKind::Codex, {});
+    (void)frame();
+    REQUIRE(panel.Sessions()[1].state != SessionState::Exited);
+    (void)click({rows->WorkRect.Min.x + 30, rows->WorkRect.Min.y + rowStride + rowHeight * 0.5f},
+                ImGuiMouseButton_Right);
+    (void)frame();
+    REQUIRE_FALSE(context->OpenPopupStack.empty());
+    const auto* closeMenu = context->OpenPopupStack.back().Window;
+    REQUIRE(closeMenu);
+    (void)click({closeMenu->WorkRect.Min.x + 30, closeMenu->WorkRect.Min.y + 5});
+    (void)frame();
+    REQUIRE(ImGui::GetTopMostPopupModal());
+    CHECK_FALSE(panel.Focused());
+    CHECK(panel.Sessions().size() == 2);
+    io.AddKeyEvent(ImGuiKey_Escape, true);
+    (void)frame();
+    io.AddKeyEvent(ImGuiKey_Escape, false);
+    (void)frame();
+    CHECK_FALSE(ImGui::GetTopMostPopupModal());
+    CHECK(panel.Sessions().size() == 2);
+    (void)click({rows->WorkRect.Max.x - rowHeight * 0.5f, rows->WorkRect.Min.y + rowStride + rowHeight * 0.5f});
+    (void)frame();
+    const auto* confirmation = ImGui::GetTopMostPopupModal();
+    REQUIRE(confirmation);
+    (void)click({confirmation->WorkRect.Min.x + 40, confirmation->WorkRect.Max.y - rowHeight * 0.5f});
+    CHECK(panel.Sessions().size() == 1);
+}
 
 TEST_CASE("Editor.Workspace.AgentLayoutKeepsViewportLargerAndConsoleInFront", "[engine-editor]") {
     for (const auto size : {ImVec2{1440, 900}, ImVec2{2560, 1440}}) {

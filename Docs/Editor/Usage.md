@@ -134,27 +134,31 @@ editor context; it never calls a model itself. The agent drives the editor back 
 ([Using an AI agent](../ProjectSetup.md#using-an-ai-agent)).
 
 - **Console sessions:** the Console holds any number of sessions: shells and agent CLIs, named *Shell*, *Claude*,
-  *Codex* (*Claude 2* for a second one). *Add terminal* offers Shell, Claude, Codex and a custom agent; choosing an
-  agent makes it the one agent requests start next. Each session keeps running while the panel is hidden; closing one
-  ends its program (a running agent asks first). Agent requests (Ctrl+Shift+A, Send scene, Marks, ...) go to the
-  selected session when it runs an agent, else to the agent session selected last; with none, the chosen agent starts.
+  *Codex* (*Claude 2* for a second one). A narrow list on the right of the terminal shows each session with a terminal
+  or robot icon; drag its left edge to resize it. Click a row to select it; the selected row is highlighted. Hover
+  shows its title, state and current activity. A close button appears on hover; right-click also offers *Close*.
+  The **+ Add terminal** button at the top offers Shell, Claude, Codex and *Custom agent*, with the named CLIs'
+  commands alongside them. Choosing an agent makes it the one agent requests start next. Each session keeps running
+  while the panel is hidden; closing one ends its program (a running agent asks first). Agent requests
+  (Ctrl+Shift+A, Send scene, Marks, ...) go to the selected session when it runs an agent, else to the agent session
+  selected last; with none, the chosen agent starts. The first draw opens a shell when there is none.
 - **Session state** (each session's icon): *working* while its program writes output for a request, *waiting for you*
   when it rang the terminal bell after your last input (agent CLIs ring it when they ask something), *done* when the
   output went quiet after a request, *idle* before anyone typed into it, *exited* when the program ended. An agent's
   own `python Engine ctl note TEXT --state working|waiting|idle` from that session overrides the guess until you type
   again; its text, else the terminal title the CLI sets, is what the session shows on hover. Each session's program
-  gets `ENGINE_EDITOR_SESSION`, which `ctl note` sends along.
-- **Agent menu** groups Session, Send context and Settings (session and context commands are also in the command
-  palette, under "Agent:"):
-  - *Open <agent>* starts the chosen CLI in the project folder, or selects its session. The session's shell stays open
-    after the CLI exits. Ctrl+Shift+A also opens the chosen agent, including from Console.
-  - On first use, a setup modal lets you choose Claude Code, Codex or Custom, checks the executable on PATH (or at its
-    full path), and offers an *Install...* link for the named CLIs. Custom shows a command field with an argument hint.
-    *Check again* rechecks installation; if PATH changed, restart the editor or use a full path. *Start* accepts the
-    choice and opens the session; *Cancel* leaves preferences unchanged. Setup also opens if the command is missing,
-    with a message in Output. Context sent during setup waits for Start; Cancel discards that pending context.
-    *Copy hint* copies: "Let the agent know the engine: add @Engine/AgentDocs/Agent.md to your CLAUDE.md (or AGENTS.md)".
-  - *New shell* opens a plain shell session.
+  gets `ENGINE_EDITOR_SESSION`, which `ctl note` sends along. Working shows a clock; waiting shows a pulsing question
+  mark in the warning color; done shows a green check. Idle has no state icon, and exited rows are dimmed.
+- **Opening an agent:** Ctrl+Shift+A opens the chosen CLI in the project folder, or selects its session, including
+  from Console. The session's shell stays open after the CLI exits. On first use, a setup modal lets you choose
+  Claude Code, Codex or Custom, checks the executable on PATH (or at its full path), and offers an *Install...* link
+  for the named CLIs. Custom shows a command field with an argument hint. *Check again* rechecks installation; if PATH
+  changed, restart the editor or use a full path. *Start* accepts the choice and opens the session; *Cancel* leaves
+  preferences unchanged. Setup also opens if the command is missing, with a message in Output. Context sent during
+  setup waits for Start; Cancel discards that pending context. *Copy hint* copies: "Let the agent know the engine:
+  add @Engine/AgentDocs/Agent.md to your CLAUDE.md (or AGENTS.md)".
+- **Agent menu** groups Send context and Settings. Open agent and New shell are available through the Console's add
+  button and remain in the command palette under "Agent:", alongside the context commands:
   - *Send scene* pastes the open scene's id, playback time, changed parameters and a capture of the frame
     (`editor-captures/scene-*.png`) into the agent session, without Enter: type your request after it.
   - *Send build failure* pastes the last failed Build & Refresh with its error lines; *Ask agent to fix build* also
@@ -169,11 +173,10 @@ editor context; it never calls a model itself. The agent drives the editor back 
 - **Inspector:** right-click a parameter's label or value → *Send to Agent* pastes its current value, range or choices
   and description, without Enter. This is also available for disabled parameters.
 - **Marks** (toolbar Mark, Alt+drag) go to the agent session when there is one.
-- **Status bar:** with an agent session, "Agent: ..." shows *waiting for you* (bell), the agent's own report from
-  `python Engine ctl note TEXT --state working|waiting|idle`, *running* or *exited*. Working uses the accent color;
-  waiting pulses in the warning color with the same rhythm as unread Output. Idle/running is neutral and exited is
-  dimmed. The tooltip includes the agent's note and a click hint; clicking shows the session. The *Agent control off*
-  badge remains a warning.
+- **Status bar:** with an agent session, its title and state use the same clock, question mark and check icons as the
+  Console list. Working uses the accent color; waiting pulses in the warning color with the same rhythm as unread
+  Output; done uses the success color. Idle is neutral and exited is dimmed. The tooltip includes the agent's note
+  and a click hint; clicking shows the session. The *Agent control off* badge remains a warning.
 - **Agent layout** (Window → Layouts): the Viewport takes 60% of the width beside a tall 40% column shared by Console
   and Inspector, with Console selected in front. The Viewport remains larger at 1440×900 and 2560×1440.
 

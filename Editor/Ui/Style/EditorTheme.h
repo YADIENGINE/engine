@@ -1,6 +1,7 @@
 #pragma once
 #include <imgui.h>
 #include "Editor/Application/EditorPresentation.h"
+#include "Editor/Internals/Agent/SessionActivity.h"
 
 // Editor-only presentation on top of the shared tool theme (ToolUi/ToolTheme.h).
 struct EditorToolbarMetrics {
@@ -17,5 +18,8 @@ enum class EditorGlyph { Play, Pause, Stop, Reset, Build, Cancel, Star, Expand, 
 [[nodiscard]] ImVec4 EditorLevelColor(EditorLogLevel level);
 [[nodiscard]] const char* EditorPhaseLabel(EditorPhase phase);
 [[nodiscard]] const char* EditorGlyphText(EditorGlyph glyph);
+// Console rows and the status bar use the same session indicators; Idle and Exited have no glyph.
+[[nodiscard]] const char* EditorSessionStateIcon(SessionState state);
+[[nodiscard]] ImVec4 EditorSessionStateColor(SessionState state);
 // Shared notification rhythm for unread Output and agent attention (0.12 .. 0.48).
 [[nodiscard]] float EditorAttentionPulse();

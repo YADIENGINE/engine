@@ -11,6 +11,31 @@ float EditorAttentionPulse() {
     return 0.12f + (0.48f - 0.12f) * pulse;
 }
 
+const char* EditorSessionStateIcon(SessionState state) {
+    switch (state) {
+    case SessionState::Working: return ICON_FA_CLOCK;
+    case SessionState::Waiting: return ICON_FA_CIRCLE_QUESTION;
+    case SessionState::Done   : return ICON_FA_CHECK;
+    case SessionState::Idle   :
+    case SessionState::Exited : return "";
+    }
+    return "";
+}
+ImVec4 EditorSessionStateColor(SessionState state) {
+    switch (state) {
+    case SessionState::Working: return ToolToneColor(ToolTone::Accent);
+    case SessionState::Waiting: {
+        auto color = ToolToneColor(ToolTone::Warning);
+        color.w *= 0.52f + EditorAttentionPulse();
+        return color;
+    }
+    case SessionState::Done  : return ToolToneColor(ToolTone::Success);
+    case SessionState::Exited: return ToolPalette::Disabled;
+    case SessionState::Idle  : return ToolPalette::Secondary;
+    }
+    return ToolPalette::Secondary;
+}
+
 ImVec4 EditorPhaseColor(EditorPhase phase) {
     switch (phase) {
     case EditorPhase::Ready         : return ToolToneColor(ToolTone::Success);

@@ -1,4 +1,5 @@
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
+#include <extras/IconsFontAwesome6.h>
 #include <algorithm>
 #include <format>
 #include "Editor/Ui/Style/EditorTheme.h"
@@ -86,14 +87,12 @@ void ConsolePanel::SendTo(std::size_t index, const std::string& text, bool submi
 void ConsolePanel::Select(std::size_t index) {
     if (index >= _sessions.size()) return;
     _selected = index;
-    _selectTab = true;
     if (_sessions[index]->agent) _lastAgent = _sessions[index]->id;
 }
 void ConsolePanel::Close(std::size_t index) {
     if (index >= _sessions.size()) return;
     _sessions.erase(_sessions.begin() + static_cast<std::ptrdiff_t>(index));
     if (_selected > index || _selected >= _sessions.size()) _selected = _sessions.empty() ? 0 : _selected - 1;
-    _selectTab = true;
 }
 void ConsolePanel::Update() {
     const auto now = std::chrono::steady_clock::now();
@@ -128,56 +127,118 @@ SessionSignals ConsolePanel::Signals(const Session& session) const {
     }
     return signals;
 }
+bool ConsolePanel::DrawSessionRow(std::size_t index, const ConsoleSessionInfo& info) {
+    ImGui::PushID(std::to_string(_sessions[index]->id).c_str());
+    const auto start = ImGui::GetCursorScreenPos();
+    const float width = ImGui::GetContentRegionAvail().x;
+    const float height = ImGui::GetFrameHeight();
+    const float gap = ToolMetrics::Space * ToolUiScale();
+    const float iconWidth = ImGui::GetFontSize();
+    const ImVec2 end{start.x + width, start.y + height};
+    const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+                         ImGui::IsMouseHoveringRect(start, end);
+    auto* draw = ImGui::GetWindowDrawList();
+    if (info.selected || hovered)
+        draw->AddRectFilled(start, end, ImGui::GetColorU32(info.selected ? ToolPalette::Selected : ToolPalette::Hover),
+                            ToolMetrics::Radius * ToolUiScale());
+    // The close button owns its own hit area, so closing a row does not also select it.
+    ImGui::PushStyleColor(ImGuiCol_Header, {0, 0, 0, 0});
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, {0, 0, 0, 0});
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, {0, 0, 0, 0});
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0, ImGui::GetStyle().ItemSpacing.y});
+    if (ImGui::Selectable("##session", info.selected, 0, {std::max(1.0f, width - height), height})) Select(index);
+    ImGui::PopStyleColor(3);
+    const auto detail = info.title + "\n" + SessionStateName(info.state) +
+                        (info.activity.empty() ? std::string() : "\n" + info.activity);
+    ToolTooltip(detail.c_str());
+    const auto textColor =
+        ImGui::GetColorU32(info.state == SessionState::Exited ? ToolPalette::Disabled : ToolPalette::Text);
+    const float textY = start.y + (height - ImGui::GetTextLineHeight()) * 0.5f;
+    draw->AddText({start.x + gap, textY}, textColor, info.agent ? ICON_FA_ROBOT : ICON_FA_TERMINAL);
+    const float stateX = end.x - height - iconWidth - gap;
+    const ImVec4 titleClip{start.x + iconWidth + gap * 2, start.y, stateX - gap, end.y};
+    draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), {titleClip.x, textY}, textColor, info.title.c_str(), nullptr,
+                  0, &titleClip);
+    draw->AddText({stateX, textY}, ImGui::GetColorU32(EditorSessionStateColor(info.state)),
+                  EditorSessionStateIcon(info.state));
+    ImGui::SameLine(0, 0);
+    bool close = false;
+    if (hovered || ImGui::IsItemFocused())
+        close = ToolIconButton("close", ICON_FA_XMARK, "Close session");
+    else
+        ImGui::Dummy({height, height});
+    ImGui::PopStyleVar();
+    if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ImGui::OpenPopup("session-actions");
+    if (ImGui::BeginPopup("session-actions")) {
+        close = ImGui::MenuItem("Close") || close;
+        ImGui::EndPopup();
+    }
+    ImGui::PopID();
+    return close;
+}
 std::optional<ConsoleNewSession> ConsolePanel::Draw() {
     if (_sessions.empty()) OpenShell();
+    _focused = false;
     std::optional<std::size_t> closing;
     std::optional<ConsoleNewSession> request;
-    bool showNew = false;
     bool showClose = false;
     const auto sessions = Sessions();
-    // Functional minimum; the session list's design lives in the UI layer (Docs/Editor/Usage.md → Agent workspace).
-    if (ImGui::BeginTabBar("console-sessions", ImGuiTabBarFlags_FittingPolicyScroll)) {
-        for (std::size_t index = 0; index < _sessions.size(); ++index) {
-            const auto& session = *_sessions[index];
-            const auto& info = sessions[index];
-            const bool running = info.state != SessionState::Exited;
-            const auto label =
-                std::format("{} [{}]###console-session-{}", info.title, SessionStateName(info.state), session.id);
-            bool open = true;
-            const auto flags = ImGuiTabItemFlags_NoTooltip |
-                               (session.agent && running ? ImGuiTabItemFlags_NoAssumedClosure : 0) |
-                               (_selectTab && index == _selected ? ImGuiTabItemFlags_SetSelected : 0);
-            ImGui::PushStyleColor(ImGuiCol_Text, running ? ToolPalette::Text : ToolPalette::Disabled);
-            if (ImGui::BeginTabItem(label.c_str(), &open, flags)) {
-                if (!_selectTab && _selected != index) Select(index);
-                ImGui::EndTabItem();
+    const auto origin = ImGui::GetCursorPos();
+    const auto originScreen = ImGui::GetCursorScreenPos();
+    const auto available = ImGui::GetContentRegionAvail();
+    const float scale = ToolUiScale();
+    const float fontSize = ImGui::GetFontSize();
+    const float splitterWidth = ToolMetrics::Space * scale;
+    const float maxWidth = std::max(1.0f, available.x - splitterWidth - fontSize * 6);
+    const float minWidth = std::min(fontSize * 9, maxWidth);
+    if (_sessionListWidth <= 0) _sessionListWidth = fontSize * 13 / scale;
+    float listWidth = std::clamp(_sessionListWidth * scale, minWidth, maxWidth);
+    float terminalWidth = std::max(1.0f, available.x - listWidth - splitterWidth);
+    ImGui::SetCursorPos({origin.x + terminalWidth, origin.y});
+    ImGui::InvisibleButton("console-session-splitter", {splitterWidth, std::max(1.0f, available.y)});
+    const bool resizing = ImGui::IsItemActive();
+    const bool resizeHovered = ImGui::IsItemHovered();
+    if (resizing || resizeHovered) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+    if (resizing) {
+        listWidth = std::clamp(listWidth - ImGui::GetIO().MouseDelta.x, minWidth, maxWidth);
+        _sessionListWidth = listWidth / scale;
+        terminalWidth = std::max(1.0f, available.x - listWidth - splitterWidth);
+    }
+    const float splitterX = originScreen.x + terminalWidth + splitterWidth * 0.5f;
+    ImGui::GetWindowDrawList()->AddLine(
+        {splitterX, originScreen.y}, {splitterX, originScreen.y + available.y},
+        ImGui::GetColorU32(resizing || resizeHovered ? ToolPalette::Accent : ToolPalette::Separator));
+    ImGui::SetCursorPos({origin.x + terminalWidth + splitterWidth, origin.y});
+    if (BeginToolPanel("console-session-list", {listWidth, available.y}, ToolSurface::Utility, 0,
+                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse, ToolMetrics::Space)) {
+        if (ToolButton(ICON_FA_PLUS " Add terminal", {ImGui::GetContentRegionAvail().x, 0}))
+            ImGui::OpenPopup("Add terminal");
+        if (ImGui::BeginPopup("Add terminal")) {
+            if (ImGui::MenuItem(ICON_FA_TERMINAL "  Shell")) request = ConsoleNewSession{};
+            for (const auto& kind : AgentKinds) {
+                const auto label = std::string(ICON_FA_ROBOT "  ") +
+                                   (kind.id == AgentKind::Custom ? "Custom agent" : kind.sessionName);
+                if (ImGui::MenuItem(label.c_str(), kind.command)) request = ConsoleNewSession{kind.id};
             }
-            ImGui::PopStyleColor();
-            const auto detail =
-                info.title + ": " + (info.activity.empty() ? SessionStateName(info.state) : info.activity);
-            ToolTooltip(detail.c_str());
-            if (!open) {
-                if (session.agent && running) {
-                    _confirmClose = index;
-                    showClose = true;
-                } else {
-                    closing = index;
+            ImGui::EndPopup();
+        }
+        ImGui::Separator();
+        if (ImGui::BeginChild("sessions")) {
+            for (std::size_t index = 0; index < sessions.size(); ++index) {
+                if (DrawSessionRow(index, sessions[index])) {
+                    if (sessions[index].agent && sessions[index].state != SessionState::Exited) {
+                        _confirmClose = index;
+                        showClose = true;
+                    } else {
+                        closing = index;
+                    }
                 }
             }
         }
-        if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip)) showNew = true;
-        ToolTooltip("Add terminal");
-        ImGui::EndTabBar();
+        ImGui::EndChild();
     }
-    _selectTab = false;
-    if (showNew) ImGui::OpenPopup("Add terminal");
+    EndToolPanel();
     if (showClose) ImGui::OpenPopup("Close agent session?");
-    if (ImGui::BeginPopup("Add terminal")) {
-        if (ImGui::MenuItem("Shell")) request = ConsoleNewSession{};
-        for (const auto& kind : AgentKinds)
-            if (ImGui::MenuItem(kind.sessionName, kind.command)) request = ConsoleNewSession{kind.id};
-        ImGui::EndPopup();
-    }
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
     ImGui::SetNextWindowSize({380 * ToolUiScale(), 0}, ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal("Close agent session?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -197,10 +258,15 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
         ImGui::EndPopup();
     }
     if (closing) Close(*closing);
-    if (_sessions.empty()) return request;
-    auto& session = *_sessions[_selected];
-    session.view.Draw(session.terminal);
-    _focused = session.view.Focused();
+    ImGui::SetCursorPos(origin);
+    if (ImGui::BeginChild("console-terminal", {terminalWidth, available.y}, 0,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse) &&
+        !_sessions.empty()) {
+        auto& session = *_sessions[_selected];
+        session.view.Draw(session.terminal);
+        _focused = session.view.Focused();
+    }
+    ImGui::EndChild();
     return request;
 }
 bool ConsolePanel::Focused() const { return _focused; }

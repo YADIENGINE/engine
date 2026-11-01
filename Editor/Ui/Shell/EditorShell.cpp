@@ -55,11 +55,6 @@ bool BuildFailed(const EditorSnapshot& snapshot) {
 }
 void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorShellResult& result) {
     if (!ImGui::BeginMenu("Agent")) return;
-    ImGui::SeparatorText("Session");
-    const auto name = std::string("Open ") + AgentKindInfo(agent.kind).name;
-    if (ImGui::MenuItem(name.c_str(), "Ctrl+Shift+A")) result.agent = EditorAgentRequest::Open;
-    ToolTooltip("Start the chosen CLI, or show its existing Console session.");
-    if (ImGui::MenuItem("New shell")) result.agent = EditorAgentRequest::NewShell;
     ImGui::SeparatorText("Send context");
     if (ImGui::MenuItem("Send scene", nullptr, false, snapshot.ready)) result.agent = EditorAgentRequest::SendScene;
     ToolTooltip(snapshot.ready
@@ -195,12 +190,10 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
         ImGui::SameLine();
         if (agent.session) {
             const bool waiting = agent.state == SessionState::Waiting;
-            const bool working = agent.state == SessionState::Working;
-            const auto label = agent.title + ": " + SessionStateName(agent.state) + "###editor.agent-status";
-            const auto tone = agent.state == SessionState::Exited ? ToolPalette::Disabled
-                              : waiting                           ? ToolToneColor(ToolTone::Warning)
-                              : working                           ? ToolToneColor(ToolTone::Accent)
-                                                                  : ToolPalette::Secondary;
+            const auto* icon = EditorSessionStateIcon(agent.state);
+            const auto label = (icon[0] ? std::string(icon) + " " : std::string()) + agent.title + ": " +
+                               SessionStateName(agent.state) + "###editor.agent-status";
+            const auto tone = EditorSessionStateColor(agent.state);
             ImGui::PushStyleColor(ImGuiCol_Tab, TintSurface(ToolSurfaceColor(ToolSurface::Status), tone,
                                                             waiting ? EditorAttentionPulse() : 0.12f));
             ImGui::PushStyleColor(ImGuiCol_TextDisabled, tone);

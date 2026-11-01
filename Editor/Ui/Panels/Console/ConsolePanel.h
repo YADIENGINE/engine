@@ -89,11 +89,13 @@ private:
     void Start(Session& session, const std::string& commandLine);
     [[nodiscard]] std::string NextTitle(const std::string& base) const;
     [[nodiscard]] SessionSignals Signals(const Session& session) const;
+    // Returns a close request; the caller keeps running-agent confirmation outside the list's child window.
+    [[nodiscard]] bool DrawSessionRow(std::size_t index, const ConsoleSessionInfo& info);
     std::vector<std::unique_ptr<Session>> _sessions;
     std::size_t _selected = 0;
     std::uint64_t _nextId = 1;
     std::uint64_t _lastAgent = 0; // Id of the agent session selected last
-    bool _selectTab = false;      // The selection changed outside the session list
+    float _sessionListWidth = 0;  // Logical pixels; initialized from the font on first draw
     bool _focused = false;
     std::optional<std::size_t> _confirmClose;
     std::map<std::string, ConsoleNote> _notes;
