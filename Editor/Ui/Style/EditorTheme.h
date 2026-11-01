@@ -12,7 +12,7 @@ struct EditorToolbarMetrics {
     static constexpr float PaddingY = 8;
 };
 
-enum class EditorGlyph { Play, Pause, Stop, Reset, Build, Cancel, Star, Expand, Restore, More, Clear, Step };
+enum class EditorGlyph { Play, Pause, Stop, Reset, Build, Cancel, Star, Expand, Restore, More, Clear, Step, Mark };
 [[nodiscard]] ImVec4 EditorPhaseColor(EditorPhase phase);
 [[nodiscard]] ImVec4 EditorLevelColor(EditorLogLevel level);
 [[nodiscard]] const char* EditorPhaseLabel(EditorPhase phase);

@@ -12,6 +12,7 @@ import os
 import time
 from pathlib import Path
 
+from ..build_errors import summary
 from ..errors import EXIT_FAILED, EXIT_INFRA, EXIT_OK, ToolError
 from ..project import Project
 from .editor import editor_build_dir
@@ -72,15 +73,21 @@ def exit_code(result: str) -> int:
 
 
 def refresh(project: Project) -> int:
+    output: list[str] = []
     with connect(editor_pipe(project)) as stream:
         stream.write((json.dumps({"version": VERSION, "command": "refresh"}) + "\n").encode("utf-8"))
         for reply in replies(stream):
             match reply.get("type"):
                 case "log":
                     print(reply["text"], flush=True)
+                    output.append(reply["text"])
                 case "result":
+                    code = exit_code(reply["result"])
+                    if code != EXIT_OK:
+                        for line in summary(output, project.root):
+                            print(line, flush=True)
                     print(f"> Build & Refresh: {reply['result']}", flush=True)
-                    return exit_code(reply["result"])
+                    return code
                 case "error":
                     raise ToolError(reply["text"], EXIT_INFRA)
     raise ToolError("The editor closed the connection before reporting a result")

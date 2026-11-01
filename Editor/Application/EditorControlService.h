@@ -11,6 +11,7 @@
 #include "Editor/Application/EditorController.h"
 #include "Editor/Internals/Platform/Windows/EditorControlPipe.h"
 #include "Editor/Internals/Protocol/EditorControlProtocol.h"
+#include "Editor/Internals/Session/FrameCapture.h"
 
 // Serves the editor's control endpoint (EditorControlProtocol.h, Docs/Editor/Automation.md) for one session: announces
 // the pipe in the build directory and answers requests. `refresh` runs Build & Refresh, or joins the one already
@@ -19,12 +20,17 @@
 // applied every earlier command and drawn a frame after that, so a screenshot never shows a stale state.
 class EditorControlService {
 public:
-    using PngEncoder = std::function<std::vector<std::byte>(const PreviewPixels&)>;
+    using PngEncoder =
+        std::function<std::vector<std::byte>(const PreviewPixels&, const std::vector<FrameCaptureLabel>&)>;
     EditorControlService(const std::filesystem::path& buildDirectory, PngEncoder encodePng);
     ~EditorControlService();
     // The pipe, for tools started by the editor (the console's ENGINE_EDITOR_CONTROL).
     [[nodiscard]] const std::string& Pipe() const { return _pipe.Name(); }
     void Tick(EditorController& controller);
+    // Encodes and writes a capture: to `path` (absolute) or, when empty, a new `<prefix>-<time>.png` in the capture
+    // folder, which keeps the newest FrameCaptureKeep files. Returns the file; throws when it cannot be written.
+    std::filesystem::path WriteCapture(const PreviewPixels& image, const std::vector<FrameCaptureLabel>& labels,
+                                       const std::string& path, const std::string& prefix);
 
 private:
     struct Watch {
@@ -51,6 +57,10 @@ private:
     void AwaitWorker(EditorController& controller, std::chrono::steady_clock::duration timeout, Answer answer);
     void AwaitReady(const std::string& id);
     [[nodiscard]] nlohmann::json Screenshot(const nlohmann::json& arguments, EditorController& controller);
+    // Seeks to evenly spaced times one after another and answers with one labelled grid image.
+    void Frames(const nlohmann::json& arguments, EditorController& controller);
+    [[nodiscard]] static nlohmann::json Saved(const std::filesystem::path& file, const PreviewPixels& image,
+                                              const EditorController& controller);
     void Stream(EditorController& controller);
     void Poll(EditorController& controller);
     EditorControlPipe _pipe;

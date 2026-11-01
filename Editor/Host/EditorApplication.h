@@ -23,6 +23,8 @@ protected:
 
 private:
     void SavePreferences(bool force);
+    // Saves the marked region of the latest frame and pastes its context line into the Console.
+    void PasteMark(const FloatRect& region);
     // All GPU/UI resources are owned after the base Game has created its window.
     mutable EditorController _controller;
     std::optional<EditorControlService> _control; // Tools reach this editor through it (`python Engine refresh`)
@@ -41,6 +43,7 @@ private:
     double _saveAt = 0;
     bool _dirty = false;
     mutable bool _quit = false;
+    mutable std::optional<FloatRect> _mark; // Drawn this frame, handled in the next Update
     bool _stopped = false;
     std::optional<FrameExecutionSettings> _beforeBenchmark;
 };

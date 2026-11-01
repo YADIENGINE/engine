@@ -28,6 +28,8 @@ public:
     void OfferProjectList(bool offer) { _offerProjectList = offer; }
     // Konsolun kabuğu bu klasörde başlar (proje kökü).
     void SetConsoleDirectory(const std::filesystem::path& directory) { _console.SetDirectory(directory); }
+    // Shows the Console and pastes `text` into its program's input (no Enter), starting the shell if needed.
+    void PasteToConsole(const std::string& text, EditorPreferences& preferences);
     void SetConsoleEnvironment(std::vector<std::pair<std::string, std::string>> environment) {
         _console.SetEnvironment(std::move(environment));
     }
@@ -55,6 +57,7 @@ private:
     bool _pendingToggle = false;
     bool _focusCatalog = false;
     bool _focusViewport = true;
+    bool _marking = false;        // The toolbar's Mark toggle
     bool _consoleFocused = false; // önceki karede klavye konsoldaydı
     std::optional<EditorPanel> _focusBottom;
     std::uint64_t _failureAttempt = 0;

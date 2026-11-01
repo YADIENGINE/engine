@@ -21,6 +21,10 @@ ConsolePanel::ConsolePanel()
     , _view({ImGuiMod_Ctrl | ImGuiKey_J, ImGuiMod_Ctrl | ImGuiKey_GraveAccent,
              ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P}) {}
 
+void ConsolePanel::Paste(const std::string& text) {
+    if (!_session.Started()) _session.Start({.directory = _directory, .environment = _environment});
+    _session.Paste(text);
+}
 void ConsolePanel::Draw() {
     if (!_session.Started()) _session.Start({.directory = _directory, .environment = _environment});
     _view.Draw(_session);

@@ -625,8 +625,10 @@ brings the screen to the developer. Supersedes the separate-process plan of [Age
 - **Discovery:** the console's shell gets `ENGINE_EDITOR_CONTROL` (the pipe), so commands reach that editor even when
   several are open; otherwise the build directory's announcement file.
 - **Captures:** PNG under `<build>/editor-captures/`, newest 50 kept; optional scale and canvas-space crop.
-- **Later (not in this step):** "send to terminal" from the viewport, frame grids, scripted input scenarios, headless
-  rendering without an open editor, several clients at once.
+- **Phase B (2026-11-01):** `ctl frames` (labelled grid of evenly spaced times), viewport Mark (toolbar toggle or
+  Alt+drag; pauses, saves the region, pastes a context line into the Console without Enter), and an `Errors (N):`
+  summary after failed builds (Python, `Tools/build_errors.py`).
+- **Later:** scripted input scenarios, headless rendering without an open editor, several clients at once.
 
 Durum: kabul edildi (2026-11-01); uygulandı.
 

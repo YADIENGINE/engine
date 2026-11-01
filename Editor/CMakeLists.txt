@@ -25,6 +25,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/ProfilerSession.cpp
     Internals/Session/BenchmarkState.cpp
     Internals/Session/FrameCapture.cpp
+    Internals/Session/ViewportMark.cpp
     Internals/Viewport/PreviewViewport.cpp
     Internals/Viewport/PreviewInputRouter.cpp
     Internals/Diagnostics/EditorDiagnostics.cpp

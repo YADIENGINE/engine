@@ -44,7 +44,7 @@ void PlaybackSpeed(const EditorSnapshot& snapshot, const EditorUiActions& action
 }
 } // namespace
 
-void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
+void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool& marking) {
     const float scale = ToolUiScale();
     ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
@@ -73,8 +73,8 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     bool showPrimaryLabel = true;
     const auto rowWidth = [&] {
         const bool overflow = !showSpeed || !showReset || !showStep || !showBuild;
-        int controls = 2;
-        float width = (showPrimaryLabel ? primaryWidth : iconWidth) + iconWidth;
+        int controls = 3; // Primary, pause, mark
+        float width = (showPrimaryLabel ? primaryWidth : iconWidth) + iconWidth * 2;
         if (showStep) {
             width += iconWidth;
             ++controls;
@@ -105,6 +105,13 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     EditorCommandButton(primary, snapshot, actions, showPrimaryLabel);
     ImGui::SameLine();
     EditorCommandButton(EditorCommand::Pause, snapshot, actions);
+    ImGui::SameLine();
+    if (!snapshot.ready) marking = false;
+    ImGui::BeginDisabled(!snapshot.ready);
+    if (EditorIconButton("mark", EditorGlyph::Mark,
+                         "Mark a region of the preview and paste it into the Console (or Alt+drag)", marking))
+        marking = !marking;
+    ImGui::EndDisabled();
     if (showStep) {
         ImGui::SameLine();
         EditorCommandButton(EditorCommand::Step, snapshot, actions);

@@ -28,10 +28,13 @@ use the same Python. Project root: `--project` if supplied; otherwise the engine
 | `test` | `--filter RE`, `--label RE`, `--list`, `--clean` | Builds and runs headless tests; report `<tests.buildDirectory>/reports/<run-id>/results.json` |
 | `editor` | `--release`, `--build-only`, `--clean` | Builds the editor and project preview worker, opens the editor |
 | `refresh` | | Build & Refresh in the project's open editor (joins an existing refresh); streams output and exits with its result. The preview stays open during the build. Returns 2 if the editor is not open ([control gateway](Editor/Architecture.md#control-gateway)) |
-| `ctl` | `status`, `list`, `open ID`, `set ID=VALUE...`, `action ID`, `pause`, `play`, `step [N]`, `speed X`, `reset`, `seek S`, `screenshot [--out P] [--scale S] [--crop X Y W H]`, `inspect`, `logs [--since N] [--limit N] [--level L]` | Drives and observes the project's open editor; prints one JSON answer. Returns 1 when the editor refuses the request, 2 if no editor is open ([Editor automation](Editor/Automation.md)) |
+| `ctl` | `status`, `list`, `open ID`, `set ID=VALUE...`, `action ID`, `pause`, `play`, `step [N]`, `speed X`, `reset`, `seek S`, `screenshot [--out P] [--scale S] [--crop X Y W H]`, `frames --from A --to B [--count N] [--columns C]`, `inspect`, `logs [--since N] [--limit N] [--level L]` | Drives and observes the project's open editor; prints one JSON answer. Returns 1 when the editor refuses the request, 2 if no editor is open ([Editor automation](Editor/Automation.md)) |
 | `new` | `--name AD`, `--dry-run` | Sets up the engine's parent folder as a new project; asks for the name without `--name` |
 | `info` | | Engine and project information, JSON (below) |
 | `check` | `--fix` | Internals include boundary ([API boundaries](Contributing/ApiBoundaries.md)), tuning validity / canonical format ([Tuning](Tuning.md)), and engine AgentDocs API/snippet freshness; `--fix` formats valid tuning files and regenerates API pages / recipe snippets |
+
+Failed builds (`build`, `run`, `release`, `test`, `editor`, `refresh`) end their output with an `Errors (N):` summary of
+the distinct compiler, linker and CMake errors ([Editor automation](Editor/Automation.md#build-errors)).
 
 Settings are in `Project.json` ([ProjectSetup](ProjectSetup.md)).
 

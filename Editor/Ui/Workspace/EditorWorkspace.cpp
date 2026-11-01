@@ -89,6 +89,14 @@ void EditorWorkspace::ApplyLayout(EditorWorkspaceLayout layout, EditorPreference
     _ignoreLayoutChanges = 3;
     _viewport.ReleaseFocus();
 }
+void EditorWorkspace::PasteToConsole(const std::string& text, EditorPreferences& preferences) {
+    if (_maximized) SetMaximized(false, preferences);
+    preferences.Visible(EditorPanel::Console) = true;
+    preferences.lastBottomPanel = EditorPanel::Console;
+    _focusBottom = EditorPanel::Console;
+    _viewport.ReleaseFocus();
+    _console.Paste(text);
+}
 void EditorWorkspace::ToggleBottom(EditorPreferences& preferences, std::optional<EditorPanel> panel) {
     const auto target = panel.value_or(preferences.lastBottomPanel);
     auto& visible = preferences.Visible(target);
@@ -275,7 +283,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     const auto* viewport = ImGui::GetMainViewport();
     const float menuHeight = ImGui::GetFrameHeight();
     const float toolbarHeight =
-        _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight}, viewport->Size.x);
+        _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight}, viewport->Size.x, _marking);
     const float statusHeight = _shell.Status(
         snapshot, preferences, {viewport->Pos.x, viewport->Pos.y + viewport->Size.y}, viewport->Size.x, menu);
     if (menu.toggleMaximize) SetMaximized(!_maximized, preferences);
@@ -312,7 +320,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar;
         if (ImGui::Begin("Preview###editor.maximized", nullptr, flags))
-            result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, true);
+            result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, true, _marking);
         ImGui::End();
     } else {
         constexpr auto flags = ImGuiWindowFlags_NoCollapse;
@@ -338,7 +346,8 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 switch (panel.id) {
                 case EditorPanel::Catalog: _catalog.Draw(snapshot, actions, preferences); break;
                 case EditorPanel::Viewport:
-                    result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, false);
+                    result.interaction =
+                        _viewport.Draw(snapshot, actions, image, preferences.showMetrics, false, _marking);
                     viewportDrawn = preferences.Visible(panel.id);
                     break;
                 case EditorPanel::Inspector: _inspector.Draw(snapshot, actions); break;

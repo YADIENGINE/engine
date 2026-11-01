@@ -1,6 +1,7 @@
 #pragma once
 #include <raylib.h>
 #include <chrono>
+#include <deque>
 #include <optional>
 #include "Editor/Internals/Platform/Windows/ControlChannel.h"
 #include "Editor/Internals/Platform/Windows/SharedFrames.h"
@@ -63,6 +64,7 @@ private:
     float _speed = 1.0f;
     double _elapsed = 0.0; // Playback seconds since open / reset (the seek and sync clock)
     std::optional<Seek> _seek;
+    std::deque<PreviewMessage> _queued; // Read but not yet applied (waiting behind a seek)
     // Actions since open / reset at their playback time; a rewind replays them as the clock passes them again.
     struct TimedAction {
         double seconds = 0.0;

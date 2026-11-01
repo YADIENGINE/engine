@@ -66,9 +66,49 @@ PreviewPixels CaptureFrame(const PreviewPixels& frame, Vec2 canvas, const FrameC
     }
     return result;
 }
-std::filesystem::path NewCapturePath(const std::filesystem::path& directory) {
+FrameGrid ComposeFrameGrid(const std::vector<PreviewPixels>& tiles, const std::vector<std::string>& labels,
+                           int columns) {
+    if (tiles.empty() || labels.size() != tiles.size() || columns <= 0)
+        throw std::runtime_error("A frame grid needs tiles, one label per tile and at least one column");
+    const int width = tiles.front().width, height = tiles.front().height;
+    for (const auto& tile : tiles)
+        if (tile.width != width || tile.height != height ||
+            tile.rgba.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * Channels)
+            throw std::runtime_error("Frame grid tiles differ in size");
+    const int count = static_cast<int>(tiles.size());
+    columns = std::min(columns, count);
+    const int rows = (count + columns - 1) / columns;
+    FrameGrid grid;
+    grid.image.width = columns * width + (columns + 1) * FrameGridGap;
+    grid.image.height = rows * height + (rows + 1) * FrameGridGap;
+    if (grid.image.width > MaxCaptureSide || grid.image.height > MaxCaptureSide)
+        throw std::runtime_error(
+            std::format("The grid would be {}x{}; use a smaller scale or crop", grid.image.width, grid.image.height));
+    constexpr std::array<std::byte, Channels> Background{std::byte{24}, std::byte{24}, std::byte{28}, std::byte{255}};
+    grid.image.rgba.resize(static_cast<std::size_t>(grid.image.width) * static_cast<std::size_t>(grid.image.height) *
+                           Channels);
+    for (std::size_t i = 0; i < grid.image.rgba.size(); i += Channels)
+        std::ranges::copy(Background, grid.image.rgba.begin() + static_cast<std::ptrdiff_t>(i));
+    const auto rowBytes = static_cast<std::size_t>(width) * Channels;
+    for (int i = 0; i < count; ++i) {
+        const int left = FrameGridGap + (i % columns) * (width + FrameGridGap);
+        const int top = FrameGridGap + (i / columns) * (height + FrameGridGap);
+        const auto& tile = tiles[static_cast<std::size_t>(i)];
+        for (int y = 0; y < height; ++y) {
+            const auto from = tile.rgba.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(y) * rowBytes);
+            const auto to = (static_cast<std::size_t>(top + y) * static_cast<std::size_t>(grid.image.width) +
+                             static_cast<std::size_t>(left)) *
+                            Channels;
+            std::copy(from, from + static_cast<std::ptrdiff_t>(rowBytes),
+                      grid.image.rgba.begin() + static_cast<std::ptrdiff_t>(to));
+        }
+        grid.labels.push_back({left, top, labels[static_cast<std::size_t>(i)]});
+    }
+    return grid;
+}
+std::filesystem::path NewCapturePath(const std::filesystem::path& directory, const std::string& prefix) {
     const auto now = std::chrono::floor<std::chrono::milliseconds>(std::chrono::system_clock::now());
-    const std::string stamp = std::format("{:%Y%m%d-%H%M%S}", now);
+    const std::string stamp = std::format("{}-{:%Y%m%d-%H%M%S}", prefix, now);
     for (int attempt = 0;; ++attempt) {
         auto path = directory / (attempt ? std::format("{}-{}.png", stamp, attempt) : stamp + ".png");
         if (!std::filesystem::exists(path)) return path;

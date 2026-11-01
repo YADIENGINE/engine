@@ -230,9 +230,15 @@ void PreviewSession::Command(const PreviewMessage& message) {
     }
 }
 void PreviewSession::PrepareFrame() {
-    if (!_seek) // Commands queued behind a seek apply once it arrives
-        for (const auto& message : _channel.Poll())
-            Command(message);
+    // Commands behind a seek, even those read with it, apply once it arrives
+    if (!_seek)
+        for (auto& message : _channel.Poll())
+            _queued.push_back(std::move(message));
+    while (!_seek && !_queued.empty()) {
+        const auto message = std::move(_queued.front());
+        _queued.pop_front();
+        Command(message);
+    }
     if (_channel.Closed()) _actions.quit();
     _profiler.Tick(_generation);
 }

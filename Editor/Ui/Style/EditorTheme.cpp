@@ -45,6 +45,7 @@ const char* EditorGlyphText(EditorGlyph glyph) {
     case EditorGlyph::More   : return ICON_FA_ELLIPSIS;
     case EditorGlyph::Clear  : return ICON_FA_TRASH_CAN;
     case EditorGlyph::Step   : return ICON_FA_FORWARD_STEP;
+    case EditorGlyph::Mark   : return ICON_FA_CROP_SIMPLE;
     }
     return "";
 }

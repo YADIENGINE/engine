@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <string>
+#include "Editor/Internals/Session/ViewportMark.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "ToolUi/ToolTheme.h"
@@ -11,6 +12,8 @@
 namespace {
 constexpr double NoticeSeconds = 3.0; // A control notice stays this long, fading over the last NoticeFade
 constexpr double NoticeFade = 0.75;
+constexpr float MarkFill = 0.15f;   // Alpha of the marked area
+constexpr float MarkOutline = 2.0f; // Pixels at 100% UI scale
 // The last change made through the control endpoint, over the top-left corner of the preview area.
 void DrawNotice(const EditorSnapshot& snapshot, ImVec2 cursor) {
     if (snapshot.notice.empty() || snapshot.noticeAge >= NoticeSeconds) return;
@@ -69,7 +72,8 @@ bool ViewportPanel::Toolbar(bool maximized) {
 }
 
 EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                              const EditorPreviewImage& image, bool metrics, bool maximized) {
+                                              const EditorPreviewImage& image, bool metrics, bool maximized,
+                                              bool& marking) {
     EditorViewportInteraction result;
     if (snapshot.selected && _preview != snapshot.selected->id) {
         _preview = snapshot.selected->id;
@@ -158,6 +162,26 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
         draw->AddImage(ImTextureID(image.texture), {position.x, position.y},
                        {position.x + size.x, position.y + size.y});
         draw->PopClipRect();
+        // Mark: drag (or click) a region with the toolbar toggle or Alt; the preview pauses so the frame holds still
+        const bool gesture = (marking || io.KeyAlt) && !navigating;
+        const Float2 mouse{io.MousePos.x, io.MousePos.y};
+        if (gesture && result.hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            _markStart = mouse;
+            if (snapshot.ready && !snapshot.paused && snapshot.capabilities.Can(EditorCommand::Pause))
+                actions.command(EditorCommand::Pause);
+        }
+        if (_markStart) {
+            const ImVec2 from{std::min(_markStart->x, mouse.x), std::min(_markStart->y, mouse.y)};
+            const ImVec2 to{std::max(_markStart->x, mouse.x), std::max(_markStart->y, mouse.y)};
+            draw->AddRectFilled(from, to, ImGui::GetColorU32(ImGuiCol_DragDropTarget, MarkFill));
+            draw->AddRect(from, to, ImGui::GetColorU32(ImGuiCol_DragDropTarget), 0.0f, 0, MarkOutline * ToolUiScale());
+            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                result.mark = MarkRegion(result.viewport, *_markStart, mouse);
+                _markStart.reset();
+                if (result.mark) marking = false; // One mark per toggle; Alt+drag needs none
+            }
+        }
+        result.marking = gesture || _markStart.has_value();
         if (navigating) result.hovered = false;
         if (ImGui::IsItemClicked()) _focused = true;
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsItemHovered()) _focused = false;
@@ -165,6 +189,7 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
         result.focused = _focused;
     } else {
         _focused = false;
+        _markStart.reset();
         if (!snapshot.selected) {
             ToolEmptyState("Choose a preview", "Select an item from the Catalog to start a preview.");
         } else if (snapshot.phase == EditorPhase::Error) {

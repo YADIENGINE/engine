@@ -4,8 +4,10 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 #include "Editor/Internals/Protocol/EditorControlProtocol.h"
 #include "Editor/Internals/Session/FrameCapture.h"
+#include "Editor/Internals/Session/ViewportMark.h"
 #include "Tests/Support/TempDirectory.h"
 
 namespace {
@@ -110,7 +112,7 @@ TEST_CASE("Editor.Capture.CropsInCanvasUnitsAndScales", "[engine-editor]") {
 TEST_CASE("Editor.Capture.FolderKeepsTheNewest", "[engine-editor]") {
     TempDirectory directory;
     for (int i = 0; i < 4; ++i) {
-        const auto file = NewCapturePath(directory.Path());
+        const auto file = NewCapturePath(directory.Path(), "shot");
         CHECK_FALSE(std::filesystem::exists(file));
         std::ofstream(file) << i;
         std::filesystem::last_write_time(file, std::filesystem::file_time_type::clock::now() +
@@ -123,4 +125,63 @@ TEST_CASE("Editor.Capture.FolderKeepsTheNewest", "[engine-editor]") {
         png += entry.path().extension() == ".png";
     CHECK(png == 2);
     CHECK(std::filesystem::exists(directory.Path() / "notes.txt"));
+}
+
+TEST_CASE("Editor.Capture.GridPlacesTilesInRowsWithLabels", "[engine-editor]") {
+    const std::vector tiles{Gradient(4, 2), Gradient(4, 2), Gradient(4, 2)};
+    const auto grid = ComposeFrameGrid(tiles, {"0.00s", "0.50s", "1.00s"}, 2);
+    CHECK(grid.image.width == 2 * 4 + 3 * FrameGridGap);
+    CHECK(grid.image.height == 2 * 2 + 3 * FrameGridGap);
+    REQUIRE(grid.labels.size() == 3);
+    CHECK(grid.labels[1].x == FrameGridGap * 2 + 4);
+    CHECK(grid.labels[2].y == FrameGridGap * 2 + 2);
+    CHECK(grid.labels[2].text == "1.00s");
+    // The third tile starts the second row: its pixel (3, 1) is the source's (3, 1)
+    CHECK(Channel(grid.image, grid.labels[2].x + 3, grid.labels[2].y + 1, 0) == 3);
+    CHECK(Channel(grid.image, grid.labels[2].x + 3, grid.labels[2].y + 1, 1) == 1);
+    CHECK_THROWS(ComposeFrameGrid(tiles, {"one"}, 2));
+    CHECK_THROWS(ComposeFrameGrid({Gradient(4, 2), Gradient(2, 2)}, {"a", "b"}, 2));
+    CHECK_THROWS(ComposeFrameGrid({}, {}, 1));
+}
+
+TEST_CASE("Editor.Mark.DragAndClickBecomeCanvasRegions", "[engine-editor]") {
+    // A 1600x900 canvas shown at half size from (100, 50)
+    const PreviewViewport viewport{{100.0f, 50.0f}, {800.0f, 450.0f}, {1600, 900}, {}, {}};
+    const auto drag = MarkRegion(viewport, {200.0f, 100.0f}, {300.0f, 150.0f});
+    REQUIRE(drag);
+    CHECK(*drag == FloatRect{200.0f, 100.0f, 200.0f, 100.0f});
+    const auto backwards = MarkRegion(viewport, {300.0f, 150.0f}, {200.0f, 100.0f});
+    CHECK(backwards == drag);
+    // Dragging past the image stops at the canvas edge
+    const auto clamped = MarkRegion(viewport, {800.0f, 400.0f}, {2000.0f, 2000.0f});
+    REQUIRE(clamped);
+    CHECK(clamped->Right() == 1600.0f);
+    CHECK(clamped->Bottom() == 900.0f);
+    // A click marks a square around it, kept inside the canvas
+    const auto click = MarkRegion(viewport, {102.0f, 52.0f}, {103.0f, 52.0f});
+    REQUIRE(click);
+    CHECK(*click == FloatRect{0.0f, 0.0f, MarkPointSize, MarkPointSize});
+    CHECK_FALSE(MarkRegion(viewport, {50.0f, 50.0f}, {300.0f, 150.0f})); // Pressed outside the image
+}
+
+TEST_CASE("Editor.Mark.ContextNamesThePreviewTimeRegionImageAndChangedParameters", "[engine-editor]") {
+    PreviewDefinition definition;
+    definition.id = "drawing.circle";
+    auto radius = Parameter(PreviewParameterKind::Float);
+    radius.id = "radius";
+    radius.initial = 10.0;
+    auto glow = Parameter(PreviewParameterKind::Boolean);
+    glow.id = "glow";
+    glow.initial = false;
+    definition.parameters = {radius, glow};
+    const auto line = MarkContext(definition, {{"radius", 24.0}, {"glow", false}}, 1.5, true,
+                                  FloatRect{10.0f, 20.0f, 300.0f, 200.0f}, {1600, 900}, "C:/captures/mark.png");
+    CHECK(line.starts_with("[editor] preview=drawing.circle t=1.50s(paused) region=10,20 300x200 of 1600x900"));
+    CHECK(line.find("image=\"C:/captures/mark.png\"") != std::string::npos);
+    CHECK(line.find("radius=24.0") != std::string::npos);
+    CHECK(line.find("glow") == std::string::npos); // Unchanged from its initial value
+    CHECK(line.ends_with(" "));
+    CHECK(line.find('\n') == std::string::npos); // Pasting never submits
+    CHECK(MarkContext(definition, {}, 2.0, false, {}, {1600, 900}, "m.png").find("t~2.00s(playing)") !=
+          std::string::npos);
 }

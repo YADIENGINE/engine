@@ -24,6 +24,7 @@ constexpr std::array CommandRows{
     CommandRow{EditorControlCommand::Reset, "reset"},
     CommandRow{EditorControlCommand::Seek, "seek"},
     CommandRow{EditorControlCommand::Screenshot, "screenshot"},
+    CommandRow{EditorControlCommand::Frames, "frames"},
     CommandRow{EditorControlCommand::Inspect, "inspect"},
     CommandRow{EditorControlCommand::Logs, "logs"},
 };

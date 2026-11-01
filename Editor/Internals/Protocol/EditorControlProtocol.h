@@ -34,6 +34,7 @@ enum class EditorControlCommand {
     Reset,
     Seek,
     Screenshot,
+    Frames,
     Inspect,
     Logs,
     Count

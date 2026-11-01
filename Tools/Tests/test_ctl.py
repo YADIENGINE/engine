@@ -47,6 +47,12 @@ class RequestTests(unittest.TestCase):
         self.assertEqual(shot["scale"], 0.5)
         self.assertEqual(shot["crop"], [0, 0, 800, 450])
 
+    def test_frames(self):
+        self.assertEqual(request("frames", "--from", "0", "--to", "2"),
+                         {"command": "frames", "from": 0.0, "to": 2.0, "count": 9})
+        grid = request("frames", "--from", "1", "--to", "3", "--count", "4", "--columns", "4", "--scale", "0.25")
+        self.assertEqual((grid["count"], grid["columns"], grid["scale"]), (4, 4, 0.25))
+
     def test_logs_filters(self):
         self.assertEqual(request("logs", "--since", "7", "--level", "warning"),
                          {"command": "logs", "since": 7, "limit": 100, "level": "warning"})

@@ -13,6 +13,8 @@ public:
     void SetEnvironment(std::vector<std::pair<std::string, std::string>> environment) {
         _environment = std::move(environment);
     }
+    // Metni çalışan programın girdisine yapıştırır (Enter yok); kabuk başlamadıysa başlatır.
+    void Paste(const std::string& text);
     // Her kare, panel görünmese de: çıktıyı işler, çıkışı fark eder.
     void Update() { _session.Pump(); }
     void Draw();

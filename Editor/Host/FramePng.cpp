@@ -1,13 +1,27 @@
 #include "Editor/Host/FramePng.h"
 #include <raylib.h>
+#include <algorithm>
 #include <stdexcept>
 
-std::vector<std::byte> EncodeFramePng(const PreviewPixels& frame) {
-    // raylib reads the pixels without taking ownership; the cast only satisfies its non-const field.
-    const Image image{const_cast<std::byte*>(frame.rgba.data()), frame.width, frame.height, 1,
-                      PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+namespace {
+constexpr int LabelFontSize = 20;
+constexpr int LabelPadding = 4;
+constexpr Color LabelBackground{0, 0, 0, 190};
+} // namespace
+
+std::vector<std::byte> EncodeFramePng(const PreviewPixels& frame, const std::vector<FrameCaptureLabel>& labels) {
+    Image image = GenImageColor(frame.width, frame.height, BLANK); // A copy raylib may draw into
+    if (!image.data) throw std::runtime_error("PNG encoding failed");
+    std::copy(frame.rgba.begin(), frame.rgba.end(), static_cast<std::byte*>(image.data));
+    for (const auto& label : labels) {
+        const int width = MeasureText(label.text.c_str(), LabelFontSize);
+        ImageDrawRectangle(&image, label.x, label.y, width + LabelPadding * 2, LabelFontSize + LabelPadding * 2,
+                           LabelBackground);
+        ImageDrawText(&image, label.text.c_str(), label.x + LabelPadding, label.y + LabelPadding, LabelFontSize, WHITE);
+    }
     int size = 0;
     unsigned char* encoded = ExportImageToMemory(image, ".png", &size);
+    UnloadImage(image);
     if (!encoded || size <= 0) throw std::runtime_error("PNG encoding failed");
     const auto* bytes = reinterpret_cast<const std::byte*>(encoded);
     std::vector<std::byte> result(bytes, bytes + size);

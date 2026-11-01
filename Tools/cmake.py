@@ -1,10 +1,12 @@
 """Komutların ortak CMake işleri: komut çalıştırma, CMake önbelleğini okuma ve build klasörünü güvenle silme."""
 
+import locale
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from .build_errors import summary
 from .errors import EXIT_FAILED, ToolError
 from .msvc import GENERATOR
 
@@ -13,14 +15,34 @@ from .msvc import GENERATOR
 PYTHON_DEFINITION = f"-DPython3_EXECUTABLE={Path(sys.executable).as_posix()}"
 
 
-def run(command: list[str], cwd: Path, env: dict[str, str]) -> None:
-    """Komutu çıktısı terminale akarak çalıştırır; başarısızsa EXIT_FAILED ile durur."""
-    print(f"> {subprocess.list2cmdline(command)}", flush=True)
+def _text(raw: bytes) -> str:
     try:
-        code = subprocess.run(command, cwd=cwd, env=env).returncode
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:  # MSVC writes the console code page when its output is piped
+        return raw.decode(locale.getpreferredencoding(False), errors="replace")
+
+
+def run(command: list[str], cwd: Path, env: dict[str, str]) -> None:
+    """Komutu çıktısı terminale akarak çalıştırır; başarısızsa çıktıdaki hataların özetini yazar ve EXIT_FAILED ile
+    durur (build_errors.py)."""
+    print(f"> {subprocess.list2cmdline(command)}", flush=True)
+    output: list[str] = []
+    try:
+        with subprocess.Popen(command, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as process:
+            for raw in process.stdout:
+                text = _text(raw).rstrip("\r\n")
+                if stream := getattr(sys.stdout, "buffer", None):  # The bytes as written: the console decodes them
+                    stream.write(raw)
+                    stream.flush()
+                else:
+                    print(text, flush=True)
+                output.append(text)
+            code = process.wait()
     except OSError as error:
         raise ToolError(f"Cannot run {command[0]}: {error}") from error
     if code != 0:
+        for line in summary(output, cwd):
+            print(line, flush=True)
         raise ToolError(f"{Path(command[0]).name} exited with code {code}", EXIT_FAILED)
 
 

@@ -2,6 +2,8 @@
 #include <cstddef>
 #include <filesystem>
 #include <optional>
+#include <string>
+#include <vector>
 #include "Editor/Internals/Platform/Windows/SharedFrames.h"
 #include "Utilities/FloatRect.h"
 #include "Utilities/Vec2.h"
@@ -20,7 +22,24 @@ inline constexpr std::size_t FrameCaptureKeep = 50; // Newest screenshots kept i
 // enlarging.
 // Throws when the crop leaves the canvas, is empty, or the scale is outside [FrameCaptureMinScale, MaxScale].
 [[nodiscard]] PreviewPixels CaptureFrame(const PreviewPixels& frame, Vec2 canvas, const FrameCaptureOptions& options);
-// A new file name in `directory` (time-stamped, never an existing one).
-[[nodiscard]] std::filesystem::path NewCapturePath(const std::filesystem::path& directory);
+// Text the PNG encoder writes over an image, top-left at (x, y) in pixels.
+struct FrameCaptureLabel {
+    int x = 0;
+    int y = 0;
+    std::string text;
+};
+struct FrameGrid {
+    PreviewPixels image;
+    std::vector<FrameCaptureLabel> labels;
+};
+inline constexpr int FrameGridMaxFrames = 16;
+inline constexpr int FrameGridGap = 4; // Pixels between tiles
+
+// Equal-sized tiles in rows of `columns`, separated by FrameGridGap on a dark background; each label sits in its tile's
+// top-left corner. Throws for no tiles, tiles of different sizes, or a label count that differs from the tiles.
+[[nodiscard]] FrameGrid ComposeFrameGrid(const std::vector<PreviewPixels>& tiles,
+                                         const std::vector<std::string>& labels, int columns);
+// A new `<prefix>-<time>.png` in `directory`, never an existing one.
+[[nodiscard]] std::filesystem::path NewCapturePath(const std::filesystem::path& directory, const std::string& prefix);
 // Deletes the oldest *.png files beyond `keep` in `directory`; ignores what cannot be removed.
 void PruneCaptures(const std::filesystem::path& directory, std::size_t keep);

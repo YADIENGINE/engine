@@ -110,8 +110,8 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
     ImGui::EndMainMenuBar();
     return result;
 }
-float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
-                           float width) const {
+float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position, float width,
+                           bool& marking) const {
     const float scale = ToolUiScale();
     const float height = std::max(EditorToolbarMetrics::ControlHeight * scale, ImGui::GetFrameHeight()) +
                          EditorToolbarMetrics::PaddingY * 2 * scale;
@@ -119,7 +119,8 @@ float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions
     ImGui::SetNextWindowSize({width, height});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
                         {EditorToolbarMetrics::PaddingX * scale, EditorToolbarMetrics::PaddingY * scale});
-    if (ImGui::Begin("Toolbar###editor.toolbar", nullptr, BarFlags)) DrawEditorPlaybackControls(snapshot, actions);
+    if (ImGui::Begin("Toolbar###editor.toolbar", nullptr, BarFlags))
+        DrawEditorPlaybackControls(snapshot, actions, marking);
     ImGui::End();
     ImGui::PopStyleVar();
     return height;

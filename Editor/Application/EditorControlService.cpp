@@ -24,6 +24,8 @@ constexpr int MaxSteps = 600;
 constexpr std::uint64_t FramesAfterSync = 2; // The second frame after the answer was drawn after it
 constexpr std::size_t DefaultLogLimit = 100;
 constexpr std::size_t MaxLogLimit = 1000;
+constexpr int DefaultGridFrames = 9;
+constexpr double GridWidth = 1600.0; // Pixels a frame grid's tiles add up to across, unless a scale is given
 
 std::string ReadText(const std::filesystem::path& file) {
     std::ifstream input(file, std::ios::binary);
@@ -332,6 +334,10 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
                     [this, arguments](EditorController& session) { return Screenshot(arguments, session); });
         return std::nullopt;
     }
+    case EditorControlCommand::Frames:
+        RequireReady(snapshot);
+        Frames(arguments, controller);
+        return std::nullopt;
     case EditorControlCommand::Inspect: {
         RequireReady(snapshot);
         AwaitWorker(controller, WorkerTimeout, [](EditorController& session) {
@@ -362,26 +368,91 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
     }
     throw std::runtime_error("Unsupported command");
 }
-nlohmann::json EditorControlService::Screenshot(const nlohmann::json& arguments, EditorController& controller) {
-    const auto snapshot = controller.Snapshot();
-    const auto frame = controller.LatestFrame();
-    if (!frame) throw std::runtime_error("No frame to capture");
-    const auto captured = CaptureFrame(*frame, snapshot.canvas, CaptureOptionsOf(arguments, snapshot.canvas));
-    const auto png = _encodePng(captured);
-    const bool chosen = arguments.contains("path");
+std::filesystem::path EditorControlService::WriteCapture(const PreviewPixels& image,
+                                                         const std::vector<FrameCaptureLabel>& labels,
+                                                         const std::string& path, const std::string& prefix) {
+    const auto png = _encodePng(image, labels);
     std::filesystem::path file =
-        chosen ? std::filesystem::path(PreviewWide(Text(arguments, "path"))) : NewCapturePath(_captures);
+        path.empty() ? NewCapturePath(_captures, prefix) : std::filesystem::path(PreviewWide(path));
     if (!file.is_absolute()) throw std::runtime_error("\"path\" must be absolute");
     file = file.lexically_normal().make_preferred();
     std::filesystem::create_directories(file.parent_path());
     if (!WriteBinaryFileAtomic(file, {reinterpret_cast<const char*>(png.data()), png.size()}))
         throw std::runtime_error("Could not write " + PreviewUtf8(file.generic_wstring()));
-    if (!chosen) PruneCaptures(_captures, FrameCaptureKeep);
+    if (path.empty()) PruneCaptures(_captures, FrameCaptureKeep);
+    return file;
+}
+nlohmann::json EditorControlService::Saved(const std::filesystem::path& file, const PreviewPixels& image,
+                                           const EditorController& controller) {
     auto status = StatusOf(controller);
     status["path"] = PreviewUtf8(file.wstring());
-    status["width"] = captured.width;
-    status["height"] = captured.height;
+    status["width"] = image.width;
+    status["height"] = image.height;
     return status;
+}
+nlohmann::json EditorControlService::Screenshot(const nlohmann::json& arguments, EditorController& controller) {
+    const auto snapshot = controller.Snapshot();
+    const auto frame = controller.LatestFrame();
+    if (!frame) throw std::runtime_error("No frame to capture");
+    const auto captured = CaptureFrame(*frame, snapshot.canvas, CaptureOptionsOf(arguments, snapshot.canvas));
+    return Saved(WriteCapture(captured, {}, arguments.value("path", std::string()), "shot"), captured, controller);
+}
+void EditorControlService::Frames(const nlohmann::json& arguments, EditorController& controller) {
+    const auto snapshot = controller.Snapshot();
+    const double from = Number(arguments, "from"), to = Number(arguments, "to");
+    if (from < 0.0 || to <= from || to > MaxSeekSeconds)
+        throw std::runtime_error(std::format("Need 0 <= from < to <= {}", MaxSeekSeconds));
+    const int count = arguments.value("count", DefaultGridFrames);
+    if (count < 2 || count > FrameGridMaxFrames)
+        throw std::runtime_error(std::format("\"count\" must be from 2 to {}", FrameGridMaxFrames));
+    const int columns = arguments.value("columns", static_cast<int>(std::ceil(std::sqrt(static_cast<double>(count)))));
+    if (columns < 1 || columns > count) throw std::runtime_error("\"columns\" must be from 1 to count");
+    auto options = CaptureOptionsOf(arguments, snapshot.canvas);
+    if (!arguments.contains("scale")) { // Fit the grid in about one canvas width
+        const double area = options.crop ? options.crop->width : snapshot.canvas.x;
+        options.scale = std::clamp(GridWidth / (columns * area), FrameCaptureMinScale, 1.0);
+    }
+    if (arguments.contains("path") && Text(arguments, "path").empty())
+        throw std::runtime_error("\"path\" must not be empty");
+    struct Run {
+        std::vector<double> times;
+        std::vector<PreviewPixels> tiles;
+        std::vector<std::string> labels;
+        std::uint64_t request = 0;
+    };
+    auto run = std::make_shared<Run>();
+    for (int i = 0; i < count; ++i)
+        run->times.push_back(from + (to - from) * i / (count - 1));
+    const auto shoot = [run](EditorController& session) {
+        session.Seek(run->times[run->tiles.size()]);
+        run->request = session.Sync();
+    };
+    shoot(controller);
+    controller.Notify(std::format("Frames {:.2f}-{:.2f} s ({})", from, to, count));
+    const auto timeout = WorkerTimeout + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                             std::chrono::duration<double>(count * 2.0 + to * SeekWaitPerSecond));
+    Await("the frames", timeout,
+          [this, run, shoot, options, columns, arguments](EditorController& session) -> std::optional<nlohmann::json> {
+              const auto current = session.Snapshot();
+              if (!current.ready) throw std::runtime_error("The preview stopped: " + current.status);
+              const auto& sync = session.LastSync();
+              if (sync.request != run->request || sync.frames < FramesAfterSync) return std::nullopt;
+              const auto frame = session.LatestFrame();
+              if (!frame) throw std::runtime_error("No frame to capture");
+              run->tiles.push_back(CaptureFrame(*frame, current.canvas, options));
+              run->labels.push_back(std::format("{:.2f}s", sync.seconds));
+              if (run->tiles.size() < run->times.size()) {
+                  shoot(session);
+                  return std::nullopt;
+              }
+              const auto grid = ComposeFrameGrid(run->tiles, run->labels, columns);
+              auto status =
+                  Saved(WriteCapture(grid.image, grid.labels, arguments.value("path", std::string()), "frames"),
+                        grid.image, session);
+              status["frames"] = run->times;
+              status["columns"] = columns;
+              return status;
+          });
 }
 void EditorControlService::Refresh(EditorController& controller) {
     if (controller.Diagnostics().Attempt().result != EditorBuildResult::Running) {

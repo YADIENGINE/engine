@@ -21,7 +21,7 @@ public:
                                          EditorPreferences& preferences, int& fontSize, bool maximized,
                                          bool offerProjectList) const;
     [[nodiscard]] float Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
-                                float width) const;
+                                float width, bool& marking) const;
     [[nodiscard]] float Status(const EditorSnapshot& snapshot, const EditorPreferences& preferences, ImVec2 position,
                                float width, EditorShellResult& result) const;
 };

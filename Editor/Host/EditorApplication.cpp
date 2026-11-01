@@ -1,9 +1,11 @@
 #include "Editor/Host/EditorApplication.h"
 #include <imgui.h>
+#include <algorithm>
 #include <vector>
 #include "Editor/Host/EditorEntryPoint.h"
 #include "Editor/Host/FramePng.h"
 #include "Editor/Host/ProjectListLauncher.h"
+#include "Editor/Internals/Session/ViewportMark.h"
 #include "Input/Internals/InputReader.h"
 #include "Platform/Internals/UserData.h"
 #include "ToolUi/ToolWindow.h"
@@ -88,7 +90,27 @@ void EditorApplication::Update(float realSeconds) {
         _beforeBenchmark.reset();
     }
     if (auto opened = _controller.TakeOpenedPreview()) _preferences.Opened(*opened);
+    if (_mark) {
+        PasteMark(*_mark);
+        _mark.reset();
+    }
     SavePreferences(false);
+}
+void EditorApplication::PasteMark(const FloatRect& region) {
+    try {
+        const auto snapshot = _controller.Snapshot();
+        const auto frame = _controller.LatestFrame();
+        if (!_control || !frame || !snapshot.selected) return;
+        const double scale =
+            std::min(1.0, static_cast<double>(MarkMaxImageSide / std::max(region.width, region.height)));
+        const auto image = CaptureFrame(*frame, snapshot.canvas, {region, scale});
+        const auto file = _control->WriteCapture(image, {}, {}, "mark");
+        _workspace.PasteToConsole(MarkContext(*snapshot.selected, snapshot.parameters, _controller.Seconds(),
+                                              snapshot.paused, region, snapshot.canvas, file),
+                                  _preferences);
+    } catch (const std::exception& error) {
+        _controller.Log(std::string("Mark: ") + error.what(), EditorLogLevel::Warning);
+    }
 }
 void EditorApplication::Stop() {
     if (_stopped) return;
@@ -145,6 +167,7 @@ void EditorApplication::DrawToolOverlay() const {
         }};
     const auto result = _workspace.Draw(_controller.Snapshot(), actions, _display.Image(), _preferences, _fontSize);
     _quit = result.quit;
+    if (result.interaction.mark) _mark = result.interaction.mark;
     if (result.returnToProjectList) {
         if (auto error = StartLauncher(_launcher); error.empty())
             _quit = true;
@@ -156,7 +179,7 @@ void EditorApplication::DrawToolOverlay() const {
     const bool keyboardBlocked =
         popup || io.WantTextInput || (ImGui::IsAnyItemActive() && !result.interaction.contentActive);
     const bool pointerBlocked =
-        popup || !result.interaction.hovered ||
+        popup || !result.interaction.hovered || result.interaction.marking ||
         (ImGui::IsAnyItemActive() && !result.interaction.contentActive && !_router.OwnsPointer());
     if (editorInput || result.cancelPreviewInput) _workspace.ReleaseInput();
     if (editorInput || result.cancelPreviewInput || result.interaction.viewport.size.x <= 0 ||

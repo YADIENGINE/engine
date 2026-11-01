@@ -36,6 +36,14 @@ def add_parser(commands) -> None:
     action.add_argument("--out", help="PNG path (default: the build folder's editor-captures/)")
     action.add_argument("--scale", type=float, help="resize factor (0.05-4)")
     action.add_argument("--crop", type=float, nargs=4, metavar=("X", "Y", "W", "H"), help="canvas-space area")
+    action = actions.add_parser("frames", help="one PNG grid of frames at evenly spaced playback times")
+    action.add_argument("--from", dest="start", type=float, required=True, metavar="SECONDS")
+    action.add_argument("--to", dest="end", type=float, required=True, metavar="SECONDS")
+    action.add_argument("--count", type=int, default=9, help="frames (2-16, default 9)")
+    action.add_argument("--columns", type=int, help="tiles per row (default: about square)")
+    action.add_argument("--out", help="PNG path (default: the build folder's editor-captures/)")
+    action.add_argument("--scale", type=float, help="tile scale (default: the grid fits about 1600 px across)")
+    action.add_argument("--crop", type=float, nargs=4, metavar=("X", "Y", "W", "H"), help="canvas-space area")
     actions.add_parser("inspect", help="the open preview's inspection values and tables")
     action = actions.add_parser("logs", help="editor, worker and build log entries")
     action.add_argument("--since", type=int, default=0, help="only entries after this sequence number")
@@ -71,6 +79,16 @@ def request_of(args: argparse.Namespace) -> dict:
             request["speed"] = args.speed
         case "seek":
             request["seconds"] = args.seconds
+        case "frames":
+            request.update({"from": args.start, "to": args.end, "count": args.count})
+            if args.columns is not None:
+                request["columns"] = args.columns
+            if args.out:
+                request["path"] = str(Path(args.out).resolve())
+            if args.scale is not None:
+                request["scale"] = args.scale
+            if args.crop:
+                request["crop"] = args.crop
         case "screenshot":
             if args.out:
                 request["path"] = str(Path(args.out).resolve())

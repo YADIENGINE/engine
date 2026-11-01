@@ -1,7 +1,10 @@
 #pragma once
 #include <cstdint>
+#include <optional>
+#include <string>
 #include "Editor/Application/EditorPresentation.h"
 #include "Editor/Internals/Viewport/PreviewViewport.h"
+#include "Utilities/FloatRect.h"
 
 struct EditorPreviewImage {
     std::uint64_t texture = 0;
@@ -18,12 +21,15 @@ struct EditorViewportInteraction {
     bool hovered = false;
     bool contentActive = false;
     bool toggleMaximize = false;
+    bool marking = false;          // A press goes to marking, not the product
+    std::optional<FloatRect> mark; // A finished mark, canvas units
 };
 
 class ViewportPanel {
 public:
     [[nodiscard]] EditorViewportInteraction Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                                 const EditorPreviewImage& image, bool metrics, bool maximized);
+                                                 const EditorPreviewImage& image, bool metrics, bool maximized,
+                                                 bool& marking);
     void ReleaseFocus() { _focused = false; }
 
 private:
@@ -33,4 +39,5 @@ private:
     float _zoom = 1.0f;
     Float2 _pan;
     std::string _preview;
+    std::optional<Float2> _markStart; // Screen point where the current mark drag began
 };
