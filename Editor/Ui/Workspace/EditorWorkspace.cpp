@@ -186,7 +186,32 @@ std::string EditorWorkspace::OpenAgent(EditorPreferences& preferences) {
         return {};
     }
     ShowConsole(preferences);
-    _console.OpenAgent(kind.name, AgentCommandLine(DefaultTerminalShell(), command));
+    // The agent session requests go to is reused when it runs the chosen CLI; otherwise a new session starts.
+    const auto commandLine = AgentCommandLine(DefaultTerminalShell(), command);
+    if (const auto agent = _console.AgentSession(); agent && _console.Sessions()[*agent].agent == kind.id)
+        _console.Revive(*agent, commandLine);
+    else
+        _console.AddAgent(kind.id, commandLine);
+    return {};
+}
+std::string EditorWorkspace::AddSession(const ConsoleNewSession& request, EditorPreferences& preferences) {
+    if (!request.agent) {
+        ShowConsole(preferences);
+        _console.OpenShell();
+        return {};
+    }
+    if (_agentSetup.Active()) return {};
+    preferences.agent.kind = *request.agent; // The last agent added becomes the one agent requests start
+    const auto command = AgentCommand(preferences.agent);
+    if (!CommandOnPath(AgentProgram(command))) {
+        _agentSetup.Open(preferences.agent);
+        _viewport.ReleaseFocus();
+        return std::string(AgentKindInfo(*request.agent).name) + ": '" + AgentProgram(command) +
+               "' was not found on PATH; choose an available command in agent setup";
+    }
+    preferences.agent.configured = true;
+    ShowConsole(preferences);
+    _console.AddAgent(*request.agent, AgentCommandLine(DefaultTerminalShell(), command));
     return {};
 }
 std::string EditorWorkspace::SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences) {
@@ -194,10 +219,8 @@ std::string EditorWorkspace::SendToAgent(const std::string& text, bool submit, E
     if (_agentSetup.Active()) {
         _pendingAgentText += text;
         _pendingAgentSubmit = _pendingAgentSubmit || submit;
-    } else if (_console.AgentSession()) {
-        const auto command = AgentCommand(preferences.agent);
-        _console.SendToAgent(AgentKindInfo(preferences.agent.kind).name,
-                             AgentCommandLine(DefaultTerminalShell(), command), text, submit);
+    } else if (const auto agent = _console.AgentSession()) {
+        _console.SendTo(*agent, text, submit);
     }
     return problem;
 }
@@ -225,12 +248,13 @@ void EditorWorkspace::HandleAgent(EditorAgentRequest request, const EditorSnapsh
     result.cancelViewportInput = true;
 }
 EditorAgentStatus EditorWorkspace::AgentStatus() const {
-    EditorAgentStatus status{.note = _agentNote, .control = _agentControl};
+    EditorAgentStatus status{.control = _agentControl};
     if (const auto agent = _console.AgentSession()) {
         const auto session = _console.Sessions()[*agent];
         status.session = true;
-        status.running = session.running;
-        status.attention = session.attention;
+        status.title = session.title;
+        status.state = session.state;
+        status.activity = session.activity;
     }
     return status;
 }
@@ -518,8 +542,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 case EditorPanel::Profiler: _profiler.Draw(snapshot, actions); break;
                 case EditorPanel::Tuning  : _tuning.Draw(snapshot, actions); break;
                 case EditorPanel::Console:
-                    if (_console.Draw(AgentKindInfo(preferences.agent.kind).name))
-                        HandleAgent(EditorAgentRequest::Open, snapshot, preferences, result);
+                    if (const auto request = _console.Draw()) result.agentProblem = AddSession(*request, preferences);
                     consoleDrawn = true;
                     break;
                 case EditorPanel::Count: break;

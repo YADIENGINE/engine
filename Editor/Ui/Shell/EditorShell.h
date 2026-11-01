@@ -3,18 +3,18 @@
 #include <optional>
 #include <string>
 #include "Editor/Application/EditorPresentation.h"
-#include "Editor/Internals/Protocol/EditorControlProtocol.h"
+#include "Editor/Internals/Agent/SessionActivity.h"
 #include "Editor/Internals/Settings/EditorPreferences.h"
 
 // Agent menu / palette / status bar requests (Docs/Editor/Usage.md → Agent workspace).
 enum class EditorAgentRequest { Open, NewShell, SendScene, SendBuildFailure, FixBuild };
 
-// What the status bar shows about the agent session and the agent's own reports (`ctl note`).
+// What the status bar shows about the agent session agent requests go to (ConsolePanel::AgentSession).
 struct EditorAgentStatus {
-    bool session = false;   // An agent session exists
-    bool running = false;   // Its program runs
-    bool attention = false; // It rang the bell (waits for the developer) since they last looked
-    std::optional<AgentNote> note;
+    bool session = false; // An agent session exists
+    std::string title;    // "Claude", "Codex 2", ...
+    SessionState state = SessionState::Idle;
+    std::string activity; // Its note or terminal title; may be empty
     bool control = true;
 };
 

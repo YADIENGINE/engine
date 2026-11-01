@@ -12,6 +12,7 @@ parameters and choices, and spells out the commands that open the match; describ
 import argparse
 import difflib
 import json
+import os
 import re
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from ..project import Project
 from .refresh import VERSION, connect, editor_pipe, replies
 
 
+SESSION_ENVIRONMENT = "ENGINE_EDITOR_SESSION"  # Set by the editor for each Console session; `note` names its session
 WORKFLOW = """typical use:
   python Engine ctl status                      is an editor open, what runs
   python Engine ctl find ice dragon             which scene shows it; prints the command that opens it
@@ -277,6 +279,8 @@ def request_of(args: argparse.Namespace) -> dict:
             request.update(since=args.since, limit=args.limit, level=args.level)
         case "note":
             request.update(text=" ".join(args.text), state=args.state)
+            if session := os.environ.get(SESSION_ENVIRONMENT):
+                request["session"] = session
     return request
 
 

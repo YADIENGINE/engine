@@ -11,15 +11,16 @@ struct AgentKindDefinition {
     AgentKind id;
     const char* key; // Saved in preferences
     const char* name;
-    const char* command; // Started in the project folder; empty for Custom
-    const char* install; // Where to get it, shown when the command is missing
+    const char* sessionName; // Console session list label
+    const char* command;     // Started in the project folder; empty for Custom
+    const char* install;     // Where to get it, shown when the command is missing
 };
 
 inline constexpr std::array AgentKinds{
-    AgentKindDefinition{AgentKind::ClaudeCode, "claude-code", "Claude Code", "claude",
+    AgentKindDefinition{AgentKind::ClaudeCode, "claude-code", "Claude Code", "Claude", "claude",
                         "https://claude.com/claude-code"},
-    AgentKindDefinition{AgentKind::Codex, "codex", "Codex", "codex", "https://github.com/openai/codex"},
-    AgentKindDefinition{AgentKind::Custom, "custom", "Custom command", "", ""}};
+    AgentKindDefinition{AgentKind::Codex, "codex", "Codex", "Codex", "codex", "https://github.com/openai/codex"},
+    AgentKindDefinition{AgentKind::Custom, "custom", "Custom command", "Agent", "", ""}};
 
 // Saved for the user, not the project: which agent runs, and whether tools may change the editor (`ctl`).
 struct AgentPreferences {

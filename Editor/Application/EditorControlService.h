@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <map>
 #include <memory>
+#include <string>
 #include <optional>
 #include <string_view>
 #include <vector>
@@ -41,13 +43,14 @@ public:
                                        const std::string& path, const std::string& prefix);
     // Off: commands that change the editor are refused (ControlCommandChangesEditor); the developer's switch.
     void SetAgentControl(bool allowed) { _agentControl = allowed; }
-    // The latest `ctl note`; `sequence` grows with each note (0: none yet).
+    // A `ctl note`; `sequence` grows with each note.
     struct Activity {
         AgentNote note;
         std::chrono::steady_clock::time_point time;
         std::uint64_t sequence = 0;
     };
-    [[nodiscard]] const Activity& AgentActivity() const { return _activity; }
+    // The latest note of each Console session, by its ENGINE_EDITOR_SESSION id.
+    [[nodiscard]] const std::map<std::string, Activity>& SessionActivity() const { return _sessionActivity; }
 
 private:
     struct Watch {
@@ -89,6 +92,7 @@ private:
     std::optional<Watch> _watch;
     std::optional<Pending> _pending;
     Activity _activity;
+    std::map<std::string, Activity> _sessionActivity;
     bool _agentControl = true;
 
 public:

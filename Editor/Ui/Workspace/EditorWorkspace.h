@@ -37,9 +37,9 @@ public:
     // Shows the Console and pastes `text` into the agent session, starting the chosen agent CLI when needed; `submit`
     // presses Enter after it. Returns a problem for the log (empty when none).
     [[nodiscard]] std::string SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences);
-    // The agent's latest `ctl note` and the control switch, for the status bar (set by the host every frame).
-    void SetAgentReport(std::optional<AgentNote> note, bool control) {
-        _agentNote = std::move(note);
+    // The sessions' latest `ctl note`s and the control switch (set by the host every frame).
+    void SetAgentReport(std::map<std::string, ConsoleNote> notes, bool control) {
+        _console.SetNotes(std::move(notes));
         _agentControl = control;
     }
     void SetConsoleEnvironment(std::vector<std::pair<std::string, std::string>> environment) {
@@ -50,6 +50,8 @@ private:
     void ShowConsole(EditorPreferences& preferences);
     // Opens (or selects) the agent session; returns a problem for the log (empty when none).
     [[nodiscard]] std::string OpenAgent(EditorPreferences& preferences);
+    // The Console's add button: a shell, or a new session of an agent CLI (setup first when it is missing).
+    [[nodiscard]] std::string AddSession(const ConsoleNewSession& request, EditorPreferences& preferences);
     void HandleAgent(EditorAgentRequest request, const EditorSnapshot& snapshot, EditorPreferences& preferences,
                      EditorWorkspaceResult& result);
     [[nodiscard]] EditorAgentStatus AgentStatus() const;
@@ -90,7 +92,6 @@ private:
     std::vector<char> _failureDetail;
     bool _showFailedOutput = false;
     bool _fixFailedBuild = false; // The failure popup's "Ask Agent to Fix"
-    std::optional<AgentNote> _agentNote;
     bool _agentControl = true;
     ImGuiID _centerDock = 0;
     int _ignoreLayoutChanges = 0;

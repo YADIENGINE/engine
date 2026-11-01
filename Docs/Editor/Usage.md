@@ -133,11 +133,17 @@ editor context; it never calls a model itself. The agent drives the editor back 
 ([Automation](Automation.md)), and the project opts in to the engine's agent rules through `Engine/AgentDocs/Agent.md`
 ([Using an AI agent](../ProjectSetup.md#using-an-ai-agent)).
 
-- **Console sessions:** the Console holds several sessions as tabs: shells and at most one agent session. The agent
-  tab has an accent icon and stays first. The `+` popup offers *New shell* and *Open <agent>*. Each session keeps running
-  while the panel is hidden; closing a tab ends its program. Closing a running agent asks for confirmation. Exited
-  programs have dimmed titles. A pulsing warning dot means the terminal bell rang since you last looked at that
-  session: agent CLIs ring it when they wait for you.
+- **Console sessions:** the Console holds any number of sessions: shells and agent CLIs, named *Shell*, *Claude*,
+  *Codex* (*Claude 2* for a second one). *Add terminal* offers Shell, Claude, Codex and a custom agent; choosing an
+  agent makes it the one agent requests start next. Each session keeps running while the panel is hidden; closing one
+  ends its program (a running agent asks first). Agent requests (Ctrl+Shift+A, Send scene, Marks, ...) go to the
+  selected session when it runs an agent, else to the agent session selected last; with none, the chosen agent starts.
+- **Session state** (each session's icon): *working* while its program writes output for a request, *waiting for you*
+  when it rang the terminal bell after your last input (agent CLIs ring it when they ask something), *done* when the
+  output went quiet after a request, *idle* before anyone typed into it, *exited* when the program ended. An agent's
+  own `python Engine ctl note TEXT --state working|waiting|idle` from that session overrides the guess until you type
+  again; its text, else the terminal title the CLI sets, is what the session shows on hover. Each session's program
+  gets `ENGINE_EDITOR_SESSION`, which `ctl note` sends along.
 - **Agent menu** groups Session, Send context and Settings (session and context commands are also in the command
   palette, under "Agent:"):
   - *Open <agent>* starts the chosen CLI in the project folder, or selects its session. The session's shell stays open

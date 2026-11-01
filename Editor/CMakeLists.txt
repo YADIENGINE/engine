@@ -29,6 +29,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/ViewportMark.cpp
     Internals/Session/AgentContext.cpp
     Internals/Agent/AgentProfile.cpp
+    Internals/Agent/SessionActivity.cpp
     Internals/Viewport/SceneViewport.cpp
     Internals/Viewport/ViewportInputRouter.cpp
     Internals/Diagnostics/EditorDiagnostics.cpp

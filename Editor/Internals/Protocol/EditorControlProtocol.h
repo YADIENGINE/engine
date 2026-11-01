@@ -52,10 +52,12 @@ enum class AgentActivityState { Idle, Working, Waiting };
 struct AgentNote {
     AgentActivityState state = AgentActivityState::Working;
     std::string text;
+    std::string session; // The Console session it came from (its ENGINE_EDITOR_SESSION); empty from elsewhere
 };
 inline constexpr std::size_t AgentNoteMaxBytes = 200;
-// {"text": "...", "state": "working" | "waiting" | "idle"} (state optional, default working); text is cut to
-// AgentNoteMaxBytes. Throws for an unknown state.
+inline constexpr std::size_t AgentSessionMaxBytes = 64;
+// {"text": "...", "state": "working" | "waiting" | "idle", "session": "..."} (state optional, default working; session
+// optional); text and session are cut to their limits. Throws for an unknown state.
 [[nodiscard]] AgentNote DecodeAgentNote(const nlohmann::json& arguments);
 [[nodiscard]] const char* AgentActivityName(AgentActivityState state);
 // Commands that change the editor (scene, playback, build). The developer's "Agent control" switch refuses them;

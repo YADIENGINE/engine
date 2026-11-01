@@ -58,6 +58,8 @@ class RequestTests(unittest.TestCase):
         self.assertEqual(request("note", "opening", "the", "boss"),
                          {"command": "note", "text": "opening the boss", "state": "working"})
         self.assertEqual(request("note", "--state", "idle"), {"command": "note", "text": "", "state": "idle"})
+        with patch.dict(os.environ, {"ENGINE_EDITOR_SESSION": "3"}):
+            self.assertEqual(request("note", "x")["session"], "3")
 
     def test_logs_filters(self):
         self.assertEqual(request("logs", "--since", "7", "--level", "warning"),

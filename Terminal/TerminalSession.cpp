@@ -49,6 +49,7 @@ bool TerminalSession::Start(const TerminalStartOptions& options) {
     _exitSeen.reset();
     _exitCode.reset();
     _outputBytes = 0;
+    _lastInput.reset();
     _started = true;
     _screen->Reset();
 
@@ -109,24 +110,28 @@ void TerminalSession::SendKey(TerminalKey key, TerminalModifiers modifiers) {
         return;
     }
     _screen->SendKey(key, modifiers);
+    _lastInput = std::chrono::steady_clock::now();
     Flush();
 }
 
 void TerminalSession::SendCharacter(char32_t character, TerminalModifiers modifiers) {
     if (!Running()) return;
     _screen->SendCharacter(character, modifiers);
+    _lastInput = std::chrono::steady_clock::now();
     Flush();
 }
 
 void TerminalSession::SendFunctionKey(int number, TerminalModifiers modifiers) {
     if (!Running()) return;
     _screen->SendFunctionKey(number, modifiers);
+    _lastInput = std::chrono::steady_clock::now();
     Flush();
 }
 
 void TerminalSession::Paste(std::string_view utf8) {
     if (!Running() || utf8.empty()) return;
     _screen->Paste(utf8);
+    _lastInput = std::chrono::steady_clock::now();
     Flush();
 }
 

@@ -29,7 +29,7 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 | `frames --from A --to B [--count N] [--columns C] [--out PATH] [--scale S] [--crop X Y W H]` | One grid PNG of N frames between A and B seconds (pauses there); status + `path`, `frames` (times), `columns` ([Animation](#screenshots)) |
 | `inspect` | Status + `inspection` (readout values, tables, focus, disabled controls) |
 | `logs [--since N] [--limit N] [--level L]` | `entries` (sequence, level, source, text) after N, newest `limit` (100, max 1000) at or above L; `last` sequence |
-| `note [WORD...] [--state working\|waiting\|idle]` | Reports what the agent is doing (default `working`); the editor's status bar shows it, with the text as tooltip. `state`, `text` (up to 200 bytes), `control` |
+| `note [WORD...] [--state working\|waiting\|idle]` | Reports what the agent is doing (default `working`). Run from a Console session (`ENGINE_EDITOR_SESSION` set, sent as `session`), it sets that session's state and hover text until the developer types into it again. `state`, `text` (up to 200 bytes), `control` |
 | `refresh` (top-level command) | Build & Refresh; streams build output ([Tools contract](../ToolsContract.md)) |
 
 Exit codes: 0 answered; 1 the editor refused the request (`error: ...` on stderr: unknown scene, invalid value, not

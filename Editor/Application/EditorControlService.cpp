@@ -375,6 +375,7 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
     }
     case EditorControlCommand::Note: {
         _activity = {DecodeAgentNote(arguments), std::chrono::steady_clock::now(), _activity.sequence + 1};
+        if (!_activity.note.session.empty()) _sessionActivity[_activity.note.session] = _activity;
         return nlohmann::json{{"state", AgentActivityName(_activity.note.state)},
                               {"text", _activity.note.text},
                               {"control", _agentControl}};

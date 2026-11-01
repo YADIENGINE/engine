@@ -62,6 +62,8 @@ public:
     [[nodiscard]] bool TakeBell();
     // Bytes the program has written since Start; a value that stops growing means it has settled.
     [[nodiscard]] std::uint64_t OutputBytes() const { return _outputBytes; }
+    // When keys or pasted text last went to the program since Start (none yet: empty).
+    [[nodiscard]] std::optional<std::chrono::steady_clock::time_point> LastInput() const { return _lastInput; }
     [[nodiscard]] const TerminalPalette& Palette() const;
 
 private:
@@ -74,6 +76,7 @@ private:
     std::optional<int> _exitCode;
     std::optional<std::chrono::steady_clock::time_point> _exitSeen; // çıkış görüldü, son çıktı boşaltılıyor
     std::uint64_t _outputBytes = 0;
+    std::optional<std::chrono::steady_clock::time_point> _lastInput;
     bool _started = false;
 
 public:

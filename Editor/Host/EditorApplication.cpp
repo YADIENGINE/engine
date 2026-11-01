@@ -1,6 +1,7 @@
 #include "Editor/Host/EditorApplication.h"
 #include <imgui.h>
 #include <algorithm>
+#include <map>
 #include <utility>
 #include <vector>
 #include "Editor/Host/EditorEntryPoint.h"
@@ -114,9 +115,10 @@ void EditorApplication::Update(float realSeconds) {
     if (!_agentProblem.empty()) _controller.Log(std::exchange(_agentProblem, {}), EditorLogLevel::Warning);
     if (_control) {
         _control->SetAgentControl(_preferences.agent.control);
-        const auto& activity = _control->AgentActivity();
-        _workspace.SetAgentReport(activity.sequence ? std::optional(activity.note) : std::nullopt,
-                                  _preferences.agent.control);
+        std::map<std::string, ConsoleNote> notes;
+        for (const auto& [session, activity] : _control->SessionActivity())
+            notes.emplace(session, ConsoleNote{activity.note, activity.time});
+        _workspace.SetAgentReport(std::move(notes), _preferences.agent.control);
     }
     SavePreferences(false);
 }

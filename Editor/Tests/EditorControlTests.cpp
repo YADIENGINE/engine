@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "Editor/Internals/Agent/AgentProfile.h"
+#include "Editor/Internals/Agent/SessionActivity.h"
 #include "Editor/Internals/Protocol/EditorControlProtocol.h"
 #include "Editor/Internals/Session/AgentContext.h"
 #include "Editor/Internals/Session/FrameCapture.h"
@@ -221,6 +222,7 @@ TEST_CASE("Editor.Control.NotesAndWhichCommandsChangeTheEditor", "[engine-editor
     CHECK(note.state == AgentActivityState::Waiting);
     CHECK(note.text == "reading");
     CHECK(DecodeAgentNote(nlohmann::json::object()).state == AgentActivityState::Working);
+    CHECK(DecodeAgentNote({{"session", "7"}}).session == "7"); // Its Console session's ENGINE_EDITOR_SESSION
     CHECK(DecodeAgentNote({{"text", std::string(AgentNoteMaxBytes * 2, 'x')}}).text.size() == AgentNoteMaxBytes);
     CHECK_THROWS(DecodeAgentNote({{"state", "sleeping"}}));
     // The agent-control switch blocks changes, never observation or notes
@@ -295,4 +297,36 @@ TEST_CASE("Editor.Agent.ProfilesAndCommandLines", "[engine-editor]") {
     CHECK(AgentProgram("my-agent --fast") == "my-agent");
     CHECK(AgentProgram("\"C:/Program Files/agent.exe\" --x") == "C:/Program Files/agent.exe");
     CHECK(AgentCommandLine("pwsh -NoLogo", "claude") == "pwsh -NoLogo -NoExit -Command claude");
+}
+
+TEST_CASE("Editor.Agent.SessionStateFollowsInputOutputBellsAndNotes", "[engine-editor]") {
+    SessionSignals signals{.now = 100};
+    CHECK(SessionStateOf(signals) == SessionState::Idle);
+    signals.lastOutput = 99.5; // A banner or start screen before anyone typed
+    CHECK(SessionStateOf(signals) == SessionState::Idle);
+    signals.lastInput = 99.4; // Typing echoes right away: not work
+    CHECK(SessionStateOf(signals) == SessionState::Idle);
+    signals.lastInput = 95;
+    signals.lastOutput = 99.5; // Output well after the request, still flowing
+    CHECK(SessionStateOf(signals) == SessionState::Working);
+    signals.now = 99.5 + SessionQuietSeconds + 0.1;
+    CHECK(SessionStateOf(signals) == SessionState::Done);
+    signals.lastBell = 99.6; // It asked something after the request
+    CHECK(SessionStateOf(signals) == SessionState::Waiting);
+    signals.lastInput = 102; // Answered
+    CHECK(SessionStateOf(signals) == SessionState::Idle);
+
+    // The agent's own note wins until the developer types again; a bell after it is a question
+    signals.note = AgentNote{AgentActivityState::Working, "Reading the boss code"};
+    signals.noteTime = 103;
+    CHECK(SessionStateOf(signals) == SessionState::Working);
+    CHECK(SessionActivityText(signals, "title") == "Reading the boss code");
+    signals.note->state = AgentActivityState::Idle;
+    CHECK(SessionStateOf(signals) == SessionState::Done);
+    signals.lastBell = 104;
+    CHECK(SessionStateOf(signals) == SessionState::Waiting);
+    signals.lastInput = 105; // A new request: the old note no longer describes it
+    CHECK(SessionActivityText(signals, "  Fixing tests  ") == "Fixing tests");
+    signals.running = false;
+    CHECK(SessionStateOf(signals) == SessionState::Exited);
 }

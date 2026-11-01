@@ -194,25 +194,20 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
         ToolTooltip("Terminal in the project folder (Ctrl+`)");
         ImGui::SameLine();
         if (agent.session) {
-            const bool waiting =
-                agent.running && (agent.attention || (agent.note && agent.note->state == AgentActivityState::Waiting));
-            const bool working = agent.running && agent.note && agent.note->state == AgentActivityState::Working;
-            const char* state = !agent.running ? "exited"
-                                : waiting      ? "waiting for you"
-                                : agent.note   ? AgentActivityName(agent.note->state)
-                                               : "running";
-            const auto label = std::string("Agent: ") + state + "###editor.agent-status";
-            const auto tone = !agent.running ? ToolPalette::Disabled
-                              : waiting      ? ToolToneColor(ToolTone::Warning)
-                              : working      ? ToolToneColor(ToolTone::Accent)
-                                             : ToolPalette::Secondary;
+            const bool waiting = agent.state == SessionState::Waiting;
+            const bool working = agent.state == SessionState::Working;
+            const auto label = agent.title + ": " + SessionStateName(agent.state) + "###editor.agent-status";
+            const auto tone = agent.state == SessionState::Exited ? ToolPalette::Disabled
+                              : waiting                           ? ToolToneColor(ToolTone::Warning)
+                              : working                           ? ToolToneColor(ToolTone::Accent)
+                                                                  : ToolPalette::Secondary;
             ImGui::PushStyleColor(ImGuiCol_Tab, TintSurface(ToolSurfaceColor(ToolSurface::Status), tone,
                                                             waiting ? EditorAttentionPulse() : 0.12f));
             ImGui::PushStyleColor(ImGuiCol_TextDisabled, tone);
             if (ToolSegment(label.c_str(), false)) result.agent = EditorAgentRequest::Open;
             ImGui::PopStyleColor(2);
-            const auto detail = (agent.note && !agent.note->text.empty() ? agent.note->text + "\n\n" : std::string()) +
-                                "Click to show the agent session";
+            const auto detail =
+                (agent.activity.empty() ? std::string() : agent.activity + "\n\n") + "Click to show the agent session";
             ToolTooltip(detail.c_str());
             ImGui::SameLine();
         }
