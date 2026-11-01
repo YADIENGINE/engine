@@ -125,8 +125,41 @@ If the catalog offers such an entry, the worker can run production scenes throug
 and in-memory profile policy are project-defined. The product's Back action belongs to game navigation; toolbar Stop
 closes the worker. The host keeps OS window and capture size fixed.
 
+## Agent workspace
+
+The editor runs the developer's own agent CLI (Claude Code, Codex or any command) in a Console session and hands it
+editor context; it never calls a model itself. The agent drives the editor back through `python Engine ctl`
+([Automation](Automation.md)), and the project opts in to the engine's agent rules through `Engine/AgentDocs/Agent.md`
+([Using an AI agent](../ProjectSetup.md#using-an-ai-agent)).
+
+- **Console sessions:** the Console holds several sessions as tabs: shells (`+` opens one) and at most one agent
+  session. Each session keeps running while the panel is hidden; closing a tab ends its program. A tab marked `*` rang
+  the terminal bell since you last looked at it: agent CLIs ring it when they wait for you.
+- **Agent menu** (also in the command palette, under "Agent:"):
+  - *Open <agent>* starts the chosen CLI in the project folder, or selects its session. The session's shell stays open
+    after the CLI exits. A CLI missing from PATH is reported in Output.
+  - *New shell* opens a plain shell session.
+  - *Send scene* pastes the open scene's id, playback time, changed parameters and a capture of the frame
+    (`editor-captures/scene-*.png`) into the agent session, without Enter: type your request after it.
+  - *Send build failure* pastes the last failed Build & Refresh with its error lines; *Ask agent to fix build* also
+    asks for a fix and presses Enter. The build failure popup has the same *Ask Agent to Fix* button.
+  - *Agent control* (on by default): off, tools may observe the editor (status, list, screenshot, inspect, logs) but
+    every command that changes it (open, set, action, playback, seek, frames, refresh) is refused. The status bar shows
+    "Agent control off".
+  - *Agent CLI* chooses Claude Code (`claude`), Codex (`codex`) or a custom command line.
+- **Output:** right-click → *Send Selected to Agent* pastes the selected lines.
+- **Marks** (toolbar Mark, Alt+drag) go to the agent session when there is one.
+- **Status bar:** with an agent session, "Agent: ..." shows *waiting for you* (bell), the agent's own report from
+  `python Engine ctl note TEXT --state working|waiting|idle` (its text is the tooltip), *running* or *exited*; clicking
+  it shows the session.
+- **Agent layout** (Window → Layouts): the Viewport beside a tall column holding the Console and the Inspector.
+
+Text sent to a session that is still starting waits until the CLI's output settles, so a just-started agent receives
+it in its prompt.
+
 ## Preferences
 
 Layout, last custom layout, visibility, scale, favorites, recent opens, and Output preferences are in
-`UserDataDirectory()/EngineEditor/preferences.json` (separated by build directory + project name). Player progress /
-settings files are unaffected.
+`UserDataDirectory()/EngineEditor/preferences.json` (separated by build directory + project name). The agent CLI choice
+and the Agent control switch belong to the user and apply to every project. Player progress / settings files are
+unaffected.

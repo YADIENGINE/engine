@@ -1,11 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
+#include <deque>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <string>
 #include <vector>
+#include "Editor/Internals/Agent/AgentProfile.h"
 #include "Editor/Internals/Protocol/EditorControlProtocol.h"
+#include "Editor/Internals/Session/AgentContext.h"
 #include "Editor/Internals/Session/FrameCapture.h"
 #include "Editor/Internals/Session/ViewportMark.h"
 #include "Tests/Support/TempDirectory.h"
@@ -208,4 +211,88 @@ TEST_CASE("Editor.Mark.WindowRegionsUseFramebufferPixels", "[engine-editor]") {
         WindowMarkContext(FloatRect{5.0f, 6.0f, 70.0f, 80.0f}, {2000, 1200}, "C:/m.png", "drawing.circle");
     CHECK(line == "[editor] window region=5,6 70x80 of 2000x1200 image=\"C:/m.png\" open-scene=drawing.circle ");
     CHECK(WindowMarkContext({}, {2000, 1200}, "m.png", {}).find("open-scene") == std::string::npos);
+}
+
+TEST_CASE("Editor.Control.NotesAndWhichCommandsChangeTheEditor", "[engine-editor]") {
+    const auto request =
+        DecodeControlRequest(R"({"version": 3, "command": "note", "text": "reading", "state": "waiting"})");
+    REQUIRE(request.command == EditorControlCommand::Note);
+    const auto note = DecodeAgentNote(request.arguments);
+    CHECK(note.state == AgentActivityState::Waiting);
+    CHECK(note.text == "reading");
+    CHECK(DecodeAgentNote(nlohmann::json::object()).state == AgentActivityState::Working);
+    CHECK(DecodeAgentNote({{"text", std::string(AgentNoteMaxBytes * 2, 'x')}}).text.size() == AgentNoteMaxBytes);
+    CHECK_THROWS(DecodeAgentNote({{"state", "sleeping"}}));
+    // The agent-control switch blocks changes, never observation or notes
+    for (const auto command : {EditorControlCommand::Open, EditorControlCommand::Set, EditorControlCommand::Seek,
+                               EditorControlCommand::Frames, EditorControlCommand::Refresh})
+        CHECK(ControlCommandChangesEditor(command));
+    for (const auto command :
+         {EditorControlCommand::Status, EditorControlCommand::List, EditorControlCommand::Screenshot,
+          EditorControlCommand::Inspect, EditorControlCommand::Logs, EditorControlCommand::Note})
+        CHECK_FALSE(ControlCommandChangesEditor(command));
+}
+
+TEST_CASE("Editor.Agent.ContextLines", "[engine-editor]") {
+    SceneDefinition definition;
+    definition.id = "drawing.circle";
+    auto mode = Parameter(SceneParameterKind::Choice);
+    mode.id = "mode";
+    mode.label = "Mode";
+    mode.initial = std::string("Slow");
+    mode.choices = {"Slow", "Fast"};
+    mode.description = "How fast it spins.";
+    auto radius = Parameter(SceneParameterKind::Float);
+    radius.id = "radius";
+    radius.initial = 10.0;
+    radius.maximum = 50.0;
+    definition.parameters = {mode, radius};
+
+    const auto scene = SceneContext(definition, {{"mode", std::string("Fast")}, {"radius", 10.0}}, 1.5, true,
+                                    {1600, 900}, "C:/shots/scene.png");
+    CHECK(scene.starts_with("[editor] scene=drawing.circle t=1.50s(paused) 1600x900 "));
+    CHECK(scene.find("image=\"C:/shots/scene.png\"") != std::string::npos);
+    CHECK(scene.ends_with(" params: mode=\"Fast\" ")); // Unchanged radius is left out
+
+    const auto parameter = ParameterContext(definition, mode, std::string("Fast"));
+    CHECK(parameter.find("parameter=mode \"Mode\" = \"Fast\" choices: Slow|Fast initial: \"Slow\"") !=
+          std::string::npos);
+    CHECK(parameter.find("How fast it spins.") != std::string::npos);
+    CHECK(ParameterContext(definition, radius, 10.0).find("range: 0..50") != std::string::npos);
+
+    std::vector<EditorLogEntry> lines(3);
+    for (std::size_t i = 0; i < lines.size(); ++i)
+        lines[i].text = "line " + std::to_string(i);
+    lines[2].level = EditorLogLevel::Error;
+    const auto output = OutputContext(lines, 2);
+    CHECK(output.starts_with("[editor] output, 3 lines (newest 2):\n"));
+    CHECK(output.find("line 0") == std::string::npos);
+    CHECK(output.ends_with("error: line 2\n"));
+}
+
+TEST_CASE("Editor.Agent.BuildFailureListsDistinctErrors", "[engine-editor]") {
+    EditorBuildAttempt attempt;
+    std::deque<EditorLogEntry> entries(4);
+    entries[0].text = "compiling";
+    entries[1] = {.level = EditorLogLevel::Error, .text = "a.cpp(3): error C2065"};
+    entries[2] = {.level = EditorLogLevel::Error, .text = "a.cpp(3): error C2065"};
+    entries[3] = {.level = EditorLogLevel::Error, .text = "b.cpp(9): error C2143"};
+    attempt.result = EditorBuildResult::Succeeded;
+    CHECK(BuildFailureContext(attempt, entries, 10).empty());
+    attempt.result = EditorBuildResult::BuildFailed;
+    attempt.exitCode = 2;
+    const auto text = BuildFailureContext(attempt, entries, 10);
+    CHECK(text.starts_with("[editor] Build & Refresh failed (exit code 2), 2 error lines:\n"));
+    CHECK(text.ends_with("a.cpp(3): error C2065\nb.cpp(9): error C2143\n"));
+    CHECK(BuildFailureContext(attempt, entries, 1).find("(first 1)") != std::string::npos);
+}
+
+TEST_CASE("Editor.Agent.ProfilesAndCommandLines", "[engine-editor]") {
+    CHECK(AgentCommand({}) == "claude");
+    CHECK(AgentCommand({AgentKind::Codex}) == "codex");
+    CHECK(AgentCommand({AgentKind::Custom, "  my-agent --fast "}) == "my-agent --fast");
+    CHECK(AgentCommand({AgentKind::Custom, "   "}).empty());
+    CHECK(AgentProgram("my-agent --fast") == "my-agent");
+    CHECK(AgentProgram("\"C:/Program Files/agent.exe\" --x") == "C:/Program Files/agent.exe");
+    CHECK(AgentCommandLine("pwsh -NoLogo", "claude") == "pwsh -NoLogo -NoExit -Command claude");
 }

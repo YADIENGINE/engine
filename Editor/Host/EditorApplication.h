@@ -26,6 +26,8 @@ private:
     // Saves the marked region of the latest frame and pastes its context line into the Console.
     void PasteMark(const FloatRect& region);
     void PasteWindowMark(const FloatRect& region, const ViewportPixels& window);
+    // Agent → Send scene: saves the latest frame and sends the scene's context line to the agent session.
+    void SendScene();
     // Window captures: requested for the end of the next drawn frame, then kept as the latest.
     [[nodiscard]] std::uint64_t RequestWindow() const;
     [[nodiscard]] std::shared_ptr<const ViewportPixels> Window(std::uint64_t sequence) const;
@@ -49,6 +51,8 @@ private:
     mutable bool _quit = false;
     mutable std::optional<FloatRect> _mark; // Drawn this frame, handled in the next Update
     mutable std::optional<FloatRect> _windowMark;
+    mutable bool _sendScene = false; // Requested this frame, handled in the next Update
+    mutable std::string _agentProblem;
     std::uint64_t _windowMarkSequence = 0; // The capture it waits for; 0 until requested
     mutable bool _windowWanted = false;
     mutable std::uint64_t _windowSequence = 0;

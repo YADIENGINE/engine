@@ -4,7 +4,8 @@
 // Sıra kayıtlı tercihlerin (görünürlük) sırasıdır: yeni panel sona, Count'tan önce eklenir.
 enum class EditorPanel { Catalog, Viewport, Inspector, Output, Profiler, Tuning, Console, Count };
 enum class EditorDockGroup { Left, Center, Right, Bottom };
-enum class EditorWorkspaceLayout { Develop, Inspect, Profile, Custom };
+// Saved as numbers: new layouts go last. Agent: the scene beside a tall Console for an agent session.
+enum class EditorWorkspaceLayout { Develop, Inspect, Profile, Custom, Agent };
 
 struct EditorPanelDefinition {
     EditorPanel id;
@@ -37,6 +38,7 @@ struct EditorLayoutDefinition {
 inline constexpr std::array EditorLayouts{EditorLayoutDefinition{EditorWorkspaceLayout::Develop, "Develop"},
                                           EditorLayoutDefinition{EditorWorkspaceLayout::Inspect, "Inspect"},
                                           EditorLayoutDefinition{EditorWorkspaceLayout::Profile, "Profile"},
+                                          EditorLayoutDefinition{EditorWorkspaceLayout::Agent, "Agent"},
                                           EditorLayoutDefinition{EditorWorkspaceLayout::Custom, "Last custom layout"}};
 
 [[nodiscard]] constexpr auto DefaultEditorPanelVisibility() {

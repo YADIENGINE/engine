@@ -192,10 +192,16 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
                                                         EditorController& controller) {
     const auto& arguments = request.arguments;
     const auto snapshot = controller.Snapshot();
+    if (!_agentControl && ControlCommandChangesEditor(request.command))
+        throw std::runtime_error("Agent control is off in the editor (Agent menu); ask the developer to turn it on");
     switch (request.command) {
     case EditorControlCommand::Refresh: Refresh(controller); return std::nullopt;
-    case EditorControlCommand::Status : return StatusOf(controller);
-    case EditorControlCommand::List   : {
+    case EditorControlCommand::Status : {
+        auto status = StatusOf(controller);
+        status["control"] = _agentControl;
+        return status;
+    }
+    case EditorControlCommand::List: {
         auto scenes = nlohmann::json::array();
         for (const auto& definition : snapshot.catalog)
             scenes.push_back(ControlCatalogEntry(definition, controller.Values(definition.id)));
@@ -366,6 +372,12 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
         }
         if (entries.size() > limit) entries.erase(entries.begin(), entries.end() - static_cast<std::ptrdiff_t>(limit));
         return nlohmann::json{{"entries", entries}, {"last", last}};
+    }
+    case EditorControlCommand::Note: {
+        _activity = {DecodeAgentNote(arguments), std::chrono::steady_clock::now(), _activity.sequence + 1};
+        return nlohmann::json{{"state", AgentActivityName(_activity.note.state)},
+                              {"text", _activity.note.text},
+                              {"control", _agentControl}};
     }
     case EditorControlCommand::Count: break;
     }

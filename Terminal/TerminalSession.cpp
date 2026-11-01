@@ -48,6 +48,7 @@ bool TerminalSession::Start(const TerminalStartOptions& options) {
     _console.reset();
     _exitSeen.reset();
     _exitCode.reset();
+    _outputBytes = 0;
     _started = true;
     _screen->Reset();
 
@@ -77,7 +78,9 @@ void TerminalSession::Stop() {
 
 void TerminalSession::Pump() {
     if (!_console) return;
-    _screen->Feed(_console->TakeOutput());
+    const auto output = _console->TakeOutput();
+    _outputBytes += output.size();
+    _screen->Feed(output);
     Flush();
     const auto code = _console->ExitCode();
     if (!code) return;
@@ -137,6 +140,7 @@ TerminalCell TerminalSession::Cell(int row, int column) const { return _screen->
 std::string TerminalSession::Text(TerminalPosition from, TerminalPosition to) const { return _screen->Text(from, to); }
 TerminalCursor TerminalSession::Cursor() const { return _screen->Cursor(); }
 const std::string& TerminalSession::Title() const { return _screen->Title(); }
+bool TerminalSession::TakeBell() { return _screen->TakeBell(); }
 const TerminalPalette& TerminalSession::Palette() const { return _screen->Palette(); }
 
 void TerminalSession::Flush() {

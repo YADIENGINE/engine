@@ -74,6 +74,9 @@ def add_parser(commands) -> None:
     action.add_argument("--since", type=int, default=0, help="only entries after this sequence number")
     action.add_argument("--limit", type=int, default=100, help="newest entries to return (max 1000)")
     action.add_argument("--level", choices=("info", "warning", "error"), default="info", help="minimum level")
+    action = actions.add_parser("note", help="report what the agent is doing; shown in the editor's status bar")
+    action.add_argument("text", nargs="*", metavar="WORD")
+    action.add_argument("--state", choices=("working", "waiting", "idle"), default="working")
 
 
 def parse_value(text: str):
@@ -272,6 +275,8 @@ def request_of(args: argparse.Namespace) -> dict:
                 request["crop"] = args.crop
         case "logs":
             request.update(since=args.since, limit=args.limit, level=args.level)
+        case "note":
+            request.update(text=" ".join(args.text), state=args.state)
     return request
 
 

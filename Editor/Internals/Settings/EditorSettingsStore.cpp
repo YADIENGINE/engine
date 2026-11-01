@@ -44,7 +44,7 @@ std::string EditorSettingsStore::Load(const std::string& project, EditorPreferen
                 value.value("layout", static_cast<int>(loaded.docking.empty() ? EditorWorkspaceLayout::Develop
                                                                               : EditorWorkspaceLayout::Custom));
             if (layout >= static_cast<int>(EditorWorkspaceLayout::Develop) &&
-                layout <= static_cast<int>(EditorWorkspaceLayout::Custom))
+                layout <= static_cast<int>(EditorWorkspaceLayout::Agent))
                 loaded.layout = static_cast<EditorWorkspaceLayout>(layout);
             loaded.customDocking = value.value("customDocking", std::string{});
             if (value.contains("customVisible")) {
@@ -72,6 +72,14 @@ std::string EditorSettingsStore::Load(const std::string& project, EditorPreferen
                                    filter.value("error", true), filter.value("search", std::string{})};
             loaded.outputFilter.search.resize(std::min(loaded.outputFilter.search.size(), std::size_t{255}));
         }
+        if (const auto agent = document.find("agent"); agent != document.end() && agent->is_object()) {
+            const auto key = agent->value("kind", std::string{});
+            for (const auto& kind : AgentKinds)
+                if (key == kind.key) loaded.agent.kind = kind.id;
+            loaded.agent.customCommand = agent->value("customCommand", std::string{});
+            loaded.agent.customCommand.resize(std::min(loaded.agent.customCommand.size(), std::size_t{1024}));
+            loaded.agent.control = agent->value("control", true);
+        }
         preferences = std::move(loaded);
         fontSize = ValidFontSize(font) ? font : 100;
         _document = std::move(document);
@@ -88,6 +96,9 @@ std::string EditorSettingsStore::Save(const std::string& project, const EditorPr
         auto document = _document;
         document["version"] = 1;
         document["fontSize"] = ValidFontSize(fontSize) ? fontSize : 100;
+        document["agent"] = {{"kind", AgentKindInfo(preferences.agent.kind).key},
+                             {"customCommand", preferences.agent.customCommand},
+                             {"control", preferences.agent.control}};
         const auto& filter = preferences.outputFilter;
         document["projects"][project] = {
             {"visible", preferences.visible},

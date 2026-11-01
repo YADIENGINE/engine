@@ -37,6 +37,7 @@ enum class EditorControlCommand {
     Frames,
     Inspect,
     Logs,
+    Note,
     Count
 };
 
@@ -44,6 +45,22 @@ struct EditorControlRequest {
     EditorControlCommand command = EditorControlCommand::Status;
     nlohmann::json arguments = nlohmann::json::object(); // The request without "version" and "command"
 };
+
+// What an agent reports with `ctl note` (shown in the status bar): working on a request, waiting for the developer,
+// or done.
+enum class AgentActivityState { Idle, Working, Waiting };
+struct AgentNote {
+    AgentActivityState state = AgentActivityState::Working;
+    std::string text;
+};
+inline constexpr std::size_t AgentNoteMaxBytes = 200;
+// {"text": "...", "state": "working" | "waiting" | "idle"} (state optional, default working); text is cut to
+// AgentNoteMaxBytes. Throws for an unknown state.
+[[nodiscard]] AgentNote DecodeAgentNote(const nlohmann::json& arguments);
+[[nodiscard]] const char* AgentActivityName(AgentActivityState state);
+// Commands that change the editor (scene, playback, build). The developer's "Agent control" switch refuses them;
+// observing commands and notes still answer.
+[[nodiscard]] bool ControlCommandChangesEditor(EditorControlCommand command);
 
 [[nodiscard]] std::string EncodeControlAnnouncement(const EditorControlAnnouncement& announcement);
 [[nodiscard]] EditorControlAnnouncement DecodeControlAnnouncement(std::string_view json);

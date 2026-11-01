@@ -2,6 +2,7 @@
 #include <array>
 #include <string>
 #include <vector>
+#include "Editor/Internals/Agent/AgentProfile.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
 #include "Editor/Internals/Settings/EditorPanel.h"
 
@@ -18,6 +19,7 @@ struct EditorPreferences {
     EditorLogFilter outputFilter;
     bool followOutput = true;
     bool showMetrics = false;
+    AgentPreferences agent; // Saved for the user across projects
     [[nodiscard]] bool& Visible(EditorPanel panel) { return visible[static_cast<std::size_t>(panel)]; }
     [[nodiscard]] bool IsFavorite(const std::string& id) const;
     void ToggleFavorite(const std::string& id);

@@ -264,6 +264,26 @@ TEST_CASE("Editor.Settings.ProjectIsolationAndCorruptFileRecovery", "[engine-edi
     CHECK(font == 100);
 }
 
+TEST_CASE("Editor.Settings.AgentChoiceBelongsToTheUser", "[engine-editor]") {
+    TempDirectory directory;
+    const auto file = directory.Path() / "preferences.json";
+    EditorSettingsStore store(file);
+    EditorPreferences preferences;
+    preferences.layout = EditorWorkspaceLayout::Agent;
+    preferences.agent = {AgentKind::Custom, "my-agent --fast", false};
+    REQUIRE(store.Save("project-a", preferences, 100).empty());
+    EditorSettingsStore reopened(file);
+    EditorPreferences restored;
+    int font = 100;
+    REQUIRE(reopened.Load("project-a", restored, font).empty());
+    CHECK(restored.layout == EditorWorkspaceLayout::Agent);
+    CHECK(restored.agent == preferences.agent);
+    // Another project sees the same agent choice; its own layout stays its own
+    REQUIRE(reopened.Load("project-b", restored, font).empty());
+    CHECK(restored.agent == preferences.agent);
+    CHECK(restored.layout == EditorWorkspaceLayout::Develop);
+}
+
 TEST_CASE("Editor.Input.HiddenViewportCancelsOwnedInput", "[engine-editor]") {
     ViewportInputRouter router;
     InputSample down;

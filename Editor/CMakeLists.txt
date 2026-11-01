@@ -27,6 +27,8 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/BenchmarkState.cpp
     Internals/Session/FrameCapture.cpp
     Internals/Session/ViewportMark.cpp
+    Internals/Session/AgentContext.cpp
+    Internals/Agent/AgentProfile.cpp
     Internals/Viewport/SceneViewport.cpp
     Internals/Viewport/ViewportInputRouter.cpp
     Internals/Diagnostics/EditorDiagnostics.cpp
@@ -39,6 +41,7 @@ if(WIN32)
     target_sources(EngineEditorSupport PRIVATE
         Internals/Platform/Windows/BuildLease.cpp
         Internals/Platform/Windows/ChildProcess.cpp
+        Internals/Platform/Windows/CommandLocator.cpp
         Internals/Platform/Windows/ControlChannel.cpp
         Internals/Platform/Windows/EditorControlPipe.cpp
         Internals/Platform/Windows/NativeHandle.cpp

@@ -95,6 +95,23 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
         entries.push_back({std::string("Window: Layouts / ") + layout.title, "", enabled,
                            enabled ? "" : "No custom layout has been saved", [&result, id] { result.layout = id; }});
     }
+    const auto attempt = snapshot.diagnostics.Attempt().result;
+    const bool failed = attempt == EditorBuildResult::BuildFailed || attempt == EditorBuildResult::RefreshFailed;
+    const auto agentEntry = [&](std::string label, bool enabled, const char* reason, EditorAgentRequest request) {
+        entries.push_back({"Agent: " + std::move(label), "", enabled, enabled ? "" : reason,
+                           [&result, request] { result.agent = request; }});
+    };
+    agentEntry(std::string("Open ") + AgentKindInfo(preferences.agent.kind).name, true, "", EditorAgentRequest::Open);
+    agentEntry("New shell", true, "", EditorAgentRequest::NewShell);
+    agentEntry("Send scene", snapshot.ready, "No scene is running", EditorAgentRequest::SendScene);
+    agentEntry("Send build failure", failed, "The last Build & Refresh did not fail",
+               EditorAgentRequest::SendBuildFailure);
+    agentEntry("Ask agent to fix build", failed, "The last Build & Refresh did not fail", EditorAgentRequest::FixBuild);
+    entries.push_back({preferences.agent.control ? "Agent: Turn agent control off" : "Agent: Turn agent control on",
+                       "",
+                       true,
+                       {},
+                       [&preferences] { preferences.agent.control = !preferences.agent.control; }});
     std::erase_if(entries, [&](const auto& entry) { return !Matches(entry.label, _search.data()); });
     const int count = static_cast<int>(entries.size());
     bool moved = searchChanged;

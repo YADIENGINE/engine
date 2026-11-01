@@ -13,7 +13,7 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 
 | Command | Answer |
 | --- | --- |
-| `status` | `editor` (`open`), `phase`, `status`, `ready`, `building`, `scene`; while ready also `paused`, `speed`, `seconds`, `canvas`; with no scene a `next` hint |
+| `status` | `editor` (`open`), `phase`, `status`, `ready`, `building`, `scene`, `control`; while ready also `paused`, `speed`, `seconds`, `canvas`; with no scene a `next` hint |
 | `list` | `scenes`: id, name, category, `parameters` (id, kind, apply, current `value`, range or `choices`, `applyAction` when set), `actions` (`primary` when set). `--brief`: only id, name, category |
 | `find WORD... [--limit N]` | `matches` (best N, default 5): id, name, category, `matched`, `set` (choices the words select), `action`, `commands` that open it, compact `parameters`, `actions`; `more` when cut ([Finding a scene](#finding-a-scene)) |
 | `describe ID` | `scene`: that scene's `list` entry; exit 1 with close ids when unknown |
@@ -29,10 +29,16 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 | `frames --from A --to B [--count N] [--columns C] [--out PATH] [--scale S] [--crop X Y W H]` | One grid PNG of N frames between A and B seconds (pauses there); status + `path`, `frames` (times), `columns` ([Animation](#screenshots)) |
 | `inspect` | Status + `inspection` (readout values, tables, focus, disabled controls) |
 | `logs [--since N] [--limit N] [--level L]` | `entries` (sequence, level, source, text) after N, newest `limit` (100, max 1000) at or above L; `last` sequence |
+| `note [WORD...] [--state working\|waiting\|idle]` | Reports what the agent is doing (default `working`); the editor's status bar shows it, with the text as tooltip. `state`, `text` (up to 200 bytes), `control` |
 | `refresh` (top-level command) | Build & Refresh; streams build output ([Tools contract](../ToolsContract.md)) |
 
 Exit codes: 0 answered; 1 the editor refused the request (`error: ...` on stderr: unknown scene, invalid value, not
-running, timed out); 2 no editor or wrong arguments.
+running, timed out, agent control off); 2 no editor or wrong arguments.
+
+**Agent control:** the developer can turn off Agent → Agent control ([Agent workspace](Usage.md#agent-workspace)).
+While it is off, `status` reports `"control": false` and commands that change the editor (`open`, `set`, `action`,
+`pause`, `play`, `step`, `speed`, `reset`, `seek`, `frames`, `refresh`) are refused; `status`, `list`, `find`,
+`describe`, `screenshot`, `inspect`, `logs` and `note` still answer.
 
 ## Finding a scene
 

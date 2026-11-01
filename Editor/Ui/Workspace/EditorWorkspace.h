@@ -16,6 +16,8 @@ struct EditorWorkspaceResult {
     bool returnToProjectList = false;
     bool cancelViewportInput = false;
     std::optional<FloatRect> windowMark; // A finished mark outside the scene: window framebuffer pixels
+    bool sendScene = false;              // Agent → Send scene: the host captures the frame and calls SendToAgent
+    std::string agentProblem;            // For the log, e.g. the agent CLI was not found
 };
 
 class EditorWorkspace {
@@ -28,13 +30,28 @@ public:
     void OfferProjectList(bool offer) { _offerProjectList = offer; }
     // Konsolun kabuğu bu klasörde başlar (proje kökü).
     void SetConsoleDirectory(const std::filesystem::path& directory) { _console.SetDirectory(directory); }
-    // Shows the Console and pastes `text` into its program's input (no Enter), starting the shell if needed.
+    // Shows the Console and pastes `text` (no Enter) into the agent session when there is one, else the selected
+    // session, starting a shell if needed.
     void PasteToConsole(const std::string& text, EditorPreferences& preferences);
+    // Shows the Console and pastes `text` into the agent session, starting the chosen agent CLI when needed; `submit`
+    // presses Enter after it. Returns a problem for the log (empty when none).
+    [[nodiscard]] std::string SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences);
+    // The agent's latest `ctl note` and the control switch, for the status bar (set by the host every frame).
+    void SetAgentReport(std::optional<AgentNote> note, bool control) {
+        _agentNote = std::move(note);
+        _agentControl = control;
+    }
     void SetConsoleEnvironment(std::vector<std::pair<std::string, std::string>> environment) {
         _console.SetEnvironment(std::move(environment));
     }
 
 private:
+    void ShowConsole(EditorPreferences& preferences);
+    // Opens (or selects) the agent session; returns a problem for the log (empty when none).
+    [[nodiscard]] std::string OpenAgent(EditorPreferences& preferences);
+    void HandleAgent(EditorAgentRequest request, const EditorSnapshot& snapshot, EditorPreferences& preferences,
+                     EditorWorkspaceResult& result);
+    [[nodiscard]] EditorAgentStatus AgentStatus() const;
     void SetMaximized(bool maximized, EditorPreferences& preferences);
     void ApplyLayout(EditorWorkspaceLayout layout, EditorPreferences& preferences);
     void ToggleBottom(EditorPreferences& preferences, std::optional<EditorPanel> panel);
@@ -68,6 +85,9 @@ private:
     std::uint64_t _failureAttempt = 0;
     std::vector<char> _failureDetail;
     bool _showFailedOutput = false;
+    bool _fixFailedBuild = false; // The failure popup's "Ask Agent to Fix"
+    std::optional<AgentNote> _agentNote;
+    bool _agentControl = true;
     ImGuiID _centerDock = 0;
     int _ignoreLayoutChanges = 0;
     bool _resetDock = false;

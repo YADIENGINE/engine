@@ -71,6 +71,15 @@ TEST_CASE("Terminal.Screen.WideCharactersTitleAndAlternateScreen", "[terminal]")
     CHECK_FALSE(screen.AlternateScreen());
 }
 
+TEST_CASE("Terminal.Screen.BellIsReportedOnce", "[terminal]") {
+    VtScreen screen(4, 20, {});
+    CHECK_FALSE(screen.TakeBell());
+    screen.Feed("waiting\a");
+    CHECK(screen.TakeBell());
+    CHECK_FALSE(screen.TakeBell()); // Taken
+    CHECK(RowText(screen, 0) == "waiting");
+}
+
 TEST_CASE("Terminal.Screen.ResizeKeepsText", "[terminal]") {
     VtScreen screen(4, 20, {});
     screen.Feed("hello");

@@ -125,10 +125,15 @@ struct VtScreen::Callbacks {
         default: return 0;
         }
     }
+    static int Bell(void* user) {
+        static_cast<VtScreen*>(user)->_bell = true;
+        return 1;
+    }
     static const VTermScreenCallbacks& Table() {
         static const VTermScreenCallbacks table = [] {
             VTermScreenCallbacks callbacks{};
             callbacks.damage = Damage;
+            callbacks.bell = Bell;
             callbacks.movecursor = MoveCursor;
             callbacks.settermprop = SetProperty;
             callbacks.sb_pushline = PushLine;

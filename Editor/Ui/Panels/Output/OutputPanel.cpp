@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <algorithm>
 #include <ctime>
+#include "Editor/Internals/Session/AgentContext.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "ToolUi/ToolTheme.h"
@@ -254,6 +255,13 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         if (ImGui::BeginPopupContextWindow("output-context", ImGuiPopupFlags_MouseButtonRight)) {
             copySelected |= ImGui::MenuItem("Copy Selected", "Ctrl+C", false, !_selected.empty());
             copyVisible |= ImGui::MenuItem("Copy Visible", nullptr, false, !visible.empty());
+            ImGui::Separator();
+            if (ImGui::MenuItem("Send Selected to Agent", nullptr, false, !_selected.empty())) {
+                std::vector<EditorLogEntry> chosen;
+                for (const auto* entry : visible)
+                    if (_selected.contains(entry->sequence)) chosen.push_back(*entry);
+                _agentText = OutputContext(chosen, AgentContextMaxLines);
+            }
             ImGui::EndPopup();
         }
         if (follow && _selected.empty() && !ImGui::IsAnyItemActive()) ImGui::SetScrollHereY(1);

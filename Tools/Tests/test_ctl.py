@@ -54,6 +54,11 @@ class RequestTests(unittest.TestCase):
         grid = request("frames", "--from", "1", "--to", "3", "--count", "4", "--columns", "4", "--scale", "0.25")
         self.assertEqual((grid["count"], grid["columns"], grid["scale"]), (4, 4, 0.25))
 
+    def test_note(self):
+        self.assertEqual(request("note", "opening", "the", "boss"),
+                         {"command": "note", "text": "opening the boss", "state": "working"})
+        self.assertEqual(request("note", "--state", "idle"), {"command": "note", "text": "", "state": "idle"})
+
     def test_logs_filters(self):
         self.assertEqual(request("logs", "--since", "7", "--level", "warning"),
                          {"command": "logs", "since": 7, "limit": 100, "level": "warning"})

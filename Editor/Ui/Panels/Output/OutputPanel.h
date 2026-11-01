@@ -1,6 +1,8 @@
 #pragma once
 #include <array>
 #include <set>
+#include <string>
+#include <utility>
 #include <vector>
 #include "Editor/Application/EditorPresentation.h"
 #include "Editor/Internals/Settings/EditorPreferences.h"
@@ -9,8 +11,11 @@ class OutputPanel {
 public:
     void Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions, EditorPreferences& preferences);
     void ShowLastAttempt(std::uint64_t attempt);
+    // Lines the developer chose to send to the agent session since the last call (empty when none).
+    [[nodiscard]] std::string TakeAgentText() { return std::exchange(_agentText, {}); }
 
 private:
+    std::string _agentText;
     std::array<char, 256> _search{};
     std::set<std::uint64_t> _selected;
     std::uint64_t _anchor = 0;

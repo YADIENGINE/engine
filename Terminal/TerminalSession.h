@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -57,6 +58,10 @@ public:
     [[nodiscard]] std::string Text(TerminalPosition from, TerminalPosition to) const;
     [[nodiscard]] TerminalCursor Cursor() const;
     [[nodiscard]] const std::string& Title() const;
+    // Whether the program rang the bell since the last call (CLIs ring it when they wait for the user).
+    [[nodiscard]] bool TakeBell();
+    // Bytes the program has written since Start; a value that stops growing means it has settled.
+    [[nodiscard]] std::uint64_t OutputBytes() const { return _outputBytes; }
     [[nodiscard]] const TerminalPalette& Palette() const;
 
 private:
@@ -68,6 +73,7 @@ private:
     TerminalStartOptions _options;
     std::optional<int> _exitCode;
     std::optional<std::chrono::steady_clock::time_point> _exitSeen; // çıkış görüldü, son çıktı boşaltılıyor
+    std::uint64_t _outputBytes = 0;
     bool _started = false;
 
 public:

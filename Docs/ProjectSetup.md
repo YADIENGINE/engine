@@ -65,6 +65,9 @@ Skills follow the Agent Skills format, so agents that load skills by description
 folder. Claude Code users can keep `Engine/CLAUDE.md` (engine contributor rules) out of a game's context with
 `"claudeMdExcludes": ["Engine/CLAUDE.md"]` in the project's `.claude/settings.json`.
 
+In the editor, the Agent menu starts your agent CLI in a Console session and sends it scene, build and Output context
+([Agent workspace](Editor/Usage.md#agent-workspace)).
+
 ## Project.json
 
 The only place engine tools identify the project. Paths are relative to the project root; preset names are from the

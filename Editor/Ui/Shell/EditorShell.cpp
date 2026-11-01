@@ -49,6 +49,49 @@ void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions
         ImGui::TextDisabled("Applies when the scene opens.");
     ImGui::EndMenu();
 }
+int ResizeString(ImGuiInputTextCallbackData* data) {
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+        auto& text = *static_cast<std::string*>(data->UserData);
+        text.resize(static_cast<std::size_t>(data->BufTextLen));
+        data->Buf = text.data();
+    }
+    return 0;
+}
+bool InputString(const char* label, std::string& text) {
+    return ImGui::InputText(label, text.data(), text.capacity() + 1, ImGuiInputTextFlags_CallbackResize, ResizeString,
+                            &text);
+}
+bool BuildFailed(const EditorSnapshot& snapshot) {
+    const auto result = snapshot.diagnostics.Attempt().result;
+    return result == EditorBuildResult::BuildFailed || result == EditorBuildResult::RefreshFailed;
+}
+void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorShellResult& result) {
+    if (!ImGui::BeginMenu("Agent")) return;
+    const auto name = std::string("Open ") + AgentKindInfo(agent.kind).name;
+    if (ImGui::MenuItem(name.c_str())) result.agent = EditorAgentRequest::Open;
+    if (ImGui::MenuItem("New shell")) result.agent = EditorAgentRequest::NewShell;
+    ImGui::Separator();
+    if (ImGui::MenuItem("Send scene", nullptr, false, snapshot.ready)) result.agent = EditorAgentRequest::SendScene;
+    ToolTooltip("Paste the open scene, its time, changed values and a screenshot into the agent session");
+    const bool failed = BuildFailed(snapshot);
+    if (ImGui::MenuItem("Send build failure", nullptr, false, failed))
+        result.agent = EditorAgentRequest::SendBuildFailure;
+    if (ImGui::MenuItem("Ask agent to fix build", nullptr, false, failed)) result.agent = EditorAgentRequest::FixBuild;
+    ImGui::Separator();
+    ImGui::MenuItem("Agent control", nullptr, &agent.control);
+    ToolTooltip("Off: tools (python Engine ctl) can observe the editor but cannot change it");
+    if (ImGui::BeginMenu("Agent CLI")) {
+        for (const auto& kind : AgentKinds)
+            if (ImGui::MenuItem(kind.name, kind.command, agent.kind == kind.id)) agent.kind = kind.id;
+        if (agent.kind == AgentKind::Custom) {
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 18);
+            (void)InputString("##agent-command", agent.customCommand);
+            ToolTooltip("Command line run in the project folder");
+        }
+        ImGui::EndMenu();
+    }
+    ImGui::EndMenu();
+}
 } // namespace
 EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                                     EditorPreferences& preferences, int& fontSize, bool maximized,
@@ -107,6 +150,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
         result.openCommands = ImGui::MenuItem("Command palette", "Ctrl+Shift+P");
         ImGui::EndMenu();
     }
+    AgentMenu(snapshot, preferences.agent, result);
     ImGui::EndMainMenuBar();
     return result;
 }
@@ -125,8 +169,9 @@ float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions
     ImGui::PopStyleVar();
     return height;
 }
-float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreferences& preferences, ImVec2 position,
-                          float width, EditorShellResult& result) const {
+float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreferences& preferences,
+                          const EditorAgentStatus& agent, ImVec2 position, float width,
+                          EditorShellResult& result) const {
     const float scale = ToolUiScale();
     const float height = std::max(24.0f * scale, ImGui::GetTextLineHeight() + 8.0f * scale);
     ImGui::SetNextWindowPos({position.x, position.y - height});
@@ -161,6 +206,22 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
             result.bottomPanel = EditorPanel::Console;
         ToolTooltip("Terminal in the project folder (Ctrl+`)");
         ImGui::SameLine();
+        if (agent.session) {
+            const char* state = agent.attention  ? "waiting for you"
+                                : !agent.running ? "exited"
+                                : agent.note     ? AgentActivityName(agent.note->state)
+                                                 : "running";
+            const auto label = std::string("Agent: ") + state + "###editor.agent-status";
+            if (ToolSegment(label.c_str(), agent.attention)) result.agent = EditorAgentRequest::Open;
+            const auto detail =
+                agent.note && !agent.note->text.empty() ? agent.note->text : std::string("Show the agent session");
+            ToolTooltip(detail.c_str());
+            ImGui::SameLine();
+        }
+        if (!agent.control) {
+            ToolStatusBadge("Agent control off", EditorLevelColor(EditorLogLevel::Warning));
+            ImGui::SameLine();
+        }
         const char* phase = snapshot.profiler.busy ? (snapshot.benchmarkCancelPending ? "Canceling benchmark"
                                                                                       : snapshot.profiler.phase.c_str())
                                                    : EditorPhaseLabel(snapshot.phase);

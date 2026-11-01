@@ -1,10 +1,12 @@
 #include "Editor/Host/EditorApplication.h"
 #include <imgui.h>
 #include <algorithm>
+#include <utility>
 #include <vector>
 #include "Editor/Host/EditorEntryPoint.h"
 #include "Editor/Host/FramePng.h"
 #include "Editor/Host/ProjectListLauncher.h"
+#include "Editor/Internals/Session/AgentContext.h"
 #include "Editor/Internals/Session/ViewportMark.h"
 #include "Input/Internals/InputReader.h"
 #include "Platform/Internals/UserData.h"
@@ -105,6 +107,17 @@ void EditorApplication::Update(float realSeconds) {
         PasteMark(*_mark);
         _mark.reset();
     }
+    if (_sendScene) {
+        SendScene();
+        _sendScene = false;
+    }
+    if (!_agentProblem.empty()) _controller.Log(std::exchange(_agentProblem, {}), EditorLogLevel::Warning);
+    if (_control) {
+        _control->SetAgentControl(_preferences.agent.control);
+        const auto& activity = _control->AgentActivity();
+        _workspace.SetAgentReport(activity.sequence ? std::optional(activity.note) : std::nullopt,
+                                  _preferences.agent.control);
+    }
     SavePreferences(false);
 }
 std::uint64_t EditorApplication::RequestWindow() const {
@@ -144,6 +157,23 @@ void EditorApplication::PasteMark(const FloatRect& region) {
                                   _preferences);
     } catch (const std::exception& error) {
         _controller.Log(std::string("Mark: ") + error.what(), EditorLogLevel::Warning);
+    }
+}
+void EditorApplication::SendScene() {
+    try {
+        const auto snapshot = _controller.Snapshot();
+        const auto frame = _controller.LatestFrame();
+        if (!_control || !frame || !snapshot.selected) return;
+        const double scale = std::min(1.0, static_cast<double>(MarkMaxImageSide) /
+                                               std::max(snapshot.canvas.x, std::max(snapshot.canvas.y, 1)));
+        const auto image = CaptureFrame(*frame, snapshot.canvas, {std::nullopt, scale});
+        const auto file = _control->WriteCapture(image, {}, {}, "scene");
+        const auto text = SceneContext(*snapshot.selected, snapshot.parameters, _controller.Seconds(), snapshot.paused,
+                                       snapshot.canvas, file);
+        if (auto problem = _workspace.SendToAgent(text, false, _preferences); !problem.empty())
+            _controller.Log(problem, EditorLogLevel::Warning);
+    } catch (const std::exception& error) {
+        _controller.Log(std::string("Send scene: ") + error.what(), EditorLogLevel::Warning);
     }
 }
 void EditorApplication::Stop() {
@@ -203,6 +233,8 @@ void EditorApplication::DrawToolOverlay() const {
     _quit = result.quit;
     if (result.interaction.mark) _mark = result.interaction.mark;
     if (result.windowMark) _windowMark = result.windowMark;
+    if (result.sendScene) _sendScene = true;
+    if (!result.agentProblem.empty()) _agentProblem = result.agentProblem;
     if (result.returnToProjectList) {
         if (auto error = StartLauncher(_launcher); error.empty())
             _quit = true;

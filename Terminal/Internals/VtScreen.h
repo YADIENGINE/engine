@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Terminal/TerminalTypes.h"
 
@@ -23,6 +24,8 @@ public:
     void SendFunctionKey(int number, TerminalModifiers modifiers); // F1..F12
     void Paste(std::string_view utf8);
     [[nodiscard]] std::string TakeInput();
+    // Whether the program rang the bell (BEL) since the last call.
+    [[nodiscard]] bool TakeBell() { return std::exchange(_bell, false); }
 
     [[nodiscard]] int Rows() const { return _rows; }
     [[nodiscard]] int Columns() const { return _columns; }
@@ -61,6 +64,7 @@ private:
     int _columns = 0;
     bool _alternateScreen = false;
     bool _resizing = false;
+    bool _bell = false;
 
 public:
     VtScreen(const VtScreen&) = delete;

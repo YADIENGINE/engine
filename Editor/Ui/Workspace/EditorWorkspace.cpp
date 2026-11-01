@@ -2,13 +2,16 @@
 #include <imgui_internal.h>
 #include <algorithm>
 #include <string_view>
+#include "Editor/Internals/Platform/Windows/CommandLocator.h"
+#include "Editor/Internals/Session/AgentContext.h"
 #include "Editor/Internals/Session/ViewportMark.h"
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "ToolUi/ToolTheme.h"
 
 namespace {
-constexpr float MarkOverlayTint = 0.06f; // Alpha of the tint over the editor while marking
-constexpr float MarkOutline = 2.0f;      // Pixels at 100% UI scale
+constexpr float MarkOverlayTint = 0.06f;  // Alpha of the tint over the editor while marking
+constexpr float MarkOutline = 2.0f;       // Pixels at 100% UI scale
+constexpr float AgentColumnRatio = 0.40f; // Agent layout: width share of the Console + Inspector column
 constexpr float PanelMinWidthInFonts = 12.0f;
 constexpr float PanelMinHeightInLines = 6.0f;
 constexpr ImGuiWindowFlags HostFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
@@ -87,6 +90,12 @@ void EditorWorkspace::ApplyLayout(EditorWorkspaceLayout layout, EditorPreference
             preferences.Visible(EditorPanel::Profiler) = true;
             preferences.lastBottomPanel = EditorPanel::Profiler;
         }
+        if (layout == EditorWorkspaceLayout::Agent) {
+            preferences.Visible(EditorPanel::Catalog) = false;
+            preferences.Visible(EditorPanel::Tuning) = false;
+            preferences.Visible(EditorPanel::Console) = true;
+            preferences.lastBottomPanel = EditorPanel::Console;
+        }
         _resetDock = true;
     }
     _ignoreLayoutChanges = 3;
@@ -150,13 +159,75 @@ void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, const EditorUi
     ImGui::PopStyleVar();
     result.cancelViewportInput = true;
 }
-void EditorWorkspace::PasteToConsole(const std::string& text, EditorPreferences& preferences) {
+void EditorWorkspace::ShowConsole(EditorPreferences& preferences) {
     if (_maximized) SetMaximized(false, preferences);
     preferences.Visible(EditorPanel::Console) = true;
     preferences.lastBottomPanel = EditorPanel::Console;
     _focusBottom = EditorPanel::Console;
     _viewport.ReleaseFocus();
+}
+void EditorWorkspace::PasteToConsole(const std::string& text, EditorPreferences& preferences) {
+    ShowConsole(preferences);
+    if (const auto agent = _console.AgentSession()) _console.Select(*agent);
     _console.Paste(text);
+}
+std::string EditorWorkspace::OpenAgent(EditorPreferences& preferences) {
+    ShowConsole(preferences);
+    const auto& kind = AgentKindInfo(preferences.agent.kind);
+    const auto command = AgentCommand(preferences.agent);
+    if (command.empty()) {
+        _console.OpenShell();
+        return "No agent command is set; choose one in Agent > Agent CLI";
+    }
+    _console.OpenAgent(kind.name, AgentCommandLine(DefaultTerminalShell(), command));
+    if (CommandOnPath(AgentProgram(command))) return {};
+    return std::string(kind.name) + ": '" + AgentProgram(command) + "' was not found on PATH" +
+           (*kind.install ? std::string("; install it from ") + kind.install : std::string()) +
+           " or choose another in Agent > Agent CLI";
+}
+std::string EditorWorkspace::SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences) {
+    auto problem = OpenAgent(preferences);
+    if (_console.AgentSession()) {
+        const auto command = AgentCommand(preferences.agent);
+        _console.SendToAgent(AgentKindInfo(preferences.agent.kind).name,
+                             AgentCommandLine(DefaultTerminalShell(), command), text, submit);
+    } else {
+        _console.Paste(text); // No agent command: the shell OpenAgent opened
+    }
+    return problem;
+}
+void EditorWorkspace::HandleAgent(EditorAgentRequest request, const EditorSnapshot& snapshot,
+                                  EditorPreferences& preferences, EditorWorkspaceResult& result) {
+    const auto failure = [&] {
+        return BuildFailureContext(snapshot.diagnostics.Attempt(), snapshot.diagnostics.AttemptEntries(),
+                                   AgentContextMaxLines);
+    };
+    switch (request) {
+    case EditorAgentRequest::Open: result.agentProblem = OpenAgent(preferences); break;
+    case EditorAgentRequest::NewShell:
+        ShowConsole(preferences);
+        _console.OpenShell();
+        break;
+    case EditorAgentRequest::SendScene: result.sendScene = true; break;
+    case EditorAgentRequest::SendBuildFailure:
+        if (const auto text = failure(); !text.empty()) result.agentProblem = SendToAgent(text, false, preferences);
+        break;
+    case EditorAgentRequest::FixBuild:
+        if (const auto text = failure(); !text.empty())
+            result.agentProblem = SendToAgent(text + AgentFixBuildRequest, true, preferences);
+        break;
+    }
+    result.cancelViewportInput = true;
+}
+EditorAgentStatus EditorWorkspace::AgentStatus() const {
+    EditorAgentStatus status{.note = _agentNote, .control = _agentControl};
+    if (const auto agent = _console.AgentSession()) {
+        const auto session = _console.Sessions()[*agent];
+        status.session = true;
+        status.running = session.running;
+        status.attention = session.attention;
+    }
+    return status;
 }
 void EditorWorkspace::ToggleBottom(EditorPreferences& preferences, std::optional<EditorPanel> panel) {
     const auto target = panel.value_or(preferences.lastBottomPanel);
@@ -224,15 +295,19 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
         ImGui::DockBuilderSetNodeSize(dock, size);
         ImGuiID center = dock;
         std::array<ImGuiID, 4> groups{};
-        if (BottomVisible(preferences))
+        const bool agentLayout = preferences.layout == EditorWorkspaceLayout::Agent;
+        if (agentLayout) // The Console (agent session) and Inspector share a tall right column
+            groups[static_cast<std::size_t>(EditorDockGroup::Right)] =
+                ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, AgentColumnRatio, nullptr, &center);
+        if (BottomVisible(preferences) && !agentLayout)
             groups[static_cast<std::size_t>(EditorDockGroup::Bottom)] =
                 ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.30f, nullptr, &center);
         const bool catalog = preferences.visible[static_cast<std::size_t>(EditorPanel::Catalog)];
         if (catalog)
             groups[static_cast<std::size_t>(EditorDockGroup::Left)] =
                 ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.20f, nullptr, &center);
-        if (preferences.visible[static_cast<std::size_t>(EditorPanel::Inspector)] ||
-            preferences.visible[static_cast<std::size_t>(EditorPanel::Tuning)]) {
+        if (!agentLayout && (preferences.visible[static_cast<std::size_t>(EditorPanel::Inspector)] ||
+                             preferences.visible[static_cast<std::size_t>(EditorPanel::Tuning)])) {
             const float ratio = preferences.layout == EditorWorkspaceLayout::Inspect ? 0.32f : 0.24f;
             groups[static_cast<std::size_t>(EditorDockGroup::Right)] =
                 ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, ratio / (catalog ? 0.80f : 1.0f), nullptr, &center);
@@ -242,9 +317,12 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
         for (const auto& panel : EditorPanels) {
             const auto index = static_cast<std::size_t>(panel.id);
             _dockOnOpen[index] = !preferences.visible[index];
+            const auto group =
+                agentLayout && panel.dock == EditorDockGroup::Bottom ? EditorDockGroup::Right : panel.dock;
             if (preferences.visible[index])
-                ImGui::DockBuilderDockWindow(panel.window, groups[static_cast<std::size_t>(panel.dock)]);
+                ImGui::DockBuilderDockWindow(panel.window, groups[static_cast<std::size_t>(group)]);
         }
+        if (agentLayout) _focusBottom = EditorPanel::Console; // In front of the Inspector
         ImGui::DockBuilderFinish(dock);
         _ignoreLayoutChanges = 3;
     }
@@ -344,8 +422,14 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     const float menuHeight = ImGui::GetFrameHeight();
     const float toolbarHeight =
         _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight}, viewport->Size.x, _marking);
-    const float statusHeight = _shell.Status(
-        snapshot, preferences, {viewport->Pos.x, viewport->Pos.y + viewport->Size.y}, viewport->Size.x, menu);
+    const float statusHeight =
+        _shell.Status(snapshot, preferences, AgentStatus(), {viewport->Pos.x, viewport->Pos.y + viewport->Size.y},
+                      viewport->Size.x, menu);
+    if (_fixFailedBuild) {
+        menu.agent = EditorAgentRequest::FixBuild;
+        _fixFailedBuild = false;
+    }
+    if (menu.agent) HandleAgent(*menu.agent, snapshot, preferences, result);
     if (menu.toggleMaximize) SetMaximized(!_maximized, preferences);
     if (menu.toggleBottom || menu.bottomPanel) ToggleBottom(preferences, menu.bottomPanel);
     if (menu.focusCatalog) {
@@ -410,9 +494,13 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                     viewportDrawn = preferences.Visible(panel.id);
                     break;
                 case EditorPanel::Inspector: _inspector.Draw(snapshot, actions); break;
-                case EditorPanel::Output   : _output.Draw(snapshot, actions, preferences); break;
-                case EditorPanel::Profiler : _profiler.Draw(snapshot, actions); break;
-                case EditorPanel::Tuning   : _tuning.Draw(snapshot, actions); break;
+                case EditorPanel::Output:
+                    _output.Draw(snapshot, actions, preferences);
+                    if (const auto text = _output.TakeAgentText(); !text.empty())
+                        result.agentProblem = SendToAgent(text, false, preferences);
+                    break;
+                case EditorPanel::Profiler: _profiler.Draw(snapshot, actions); break;
+                case EditorPanel::Tuning  : _tuning.Draw(snapshot, actions); break;
                 case EditorPanel::Console:
                     _console.Draw();
                     consoleDrawn = true;
@@ -463,6 +551,11 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         ImGui::SameLine();
         if (ImGui::Button("Show Output")) {
             _showFailedOutput = true;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Ask Agent to Fix")) {
+            _fixFailedBuild = true; // Handled next frame, outside this popup
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();

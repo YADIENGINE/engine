@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
-#include "Editor/Internals/Protocol/EditorControlProtocol.h"
+#include "Editor/Internals/Session/AgentContext.h"
 
 namespace {
 std::string Utf8(const std::filesystem::path& path) {
@@ -67,12 +67,6 @@ std::string MarkContext(const SceneDefinition& definition, const SceneParameters
     std::string line = std::format("[editor] scene={} t{}{:.2f}s({}) region={},{} {}x{} of {}x{} image=\"{}\"",
                                    definition.id, paused ? "=" : "~", seconds, paused ? "paused" : "playing", region.x,
                                    region.y, region.width, region.height, canvas.x, canvas.y, Utf8(image));
-    std::string changed;
-    for (const auto& parameter : definition.parameters) {
-        const auto value = values.find(parameter.id);
-        if (value == values.end() || value->second == parameter.initial) continue;
-        changed += " " + parameter.id + "=" + ControlValue(value->second).dump();
-    }
-    if (!changed.empty()) line += " params:" + changed;
+    if (const auto changed = ChangedParameters(definition, values); !changed.empty()) line += " params:" + changed;
     return line + " ";
 }

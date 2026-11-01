@@ -27,6 +27,7 @@ constexpr std::array CommandRows{
     CommandRow{EditorControlCommand::Frames, "frames"},
     CommandRow{EditorControlCommand::Inspect, "inspect"},
     CommandRow{EditorControlCommand::Logs, "logs"},
+    CommandRow{EditorControlCommand::Note, "note"},
 };
 static_assert(RowsInIdOrder(CommandRows));
 
@@ -119,6 +120,56 @@ EditorControlRequest DecodeControlRequest(std::string_view line) {
 }
 std::string_view ControlCommandName(EditorControlCommand command) {
     return CommandRows.at(static_cast<std::size_t>(command)).name;
+}
+const char* AgentActivityName(AgentActivityState state) {
+    switch (state) {
+    case AgentActivityState::Idle   : return "idle";
+    case AgentActivityState::Working: return "working";
+    case AgentActivityState::Waiting: return "waiting";
+    }
+    return "idle";
+}
+AgentNote DecodeAgentNote(const nlohmann::json& arguments) {
+    AgentNote note;
+    if (const auto text = arguments.find("text"); text != arguments.end()) {
+        if (!text->is_string()) throw std::runtime_error("\"text\" must be a string");
+        note.text = text->get<std::string>().substr(0, AgentNoteMaxBytes);
+    }
+    if (const auto state = arguments.find("state"); state != arguments.end()) {
+        const auto name = state->is_string() ? state->get<std::string>() : std::string{};
+        bool known = false;
+        for (const auto candidate :
+             {AgentActivityState::Idle, AgentActivityState::Working, AgentActivityState::Waiting})
+            if (name == AgentActivityName(candidate)) {
+                note.state = candidate;
+                known = true;
+            }
+        if (!known) throw std::runtime_error("\"state\" must be working, waiting or idle");
+    }
+    return note;
+}
+bool ControlCommandChangesEditor(EditorControlCommand command) {
+    switch (command) {
+    case EditorControlCommand::Refresh:
+    case EditorControlCommand::Open:
+    case EditorControlCommand::Set:
+    case EditorControlCommand::Action:
+    case EditorControlCommand::Pause:
+    case EditorControlCommand::Play:
+    case EditorControlCommand::Step:
+    case EditorControlCommand::Speed:
+    case EditorControlCommand::Reset:
+    case EditorControlCommand::Seek:
+    case EditorControlCommand::Frames    : return true;
+    case EditorControlCommand::Status    :
+    case EditorControlCommand::List      :
+    case EditorControlCommand::Screenshot:
+    case EditorControlCommand::Inspect   :
+    case EditorControlCommand::Logs      :
+    case EditorControlCommand::Note      :
+    case EditorControlCommand::Count     : return false;
+    }
+    return false;
 }
 nlohmann::json ControlLogEntry(const EditorLogEntry& entry) {
     return {{"sequence", entry.sequence},

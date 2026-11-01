@@ -632,6 +632,36 @@ brings the screen to the developer. Supersedes the separate-process plan of [Age
 
 Durum: kabul edildi (2026-11-01); uygulandı.
 
+### D21. Agent knowledge and the editor's agent workspace
+**Decision (2026-11-01):** the engine actively supports working with an AI agent, in two layers. Revises D14 (no AI
+names or files at all) and D18 (shell only): the template still ships no AI file by default, but the engine documents
+an opt-in and the editor knows agent CLIs by name.
+- **Knowledge, by kind:** `AgentDocs/Agent.md` is a short page loaded every session (tool rules, hard invariants, a
+  table of skills); `AgentDocs/Skills/<name>/SKILL.md` are procedures read when a request matches (editor,
+  visual-change, build-fix, api), in the Agent Skills format; recipes, API pages and `Docs/` stay reference material.
+  `AgentDocs/Index.md` is the API routing table the `api` skill points to. Projects opt in by importing `Agent.md`
+  from their own agent file. `check` validates skills and every `python Engine ...` call written in AgentDocs.
+- **Tools for agents:** `ctl find` / `describe` turn a subject into a scene, choices and one ready `ctl open` command
+  (choices are searched, so per-project content maps are unnecessary); `ctl open --set --action --screenshot` is one
+  call; `status` says the editor is open and what to do next; `ctl note` reports progress to the status bar.
+- **Agent workspace:** the Console holds several sessions, one of them the agent session running the developer's CLI
+  (Claude Code, Codex or a custom command; a user preference). Agent menu / palette: open the agent, send the scene
+  (with a capture), the build failure or Output lines as `[editor] ...` context, ask for a build fix. Bells mark a
+  session that waits; the status bar shows the agent's state; an Agent layout puts the Console beside the Viewport.
+  "Agent control" lets the developer make the endpoint read-only. The editor never calls a model or stores keys:
+  the CLI keeps its own sessions, permissions and updates (D18's reason still holds).
+- **Deferred: Claude Code plugin.** The engine folder could be a plugin marketplace whose plugin is loaded in place
+  from the project's `Engine/` (skills from `AgentDocs/Skills/`, hooks such as `ctl note`, version = the submodule
+  commit), enabled from a project's `.claude/settings.json` (`extraKnownMarketplaces` with a `directory` source +
+  `enabledPlugins`). Open before adopting: how a relative `path` resolves, what a teammate sees on first open (beyond
+  the workspace trust dialog), and Windows behaviour; verify with a clean clone.
+- **Deferred: MCP server.** Same core as `ctl`, tools always in the agent's context and images returned inline; costs
+  a constant context share and a second interface, and dynamic catalogs cannot be static enums. Decide with
+  measurements (an agent eval set: prompts + expected final `ctl status`), not by default.
+
+Durum: kabul edildi (2026-11-01); knowledge layer and agent workspace backend implemented; visual design of the
+workspace (menu, tabs, status bar, setup) pending.
+
 ## v1 iş sırası
 
 Kabul edildi: [Plan](Plan.md) (Aşama 0 hazırlık → 1 editör döngüsü → 2 tuning → 3 launcher MVP → 4 dağıtım;

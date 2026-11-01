@@ -3,6 +3,9 @@
 Durum: aşama 1, geçmişte kaydırma ve sürükleyerek seçim / kopyalama uygulandı (2026-11-01), çalışma zamanı
 doğrulaması bekliyor. Aşama 2'nin kelime / satır seçimi sırada.
 Karar kaydı: [README → D18](README.md#d18-console-paneli-editörde-gerçek-terminal).
+**Update (2026-11-01):** several sessions (tabs) and an agent session with an Agent menu, bell attention and context
+sending: [D21](README.md#d21-agent-knowledge-and-the-editors-agent-workspace), usage `Docs/Editor/Usage.md` → Agent
+workspace. "Sadece kabuk" and "tek oturum" below are superseded by it.
 
 ## Amaç
 
