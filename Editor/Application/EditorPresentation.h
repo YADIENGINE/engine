@@ -3,8 +3,11 @@
 #include <filesystem>
 #include <functional>
 #include <set>
+#include <string>
 #include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
+#include "Editor/Internals/Session/AudioUsage.h"
+#include "Editor/Internals/Session/AudioWaveformCache.h"
 #include "Editor/Internals/Session/ProfilerSession.h"
 #include "Tuning/TuningFile.h"
 
@@ -32,6 +35,19 @@ struct EditorCapabilities {
     }
 };
 
+// The sound loaded for preview. It plays from its source file in the editor process, apart from the running scene.
+struct AudioPreviewState {
+    std::filesystem::path file; // Empty until a sound is loaded
+    bool playing = false;
+    bool paused = false;
+    bool loop = false;
+    float volume = 1.0f;
+    float position = 0.0f; // Seconds
+    float length = 0.0f;
+    std::string error; // Why the last Play failed
+    WaveformEntry waveform;
+};
+
 struct EditorSnapshot {
     const std::vector<SceneDefinition>& catalog;
     const SceneDefinition* selected;
@@ -56,19 +72,21 @@ struct EditorSnapshot {
     double hostTransferMs = 0.0;
     bool benchmarkCancelPending = false;
     const TuningWorkspace* tuning = nullptr; // Projenin tuning dosyaları; proje yoksa null
-    bool audioPlaying = false;               // The Assets panel's sound preview; set by the host
+    AudioPreviewState audio;                 // The Audio Preview panel's sound; set by the host
+    const AudioUsage* audioUsage = nullptr;  // Which sound files the project's audio catalog plays
     std::string notice;                      // Last change made through the control endpoint
     double noticeAge = 0.0;
     std::uint64_t controlAttempt =
         0; // Build & Refresh attempt started through the control endpoint                  // Seconds since it was made
 };
 
-enum class AudioPreviewAction { Play, Stop, Volume };
+enum class AudioPreviewAction { Play, Pause, Resume, Stop, Seek, Volume, Loop };
 struct AudioPreviewRequest {
     AudioPreviewAction action = AudioPreviewAction::Stop;
-    std::filesystem::path file; // Relative to the asset folder
+    std::filesystem::path file; // Play: the source file, absolute
     bool loop = false;
     float volume = 1.0f;
+    float seconds = 0.0f; // Seek
 };
 
 // References/callbacks are borrowed for the current UI frame; panels never retain session data.
@@ -87,4 +105,8 @@ struct EditorUiActions {
     std::function<void(const AudioPreviewRequest&)> previewAudio;
     // Opens a file or folder in its default application.
     std::function<void(const std::filesystem::path&)> openPath;
+    // A graphic's thumbnail texture by catalog id; 0 while there is none.
+    std::function<std::uint64_t(const std::string&)> assetThumbnail;
+    // Arguments after `python Engine asset`: the Assets panel's file actions.
+    std::function<void(const std::vector<std::string>&)> assetCommand;
 };

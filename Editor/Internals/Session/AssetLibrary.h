@@ -20,3 +20,5 @@ struct AssetNode {
 // (the project's asset folder). An empty path leaves that root out; missing folders scan as empty.
 [[nodiscard]] std::vector<AssetNode> ScanAssetLibrary(const std::filesystem::path& engineDirectory,
                                                       const std::filesystem::path& assetsDirectory);
+// By extension, as the library lists sounds.
+[[nodiscard]] bool IsAudioFile(const std::filesystem::path& file);

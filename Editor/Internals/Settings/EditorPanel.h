@@ -2,7 +2,7 @@
 #include <array>
 
 // Sıra kayıtlı tercihlerin (görünürlük) sırasıdır: yeni panel sona, Count'tan önce eklenir.
-enum class EditorPanel { Catalog, Viewport, Inspector, Output, Profiler, Tuning, Console, Assets, Count };
+enum class EditorPanel { Catalog, Viewport, Inspector, Output, Profiler, Tuning, Console, Assets, AudioPreview, Count };
 enum class EditorDockGroup { Left, Center, Right, Bottom };
 // Saved as numbers: new layouts go last. Agent: the scene beside a tall Console for an agent session.
 enum class EditorWorkspaceLayout { Develop, Inspect, Profile, Custom, Agent };
@@ -26,11 +26,13 @@ inline constexpr std::array EditorPanels{
                           EditorDockGroup::Bottom},
     EditorPanelDefinition{EditorPanel::Tuning, "Tuning", "Tuning###editor.tuning", true, EditorDockGroup::Right},
     EditorPanelDefinition{EditorPanel::Console, "Console", "Console###editor.console", false, EditorDockGroup::Bottom},
-    EditorPanelDefinition{EditorPanel::Assets, "Assets", "Assets###editor.assets", true, EditorDockGroup::Bottom}};
+    EditorPanelDefinition{EditorPanel::Assets, "Assets", "Assets###editor.assets", true, EditorDockGroup::Bottom},
+    EditorPanelDefinition{EditorPanel::AudioPreview, "Audio Preview", "Audio Preview###editor.audio-preview", true,
+                          EditorDockGroup::Bottom}};
 
 // Alt dock'un panelleri (Ctrl+J son kullanılan paneli bağımsız açıp kapatır).
 inline constexpr std::array EditorBottomPanels{EditorPanel::Output, EditorPanel::Profiler, EditorPanel::Console,
-                                               EditorPanel::Assets};
+                                               EditorPanel::Assets, EditorPanel::AudioPreview};
 
 struct EditorLayoutDefinition {
     EditorWorkspaceLayout id;

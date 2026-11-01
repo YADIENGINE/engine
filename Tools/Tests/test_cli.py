@@ -21,6 +21,7 @@ CONTRACT = {
     "editor": ["--release", "--build-only", "--clean"],
     "refresh": [],
     "ctl": ["status"],
+    "asset": ["mkdir", "X"],
     "new": ["--name", "X", "--dry-run"],
     "info": [],
     "check": ["--fix"],

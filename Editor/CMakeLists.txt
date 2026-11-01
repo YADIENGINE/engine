@@ -23,6 +23,9 @@ add_library(EngineEditorSupport STATIC
     Internals/Protocol/EditorControlProtocol.cpp
     Internals/Session/AssetLibrary.cpp
     Internals/Session/AssetNavigation.cpp
+    Internals/Session/AudioPreview.cpp
+    Internals/Session/AudioUsage.cpp
+    Internals/Session/AudioWaveformCache.cpp
     Internals/Session/EditorProject.cpp
     Internals/Session/RefreshState.cpp
     Internals/Session/TuningWorkspace.cpp
@@ -60,7 +63,7 @@ endif()
 set(editor_output "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
 if(ENGINE_BUILD_EDITOR)
     add_library(EngineWorkerRuntime STATIC EXCLUDE_FROM_ALL
-        Worker/WorkerScene.cpp Worker/WorkerGame.cpp Worker/WorkerSession.cpp Worker/WorkerHost.cpp
+        Worker/AssetThumbnailGame.cpp Worker/WorkerScene.cpp Worker/WorkerGame.cpp Worker/WorkerSession.cpp Worker/WorkerHost.cpp
         Worker/WorkerProfiler.cpp Worker/GlowBenchmark.cpp Worker/RenderGallery.cpp)
     target_link_libraries(EngineWorkerRuntime PUBLIC Engine EngineEditorApi EngineEditorSupport EngineProfilerRuntime)
     engine_warnings(EngineWorkerRuntime)
@@ -137,6 +140,7 @@ if(ENGINE_BUILD_EDITOR)
         engine_editor_escape_json(source_dir "${CMAKE_SOURCE_DIR}")
         engine_editor_escape_json(engine_dir "${engineRoot}")
         engine_editor_escape_json(assets_dir "${assetsDirectory}")
+        engine_editor_escape_json(python_path "${Python3_EXECUTABLE}") # Runs the Assets panel's file actions
         file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>/EngineEditor.project.json" CONTENT
 "{
   \"version\": 1,
@@ -145,6 +149,7 @@ if(ENGINE_BUILD_EDITOR)
   \"sourceDirectory\": \"${source_dir}\",
   \"engineDirectory\": \"${engine_dir}\",
   \"assetsDirectory\": \"${assets_dir}\",
+  \"python\": \"${python_path}\",
   \"worker\": {
     \"executable\": \"$<TARGET_FILE:${target}>\",
     \"arguments\": [], \"directory\": \"$<TARGET_FILE_DIR:${target}>\", \"environment\": {}
@@ -172,6 +177,7 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Shell/EditorShell.cpp
         Ui/Workspace/EditorWorkspace.cpp
         Ui/Panels/Assets/AssetsPanel.cpp
+        Ui/Panels/Audio/AudioPreviewPanel.cpp
         Ui/Panels/Catalog/CatalogPanel.cpp
         Ui/Panels/Viewport/ViewportPanel.cpp
         Ui/Panels/Inspector/InspectorPanel.cpp
@@ -181,7 +187,7 @@ if(ENGINE_BUILD_EDITOR)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)
     target_link_libraries(EngineEditorUi PUBLIC EngineToolUi EngineTerminalUi EngineEditorSupport)
     engine_warnings(EngineEditorUi)
-    add_executable(EngineEditor WIN32 Host/Main.cpp Host/EditorApplication.cpp Host/FramePng.cpp Host/ViewportDisplay.cpp
+    add_executable(EngineEditor WIN32 Host/Main.cpp Host/AssetCommandRunner.cpp Host/AssetThumbnailStore.cpp Host/EditorApplication.cpp Host/FramePng.cpp Host/ViewportDisplay.cpp
         Host/ProjectListLauncher.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp
         Application/EditorControlService.cpp Application/WorkerBuild.cpp Application/WorkerProcess.cpp)
     # Resolve raylib's CloseWindow/ShowCursor before the transitive user32 import library.

@@ -1,7 +1,10 @@
 #pragma once
 #include <optional>
+#include "Audio/AudioFiles.h"
 #include "Editor/Application/EditorControlService.h"
 #include "Editor/Application/EditorController.h"
+#include "Editor/Host/AssetCommandRunner.h"
+#include "Editor/Host/AssetThumbnailStore.h"
 #include "Editor/Host/ViewportDisplay.h"
 #include "Editor/Internals/Settings/EditorSettingsStore.h"
 #include "Editor/Internals/Viewport/ViewportInputRouter.h"
@@ -37,6 +40,8 @@ private:
     std::optional<EditorControlService> _control; // Tools reach this editor through it (`python Engine refresh`)
     mutable ToolUiContext _ui;
     mutable ViewportDisplay _display;
+    mutable AssetThumbnailStore _thumbnails;
+    mutable AssetCommandRunner _assetCommands;
     mutable EditorWorkspace _workspace;
     mutable EditorPreferences _preferences;
     std::optional<EditorSettingsStore> _settings;
@@ -55,7 +60,8 @@ private:
     mutable bool _sendScene = false; // Requested this frame, handled in the next Update
     mutable std::string _agentProblem;
     mutable std::vector<AudioPreviewRequest> _audioRequests; // Made while drawing, handled in the next Update
-    bool _audioPlaying = false;
+    AudioPreviewState _audio;
+    AudioWaveformCache _waveforms{DecodeAudioFile};
     std::uint64_t _windowMarkSequence = 0; // The capture it waits for; 0 until requested
     mutable bool _windowWanted = false;
     mutable std::uint64_t _windowSequence = 0;

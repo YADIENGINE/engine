@@ -1,6 +1,7 @@
 #include "Editor/Host/EditorApplication.h"
 #include <imgui.h>
 #include <algorithm>
+#include <format>
 #include <map>
 #include <utility>
 #include <vector>
@@ -12,6 +13,7 @@
 #include "Input/Internals/InputReader.h"
 #include "Platform/Internals/UserData.h"
 #include "Platform/Shell.h"
+#include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWindow.h"
 
 namespace {
@@ -63,6 +65,11 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     if (const auto& project = _controller.Project()) {
         _workspace.SetConsoleDirectory(project->sourceDirectory);
         _workspace.SetAssetRoots(project->engineDirectory, project->assetsDirectory);
+        const auto background = ImGui::ColorConvertFloat4ToU32(ToolPalette::Content);
+        _assetCommands.Configure(project->python, project->engineDirectory, project->sourceDirectory);
+        _thumbnails.Configure(project->worker, project->buildDirectory / "asset-thumbnails",
+                              std::format("{:02x}{:02x}{:02x}", background & 0xFF, (background >> 8) & 0xFF,
+                                          (background >> 16) & 0xFF));
     }
 }
 EditorApplication::~EditorApplication() { Stop(); }
@@ -119,7 +126,18 @@ void EditorApplication::Update(float realSeconds) {
     if (!_agentProblem.empty()) _controller.Log(std::exchange(_agentProblem, {}), EditorLogLevel::Warning);
     for (const auto& request : std::exchange(_audioRequests, {}))
         HandleAudioPreview(request);
-    _audioPlaying = Audio().IsMusicPlaying();
+    _audio.playing = Audio().IsMusicPlaying();
+    _audio.position = Audio().MusicPosition();
+    if (!_audio.playing && !_audio.paused) _audio.position = 0; // Ended or stopped
+    if (!_audio.file.empty()) _audio.waveform = _waveforms.Request(_audio.file);
+    const auto snapshot = _controller.Snapshot();
+    _assetCommands.Tick([this](const std::string& text, bool failed) {
+        _controller.Log(text, failed ? EditorLogLevel::Warning : EditorLogLevel::Info);
+    });
+    _thumbnails.Tick(snapshot.building || snapshot.phase == EditorPhase::Building,
+                     std::ranges::any_of(snapshot.catalog,
+                                         [](const SceneDefinition& entry) { return entry.asset.has_value(); }),
+                     [this](const std::string& problem) { _controller.Log(problem, EditorLogLevel::Warning); });
     if (_control) {
         _control->SetAgentControl(_preferences.agent.control);
         std::map<std::string, ConsoleNote> notes;
@@ -187,17 +205,42 @@ void EditorApplication::SendScene() {
 }
 void EditorApplication::HandleAudioPreview(const AudioPreviewRequest& request) {
     constexpr MusicId PreviewId{};
+    auto& audio = Audio();
     try {
-        auto& audio = Audio();
-        audio.SetMusicVolume(request.volume);
-        if (request.action == AudioPreviewAction::Stop) audio.StopMusic();
-        if (request.action != AudioPreviewAction::Play) return;
-        // Plays the worker's copy beside this executable, so a sound added since the last build is not there yet.
-        audio.LoadMusic(PreviewId, request.file);
-        audio.PlayMusic(PreviewId, request.loop);
+        switch (request.action) {
+        case AudioPreviewAction::Play:
+            _audio = {request.file, false, false, request.loop, request.volume};
+            audio.SetMusicVolume(request.volume);
+            // From the source file, so a sound added since the last build plays without Build & Refresh.
+            LoadMusicFile(audio, PreviewId, request.file);
+            audio.PlayMusic(PreviewId, request.loop);
+            _audio.length = audio.MusicLength();
+            break;
+        case AudioPreviewAction::Pause:
+            audio.PauseMusic();
+            _audio.paused = audio.CurrentMusic().has_value();
+            break;
+        case AudioPreviewAction::Resume:
+            if (_audio.paused) audio.ResumeMusic();
+            _audio.paused = false;
+            break;
+        case AudioPreviewAction::Stop:
+            audio.StopMusic();
+            _audio.paused = false;
+            break;
+        case AudioPreviewAction::Seek: audio.SeekMusic(request.seconds); break;
+        case AudioPreviewAction::Volume:
+            _audio.volume = request.volume;
+            audio.SetMusicVolume(request.volume);
+            break;
+        case AudioPreviewAction::Loop:
+            _audio.loop = request.loop;
+            audio.SetMusicLooping(request.loop);
+            break;
+        }
     } catch (const std::exception& error) {
-        _controller.Log(std::string("Sound preview: ") + error.what() + " (Build & Refresh copies new sounds)",
-                        EditorLogLevel::Warning);
+        _audio.error = error.what();
+        _controller.Log(std::string("Sound preview: ") + error.what(), EditorLogLevel::Warning);
     }
 }
 void EditorApplication::Stop() {
@@ -257,9 +300,11 @@ void EditorApplication::DrawToolOverlay() const {
         [&](const std::filesystem::path& path) {
             const auto text = path.u8string();
             OpenExternalUrl(std::string_view(reinterpret_cast<const char*>(text.data()), text.size()));
-        }};
+        },
+        [&](const std::string& id) { return _thumbnails.Texture(id); },
+        [&](const std::vector<std::string>& arguments) { _assetCommands.Run(arguments); }};
     auto snapshot = _controller.Snapshot();
-    snapshot.audioPlaying = _audioPlaying;
+    snapshot.audio = _audio;
     const auto result = _workspace.Draw(snapshot, actions, _display.Image(), _preferences, _fontSize);
     _quit = result.quit;
     if (result.interaction.mark) _mark = result.interaction.mark;

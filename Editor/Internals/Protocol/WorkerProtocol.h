@@ -4,10 +4,12 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "Audio/AudioSystem.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Editor/Internals/Session/AudioUsage.h"
 #include "Input/Input.h"
 
-inline constexpr std::uint32_t WorkerProtocolVersion = 11;
+inline constexpr std::uint32_t WorkerProtocolVersion = 12;
 inline constexpr std::size_t WorkerMaxInputPoints = 32;
 inline constexpr std::size_t WorkerMaxMessageBytes = 1024 * 1024;
 inline constexpr std::size_t WorkerMaxQueuedMessages = 256;
@@ -58,5 +60,8 @@ struct WorkerTuningStatus {
 [[nodiscard]] DeviceInput DecodeWorkerInput(const nlohmann::json& json);
 [[nodiscard]] nlohmann::json EncodeSceneInspection(const SceneInspection& inspection);
 [[nodiscard]] SceneInspection DecodeSceneInspection(const nlohmann::json& json);
+// The project's audio catalog ("audio"), sent before "catalog".
+[[nodiscard]] nlohmann::json EncodeAudioCatalog(const AudioCatalog& catalog);
+[[nodiscard]] std::vector<AudioUse> DecodeAudioCatalog(const nlohmann::json& json);
 [[nodiscard]] nlohmann::json EncodeWorkerTuning(const WorkerTuningStatus& status);
 [[nodiscard]] WorkerTuningStatus DecodeWorkerTuning(const nlohmann::json& json);

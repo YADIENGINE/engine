@@ -76,6 +76,7 @@ private:
         std::uint64_t generation = 0;
         WorkerOpenState state;
         std::optional<std::vector<SceneDefinition>> catalog;
+        std::optional<std::vector<AudioUse>> audio;
         std::map<std::string, SceneParameters> accepted;
         bool selectionMissing = false; // The new catalog lacks the selected scene: it only refreshes the catalog
         std::vector<WorkerTuningStatus> tuning;
@@ -134,6 +135,7 @@ private:
     RefreshState _refresh;
 
     std::vector<SceneDefinition> _catalog;
+    AudioUsage _audioUsage; // From the last worker that reported its catalog
     std::map<std::string, SceneParameters> _accepted;
     SceneParameters _displayed;
     SceneInspection _inspection;

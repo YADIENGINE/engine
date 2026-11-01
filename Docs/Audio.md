@@ -77,6 +77,9 @@ RAII; aliases are released before their source sample, and all resources before 
   `std::invalid_argument` is thrown. Speed and pitch change together.
 - `CurrentMusic` also reports paused or naturally finished tracks; `IsMusicPlaying` reports actual playback.
 - `PauseMusic` / `ResumeMusic` pause/resume; `StopMusic` clears the current selection.
+- `MusicLength` / `MusicPosition` report the current track in seconds (0 without one). `SeekMusic(seconds)` takes a
+  finite, non-negative time (otherwise `std::invalid_argument`); past the end goes to the end. `SetMusicLooping`
+  changes the current track's looping. All three are no-ops without a current track.
 - `AudioSystem::Update()` fills the stream every frame; Game already calls it.
 
 `HasEffect` / `HasMusic` return false before readiness. `CurrentMusic` is empty and `IsMusicPlaying` is false; with no
@@ -88,6 +91,14 @@ operations require the system to be ready first. An operation with an unloaded I
 resource and playing music. Successful effect replacement applies the supplied `EffectSettings`. Successfully replacing
 the playing music ID stops playback; the new stream does not start itself. A dynamic editor scene must unload only resources
 it loaded itself. Game closes the device before the window.
+
+## Tools and source files
+
+Catalog paths stay relative to the asset root. `EffectAsset::name` and `MusicAsset::name` are optional labels for tools
+such as the editor; playback ignores them. [AudioFiles.h](../Core/Audio/AudioFiles.h) is for tools that work on source
+files: `LoadMusicFile(audio, id, file)` is `LoadMusic` for an absolute path (a relative one throws
+`std::invalid_argument`), and `DecodeAudioFile(file)` returns interleaved samples without an audio device, on any
+thread. Games do not need either.
 
 ## Volume and persistence
 

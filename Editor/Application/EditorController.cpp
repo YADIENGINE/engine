@@ -285,6 +285,7 @@ EditorSnapshot EditorController::Snapshot() const {
                             benchmarkCancelPending,
                             _project ? &_tuning : nullptr};
     snapshot.notice = _notice;
+    snapshot.audioUsage = &_audioUsage;
     snapshot.controlAttempt = _controlAttempt;
     snapshot.noticeAge = std::chrono::duration<double>(std::chrono::steady_clock::now() - _noticeAt).count();
     return snapshot;
@@ -408,6 +409,10 @@ void EditorController::Receive(const WorkerMessage& message) {
     }
     if (message.type == "tuning") {
         ReceiveTuning(DecodeWorkerTuning(message.data));
+        return;
+    }
+    if (message.type == "audio") {
+        _audioUsage = {true, DecodeAudioCatalog(message.data)};
         return;
     }
     if (message.type == "catalog") {
@@ -589,6 +594,8 @@ void EditorController::ReceiveReplacement(const WorkerMessage& message) {
         Log(message.data.at("text").get<std::string>(), EditorLogLevel::Info, EditorLogSource::Worker);
     } else if (message.type == "tuning") {
         replacement.tuning.push_back(DecodeWorkerTuning(message.data));
+    } else if (message.type == "audio") {
+        replacement.audio = DecodeAudioCatalog(message.data);
     } else if (message.type == "catalog") {
         replacement.catalog = DecodeSceneCatalog(message.data);
         replacement.accepted = RestoreParameters(*replacement.catalog);
@@ -611,6 +618,7 @@ void EditorController::CommitReplacement(const WorkerMessage& ready) {
     Retire(std::move(_active));
     _active = std::move(replacement.worker);
     _catalog = std::move(*replacement.catalog);
+    if (replacement.audio) _audioUsage = {true, std::move(*replacement.audio)};
     _accepted = std::move(replacement.accepted);
     _gotCatalog = true;
     Invalidate(replacement.generation);
@@ -629,6 +637,7 @@ void EditorController::CommitCatalogOnly() {
     _replacement.reset();
     StopActive("The new build has no '" + _selected + "' scene; scene stopped");
     _catalog = std::move(*replacement.catalog);
+    if (replacement.audio) _audioUsage = {true, std::move(*replacement.audio)};
     _accepted = std::move(replacement.accepted);
     _gotCatalog = true;
     _displayed = _accepted[_selected];

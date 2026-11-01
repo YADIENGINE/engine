@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 
 from .commands.build import build, run_game
+from .commands.asset import add_parser as add_asset_parser
+from .commands.asset import asset
 from .commands.ctl import add_parser as add_ctl_parser
 from .commands.ctl import ctl
 from .commands.editor import editor
@@ -68,6 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser("refresh", help="Build & Refresh in the project's open editor; the scene stays live")
     add_ctl_parser(commands)
+    add_asset_parser(commands)
 
     command = commands.add_parser("new", help="set up the folder above Engine/ as a new project")
     command.add_argument("--name", help="project name (asked when omitted)")
@@ -111,6 +114,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return refresh(Project(root))
         case "ctl":
             return ctl(Project(root), args)
+        case "asset":
+            return asset(Project(root), args)
         case "new":
             return new(ENGINE_ROOT, args.project.resolve() if args.project else ENGINE_ROOT.parent, args.name,
                        args.dry_run)

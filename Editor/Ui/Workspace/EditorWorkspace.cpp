@@ -12,6 +12,7 @@
 namespace {
 constexpr float MarkOverlayTint = 0.06f;  // Alpha of the tint over the editor while marking
 constexpr float MarkOutline = 2.0f;       // Pixels at 100% UI scale
+constexpr float AudioColumnRatio = 0.34f; // Of the bottom dock, right of Assets
 constexpr float AgentColumnRatio = 0.40f; // 60% Viewport / 40% Console + Inspector at desktop sizes.
 constexpr float PanelMinWidthInFonts = 12.0f;
 constexpr float PanelMinHeightInLines = 6.0f;
@@ -348,13 +349,21 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
         }
         _centerDock = center;
         groups[static_cast<std::size_t>(EditorDockGroup::Center)] = center;
+        auto& bottom = groups[static_cast<std::size_t>(EditorDockGroup::Bottom)];
+        // Audio Preview stays in sight beside the Assets it plays from.
+        const ImGuiID audio =
+            bottom && preferences.visible[static_cast<std::size_t>(EditorPanel::AudioPreview)]
+                ? ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Right, AudioColumnRatio, nullptr, &bottom)
+                : 0;
         for (const auto& panel : EditorPanels) {
             const auto index = static_cast<std::size_t>(panel.id);
             _dockOnOpen[index] = !preferences.visible[index];
             const auto group =
                 agentLayout && panel.dock == EditorDockGroup::Bottom ? EditorDockGroup::Right : panel.dock;
-            if (preferences.visible[index])
-                ImGui::DockBuilderDockWindow(panel.window, groups[static_cast<std::size_t>(group)]);
+            if (!preferences.visible[index]) continue;
+            ImGui::DockBuilderDockWindow(panel.window, panel.id == EditorPanel::AudioPreview && audio
+                                                           ? audio
+                                                           : groups[static_cast<std::size_t>(group)]);
         }
         if (agentLayout) _focusBottom = EditorPanel::Console; // In front of the Inspector
         ImGui::DockBuilderFinish(dock);
@@ -370,11 +379,17 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
         const auto saved = SavedPanelDock(panel);
         if (saved && ImGui::DockBuilderGetNode(saved)) continue;
         ImGuiID target = 0;
-        for (const auto& peer : EditorPanels)
-            if (peer.id != panel.id && peer.dock == panel.dock) {
-                const auto peerDock = SavedPanelDock(peer);
-                if (peerDock && ImGui::DockBuilderGetNode(peerDock)) target = peerDock;
-            }
+        const auto assetsDock = SavedPanelDock(EditorPanelInfo(EditorPanel::Assets));
+        if (panel.id == EditorPanel::AudioPreview && assetsDock && ImGui::DockBuilderGetNode(assetsDock)) {
+            ImGuiID rest = 0; // Audio Preview stays in sight beside the Assets it plays from
+            target = ImGui::DockBuilderSplitNode(assetsDock, ImGuiDir_Right, AudioColumnRatio, nullptr, &rest);
+        } else {
+            for (const auto& peer : EditorPanels)
+                if (peer.id != panel.id && peer.id != EditorPanel::AudioPreview && peer.dock == panel.dock) {
+                    const auto peerDock = SavedPanelDock(peer);
+                    if (peerDock && ImGui::DockBuilderGetNode(peerDock)) target = peerDock;
+                }
+        }
         if (!target) {
             switch (panel.dock) {
             case EditorDockGroup::Left:
@@ -512,13 +527,14 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 (_focusCatalog && panel.id == EditorPanel::Catalog))
                 ImGui::SetNextWindowFocus();
             if (focusViewport) ImGui::SetNextWindowCollapsed(false);
-            const bool edgeToEdge = panel.id == EditorPanel::Console || panel.id == EditorPanel::Assets;
+            const bool edgeToEdge = panel.id == EditorPanel::Console || panel.id == EditorPanel::Assets ||
+                                    panel.id == EditorPanel::AudioPreview;
             if (edgeToEdge) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, headerPadding);
             const bool drawPanel =
                 ImGui::Begin(panel.window, &preferences.Visible(panel.id),
                              flags | (panel.id == EditorPanel::Viewport || panel.id == EditorPanel::Inspector ||
-                                              panel.id == EditorPanel::Assets
+                                              panel.id == EditorPanel::Assets || panel.id == EditorPanel::AudioPreview
                                           ? ImGuiWindowFlags_NoScrollbar
                                           : 0));
             ImGui::PopStyleVar(); // Panel contents keep their regular control spacing.
@@ -549,8 +565,9 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                     if (const auto request = _console.Draw()) result.agentProblem = AddSession(*request, preferences);
                     consoleDrawn = true;
                     break;
-                case EditorPanel::Assets: _assets.Draw(snapshot, actions); break;
-                case EditorPanel::Count : break;
+                case EditorPanel::Assets      : _assets.Draw(snapshot, actions); break;
+                case EditorPanel::AudioPreview: _audioPreview.Draw(snapshot, actions); break;
+                case EditorPanel::Count       : break;
                 }
             }
             ImGui::End();

@@ -1,5 +1,7 @@
 #pragma once
+#include <cstddef>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
 #include "Editor/Api/GraphicAsset.h"
@@ -13,3 +15,12 @@
                                                                    const std::filesystem::path& file,
                                                                    const std::filesystem::path& engineRoot);
 void AddRegisteredGraphicAssets(SceneRegistry& registry);
+
+struct GraphicThumbnail {
+    std::string id; // Its catalog entry
+    std::shared_ptr<const GraphicAsset> asset;
+    std::size_t item = 0;
+};
+[[nodiscard]] std::vector<GraphicThumbnail> RegisteredGraphicThumbnails();
+// The thumbnail's file name for a catalog id; ids hold characters file names cannot.
+[[nodiscard]] std::string AssetThumbnailFile(const std::string& id);

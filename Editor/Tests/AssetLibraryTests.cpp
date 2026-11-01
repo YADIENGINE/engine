@@ -109,6 +109,14 @@ TEST_CASE("Editor.GraphicAsset.CatalogKeepsAssetInfoOverTheProtocol", "[engine-e
     CHECK(*decoded[0].asset == *definitions[0].asset);
 }
 
+TEST_CASE("Editor.GraphicAsset.ThumbnailFilesAreSafeAndDistinct", "[engine-editor]") {
+    const auto star = AssetThumbnailFile("asset:Engine/Graphics/Icons#Star");
+    CHECK(star == AssetThumbnailFile("asset:Engine/Graphics/Icons#Star"));
+    CHECK(star != AssetThumbnailFile("asset:Engine/Graphics/Icons#Moon"));
+    CHECK(star.find_first_of(":/#") == std::string::npos);
+    CHECK(star.ends_with(".png"));
+}
+
 TEST_CASE("Editor.AssetNavigation.BackUndoesBrowsingAndOpeningInOrder", "[engine-editor]") {
     AssetNavigation navigation;
     navigation.Correct({"graphics", {}});

@@ -101,6 +101,13 @@ void ReadPoints(const nlohmann::json& json, std::vector<Vec2>& result) {
         result.push_back(*value);
     }
 }
+std::string PathText(const std::filesystem::path& path) {
+    const auto text = path.generic_u8string();
+    return {reinterpret_cast<const char*>(text.data()), text.size()};
+}
+std::filesystem::path TextPath(const std::string& text) {
+    return std::u8string(reinterpret_cast<const char8_t*>(text.data()), text.size());
+}
 } // namespace
 
 std::vector<std::byte> EncodeWorkerMessage(const WorkerMessage& message) {
@@ -287,8 +294,9 @@ std::vector<SceneDefinition> DecodeSceneCatalog(const nlohmann::json& json) {
             throw std::runtime_error("Invalid catalog identifier");
         if (entry.contains("asset")) {
             const auto& asset = entry.at("asset");
-            definition.asset = SceneAssetInfo{asset.at("file").get<std::string>(), asset.at("set").get<std::string>(),
-                                              asset.at("item").get<std::string>(), asset.at("usage").get<std::string>()};
+            definition.asset =
+                SceneAssetInfo{asset.at("file").get<std::string>(), asset.at("set").get<std::string>(),
+                               asset.at("item").get<std::string>(), asset.at("usage").get<std::string>()};
         }
         if (entry.contains("benchmark")) {
             const auto& benchmark = entry.at("benchmark");
@@ -430,4 +438,26 @@ DeviceInput DecodeWorkerInput(const nlohmann::json& json) {
         input.touches.push_back({static_cast<int>(value), ReadPoint(touch.at("position"))});
     }
     return input;
+}
+
+nlohmann::json EncodeAudioCatalog(const AudioCatalog& catalog) {
+    auto effects = nlohmann::json::array();
+    for (const auto& effect : catalog.effects)
+        effects.push_back(
+            {{"id", static_cast<std::size_t>(effect.id)}, {"file", PathText(effect.file)}, {"name", effect.name}});
+    auto music = nlohmann::json::array();
+    for (const auto& track : catalog.music)
+        music.push_back(
+            {{"id", static_cast<std::size_t>(track.id)}, {"file", PathText(track.file)}, {"name", track.name}});
+    return {{"effects", std::move(effects)}, {"music", std::move(music)}};
+}
+
+std::vector<AudioUse> DecodeAudioCatalog(const nlohmann::json& json) {
+    std::vector<AudioUse> uses;
+    for (const auto& [key, kind] :
+         {std::pair{"effects", AudioUseKind::Effect}, std::pair{"music", AudioUseKind::Music}})
+        for (const auto& entry : json.at(key))
+            uses.push_back({kind, entry.at("id").get<std::size_t>(), entry.value("name", std::string()),
+                            TextPath(entry.at("file").get<std::string>())});
+    return uses;
 }

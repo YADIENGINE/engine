@@ -66,7 +66,8 @@ GraphicAsset MakeGoblin() {
 ```
 
 Fill `items` for a set: each item gets its own tile and catalog entry, and `{item}` in `usage` becomes its name. Ids are
-`asset:Graphics/Folder/Name[#Item]`; `ctl find` and `ctl open` reach them like scenes. Design: [Asset library](../Design/AssetLibrary.md).
+`asset:Graphics/Folder/Name[#Item]`; `ctl find` and `ctl open` reach them like scenes. `python Engine asset new NAME`
+writes a skeleton. Design: [Asset library](../Design/AssetLibrary.md).
 
 ## Parameter and action contract
 

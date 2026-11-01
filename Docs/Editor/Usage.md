@@ -42,9 +42,18 @@ Profiler, and Console are closed. The bottom status bar has Output and Console b
 - **Assets:** the asset library: back and search across the top, a folder tree on the left (sets are rows too), a tile
   grid on the right, and tile size at the bottom (or Ctrl+wheel). A click on a graphic opens it in the Viewport; a click
   on a folder or set enters it. Back (Alt+Left) undoes the last move or opened graphic, in order. A click on a sound
-  plays it from the bar below the grid without touching the scene. Right-click for Copy usage, Copy path, Open code and
-  Show in Explorer. The Engine root is read-only. A graphic not built yet is dimmed.
+  loads it into Audio Preview and plays it; a second click on the playing sound stops it. Once a worker has reported
+  the project's audio catalog, a sound the catalog does not list is dimmed, and the tooltip names the catalog entries
+  that play it. Right-click for Copy usage, Copy path, Open code and
+  Show in Explorer. The + button or a right-click creates a folder or graphic; dragging onto a folder moves it, updating
+  includes. The Engine root is read-only. A graphic not built yet is dimmed; Build & Refresh also renews thumbnails.
   Registering assets: [Api](Api.md#graphic-assets).
+- **Audio Preview:** the sound picked in Assets, beside it in the bottom dock by default. It shows the file name,
+  folder, length, format, size, sample rate and channels; whether the audio catalog uses it, as `Effect <name>` or
+  `Music <name>`, or `#<id>` when the catalog entry has no `name`; and a waveform (a plain bar until it has been decoded
+  in the background). Click or drag on the waveform to seek. Below it: previous sound in the folder, play/pause (Space),
+  stop, next sound, loop and volume. It plays in the editor process from the source file, so a new sound needs no Build
+  & Refresh, and it leaves the viewport and running scene alone.
 - **Console:** a real PowerShell session at the project root. Drag to select visible text and copy with Ctrl+C /
   Ctrl+Shift+C or right-click Copy. Without selection, Ctrl+C interrupts the running program; Ctrl+V pastes, Escape
   clears selection. Scrollback and double-click word selection are not yet available.

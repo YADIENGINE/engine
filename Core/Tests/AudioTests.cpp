@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include "Audio/AudioSystem.h"
 #include "Audio/Internals/AudioVolumePolicy.h"
+#include "Audio/Internals/Validation.h"
 #include "Options/GameOptions.h"
 #include "Tests/Support/TempDirectory.h"
 
@@ -154,4 +155,22 @@ TEST_CASE("Engine.Audio.CatalogRejectsInvalidPathsAndSettings", "[engine][audio]
         catalog.music.front().volumeGroup = static_cast<MusicVolumeGroup>(-1);
         CHECK_THROWS_AS(AudioSystem::ValidateCatalog(catalog), std::invalid_argument);
     }
+}
+
+TEST_CASE("Engine.Audio.SeekRejectsInvalidTimesAndStopsAtTheEnd", "[engine][audio]") {
+    for (float seconds : {-0.5f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()})
+        CHECK_THROWS_AS(ValidateAudioSeek(seconds), std::invalid_argument);
+    CHECK_NOTHROW(ValidateAudioSeek(0.0f));
+    CHECK(AudioSeekPosition(1.5f, 4.0f) == 1.5f);
+    CHECK(AudioSeekPosition(9.0f, 4.0f) == 4.0f);
+    CHECK(AudioSeekPosition(1.0f, 0.0f) == 0.0f);
+}
+
+TEST_CASE("Engine.Audio.SourceFilesNeedAbsolutePaths", "[engine][audio]") {
+    CHECK_NOTHROW(ValidateAudioFilePath(std::filesystem::absolute("Sounds/hit.wav")));
+    CHECK_THROWS_AS(ValidateAudioFilePath("Sounds/hit.wav"), std::invalid_argument);
+    CHECK_THROWS_AS(ValidateAudioFilePath({}), std::invalid_argument);
+    // Catalog paths stay relative: an absolute path is still refused there.
+    AudioCatalog catalog{.effects = {}, .music = {{MusicId{0}, std::filesystem::absolute("menu.ogg")}}};
+    CHECK_THROWS_AS(AudioSystem::ValidateCatalog(catalog), std::invalid_argument);
 }

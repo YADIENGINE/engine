@@ -39,5 +39,7 @@ EditorProject ReadEditorProject(const std::filesystem::path& file) {
         project.engineDirectory = Resolve(root, engine);
     if (const auto assets = json.value("assetsDirectory", std::string{}); !assets.empty())
         project.assetsDirectory = Resolve(root, assets);
+    if (const auto python = json.value("python", std::string{}); !python.empty())
+        project.python = Resolve(root, python);
     return project;
 }

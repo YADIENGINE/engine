@@ -25,6 +25,7 @@ public:
     void SetEffectVolume(SoundId id, float volume);
 
     void LoadMusic(MusicId id, const std::filesystem::path& file, MusicVolumeGroup group);
+    void LoadMusicFile(MusicId id, const std::filesystem::path& file, MusicVolumeGroup group);
     void UnloadMusic(MusicId id);
     [[nodiscard]] bool HasMusic(MusicId id) const;
     void PlayMusic(MusicId id, bool loop);
@@ -35,6 +36,10 @@ public:
     void PauseMusic();
     void ResumeMusic();
     [[nodiscard]] bool IsMusicPlaying() const;
+    [[nodiscard]] float MusicLength() const;
+    [[nodiscard]] float MusicPosition() const;
+    void SeekMusic(float seconds);
+    void SetMusicLooping(bool loop);
     void Update();
 
     void SetMasterVolume(float volume);
@@ -58,6 +63,7 @@ private:
     void LoadInBackground(const AudioCatalog& catalog, std::stop_token stop);
     void RequireReady() const;
     [[nodiscard]] std::filesystem::path Resolve(const std::filesystem::path& file) const;
+    void StoreMusic(MusicId id, const std::filesystem::path& path, MusicVolumeGroup group);
     [[nodiscard]] EffectVoices& GetEffect(SoundId id);
     [[nodiscard]] AudioMusicStream& GetMusic(MusicId id);
     void ApplyMasterVolume() const;

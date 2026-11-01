@@ -109,7 +109,17 @@ void AudioSystem::State::SetEffectVolume(SoundId id, float volume) {
 void AudioSystem::State::LoadMusic(MusicId id, const std::filesystem::path& file, MusicVolumeGroup group) {
     RequireReady();
     ValidateAudioMusicGroup(group);
-    AudioMusicStream loaded(Resolve(file), group);
+    StoreMusic(id, Resolve(file), group);
+}
+void AudioSystem::State::LoadMusicFile(MusicId id, const std::filesystem::path& file, MusicVolumeGroup group) {
+    ValidateAudioFilePath(file);
+    RequireReady();
+    ValidateAudioMusicGroup(group);
+    if (!std::filesystem::is_regular_file(file)) throw std::runtime_error("Audio file not found: " + file.string());
+    StoreMusic(id, file, group);
+}
+void AudioSystem::State::StoreMusic(MusicId id, const std::filesystem::path& path, MusicVolumeGroup group) {
+    AudioMusicStream loaded(path, group);
     ::SetMusicVolume(loaded.Stream(), MusicVolume(group));
     if (_currentMusic == id) StopMusic();
     _music.insert_or_assign(id, std::move(loaded));
@@ -157,6 +167,21 @@ void AudioSystem::State::ResumeMusic() {
 }
 bool AudioSystem::State::IsMusicPlaying() const {
     return _currentMusic && IsMusicStreamPlaying(_music.at(*_currentMusic).Stream());
+}
+float AudioSystem::State::MusicLength() const {
+    return _currentMusic ? GetMusicTimeLength(_music.at(*_currentMusic).Stream()) : 0.0f;
+}
+float AudioSystem::State::MusicPosition() const {
+    return _currentMusic ? GetMusicTimePlayed(_music.at(*_currentMusic).Stream()) : 0.0f;
+}
+void AudioSystem::State::SeekMusic(float seconds) {
+    ValidateAudioSeek(seconds);
+    if (!_currentMusic) return;
+    ::Music& music = GetMusic(*_currentMusic).Stream();
+    SeekMusicStream(music, AudioSeekPosition(seconds, GetMusicTimeLength(music)));
+}
+void AudioSystem::State::SetMusicLooping(bool loop) {
+    if (_currentMusic) GetMusic(*_currentMusic).Stream().looping = loop;
 }
 void AudioSystem::State::Update() {
     if (_currentMusic) UpdateMusicStream(GetMusic(*_currentMusic).Stream());

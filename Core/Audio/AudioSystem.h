@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 class GameOptions;
@@ -17,15 +18,18 @@ struct EffectSettings {
     float volume = 1.0f;
     EffectOverflow overflow = EffectOverflow::RestartNext;
 };
+// `name` is optional and only labels the asset in tools such as the editor; playback ignores it.
 struct EffectAsset {
     SoundId id;
     std::filesystem::path file;
     EffectSettings settings{};
+    std::string name;
 };
 struct MusicAsset {
     MusicId id;
     std::filesystem::path file;
     MusicVolumeGroup volumeGroup = MusicVolumeGroup::Default;
+    std::string name;
 };
 // IDs belong to the project; paths are relative to its asset root.
 struct AudioCatalog {
@@ -78,6 +82,13 @@ public:
     void PauseMusic();
     void ResumeMusic();
     [[nodiscard]] bool IsMusicPlaying() const;
+    // The current track's length and playback position in seconds; 0 without a current track.
+    [[nodiscard]] float MusicLength() const;
+    [[nodiscard]] float MusicPosition() const;
+    // Seconds must be finite and non-negative; a time past the end goes to the end. Without a current track, a no-op.
+    void SeekMusic(float seconds);
+    // Changes the current track's looping; a no-op without a current track.
+    void SetMusicLooping(bool loop);
     // Refills streaming buffers each frame. Game already calls this.
     void Update();
 
@@ -97,6 +108,7 @@ public:
 
 private:
     friend class Game;
+    friend void LoadMusicFile(AudioSystem& audio, MusicId id, const std::filesystem::path& file);
     void LoadVolumeSettings(const GameOptions& options);
     void StoreVolumeSettings(GameOptions& options) const;
 

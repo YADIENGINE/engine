@@ -3,7 +3,10 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <algorithm>
+#include <cctype>
 #include <format>
+#include <functional>
+#include "Editor/Internals/Session/AudioUsage.h"
 #include "Editor/Internals/Session/GraphicAssetCatalog.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
@@ -21,7 +24,6 @@ constexpr float MinTileSize = 64;
 constexpr float MaxTileSize = 160;
 constexpr float TileWheelStep = 8;
 constexpr float TileIconShare = 0.42f; // Of the tile's width
-constexpr float VolumeSliderWidth = 120;
 constexpr int BackMouseButton = 3;
 
 const char* KindIcon(AssetKind kind) {
@@ -55,7 +57,8 @@ struct TileLook {
     ImVec4 color;
     bool selected = false;
     bool dimmed = false;
-    int count = 0; // Shown as a badge above one
+    int count = 0;               // Shown as a badge above one
+    std::uint64_t thumbnail = 0; // Replaces the icon when there is one
 };
 
 bool DrawTile(const TileLook& look, float size) {
@@ -74,12 +77,17 @@ bool DrawTile(const TileLook& look, float size) {
         draw->AddRectFilled(start, end, ImGui::GetColorU32(look.selected ? ToolPalette::Selected : ToolPalette::Hover),
                             radius);
     if (look.selected) draw->AddRect(start, end, ImGui::GetColorU32(ToolPalette::Accent), radius, 0, scale);
-    const auto iconColor = look.dimmed ? ToolPalette::Disabled : look.color;
-    const float iconSize = side * TileIconShare;
-    const auto iconExtent = ImGui::GetFont()->CalcTextSizeA(iconSize, FLT_MAX, 0.0f, look.icon);
-    draw->AddText(ImGui::GetFont(), iconSize,
-                  {start.x + (side - iconExtent.x) * 0.5f, start.y + (side - iconExtent.y) * 0.5f},
-                  ImGui::GetColorU32(iconColor), look.icon);
+    if (look.thumbnail) {
+        draw->AddImageRounded(ImTextureID(look.thumbnail), {start.x + pad, start.y + pad},
+                              {start.x + side - pad, start.y + side - pad}, {0, 0}, {1, 1}, IM_COL32_WHITE, radius);
+    } else {
+        const auto iconColor = look.dimmed ? ToolPalette::Disabled : look.color;
+        const float iconSize = side * TileIconShare;
+        const auto iconExtent = ImGui::GetFont()->CalcTextSizeA(iconSize, FLT_MAX, 0.0f, look.icon);
+        draw->AddText(ImGui::GetFont(), iconSize,
+                      {start.x + (side - iconExtent.x) * 0.5f, start.y + (side - iconExtent.y) * 0.5f},
+                      ImGui::GetColorU32(iconColor), look.icon);
+    }
     if (look.count > 1) {
         const auto text = std::to_string(look.count);
         const auto extent = ImGui::CalcTextSize(text.c_str());
@@ -191,8 +199,17 @@ void CollectFiles(const std::vector<AssetNode>& nodes, std::vector<const AssetNo
     }
 }
 
-void AssetMenu(const AssetNode& node, const std::string& usage, const EditorUiActions& actions) {
+constexpr const char* AssetDragPayload = "ENGINE_ASSET_MOVE";
+
+bool IsAssetName(const std::string& name) {
+    return !name.empty() && std::isupper(static_cast<unsigned char>(name[0])) &&
+           std::ranges::all_of(name, [](unsigned char c) { return std::isalnum(c) != 0; });
+}
+
+void AssetMenu(const AssetNode& node, const std::string& usage, const EditorUiActions& actions,
+               const std::function<void()>& extraItems = {}) {
     if (!ImGui::BeginPopupContextItem("asset-menu")) return;
+    if (extraItems) extraItems();
     if (!usage.empty() && ImGui::MenuItem(ICON_FA_COPY "  Copy usage")) ImGui::SetClipboardText(usage.c_str());
     if (ImGui::MenuItem(ICON_FA_COPY "  Copy path")) ImGui::SetClipboardText(node.path.generic_string().c_str());
     if ((node.kind == AssetKind::Graphic || node.kind == AssetKind::Code) &&
@@ -244,11 +261,91 @@ void AssetsPanel::GoBack(const EditorSnapshot& snapshot, const EditorUiActions& 
     }
 }
 
-void AssetsPanel::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
+std::optional<std::string> AssetsPanel::GraphicsRelative(const AssetNode& node) const {
+    if (_assetsDirectory.empty() || node.readOnly) return std::nullopt;
+    if (node.kind != AssetKind::Folder && node.kind != AssetKind::Graphic) return std::nullopt;
+    const auto graphics = _assetsDirectory / "Graphics";
+    const auto folder = node.kind == AssetKind::Folder ? node.path : node.path.parent_path();
+    const auto relative = folder.lexically_relative(graphics);
+    if (relative.empty() || *relative.begin() == "..") return std::nullopt;
+    if (node.kind == AssetKind::Folder) return relative.generic_string();
+    return (relative / node.name).lexically_normal().generic_string();
+}
+
+void AssetsPanel::CreateItems(const AssetNode& folder) {
+    const auto relative = GraphicsRelative(folder);
+    if (!relative || folder.kind != AssetKind::Folder) return;
+    if (ImGui::MenuItem(ICON_FA_FOLDER_PLUS "  New folder")) _dialog = {NameDialog::Folder, *relative, {}, true};
+    if (ImGui::MenuItem(ICON_FA_IMAGE "  New graphic")) _dialog = {NameDialog::Graphic, *relative, {}, true};
+}
+
+void AssetsPanel::DragSource(const AssetNode& node) {
+    const auto relative = GraphicsRelative(node);
+    if (!relative || *relative == ".") return;
+    if (!ImGui::BeginDragDropSource()) return;
+    ImGui::SetDragDropPayload(AssetDragPayload, relative->c_str(), relative->size() + 1);
+    ImGui::TextUnformatted(node.name.c_str());
+    ImGui::EndDragDropSource();
+}
+
+void AssetsPanel::DropTarget(const AssetNode& folder, const EditorUiActions& actions) const {
+    const auto destination = GraphicsRelative(folder);
+    if (!destination || folder.kind != AssetKind::Folder || !ImGui::BeginDragDropTarget()) return;
+    if (const auto* payload = ImGui::AcceptDragDropPayload(AssetDragPayload); payload && actions.assetCommand)
+        actions.assetCommand({"move", static_cast<const char*>(payload->Data), *destination});
+    ImGui::EndDragDropTarget();
+}
+
+void AssetsPanel::DrawNameDialog(const EditorUiActions& actions) {
+    constexpr const char* Title = "New asset###asset-name-dialog";
+    if (_dialog.open) {
+        ImGui::OpenPopup(Title);
+        _dialog.open = false;
+        _dialog.focus = true;
+    }
+    if (!ImGui::BeginPopupModal(Title, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
+    const bool graphic = _dialog.kind == NameDialog::Graphic;
+    ImGui::TextUnformatted(graphic ? "Graphic name (PascalCase)" : "Folder name");
+    if (_dialog.focus) {
+        ImGui::SetKeyboardFocusHere();
+        _dialog.focus = false;
+    }
+    const bool entered = ImGui::InputText("##asset-name", _dialog.name.data(), _dialog.name.size(),
+                                          ImGuiInputTextFlags_EnterReturnsTrue);
+    const std::string name = _dialog.name.data();
+    const bool valid = graphic ? IsAssetName(name) : !name.empty() && name.find_first_of("/\\:.") == std::string::npos;
+    ImGui::BeginDisabled(!valid);
+    const bool create = ToolButton("Create", {}, true) || (entered && valid);
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    const bool cancel = ToolButton("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+    if (create && actions.assetCommand) {
+        if (graphic)
+            actions.assetCommand({"new", name, "--folder", _dialog.folder});
+        else
+            actions.assetCommand(
+                {"mkdir", (std::filesystem::path(_dialog.folder) / name).lexically_normal().generic_string()});
+    }
+    if (create || cancel) {
+        _dialog.name.fill('\0');
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+}
+
+void AssetsPanel::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, const AssetNode& folder) {
     const bool canGoBack = CanGoBack(snapshot);
     ImGui::BeginDisabled(!canGoBack);
     if (ToolIconButton("back", ICON_FA_ARROW_LEFT, "Back (Alt+Left)")) GoBack(snapshot, actions);
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!GraphicsRelative(folder));
+    if (ToolIconButton("create", ICON_FA_PLUS, "New folder or graphic here")) ImGui::OpenPopup("create-menu");
+    ImGui::EndDisabled();
+    if (ImGui::BeginPopup("create-menu")) {
+        CreateItems(folder);
+        ImGui::EndPopup();
+    }
     const bool panelFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     const bool backKey = panelFocused && ImGui::GetIO().KeyAlt && ImGui::IsKeyPressed(ImGuiKey_LeftArrow, false);
     const bool backMouse =
@@ -297,7 +394,9 @@ void AssetsPanel::TreeNode(const AssetNode& node, int depth, const EditorSnapsho
     const auto click =
         DrawTreeRow({"##row", node.name.c_str(), icon, iconColor, depth, expandable, expanded, selected, root});
     if (root && node.readOnly) ToolTooltip("Read-only: assets that come with the engine");
-    AssetMenu(node, {}, actions);
+    DragSource(node);
+    DropTarget(node, actions);
+    AssetMenu(node, {}, actions, [&] { CreateItems(node); });
     ImGui::PopID();
     if (click == TreeClick::Arrow) {
         if (expanded)
@@ -330,24 +429,24 @@ void AssetsPanel::SceneTile(const SceneDefinition& scene, const std::string& lab
     const bool selected = snapshot.selected && snapshot.selected->id == scene.id;
     const bool enabled = !snapshot.busy || (selected && snapshot.capabilities.Can(EditorCommand::Open));
     ImGui::BeginDisabled(!enabled);
-    const bool pressed = DrawTile(
-        {scene.id.c_str(), label.c_str(), KindIcon(AssetKind::Graphic), KindColor(AssetKind::Graphic), selected},
-        _tileSize);
+    const bool pressed =
+        DrawTile({scene.id.c_str(), label.c_str(), KindIcon(AssetKind::Graphic), KindColor(AssetKind::Graphic),
+                  selected, false, 0, actions.assetThumbnail ? actions.assetThumbnail(scene.id) : 0},
+                 _tileSize);
     ImGui::EndDisabled();
     if (pressed) Open(scene, snapshot, actions);
     ToolTooltip(scene.description.c_str());
+    if (scene.asset->item.empty()) DragSource(node); // A set moves as a whole
     ImGui::PushID(scene.id.c_str());
     AssetMenu(node, scene.asset->usage, actions);
     ImGui::PopID();
     NextTile();
 }
 
-void AssetsPanel::PlayAudio(const AssetNode& node, const EditorUiActions& actions) {
-    _audioFile = node.path;
-    _audioName = node.name;
+void AssetsPanel::PlayAudio(const AssetNode& node, const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     if (actions.previewAudio)
-        actions.previewAudio(
-            {AudioPreviewAction::Play, node.path.lexically_relative(_assetsDirectory), _audioLoop, _audioVolume});
+        actions.previewAudio({AudioPreviewAction::Play, std::filesystem::absolute(node.path), snapshot.audio.loop,
+                              snapshot.audio.volume});
 }
 
 void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot, const EditorUiActions& actions,
@@ -361,17 +460,28 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
     const int count = found != scenes.end() ? static_cast<int>(found->second.size()) : 0;
     const bool notBuilt = node.kind == AssetKind::Graphic && found == scenes.end();
     const bool sound = node.kind == AssetKind::Audio;
-    const bool playing = sound && node.path == _audioFile && snapshot.audioPlaying;
+    const bool previewed = sound && !snapshot.audio.file.empty() &&
+                           snapshot.audio.file == std::filesystem::absolute(node.path); // In Audio Preview
+    const bool playing = previewed && snapshot.audio.playing;
+    // What the project's audio catalog plays the sound as; a sound it does not list is dimmed.
+    const bool catalogKnown = sound && snapshot.audioUsage && snapshot.audioUsage->reported;
+    const auto uses =
+        catalogKnown ? AudioUseLabels(AudioUsesOf(*snapshot.audioUsage, node.path.lexically_relative(_assetsDirectory)))
+                     : std::string();
+    const bool unused = catalogKnown && uses.empty();
     const char* icon = count > 1 ? ICON_FA_LAYER_GROUP : playing ? ICON_FA_VOLUME_HIGH : KindIcon(node.kind);
-    const bool pressed = DrawTile({key.c_str(), node.name.c_str(), icon, KindColor(node.kind), node.path == _audioFile,
-                                   notBuilt || node.kind == AssetKind::Code, count},
-                                  _tileSize);
+    const bool pressed =
+        DrawTile({key.c_str(), node.name.c_str(), icon, KindColor(node.kind), previewed,
+                  notBuilt || unused || node.kind == AssetKind::Code, count,
+                  count > 1 && actions.assetThumbnail ? actions.assetThumbnail(found->second.front()->id) : 0},
+                 _tileSize);
     if (notBuilt) {
         ToolTooltip("Not built yet: use Build & Refresh");
     } else if (!node.files.empty()) {
         std::string files;
         for (const auto& file : node.files)
             files += (files.empty() ? "" : "\n") + file;
+        if (catalogKnown) files += "\n" + (unused ? std::string("Unused: not in the audio catalog") : uses);
         ToolTooltip(files.c_str());
     }
     if (pressed) {
@@ -382,13 +492,15 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
             Enter({AssetPathKey(node.path.parent_path()), key}, snapshot);
         } else if (sound) {
             if (playing && actions.previewAudio)
-                actions.previewAudio({AudioPreviewAction::Stop, {}, _audioLoop, _audioVolume});
+                actions.previewAudio({AudioPreviewAction::Stop, {}, snapshot.audio.loop, snapshot.audio.volume});
             else
-                PlayAudio(node, actions);
+                PlayAudio(node, snapshot, actions);
         }
     }
+    DragSource(node);
+    DropTarget(node, actions);
     ImGui::PushID(key.c_str());
-    AssetMenu(node, {}, actions);
+    AssetMenu(node, {}, actions, [&] { CreateItems(node); });
     ImGui::PopID();
     NextTile();
 }
@@ -445,29 +557,6 @@ void AssetsPanel::Footer() {
     ToolTooltip("Tile size (Ctrl+wheel over the grid)");
 }
 
-void AssetsPanel::AudioBar(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
-    const float scale = ToolUiScale();
-    const bool playing = snapshot.audioPlaying;
-    if (ToolIconButton("audio-play", playing ? ICON_FA_STOP : ICON_FA_PLAY, playing ? "Stop" : "Play") &&
-        actions.previewAudio) {
-        if (playing)
-            actions.previewAudio({AudioPreviewAction::Stop, {}, _audioLoop, _audioVolume});
-        else
-            actions.previewAudio(
-                {AudioPreviewAction::Play, _audioFile.lexically_relative(_assetsDirectory), _audioLoop, _audioVolume});
-    }
-    ImGui::SameLine();
-    if (ToolIconButton("audio-loop", ICON_FA_REPEAT, "Loop on the next play", _audioLoop)) _audioLoop = !_audioLoop;
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(VolumeSliderWidth * scale);
-    if (ImGui::SliderFloat("##audio-volume", &_audioVolume, 0.0f, 1.0f, "%.2f") && actions.previewAudio)
-        actions.previewAudio({AudioPreviewAction::Volume, {}, _audioLoop, _audioVolume});
-    ToolTooltip("Volume");
-    ImGui::SameLine();
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(_audioName.c_str());
-}
-
 void AssetsPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     if (ImGui::GetTime() >= _nextScan) {
         _roots = ScanAssetLibrary(_engineDirectory, _assetsDirectory);
@@ -507,7 +596,7 @@ void AssetsPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {ToolMetrics::Gap * scale, ToolMetrics::Gap * scale});
     if (BeginToolPanel("asset-toolbar", {0, ImGui::GetFrameHeight() + padding * 2 * scale}, ToolSurface::Toolbar, 0,
                        ImGuiWindowFlags_NoScrollbar, padding))
-        Toolbar(snapshot, actions);
+        Toolbar(snapshot, actions, *folder);
     EndToolPanel();
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ToolMetrics::Gap * scale); // The panes touch the toolbar
     if (BeginToolPanel("asset-tree", {TreeWidth * scale, 0}, ToolSurface::Utility, ImGuiChildFlags_ResizeX, 0,
@@ -520,18 +609,24 @@ void AssetsPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
     EndToolPanel();
     ImGui::SameLine(0, 0);
     if (BeginToolPanel("asset-content", {0, 0}, ToolSurface::Content, 0, ImGuiWindowFlags_NoScrollbar, padding)) {
-        const float rows = (_audioFile.empty() ? 1.0f : 2.0f);
-        const float reserve = ImGui::GetFrameHeightWithSpacing() * rows;
+        const float reserve = ImGui::GetFrameHeightWithSpacing();
         const bool resizing = ImGui::GetIO().KeyCtrl;
         if (ImGui::BeginChild("asset-grid", {0, -reserve}, 0, resizing ? ImGuiWindowFlags_NoScrollWithMouse : 0)) {
             Grid(snapshot, actions, *folder, scenes);
+            if (ImGui::BeginPopupContextWindow("grid-menu",
+                                               ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+                CreateItems(*folder);
+                if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN "  Show in Explorer") && actions.openPath)
+                    actions.openPath(folder->path);
+                ImGui::EndPopup();
+            }
             if (resizing && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::GetIO().MouseWheel != 0.0f)
                 _tileSize = std::clamp(_tileSize + ImGui::GetIO().MouseWheel * TileWheelStep, MinTileSize, MaxTileSize);
         }
         ImGui::EndChild();
-        if (!_audioFile.empty()) AudioBar(snapshot, actions);
         Footer();
     }
     EndToolPanel();
     ImGui::PopStyleVar();
+    DrawNameDialog(actions);
 }

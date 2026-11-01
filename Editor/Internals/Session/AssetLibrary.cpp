@@ -93,3 +93,5 @@ std::vector<AssetNode> ScanAssetLibrary(const std::filesystem::path& engineDirec
     }
     return roots;
 }
+
+bool IsAudioFile(const std::filesystem::path& file) { return Has(AudioExtensions, Lowered(file.extension().string())); }

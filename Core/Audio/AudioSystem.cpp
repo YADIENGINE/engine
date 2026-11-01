@@ -32,6 +32,10 @@ void AudioSystem::StopMusic() { _state->StopMusic(); }
 void AudioSystem::PauseMusic() { _state->PauseMusic(); }
 void AudioSystem::ResumeMusic() { _state->ResumeMusic(); }
 bool AudioSystem::IsMusicPlaying() const { return _state->IsMusicPlaying(); }
+float AudioSystem::MusicLength() const { return _state->MusicLength(); }
+float AudioSystem::MusicPosition() const { return _state->MusicPosition(); }
+void AudioSystem::SeekMusic(float seconds) { _state->SeekMusic(seconds); }
+void AudioSystem::SetMusicLooping(bool loop) { _state->SetMusicLooping(loop); }
 void AudioSystem::Update() { _state->Update(); }
 
 void AudioSystem::SetMasterVolume(float volume) { _state->SetMasterVolume(volume); }

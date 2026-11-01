@@ -1,6 +1,6 @@
 # Asset library (design)
 
-Status: accepted; v1 steps 1-2 implemented (registration and panel; tiles still show icons). Decision record:
+Status: accepted; v1 implemented. Decision record:
 [README → D22](README.md#d22-asset-library). Prefabs are deferred. Baking is a separate, deferred topic:
 [Visual assets](VisualAssets.md).
 
@@ -76,6 +76,9 @@ do not change.
 
 Renaming is a code refactor (file, symbols, callers), so the panel does not offer it.
 
+The panel's file actions and the command line share one implementation: `python Engine asset new | mkdir | move`.
+Dragging a tile or tree row onto a folder moves it; a set moves as a whole. Sounds and fonts do not move.
+
 **Not modules:** C++20 modules would avoid the rewrite, and a small test on the project toolchain built correctly. They
 were rejected because they only simplify this rare operation, while the asset's own tuning include stays path-based and
 renames remain refactors. The cost is permanent: weaker IDE support around `import`, CMake 3.28, names unique across the
@@ -84,32 +87,40 @@ matures.
 
 ### Thumbnails
 
-Thumbnails are part of v1, since a grid is of little use without them. The worker's image channel carries only the
-viewport today, so the plan is untested:
-
-1. The worker draws visible tiles into a `Surface` and writes PNGs under `build/`.
-2. The editor reads those files, so old thumbnails remain visible while a build is broken.
+A new worker build triggers one hidden, short-lived run of the worker (`--thumbnails DIR RRGGBB`). It draws every
+graphic, page by page on its canvas, and writes PNGs under the editor's build folder. A separate process leaves the
+running scene alone. The editor loads those files on demand, so old thumbnails remain visible while a build is broken.
+A build in progress stops the run, because the worker's file must stay free. Tiles are opaque on the panel's color: glow
+leaves no alpha to read back.
 
 Thumbnails are still images; an asset may give a `thumbnailTime`. Animation is watched in the viewport. Playing on
 hover is not in v1.
 
 ### Audio
 
-- Clicking a sound does not touch the viewport or the running scene. A bar below the grid has play/stop, loop and
-  volume, so it stays available when the Inspector is hidden. Duration needs a new `AudioSystem` query and is not shown yet.
-- The editor process plays it through its own `AudioSystem`, so it works during a broken build. That API only takes
-  paths under the asset root, so it plays the worker's copy beside the editor: a sound added since the last build
-  reports "Build & Refresh" in Output.
+- Clicking a sound loads it into a separate **Audio Preview** panel and plays it; the viewport and running scene are
+  untouched. The panel docks right of Assets in the bottom region, so the grid and the player are both in sight, and
+  can be dragged out. An earlier bar below the grid was dropped: too cramped for a timeline and details.
+- The panel shows name, folder, length, format, size, sample rate and channels; a waveform to click or drag for
+  seeking; previous/next sound in the folder; play/pause, stop, loop and volume. Length and position come from
+  `AudioSystem::MusicLength`, `MusicPosition` and `SeekMusic`.
+- The editor process plays it through its own `AudioSystem`, so it works during a broken build, and from the source
+  file, so a new sound needs no Build & Refresh. Games keep the relative-path API; tools use the separate
+  `Audio/AudioFiles.h` (`LoadMusicFile` takes absolute paths only, `DecodeAudioFile` decodes without a device).
+- Waveforms: `DecodeAudioFile` runs on a background thread and a 1024-column peak/RMS summary is kept in memory per file
+  version (size and write time). Until it is ready, a plain progress bar stands in.
+- Usage: the worker sends its `AudioCatalog` ("audio" message, before "catalog"). Assets dims sounds the catalog does
+  not list; both panels name the entries that play a sound. The engine knows only IDs and paths: `EffectAsset::name` /
+  `MusicAsset::name` are optional labels, and without one the numeric ID is shown.
 - Audio cannot move in v1: audio catalogs hold file paths as strings.
-- Later: the worker knows the audio catalog, so the panel could mark files the game does not use.
 
 ## v1 order
 
 1. Done: exclude source folders from copying and packaging; registration; `ctl` support.
-2. Done: panel with disk scan, tree, grid, search, audio player, copy usage, show in Explorer.
-3. Thumbnails.
-4. Engine default sets. Icons are registered already, to exercise sets and the read-only root.
-5. New-graphic skeleton and folder actions, with include updates on move.
+2. Done: panel with disk scan, tree, grid, search, Audio Preview panel, copy usage, show in Explorer.
+3. Done: thumbnails.
+4. Done: engine default sets (icons, UI widgets, backdrops).
+5. Done: new-graphic skeleton and folder actions, with include updates on move.
 
 ## Deferred
 

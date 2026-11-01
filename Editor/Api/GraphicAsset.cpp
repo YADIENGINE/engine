@@ -1,7 +1,9 @@
 #include "Editor/Api/GraphicAsset.h"
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <filesystem>
+#include <format>
 #include <memory>
 #include <stdexcept>
 #include <string_view>
@@ -108,6 +110,26 @@ std::vector<SceneDefinition> GraphicAssetDefinitions(const GraphicAsset& asset, 
 bool RegisterGraphicAsset(GraphicAsset (*make)(), std::source_location where) {
     Makers().push_back({make, where.file_name()});
     return true;
+}
+
+std::vector<GraphicThumbnail> RegisteredGraphicThumbnails() {
+    std::vector<GraphicThumbnail> thumbnails;
+    for (const auto& maker : Makers()) {
+        auto asset = std::make_shared<const GraphicAsset>(maker.make());
+        const auto definitions = GraphicAssetDefinitions(*asset, maker.file, ENGINE_EDITOR_ROOT);
+        for (std::size_t item = 0; item < definitions.size(); ++item)
+            thumbnails.push_back({definitions[item].id, asset, item});
+    }
+    return thumbnails;
+}
+
+std::string AssetThumbnailFile(const std::string& id) {
+    std::uint64_t hash = 14695981039346656037ull; // FNV-1a
+    for (const unsigned char c : id) {
+        hash ^= c;
+        hash *= 1099511628211ull;
+    }
+    return std::format("{:016x}.png", hash);
 }
 
 void AddRegisteredGraphicAssets(SceneRegistry& registry) {

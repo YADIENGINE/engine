@@ -1,4 +1,5 @@
 #include "Audio/Internals/Validation.h"
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <string>
@@ -11,6 +12,14 @@ void ValidateAudioPath(const std::filesystem::path& file) {
         if (part == "..") throw std::invalid_argument("Audio file path cannot leave the asset root: " + file.string());
     }
 }
+void ValidateAudioFilePath(const std::filesystem::path& file) {
+    if (!file.is_absolute()) throw std::invalid_argument("Audio source file path must be absolute: " + file.string());
+}
+void ValidateAudioSeek(float seconds) {
+    if (!std::isfinite(seconds) || seconds < 0.0f)
+        throw std::invalid_argument("Audio seek position must be finite and non-negative");
+}
+float AudioSeekPosition(float seconds, float length) { return std::min(seconds, std::max(length, 0.0f)); }
 void ValidateAudioVolume(float volume) {
     if (!(volume >= 0.0f && volume <= 1.0f))
         throw std::invalid_argument("Audio volume must be finite and between 0 and 1");

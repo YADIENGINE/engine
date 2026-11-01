@@ -283,7 +283,9 @@ if(NOT ENGINE_BUILD_RUNTIME)
     return()
 endif()
 add_library(Engine STATIC
+    Audio/AudioFiles.cpp
     Audio/AudioSystem.cpp
+    Audio/Internals/AudioDecoder.cpp
     Audio/Internals/AudioDevice.cpp
     Audio/Internals/AudioMusicStream.cpp
     Audio/Internals/EffectVoices.cpp

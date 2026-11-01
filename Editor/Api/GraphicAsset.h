@@ -20,6 +20,8 @@ struct GraphicAsset {
     std::vector<GraphicItem> items;
     // Draws one item fitted to `box`; `item` indexes `items` (0 for a single drawing). `time` is the scene's clock.
     std::function<void(Painter& paint, const FloatRect& box, std::size_t item, float time)> draw;
+    // The moment the thumbnail shows, for a graphic that starts empty or looks best mid-animation.
+    float thumbnailTime = 0.0f;
     // The line "Copy usage" copies; `{item}` becomes the item's name.
     std::string usage;
 };

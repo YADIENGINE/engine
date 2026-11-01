@@ -19,6 +19,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `struct GraphicAsset` — A ready-made graphic for the editor's Assets panel.
 - `GraphicAsset`: `std::vector<GraphicItem> items`
 - `GraphicAsset`: `std::function<void(Painter& paint, const FloatRect& box, std::size_t item, float time)> draw` — Draws one item fitted to `box`; `item` indexes `items` (0 for a single drawing).
+- `GraphicAsset`: `float thumbnailTime = 0.0f` — The moment the thumbnail shows, for a graphic that starts empty or looks best mid-animation.
 - `GraphicAsset`: `std::string usage` — The line "Copy usage" copies; `{item}` becomes the item's name.
 - `bool RegisterGraphicAsset(GraphicAsset(* make)(), std::source_location where = std::source_location::current())` — Stores the maker only; it runs when the worker builds its catalog.
 
