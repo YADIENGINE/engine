@@ -1,7 +1,9 @@
 #pragma once
 #include <array>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 // The agent CLI the Console's agent session runs (Docs/Editor/Usage.md → Agent workspace). The editor only starts the
 // developer's own CLI in a terminal; it never calls a model itself. Custom runs any command line.
@@ -41,3 +43,7 @@ struct AgentPreferences {
 [[nodiscard]] std::string AgentProgram(std::string_view command);
 // The terminal command line: the shell runs the agent and stays open after it exits, so the session never vanishes.
 [[nodiscard]] std::string AgentCommandLine(std::string_view shell, std::string_view command);
+// Recognizes live native CLI executables, not stale terminal titles or shell launch arguments.
+// Prefer the current kind when it is still running (an agent can start another agent as a tool).
+[[nodiscard]] std::optional<AgentKind> DetectRunningAgent(const std::vector<std::string>& processNames,
+                                                       std::optional<AgentKind> current = std::nullopt);

@@ -300,6 +300,22 @@ TEST_CASE("Editor.Agent.ProfilesAndCommandLines", "[engine-editor]") {
     CHECK(AgentCommandLine("pwsh -NoLogo", "claude") == "pwsh -NoLogo -NoExit -Command claude");
 }
 
+TEST_CASE("Editor.Agent.IdentityFollowsLiveCliProcessesBackToTheShell", "[engine-editor]") {
+    CHECK_FALSE(DetectRunningAgent({"pwsh.exe"}));
+    CHECK(DetectRunningAgent({"pwsh.exe", "CLAUDE.EXE"}) == AgentKind::ClaudeCode);
+    CHECK_FALSE(DetectRunningAgent({"pwsh.exe"}, AgentKind::ClaudeCode)); // Claude exited; shell survives.
+    CHECK(DetectRunningAgent({"pwsh.exe", "node.exe", "codex.exe"}) == AgentKind::Codex);
+    CHECK_FALSE(DetectRunningAgent({"pwsh.exe", "node.exe"}, AgentKind::Codex));
+    CHECK(DetectRunningAgent({"pwsh.exe", "codex.exe"}, AgentKind::ClaudeCode) == AgentKind::Codex);
+    CHECK(DetectRunningAgent({"pwsh.exe", "claude.exe"}, AgentKind::Codex) == AgentKind::ClaudeCode);
+    CHECK_FALSE(DetectRunningAgent({"pwsh.exe", "claude-helper.exe", "codex-server.exe"}));
+    // A tool spawned by an agent does not replace the still-running session's identity.
+    const std::vector<std::string> nested{"pwsh.exe", "claude.exe", "codex.exe"};
+    CHECK(DetectRunningAgent(nested, AgentKind::ClaudeCode) == AgentKind::ClaudeCode);
+    CHECK(DetectRunningAgent(nested, AgentKind::Codex) == AgentKind::Codex);
+    CHECK_FALSE(DetectRunningAgent({}, AgentKind::ClaudeCode));
+}
+
 TEST_CASE("Editor.Agent.SessionStateFollowsInputOutputBellsAndNotes", "[engine-editor]") {
     SessionSignals signals{.now = 100};
     CHECK(SessionStateOf(signals) == SessionState::Idle);

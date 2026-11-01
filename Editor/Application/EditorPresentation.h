@@ -13,7 +13,7 @@
 
 class TuningWorkspace;
 
-enum class EditorCommand { Open, Stop, Pause, Reset, Refresh, Cancel, Step, Count };
+enum class EditorCommand { Open, Stop, Pause, Reset, Refresh, Cancel, Step, BuildAndPlay, Count };
 // The scene's phase. Building only while no scene runs; a running scene stays Ready / Paused while it builds.
 enum class EditorPhase { ReadingCatalog, Starting, Ready, Paused, Building, Stopped, Error };
 // clang-format off

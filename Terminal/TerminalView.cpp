@@ -176,7 +176,10 @@ void DrawCursor(ImDrawList& draw, const Grid& grid, const TerminalSession& sessi
 
 void TerminalView::Draw(TerminalSession& session) {
     ImGui::PushFont(ToolFont(ToolFontRole::Technical), 0);
-    const Grid grid{ImGui::GetCursorScreenPos(), std::max(1.0f, ImGui::CalcTextSize("M").x),
+    auto* font = ImGui::GetFontBaked();
+    // CalcTextSize rounds up: ASCII runs use fractional advances, so Unicode cells would drift away from them.
+    const float cellWidth = font->GetCharAdvance('M') * (ImGui::GetFontSize() / font->Size);
+    const Grid grid{ImGui::GetCursorScreenPos(), std::max(1.0f, cellWidth),
                     std::max(1.0f, std::round(ImGui::GetFontSize() * LineHeightScale)),
                     std::round(ImGui::GetFontSize() * (LineHeightScale - 1.0f) * 0.5f)};
     const auto available = ImGui::GetContentRegionAvail();

@@ -171,3 +171,37 @@ std::optional<int> PseudoConsole::ExitCode() const {
     GetExitCodeProcess(_process.get(), &code);
     return static_cast<int>(code);
 }
+
+std::optional<std::vector<std::wstring>> PseudoConsole::ProcessNames() const {
+    if (!_job) return std::nullopt;
+    // ULONG_PTR storage keeps the variable-length process list aligned. Retry if the job grows during the query.
+    std::vector<ULONG_PTR> storage(32);
+    for (int attempt = 0; attempt < 4; ++attempt) {
+        auto* list = reinterpret_cast<JOBOBJECT_BASIC_PROCESS_ID_LIST*>(storage.data());
+        if (!QueryInformationJobObject(_job.get(), JobObjectBasicProcessIdList, list,
+                                       static_cast<DWORD>(storage.size() * sizeof(ULONG_PTR)), nullptr)) {
+            if (GetLastError() != ERROR_MORE_DATA) return std::nullopt;
+            storage.resize(storage.size() * 2);
+            continue;
+        }
+        if (list->NumberOfProcessIdsInList < list->NumberOfAssignedProcesses) {
+            storage.resize(storage.size() * 2);
+            continue;
+        }
+        std::vector<std::wstring> names;
+        std::wstring image(32768, L'\0'); // Maximum Win32 extended path length.
+        for (DWORD index = 0; index < list->NumberOfProcessIdsInList; ++index) {
+            const Handle process(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE,
+                                              static_cast<DWORD>(list->ProcessIdList[index])));
+            if (!process) {
+                if (GetLastError() == ERROR_INVALID_PARAMETER) continue; // Exited after the snapshot.
+                return std::nullopt;
+            }
+            DWORD length = static_cast<DWORD>(image.size());
+            if (!QueryFullProcessImageNameW(process.get(), 0, image.data(), &length)) return std::nullopt;
+            names.push_back(std::filesystem::path(std::wstring_view(image.data(), length)).filename().wstring());
+        }
+        return names;
+    }
+    return std::nullopt;
+}

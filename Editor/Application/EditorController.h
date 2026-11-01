@@ -87,6 +87,7 @@ private:
     void Pause();
     void Reset();
     void Refresh();
+    void BuildAndPlay();
     void Cancel();
     [[nodiscard]] const SceneDefinition* Selected() const;
     [[nodiscard]] EditorPhase Phase() const;
@@ -132,6 +133,7 @@ private:
     std::optional<Replacement> _replacement;
     std::vector<std::unique_ptr<WorkerProcess>> _retired;
     WorkerBuild _build;
+    std::optional<EditorGameBuild> _gameBuild;
     RefreshState _refresh;
 
     std::vector<SceneDefinition> _catalog;

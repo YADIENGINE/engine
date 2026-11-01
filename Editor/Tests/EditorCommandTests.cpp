@@ -33,6 +33,27 @@ TEST_CASE("Editor.Commands.OpenRequiresProjectBuildAndSelection", "[engine-edito
     CHECK(std::string_view(capabilities.Reason(EditorCommand::Open)).empty());
 }
 
+TEST_CASE("Editor.Commands.BuildAndPlayRequiresGameAndWaitsForOperations", "[engine-editor]") {
+    EditorCommandContext context;
+    CHECK_FALSE(ResolveEditorCapabilities(context).Can(EditorCommand::BuildAndPlay));
+    context.hasProject = true;
+    CHECK_FALSE(ResolveEditorCapabilities(context).Can(EditorCommand::BuildAndPlay));
+    context.hasGame = true;
+    CHECK(ResolveEditorCapabilities(context).Can(EditorCommand::BuildAndPlay)); // No worker or scene required
+    context.building = true;
+    CHECK_FALSE(ResolveEditorCapabilities(context).Can(EditorCommand::BuildAndPlay));
+    CHECK(ResolveEditorCapabilities(context).Can(EditorCommand::Cancel));
+    context.building = false;
+    context.profilerBusy = true;
+    CHECK_FALSE(ResolveEditorCapabilities(context).Can(EditorCommand::BuildAndPlay));
+    context.profilerBusy = false;
+    context.starting = true;
+    CHECK_FALSE(ResolveEditorCapabilities(context).Can(EditorCommand::BuildAndPlay));
+    context.starting = false;
+    context.replacing = true;
+    CHECK_FALSE(ResolveEditorCapabilities(context).Can(EditorCommand::BuildAndPlay));
+}
+
 TEST_CASE("Editor.Commands.StepRequiresPauseAndBenchmarkDisablesPlayback", "[engine-editor]") {
     auto context = ReadyScene();
     auto capabilities = ResolveEditorCapabilities(context);

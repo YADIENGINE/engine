@@ -43,6 +43,10 @@ private:
     };
     void Command(const WorkerMessage& message);
     void Reply(const WorkerMessage& message, const std::string& type, nlohmann::json data);
+    // Scene logs are best effort: a busy channel drops them and later reports how many.
+    void SendLog(const std::string& text);
+    [[nodiscard]] bool ReportDroppedLogs();
+    void SendParameters();
     void Restart();
     void StartSeek(const WorkerMessage& message);
     void FinishSeek();
@@ -65,6 +69,7 @@ private:
     double _elapsed = 0.0; // Playback seconds since open / reset (the seek and sync clock)
     std::optional<Seek> _seek;
     std::deque<WorkerMessage> _queued; // Read but not yet applied (waiting behind a seek)
+    std::size_t _droppedLogs = 0;
     // Actions since open / reset at their playback time; a rewind replays them as the clock passes them again.
     struct TimedAction {
         double seconds = 0.0;

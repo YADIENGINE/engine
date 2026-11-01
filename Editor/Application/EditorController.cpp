@@ -49,6 +49,7 @@ void EditorController::Execute(EditorCommand command) {
     case EditorCommand::Pause  : Pause(); break;
     case EditorCommand::Reset  : Reset(); break;
     case EditorCommand::Refresh: Refresh(); break;
+    case EditorCommand::BuildAndPlay: BuildAndPlay(); break;
     case EditorCommand::Cancel : Cancel(); break;
     case EditorCommand::Step   : Playback(_playbackSpeed, true); break;
     case EditorCommand::Count  : break;
@@ -89,6 +90,7 @@ void EditorController::Reset() {
     }
 }
 void EditorController::Refresh() {
+    _gameBuild.reset();
     _output.BeginAttempt();
     try {
         _refresh.Begin();
@@ -96,6 +98,21 @@ void EditorController::Refresh() {
         _status = _ready ? "Building; the scene stays live until the new build is ready" : "Building worker target";
         Log("Build started.");
     } catch (const std::exception& error) {
+        _refresh.Cancel();
+        Log(error.what(), EditorLogLevel::Error);
+        _output.FinishAttempt(EditorBuildResult::BuildFailed);
+    }
+}
+void EditorController::BuildAndPlay() {
+    _output.BeginAttempt();
+    try {
+        _gameBuild = ReadEditorGameBuild(*_project);
+        _refresh.Begin();
+        _build.Start(_gameBuild->build, _gameBuild->buildDirectory);
+        _status = "Building game (Debug)";
+        Log("Build And Play started (Debug).");
+    } catch (const std::exception& error) {
+        _gameBuild.reset();
         _refresh.Cancel();
         Log(error.what(), EditorLogLevel::Error);
         _output.FinishAttempt(EditorBuildResult::BuildFailed);
@@ -250,6 +267,9 @@ EditorSnapshot EditorController::Snapshot() const {
     const bool benchmarkCancelPending = _benchmarkCancelPending && profilerBusy;
     EditorCommandContext context;
     context.hasProject = _project.has_value();
+    context.hasGame = _project && !_project->python.empty() && !_project->engineDirectory.empty() &&
+                      !_project->sourceDirectory.empty() &&
+                      std::filesystem::is_regular_file(_project->sourceDirectory / "Project.json");
     context.hasBuild = _snapshots && _snapshots->Current();
     context.hasSelection = Selected() != nullptr;
     context.workerActive = _active != nullptr;
@@ -520,6 +540,36 @@ void EditorController::BuildFinished(const WorkerBuildExit& exit) {
     for (const auto& line : exit.output)
         Log(line, ClassifyBuildOutput(line), EditorLogSource::Build);
     _output.BuildExited(exit.code);
+    if (const auto game = std::exchange(_gameBuild, std::nullopt)) {
+        _refresh.Cancel();
+        if (exit.outcome == WorkerBuildOutcome::Aborted) return;
+        if (exit.outcome == WorkerBuildOutcome::Canceled) {
+            _status = "Game build canceled";
+            Log(_status);
+            _output.FinishAttempt(EditorBuildResult::Canceled);
+            return;
+        }
+        if (exit.outcome == WorkerBuildOutcome::Failed) {
+            _status = "Game build failed";
+            Log(_status + " (exit " + std::to_string(exit.code) + ").", EditorLogLevel::Error,
+                EditorLogSource::Build);
+            _output.FinishAttempt(EditorBuildResult::BuildFailed);
+            return;
+        }
+        const auto directory = game->executable.parent_path();
+        const auto launched = reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", game->executable.c_str(),
+                                                                      nullptr, directory.c_str(), SW_SHOWNORMAL));
+        if (launched <= 32) {
+            _status = "Game built but could not start (shell error " + std::to_string(launched) + ")";
+            Log(_status, EditorLogLevel::Error);
+            _output.FinishAttempt(EditorBuildResult::RefreshFailed);
+            return;
+        }
+        _status = "Game started";
+        Log(_status);
+        _output.FinishAttempt(EditorBuildResult::Succeeded);
+        return;
+    }
     switch (exit.outcome) {
     case WorkerBuildOutcome::Aborted: return; // The failure that aborted it settles the attempt
     case WorkerBuildOutcome::Canceled:

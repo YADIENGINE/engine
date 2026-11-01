@@ -76,6 +76,8 @@ private:
         std::uint64_t id;
         std::string title;
         std::optional<AgentKind> agent;
+        std::optional<AgentKind> launchAgent; // Custom commands retain their user-selected identity.
+        bool agentObserved = false; // The CLI may take a moment to spawn after its shell starts.
         TerminalSession terminal;
         TerminalView view;
         std::string pendingText; // Waits for a starting program (SendTo)
@@ -97,6 +99,7 @@ private:
     std::uint64_t _lastAgent = 0; // Id of the agent session selected last
     float _sessionListWidth = 0;  // Logical pixels; initialized from the font on first draw
     bool _focused = false;
+    std::chrono::steady_clock::time_point _nextProcessPoll;
     std::optional<std::size_t> _confirmClose;
     std::map<std::string, ConsoleNote> _notes;
     std::filesystem::path _directory;

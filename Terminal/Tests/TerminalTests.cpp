@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include <chrono>
 #include <string>
 #include <thread>
@@ -78,6 +79,19 @@ TEST_CASE("Terminal.Screen.BellIsReportedOnce", "[terminal]") {
     CHECK(screen.TakeBell());
     CHECK_FALSE(screen.TakeBell()); // Taken
     CHECK(RowText(screen, 0) == "waiting");
+}
+
+TEST_CASE("Terminal.Screen.TurkishTextKeepsSingleCellsWithoutInsertedSpaces", "[terminal]") {
+    VtScreen screen(4, 20, {});
+    const std::string text = "olmas\xC4\xB1n"; // olmas\u0131n
+    screen.Feed(text);
+    CHECK(screen.Text({0, 0}, {0, 7}) == text);
+    CHECK(screen.Cell(0, 5).text[0] == U'\u0131');
+    CHECK(screen.Cell(0, 5).width == 1);
+    CHECK(screen.Cell(0, 6).text[0] == U'n');
+    CHECK(screen.Cursor().column == 7);
+    screen.SendCharacter(U'\u0131', NoModifiers);
+    CHECK(screen.TakeInput() == "\xC4\xB1");
 }
 
 TEST_CASE("Terminal.Screen.ResizeKeepsText", "[terminal]") {
@@ -275,9 +289,15 @@ TEST_CASE("Terminal.Session.StopsARunningProgram", "[terminal]") {
     REQUIRE(session.Start({.commandLine = "cmd.exe /d /k"}));
     session.Pump();
     CHECK(session.Running());
+    const auto processes = session.ProcessNames();
+    REQUIRE(processes);
+    CHECK(std::ranges::find(*processes, "cmd.exe") != processes->end());
     const auto started = std::chrono::steady_clock::now();
     session.Stop();
     CHECK_FALSE(session.Running());
+    const auto stoppedProcesses = session.ProcessNames();
+    REQUIRE(stoppedProcesses);
+    CHECK(stoppedProcesses->empty());
     CHECK(std::chrono::steady_clock::now() - started < std::chrono::seconds(5));
 }
 

@@ -33,6 +33,8 @@ public:
     [[nodiscard]] std::string TakeOutput();
     // Süreç çıktıysa çıkış kodu.
     [[nodiscard]] std::optional<int> ExitCode() const;
+    // Live executable names in this console's job, including descendants. Empty optional on query failure.
+    [[nodiscard]] std::optional<std::vector<std::wstring>> ProcessNames() const;
 
 private:
     void ReadLoop();

@@ -36,8 +36,7 @@ WorkerSession::WorkerSession(Game& game, const GameSettings& settings, const Sce
     , _frames(session, false)
     , _actions(std::move(actions))
     , _scene(
-          _canvas, audio,
-          [this](const std::string& text) { _channel.Send({{}, _generation, 0, "log", {{"text", text}}}); }, font)
+          _canvas, audio, [this](const std::string& text) { SendLog(text); }, font)
     , _profiler(game, _scene, channel, _canvas,
                 [this] {
                     _actions.reset();
@@ -74,6 +73,21 @@ float WorkerSession::Advance(float realSeconds) {
     }
     _elapsed += seconds;
     return seconds;
+}
+void WorkerSession::SendLog(const std::string& text) {
+    if (ReportDroppedLogs() && _channel.TrySend({{}, _generation, 0, "log", {{"text", text}}})) return;
+    ++_droppedLogs;
+}
+bool WorkerSession::ReportDroppedLogs() {
+    if (!_droppedLogs) return true;
+    const auto text = std::to_string(_droppedLogs) + " log line(s) dropped: the editor was not reading";
+    if (!_channel.TrySend({{}, _generation, 0, "log", {{"text", text}}})) return false;
+    _droppedLogs = 0;
+    return true;
+}
+void WorkerSession::SendParameters() {
+    _channel.SendLatest(
+        {{}, _generation, 0, "parameters", {{"parameters", EncodeSceneParameters(_scene.Parameters())}}});
 }
 void WorkerSession::Reply(const WorkerMessage& message, const std::string& type, nlohmann::json data) {
     _channel.Send({{}, _generation, message.request, type, std::move(data)});
@@ -119,8 +133,7 @@ void WorkerSession::ReplayDue() {
         (void)_scene.Action(_timeline[_applied++].id); // Accepted when it was first run
         replayed = true;
     }
-    if (replayed && _scene.CaptureParameters())
-        _channel.Send({{}, _generation, 0, "parameters", {{"parameters", EncodeSceneParameters(_scene.Parameters())}}});
+    if (replayed && _scene.CaptureParameters()) SendParameters();
 }
 void WorkerSession::FinishSeek() {
     _game.ConfigureFrameExecution(_seek->execution);
@@ -209,8 +222,7 @@ void WorkerSession::Command(const WorkerMessage& message) {
         else {
             (void)_scene.CaptureParameters();
             Reply(message, "accepted", {{"id", id}, {"value", EncodeSceneValue(_scene.Parameters().at(id))}});
-            _channel.Send(
-                {{}, _generation, 0, "parameters", {{"parameters", EncodeSceneParameters(_scene.Parameters())}}});
+            SendParameters();
         }
     } else if (message.type == "action") {
         const auto id = message.data.at("id").get<std::string>();
@@ -221,18 +233,17 @@ void WorkerSession::Command(const WorkerMessage& message) {
         _timeline.resize(_applied); // Acting after a rewind replaces what followed
         _timeline.push_back({_elapsed, id});
         _applied = _timeline.size();
-        if (_scene.CaptureParameters())
-            _channel.Send(
-                {{}, _generation, 0, "parameters", {{"parameters", EncodeSceneParameters(_scene.Parameters())}}});
+        if (_scene.CaptureParameters()) SendParameters();
     } else {
         Reply(message, "rejected", {{"text", "Unsupported scene command: " + message.type}});
     }
 }
 void WorkerSession::PrepareFrame() {
-    // Commands behind a seek, even those read with it, apply once it arrives
-    if (!_seek)
-        for (auto& message : _channel.Poll())
-            _queued.push_back(std::move(message));
+    // Poll even during a seek: it also flushes this side's outgoing queue. Commands behind a seek, even those read
+    // with it, wait in _queued and apply once it arrives.
+    for (auto& message : _channel.Poll())
+        _queued.push_back(std::move(message));
+    (void)ReportDroppedLogs();
     while (!_seek && !_queued.empty()) {
         const auto message = std::move(_queued.front());
         _queued.pop_front();
@@ -256,8 +267,7 @@ DeviceInput WorkerSession::ReadInput() {
 }
 void WorkerSession::Capture() {
     if (_profiler.Busy()) return;
-    if (_scene.CaptureParameters())
-        _channel.Send({{}, _generation, 0, "parameters", {{"parameters", EncodeSceneParameters(_scene.Parameters())}}});
+    if (_scene.CaptureParameters()) SendParameters();
 }
 void WorkerSession::CanvasReady(const Texture2D& texture) const {
     if (_profiler.Busy() || _seek) return;
@@ -268,7 +278,7 @@ void WorkerSession::CanvasReady(const Texture2D& texture) const {
     if (startedAt - _inspectionAt >= 0.1 || _readyPending) {
         const auto inspection = _scene.Inspect();
         if (inspection != _inspection || _readyPending)
-            _channel.Send({{}, _generation, 0, "inspection", EncodeSceneInspection(inspection)});
+            _channel.SendLatest({{}, _generation, 0, "inspection", EncodeSceneInspection(inspection)});
         _inspection = inspection;
         _inspectionAt = startedAt;
     }
@@ -284,13 +294,13 @@ void WorkerSession::CanvasReady(const Texture2D& texture) const {
     if (!_statsStartedAt) _statsStartedAt = startedAt;
     if (published) ++_publishedFrames;
     if (publishedAt - _statsStartedAt >= 1.0) {
-        _channel.Send({{},
-                       _generation,
-                       0,
-                       "metrics",
-                       {{"captureMs", (capturedAt - startedAt) * 1000.0},
-                        {"publishMs", (publishedAt - capturedAt) * 1000.0},
-                        {"fps", static_cast<double>(_publishedFrames) / (publishedAt - _statsStartedAt)}}});
+        _channel.SendLatest({{},
+                             _generation,
+                             0,
+                             "metrics",
+                             {{"captureMs", (capturedAt - startedAt) * 1000.0},
+                              {"publishMs", (publishedAt - capturedAt) * 1000.0},
+                              {"fps", static_cast<double>(_publishedFrames) / (publishedAt - _statsStartedAt)}}});
         _publishedFrames = 0;
         _statsStartedAt = publishedAt;
     }

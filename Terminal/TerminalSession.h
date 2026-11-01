@@ -46,6 +46,8 @@ public:
 
     [[nodiscard]] bool Started() const { return _started; }
     [[nodiscard]] bool Running() const;
+    // Live executable names in this session only; empty optional means the snapshot could not be read.
+    [[nodiscard]] std::optional<std::vector<std::string>> ProcessNames() const;
     [[nodiscard]] std::optional<int> ExitCode() const { return _exitCode; }
     [[nodiscard]] int Rows() const;
     [[nodiscard]] int Columns() const;

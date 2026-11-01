@@ -54,6 +54,10 @@ only the changed section.
     movements accumulate. Wheel over another panel or an open menu does not reach the session. In a shell with long
     output, wheel, scrollbar and Shift+PageUp/PageDown browse history; Shift+wheel keeps browsing local history when an
     application requests mouse input. Typing returns to live output; leaving a full-screen app restores shell history.
+11. Start Claude and Codex manually from a Shell session: its label and icon follow the CLI within half a second. Exit
+    each CLI: the shell stays open and the row returns to Shell. Repeat with sessions opened from the agent menu. Old
+    activity notes do not remain after a transition; agent requests never target a session that has returned to Shell.
+    Multiple sessions keep distinct labels, and a CLI in one session does not change another session's identity.
 
 ## Infrastructure
 

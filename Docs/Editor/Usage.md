@@ -6,6 +6,11 @@ Saved dock layout and panel visibility are retained; Viewport starts open and in
 launch, Develop shows Project, Viewport, Inspector, and Tuning (a tab in the same right area as Inspector); Output,
 Profiler, and Console are closed. The bottom status bar has Output and Console buttons.
 
+The toolbar's **Build And Play** button, immediately right of Build, uses a pixel invader icon. It builds the
+standalone game in Debug through the project tools, then opens it in its own window after a successful build.
+Build output and errors appear in Output; cancellation or a failed build never launches the game. It requires
+the recipe's Python, engine and source paths plus a game configuration in `Project.json`.
+
 - **Left (Project):** search, category, All / Favorites / Recent. Single-click opens content; Ctrl+P focuses search. The
   star toggles favorites. Recent keeps the last 10 successful opens.
 - **Center (Viewport):** the worker's actual image. In the panel's local View menu, Fit shows the whole canvas, Focus
@@ -155,6 +160,9 @@ editor context; it never calls a model itself. The agent drives the editor back 
   *Codex* (*Claude 2* for a second one). A narrow list on the right of the terminal shows each session with a terminal
   or robot icon; drag its left edge to resize it. Click a row to select it; the selected row is highlighted. Hover
   shows its title, state and current activity. A close button appears on hover; right-click also offers *Close*.
+  Labels and terminal/robot icons follow live Claude and Codex executables in that session, checked every half second.
+  Starting either CLI from a shell changes the row to Claude/Codex; exiting it restores Shell, including sessions opened
+  from the agent menu. Custom commands retain their configured identity. Old notes do not carry into the next application.
   The **+** button at the top (*Add terminal* on hover) offers Shell, Claude, Codex and *Custom agent*, with the named
   CLIs' commands alongside them. Choosing an agent makes it the one agent requests start next. Each session keeps
   running while the panel is hidden; closing one ends its program (a running agent asks first). Agent requests

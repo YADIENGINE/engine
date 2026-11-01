@@ -133,6 +133,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
     }
     if (ImGui::BeginMenu("Tools")) {
         EditorCommandMenuItem(EditorCommand::Refresh, snapshot, actions);
+        EditorCommandMenuItem(EditorCommand::BuildAndPlay, snapshot, actions);
         result.openCommands = ImGui::MenuItem("Command palette", "Ctrl+Shift+P");
         ImGui::EndMenu();
     }

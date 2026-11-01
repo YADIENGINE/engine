@@ -8,6 +8,7 @@
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
 
 namespace {
+constexpr std::size_t MaxQueuedBytes = 8 * WorkerMaxMessageBytes;
 bool ClosedPipe(DWORD error) {
     return error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED || error == ERROR_NO_DATA;
 }
@@ -42,15 +43,40 @@ ControlChannel::ControlChannel(std::string session, bool server)
     }
     if (!_pipe) ThrowWorkerWindowsError("Open scene control channel");
 }
-void ControlChannel::Send(WorkerMessage message) {
+std::vector<std::byte> ControlChannel::Encode(WorkerMessage& message) const {
     if (_closed) throw std::runtime_error("Scene control channel is closed");
     message.session = _session;
-    auto bytes = EncodeWorkerMessage(message);
-    constexpr std::size_t MaxQueuedBytes = 8 * WorkerMaxMessageBytes;
+    return EncodeWorkerMessage(message);
+}
+void ControlChannel::Enqueue(std::vector<std::byte> bytes, std::string latestType, std::uint64_t generation) {
     if (_outgoing.size() >= WorkerMaxQueuedMessages || _queuedBytes + bytes.size() > MaxQueuedBytes)
         throw std::runtime_error("Scene control channel queue overflow");
     _queuedBytes += bytes.size();
-    _outgoing.push_back({std::move(bytes), 0});
+    _outgoing.push_back({std::move(bytes), 0, std::move(latestType), generation});
+}
+void ControlChannel::Send(WorkerMessage message) {
+    auto bytes = Encode(message);
+    Enqueue(std::move(bytes), {}, 0);
+}
+void ControlChannel::SendLatest(WorkerMessage message) {
+    auto bytes = Encode(message);
+    // Erased rather than overwritten in place, so the snapshot still follows the messages queued before it
+    const auto stale = std::find_if(_outgoing.begin(), _outgoing.end(), [&](const PendingWrite& write) {
+        return write.offset == 0 && write.latestType == message.type && write.generation == message.generation;
+    });
+    if (stale != _outgoing.end()) {
+        _queuedBytes -= stale->bytes.size();
+        _outgoing.erase(stale);
+    }
+    Enqueue(std::move(bytes), message.type, message.generation);
+}
+bool ControlChannel::TrySend(WorkerMessage message) {
+    if (_closed) return false;
+    auto bytes = Encode(message);
+    if (_outgoing.size() >= WorkerMaxQueuedMessages / 2 || _queuedBytes + bytes.size() > MaxQueuedBytes / 2)
+        return false;
+    Enqueue(std::move(bytes), {}, 0);
+    return true;
 }
 std::vector<WorkerMessage> ControlChannel::Poll() {
     std::vector<WorkerMessage> messages;

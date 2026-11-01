@@ -30,6 +30,11 @@ EditorCapabilities ResolveEditorCapabilities(const EditorCommandContext& context
         !context.hasProject ? "No project configured."
         : context.building  ? "A build is already running."
                             : operationReason);
+    set(EditorCommand::BuildAndPlay, context.hasProject && context.hasGame && !context.building && !locked,
+        !context.hasProject ? "No project configured."
+        : !context.hasGame  ? "No game configuration or project tools available."
+        : context.building ? "A build is already running."
+                           : operationReason);
     const bool cancellable = context.profilerBusy || context.building || context.replacing || context.starting ||
                              (context.workerActive && context.phase == EditorPhase::ReadingCatalog);
     set(EditorCommand::Cancel, cancellable && !benchmarkCancelPending,

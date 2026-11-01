@@ -65,6 +65,7 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     const auto primary = EditorPrimaryCommand(snapshot);
     const float primaryWidth = EditorCommandButtonWidth(primary, snapshot, true);
     const float buildLabelWidth = EditorCommandButtonWidth(EditorCommand::Refresh, snapshot, true);
+    const float playLabelWidth = EditorCommandButtonWidth(EditorCommand::BuildAndPlay, snapshot, true);
     bool showSpeed = true;
     bool showReset = true;
     bool showStep = true;
@@ -92,7 +93,8 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
             ++controls;
         }
         width += gap * static_cast<float>(controls - 1);
-        if (showBuild) width += (showBuildLabel ? buildLabelWidth : iconWidth) + gap;
+        if (showBuild)
+            width += (showBuildLabel ? buildLabelWidth + playLabelWidth : iconWidth * 2) + gap * 2;
         if (showBuild && showSpeed) width += gap * 3 + 1;
         width += gap * 3 + 1; // Separator before the mark button.
         return width;
@@ -117,6 +119,8 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     if (showBuild) {
         ImGui::SameLine();
         EditorCommandButton(EditorCommand::Refresh, snapshot, actions, showBuildLabel);
+        ImGui::SameLine();
+        EditorCommandButton(EditorCommand::BuildAndPlay, snapshot, actions, showBuildLabel);
     }
     if (showSpeed) {
         if (showBuild) {
@@ -139,7 +143,10 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         if (ImGui::BeginPopup("more-controls")) {
             if (!showStep) EditorCommandMenuItem(EditorCommand::Step, snapshot, actions);
             if (!showReset) EditorCommandMenuItem(EditorCommand::Reset, snapshot, actions);
-            if (!showBuild) EditorCommandMenuItem(EditorCommand::Refresh, snapshot, actions);
+            if (!showBuild) {
+                EditorCommandMenuItem(EditorCommand::Refresh, snapshot, actions);
+                EditorCommandMenuItem(EditorCommand::BuildAndPlay, snapshot, actions);
+            }
             if (!showSpeed) {
                 if (!showStep || !showReset || !showBuild) ImGui::Separator();
                 PlaybackSpeed(snapshot, actions, true);

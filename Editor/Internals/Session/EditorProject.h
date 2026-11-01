@@ -14,3 +14,12 @@ struct EditorProject {
 };
 
 [[nodiscard]] EditorProject ReadEditorProject(const std::filesystem::path& file);
+
+struct EditorGameBuild {
+    ProcessCommand build;
+    std::filesystem::path buildDirectory;
+    std::filesystem::path executable;
+};
+
+// Reads the current Project.json so changes to the game target or build directory apply on the next click.
+[[nodiscard]] EditorGameBuild ReadEditorGameBuild(const EditorProject& project);

@@ -27,7 +27,7 @@ inline constexpr std::array EditorPanels{
     EditorPanelDefinition{EditorPanel::Tuning, "Tuning", "Tuning###editor.tuning", true, EditorDockGroup::Right},
     EditorPanelDefinition{EditorPanel::Console, "Console", "Console###editor.console", false, EditorDockGroup::Bottom},
     EditorPanelDefinition{EditorPanel::Assets, "Assets", "Assets###editor.assets", true, EditorDockGroup::Bottom},
-    EditorPanelDefinition{EditorPanel::AudioPreview, "Audio Preview", "Audio Preview###editor.audio-preview", true,
+    EditorPanelDefinition{EditorPanel::AudioPreview, "Audio Preview", "Audio Preview###editor.audio-preview", false,
                           EditorDockGroup::Bottom}};
 
 // Alt dock'un panelleri (Ctrl+J son kullanılan paneli bağımsız açıp kapatır).

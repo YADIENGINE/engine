@@ -143,6 +143,15 @@ void TerminalSession::Paste(std::string_view utf8) {
 }
 
 bool TerminalSession::Running() const { return _console != nullptr; }
+std::optional<std::vector<std::string>> TerminalSession::ProcessNames() const {
+    if (!_console) return std::vector<std::string>{};
+    const auto processes = _console->ProcessNames();
+    if (!processes) return std::nullopt;
+    std::vector<std::string> names;
+    names.reserve(processes->size());
+    for (const auto& name : *processes) names.push_back(Utf8(name));
+    return names;
+}
 int TerminalSession::Rows() const { return _screen->Rows(); }
 int TerminalSession::Columns() const { return _screen->Columns(); }
 int TerminalSession::HistoryRows() const { return _screen->HistoryRows(); }

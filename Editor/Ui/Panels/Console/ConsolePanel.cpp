@@ -11,6 +11,7 @@ namespace {
 // A starting program gets pasted text once its output has been quiet this long, or after the limit.
 constexpr auto SettleTime = std::chrono::milliseconds(800);
 constexpr auto SettleLimit = std::chrono::seconds(15);
+constexpr auto ProcessPollInterval = std::chrono::milliseconds(500);
 constexpr const char* SessionEnvironment = "ENGINE_EDITOR_SESSION"; // Read by `ctl note` (Tools/commands/ctl.py)
 std::uint32_t ToRgb(const ImVec4& color) {
     const auto channel = [](float value) { return static_cast<std::uint32_t>(value * 255.0f + 0.5f) & 0xFF; };
@@ -33,6 +34,7 @@ ConsolePanel::Session::Session(std::uint64_t sessionId, std::string sessionTitle
     : id(sessionId)
     , title(std::move(sessionTitle))
     , agent(agentKind)
+    , launchAgent(agentKind)
     , terminal(ConsolePalette())
     , view({ImGuiMod_Ctrl | ImGuiKey_J, ImGuiMod_Ctrl | ImGuiKey_GraveAccent,
             ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P, ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_A}) {}
@@ -45,6 +47,7 @@ void ConsolePanel::Start(Session& session, const std::string& commandLine) {
     session.lastOutput.reset();
     session.lastBell.reset();
     session.outputBytes = 0;
+    session.agentObserved = false;
 }
 std::string ConsolePanel::NextTitle(const std::string& base) const {
     for (int number = 1;; ++number) {
@@ -97,16 +100,37 @@ void ConsolePanel::Close(std::size_t index) {
 }
 void ConsolePanel::Update() {
     const auto now = std::chrono::steady_clock::now();
+    const bool pollProcesses = now >= _nextProcessPoll;
+    if (pollProcesses) _nextProcessPoll = now + ProcessPollInterval;
     _focused = false; // Set again by Draw; a hidden panel draws nothing
     for (auto& pointer : _sessions) {
         auto& session = *pointer;
         session.terminal.Pump();
+        if (pollProcesses && session.terminal.Running()) {
+            if (const auto processes = session.terminal.ProcessNames()) {
+                auto agent = DetectRunningAgent(*processes, session.agent);
+                if (!agent && session.launchAgent == AgentKind::Custom) agent = AgentKind::Custom;
+                if (agent) session.agentObserved = true;
+                if (agent != session.agent) {
+                    if (!agent && session.agentObserved) {
+                        session.pendingText.clear();
+                        session.pendingSubmit = false;
+                    }
+                    session.title = NextTitle(agent ? AgentKindInfo(*agent).sessionName : "Shell");
+                    session.agent = agent;
+                    session.started = now; // Old notes and activity belong to the previous application.
+                    session.lastBell.reset();
+                    if (agent && pointer == _sessions[_selected]) _lastAgent = session.id;
+                }
+            }
+        }
         if (session.terminal.TakeBell()) session.lastBell = now;
         if (session.terminal.OutputBytes() != session.outputBytes) {
             session.outputBytes = session.terminal.OutputBytes();
             session.lastOutput = now;
         }
         if (session.pendingText.empty() && !session.pendingSubmit) continue;
+        if (!session.agent) continue; // Never submit queued agent context to a shell prompt.
         const bool settled = session.lastOutput && now - *session.lastOutput >= SettleTime;
         if (!session.terminal.Running() || (!settled && now - session.started < SettleLimit)) continue;
         if (!session.pendingText.empty()) session.terminal.Paste(session.pendingText);
@@ -116,13 +140,16 @@ void ConsolePanel::Update() {
     }
 }
 SessionSignals ConsolePanel::Signals(const Session& session) const {
+    const auto input = session.terminal.LastInput();
     SessionSignals signals{.now = Seconds(std::chrono::steady_clock::now()).value_or(0),
                            .running = session.terminal.Running(),
-                           .lastOutput = Seconds(session.lastOutput),
-                           .lastInput = Seconds(session.terminal.LastInput()),
+                           .lastOutput = session.lastOutput && *session.lastOutput >= session.started
+                                             ? Seconds(session.lastOutput)
+                                             : std::nullopt,
+                           .lastInput = input && *input >= session.started ? Seconds(input) : std::nullopt,
                            .lastBell = Seconds(session.lastBell)};
     if (const auto note = _notes.find(std::to_string(session.id));
-        note != _notes.end() && note->second.time >= session.started) { // Not from before a restart
+        session.agent && note != _notes.end() && note->second.time >= session.started) {
         signals.note = note->second.note;
         signals.noteTime = Seconds(note->second.time);
     }
@@ -310,13 +337,16 @@ std::vector<ConsoleSessionInfo> ConsolePanel::Sessions() const {
         const auto& session = *_sessions[index];
         const auto signals = Signals(session);
         sessions.push_back({session.title, session.agent, SessionStateOf(signals),
-                            SessionActivityText(signals, session.terminal.Title()), index == _selected});
+                            session.agent ? SessionActivityText(signals, session.terminal.Title()) : std::string{},
+                            index == _selected});
     }
     return sessions;
 }
 std::optional<std::size_t> ConsolePanel::AgentSession() const {
     if (_selected < _sessions.size() && _sessions[_selected]->agent) return _selected;
-    const auto found = std::ranges::find_if(_sessions, [&](const auto& session) { return session->id == _lastAgent; });
+    const auto found = std::ranges::find_if(_sessions, [&](const auto& session) {
+        return session->id == _lastAgent && session->agent.has_value();
+    });
     if (found == _sessions.end()) return std::nullopt;
     return static_cast<std::size_t>(found - _sessions.begin());
 }

@@ -1,4 +1,6 @@
 #include "Editor/Internals/Agent/AgentProfile.h"
+#include <algorithm>
+#include <cctype>
 
 namespace {
 std::string_view Trimmed(std::string_view text) {
@@ -23,4 +25,20 @@ std::string AgentProgram(std::string_view command) {
 std::string AgentCommandLine(std::string_view shell, std::string_view command) {
     // PowerShell runs the rest of the line as one command (-Command must be last); -NoExit keeps the session open.
     return std::string(shell) + " -NoExit -Command " + std::string(Trimmed(command));
+}
+
+std::optional<AgentKind> DetectRunningAgent(const std::vector<std::string>& processNames,
+                                          std::optional<AgentKind> current) {
+    bool claude = false;
+    bool codex = false;
+    for (auto name : processNames) {
+        std::ranges::transform(name, name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        claude |= name == "claude.exe" || name == "claude";
+        codex |= name == "codex.exe" || name == "codex";
+    }
+    if (claude && current == AgentKind::ClaudeCode) return current;
+    if (codex && current == AgentKind::Codex) return current;
+    if (claude) return AgentKind::ClaudeCode;
+    if (codex) return AgentKind::Codex;
+    return std::nullopt;
 }

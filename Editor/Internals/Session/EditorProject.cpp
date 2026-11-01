@@ -43,3 +43,20 @@ EditorProject ReadEditorProject(const std::filesystem::path& file) {
         project.python = Resolve(root, python);
     return project;
 }
+
+EditorGameBuild ReadEditorGameBuild(const EditorProject& project) {
+    std::ifstream input(project.sourceDirectory / "Project.json", std::ios::binary);
+    if (!input) throw std::runtime_error("Cannot open Project.json for Build And Play");
+    const auto json = nlohmann::json::parse(input);
+    if (json.at("version").get<int>() != 1) throw std::runtime_error("Unsupported Project.json version");
+    const auto& game = json.at("game");
+    EditorGameBuild result;
+    result.buildDirectory = Resolve(project.sourceDirectory, game.value("buildDirectory", "build"));
+    const auto target = game.value("target", json.value("name", project.sourceDirectory.filename().string()));
+    result.executable = result.buildDirectory / "Debug" / (target + ".exe");
+    result.build.executable = project.python;
+    const auto engine = project.engineDirectory.u8string();
+    result.build.arguments = {std::string(engine.begin(), engine.end()), "build"};
+    result.build.directory = project.sourceDirectory;
+    return result;
+}

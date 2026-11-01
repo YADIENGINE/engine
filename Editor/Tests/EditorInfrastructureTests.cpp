@@ -8,6 +8,7 @@
 #include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Protocol/EditorControlProtocol.h"
 #include "Editor/Internals/Protocol/WorkerMessageReader.h"
+#include "Editor/Internals/Session/EditorProject.h"
 #include "Editor/Internals/Session/RefreshState.h"
 #include "Editor/Internals/Session/WorkerSnapshots.h"
 #include "Editor/Internals/Viewport/ViewportInputRouter.h"
@@ -17,6 +18,26 @@
 #include "Editor/Internals/Platform/Windows/SharedFrames.h"
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
 #endif
+
+TEST_CASE("Editor.Project.GameBuildUsesConfiguredTargetAndDirectory", "[engine-editor]") {
+    const TempDirectory directory;
+    std::ofstream(directory.Path() / "Project.json") << R"({
+        "version": 1, "name": "MyProject",
+        "game": {"target": "MyGame", "buildDirectory": "custom build"}
+    })";
+    EditorProject project;
+    project.sourceDirectory = directory.Path();
+    project.engineDirectory = directory.Path() / "Engine Tools";
+    project.python = directory.Path() / "Python Tools" / "python.exe";
+    const auto game = ReadEditorGameBuild(project);
+    CHECK(game.buildDirectory == directory.Path() / "custom build");
+    CHECK(game.executable == game.buildDirectory / "Debug" / "MyGame.exe");
+    CHECK(game.build.executable == project.python);
+    CHECK(game.build.directory == directory.Path());
+    REQUIRE(game.build.arguments.size() == 2);
+    CHECK(std::filesystem::path(game.build.arguments[0]) == project.engineDirectory);
+    CHECK(game.build.arguments[1] == "build");
+}
 
 TEST_CASE("Editor.Viewport.LetterboxAndCoordinates", "[engine-editor]") {
     const auto viewport = FitSceneViewport({100.0f, 50.0f}, {1000.0f, 1000.0f}, {1600, 900});
