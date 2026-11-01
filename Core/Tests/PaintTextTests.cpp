@@ -38,8 +38,8 @@ TEST_CASE("Engine.Text.Utf8DecodesAndReplacesMalformedBytes", "[engine][paint][t
 
 TEST_CASE("Engine.Text.MeasureScalesWithSizeAndCountsLines", "[engine][paint][text]") {
     const FontFace& font = TestFont();
-    const Float2 small = font.Measure("Snake", 20.0f);
-    const Float2 large = font.Measure("Snake", 40.0f);
+    const Float2 small = font.Measure("Sample", 20.0f);
+    const Float2 large = font.Measure("Sample", 40.0f);
     CHECK(small.x > 0.0f);
     CHECK(large.x == Approx(small.x * 2.0f).epsilon(1e-4));
     CHECK(small.y == Approx(20.0f));

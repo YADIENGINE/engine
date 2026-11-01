@@ -8,7 +8,13 @@
       "version": "0.3.0",
       "date": "2026-11-01",
       "changes": [
-        "Editor catalog entries are editor scenes; content, worker transport and viewport APIs use distinct names"
+        "Editor catalog entries are editor scenes; content, worker transport and viewport APIs use distinct names",
+        "Editor: agent workspace with console sessions, a session list and an agent menu",
+        "Editor: Assets panel with graphic registration, thumbnails and file actions; Audio Preview panel",
+        "Tools: ctl find, describe, note and audio; frame grids, viewport marking and build error summaries",
+        "Tools: audio command (file info, waveform, catalog usage)",
+        "Agent docs split into Agent.md and skills",
+        "Console: scrolling and terminal polish"
       ],
       "breaking": [
         {

@@ -112,13 +112,13 @@ Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, te
   Karar ve akış (kayıt için): engine'in bugünkü
   `main`'i **0.2.0** olarak tag'lenir (Painter kırıcı; MIT `LICENSE`, İngilizce belgeler, yeni adres) ve launcher'a
   `Engine0.2` olarak alınır; `Engine0.1` (0.1.1: lisanssız, Türkçe belgeli, eski adresli) pakete girmez. Şart:
-  `main` kullanıcıya verilecek durumda (Painter göçü bitti, Snake derlenip çalışıyor). GitHub'da **Pre-release**
+  `main` kullanıcıya verilecek durumda (Painter göçü bitti, oyun derlenip çalışıyor). GitHub'da **Pre-release**
   + "erken önizleme" notu (yalnız Windows, imzasız, 0.x kırabilir, ilk açılışta MSVC kurulur); launcher README'sinin
   indirme bağlantısı `/releases` (`/releases/latest` ön sürümleri atlar).
   Akış: (1) engine manifest'ine 0.2.0 notu (kırıcı: Painter; MIT, İngilizce belgeler) → testler → `v0.2.0` tag'i;
   (2) launcher'da `import_engine.py v0.2.0`, `Engines/Engine0.1` silinir, README bağlantısı; (3) `dev.py package`,
   kur / dene / kaldır; (4) launcher `v0.1.0` tag'i + `gh release create --prerelease` (Setup + güncelleme dosyaları,
-  notlar: içerir engine 0.2.0); (5) Snake pointer'ları.
+  notlar: içerir engine 0.2.0); (5) oyunun pointer'ları.
 
 **Sonuç:** indirilip çalıştırılabilen ürün.
 
