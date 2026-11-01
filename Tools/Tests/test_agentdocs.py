@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from Tools import cli
 from Tools.agentdocs.api import generate, parse_header, public_headers, sentence
-from Tools.agentdocs.check import check_agentdocs
+from Tools.agentdocs.check import check_agentdocs, check_skills
 
 
 class ParserTests(unittest.TestCase):
@@ -187,3 +187,45 @@ class FreshnessTests(unittest.TestCase):
             self.assertEqual(cli.main(['--project', str(self.root.parent), 'check']), 1)
             self.assertEqual(cli.main(['--project', str(self.root.parent), 'check', '--fix']), 0)
             self.assertEqual(cli.main(['--project', str(self.root.parent), 'check']), 0)
+
+
+class SkillTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.parser = cli.build_parser()
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def write(self, path, text):
+        target = self.root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding='utf-8')
+
+    def skill(self, folder, name=None, description='Do one thing.'):
+        self.write(f'AgentDocs/Skills/{folder}/SKILL.md',
+                   f'---\nname: {name or folder}\ndescription: {description}\n---\n\n# Body\n')
+
+    def test_a_listed_skill_with_valid_front_matter_passes(self):
+        self.skill('editor')
+        self.write('AgentDocs/Agent.md', '| show | `AgentDocs/Skills/editor/SKILL.md` |\n')
+        self.assertEqual(check_skills(self.root, self.parser), [])
+
+    def test_front_matter_name_and_listing_are_required(self):
+        self.skill('editor', name='viewer')
+        self.skill('empty', description='')
+        self.write('AgentDocs/Skills/bare/SKILL.md', '# No front matter\n')
+        self.write('AgentDocs/Agent.md', '`AgentDocs/Skills/editor/SKILL.md` `AgentDocs/Skills/empty/SKILL.md`\n')
+        problems = '\n'.join(check_skills(self.root, self.parser))
+        self.assertIn('editor/SKILL.md: name "viewer" differs', problems)
+        self.assertIn('empty/SKILL.md: description must have', problems)
+        self.assertIn('bare/SKILL.md: front matter', problems)
+        self.assertIn('no row for AgentDocs/Skills/bare/SKILL.md', problems)
+
+    def test_tool_calls_must_exist(self):
+        self.write('AgentDocs/Recipes/Use.md', 'Run `python Engine build`, `python Engine ctl find x` and\n'
+                   '`python Engine ctl teleport`, then `python Engine launch`.\n')
+        problems = check_skills(self.root, self.parser)
+        self.assertEqual(problems, ['AgentDocs/Recipes/Use.md:2: unknown action "python Engine ctl teleport"',
+                                    'AgentDocs/Recipes/Use.md:2: unknown command "python Engine launch"'])

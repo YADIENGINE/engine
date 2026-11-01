@@ -4,8 +4,9 @@ A Windows development tool that displays editor scenes using actual production d
 lives in `Engine/Editor/`; the game catalog and worker adapter live in the consumer project. Normal game and headless
 targets do not acquire editor/ImGui dependencies.
 
-For agent-driven visual or gameplay changes, follow the [Visual work loop](../../AgentDocs/Index.md#visual-work-loop)
-and [work-scene recipe](../../AgentDocs/Recipes/WorkScene.md).
+For agent-driven visual or gameplay changes, follow the
+[visual-change skill](../../AgentDocs/Skills/visual-change/SKILL.md) and
+[work-scene recipe](../../AgentDocs/Recipes/WorkScene.md).
 
 ## Terms
 

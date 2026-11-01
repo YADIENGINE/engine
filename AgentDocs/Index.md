@@ -6,32 +6,7 @@ Read the linked Docs section only when you need the concept.
 
 Paths below start at the engine root; in a game the engine lives at `Engine/`. C++ includes omit `Core/`;
 editor and recipe includes start at the engine root. Run tools from the project root as `python Engine <command>`.
-
-## Visual work loop
-
-For a visual or gameplay change, check `python Engine ctl status`. If it succeeds and an editor is open:
-
-1. Create or reuse a work scene for this request in `Editor/Work/` ([recipe](Recipes/WorkScene.md)). Show only the
-   subject: no HUD, menus, unrelated objects or randomness unless asked. Expose likely-tweaked values as parameters.
-2. Implement the change in production code, then run `python Engine refresh`; keep the editor open.
-3. Run `python Engine ctl open <id>`, then `ctl screenshot` / `ctl frames`. Read the PNGs and fix obvious defects
-   (broken, clipped, invisible, wrong timing) before reporting.
-4. Leave the work scene open and give the developer a short checklist; aesthetic judgment is theirs.
-5. When the developer says the task is done, ask: delete the work scene, or move it to a permanent category?
-
-If no editor is open, say so and suggest opening it; do not launch it unless asked.
-
-## Hard invariants
-
-- Draw through Painter: `Docs/Graphics/Painter.md#where-it-comes-from`.
-- Use logical canvas coordinates, y down: `Docs/Graphics/Painter.md#where-it-comes-from`.
-- Angles are radians, clockwise: `Docs/Graphics/Painter.md#where-it-comes-from`.
-- Keep Painter/scopes inside the drawing call; end scopes in reverse order: `Docs/Graphics/Painter.md#scopes`.
-- Game code includes no engine Internals or raylib: `Docs/Contributing/ApiBoundaries.md#three-tiers`, `Docs/AssetsAndPlatforms.md#platform-responsibilities`.
-- Do not keep a decorative View clock; use paint.Time(): `Docs/Runtime.md#input-and-time-selection`.
-- Pass real frame duration through TimeScale; scenes select their time domain: `Docs/Runtime.md#input-and-time-selection`.
-- Keep registered objects alive; shut scenes down before members die: `Docs/Runtime.md#lifecycle`.
-- Own surfaces in the scene/View, before renderer teardown: `Docs/Graphics/Painter.md#images-and-surfaces`.
+Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 
 ## Tasks
 

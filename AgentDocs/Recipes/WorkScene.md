@@ -1,5 +1,5 @@
 Create or reuse one focused scene for the current request: `Editor/Work/<Task>Scene.cpp`.
-Follow the [Visual work loop](../Index.md#visual-work-loop).
+Follow the [visual-change skill](../Skills/visual-change/SKILL.md).
 
 Use the production View/model and show only the subject. Expose values the developer will likely tweak as parameters.
 Keep randomness off unless requested; when needed, expose an explicit seed and apply it on reset.

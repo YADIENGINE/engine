@@ -5,18 +5,19 @@ the launcher). Each command sends one request to the editor's [control endpoint]
 prints its answer as one JSON object on stdout. Game Flows are editor scenes, so everything below applies to them too.
 Design record: `Docs/Design/README.md` → D20 (engine repository).
 
-For visual or gameplay requests, follow the [Visual work loop](../../AgentDocs/Index.md#visual-work-loop): create a
-focused work scene, refresh, open it, read screenshots / frame grids, fix obvious defects and leave it open.
+Agents follow the [editor skill](../../AgentDocs/Skills/editor/SKILL.md) to show something and the
+[visual-change skill](../../AgentDocs/Skills/visual-change/SKILL.md) to change it: create a focused work scene, refresh,
+open it, read screenshots / frame grids, fix obvious defects and leave it open.
 
 ## Commands
 
 | Command | Answer |
 | --- | --- |
-| `status` | `phase`, `status`, `ready`, `building`, `scene`; while ready also `paused`, `speed`, `seconds`, `canvas` |
-| `list` | `scenes`: id, name, category, `parameters` (id, kind, apply, current `value`, range or `choices`, `applyAction` when set), `actions` (`primary` when set) |
+| `status` | `editor` (`open`), `phase`, `status`, `ready`, `building`, `scene`; while ready also `paused`, `speed`, `seconds`, `canvas`; with no scene a `next` hint |
+| `list` | `scenes`: id, name, category, `parameters` (id, kind, apply, current `value`, range or `choices`, `applyAction` when set), `actions` (`primary` when set). `--brief`: only id, name, category |
 | `find WORD... [--limit N]` | `matches` (best N, default 5): id, name, category, `matched`, `set` (choices the words select), `action`, `commands` that open it, compact `parameters`, `actions`; `more` when cut ([Finding a scene](#finding-a-scene)) |
 | `describe ID` | `scene`: that scene's `list` entry; exit 1 with close ids when unknown |
-| `open ID` | Selects and starts the scene, waits until it runs (no-op if it already runs); status |
+| `open ID [--set ID=VALUE...] [--action ID] [--screenshot [--scale S]]` | Selects and starts the scene, waits until it runs (no-op if it already runs); status. The options run `set` (and `reset` when an on-reset value changed), `action` and `screenshot` in that order and merge their answers |
 | `set ID=VALUE ...` | Sets parameters of the open scene; `parameters` as accepted. VALUE is JSON (`24`, `true`, `[1, 0, 0]`, `"#ff8800"`), otherwise text (choices). Before the scene runs, values are stored for its start |
 | `action ID` | Runs a scene action; status |
 | `pause`, `play` | Playback; status |
@@ -40,15 +41,16 @@ scene's name, id, category, description, parameters, actions and **parameter cho
 of a shared scene (one enemy of a fight scene) is found without project-specific notes. Matches are ranked by how many
 words they contain, then by where: name, id, choice, parameter or action, category, description.
 
-For each match, words not already in the scene's name or id select the choice they match best (`set`). `commands` are
-the calls that show it: `open`, `set`, `reset` for on-reset values, and the action that applies next-action values
-(the parameter's `applyAction`, else the scene's only primary action, else its only action; otherwise a `note`).
+For each match, words not already in the scene's name or id select the choice they match best (`set`). `commands` holds
+one `open` call that shows it: `--set` for those choices, `--action` with the action that applies next-action values
+(the parameter's `applyAction`, else the scene's only primary action, else its only action; otherwise a `note`) and
+`--screenshot --scale 0.5`.
 
 ```text
 $ python Engine ctl find ice dragon finale
 {"query": "ice dragon finale", "matches": [{"id": "myproject.fight", "set": {"enemy": "Ice Dragon", "stage": "Finale"},
- "action": "start", "commands": ["python Engine ctl open myproject.fight", "python Engine ctl set \"enemy=Ice Dragon\"
- stage=Finale", "python Engine ctl action start"], "parameters": {"enemy": "Slime|Fire Dragon|Ice Dragon; now Slime",
+ "action": "start", "commands": ["python Engine ctl open myproject.fight --set \"enemy=Ice Dragon\"
+ stage=Finale --action start --screenshot --scale 0.5"], "parameters": {"enemy": "Slime|Fire Dragon|Ice Dragon; now Slime",
  ...}, ...}]}
 ```
 

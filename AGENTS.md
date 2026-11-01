@@ -58,6 +58,8 @@ Commit messages are short, imperative and English. Manifest version changes need
 
 Public API change → regenerate the API index with `check --fix`; `check` enforces freshness.
 New public system or plausible agent task → add a routing row in `AgentDocs/Index.md`.
+New agent workflow → a skill in `AgentDocs/Skills/<name>/SKILL.md` plus its row in `AgentDocs/Agent.md`; keep
+`Agent.md` short (it is loaded every session). `check` validates skills and every `python Engine ...` call in AgentDocs.
 Recipe API change → keep its code compiling in the engine test build; resync snippets with `check --fix`.
 `AgentDocs/` links to concepts in `Docs/`; never duplicate concept explanations.
 The project template contains no AI file/settings; developers opt in from their own agent file.

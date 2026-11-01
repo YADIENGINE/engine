@@ -20,16 +20,31 @@ from ..project import Project
 from .refresh import VERSION, connect, editor_pipe, replies
 
 
+WORKFLOW = """typical use:
+  python Engine ctl status                      is an editor open, what runs
+  python Engine ctl find ice dragon             which scene shows it; prints the command that opens it
+  python Engine ctl open ID --set k=v --action start --screenshot --scale 0.5
+  python Engine ctl frames --from 0 --to 2      an animation as one grid image
+answers are one JSON object on stdout; exit 2 means no editor is open (Docs/Editor/Automation.md)"""
+
+
 def add_parser(commands) -> None:
-    command = commands.add_parser("ctl", help="drive the project's open editor: scenes, playback, screenshots")
+    command = commands.add_parser("ctl", help="drive the project's open editor: scenes, playback, screenshots",
+                                  epilog=WORKFLOW, formatter_class=argparse.RawDescriptionHelpFormatter)
     actions = command.add_subparsers(dest="action", required=True, metavar="ACTION")
     actions.add_parser("status", help="the open scene and playback state")
-    actions.add_parser("list", help="scenes and game flows with their parameters and actions")
+    action = actions.add_parser("list", help="scenes and game flows with their parameters and actions")
+    action.add_argument("--brief", action="store_true", help="only id, name and category per scene")
     action = actions.add_parser("find", help="scenes matching words (also parameter choices) and how to open them")
     action.add_argument("text", nargs="+", metavar="WORD")
     action.add_argument("--limit", type=int, default=5, help="best matches to return (default 5)")
     actions.add_parser("describe", help="one scene's parameters and actions").add_argument("id")
-    actions.add_parser("open", help="open a scene by id and wait until it runs").add_argument("id")
+    action = actions.add_parser("open", help="open a scene by id and wait until it runs; optionally set, act, capture")
+    action.add_argument("id")
+    action.add_argument("--set", nargs="+", default=[], metavar="ID=VALUE", help="parameters to set after opening")
+    action.add_argument("--action", dest="run", metavar="ACTION", help="scene action to run after setting")
+    action.add_argument("--screenshot", action="store_true", help="capture the result; the answer adds its path")
+    action.add_argument("--scale", type=float, help="screenshot resize factor (0.05-4)")
     action = actions.add_parser("set", help="set parameters of the open scene: id=value (JSON, else text)")
     action.add_argument("values", nargs="+", metavar="ID=VALUE")
     actions.add_parser("action", help="run an action of the open scene").add_argument("id")
@@ -112,16 +127,12 @@ def shell_word(text: str) -> str:
 
 
 def open_commands(scene: dict, values: dict, action: str | None) -> list[str]:
-    commands = [f"python Engine ctl open {scene['id']}"]
+    command = f"python Engine ctl open {scene['id']}"
     if values:
-        items = " ".join(shell_word(f"{key}={value}") for key, value in values.items())
-        commands.append(f"python Engine ctl set {items}")
-    parameters = [parameter for parameter in scene.get("parameters", []) if parameter["id"] in values]
-    if any(parameter.get("apply") == "on-reset" for parameter in parameters):
-        commands.append("python Engine ctl reset")
+        command += " --set " + " ".join(shell_word(f"{key}={value}") for key, value in values.items())
     if action:
-        commands.append(f"python Engine ctl action {action}")
-    return commands
+        command += f" --action {action}"
+    return [command + " --screenshot --scale 0.5"]
 
 
 def scene_match(scene: dict, terms: list[str]) -> dict | None:
@@ -202,8 +213,30 @@ def describe_scene(scenes: list[dict], scene_id: str) -> dict:
     raise ToolError(f"Unknown scene: {scene_id}{hint}", EXIT_FAILED)
 
 
+def parse_values(items: list[str]) -> dict:
+    values = {}
+    for item in items:
+        key, separator, value = item.partition("=")
+        if not separator or not key:
+            raise ToolError(f"Expected ID=VALUE, got: {item}")
+        values[key] = parse_value(value)
+    return values
+
+
+def brief(scenes: list[dict]) -> dict:
+    return {"scenes": [{key: scene.get(key, "") for key in ("id", "name", "category")} for scene in scenes]}
+
+
+def with_hint(status: dict) -> dict:
+    """A status answer that says the editor is open, and what to do when nothing runs."""
+    answer = {"editor": "open", **status}
+    if answer.get("scene") is None:
+        answer["next"] = "No scene runs; find one with: python Engine ctl find WORDS, then: python Engine ctl open ID"
+    return answer
+
+
 def request_of(args: argparse.Namespace) -> dict:
-    """The control request for parsed `ctl` arguments."""
+    """The control request for parsed `ctl` arguments (for `open`, its first request)."""
     request = {"command": args.action}
     match args.action:
         case "find" | "describe":
@@ -211,13 +244,7 @@ def request_of(args: argparse.Namespace) -> dict:
         case "open" | "action":
             request["id"] = args.id
         case "set":
-            values = {}
-            for item in args.values:
-                key, separator, value = item.partition("=")
-                if not separator or not key:
-                    raise ToolError(f"Expected ID=VALUE, got: {item}")
-                values[key] = parse_value(value)
-            request["values"] = values
+            request["values"] = parse_values(args.values)
         case "step":
             request["frames"] = args.frames
         case "speed":
@@ -248,19 +275,50 @@ def request_of(args: argparse.Namespace) -> dict:
     return request
 
 
-def ctl(project: Project, args: argparse.Namespace) -> int:
-    request = {"version": VERSION, **request_of(args)}
-    with connect(editor_pipe(project)) as stream:
-        stream.write((json.dumps(request) + "\n").encode("utf-8"))
+def send(pipe: str, request: dict) -> dict:
+    """One request on its own connection; the editor's result, or ToolError with its refusal."""
+    with connect(pipe) as stream:
+        stream.write((json.dumps({"version": VERSION, **request}) + "\n").encode("utf-8"))
         for reply in replies(stream):
             match reply.pop("type", None):
                 case "result":
-                    if args.action == "find":
-                        reply = find_scenes(reply.get("scenes", []), " ".join(args.text), args.limit)
-                    elif args.action == "describe":
-                        reply = describe_scene(reply.get("scenes", []), args.id)
-                    print(json.dumps(reply, ensure_ascii=False), flush=True)
-                    return EXIT_OK
+                    return reply
                 case "error":
                     raise ToolError(reply.get("text", "The editor refused the request"), EXIT_FAILED)
     raise ToolError("The editor closed the connection before answering")
+
+
+def open_scene(pipe: str, args: argparse.Namespace) -> dict:
+    """open, then set (reset when an on-reset value changed), action and screenshot; one merged answer."""
+    answer = send(pipe, request_of(args))
+    if args.set:
+        values = parse_values(args.set)
+        answer |= send(pipe, {"command": "set", "values": values})
+        scene = next((scene for scene in send(pipe, {"command": "list"})["scenes"] if scene["id"] == args.id), {})
+        if any(parameter["id"] in values and parameter.get("apply") == "on-reset"
+               for parameter in scene.get("parameters", [])):
+            answer |= send(pipe, {"command": "reset"})
+    if args.run:
+        answer |= send(pipe, {"command": "action", "id": args.run})
+    if args.screenshot:
+        answer |= send(pipe, {"command": "screenshot", **({"scale": args.scale} if args.scale is not None else {})})
+    return answer
+
+
+def ctl(project: Project, args: argparse.Namespace) -> int:
+    pipe = editor_pipe(project)
+    if args.action == "open":
+        answer = open_scene(pipe, args)
+    else:
+        answer = send(pipe, request_of(args))
+    match args.action:
+        case "status":
+            answer = with_hint(answer)
+        case "list" if args.brief:
+            answer = brief(answer.get("scenes", []))
+        case "find":
+            answer = find_scenes(answer.get("scenes", []), " ".join(args.text), args.limit)
+        case "describe":
+            answer = describe_scene(answer.get("scenes", []), args.id)
+    print(json.dumps(answer, ensure_ascii=False), flush=True)
+    return EXIT_OK
