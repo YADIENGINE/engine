@@ -1,9 +1,34 @@
 {
   "name": "YADIEN",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "toolsContract": 1,
   "repository": "https://github.com/YADIENGINE/engine.git",
   "notes": [
+    {
+      "version": "0.2.0",
+      "date": "2026-11-01",
+      "changes": [
+        "Painter: all drawing goes through Painter (shapes, text, images, meshes, surfaces, clip / transform / opacity / blend scopes) on a new GPU pipeline; raylib stays in the platform layer",
+        "Fx, Ui, Neon, Backdrop and icons draw with Painter; Fx is headless",
+        "Loading screen drawn by the game with Painter; render quality setting (development hosts can override it)",
+        "Editor: integrated console panel",
+        "Open source under the MIT license; documentation in English; repository moved to YADIENGINE/engine"
+      ],
+      "breaking": [
+        {
+          "change": "Game code no longer calls raylib; drawing methods take Painter& and use Color4 / Float2 / FloatRect",
+          "migrate": "Pass Painter& paint to every Draw method and replace raylib calls with Painter calls (Docs/Graphics/Painter.md)"
+        },
+        {
+          "change": "Public headers use the .h extension only",
+          "migrate": "Rename includes of engine headers to their .h names"
+        },
+        {
+          "change": "Angles are radians, clockwise, across drawing and effects",
+          "migrate": "Convert degree values at the call site with Radians (Utilities/MathUtils.h)"
+        }
+      ]
+    },
     {
       "version": "0.1.1",
       "date": "2026-10-31",
