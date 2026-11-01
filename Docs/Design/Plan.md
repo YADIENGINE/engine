@@ -100,13 +100,16 @@ Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, te
   araçların lisans metinleri → `vpk pack`, imza adımının yeri boş; (3) Ayarlar'daki Licenses bölümü paketteki
   bütün lisansları gösterir.
 - Engine güncellemesi (D16): notların gösterimi ve onaylı güncelleme Aşama 3'te yapıldı (`PlanEngineUpdate` /
-  `ApplyEngineUpdate`, Engine update paneli). **TODO (ertelendi 2026-11-01):** iki gerçek sürümle (`Engine0.1` →
-  0.2) uçtan uca deneme; engine şimdilik 0.1.1'de kalır, Painter göçü oturunca 0.2.0 tag'lenip içe aktarılır.
+  `ApplyEngineUpdate`, Engine update paneli). **TODO (ertelendi 2026-11-01):** iki gerçek sürümle uçtan uca deneme;
+  0.1 pakete girmediği için 0.2.0'dan sonraki ilk engine sürümüyle (0.2.x ya da 0.3) yapılır.
 - ~~"Ses araçlarını kur" (D7)~~ yapıldı (2026-10-31): Ayarlar'da düğme + `launcher audio-tools`, betik için
   `launcher python`.
 - ~~Kabul testi~~ geçti sayıldı (2026-11-01; kurulum / kullanım / kaldırma elle denendi, çıkan hata sonra ele alınır).
   Var olan oyunun geçişi: oyunun belgeleri `<engine> <komut>`'a geçer.
-- İlk public yayın (launcher `v0.1.0`, Releases'a Setup), konuşuluyor (2026-11-01). Karar: engine'in bugünkü
+- ~~İlk yayın~~ yapıldı (2026-11-01): engine `v0.2.0`, launcher `v0.1.0` GitHub'da Pre-release (notu "Early
+  preview. For testing."; sadece ekip içi deneme, duyurulmaz). Paket kuruldu, CLI ile denendi (yeni proje derlendi),
+  pencere elle kontrol edildi, kaldırıldı. Sonraki yayın `build/Package/Releases/`'i saklar (delta paketi).
+  Karar ve akış (kayıt için): engine'in bugünkü
   `main`'i **0.2.0** olarak tag'lenir (Painter kırıcı; MIT `LICENSE`, İngilizce belgeler, yeni adres) ve launcher'a
   `Engine0.2` olarak alınır; `Engine0.1` (0.1.1: lisanssız, Türkçe belgeli, eski adresli) pakete girmez. Şart:
   `main` kullanıcıya verilecek durumda (Painter göçü bitti, Snake derlenip çalışıyor). GitHub'da **Pre-release**
