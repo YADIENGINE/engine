@@ -133,8 +133,7 @@ Başladı (2026-10-31). Açık sorular [README](README.md#açık-sorular)'de, te
 
 ## v1 dışı
 
-- Ajan API'si (D5), sürüklenebilir uzamsal tuning (D11), flipbook / disk önbelleği (D10), otomatik güncelleme
-  (D15; Velopack'in güncelleme API'siyle), CI/CD (GitHub Actions: derleme + test, tag'den yayın) ve SignPath imzası
+- Ajan API'si (D5), sürüklenebilir uzamsal tuning (D11), flipbook / disk önbelleği (D10), CI/CD (GitHub Actions: derleme + test, tag'den yayın) ve SignPath imzası
   (D19; ertelendi), llvm-mingw (D8).
 - **Paylaşılan bağımlılık önbelleği** (derleme süresi dert olursa): kaynaklar `ThirdParty/`'de kalır; launcher ilk
   derlenen bağımlılık kütüphanelerini (raylib, imgui, Catch2 ...) projeler arasında paylaşılan bir önbellekte

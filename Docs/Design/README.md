@@ -335,7 +335,7 @@ Launcher/
 - **Projeler** varsayılan `Belgeler\<Engine> Projects\` altına; yeni proje ekranında değiştirilebilir.
 - **Güncelleme:** yeni sürümün exe'si var olan kurulumun üzerine kurar; proje listesi ve ayarlar korunur, `Engines/`
   yeni sürümün desteklediklerle değişir. Desteği düşen sürümü kullanan projeler etkilenmez (kendi kopyaları var);
-  sadece o sürümle yeni proje kurulamaz. Otomatik güncelleme v1 sonrası.
+  sadece o sürümle yeni proje kurulamaz. Launcher'ın kendi güncellemesi: aşağıda "Karar (uygulama içi güncelleme)".
 - İmza: aşağıda "Karar (imzalama)" (açık kaynak olunca SignPath Foundation; o güne kadar imzasız).
 
 **Karar (kurulum programı, 2026-10-31):** tek exe bir **Velopack** `Setup.exe`'sidir (MIT; indirilen exe
@@ -388,6 +388,24 @@ verir.
   değişen dosyalar iner, GitHub Releases'tan) aynı temelin üstünde neredeyse hazır gelir. Kendini kuran launcher
   seçeneğinde çıkarma, kendini silen kaldırıcı, kilitli dosya ve antivirüs sezgileri (~1–1,5k satır) bize kalırdı.
   Bedel: hazır bir ikili kütüphane, paketleyen makinede .NET SDK, Velopack'in genç olması (2024).
+
+**Karar (uygulama içi güncelleme, 2026-11-02):** launcher kendini Velopack ile günceller; kod launcher `Core/Update/`
+ve `Apps/Ui/Update/`'te, kullanım launcher `Docs/CoreApi.md` ve `Docs/Packaging.md`'de.
+- **Yer:** yalnız launcher penceresi. Editör launcher'ı bilmez (engine → launcher bağımlılığı olmaz) ve proje açılınca
+  launcher kapandığından bildirim her oturumun başında zaten görülür.
+- **Akış:** açılışta arka planda denetim; internet yoksa sessiz. Yeni sürüm üst çubukta düğme olur, kendiliğinden panel
+  açılmaz; panelde notlar, boyut ve Update / Later / Skip this version. İndirme bitince Restart now / Later. Ayarlarda
+  açılış denetimi kapatılabilir.
+- **Çalışan süreçler (Q4'ün uygulaması):** `<engine>.com` ve launcher'ın ön plan işleri, kimsenin sahip olmadığı adlı bir
+  mutex açık tutar: birden çok komut aynı anda tutabilir, süreç öldürülse de kalmaz. Restart bunlar bitene kadar bekler.
+- **Kaynak:** Velopack'in GitHub kaynağı değil, `DownloadFile` kullanan özel kaynak (`custom_callback`). **Neden:**
+  Velopack'in indirmesi iptal edilemez ve `Job` kapanışta thread'i bekler; pencere indirme sürerken takılırdı. Sistem
+  proxy'si de böyle kullanılır. SHA-256 denetimi Velopack'te kalır. 0.x launcher pre-release'leri okur, 1.0'dan itibaren
+  yalnız kararlıları.
+- **Sınama:** otomatik geri alma yoktur, bozuk sürüm ancak elle Setup ile düzelir. Bu yüzden `dev.py update-test` gerçek
+  kurulumu yerel dosyalardan güncelleyip sınar ve `dev.py release` her yayında çalıştırır.
+- **Güven:** paketler imzasız, SHA değerleri paketle aynı yerden gelir; güvenlik GitHub organizasyonuna bağlıdır, 2FA
+  zorunlu olmalıdır.
 
 **Karar (imzalama, 2026-10-31):** "Windows bilgisayarınızı korudu" (SmartScreen) kurulum aracına değil imzaya
 bağlıdır. İmzasız exe'de itibar her sürümde sıfırdan başlar; Windows 11 Smart App Control imzasız dosyayı hiç
