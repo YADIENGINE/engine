@@ -1,5 +1,6 @@
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
 #include <extras/IconsFontAwesome6.h>
+#include <imgui_internal.h>
 #include <algorithm>
 #include <format>
 #include "Editor/Ui/Style/EditorTheme.h"
@@ -132,7 +133,8 @@ bool ConsolePanel::DrawSessionRow(std::size_t index, const ConsoleSessionInfo& i
     const auto start = ImGui::GetCursorScreenPos();
     const float width = ImGui::GetContentRegionAvail().x;
     const float height = ImGui::GetFrameHeight();
-    const float gap = ToolMetrics::Space * ToolUiScale();
+    const float scale = ToolUiScale();
+    const float gap = ToolMetrics::Space * scale;
     const float iconWidth = ImGui::GetFontSize();
     const ImVec2 end{start.x + width, start.y + height};
     const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
@@ -141,7 +143,10 @@ bool ConsolePanel::DrawSessionRow(std::size_t index, const ConsoleSessionInfo& i
     if (info.selected || hovered)
         draw->AddRectFilled(start, end, ImGui::GetColorU32(info.selected ? ToolPalette::Selected : ToolPalette::Hover),
                             ToolMetrics::Radius * ToolUiScale());
-    // The close button owns its own hit area, so closing a row does not also select it.
+    if (info.selected)
+        draw->AddRectFilled({start.x + scale, start.y + gap}, {start.x + 3 * scale, end.y - gap},
+                            ImGui::GetColorU32(ToolPalette::Accent), scale);
+    // State and close share one trailing slot; closing a row does not also select it.
     ImGui::PushStyleColor(ImGuiCol_Header, {0, 0, 0, 0});
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, {0, 0, 0, 0});
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, {0, 0, 0, 0});
@@ -151,22 +156,37 @@ bool ConsolePanel::DrawSessionRow(std::size_t index, const ConsoleSessionInfo& i
     const auto detail = info.title + "\n" + SessionStateName(info.state) +
                         (info.activity.empty() ? std::string() : "\n" + info.activity);
     ToolTooltip(detail.c_str());
-    const auto textColor =
-        ImGui::GetColorU32(info.state == SessionState::Exited ? ToolPalette::Disabled : ToolPalette::Text);
+    const bool exited = info.state == SessionState::Exited;
+    const auto textColor = exited ? ToolPalette::Disabled : ToolPalette::Text;
+    const auto kindColor = exited          ? ToolPalette::Disabled
+                           : info.selected ? ToolPalette::Accent
+                                           : ToolPalette::Secondary;
     const float textY = start.y + (height - ImGui::GetTextLineHeight()) * 0.5f;
-    draw->AddText({start.x + gap, textY}, textColor, info.agent ? ICON_FA_ROBOT : ICON_FA_TERMINAL);
-    const float stateX = end.x - height - iconWidth - gap;
-    const ImVec4 titleClip{start.x + iconWidth + gap * 2, start.y, stateX - gap, end.y};
-    draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), {titleClip.x, textY}, textColor, info.title.c_str(), nullptr,
-                  0, &titleClip);
-    draw->AddText({stateX, textY}, ImGui::GetColorU32(EditorSessionStateColor(info.state)),
-                  EditorSessionStateIcon(info.state));
+    draw->AddText({start.x + gap * 2, textY}, ImGui::GetColorU32(kindColor),
+                  info.agent ? ICON_FA_ROBOT : ICON_FA_TERMINAL);
+    const float trailingX = end.x - height;
+    const float titleX = start.x + iconWidth + gap * 3;
+    const float titleEnd = trailingX - gap;
+    if (titleEnd > titleX) {
+        ImGui::PushStyleColor(ImGuiCol_Text, textColor);
+        ImGui::RenderTextEllipsis(draw, {titleX, textY}, {titleEnd, textY + ImGui::GetTextLineHeight()}, titleEnd,
+                                  info.title.c_str(), nullptr, nullptr);
+        ImGui::PopStyleColor();
+    }
     ImGui::SameLine(0, 0);
     bool close = false;
-    if (hovered || ImGui::IsItemFocused())
+    if (hovered || ImGui::IsItemFocused()) {
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0);
+        ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Secondary);
         close = ToolIconButton("close", ICON_FA_XMARK, "Close session");
-    else
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+    } else {
         ImGui::Dummy({height, height});
+        const auto* icon = EditorSessionStateIcon(info.state);
+        draw->AddText({trailingX + (height - ImGui::CalcTextSize(icon).x) * 0.5f, textY},
+                      ImGui::GetColorU32(EditorSessionStateColor(info.state)), icon);
+    }
     ImGui::PopStyleVar();
     if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ImGui::OpenPopup("session-actions");
     if (ImGui::BeginPopup("session-actions")) {
@@ -190,8 +210,8 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
     const float fontSize = ImGui::GetFontSize();
     const float splitterWidth = ToolMetrics::Space * scale;
     const float maxWidth = std::max(1.0f, available.x - splitterWidth - fontSize * 6);
-    const float minWidth = std::min(fontSize * 9, maxWidth);
-    if (_sessionListWidth <= 0) _sessionListWidth = fontSize * 13 / scale;
+    const float minWidth = std::min(fontSize * 7, maxWidth);
+    if (_sessionListWidth <= 0) _sessionListWidth = minWidth / scale;
     float listWidth = std::clamp(_sessionListWidth * scale, minWidth, maxWidth);
     float terminalWidth = std::max(1.0f, available.x - listWidth - splitterWidth);
     ImGui::SetCursorPos({origin.x + terminalWidth, origin.y});
@@ -209,10 +229,23 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
         {splitterX, originScreen.y}, {splitterX, originScreen.y + available.y},
         ImGui::GetColorU32(resizing || resizeHovered ? ToolPalette::Accent : ToolPalette::Separator));
     ImGui::SetCursorPos({origin.x + terminalWidth + splitterWidth, origin.y});
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0);
     if (BeginToolPanel("console-session-list", {listWidth, available.y}, ToolSurface::Utility, 0,
                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse, ToolMetrics::Space)) {
-        if (ToolButton(ICON_FA_PLUS " Add terminal", {ImGui::GetContentRegionAvail().x, 0}))
-            ImGui::OpenPopup("Add terminal");
+        const float buttonWidth = ImGui::GetContentRegionAvail().x;
+        auto addBorder = ToolPalette::Border;
+        addBorder.w *= 0.45f;
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, ToolMetrics::Radius * scale);
+        ImGui::PushStyleColor(ImGuiCol_Border, addBorder);
+        ImGui::PushStyleColor(ImGuiCol_Text, ToolToneColor(ToolTone::Accent));
+        const bool add = ToolButton(ICON_FA_PLUS "###console-add-terminal",
+                                    {buttonWidth, EditorToolbarMetrics::ControlHeight * scale});
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+        ToolTooltip("Add terminal");
+        if (add) ImGui::OpenPopup("Add terminal");
         if (ImGui::BeginPopup("Add terminal")) {
             if (ImGui::MenuItem(ICON_FA_TERMINAL "  Shell")) request = ConsoleNewSession{};
             for (const auto& kind : AgentKinds) {
@@ -238,6 +271,7 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
         ImGui::EndChild();
     }
     EndToolPanel();
+    ImGui::PopStyleVar(2);
     if (showClose) ImGui::OpenPopup("Close agent session?");
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
     ImGui::SetNextWindowSize({380 * ToolUiScale(), 0}, ImGuiCond_Appearing);
@@ -259,7 +293,7 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
     }
     if (closing) Close(*closing);
     ImGui::SetCursorPos(origin);
-    if (ImGui::BeginChild("console-terminal", {terminalWidth, available.y}, 0,
+    if (ImGui::BeginChild("console-terminal", {terminalWidth, available.y}, ImGuiChildFlags_AlwaysUseWindowPadding,
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse) &&
         !_sessions.empty()) {
         auto& session = *_sessions[_selected];

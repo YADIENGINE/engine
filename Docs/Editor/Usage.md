@@ -137,9 +137,9 @@ editor context; it never calls a model itself. The agent drives the editor back 
   *Codex* (*Claude 2* for a second one). A narrow list on the right of the terminal shows each session with a terminal
   or robot icon; drag its left edge to resize it. Click a row to select it; the selected row is highlighted. Hover
   shows its title, state and current activity. A close button appears on hover; right-click also offers *Close*.
-  The **+ Add terminal** button at the top offers Shell, Claude, Codex and *Custom agent*, with the named CLIs'
-  commands alongside them. Choosing an agent makes it the one agent requests start next. Each session keeps running
-  while the panel is hidden; closing one ends its program (a running agent asks first). Agent requests
+  The **+** button at the top (*Add terminal* on hover) offers Shell, Claude, Codex and *Custom agent*, with the named
+  CLIs' commands alongside them. Choosing an agent makes it the one agent requests start next. Each session keeps
+  running while the panel is hidden; closing one ends its program (a running agent asks first). Agent requests
   (Ctrl+Shift+A, Send scene, Marks, ...) go to the selected session when it runs an agent, else to the agent session
   selected last; with none, the chosen agent starts. The first draw opens a shell when there is none.
 - **Session state** (each session's icon): *working* while its program writes output for a request, *waiting for you*

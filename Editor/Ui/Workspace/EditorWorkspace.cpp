@@ -512,6 +512,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 (_focusCatalog && panel.id == EditorPanel::Catalog))
                 ImGui::SetNextWindowFocus();
             if (focusViewport) ImGui::SetNextWindowCollapsed(false);
+            if (panel.id == EditorPanel::Console) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, headerPadding);
             const bool drawPanel =
                 ImGui::Begin(panel.window, &preferences.Visible(panel.id),
@@ -519,6 +520,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                                           ? ImGuiWindowFlags_NoScrollbar
                                           : 0));
             ImGui::PopStyleVar(); // Panel contents keep their regular control spacing.
+            if (panel.id == EditorPanel::Console) ImGui::PopStyleVar();
             if (drawPanel) {
                 if (_focusBottom && *_focusBottom == panel.id) focusedBottomDrawn = true;
                 if (panel.dock == EditorDockGroup::Bottom && ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows))
