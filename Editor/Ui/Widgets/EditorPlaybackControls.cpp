@@ -94,6 +94,7 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         width += gap * static_cast<float>(controls - 1);
         if (showBuild) width += (showBuildLabel ? buildLabelWidth : iconWidth) + gap;
         if (showBuild && showSpeed) width += gap * 3 + 1;
+        width += gap * 3 + 1; // Separator before the mark button.
         return width;
     };
     if (rowWidth() > available) showSpeed = false;
@@ -105,13 +106,6 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     EditorCommandButton(primary, snapshot, actions, showPrimaryLabel);
     ImGui::SameLine();
     EditorCommandButton(EditorCommand::Pause, snapshot, actions);
-    ImGui::SameLine();
-    if (!snapshot.ready) marking = false;
-    ImGui::BeginDisabled(!snapshot.ready);
-    if (EditorIconButton("mark", EditorGlyph::Mark,
-                         "Mark a region of the preview and paste it into the Console (or Alt+drag)", marking))
-        marking = !marking;
-    ImGui::EndDisabled();
     if (showStep) {
         ImGui::SameLine();
         EditorCommandButton(EditorCommand::Step, snapshot, actions);
@@ -153,6 +147,20 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
             ImGui::EndPopup();
         }
     }
+    ImGui::SameLine(0, gap * 2);
+    const auto separator = ImGui::GetCursorScreenPos();
+    const float inset = EditorToolbarMetrics::Gap * scale;
+    ImGui::GetWindowDrawList()->AddLine({separator.x, separator.y + inset},
+                                        {separator.x, separator.y + iconWidth - inset},
+                                        ImGui::GetColorU32(ImGuiCol_Separator));
+    ImGui::Dummy({1, iconWidth});
+    ImGui::SameLine(0, gap * 2);
+    if (!snapshot.ready) marking = false;
+    ImGui::BeginDisabled(!snapshot.ready);
+    if (EditorIconButton("mark", EditorGlyph::Mark,
+                         "Mark a region of the preview and paste it into the Console (or Alt+drag)", marking))
+        marking = !marking;
+    ImGui::EndDisabled();
     ImGui::EndGroup();
     ImGui::PopID();
     ImGui::PopStyleColor(3);
