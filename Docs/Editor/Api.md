@@ -49,16 +49,26 @@ names of two variants, and parameter differences. Without a definition, the scen
 ## Graphic assets
 
 A file named `X.asset.cpp` under `Assets/Graphics` registers a graphic for the Assets panel. Only the editor worker
-compiles these files, so games carry no catalog. Keep the drawing itself in ordinary game code and call it here.
+compiles these files, so games carry no catalog.
+
+A new standalone graphic (character, enemy, item, prop, icon or background) draws only from parameters and time,
+without reading a game model. Write it as `Game/Assets/Graphics/<Folder>/X.h`, `X.cpp` and `X.asset.cpp`; generate the
+skeleton with `python Engine asset new X --folder <Folder>`. Keep a model-reading View in place; extract any stateless
+drawing part into Graphics and call it from the View. Variants (color, kind) are `items` in one set, not separate assets.
+Existing code need not move. The project's own agent file takes precedence if it specifies another location.
+
+An existing drawing may stay at its current location and be registered through a thin `X.asset.cpp` under Graphics.
+For a new drawing, the generated `X.cpp` contains the implementation and game code includes its `X.h` directly.
 
 ```cpp
+#include "Assets/Graphics/Enemies/Goblin.h"
 #include "Editor/Api/GraphicAsset.h"
 
 namespace {
 GraphicAsset MakeGoblin() {
     GraphicAsset asset;
-    asset.usage = "DrawGoblin(paint, center, size);";
-    asset.draw = [](Painter& paint, const FloatRect& box, std::size_t, float time) { /* fit to box */ };
+    asset.usage = "DrawGoblin(paint, box, time);";
+    asset.draw = [](Painter& paint, const FloatRect& box, std::size_t, float time) { DrawGoblin(paint, box, time); };
     return asset;
 }
 [[maybe_unused]] const bool Registered = RegisterGraphicAsset(&MakeGoblin);
@@ -67,7 +77,9 @@ GraphicAsset MakeGoblin() {
 
 Fill `items` for a set: each item gets its own tile and catalog entry, and `{item}` in `usage` becomes its name. Ids are
 `asset:Graphics/Folder/Name[#Item]`; `ctl find` and `ctl open` reach them like scenes. `python Engine asset new NAME`
-writes a skeleton. Design: [Asset library](../Design/AssetLibrary.md).
+writes a skeleton. The asset provides its own viewport preview; no separate work scene is needed for a standalone
+drawing. Recipe: [Graphic asset](../../AgentDocs/Recipes/GraphicAsset.md). Rule and unlisted-drawing reminder:
+[Asset library](../Design/AssetLibrary.md#authoring-rule).
 
 ## Parameter and action contract
 

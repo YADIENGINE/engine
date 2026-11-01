@@ -21,7 +21,7 @@ CONTRACT = {
     "editor": ["--release", "--build-only", "--clean"],
     "refresh": [],
     "ctl": ["status"],
-    "asset": ["mkdir", "X"],
+    "asset": ["unlisted", "Game/Assets/Graphics/Goblin.h"],
     "new": ["--name", "X", "--dry-run"],
     "info": [],
     "check": ["--fix"],

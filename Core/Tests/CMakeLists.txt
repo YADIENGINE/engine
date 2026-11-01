@@ -70,6 +70,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/CharacterObject.cpp"
     "${recipeRoot}/CharacterScene.cpp"
     "${recipeRoot}/FxBurst.cpp"
+    "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"
     "${recipeRoot}/SaveProgress.cpp"
     "${recipeRoot}/SceneGame.cpp"

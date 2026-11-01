@@ -19,6 +19,7 @@ Read the matching skill before acting. Each one is a short procedure; follow its
 | When the request is to | Read |
 | --- | --- |
 | show, open, look at, inspect or explain something in the editor; an `[editor] ...` line | `AgentDocs/Skills/editor/SKILL.md` |
+| draw a new character, enemy, item, prop, icon or other standalone graphic | `AgentDocs/Skills/graphic-asset/SKILL.md` |
 | change something visual or gameplay-facing and check it | `AgentDocs/Skills/visual-change/SKILL.md` |
 | fix a failed build, test or refresh, or warnings | `AgentDocs/Skills/build-fix/SKILL.md` |
 | write code against the engine API (find headers, recipes, concepts) | `AgentDocs/Skills/api/SKILL.md` |
@@ -26,6 +27,7 @@ Read the matching skill before acting. Each one is a short procedure; follow its
 
 ## Hard invariants
 
+- New standalone graphics go in `Game/Assets/Graphics/<Folder>/X.h`, `X.cpp` and `X.asset.cpp`; model-reading Views stay in place, variants use `items`, existing code need not move, and project agent rules take precedence: `Docs/Design/AssetLibrary.md#authoring-rule`.
 - Draw through Painter: `Docs/Graphics/Painter.md#where-it-comes-from`.
 - Use logical canvas coordinates, y down: `Docs/Graphics/Painter.md#where-it-comes-from`.
 - Angles are radians, clockwise: `Docs/Graphics/Painter.md#where-it-comes-from`.

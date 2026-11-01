@@ -10,7 +10,24 @@ Graphics are code (D1), so a project has nothing like Unity's Project window to 
 graphics and audio a place on disk and a browser in the editor. It is for finding, previewing and reusing assets.
 It places nothing on screen and adds no components: there is no dragging into a scene (Design goal 2).
 
-Using it is optional. A project may keep its drawings anywhere; only what is under the asset folders is shown.
+New standalone graphics use the library by default; existing code may stay in place. Only what is under the asset
+folders is shown.
+
+## Authoring rule
+
+A new standalone graphic (character, enemy, item, prop, icon or background) draws only from parameters and time,
+without reading a game model. Write it as `Game/Assets/Graphics/<Folder>/X.h`, `X.cpp` and `X.asset.cpp`; generate the
+skeleton with `python Engine asset new X --folder <Folder>`. Keep a model-reading View in place; extract any stateless
+drawing part into Graphics and call it from the View. Variants (color, kind) are `items` in one set, not separate assets.
+Existing code need not move. The project's own agent file takes precedence if it specifies another location.
+
+Follow the [graphic-asset skill](../../AgentDocs/Skills/graphic-asset/SKILL.md) and
+[compiled recipe](../../AgentDocs/Recipes/GraphicAsset.md). The asset is its own viewport preview; a separate work scene
+is needed only for a model, scene or interaction. Before finishing, `python Engine asset unlisted <files>` lists free
+`void DrawX(Painter& ...)` functions in the changed headers whose names occur in no project `.asset.cpp` file. With no
+files it scans `Game/`. It prints a JSON array of `file`, `line` and `function` entries and always returns 0: a heuristic
+reminder, not enforcement. It skips `build/`, `Engine/` and `Launcher/`; macros are not expanded. Register each relevant
+drawing or explain why it remains unregistered, without migrating unrelated code.
 
 ## Folders
 

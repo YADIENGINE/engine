@@ -1,11 +1,14 @@
 """`asset`: graphic skeletons, folders and moves that keep includes correct; no compiler."""
 
+import contextlib
+import io
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from Tools import cli
-from Tools.commands.asset import make_folder, move_asset, new_graphic
+from Tools.commands.asset import make_folder, move_asset, new_graphic, unlisted_graphics
 from Tools.errors import ToolError
 
 GRAPHICS = Path("Game/Assets/Graphics")
@@ -103,6 +106,61 @@ class AssetCommandTests(unittest.TestCase):
                 move_asset(self.root, source, destination)
         self.assertTrue((self.root / GRAPHICS / "Enemies/Goblin.h").is_file())
         self.assertIn("Enemies/Goblin.h", user.read_text(encoding="utf-8"))
+
+    def test_unlisted_scans_game_headers_and_checks_all_project_registrations(self):
+        self.write("Game/Enemies.h", "#pragma once\nvoid DrawGoblin(Painter& paint);\n"
+                   "void DrawGoblinKing(Painter &paint);\nvoid DrawPotion(\n    Painter& paint);\n")
+        self.write("Game/More.hpp", "void DrawCoin(Painter&);\n")
+        self.write("Game/OnlySource.cpp", "void DrawSourceOnly(Painter& paint) {}\n")
+        self.write("Editor/Preview.h", "void DrawEditorOnly(Painter& paint);\n")
+        self.write("Editor/Assets/Enemies.asset.cpp", "asset.draw = &DrawGoblin;\n")
+        self.write("Engine/Assets/Default.asset.cpp", "DrawPotion\n")
+        self.assertEqual(unlisted_graphics(self.root, []), [
+            {"file": "Game/Enemies.h", "line": 3, "function": "DrawGoblinKing"},
+            {"file": "Game/Enemies.h", "line": 4, "function": "DrawPotion"},
+            {"file": "Game/More.hpp", "line": 1, "function": "DrawCoin"},
+        ])
+
+    def test_unlisted_ignores_members_comments_literals_and_other_signatures(self):
+        self.write("Game/Draw.h", '/* void DrawComment(Painter&); */\n'
+                   '// void DrawLineComment(Painter&);\n'
+                   'const char* example = "void DrawString(Painter&);";\n'
+                   'const char* raw = R"example(void DrawRaw(Painter&);)example";\n'
+                   '#define DRAW void DrawMacro(Painter&);\n'
+                   'struct View { void DrawMember(Painter&); static void DrawStatic(Painter&); };\n'
+                   'void View::DrawQualified(Painter&) {}\n'
+                   'int DrawResult(Painter&);\nvoid DrawOther(int, Painter&);\n'
+                   'void DrawPointer(Painter*);\nvoid DrawRvalue(Painter&&);\n'
+                   'namespace Shapes {\nvoid DrawFree(Painter &paint);\n}\n')
+        self.assertEqual(unlisted_graphics(self.root, []), [
+            {"file": "Game/Draw.h", "line": 13, "function": "DrawFree"}])
+
+    def test_unlisted_limits_headers_but_finds_registration_in_unchanged_files(self):
+        listed = self.write("Game/Listed.h", "void DrawListed(Painter&);\n")
+        self.write("Game/Other.h", "void DrawOther(Painter&);\n")
+        self.write("Game/Assets/Graphics/Listed.asset.cpp", "DrawListed(paint, box, time);\n")
+        header = self.write("Editor/Preview.h", "void DrawPreview(Painter&);\n")
+        self.assertEqual(unlisted_graphics(self.root, [str(listed), "Game/Deleted.h", "Game/Other.cpp"]), [])
+        self.assertEqual(unlisted_graphics(self.root, [str(header), "Editor/Preview.h"]), [
+            {"file": "Editor/Preview.h", "line": 1, "function": "DrawPreview"}])
+
+    def test_unlisted_skips_excluded_folders_and_paths_outside_project(self):
+        skipped = [f"{folder}/Hidden.h" for folder in ("build", "Engine", "Launcher", "Game/build", "Game/Engine", "Game/Launcher")]
+        for path in skipped:
+            self.write(path, "void DrawHidden(Painter&);\n")
+        self.assertEqual(unlisted_graphics(self.root, []), [])
+        self.assertEqual(unlisted_graphics(self.root, skipped + ["../Outside.h"]), [])
+
+    def test_unlisted_cli_prints_json_and_returns_zero_with_or_without_findings(self):
+        self.write("Project.json", '{"version": 1, "name": "MyGame"}')
+        new_graphic(self.root, "Goblin", "Enemies")
+        self.write("Game/Loose.h", "void DrawLoose(Painter&);\n")
+        for files, expected in (([], [{"file": "Game/Loose.h", "line": 1, "function": "DrawLoose"}]),
+                                (["Game/Assets/Graphics/Enemies/Goblin.h"], [])):
+            with self.subTest(files=files), contextlib.redirect_stdout(io.StringIO()) as output:
+                code = cli.main(["--project", str(self.root), "asset", "unlisted", *files])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(output.getvalue()), expected)
 
 
 if __name__ == "__main__":

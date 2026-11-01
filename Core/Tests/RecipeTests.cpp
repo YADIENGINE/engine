@@ -2,6 +2,7 @@
 #include "AgentDocs/Recipes/Code/AnimatedCharacter.h"
 #include "AgentDocs/Recipes/Code/CharacterScene.h"
 #include "AgentDocs/Recipes/Code/FxBurst.h"
+#include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
 #include "AgentDocs/Recipes/Code/SaveProgress.h"
 #include "AgentDocs/Recipes/Code/SceneTransition.h"
@@ -52,6 +53,8 @@ TEST_CASE("Engine.Recipes.ViewsRecordAndCachedLayerInvalidates", "[engine][recip
     DrawRecipeLayer(harness.paint, layer, harness.paint.Bounds(), 0.5f);
     character.Draw(harness.paint);
     DrawRecipeIcons(harness.paint, {200.0f, 100.0f}, 16.0f, Rgb(0xffffff));
+    DrawGoblin(harness.paint, {240.0f, 20.0f, 60.0f, 100.0f}, GoblinKind::Forest, 0.5f);
+    DrawGoblin(harness.paint, {240.0f, 120.0f, 100.0f, 60.0f}, GoblinKind::Ice, 0.5f);
     DrawRecipeFx(harness.paint, fx, harness.paint.Bounds());
     harness.End();
     CHECK_FALSE(harness.Draws().empty());

@@ -2,10 +2,12 @@
 
 `new` writes a graphic's skeleton, `mkdir` adds a folder, and `move` moves an asset or folder and updates the literal
 `#include "Assets/Graphics/..."` lines across the project. Engine assets are read-only and out of reach here.
+`unlisted` reminds agents about free drawing functions that have no asset registration; it never fails a check.
 """
 
 import argparse
 import json
+import os
 import re
 from pathlib import Path, PurePosixPath
 
@@ -18,6 +20,11 @@ NAME = re.compile(r"[A-Z][A-Za-z0-9]*")
 SOURCE_SUFFIXES = {".h", ".hpp", ".cpp", ".inl"}
 SKIPPED_FOLDERS = {"build", "Engine", "Launcher", "Release", ".git"}
 INCLUDE = re.compile(r'(#\s*include\s*")(Assets/Graphics/[^"]+)(")')
+# Mask comments, literals and directives without changing offsets or line numbers. This is not a C++ parser.
+NON_CODE = re.compile(r'//[^\n]*|/\*[\s\S]*?\*/|R"([^\s()\\]*)\([\s\S]*?\)\1"|'
+                      r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|^[ \t]*#(?:[^\n]*\\\n)*[^\n]*', re.M)
+DRAW_SCOPE = re.compile(r'\bnamespace(?:\s+[A-Za-z_]\w*(?:::\w+)*)?\s*\{|[{}]|'
+                        r'\bvoid\s+(?P<function>Draw\w+)\s*\(\s*Painter\s*&(?!&)')
 
 HEADER = """#pragma once
 #include "Utilities/FloatRect.h"
@@ -50,7 +57,7 @@ GraphicAsset Make{name}() {{
 
 
 def add_parser(commands) -> None:
-    command = commands.add_parser("asset", help="create and move the project's graphic assets")
+    command = commands.add_parser("asset", help="create, move and find unlisted project graphics")
     actions = command.add_subparsers(dest="asset_action", required=True, metavar="<action>")
     action = actions.add_parser("new", help="a graphic's skeleton: X.h, X.cpp and X.asset.cpp")
     action.add_argument("name", help="PascalCase name; also names the draw function")
@@ -59,6 +66,8 @@ def add_parser(commands) -> None:
     action = actions.add_parser("move", help="move an asset or folder and update the includes that name it")
     action.add_argument("source", help="asset (Enemies/Goblin) or folder (Enemies), under Game/Assets/Graphics")
     action.add_argument("destination", help="existing folder under Game/Assets/Graphics; empty for its top")
+    action = actions.add_parser("unlisted", help="remind about unregistered free DrawX(Painter& ...) functions; exit 0")
+    action.add_argument("files", nargs="*", metavar="FILES", help="changed headers, relative to the project; default: Game/")
 
 
 def relative_folder(text: str) -> PurePosixPath:
@@ -106,12 +115,53 @@ def asset_files(folder: Path, stem: str) -> list[Path]:
 
 
 def source_files(root: Path):
-    for path in root.rglob("*"):
-        if path.suffix not in SOURCE_SUFFIXES or not path.is_file():
+    for folder, directories, files in os.walk(root):
+        directories[:] = sorted(name for name in directories if name not in SKIPPED_FOLDERS)
+        for name in sorted(files):
+            path = Path(folder) / name
+            if path.suffix in SOURCE_SUFFIXES:
+                yield path
+
+
+def unlisted_graphics(root: Path, files: list[str]) -> list[dict]:
+    """Heuristic reminder, not validation: only free header functions, matched by name against all registrations.
+
+    Missing/deleted, unreadable and non-header inputs are ignored so a changed-file list can be passed directly.
+    No preprocessing or model-dependency analysis is attempted; the agent decides which results need registration.
+    """
+    root = root.resolve()
+    sources = list(source_files(root))
+    registered = set()
+    for path in sources:
+        if path.name.endswith(".asset.cpp"):
+            try:
+                registered.update(re.findall(r'\bDraw\w+\b', path.read_text(encoding="utf-8")))
+            except (OSError, UnicodeError):
+                continue
+    headers = [root / name for name in files] if files else [path for path in sources if path.is_relative_to(root / "Game")]
+    answer = []
+    for path in sorted({path.resolve() for path in headers}):
+        if not path.is_relative_to(root) or path.suffix not in {".h", ".hpp"}:
             continue
-        if SKIPPED_FOLDERS.intersection(path.relative_to(root).parts[:-1]):
+        relative = path.relative_to(root)
+        if SKIPPED_FOLDERS.intersection(relative.parts[:-1]):
             continue
-        yield path
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+        text = NON_CODE.sub(lambda match: re.sub(r'[^\n]', ' ', match[0]), text)
+        scopes = []
+        for match in DRAW_SCOPE.finditer(text):
+            if match[0].endswith("{"):
+                scopes.append(match[0].startswith("namespace"))
+            elif match[0] == "}":
+                if scopes:
+                    scopes.pop()
+            elif all(scopes) and match["function"] not in registered:
+                answer.append({"file": relative.as_posix(), "line": text.count("\n", 0, match.start("function")) + 1,
+                               "function": match["function"]})
+    return answer
 
 
 def rewrite_includes(root: Path, renamed) -> list[str]:
@@ -186,5 +236,7 @@ def asset(project: Project, args: argparse.Namespace) -> int:
             answer = make_folder(project.root, args.folder)
         case "move":
             answer = move_asset(project.root, args.source, args.destination)
+        case "unlisted":
+            answer = unlisted_graphics(project.root, args.files)
     print(json.dumps(answer, indent=2))
     return EXIT_OK

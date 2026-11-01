@@ -1,13 +1,15 @@
 ---
 name: visual-change
-description: Make a visual or gameplay-facing change (drawing, animation, effect, layout, character, UI) and check it in the open editor with a focused work scene and screenshots before reporting.
+description: Make a visual or gameplay-facing change (drawing, animation, effect, layout, character, UI) and check it in the open editor with an asset preview or focused work scene and screenshots before reporting.
 ---
 
 # Change something visual and check it
 
 1. **Editor?** `python Engine ctl status`. Exit 2: no editor. Make the change, build with `python Engine build`,
    and tell the developer what to open; do not launch the editor unless asked.
-2. **Work scene:** create or reuse one focused scene for this request in the project's work-scene folder
+2. **Preview:** for a new standalone graphic, follow the [graphic-asset skill](../graphic-asset/SKILL.md): register it
+   under `Game/Assets/Graphics` and use its own viewport preview. Use a work scene only when a model, scene or interaction
+   is needed: create or reuse one focused scene for this request in the project's work-scene folder
    ([recipe](../../Recipes/WorkScene.md)). Show only the subject: no HUD, menus, unrelated objects or randomness unless
    asked. Expose values the developer will likely tweak as parameters. An existing scene that already isolates the
    subject (`python Engine ctl find WORDS`) can be used instead.
@@ -17,4 +19,5 @@ description: Make a visual or gameplay-facing change (drawing, animation, effect
    motion. Read the images and fix obvious defects (broken, clipped, invisible, wrong timing) before reporting.
    `python Engine ctl set` and `python Engine ctl seek` reach specific states.
 5. **Hand over:** leave the scene open and give the developer a short checklist; aesthetic judgment is theirs.
-6. **Finish:** when the developer says the task is done, ask: delete the work scene, or move it to a permanent category?
+6. **Finish:** if you created a work scene, when the developer says the task is done, ask: delete it, or move it to a
+   permanent category? For standalone graphics, finish with the graphic-asset skill's unlisted-drawing reminder.

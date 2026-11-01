@@ -64,3 +64,8 @@ void RecipeCharacterView::Draw(Painter& paint) const {
 Pitfalls: Core/Graphics/Anim/SpringPoint.h is header-only; Follow clamps long frames. Do not retain Painter or a scope between calls.
 
 Concept: `Docs/Graphics/Painter.md#shapes`.
+
+Registration: for a new standalone drawing, follow [Graphic asset](GraphicAsset.md) and the
+[graphic-asset skill](../Skills/graphic-asset/SKILL.md). Keep this stateful View in place; extract any stateless drawing
+part into `Game/Assets/Graphics`, pass its pose and time as parameters, and call it from the View. The asset provides
+its own viewport preview. Existing code need not move; the project's own agent file takes precedence.
