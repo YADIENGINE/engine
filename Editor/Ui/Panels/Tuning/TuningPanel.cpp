@@ -159,24 +159,24 @@ void Status(const TuningFileState& file, const EditorSnapshot& snapshot, const E
         return;
     }
     if (!file.worker) {
-        ImGui::TextDisabled(snapshot.ready ? "The running preview does not use this file."
-                                           : "Open a preview to see changes live.");
+        ImGui::TextDisabled(snapshot.ready ? "The running scene does not use this file."
+                                           : "Open a scene to see changes live.");
         return;
     }
     const auto& worker = *file.worker;
     switch (worker.state) {
-    case PreviewTuningState::Applied: ToolStatusBadge("Live", ToolToneColor(ToolTone::Success)); break;
-    case PreviewTuningState::Invalid:
+    case WorkerTuningState::Applied: ToolStatusBadge("Live", ToolToneColor(ToolTone::Success)); break;
+    case WorkerTuningState::Invalid:
         ToolStatusBadge("Not applied", ToolToneColor(ToolTone::Error));
         ImGui::TextWrapped("Line %d: %s", worker.line, worker.text.c_str());
         break;
-    case PreviewTuningState::NeedsBuild:
+    case WorkerTuningState::NeedsBuild:
         ToolStatusBadge("Build needed", ToolToneColor(ToolTone::Warning));
         ImGui::TextWrapped("%s", worker.text.c_str());
         if (snapshot.capabilities.Can(EditorCommand::Refresh) && ImGui::Button("Build & Refresh"))
             actions.command(EditorCommand::Refresh);
         break;
-    case PreviewTuningState::Unreadable:
+    case WorkerTuningState::Unreadable:
         ToolStatusBadge("Unreadable", ToolToneColor(ToolTone::Error));
         ImGui::TextWrapped("%s", worker.text.c_str());
         break;
@@ -185,7 +185,7 @@ void Status(const TuningFileState& file, const EditorSnapshot& snapshot, const E
 
 const char* Suffix(const TuningFileState& file) {
     if (file.problem) return "  (invalid)";
-    if (file.worker && file.worker->state == PreviewTuningState::NeedsBuild) return "  (build needed)";
+    if (file.worker && file.worker->state == WorkerTuningState::NeedsBuild) return "  (build needed)";
     return "";
 }
 

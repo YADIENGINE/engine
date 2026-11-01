@@ -1,6 +1,6 @@
 """`refresh`: Build & Refresh in the project's open editor, as if its button were pressed.
 
-The running preview stays live while the worker builds and is replaced once the new build is ready. The command
+The running scene stays live while the worker builds and is replaced once the new build is ready. The command
 streams the build's output and exits with its result; when a refresh is already running it joins that one.
 
 It talks to the editor's control endpoint (Engine/Editor/Internals/Protocol/EditorControlProtocol.h): the editor
@@ -19,7 +19,7 @@ from .editor import editor_build_dir
 
 ANNOUNCEMENT = "EngineEditor.control.json"
 ENVIRONMENT = "ENGINE_EDITOR_CONTROL"  # Set by the editor for its console: that editor's pipe
-VERSION = 2
+VERSION = 3
 CONNECT_TIMEOUT = 5.0  # Seconds to wait while another client holds the endpoint
 CONNECT_RETRY = 0.1
 PIPE_BUSY = 231  # ERROR_PIPE_BUSY

@@ -36,7 +36,7 @@ std::vector<wchar_t> Environment(const std::map<std::string, std::string>& overr
         if (pointer) FreeEnvironmentStringsW(pointer);
     };
     std::unique_ptr<wchar_t, decltype(release)> block(GetEnvironmentStringsW(), release);
-    if (!block) ThrowPreviewWindowsError("Read environment");
+    if (!block) ThrowWorkerWindowsError("Read environment");
     for (const wchar_t* cursor = block.get(); *cursor;) {
         const std::wstring row(cursor);
         cursor += row.size() + 1;
@@ -47,7 +47,7 @@ std::vector<wchar_t> Environment(const std::map<std::string, std::string>& overr
         if (name.empty() || name.find_first_of("=\0", 0, 2) != std::string::npos ||
             value.find('\0') != std::string::npos)
             throw std::runtime_error("Invalid environment override");
-        values[Upper(PreviewWide(name))] = PreviewWide(value);
+        values[Upper(WorkerWide(name))] = WorkerWide(value);
     }
     std::vector<wchar_t> result;
     for (const auto& [key, value] : values) {
@@ -71,32 +71,32 @@ bool ChildProcess::Running() const {
 std::optional<unsigned long> ChildProcess::ExitCode() const {
     if (!_process || Running()) return std::nullopt;
     DWORD code = 0;
-    if (!GetExitCodeProcess(_process.Get(), &code)) ThrowPreviewWindowsError("Read child exit code");
+    if (!GetExitCodeProcess(_process.Get(), &code)) ThrowWorkerWindowsError("Read child exit code");
     return code;
 }
 void ChildProcess::Start(const ProcessCommand& command) {
     if (Running()) throw std::logic_error("Child process is already running");
     Clear();
     _job.Reset(CreateJobObjectW(nullptr, nullptr));
-    if (!_job) ThrowPreviewWindowsError("Create process job");
+    if (!_job) ThrowWorkerWindowsError("Create process job");
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
     limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
     if (!SetInformationJobObject(_job.Get(), JobObjectExtendedLimitInformation, &limits, sizeof(limits)))
-        ThrowPreviewWindowsError("Configure process job");
+        ThrowWorkerWindowsError("Configure process job");
 
     SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
     HANDLE readHandle = nullptr;
     HANDLE writeHandle = nullptr;
-    if (!CreatePipe(&readHandle, &writeHandle, &security, 0)) ThrowPreviewWindowsError("Create output pipe");
+    if (!CreatePipe(&readHandle, &writeHandle, &security, 0)) ThrowWorkerWindowsError("Create output pipe");
     _output.Reset(readHandle);
     NativeHandle writer(writeHandle);
-    if (!SetHandleInformation(_output.Get(), HANDLE_FLAG_INHERIT, 0)) ThrowPreviewWindowsError("Protect output pipe");
+    if (!SetHandleInformation(_output.Get(), HANDLE_FLAG_INHERIT, 0)) ThrowWorkerWindowsError("Protect output pipe");
     NativeHandle input(
         CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, &security, OPEN_EXISTING, 0, nullptr));
-    if (!input) ThrowPreviewWindowsError("Open child stdin");
+    if (!input) ThrowWorkerWindowsError("Open child stdin");
     std::wstring arguments = QuoteArgument(command.executable.wstring());
     for (const auto& argument : command.arguments)
-        arguments += L" " + QuoteArgument(PreviewWide(argument));
+        arguments += L" " + QuoteArgument(WorkerWide(argument));
     auto environment = Environment(command.environment);
     STARTUPINFOW startup{};
     startup.cb = sizeof(startup);
@@ -109,7 +109,7 @@ void ChildProcess::Start(const ProcessCommand& command) {
     if (!CreateProcessW(command.executable.c_str(), arguments.data(), nullptr, nullptr, TRUE,
                         CREATE_SUSPENDED | CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT, environment.data(),
                         command.directory.empty() ? nullptr : command.directory.c_str(), &startup, &information))
-        ThrowPreviewWindowsError("Start child process");
+        ThrowWorkerWindowsError("Start child process");
     _process.Reset(information.hProcess);
     NativeHandle thread(information.hThread);
     if (!AssignProcessToJobObject(_job.Get(), _process.Get())) {
@@ -117,9 +117,9 @@ void ChildProcess::Start(const ProcessCommand& command) {
         TerminateProcess(_process.Get(), 1);
         WaitForSingleObject(_process.Get(), INFINITE);
         SetLastError(error);
-        ThrowPreviewWindowsError("Own child process job");
+        ThrowWorkerWindowsError("Own child process job");
     }
-    if (ResumeThread(thread.Get()) == static_cast<DWORD>(-1)) ThrowPreviewWindowsError("Resume child process");
+    if (ResumeThread(thread.Get()) == static_cast<DWORD>(-1)) ThrowWorkerWindowsError("Resume child process");
 }
 std::vector<std::string> ChildProcess::DrainOutput() {
     std::vector<std::string> lines;
@@ -155,7 +155,7 @@ std::vector<std::string> ChildProcess::DrainOutput() {
     return lines;
 }
 void ChildProcess::Terminate() {
-    if (_job && Running() && !TerminateJobObject(_job.Get(), 1)) ThrowPreviewWindowsError("Terminate child job");
+    if (_job && Running() && !TerminateJobObject(_job.Get(), 1)) ThrowWorkerWindowsError("Terminate child job");
 }
 void ChildProcess::Clear() {
     if (_process && Running()) {

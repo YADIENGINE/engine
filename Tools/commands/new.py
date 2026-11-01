@@ -162,9 +162,9 @@ def new(engine: Path, root: Path, name: str | None, dry_run: bool) -> int:
     print(f"""
 '{name}' is ready. From {root}:
   python Engine run      build and run (an empty Game/ shows the engine starter screen)
-  python Engine editor   the engine editor with this project's previews
+  python Engine editor   the engine editor with this project's scenes
   python Engine test     headless tests
-First game: Engine/Docs/GettingStarted.md, previews: Engine/Docs/Editor/GettingStarted.md""")
+First game: Engine/Docs/GettingStarted.md, scenes: Engine/Docs/Editor/GettingStarted.md""")
     print("Using an AI agent: reference Engine/AgentDocs/Index.md from your own agent file "
           "(Claude Code: @Engine/AgentDocs/Index.md in CLAUDE.md).")
     return EXIT_OK

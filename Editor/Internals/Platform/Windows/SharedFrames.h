@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-inline constexpr int PreviewMaxFrameWidth = 1920;
-inline constexpr int PreviewMaxFrameHeight = 1080;
+inline constexpr int WorkerMaxFrameWidth = 1920;
+inline constexpr int WorkerMaxFrameHeight = 1080;
 
-struct PreviewPixels {
+struct ViewportPixels {
     int width = 0;
     int height = 0;
     std::uint64_t sequence = 0;
@@ -24,7 +24,7 @@ public:
     ~SharedFrames();
     // The producer/consumer skips a busy buffer instead of blocking a render thread.
     [[nodiscard]] bool Publish(std::uint64_t generation, int width, int height, std::span<const std::byte> rgba);
-    [[nodiscard]] std::optional<PreviewPixels> Read(std::uint64_t generation);
+    [[nodiscard]] std::optional<ViewportPixels> Read(std::uint64_t generation);
 
 private:
     struct State;
@@ -36,4 +36,4 @@ public:
     SharedFrames& operator=(const SharedFrames&) = delete;
 };
 
-[[nodiscard]] double PreviewTimestamp();
+[[nodiscard]] double WorkerTimestamp();

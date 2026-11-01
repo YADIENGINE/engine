@@ -1,6 +1,6 @@
 #pragma once
 
-// Build & Refresh. The running preview keeps working while the worker target builds; a successful build is started
+// Build & Refresh. The running scene keeps working while the worker target builds; a successful build is started
 // beside it (Starting) and replaces it only once ready. Idle after the replacement, a failure or a cancel.
 enum class RefreshPhase { Idle, Building, Starting };
 

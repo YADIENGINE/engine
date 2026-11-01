@@ -31,7 +31,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiStyle`: `KeyCapStyle keyCap`
 - `UiStyle`: `ProgressBarStyle progressBar`
 - `UiStyle`: `ButtonAnimSettings buttonAnimation`
-- `struct BackdropTheme` — Screen background roles (read by Ui/Backdrop): menus, surroundings of the game field, preview / gallery screens; scanline geometry is shared by all.
+- `struct BackdropTheme` — Screen background roles (read by Ui/Backdrop): menus, surroundings of the game field, editor scene / gallery screens; scanline geometry is shared by all.
 - `BackdropTheme`: `BackdropStyle menu`
 - `BackdropTheme`: `BackdropStyle play`
 - `BackdropTheme`: `BackdropStyle gallery`
@@ -48,7 +48,7 @@ Use these generated signatures to locate public declarations; open the header fo
 
 - `struct ThemePalette` — Theme role colors, used with the same meaning throughout the UI.
 - `ThemePalette`: `Color4 background { 0, 0, 0, 255 }` — Screen background
-- `ThemePalette`: `Color4 surface { 0, 0, 0, 255 }` — Panel, card, preview body
+- `ThemePalette`: `Color4 surface { 0, 0, 0, 255 }` — Panel, card, editor scene body
 - `ThemePalette`: `Color4 surfaceFrame { 130, 130, 130, 255 }` — Unselected / locked panel border
 - `ThemePalette`: `Color4 text { 255, 255, 255, 255 }` — Primary text
 - `ThemePalette`: `Color4 textSoft { 200, 200, 200, 255 }` — Secondary text: readable on dark surfaces

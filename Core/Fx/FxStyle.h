@@ -22,7 +22,7 @@ struct SlowMotionStyle {
 };
 
 // All FxStage effect styles, supplied by the theme (Theme::fx) or game. Scenes using individual systems directly
-// (previews, showcases) read the same styles here.
+// (editor scenes, showcases) read the same styles here.
 struct FxStyle {
     std::size_t particleCapacity = 0;
     std::size_t toastCapacity = 0;

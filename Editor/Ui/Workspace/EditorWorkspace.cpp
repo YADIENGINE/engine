@@ -98,9 +98,9 @@ void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, const EditorUi
     const ImVec2 origin{main->Pos.x, main->Pos.y + top};
     const ImVec2 size{main->Size.x, std::max(1.0f, main->Size.y - top)};
     const auto& io = ImGui::GetIO();
-    const auto& preview = result.interaction.viewport;
-    const auto onPreview = [&](ImVec2 point) {
-        return snapshot.ready && MapPreviewPoint(preview, {point.x, point.y}).has_value();
+    const auto& viewport = result.interaction.viewport;
+    const auto onViewport = [&](ImVec2 point) {
+        return snapshot.ready && MapViewportPoint(viewport, {point.x, point.y}).has_value();
     };
     ImGui::SetNextWindowPos(origin);
     ImGui::SetNextWindowSize(size);
@@ -120,8 +120,8 @@ void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, const EditorUi
                       ImGui::GetColorU32(ImGuiCol_Text), hint);
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
             _overlayStart = io.MousePos;
-            // On the preview the frame holds still, as with Alt+drag
-            if (onPreview(io.MousePos) && !snapshot.paused && snapshot.capabilities.Can(EditorCommand::Pause))
+            // On the viewport the frame holds still, as with Alt+drag
+            if (onViewport(io.MousePos) && !snapshot.paused && snapshot.capabilities.Can(EditorCommand::Pause))
                 actions.command(EditorCommand::Pause);
         }
         if (_overlayStart) {
@@ -132,9 +132,9 @@ void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, const EditorUi
                 const ImVec2 start = *_overlayStart, end = io.MousePos;
                 _overlayStart.reset();
                 _marking = false;
-                const bool inside = onPreview(start) && onPreview(end);
-                if (inside) // Entirely on the preview: its pixels and context
-                    result.interaction.mark = MarkRegion(preview, {start.x, start.y}, {end.x, end.y});
+                const bool inside = onViewport(start) && onViewport(end);
+                if (inside) // Entirely on the viewport: its pixels and context
+                    result.interaction.mark = MarkRegion(viewport, {start.x, start.y}, {end.x, end.y});
                 else
                     result.windowMark = WindowMarkRegion({start.x, start.y}, {end.x, end.y}, {main->Pos.x, main->Pos.y},
                                                          {main->Size.x, main->Size.y},
@@ -148,7 +148,7 @@ void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, const EditorUi
     }
     ImGui::End();
     ImGui::PopStyleVar();
-    result.cancelPreviewInput = true;
+    result.cancelViewportInput = true;
 }
 void EditorWorkspace::PasteToConsole(const std::string& text, EditorPreferences& preferences) {
     if (_maximized) SetMaximized(false, preferences);
@@ -285,8 +285,7 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
     ImGui::PopStyleVar(2);
 }
 EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                            const EditorPreviewImage& image, EditorPreferences& preferences,
-                                            int& fontSize) {
+                                            const ViewportImage& image, EditorPreferences& preferences, int& fontSize) {
     const bool opening = !_initialized;
     if (opening) {
         // View her oturumun başında açıktır; kayıtlı kapalı / daraltılmış hali başlangıcı gizlemez.
@@ -316,7 +315,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         _output.ShowLastAttempt(snapshot.diagnostics.Attempt().id);
         _viewport.ReleaseFocus();
         _showFailedOutput = false;
-        result.cancelPreviewInput = true;
+        result.cancelViewportInput = true;
     }
     const auto& attempt = snapshot.diagnostics.Attempt();
     const bool failed =
@@ -333,12 +332,12 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         _failureDetail.push_back(0);
         ImGui::OpenPopup(FailurePopup);
         _viewport.ReleaseFocus();
-        result.cancelPreviewInput = true;
+        result.cancelViewportInput = true;
     }
     auto menu = _shell.Menu(snapshot, actions, preferences, fontSize, _maximized, _offerProjectList);
-    result.cancelPreviewInput |= Shortcuts(snapshot, actions, menu);
+    result.cancelViewportInput |= Shortcuts(snapshot, actions, menu);
     if (_palette.Draw(snapshot, actions, preferences, _maximized, menu)) {
-        result.cancelPreviewInput = true;
+        result.cancelViewportInput = true;
         _viewport.ReleaseFocus();
     }
     const auto* viewport = ImGui::GetMainViewport();
@@ -363,7 +362,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             preferences.lastBottomPanel = panel;
         }
     if (menu.focusCatalog || menu.toggleBottom || menu.bottomPanel || menu.layout || menu.toggleMaximize)
-        result.cancelPreviewInput = true;
+        result.cancelViewportInput = true;
     const ImVec2 workspacePosition{viewport->Pos.x, viewport->Pos.y + menuHeight + toolbarHeight};
     const ImVec2 workspaceSize{viewport->Size.x,
                                std::max(1.0f, viewport->Size.y - menuHeight - toolbarHeight - statusHeight)};
@@ -380,7 +379,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         ImGui::SetNextWindowSize(workspaceSize);
         constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar;
-        if (ImGui::Begin("Preview###editor.maximized", nullptr, flags))
+        if (ImGui::Begin("Viewport###editor.maximized", nullptr, flags))
             result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, true);
         ImGui::End();
     } else {
@@ -440,11 +439,11 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     ImGui::PopStyleVar();
     if (preferences.visible != oldVisibility && !menu.layout) {
         preferences.layout = EditorWorkspaceLayout::Custom;
-        result.cancelPreviewInput = true;
+        result.cancelViewportInput = true;
     }
     if (result.interaction.toggleMaximize) {
         _pendingToggle = true;
-        result.cancelPreviewInput = true;
+        result.cancelViewportInput = true;
     }
     if (_ignoreLayoutChanges > 0) {
         // Clear ImGui's delayed dirty timer after programmatic docking has settled.
@@ -469,9 +468,9 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         ImGui::SameLine();
         if (ImGui::Button("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
-        result.cancelPreviewInput = true;
+        result.cancelViewportInput = true;
     }
     if (_marking) MarkOverlay(snapshot, actions, menuHeight + toolbarHeight, result);
-    if (result.cancelPreviewInput) _viewport.ReleaseFocus();
+    if (result.cancelViewportInput) _viewport.ReleaseFocus();
     return result;
 }

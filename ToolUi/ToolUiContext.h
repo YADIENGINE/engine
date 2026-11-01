@@ -3,7 +3,7 @@
 
 struct ToolUiOptions {
     bool docking = false;            // ImGui docking (the editor's workspace)
-    bool keyboardNavigation = false; // Off when the keyboard also drives something else (the editor's preview)
+    bool keyboardNavigation = false; // Off when the keyboard also drives something else (an editor scene)
 };
 
 // The ImGui context of a tool window: rlImGui backend, Segoe UI with embedded Noto Sans fallback + Font Awesome,

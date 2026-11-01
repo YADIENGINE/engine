@@ -21,8 +21,8 @@
 ProfilerRuntimeBinding::ProfilerRuntimeBinding(Profiler& profiler, Game& game)
     : _profiler(profiler)
     , _game(game) {
-    constexpr std::array Names{"Input",      "Audio",          "Application", "Scene update",
-                               "Canvas CPU", "Preview bridge", "Present",     "EndDrawing / wait"};
+    constexpr std::array Names{"Input",      "Audio",         "Application", "Scene update",
+                               "Canvas CPU", "Worker bridge", "Present",     "EndDrawing / wait"};
     for (std::size_t i = 0; i < Names.size(); ++i)
         _regions[i] = profiler.RegisterScope(Names[i]);
     game.ObserveFrames(this);

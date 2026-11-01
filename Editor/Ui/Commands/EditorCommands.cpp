@@ -65,7 +65,7 @@ const std::array<EditorCommandInfo, static_cast<std::size_t>(EditorCommand::Coun
 
 const char* EditorCommandLabel(EditorCommand command, const EditorSnapshot& snapshot) {
     if (command == EditorCommand::Pause) return snapshot.paused ? "Resume" : "Pause";
-    if (command == EditorCommand::Stop && snapshot.profiler.busy) return "Stop preview";
+    if (command == EditorCommand::Stop && snapshot.profiler.busy) return "Stop scene";
     if (command == EditorCommand::Refresh && snapshot.building) return "Building...";
     if (command == EditorCommand::Cancel) {
         if (snapshot.profiler.busy)
@@ -92,8 +92,8 @@ void EditorCommandMenuItem(EditorCommand command, const EditorSnapshot& snapshot
 
 float EditorCommandButtonWidth(EditorCommand command, const EditorSnapshot& snapshot, bool showLabel) {
     if (!showLabel) return ImGui::GetFrameHeight();
-    const float width = ImGui::CalcTextSize(CommandButtonLabel(command, snapshot).c_str()).x +
-                        ImGui::GetStyle().FramePadding.x * 2;
+    const float width =
+        ImGui::CalcTextSize(CommandButtonLabel(command, snapshot).c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
     return command == EditorPrimaryCommand(snapshot) ? std::max(width, ImGui::GetFontSize() * PrimaryWidthInFonts)
                                                      : width;
 }
@@ -132,8 +132,8 @@ bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, 
     std::string label =
         showLabel ? CommandButtonLabel(command, snapshot) : EditorGlyphText(CommandGlyph(command, snapshot));
     label += "###command";
-    const bool pressed = ToolButton(
-        label.c_str(), {EditorCommandButtonWidth(command, snapshot, showLabel), ImGui::GetFrameHeight()});
+    const bool pressed =
+        ToolButton(label.c_str(), {EditorCommandButtonWidth(command, snapshot, showLabel), ImGui::GetFrameHeight()});
     ImGui::PopStyleColor(5);
     ImGui::EndDisabled();
     ImGui::PopFont();

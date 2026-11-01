@@ -4,7 +4,7 @@
 #include "Editor/Application/EditorCommandState.h"
 
 namespace {
-EditorCommandContext ReadyPreview() {
+EditorCommandContext ReadyScene() {
     EditorCommandContext context;
     context.hasProject = context.hasBuild = context.hasSelection = context.workerActive = context.ready = true;
     context.phase = EditorPhase::Ready;
@@ -34,7 +34,7 @@ TEST_CASE("Editor.Commands.OpenRequiresProjectBuildAndSelection", "[engine-edito
 }
 
 TEST_CASE("Editor.Commands.StepRequiresPauseAndBenchmarkDisablesPlayback", "[engine-editor]") {
-    auto context = ReadyPreview();
+    auto context = ReadyScene();
     auto capabilities = ResolveEditorCapabilities(context);
     CHECK(capabilities.Can(EditorCommand::Pause));
     CHECK(capabilities.Can(EditorCommand::Reset));
@@ -66,8 +66,8 @@ TEST_CASE("Editor.Commands.StepRequiresPauseAndBenchmarkDisablesPlayback", "[eng
     CHECK(capabilities.playbackEnabled);
 }
 
-TEST_CASE("Editor.Commands.RunningPreviewStaysUsableWhileBuilding", "[engine-editor]") {
-    auto context = ReadyPreview();
+TEST_CASE("Editor.Commands.RunningSceneStaysUsableWhileBuilding", "[engine-editor]") {
+    auto context = ReadyScene();
     context.building = true;
     auto capabilities = ResolveEditorCapabilities(context);
     for (const auto command : std::array{EditorCommand::Pause, EditorCommand::Reset, EditorCommand::Open,

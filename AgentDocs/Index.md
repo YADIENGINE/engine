@@ -68,9 +68,9 @@ editor and recipe includes start at the engine root. Run tools from the project 
 | Pick weighted values or step settings choices | `Core/Utilities/WeightedPick.h`<br>`Core/Utilities/ChoiceList.h`<br>`Core/Utilities/EnumTable.h` | - | `Docs/GameplayHelpers.md#gameplay-frameworks` |
 | Iterate UTF-8 characters | `Core/Utilities/Utf8.h` | - | `Docs/Graphics/Painter.md#text` |
 | Open a URL or copy text to clipboard | `Core/Platform/Shell.h` | - | `Docs/AssetsAndPlatforms.md#platform-responsibilities` |
-| Preview a production View in the editor | `Editor/Api/EditorPreview.h`<br>`Editor/Api/PreviewRegistry.h`<br>`Editor/Api/PreviewServices.h`<br>`Editor/Preview/PreviewHost.h` | `Recipes/CharacterPreview.md` | `Docs/Editor/GettingStarted.md#cmake-target` |
-| Expose preview controls, actions or inspection | `Editor/Api/PreviewParameter.h`<br>`Editor/Api/PreviewInspection.h` | `Recipes/CharacterPreview.md` | `Docs/Editor/GettingStarted.md#editorfirstpreviewcpp` |
-| Look at a preview or game flow: open, set, seek, screenshot, frame grid, inspect; show it to the developer | `Tools/commands/ctl.py` | - | `Docs/Editor/Automation.md#commands` |
+| Display a production View in an editor scene | `Editor/Api/EditorScene.h`<br>`Editor/Api/SceneRegistry.h`<br>`Editor/Api/SceneServices.h`<br>`Editor/Worker/WorkerHost.h` | `Recipes/CharacterScene.md` | `Docs/Editor/GettingStarted.md#cmake-target` |
+| Expose scene controls, actions or inspection | `Editor/Api/SceneParameter.h`<br>`Editor/Api/SceneInspection.h` | `Recipes/CharacterScene.md` | `Docs/Editor/GettingStarted.md#editorfirstscenecpp` |
+| Look at a scene or game flow: open, set, seek, screenshot, frame grid, inspect; show it to the developer | `Tools/commands/ctl.py` | - | `Docs/Editor/Automation.md#commands` |
 | Set up, run, check or test a project | `Tools/cli.py` | - | `Docs/ToolsContract.md#commands` |
 | Package a release and third-party notices | `Tools/commands/release.py` | - | `Docs/Release.md#checks` |
 | Generate audio assets offline | `Tools/AudioGeneration/generator.py` | - | `Docs/AudioGeneration.md#a-sound-set-in-one-file` |

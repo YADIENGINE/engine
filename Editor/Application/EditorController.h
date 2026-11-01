@@ -5,8 +5,8 @@
 #include <optional>
 #include <vector>
 #include "Editor/Application/EditorPresentation.h"
-#include "Editor/Application/PreviewBuild.h"
-#include "Editor/Application/PreviewWorker.h"
+#include "Editor/Application/WorkerBuild.h"
+#include "Editor/Application/WorkerProcess.h"
 #include "Editor/Internals/Session/EditorProject.h"
 #include "Editor/Internals/Session/RefreshState.h"
 #include "Editor/Internals/Session/TuningWorkspace.h"
@@ -21,7 +21,7 @@ struct EditorSync {
     std::uint64_t frames = 0;
 };
 
-// The editor session: the catalog, the selected preview with its parameters, and the workers behind it.
+// The editor session: the catalog, the selected scene with its parameters, and the workers behind it.
 // Workers run from snapshots of the build (WorkerSnapshots), so a build never waits for a worker to exit. At most one
 // worker is active; Build & Refresh starts the new build as a replacement beside it and swaps once that is ready.
 // Stopped and replaced workers retire: they shut down in the background while the session moves on.
@@ -31,7 +31,7 @@ public:
     ~EditorController();
     void Tick();
     void Select(const std::string& id);
-    void Parameter(const std::string& id, const PreviewValue& value);
+    void Parameter(const std::string& id, const SceneValue& value);
     void Action(const std::string& id);
     void Playback(double speed, bool step);
     void SetPaused(bool paused);
@@ -42,7 +42,7 @@ public:
     [[nodiscard]] const EditorSync& LastSync() const { return _sync; }
     // Playback seconds since open / reset, as last reported by the worker.
     [[nodiscard]] double Seconds() const { return _seconds; }
-    [[nodiscard]] PreviewParameters Values(const std::string& id) const;
+    [[nodiscard]] SceneParameters Values(const std::string& id) const;
     // A change made through the control endpoint: logged and shown briefly over the viewport.
     void Notify(const std::string& text);
     // The current Build & Refresh attempt was started through the control endpoint: its client gets the result, so a
@@ -62,23 +62,23 @@ public:
     [[nodiscard]] const EditorDiagnostics& Diagnostics() const { return _output; }
     [[nodiscard]] std::string ProjectKey() const;
     [[nodiscard]] const std::optional<EditorProject>& Project() const { return _project; }
-    [[nodiscard]] std::optional<std::string> TakeOpenedPreview();
+    [[nodiscard]] std::optional<std::string> TakeOpenedScene();
     void Shutdown();
     [[nodiscard]] std::uint64_t Generation() const { return _generation; }
     // The frame not yet shown, once; LatestFrame keeps the last received one of the active generation.
-    [[nodiscard]] std::shared_ptr<const PreviewPixels> TakeFrame();
-    [[nodiscard]] std::shared_ptr<const PreviewPixels> LatestFrame() const { return _latestFrame; }
+    [[nodiscard]] std::shared_ptr<const ViewportPixels> TakeFrame();
+    [[nodiscard]] std::shared_ptr<const ViewportPixels> LatestFrame() const { return _latestFrame; }
 
 private:
     // The worker that will replace the active one, with what it brings until the swap.
     struct Replacement {
-        std::unique_ptr<PreviewWorker> worker;
+        std::unique_ptr<WorkerProcess> worker;
         std::uint64_t generation = 0;
-        PreviewOpenState state;
-        std::optional<std::vector<PreviewDefinition>> catalog;
-        std::map<std::string, PreviewParameters> accepted;
-        bool selectionMissing = false; // The new catalog lacks the selected preview: it only refreshes the catalog
-        std::vector<PreviewTuningStatus> tuning;
+        WorkerOpenState state;
+        std::optional<std::vector<SceneDefinition>> catalog;
+        std::map<std::string, SceneParameters> accepted;
+        bool selectionMissing = false; // The new catalog lacks the selected scene: it only refreshes the catalog
+        std::vector<WorkerTuningStatus> tuning;
     };
 
     void Open();
@@ -87,57 +87,56 @@ private:
     void Reset();
     void Refresh();
     void Cancel();
-    [[nodiscard]] const PreviewDefinition* Selected() const;
+    [[nodiscard]] const SceneDefinition* Selected() const;
     [[nodiscard]] EditorPhase Phase() const;
     [[nodiscard]] bool Starting() const;
     [[nodiscard]] bool Busy() const;
-    [[nodiscard]] PreviewOpenState OpenState() const;
-    [[nodiscard]] std::map<std::string, PreviewParameters>
-    RestoreParameters(const std::vector<PreviewDefinition>& catalog);
+    [[nodiscard]] WorkerOpenState OpenState() const;
+    [[nodiscard]] std::map<std::string, SceneParameters> RestoreParameters(const std::vector<SceneDefinition>& catalog);
     [[nodiscard]] std::uint64_t NextGeneration() { return ++_generations; }
 
-    void Launch(PreviewWorkerMode mode);
-    void Retire(std::unique_ptr<PreviewWorker> worker);
+    void Launch(WorkerProcessMode mode);
+    void Retire(std::unique_ptr<WorkerProcess> worker);
     void StopActive(const std::string& status);
     void Invalidate(std::uint64_t generation);
     void Send(const std::string& type, nlohmann::json data = nlohmann::json::object());
 
     void TickActive();
-    void Receive(const PreviewMessage& message);
-    void ApplyReady(const PreviewMessage& message);
-    void ActiveExited(PreviewWorkerMode mode, unsigned long code);
+    void Receive(const WorkerMessage& message);
+    void ApplyReady(const WorkerMessage& message);
+    void ActiveExited(WorkerProcessMode mode, unsigned long code);
     // Worker'ın tuning raporu: panelin durumu ve Output (ilk başarılı okuma hariç).
-    void ReceiveTuning(const PreviewTuningStatus& status);
+    void ReceiveTuning(const WorkerTuningStatus& status);
 
     void TickBuild();
-    void BuildFinished(const PreviewBuildExit& exit);
+    void BuildFinished(const WorkerBuildExit& exit);
     void StartReplacement();
-    // With no preview open, Build & Refresh ends with the catalog worker that reads the new build.
+    // With no scene open, Build & Refresh ends with the catalog worker that reads the new build.
     void EndCatalogRefresh(EditorBuildResult result);
     void TickReplacement();
-    void ReceiveReplacement(const PreviewMessage& message);
-    void CommitReplacement(const PreviewMessage& ready);
+    void ReceiveReplacement(const WorkerMessage& message);
+    void CommitReplacement(const WorkerMessage& ready);
     void CommitCatalogOnly();
     void AbandonReplacement(const std::string& reason, EditorBuildResult result);
     void TickRetired();
 
-    // A fault of the active worker stops only the preview; a fault of Build & Refresh leaves the preview running.
-    void FailPreview(const std::string& text);
+    // A fault of the active worker stops only the scene; a fault of Build & Refresh leaves the scene running.
+    void FailScene(const std::string& text);
     void FailRefresh(const std::string& text);
     void FinishFailedAttempt();
 
     std::optional<EditorProject> _project;
     std::optional<WorkerSnapshots> _snapshots;
-    std::unique_ptr<PreviewWorker> _active;
+    std::unique_ptr<WorkerProcess> _active;
     std::optional<Replacement> _replacement;
-    std::vector<std::unique_ptr<PreviewWorker>> _retired;
-    PreviewBuild _build;
+    std::vector<std::unique_ptr<WorkerProcess>> _retired;
+    WorkerBuild _build;
     RefreshState _refresh;
 
-    std::vector<PreviewDefinition> _catalog;
-    std::map<std::string, PreviewParameters> _accepted;
-    PreviewParameters _displayed;
-    PreviewInspection _inspection;
+    std::vector<SceneDefinition> _catalog;
+    std::map<std::string, SceneParameters> _accepted;
+    SceneParameters _displayed;
+    SceneInspection _inspection;
     Vec2 _canvas{1280, 720};
     std::map<std::uint64_t, std::string> _pendingParameters;
     std::map<std::string, std::uint64_t> _lastParameterRequest;
@@ -152,10 +151,10 @@ private:
 
     EditorDiagnostics _output;
     std::optional<EditorBuildResult> _attemptFailure;
-    std::optional<std::string> _openedPreview;
+    std::optional<std::string> _openedScene;
     bool _recordOpen = false;
-    std::shared_ptr<const PreviewPixels> _nextFrame;
-    std::shared_ptr<const PreviewPixels> _latestFrame;
+    std::shared_ptr<const ViewportPixels> _nextFrame;
+    std::shared_ptr<const ViewportPixels> _latestFrame;
     std::uint64_t _syncRequest = 0;
     EditorSync _sync;
     double _seconds = 0.0;

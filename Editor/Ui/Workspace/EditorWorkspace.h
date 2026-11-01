@@ -14,15 +14,14 @@ struct EditorWorkspaceResult {
     EditorViewportInteraction interaction;
     bool quit = false;
     bool returnToProjectList = false;
-    bool cancelPreviewInput = false;
-    std::optional<FloatRect> windowMark; // A finished mark outside the preview: window framebuffer pixels
+    bool cancelViewportInput = false;
+    std::optional<FloatRect> windowMark; // A finished mark outside the scene: window framebuffer pixels
 };
 
 class EditorWorkspace {
 public:
     [[nodiscard]] EditorWorkspaceResult Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                             const EditorPreviewImage& image, EditorPreferences& preferences,
-                                             int& fontSize);
+                                             const ViewportImage& image, EditorPreferences& preferences, int& fontSize);
     void CaptureLayout(EditorPreferences& preferences) const;
     void ReleaseInput() { _viewport.ReleaseFocus(); }
     // File menu offers "Back to project list" (the host knows the launcher).
@@ -39,7 +38,7 @@ private:
     void SetMaximized(bool maximized, EditorPreferences& preferences);
     void ApplyLayout(EditorWorkspaceLayout layout, EditorPreferences& preferences);
     void ToggleBottom(EditorPreferences& preferences, std::optional<EditorPanel> panel);
-    // The Mark toggle's layer over everything below the toolbar: a region wholly on the preview becomes a preview
+    // The Mark toggle's layer over everything below the toolbar: a region wholly on the scene becomes a scene
     // mark, anything else a window mark.
     void MarkOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions, float top,
                      EditorWorkspaceResult& result);

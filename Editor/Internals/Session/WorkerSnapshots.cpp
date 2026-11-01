@@ -35,7 +35,7 @@ bool WorkerSnapshots::IsSnapshot(const std::filesystem::path& file) const {
 }
 void WorkerSnapshots::Capture() {
     if (!BuildAvailable())
-        throw std::runtime_error("Preview executable missing; use Build & Refresh to build the preview target");
+        throw std::runtime_error("Worker executable missing; use Build & Refresh to build the worker target");
     unsigned long next = 1;
     for (const auto& entry : std::filesystem::directory_iterator(_built.executable.parent_path()))
         if (const auto number = SnapshotNumber(entry.path(), _built.executable)) next = std::max(next, *number + 1);
@@ -48,10 +48,10 @@ void WorkerSnapshots::Capture() {
             return;
         }
         if (error != std::errc::file_exists)
-            throw std::filesystem::filesystem_error("Snapshot the preview executable", _built.executable, snapshot,
+            throw std::filesystem::filesystem_error("Snapshot the worker executable", _built.executable, snapshot,
                                                     error);
     }
-    throw std::runtime_error("Could not reserve a name for the preview snapshot");
+    throw std::runtime_error("Could not reserve a name for the scene snapshot");
 }
 void WorkerSnapshots::Prune() const {
     std::error_code error;

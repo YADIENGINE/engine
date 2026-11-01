@@ -1,15 +1,15 @@
 #pragma once
 #include <deque>
 #include "Editor/Internals/Platform/Windows/NativeHandle.h"
-#include "Editor/Internals/Protocol/PreviewMessageReader.h"
+#include "Editor/Internals/Protocol/WorkerMessageReader.h"
 
 // Byte-mode PIPE_NOWAIT I/O is polled with a bounded budget; no UI or engine thread waits for a peer.
 class ControlChannel {
 public:
     [[nodiscard]] std::size_t QueuedBytes() const { return _queuedBytes; }
     ControlChannel(std::string session, bool server);
-    void Send(PreviewMessage message);
-    [[nodiscard]] std::vector<PreviewMessage> Poll();
+    void Send(WorkerMessage message);
+    [[nodiscard]] std::vector<WorkerMessage> Poll();
     [[nodiscard]] bool Closed() const { return _closed; }
 
 private:
@@ -19,7 +19,7 @@ private:
     };
     std::string _session;
     NativeHandle _pipe;
-    PreviewMessageReader _reader;
+    WorkerMessageReader _reader;
     std::deque<PendingWrite> _outgoing;
     std::size_t _queuedBytes = 0;
     bool _connected = false;

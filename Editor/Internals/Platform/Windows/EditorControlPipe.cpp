@@ -16,12 +16,12 @@ bool ClosedPipe(DWORD error) {
 } // namespace
 
 EditorControlPipe::EditorControlPipe()
-    : _name("\\\\.\\pipe\\EngineEditor.Control." + NewPreviewSession()) {
-    const auto name = PreviewWide(_name);
+    : _name("\\\\.\\pipe\\EngineEditor.Control." + NewWorkerSession()) {
+    const auto name = WorkerWide(_name);
     _pipe.Reset(CreateNamedPipeW(name.c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
                                  PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT | PIPE_REJECT_REMOTE_CLIENTS, 1,
                                  PipeBufferBytes, PipeBufferBytes, 0, nullptr));
-    if (!_pipe) ThrowPreviewWindowsError("Create editor control endpoint");
+    if (!_pipe) ThrowWorkerWindowsError("Create editor control endpoint");
 }
 std::vector<std::string> EditorControlPipe::Poll() {
     std::vector<std::string> lines;
@@ -32,7 +32,7 @@ std::vector<std::string> EditorControlPipe::Poll() {
     while (consumed < PollBudget) {
         DWORD available = 0;
         if (!PeekNamedPipe(_pipe.Get(), nullptr, 0, nullptr, &available, nullptr)) {
-            if (!ClosedPipe(GetLastError())) ThrowPreviewWindowsError("Poll editor control endpoint");
+            if (!ClosedPipe(GetLastError())) ThrowWorkerWindowsError("Poll editor control endpoint");
             Drop();
             return lines;
         }
@@ -40,7 +40,7 @@ std::vector<std::string> EditorControlPipe::Poll() {
         DWORD read = 0;
         if (!ReadFile(_pipe.Get(), buffer.data(), std::min(available, static_cast<DWORD>(buffer.size())), &read,
                       nullptr)) {
-            if (!ClosedPipe(GetLastError())) ThrowPreviewWindowsError("Read editor control endpoint");
+            if (!ClosedPipe(GetLastError())) ThrowWorkerWindowsError("Read editor control endpoint");
             Drop();
             return lines;
         }
@@ -74,7 +74,7 @@ void EditorControlPipe::Listen() {
     if (listening || error == ERROR_PIPE_LISTENING) return;
     // ERROR_NO_DATA: the client already closed; what it wrote can still be read.
     if (error != ERROR_PIPE_CONNECTED && error != ERROR_NO_DATA)
-        ThrowPreviewWindowsError("Listen on editor control endpoint");
+        ThrowWorkerWindowsError("Listen on editor control endpoint");
     _connected = true;
     ++_client;
 }
@@ -89,7 +89,7 @@ void EditorControlPipe::Flush() {
         DWORD written = 0;
         const auto size = static_cast<DWORD>(std::min(_outgoing.size(), PollBudget));
         if (!WriteFile(_pipe.Get(), _outgoing.data(), size, &written, nullptr)) {
-            if (!ClosedPipe(GetLastError())) ThrowPreviewWindowsError("Write editor control endpoint");
+            if (!ClosedPipe(GetLastError())) ThrowWorkerWindowsError("Write editor control endpoint");
             Drop();
             return;
         }

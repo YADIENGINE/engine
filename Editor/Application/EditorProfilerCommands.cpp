@@ -52,7 +52,7 @@ void EditorController::Profile(EditorProfilerCommand command, const Profiler::Re
         std::ostringstream key;
         key << std::hex << hash;
         auto directory = UserDataDirectory() / "EngineEditor" / "Profiler" / key.str();
-        const std::filesystem::path name = PreviewWide(file.empty() ? "baseline.json" : file);
+        const std::filesystem::path name = WorkerWide(file.empty() ? "baseline.json" : file);
         if (name != name.filename() || name == "." || name == "..")
             throw std::invalid_argument("Use a report filename, not a path");
         auto destination = directory / name;
@@ -71,7 +71,7 @@ void EditorController::Profile(EditorProfilerCommand command, const Profiler::Re
                 if (command == EditorProfilerCommand::SaveBaseline) _profiler.SetBaseline(*result);
             }
         }
-        const auto displayed = PreviewUtf8(destination.generic_wstring());
+        const auto displayed = WorkerUtf8(destination.generic_wstring());
         _profiler.SetFile(displayed);
         _profiler.Error({});
         Log("Profiler report: " + displayed);

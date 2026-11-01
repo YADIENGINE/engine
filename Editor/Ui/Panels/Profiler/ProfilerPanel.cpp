@@ -137,12 +137,12 @@ void ProfilerPanel::Live(const EditorSnapshot& snapshot, const EditorUiActions& 
     ImGui::EndDisabled();
     ImGui::TextWrapped("Stream FPS %.1f | readback %.2f | publish %.2f | host upload %.2f ms", snapshot.streamFps,
                        snapshot.captureMs, snapshot.publishMs, snapshot.hostTransferMs);
-    ImGui::TextWrapped("Live timing includes preview transport and the worker frame limit. Use Benchmarks for "
+    ImGui::TextWrapped("Live timing includes scene transport and the worker frame limit. Use Benchmarks for "
                        "controlled performance comparisons.");
     if (snapshot.profiler.liveSummary)
         Summary(*snapshot.profiler.liveSummary);
     else
-        ToolEmptyState("No live samples", "Enable Record live while a preview is running to inspect timing.");
+        ToolEmptyState("No live samples", "Enable Record live while a scene is running to inspect timing.");
     if (snapshot.profiler.live) Frames(*snapshot.profiler.live);
 }
 void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
@@ -167,7 +167,7 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
     ImGui::BeginDisabled(!snapshot.ready);
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted("Glow override");
-    ToolTooltip("Apply a preview glow quality override. The highlight shows the last override requested here.");
+    ToolTooltip("Apply a scene glow quality override. The highlight shows the last override requested here.");
     constexpr std::array GlowLabels{"Full", "Reduced", "Off"};
     constexpr std::array GlowCommands{EditorProfilerCommand::GlowFull, EditorProfilerCommand::GlowReduced,
                                       EditorProfilerCommand::GlowOff};
@@ -183,7 +183,7 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
     _recipe.measureFrames = std::clamp(_recipe.measureFrames, 2, 10000);
     _recipe.pairs = std::clamp(_recipe.pairs, 1, 6);
     ImGui::TextWrapped("Fixed 1/60 s simulation. A/B, B/A, A/B. Input and image transfer stop during measurement. The "
-                       "preview resets afterwards. Release builds are recommended; Debug results stay labeled Debug.");
+                       "scene resets afterwards. Release builds are recommended; Debug results stay labeled Debug.");
     ImGui::BeginDisabled(!snapshot.ready || !snapshot.selected || !snapshot.selected->benchmark ||
                          !snapshot.pending.empty());
     if (ImGui::Button("Compare A / B")) actions.profiler(EditorProfilerCommand::Start, _recipe, {});

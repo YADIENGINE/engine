@@ -41,7 +41,7 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | `Graphics/Style` | `Theme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
 | `Graphics/Ui` | Themed widgets (`DrawUi*`, `UiButton`, `Backdrop`) | `Style`, `Draw` |
 
-Particle shape drawing is shared by `Fx/ParticleSystem2D` and static previews through `Graphics/Draw/ParticleDraw`; it
+Particle shape drawing is shared by `Fx/ParticleSystem2D` and static editor scenes through `Graphics/Draw/ParticleDraw`; it
 accepts explicit pose/style and never reads a theme.
 
 The render migration is complete (`Docs/Design/Rendering.md` → R13). All public headers use the `.h` extension.

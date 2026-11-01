@@ -1,4 +1,4 @@
-"""`editor`: EngineEditor'ü ve projenin preview worker'ını derleyip editörü açar.
+"""`editor`: EngineEditor'ü ve projenin worker process'ını derleyip editörü açar.
 
 Ayarlar Project.json "editor" bölümünden (bkz. Docs/ProjectSetup.md). Worker'ı ve EngineEditor.project.json
 tarifini projenin `engine_add_editor_worker` çağrısı kurar. Editör build'i oyununkinden ayrı bir klasördedir.
@@ -65,7 +65,7 @@ def editor(project: Project, release: bool, build_only: bool, clean: bool) -> in
         run(command, project.root, env)
 
     config = config_name(release)
-    worker = settings.get("worker", project.name + "Preview")
+    worker = settings.get("worker", project.name + "EditorWorker")
     run([cmake, "--build", str(build_dir), "--config", config, "--target", "EngineEditor", worker], project.root, env)
     if build_only:
         return EXIT_OK

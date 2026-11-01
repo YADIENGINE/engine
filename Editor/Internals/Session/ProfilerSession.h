@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include "Modules/Profiler/Profiler.h"
-#include "Editor/Internals/Protocol/PreviewProtocol.h"
+#include "Editor/Internals/Protocol/WorkerProtocol.h"
 
 struct ProfilerSessionSnapshot {
     bool liveEnabled = false, busy = false, gpuSupported = false;
@@ -19,7 +19,7 @@ public:
     void Reset(std::uint64_t generation);
     void Arm(std::uint64_t captureId);
     void Disconnected();
-    void Receive(const PreviewMessage& message);
+    void Receive(const WorkerMessage& message);
     void SetBaseline(Profiler::Capture capture);
     void SetFile(const std::string& file) { _snapshot.file = file; }
     void Error(const std::string& error) { _snapshot.error = error; }

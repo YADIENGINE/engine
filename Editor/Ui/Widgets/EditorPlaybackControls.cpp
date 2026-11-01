@@ -158,7 +158,7 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     if (!snapshot.ready) marking = false;
     ImGui::BeginDisabled(!snapshot.ready);
     if (EditorIconButton("mark", EditorGlyph::Mark,
-                         "Mark a region of the preview and paste it into the Console (or Alt+drag)", marking))
+                         "Mark a region of the scene and paste it into the Console (or Alt+drag)", marking))
         marking = !marking;
     ImGui::EndDisabled();
     ImGui::EndGroup();

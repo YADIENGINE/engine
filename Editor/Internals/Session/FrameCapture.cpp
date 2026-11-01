@@ -11,7 +11,7 @@
 namespace {
 constexpr int MaxCaptureSide = 4096;
 constexpr int Channels = 4;
-std::byte Channel(const PreviewPixels& frame, int x, int y, int channel) {
+std::byte Channel(const ViewportPixels& frame, int x, int y, int channel) {
     return frame
         .rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(frame.width) + static_cast<std::size_t>(x)) *
                   Channels +
@@ -19,10 +19,10 @@ std::byte Channel(const PreviewPixels& frame, int x, int y, int channel) {
 }
 } // namespace
 
-PreviewPixels CaptureFrame(const PreviewPixels& frame, Vec2 canvas, const FrameCaptureOptions& options) {
+ViewportPixels CaptureFrame(const ViewportPixels& frame, Vec2 canvas, const FrameCaptureOptions& options) {
     if (frame.width <= 0 || frame.height <= 0 || canvas.x <= 0 || canvas.y <= 0 ||
         frame.rgba.size() != static_cast<std::size_t>(frame.width) * static_cast<std::size_t>(frame.height) * Channels)
-        throw std::runtime_error("No usable preview frame");
+        throw std::runtime_error("No usable viewport frame");
     if (!std::isfinite(options.scale) || options.scale < FrameCaptureMinScale || options.scale > FrameCaptureMaxScale)
         throw std::runtime_error(
             std::format("Scale must be between {} and {}", FrameCaptureMinScale, FrameCaptureMaxScale));
@@ -36,7 +36,7 @@ PreviewPixels CaptureFrame(const PreviewPixels& frame, Vec2 canvas, const FrameC
     const double toPixelY = static_cast<double>(frame.height) / canvas.y;
     const double left = area.x * toPixelX, top = area.y * toPixelY;
     const double sourceWidth = area.width * toPixelX, sourceHeight = area.height * toPixelY;
-    PreviewPixels result;
+    ViewportPixels result;
     result.width = std::clamp(static_cast<int>(std::lround(sourceWidth * options.scale)), 1, MaxCaptureSide);
     result.height = std::clamp(static_cast<int>(std::lround(sourceHeight * options.scale)), 1, MaxCaptureSide);
     result.sequence = frame.sequence;
@@ -66,7 +66,7 @@ PreviewPixels CaptureFrame(const PreviewPixels& frame, Vec2 canvas, const FrameC
     }
     return result;
 }
-FrameGrid ComposeFrameGrid(const std::vector<PreviewPixels>& tiles, const std::vector<std::string>& labels,
+FrameGrid ComposeFrameGrid(const std::vector<ViewportPixels>& tiles, const std::vector<std::string>& labels,
                            int columns) {
     if (tiles.empty() || labels.size() != tiles.size() || columns <= 0)
         throw std::runtime_error("A frame grid needs tiles, one label per tile and at least one column");

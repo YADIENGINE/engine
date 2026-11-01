@@ -34,7 +34,7 @@ void ProfilerSession::Disconnected() {
     _snapshot.liveEnabled = false;
     _incoming.reset();
 }
-void ProfilerSession::Receive(const PreviewMessage& message) {
+void ProfilerSession::Receive(const WorkerMessage& message) {
     if (message.generation != _generation) return;
     const auto id = message.data.at("captureId").get<std::uint64_t>();
     if (id != _snapshot.captureId) return;

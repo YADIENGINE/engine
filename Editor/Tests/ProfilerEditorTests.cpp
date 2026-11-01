@@ -6,7 +6,7 @@ namespace {
 nlohmann::json Encode(const Profiler::Capture& capture) {
     return nlohmann::json::parse(JsonIO::Serialize(Profiler::Encode(capture)));
 }
-PreviewMessage Message(std::uint64_t generation, const std::string& type, nlohmann::json data) {
+WorkerMessage Message(std::uint64_t generation, const std::string& type, nlohmann::json data) {
     return {{}, generation, 0, type, std::move(data)};
 }
 } // namespace
@@ -89,20 +89,18 @@ TEST_CASE("Editor.Profiler.ExecutionRestorationOnCancelAndCompletion", "[engine-
 }
 
 TEST_CASE("Editor.Profiler.BenchmarkMetadataRoundTripAndValidation", "[engine-editor][profiler]") {
-    PreviewDefinition definition;
+    SceneDefinition definition;
     definition.id = "test.benchmark";
     definition.name = "Test benchmark";
     definition.parameters = {
-        {.id = "enabled", .label = "Enabled", .kind = PreviewParameterKind::Boolean, .initial = true}};
-    definition.benchmark = PreviewBenchmark{definition.id};
+        {.id = "enabled", .label = "Enabled", .kind = SceneParameterKind::Boolean, .initial = true}};
+    definition.benchmark = SceneBenchmark{definition.id};
     definition.benchmark->variants[0].parameters = {{"enabled", false}};
-    definition.create = [](const PreviewServices&, const PreviewParameters&) {
-        return std::unique_ptr<EditorPreview>{};
-    };
-    PreviewRegistry registry;
+    definition.create = [](const SceneServices&, const SceneParameters&) { return std::unique_ptr<EditorScene>{}; };
+    SceneRegistry registry;
     registry.Add(definition);
-    const auto encoded = EncodePreviewCatalog(registry.Entries());
-    const auto decoded = DecodePreviewCatalog(encoded);
+    const auto encoded = EncodeSceneCatalog(registry.Entries());
+    const auto decoded = DecodeSceneCatalog(encoded);
     REQUIRE(decoded.size() == 1);
     REQUIRE(decoded.front().benchmark);
     CHECK(decoded.front().benchmark->id == definition.id);
@@ -113,6 +111,6 @@ TEST_CASE("Editor.Profiler.BenchmarkMetadataRoundTripAndValidation", "[engine-ed
     definition.benchmark->variants[0].parameters = {{"missing", true}};
     CHECK_THROWS(registry.Add(definition));
     auto invalid = encoded;
-    invalid["entries"][0]["benchmark"]["variants"][0]["parameters"] = EncodePreviewParameters({{"missing", true}});
-    CHECK_THROWS(DecodePreviewCatalog(invalid));
+    invalid["entries"][0]["benchmark"]["variants"][0]["parameters"] = EncodeSceneParameters({{"missing", true}});
+    CHECK_THROWS(DecodeSceneCatalog(invalid));
 }

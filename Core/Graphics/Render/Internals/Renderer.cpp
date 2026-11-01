@@ -39,7 +39,7 @@ void Renderer::Frame::Complete(const std::function<void(const Texture2D&)>& canv
     const GpuTarget image = pipeline.FinishCanvas();
     if (observer) {
         observer->EndRegion(FrameRegion::Canvas);
-        observer->BeginRegion(FrameRegion::PreviewBridge);
+        observer->BeginRegion(FrameRegion::WorkerBridge);
     }
     if (canvasReady) {
         HandOverToRlgl(*renderer._device);
@@ -48,7 +48,7 @@ void Renderer::Frame::Complete(const std::function<void(const Texture2D&)>& canv
         rlDrawRenderBatchActive();
     }
     if (observer) {
-        observer->EndRegion(FrameRegion::PreviewBridge);
+        observer->EndRegion(FrameRegion::WorkerBridge);
         observer->BeginRegion(FrameRegion::Present);
     }
     Painter& window = pipeline.BeginWindow();

@@ -47,33 +47,33 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
     io.Fonts->SetTexID(ImTextureID{1});
     ApplyToolTheme();
 
-    PreviewDefinition definition;
+    SceneDefinition definition;
     definition.id = "inspector";
-    definition.description = "A preview with multiple property types and long labels.";
+    definition.description = "A scene with multiple property types and long labels.";
     definition.parameters = {
-        {"count", "A long numeric property label", PreviewParameterKind::Integer, std::int64_t{3}, 0, 10},
-        {"seed", "Seed", PreviewParameterKind::Integer, std::int64_t{42}, 0, 1000000},
-        {"size", "Size", PreviewParameterKind::Float, 0.5, 0, 1},
-        {"enabled", "Enabled", PreviewParameterKind::Boolean, true},
-        {"color", "Tint", PreviewParameterKind::Color, PreviewColor{}},
+        {"count", "A long numeric property label", SceneParameterKind::Integer, std::int64_t{3}, 0, 10},
+        {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{42}, 0, 1000000},
+        {"size", "Size", SceneParameterKind::Float, 0.5, 0, 1},
+        {"enabled", "Enabled", SceneParameterKind::Boolean, true},
+        {"color", "Tint", SceneParameterKind::Color, SceneColor{}},
         {"choice",
          "View",
-         PreviewParameterKind::Choice,
+         SceneParameterKind::Choice,
          std::string("A long selected value"),
          0,
          1,
-         PreviewApplyMode::OnReset,
+         SceneApplyMode::OnReset,
          {"A long selected value", "Other"}}};
     auto buttons = definition.parameters.back();
     buttons.id = "buttons";
     buttons.label = "Type";
     buttons.choiceButtons = true;
     definition.parameters.push_back(buttons);
-    PreviewParameter phase{"phase", "Phase", PreviewParameterKind::Choice, std::string("Enter")};
+    SceneParameter phase{"phase", "Phase", SceneParameterKind::Choice, std::string("Enter")};
     phase.choices = {"Enter", "Phase 2", "Final"};
     phase.choiceButtons = true;
     phase.choiceButtonColumns = 3;
-    phase.apply = PreviewApplyMode::NextAction;
+    phase.apply = SceneApplyMode::NextAction;
     definition.parameters.push_back(phase);
     definition.actions = {{"replay", "Replay"},
                           {"end", "End effects"},
@@ -81,7 +81,7 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
                           {"special", "Special action"},
                           {"combine", "Combine buffs"}};
     const std::vector catalog{definition};
-    auto parameters = PreviewDefaults(definition);
+    auto parameters = SceneDefaults(definition);
     parameters["count"] = std::int64_t{4};
     const auto before = parameters;
     const EditorDiagnostics diagnostics;
@@ -92,12 +92,12 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
     snapshot.inspection.disabledParameters = {"enabled"};
     snapshot.inspection.disabledActions = {"end"};
     snapshot.inspection.values = {
-        {"Wall charges", "0", PreviewReadoutKind::Number},
-        {"State", "Playing", PreviewReadoutKind::Status},
+        {"Wall charges", "0", SceneReadoutKind::Number},
+        {"State", "Playing", SceneReadoutKind::Status},
         {"Note", "A longer explanation that must stay readable when the Inspector is narrow."}};
     int commands = 0;
     EditorUiActions actions;
-    actions.parameter = [&](const std::string&, const PreviewValue&) { ++commands; };
+    actions.parameter = [&](const std::string&, const SceneValue&) { ++commands; };
     actions.action = [&](const std::string&) { ++commands; };
     InspectorPanel panel;
     for (const float scale : std::array{0.9375f, 1.25f, 2.5f}) {
@@ -149,12 +149,12 @@ TEST_CASE("Editor.Inspector.NarrowControlsKeepReadableHeight", "[engine-editor]"
     io.Fonts->GetTexDataAsRGBA32(&pixels, &atlasWidth, &atlasHeight);
     io.Fonts->SetTexID(ImTextureID{1});
     ApplyToolTheme();
-    PreviewParameter choices{"phase", "Phase", PreviewParameterKind::Choice, std::string("First phase")};
+    SceneParameter choices{"phase", "Phase", SceneParameterKind::Choice, std::string("First phase")};
     choices.choices = {"First phase", "Second phase", "Final phase"};
     choices.choiceButtons = true;
     choices.choiceButtonColumns = 3;
     auto value = choices.initial;
-    const std::array actions{PreviewAction{"start", "Start the selected phase again", "", true}};
+    const std::array actions{SceneAction{"start", "Start the selected phase again", "", true}};
     int commands = 0;
     for (const float scale : std::array{0.9375f, 1.25f, 2.5f}) {
         ImGui::GetStyle().FontScaleMain = scale;
@@ -164,7 +164,10 @@ TEST_CASE("Editor.Inspector.NarrowControlsKeepReadableHeight", "[engine-editor]"
             ImGui::SetNextWindowSize({width, 1500});
             ImGui::Begin("Narrow controls", nullptr, ImGuiWindowFlags_NoCollapse);
             BeginInspectorStyle();
+            // Single-line controls select the shared body font independently of the Inspector's font.
+            ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
             const float line = ImGui::GetFrameHeightWithSpacing();
+            ImGui::PopFont();
             CHECK_FALSE(ToolSingleLineButton("A long action label that cannot fit in one narrow column"));
             CHECK(ImGui::GetItemRectSize().y <= line);
             CHECK_FALSE(EditorParameterWidget(choices, value));
@@ -174,7 +177,7 @@ TEST_CASE("Editor.Inspector.NarrowControlsKeepReadableHeight", "[engine-editor]"
             const float before = ImGui::GetCursorPosY();
             InspectorActionGroup(actions, {}, [&](const std::string&) { ++commands; });
             CHECK(ImGui::GetCursorPosY() - before <= line);
-            InspectorSummary("A long preview title",
+            InspectorSummary("A long scene title",
                              "A long description with sufficient words to wrap through many lines in a narrow panel.");
             CHECK(ImGui::GetItemRectSize().y <= ImGui::GetTextLineHeight() * 2);
             EndInspectorStyle();

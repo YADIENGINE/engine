@@ -10,6 +10,6 @@ void RefreshState::BuildFinished(bool success) {
     _phase = success ? RefreshPhase::Starting : RefreshPhase::Idle;
 }
 void RefreshState::Started() {
-    if (_phase != RefreshPhase::Starting) throw std::logic_error("No new preview is starting");
+    if (_phase != RefreshPhase::Starting) throw std::logic_error("No new scene is starting");
     _phase = RefreshPhase::Idle;
 }

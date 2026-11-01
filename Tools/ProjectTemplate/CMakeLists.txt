@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(APP_BUILD_GAME "Build the game" ON)
-option(APP_BUILD_EDITOR "Build the preview worker for EngineEditor (Windows desktop)" OFF)
+option(APP_BUILD_EDITOR "Build the worker process for EngineEditor (Windows desktop)" OFF)
 option(APP_BUILD_TESTS "Build headless tests (Debug only)" OFF)
 
 if(APP_BUILD_GAME OR APP_BUILD_EDITOR)
@@ -35,6 +35,6 @@ if(APP_BUILD_GAME)
 endif()
 
 if(APP_BUILD_EDITOR)
-    engine_add_editor_worker(${PROJECT_NAME}Preview SOURCES ${APP_EDITOR_SOURCES})
-    target_include_directories(${PROJECT_NAME}Preview PRIVATE Editor)
+    engine_add_editor_worker(${PROJECT_NAME}EditorWorker SOURCES ${APP_EDITOR_SOURCES})
+    target_include_directories(${PROJECT_NAME}EditorWorker PRIVATE Editor)
 endif()

@@ -5,7 +5,7 @@ project's editor preferences. Opening it does not automatically enable recording
 
 ## Live
 
-Open any preview or application flow, then select Record live. Worker FPS measures actual worker frames;
+Open any editor scene or application flow, then select Record live. Worker FPS measures actual worker frames;
 Stream FPS measures image publication. The worker normally runs at 30 FPS. Live data includes image
 transport, frame limiting and profiler communication; use Benchmarks for controlled comparisons.
 
@@ -29,7 +29,7 @@ stop; input, parameter changes and playback are locked. The editor renders at 10
 frozen. Cancel remains available. GPU collection polls for at most two seconds without blocking reads.
 Results are transferred afterwards in bounded, backpressured chunks.
 
-Completion/cancel restores FPS, VSync and playback, and recreates the previous preview recipe.
+Completion/cancel restores FPS, VSync and playback, and recreates the previous scene recipe.
 The old transient simulation state is reset. A worker crash leaves an incomplete capture; it cannot become
 a successful baseline. The host returns to its prior frame limit when the operation ends. Use a Release
 worker for conclusions; reports label Debug explicitly and reject Debug/Release automatic comparisons.
@@ -52,18 +52,18 @@ must match for automatic labels. Mismatches still display raw values and reasons
 
 ## Registering workloads
 
-PreviewDefinition has optional benchmark metadata: stable ID, contract version and two named variants,
+SceneDefinition has optional benchmark metadata: stable ID, contract version and two named variants,
 each with optional authored parameter overrides. Default variants are A/B repeats of the same workload.
 Painter always handles batching. Registry validation checks identity and overrides. Increment the workload contract
 version when its meaning changes, retaining the version for ordinary implementation optimizations.
 
 A benchmark opts into fixed-step operation explicitly. Its factory must reconstruct repeatable state from
 parameters and fixed seeds, use Painter::Time for decorative time and call production models/Views. Other
-previews still support Live. PreviewServices exposes a borrowed Profiler pointer for optional custom CPU
+scenes still support Live. SceneServices exposes a borrowed Profiler pointer for optional custom CPU
 scopes/counters; register names during setup and never retain the pointer past Stop/destruction.
 
 Engine supplies Painter Glows (20/100/500 lights, grid/cluster, radius, seed) without any Game dependency.
-Projects add production workloads through their normal preview registry.
+Projects add production workloads through their normal scene registry.
 
 Protocol v9 associates profiler messages with generation/capture IDs and carries parameter-only A/B variants. Stale messages are ignored. Ordered
 chunks and expected run/frame counts are validated before making results visible. The existing 1 MiB IPC
@@ -71,7 +71,7 @@ message limit remains. Rebuild host and worker together after the protocol/API c
 
 ## Manual acceptance
 
-1. Dock/close/reopen Profiler; enable/disable Live on a preview and a real application flow.
+1. Dock/close/reopen Profiler; enable/disable Live on a scene and a real application flow.
 2. In Release, compare all presets and inspect per-repeat counts and frame details.
 3. Compare Full/Reduced/Off appearance, including alpha overlays after glow groups.
 4. Cancel warmup, measurement, GPU collection and transfer; stop/reset/reopen and simulate worker failure.

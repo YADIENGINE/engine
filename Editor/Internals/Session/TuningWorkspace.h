@@ -5,7 +5,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Editor/Internals/Protocol/PreviewProtocol.h"
+#include "Editor/Internals/Protocol/WorkerProtocol.h"
 #include "Tuning/TuningFile.h"
 
 struct TuningFileProblem {
@@ -18,8 +18,8 @@ struct TuningFileState {
     std::string target;
     std::string label; // Bütün tuning dosyalarının ortak klasörüne göre yol
     std::vector<TuningField> fields;
-    std::optional<TuningFileProblem> problem;  // Dosya okunamıyor ya da geçersiz; fields son geçerli hali
-    std::optional<PreviewTuningStatus> worker; // Önizlemenin son raporu; önizleme dosyayı kullanmıyorsa yok
+    std::optional<TuningFileProblem> problem; // Dosya okunamıyor ya da geçersiz; fields son geçerli hali
+    std::optional<WorkerTuningStatus> worker; // Önizlemenin son raporu; önizleme dosyayı kullanmıyorsa yok
     std::optional<std::filesystem::file_time_type> written;
 };
 
@@ -36,7 +36,7 @@ public:
     // Boş metin: yazıldı. Değilse dosyaya dokunulmadı (dosya o an geçersiz, değer sınır dışı ya da tip yanlış).
     [[nodiscard]] std::string Set(std::size_t file, const TuningLocation& at, const TuningValue& value);
     // Önizlemenin raporu; dosyalardan biriyse onun durumu olur. Dosyanın etiketi, bilinmiyorsa boş.
-    std::string Report(const PreviewTuningStatus& status);
+    std::string Report(const WorkerTuningStatus& status);
     void ClearWorkerStatus();
 
 private:

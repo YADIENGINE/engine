@@ -168,7 +168,7 @@ DrawUiText(paint, "SETTINGS", {_area.Center().x, 40.0f}, {.size = 36.0f, .color 
 ```
 
 One-off variant: copy `CurrentTheme().ui.X`, modify it, and pass it to the explicit-style function. Drawing that
-advances its own clock (e.g. a preview card) also calls the explicit-style function with `time`.
+advances its own clock (e.g. a card in an editor scene) also calls the explicit-style function with `time`.
 
 ## Measurement
 

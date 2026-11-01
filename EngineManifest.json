@@ -1,9 +1,22 @@
 {
   "name": "YADIEN",
-  "version": "0.2.0",
-  "toolsContract": 1,
+  "version": "0.3.0",
+  "toolsContract": 2,
   "repository": "https://github.com/YADIENGINE/engine.git",
   "notes": [
+    {
+      "version": "0.3.0",
+      "date": "2026-11-01",
+      "changes": [
+        "Editor catalog entries are editor scenes; content, worker transport and viewport APIs use distinct names"
+      ],
+      "breaking": [
+        {
+          "change": "EditorPreview becomes EditorScene; Preview APIs and headers become Scene, Worker or Viewport APIs; ctl JSON preview/previews fields become scene/scenes (tools contract 2)",
+          "migrate": "Rename public API includes and identifiers, move Editor/Preview references to Editor/Worker, rename worker targets to <Project>EditorWorker and update ctl consumers; see Docs/Editor/Development/Migrations.md for the old-to-new table. Rebuild editor and worker together."
+        }
+      ]
+    },
     {
       "version": "0.2.0",
       "date": "2026-11-01",

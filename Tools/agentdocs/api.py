@@ -218,8 +218,8 @@ def public_headers(root: Path) -> list[Path]:
     headers = [path for path in (root / 'Core').rglob('*.h')
                if not {'Internals', 'Tests'} & set(path.relative_to(root).parts)]
     headers += list((root / 'Editor' / 'Api').rglob('*.h'))
-    # PreviewHost is the worker entry point; the other Preview headers are host implementation.
-    host = root / 'Editor/Preview/PreviewHost.h'
+    # WorkerHost is the worker entry point; the other Scene headers are host implementation.
+    host = root / 'Editor/Worker/WorkerHost.h'
     if host.is_file():
         headers.append(host)
     return sorted(headers)

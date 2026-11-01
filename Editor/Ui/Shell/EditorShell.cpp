@@ -18,15 +18,15 @@ constexpr double OutputPulseSeconds = 1.4;
 constexpr float OutputPulseMinimum = 0.12f;
 constexpr float OutputPulseMaximum = 0.48f;
 void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
-    const PreviewParameter* language = nullptr;
+    const SceneParameter* language = nullptr;
     if (snapshot.selected) {
-        const auto found = std::ranges::find(snapshot.selected->parameters, "language", &PreviewParameter::id);
-        if (found != snapshot.selected->parameters.end() && found->kind == PreviewParameterKind::Choice)
+        const auto found = std::ranges::find(snapshot.selected->parameters, "language", &SceneParameter::id);
+        if (found != snapshot.selected->parameters.end() && found->kind == SceneParameterKind::Choice)
             language = &*found;
     }
     if (!ImGui::BeginMenu("Language")) return;
     if (!language) {
-        ImGui::TextDisabled("Select a preview with language support.");
+        ImGui::TextDisabled("Select a scene with language support.");
         ImGui::EndMenu();
         return;
     }
@@ -46,7 +46,7 @@ void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions
     if (snapshot.busy)
         ImGui::TextDisabled("Wait for the current operation to finish.");
     else if (!snapshot.ready)
-        ImGui::TextDisabled("Applies when the preview opens.");
+        ImGui::TextDisabled("Applies when the scene opens.");
     ImGui::EndMenu();
 }
 } // namespace
@@ -56,7 +56,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
     EditorShellResult result;
     if (!ImGui::BeginMainMenuBar()) return result;
     if (ImGui::BeginMenu("File")) {
-        result.focusCatalog = ImGui::MenuItem("Find preview", "Ctrl+P");
+        result.focusCatalog = ImGui::MenuItem("Find scene", "Ctrl+P");
         EditorCommandMenuItem(EditorCommand::Open, snapshot, actions);
         ImGui::Separator();
         // Only when a launcher started this editor (ENGINE_LAUNCHER; Docs/ToolsContract.md).
@@ -64,7 +64,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
         result.quit = ImGui::MenuItem("Exit");
         ImGui::EndMenu();
     }
-    if (ImGui::BeginMenu("Preview")) {
+    if (ImGui::BeginMenu("Scene")) {
         EditorCommandMenuItem(EditorPrimaryCommand(snapshot), snapshot, actions);
         if (snapshot.profiler.busy) EditorCommandMenuItem(EditorCommand::Stop, snapshot, actions);
         EditorCommandMenuItem(EditorCommand::Pause, snapshot, actions);
@@ -75,7 +75,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("View")) {
-        result.toggleMaximize = ImGui::MenuItem(maximized ? "Restore workspace" : "Focus preview");
+        result.toggleMaximize = ImGui::MenuItem(maximized ? "Restore workspace" : "Focus viewport");
         ImGui::Separator();
         if (ImGui::BeginMenu("Interface scale")) {
             for (const int percent : EditorFontSizes) {
@@ -84,7 +84,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
             }
             ImGui::EndMenu();
         }
-        ImGui::MenuItem("Preview performance metrics", nullptr, &preferences.showMetrics);
+        ImGui::MenuItem("Viewport performance metrics", nullptr, &preferences.showMetrics);
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Window")) {

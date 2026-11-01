@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iterator>
 #include <string>
-#include "Editor/Internals/Protocol/PreviewProtocol.h"
+#include "Editor/Internals/Protocol/WorkerProtocol.h"
 #include "Editor/Internals/Session/TuningWorkspace.h"
 #include "Tests/Support/TempDirectory.h"
 
@@ -38,16 +38,15 @@ struct Project {
 } // namespace
 
 TEST_CASE("Editor.Protocol.TuningStatusRoundTrips", "[engine-editor]") {
-    const PreviewTuningStatus status{"C:/MyGame/Glow.tuning.json", PreviewTuningState::NeedsBuild, 0, "new field",
-                                     true};
-    const auto decoded = DecodePreviewTuning(EncodePreviewTuning(status));
+    const WorkerTuningStatus status{"C:/MyGame/Glow.tuning.json", WorkerTuningState::NeedsBuild, 0, "new field", true};
+    const auto decoded = DecodeWorkerTuning(EncodeWorkerTuning(status));
     CHECK(decoded.source == status.source);
     CHECK(decoded.state == status.state);
     CHECK(decoded.text == status.text);
     CHECK(decoded.reload);
-    auto unknown = EncodePreviewTuning(status);
+    auto unknown = EncodeWorkerTuning(status);
     unknown["state"] = "later";
-    CHECK_THROWS(DecodePreviewTuning(unknown));
+    CHECK_THROWS(DecodeWorkerTuning(unknown));
 }
 
 TEST_CASE("Editor.Tuning.WorkspaceReadsTheBuildList", "[engine-editor]") {
@@ -82,7 +81,7 @@ TEST_CASE("Editor.Tuning.WorkerReportsMatchTheFile", "[engine-editor]") {
     std::string source = project.source.generic_string();
     for (auto& c : source)
         if (c == '/') c = '\\';
-    CHECK(project.workspace.Report({source, PreviewTuningState::Invalid, 3, "bad"}) == "Glow.tuning.json");
+    CHECK(project.workspace.Report({source, WorkerTuningState::Invalid, 3, "bad"}) == "Glow.tuning.json");
     REQUIRE(project.workspace.Files()[0].worker);
     CHECK(project.workspace.Files()[0].worker->line == 3);
     CHECK(project.workspace.Report({"C:/Elsewhere/Other.tuning.json"}).empty());

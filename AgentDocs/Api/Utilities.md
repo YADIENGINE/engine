@@ -121,7 +121,7 @@ Selectable value lists for settings screens (scheme, FPS limit, language ...): r
 
 ## `Core/Utilities/FrameObserver.h`
 
-- `enum class FrameRegion { Input, Audio, Application, Scene, Canvas, PreviewBridge, Present, EndDrawing, Count }`
+- `enum class FrameRegion { Input, Audio, Application, Scene, Canvas, WorkerBridge, Present, EndDrawing, Count }`
 - `class FrameObserver` — Optional frame instrumentation.
 - `FrameObserver`: `virtual void BeginFrame() noexcept = 0`
 - `FrameObserver`: `virtual void EndFrame() noexcept = 0`

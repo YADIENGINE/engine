@@ -68,7 +68,7 @@ set(recipeRoot "${CMAKE_CURRENT_SOURCE_DIR}/../../AgentDocs/Recipes/Code")
 add_library(EngineRecipes STATIC
     "${recipeRoot}/AnimatedCharacter.cpp"
     "${recipeRoot}/CharacterObject.cpp"
-    "${recipeRoot}/CharacterPreview.cpp"
+    "${recipeRoot}/CharacterScene.cpp"
     "${recipeRoot}/FxBurst.cpp"
     "${recipeRoot}/IconShape.cpp"
     "${recipeRoot}/SaveProgress.cpp"
@@ -78,7 +78,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/TextLayout.cpp"
     "${recipeRoot}/ThemedMenu.cpp"
     "${recipeRoot}/TuningValue.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/EditorPreview.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/EditorScene.cpp"
 )
 target_include_directories(EngineRecipes PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 target_link_libraries(EngineRecipes PUBLIC EngineHeadless EnginePersistence)

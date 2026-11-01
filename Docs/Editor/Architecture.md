@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | Public API | EngineEditorApi / Engine/Editor/Api | Metadata, parameters, inspection; knows no ImGui/IPC |
 | Support | EngineEditorSupport / Internals | Project recipe, protocol, process, viewport, preferences |
-| Worker runtime | EnginePreviewRuntime / Preview | Game-based preview and session |
+| Worker runtime | EngineWorkerRuntime / Worker | Hosts editor scenes in an engine Scene; worker session |
 | Shared UI | EngineToolUi / ToolUi | Theme, fonts, ImGui context, general widgets (shared with launcher) |
 | UI | EngineEditorUi / Ui | Shell, docking, panels, and editor-specific widgets |
 | Application | EngineEditor / Host, Application | Windows processes and UI lifecycle |
@@ -17,22 +17,22 @@ Dependency versions and IPC limits are in [API](Api.md).
 ## Worker flow
 
 The editor first starts the worker in catalog mode; the registry supplies only metadata, without setting up
-GL/fonts/audio. Opening a preview makes RunPreviewHost set up services and PreviewGame; Game::Run is the only loop.
-PreviewScene manages the content instance through ObjectList. Reset replaces the instance.
+GL/fonts/audio. Opening a scene makes RunEditorWorker set up services and WorkerGame; Game::Run is the only loop.
+WorkerScene manages the content instance through ObjectList. Reset replaces the instance.
 
 - **Snapshots** (`Internals/Session/WorkerSnapshots`): workers run from an immutable copy of each successful build, not
   from build output (`<worker>.live-<n>.exe`, beside the output: Assets and the working folder resolve identically).
   Builds never write to a running executable; unused copies are removed. Debug symbols remain in build output and match
   the latest snapshot.
-- **Worker instances** (`Application/PreviewWorker`): process + its own session (control channel, frame transfer) +
-  startup / shutdown timing. Several can coexist: active preview, its replacement, and retiring instances. Stop, Open,
-  and changing previews retire the old instance without waiting; if a retired instance does not exit within 5 s, its
+- **Worker instances** (`Application/WorkerProcess`): process + its own session (control channel, frame transfer) +
+  startup / shutdown timing. Several can coexist: active scene, its replacement, and retiring instances. Stop, Open,
+  and changing scenes retire the old instance without waiting; if a retired instance does not exit within 5 s, its
   process tree is terminated.
-- **Build & Refresh** (`Internals/Session/RefreshState`, `Application/PreviewBuild`): the running preview remains usable
-  throughout the build. A successful build is snapshotted; if a preview is open, a new instance starts beside the old
-  one with the same state (`PreviewOpenState`: preview, parameters, pause, speed; camera is host-owned) and replaces it
-  when ready. If the build or new instance fails, the old preview never stops. Without an open preview, the new build's
-  catalog is read. If the selected preview is absent from the new catalog, the catalog is accepted and the preview
+- **Build & Refresh** (`Internals/Session/RefreshState`, `Application/WorkerBuild`): the running scene remains usable
+  throughout the build. A successful build is snapshotted; if a scene is open, a new instance starts beside the old
+  one with the same state (`WorkerOpenState`: scene, parameters, pause, speed; camera is host-owned) and replaces it
+  when ready. If the build or new instance fails, the old scene never stops. Without an open scene, the new build's
+  catalog is read. If the selected scene is absent from the new catalog, the catalog is accepted and the scene
   stops.
 - Presentation time is not transferred: game state cannot be derived from time (scenes advance through Update), so it
   restarts as on Reset.
@@ -49,8 +49,8 @@ update together to the same protocol version; the project recipe version does no
 The only write path for tuning files ([Tuning](../Tuning.md)) is the file itself; the editor does not send values to
 workers. `Internals/Session/TuningWorkspace` reads the build's `Tuning/TuningFiles.json` list (CMake
 `engine_add_tuning`) and files, refreshes on external changes, patches the current file on disk with `PatchTuningValue`,
-and writes atomically. In development builds, the worker watches files itself (`PollTuning`); `PreviewHost` forwards
-live tuning reports to the host in `tuning` messages (`PreviewTuningStatus`: source, state, line, text). State belongs
+and writes atomically. In development builds, the worker watches files itself (`PollTuning`); `WorkerHost` forwards
+live tuning reports to the host in `tuning` messages (`WorkerTuningStatus`: source, state, line, text). State belongs
 to the active worker: it resets when the worker changes; during Build & Refresh, the new worker's reports switch with
 it. Release-built workers neither read live nor send reports. Presentation is `Ui/Panels/Tuning/TuningPanel`.
 
@@ -85,8 +85,8 @@ Its clients are `python Engine refresh` and `python Engine ctl` ([ToolsContract]
 ## Presentation clock and playback
 
 - Visual time is read through `Painter::Time()`. Before drawing each frame, `Game` supplies virtual
-  `Game::DrawSeconds()` to the Painter context. In games it is real time; in workers, the `PreviewGame` override
-  supplies the preview scene's scaled clock, reset to 0 on Reset; custom Game adapters supply their flow clock.
+  `Game::DrawSeconds()` to the Painter context. In games it is real time; in workers, the `WorkerGame` override
+  supplies the scene scene's scaled clock, reset to 0 on Reset; custom Game adapters supply their flow clock.
 - Views do not keep or forward clocks or call `GetTime()`. Drawing that advances its own time (portraits, intros) passes
   time as a `float time` parameter.
 - Pause freezes Update and presentation time; drawing, communication, parameters, and actions continue. Speed (0.1×..4×)
@@ -94,11 +94,11 @@ Its clients are `python Engine refresh` and `python Engine ctl` ([ToolsContract]
 
 ## Controls and inspection
 
-- Settings are `PreviewParameter`, actions `PreviewAction`; Inspector groups / descriptions are authored in content
+- Settings are `SceneParameter`, actions `SceneAction`; Inspector groups / descriptions are authored in content
   definitions.
-- `CaptureParameters` reports authored values changed by actions or product input; `MergePreviewCapture` validates the
+- `CaptureParameters` reports authored values changed by actions or product input; `MergeSceneCapture` validates the
   whole report and applies it atomically; `OnReset` recipes remain staged.
-- `PreviewInspection` carries read-only values, tables, focus area, and control visibility; it does not affect the
+- `SceneInspection` carries read-only values, tables, focus area, and control visibility; it does not affect the
   recipe and is sent at most 10 Hz.
 - Fit / Focus / 100% / pan / zoom use the same canvas transform for input; points outside the panel are rejected.
 
@@ -110,25 +110,25 @@ Its clients are `python Engine refresh` and `python Engine ctl` ([ToolsContract]
   RAII cleanup while the GL context is alive.
 - Theme, fonts, ImGui context / scale, and general widgets are the tools' shared layer: [ToolUi](../ToolUi.md)
   (`EngineToolUi`; also used by the launcher). The editor creates the context with docking enabled and keyboard
-  navigation disabled (preview controls share the keyboard). Editor-specific parts are in `Ui/Style/EditorTheme` (state
-  colors / labels, `EditorGlyph`) and `Ui/Widgets/EditorWidgets` (glyph icon button, preview parameter).
-- `Ui/Widgets/InspectorWidgets` is the shared Inspector presentation for all previews: plain collapsible section
+  navigation disabled (scene controls share the keyboard). Editor-specific parts are in `Ui/Style/EditorTheme` (state
+  colors / labels, `EditorGlyph`) and `Ui/Widgets/EditorWidgets` (glyph icon button, scene parameter).
+- `Ui/Widgets/InspectorWidgets` is the shared Inspector presentation for all scenes: plain collapsible section
   headers, shared label / value / reset columns across the panel; in narrow panels, labels above full-width controls,
   with one line for checkboxes that fit. Reset appears on hover / focus for unchanged fields; reserved space stays
   fixed. Choice groups use full panel width below the label at every width. Column count decreases according to text
   measurement; buttons stay single-line. Application time is summarized per group; mixed groups use markers / tooltips.
-  `PreviewReadoutKind` distinguishes live numbers, status, and wrapped explanations. Header descriptions are under `?`,
-  and small previews put search in a dropdown button. `advanced` groups start collapsed. Search and Modified only filter
+  `SceneReadoutKind` distinguishes live numbers, status, and wrapped explanations. Header descriptions are under `?`,
+  and small scenes put search in a dropdown button. `advanced` groups start collapsed. Search and Modified only filter
   property presentation; they do not change authored groups, application time, or visibility contracts. Explicit
   `primary` metadata puts the main action in a fixed footer; settings and live information scroll in a separate child
   area. Secondary actions use two columns when wide enough, one in narrow panels.
-- `Application/EditorController` manages processes, IPC, and preview commands. Panels know only `EditorSnapshot` and
+- `Application/EditorController` manages processes, IPC, and scene commands. Panels know only `EditorSnapshot` and
   `EditorUiActions`; UI commands apply after all panels draw.
 - `Application/EditorCommandState` resolves availability and blocking reasons in one place. Host-owned
-  `EditorCommand::Step` uses the existing playback message; public `Preview*` API and worker protocol stay unchanged.
+  `EditorCommand::Step` uses the existing playback message; public `Scene*` API and worker protocol stay unchanged.
 - `Ui/Commands` shares the command identity / label / icon / shortcut table with menus, toolbar, and command palette.
   The main Open / Stop / Cancel action derives from session state. Input consumed by shortcuts and the palette is not
-  sent to workers in the same frame; preview control shortcuts are blocked during popups and text editing.
+  sent to workers in the same frame; scene control shortcuts are blocked during popups and text editing.
 - `Ui/Shell` manages menu / global toolbar / status bar; `Ui/Workspace` manages docking, panel registration, Develop /
   Inspect / Profile layouts, and temporary maximization. Panel IDs are independent of visible titles; visibility and
   default dock positions are in the shared `EditorPanelDefinition` table. DockBuilder's internal API is used only in
@@ -151,4 +151,4 @@ FPS/VSync/render policy belongs to the measurement session and is restored after
 
 
 Project name and build directory separate editor preferences. Worker options are transient. In real-game adapters,
-progress and telemetry isolation belong to the project; details in [CreatingPreviews](CreatingPreviews.md).
+progress and telemetry isolation belong to the project; details in [CreatingScenes](CreatingScenes.md).

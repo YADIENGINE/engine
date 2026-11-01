@@ -68,10 +68,10 @@ void EditorApplication::SavePreferences(bool force) {
     if (_preferences != _observedPreferences || _fontSize != _observedFontSize) {
         _observedPreferences = _preferences;
         _observedFontSize = _fontSize;
-        _saveAt = PreviewTimestamp() + SettingsSaveDelay;
+        _saveAt = WorkerTimestamp() + SettingsSaveDelay;
         _dirty = true;
     }
-    if (!_dirty || (!force && PreviewTimestamp() < _saveAt)) return;
+    if (!_dirty || (!force && WorkerTimestamp() < _saveAt)) return;
     if (auto error = _settings->Save(_projectKey, _preferences, _fontSize); !error.empty())
         _controller.Log(error, EditorLogLevel::Warning);
     _dirty = false;
@@ -91,7 +91,7 @@ void EditorApplication::Update(float realSeconds) {
         ConfigureFrameExecution(*_beforeBenchmark);
         _beforeBenchmark.reset();
     }
-    if (auto opened = _controller.TakeOpenedPreview()) _preferences.Opened(*opened);
+    if (auto opened = _controller.TakeOpenedScene()) _preferences.Opened(*opened);
     if (_windowMark) { // Captured at the end of a frame drawn without the marking layer
         if (!_windowMarkSequence)
             _windowMarkSequence = RequestWindow();
@@ -111,10 +111,10 @@ std::uint64_t EditorApplication::RequestWindow() const {
     _windowWanted = true;
     return _windowSequence + 1;
 }
-std::shared_ptr<const PreviewPixels> EditorApplication::Window(std::uint64_t sequence) const {
+std::shared_ptr<const ViewportPixels> EditorApplication::Window(std::uint64_t sequence) const {
     return _window && _window->sequence >= sequence ? _window : nullptr;
 }
-void EditorApplication::PasteWindowMark(const FloatRect& region, const PreviewPixels& window) {
+void EditorApplication::PasteWindowMark(const FloatRect& region, const ViewportPixels& window) {
     try {
         if (!_control) return;
         const Vec2 size{window.width, window.height};
@@ -159,8 +159,8 @@ void EditorApplication::DrawToolOverlay() const {
         const bool timed = _controller.Snapshot().profiler.liveEnabled;
         const auto transferStarted = timed ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         if (!_display.Upload(frame->width, frame->height, frame->rgba, _controller.Generation(), frame->sequence,
-                             (PreviewTimestamp() - frame->capturedAt) * 1000))
-            _controller.Log("Could not create the preview texture.", EditorLogLevel::Error);
+                             (WorkerTimestamp() - frame->capturedAt) * 1000))
+            _controller.Log("Could not create the scene texture.", EditorLogLevel::Error);
         if (timed)
             _controller.HostTransfer(
                 std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - transferStarted).count());
@@ -178,7 +178,7 @@ void EditorApplication::DrawToolOverlay() const {
             editorInput = true;
             commands.emplace_back([this, id] { _controller.Select(id); });
         },
-        [&](const std::string& id, const PreviewValue& value) {
+        [&](const std::string& id, const SceneValue& value) {
             commands.emplace_back([this, id, value] { _controller.Parameter(id, value); });
         },
         [&](const std::string& id) {
@@ -216,8 +216,8 @@ void EditorApplication::DrawToolOverlay() const {
     const bool pointerBlocked =
         popup || !result.interaction.hovered || result.interaction.marking ||
         (ImGui::IsAnyItemActive() && !result.interaction.contentActive && !_router.OwnsPointer());
-    if (editorInput || result.cancelPreviewInput) _workspace.ReleaseInput();
-    if (editorInput || result.cancelPreviewInput || result.interaction.viewport.size.x <= 0 ||
+    if (editorInput || result.cancelViewportInput) _workspace.ReleaseInput();
+    if (editorInput || result.cancelViewportInput || result.interaction.viewport.size.x <= 0 ||
         result.interaction.viewport.size.y <= 0)
         _controller.Input(_router.Clear());
     else
@@ -232,7 +232,7 @@ void EditorApplication::DrawToolOverlay() const {
         try {
             auto pixels = ReadWindowPixels();
             pixels.sequence = ++_windowSequence;
-            _window = std::make_shared<const PreviewPixels>(std::move(pixels));
+            _window = std::make_shared<const ViewportPixels>(std::move(pixels));
         } catch (const std::exception& error) {
             _controller.Log(std::string("Window capture: ") + error.what(), EditorLogLevel::Warning);
         }

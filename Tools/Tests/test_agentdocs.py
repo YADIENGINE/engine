@@ -170,7 +170,7 @@ class FreshnessTests(unittest.TestCase):
 
     def test_header_scope_and_stable_output(self):
         for path in ('Core/Tests/Hidden.h', 'Core/Example/Internals/Hidden.h', 'ToolUi/Hidden.h',
-                     'Terminal/Hidden.h', 'Editor/Preview/Private.h', 'Editor/Api/Visible.h'):
+                     'Terminal/Hidden.h', 'Editor/Worker/Private.h', 'Editor/Api/Visible.h'):
             self.write(path, 'struct Fixture {};\n')
         paths = [p.relative_to(self.root).as_posix() for p in public_headers(self.root)]
         self.assertEqual(paths, ['Core/Example.h', 'Editor/Api/Visible.h'])

@@ -9,15 +9,15 @@ std::string Utf8(const std::filesystem::path& path) {
     const auto text = path.u8string();
     return {reinterpret_cast<const char*>(text.data()), text.size()};
 }
-Float2 ToCanvas(const PreviewViewport& viewport, Float2 point) {
+Float2 ToCanvas(const SceneViewport& viewport, Float2 point) {
     return {(point.x - viewport.position.x) / viewport.size.x * static_cast<float>(viewport.canvas.x),
             (point.y - viewport.position.y) / viewport.size.y * static_cast<float>(viewport.canvas.y)};
 }
 } // namespace
 
-std::optional<FloatRect> MarkRegion(const PreviewViewport& viewport, Float2 start, Float2 end) {
+std::optional<FloatRect> MarkRegion(const SceneViewport& viewport, Float2 start, Float2 end) {
     if (viewport.size.x <= 0.0f || viewport.size.y <= 0.0f || viewport.canvas.x <= 0 || viewport.canvas.y <= 0 ||
-        !MapPreviewPoint(viewport, start))
+        !MapViewportPoint(viewport, start))
         return std::nullopt;
     const auto width = static_cast<float>(viewport.canvas.x), height = static_cast<float>(viewport.canvas.y);
     const auto clampX = [width](float x) { return std::clamp(x, 0.0f, width); };
@@ -56,15 +56,15 @@ std::optional<FloatRect> WindowMarkRegion(Float2 start, Float2 end, Float2 windo
     return FloatRect{left, top, right - left, bottom - top};
 }
 std::string WindowMarkContext(FloatRect region, Vec2 window, const std::filesystem::path& image,
-                              const std::string& preview) {
+                              const std::string& scene) {
     std::string line = std::format("[editor] window region={},{} {}x{} of {}x{} image=\"{}\"", region.x, region.y,
                                    region.width, region.height, window.x, window.y, Utf8(image));
-    if (!preview.empty()) line += " open-preview=" + preview;
+    if (!scene.empty()) line += " open-scene=" + scene;
     return line + " ";
 }
-std::string MarkContext(const PreviewDefinition& definition, const PreviewParameters& values, double seconds,
-                        bool paused, FloatRect region, Vec2 canvas, const std::filesystem::path& image) {
-    std::string line = std::format("[editor] preview={} t{}{:.2f}s({}) region={},{} {}x{} of {}x{} image=\"{}\"",
+std::string MarkContext(const SceneDefinition& definition, const SceneParameters& values, double seconds, bool paused,
+                        FloatRect region, Vec2 canvas, const std::filesystem::path& image) {
+    std::string line = std::format("[editor] scene={} t{}{:.2f}s({}) region={},{} {}x{} of {}x{} image=\"{}\"",
                                    definition.id, paused ? "=" : "~", seconds, paused ? "paused" : "playing", region.x,
                                    region.y, region.width, region.height, canvas.x, canvas.y, Utf8(image));
     std::string changed;

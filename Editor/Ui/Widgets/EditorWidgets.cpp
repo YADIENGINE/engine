@@ -9,9 +9,9 @@
 bool EditorIconButton(const char* id, EditorGlyph glyph, const char* tooltip, bool selected) {
     return ToolIconButton(id, EditorGlyphText(glyph), tooltip, selected);
 }
-bool EditorParameterWidget(const PreviewParameter& parameter, PreviewValue& value) {
+bool EditorParameterWidget(const SceneParameter& parameter, SceneValue& value) {
     switch (parameter.kind) {
-    case PreviewParameterKind::Integer: {
+    case SceneParameterKind::Integer: {
         auto number = std::get<std::int64_t>(value);
         const auto minimum = static_cast<std::int64_t>(parameter.minimum);
         const auto maximum = static_cast<std::int64_t>(parameter.maximum);
@@ -29,7 +29,7 @@ bool EditorParameterWidget(const PreviewParameter& parameter, PreviewValue& valu
         }
         break;
     }
-    case PreviewParameterKind::Float: {
+    case SceneParameterKind::Float: {
         double number = std::get<double>(value);
         if (parameter.numericInput) {
             if (ImGui::InputDouble("##value", &number, 0.0, 0.0, "%.3f")) {
@@ -45,7 +45,7 @@ bool EditorParameterWidget(const PreviewParameter& parameter, PreviewValue& valu
         }
         break;
     }
-    case PreviewParameterKind::Boolean: {
+    case SceneParameterKind::Boolean: {
         bool enabled = std::get<bool>(value);
         if (ImGui::Checkbox("##value", &enabled)) {
             value = enabled;
@@ -53,8 +53,8 @@ bool EditorParameterWidget(const PreviewParameter& parameter, PreviewValue& valu
         }
         break;
     }
-    case PreviewParameterKind::Color: {
-        const auto color = std::get<PreviewColor>(value);
+    case SceneParameterKind::Color: {
+        const auto color = std::get<SceneColor>(value);
         std::array<float, 4> channels{color.r, color.g, color.b, color.a};
         // Keep all RGBA controls in the picker, using a compact hex field in the row.
         const float width = ImGui::CalcItemWidth();
@@ -62,12 +62,12 @@ bool EditorParameterWidget(const PreviewParameter& parameter, PreviewValue& valu
                            : width < ImGui::GetFontSize() * 22 ? ImGuiColorEditFlags_DisplayHex
                                                                : ImGuiColorEditFlags_None;
         if (ImGui::ColorEdit4("##value", channels.data(), flags)) {
-            value = PreviewColor{channels[0], channels[1], channels[2], channels[3]};
+            value = SceneColor{channels[0], channels[1], channels[2], channels[3]};
             return true;
         }
         break;
     }
-    case PreviewParameterKind::Choice: {
+    case SceneParameterKind::Choice: {
         bool changed = false;
         if (parameter.choiceButtons) {
             const auto& style = ImGui::GetStyle();

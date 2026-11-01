@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
-#include "Editor/Internals/Protocol/PreviewProtocol.h"
+#include "Editor/Internals/Protocol/WorkerProtocol.h"
 #include "Editor/Internals/Session/FrameCapture.h"
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
 #include "Platform/Internals/FileStorage.h"
@@ -49,7 +49,7 @@ nlohmann::json StatusOf(const EditorController& controller) {
                           {"status", snapshot.status},
                           {"ready", snapshot.ready},
                           {"building", snapshot.building},
-                          {"preview", snapshot.selected ? nlohmann::json(snapshot.selected->id) : nlohmann::json()}};
+                          {"scene", snapshot.selected ? nlohmann::json(snapshot.selected->id) : nlohmann::json()}};
     if (snapshot.ready) {
         status["paused"] = snapshot.paused;
         status["speed"] = snapshot.playbackSpeed;
@@ -70,14 +70,13 @@ double Number(const nlohmann::json& arguments, const char* key) {
         throw std::runtime_error(std::format("\"{}\" must be a number", key));
     return found->get<double>();
 }
-const PreviewDefinition& Selected(const EditorSnapshot& snapshot) {
-    if (!snapshot.selected) throw std::runtime_error("No preview is selected; open one first");
+const SceneDefinition& Selected(const EditorSnapshot& snapshot) {
+    if (!snapshot.selected) throw std::runtime_error("No scene is selected; open one first");
     return *snapshot.selected;
 }
 void RequireReady(const EditorSnapshot& snapshot) {
-    if (!snapshot.ready)
-        throw std::runtime_error("The preview is not running (" + snapshot.status + "); open it first");
-    if (snapshot.profiler.busy) throw std::runtime_error("A profiler run owns the preview; wait or cancel it");
+    if (!snapshot.ready) throw std::runtime_error("The scene is not running (" + snapshot.status + "); open it first");
+    if (snapshot.profiler.busy) throw std::runtime_error("A profiler run owns the scene; wait or cancel it");
 }
 FrameCaptureOptions CaptureOptionsOf(const nlohmann::json& arguments, Vec2 canvas) {
     FrameCaptureOptions options;
@@ -98,7 +97,7 @@ FrameCaptureOptions CaptureOptionsOf(const nlohmann::json& arguments, Vec2 canva
     }
     return options;
 }
-std::string Describe(const PreviewValue& value) { return ControlValue(value).dump(); }
+std::string Describe(const SceneValue& value) { return ControlValue(value).dump(); }
 } // namespace
 
 EditorControlService::EditorControlService(const std::filesystem::path& buildDirectory, EditorCaptureHost host)
@@ -171,20 +170,20 @@ void EditorControlService::Await(std::string waitingFor, std::chrono::steady_clo
 void EditorControlService::AwaitWorker(EditorController& controller, std::chrono::steady_clock::duration timeout,
                                        Answer answer) {
     const auto request = controller.Sync();
-    Await("the preview to apply the request", timeout,
+    Await("the scene to apply the request", timeout,
           [request, answer = std::move(answer)](EditorController& session) -> std::optional<nlohmann::json> {
               const auto snapshot = session.Snapshot();
-              if (!snapshot.ready) throw std::runtime_error("The preview stopped: " + snapshot.status);
+              if (!snapshot.ready) throw std::runtime_error("The scene stopped: " + snapshot.status);
               const auto& sync = session.LastSync();
               if (sync.request != request || sync.frames < FramesAfterSync) return std::nullopt;
               return answer(session);
           });
 }
 void EditorControlService::AwaitReady(const std::string& id) {
-    Await("the preview to start", ReadyTimeout, [id](EditorController& session) -> std::optional<nlohmann::json> {
+    Await("the scene to start", ReadyTimeout, [id](EditorController& session) -> std::optional<nlohmann::json> {
         const auto snapshot = session.Snapshot();
-        if (snapshot.phase == EditorPhase::Error) throw std::runtime_error("The preview failed: " + snapshot.status);
-        if (snapshot.phase == EditorPhase::Stopped) throw std::runtime_error("The preview stopped: " + snapshot.status);
+        if (snapshot.phase == EditorPhase::Error) throw std::runtime_error("The scene failed: " + snapshot.status);
+        if (snapshot.phase == EditorPhase::Stopped) throw std::runtime_error("The scene stopped: " + snapshot.status);
         if (!snapshot.ready || !snapshot.selected || snapshot.selected->id != id) return std::nullopt;
         return StatusOf(session);
     });
@@ -197,18 +196,18 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
     case EditorControlCommand::Refresh: Refresh(controller); return std::nullopt;
     case EditorControlCommand::Status : return StatusOf(controller);
     case EditorControlCommand::List   : {
-        auto previews = nlohmann::json::array();
+        auto scenes = nlohmann::json::array();
         for (const auto& definition : snapshot.catalog)
-            previews.push_back(ControlCatalogEntry(definition, controller.Values(definition.id)));
+            scenes.push_back(ControlCatalogEntry(definition, controller.Values(definition.id)));
         return nlohmann::json{
-            {"previews", std::move(previews)},
+            {"scenes", std::move(scenes)},
             {"selected", snapshot.selected ? nlohmann::json(snapshot.selected->id) : nlohmann::json()}};
     }
     case EditorControlCommand::Open: {
         const auto id = Text(arguments, "id");
-        const auto found = std::ranges::find(snapshot.catalog, id, &PreviewDefinition::id);
+        const auto found = std::ranges::find(snapshot.catalog, id, &SceneDefinition::id);
         if (found == snapshot.catalog.end())
-            throw std::runtime_error("Unknown preview '" + id + "'; `ctl list` shows the catalog");
+            throw std::runtime_error("Unknown scene '" + id + "'; `ctl list` shows the catalog");
         if (snapshot.ready && snapshot.selected && snapshot.selected->id == id) return StatusOf(controller);
         if (snapshot.busy) throw std::runtime_error("The editor is busy (" + snapshot.status + ")");
         controller.Select(id);
@@ -226,13 +225,13 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
         const auto values = arguments.find("values");
         if (values == arguments.end() || !values->is_object() || values->empty())
             throw std::runtime_error("\"values\" must be an object of parameter id → value");
-        std::vector<std::pair<std::string, PreviewValue>> changes;
+        std::vector<std::pair<std::string, SceneValue>> changes;
         for (const auto& [id, value] : values->items()) {
-            const auto parameter = std::ranges::find(definition.parameters, id, &PreviewParameter::id);
+            const auto parameter = std::ranges::find(definition.parameters, id, &SceneParameter::id);
             if (parameter == definition.parameters.end())
                 throw std::runtime_error("'" + definition.id + "' has no parameter '" + id + "'");
             auto converted = ControlValueOf(*parameter, value);
-            if (const auto error = ValidatePreviewValue(*parameter, converted); !error.empty())
+            if (const auto error = ValidateSceneValue(*parameter, converted); !error.empty())
                 throw std::runtime_error(error);
             changes.emplace_back(id, std::move(converted));
         }
@@ -250,7 +249,7 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
                 if (const auto found = current.find(id); found != current.end())
                     applied[id] = ControlValue(found->second);
             }
-            return nlohmann::json{{"preview", definition}, {"parameters", applied}};
+            return nlohmann::json{{"scene", definition}, {"parameters", applied}};
         };
         if (!snapshot.ready) return answer(controller); // Stored for the next start
         AwaitWorker(controller, WorkerTimeout, answer);
@@ -260,7 +259,7 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
         RequireReady(snapshot);
         const auto& definition = Selected(snapshot);
         const auto id = Text(arguments, "id");
-        const auto action = std::ranges::find(definition.actions, id, &PreviewAction::id);
+        const auto action = std::ranges::find(definition.actions, id, &SceneAction::id);
         if (action == definition.actions.end())
             throw std::runtime_error("'" + definition.id + "' has no action '" + id + "'");
         if (std::ranges::find(snapshot.inspection.disabledActions, id) != snapshot.inspection.disabledActions.end())
@@ -294,7 +293,7 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
         const double speed = Number(arguments, "speed");
         if (!ValidPlaybackSpeed(speed))
             throw std::runtime_error(
-                std::format("Speed must be between {} and {}", PreviewMinPlaybackSpeed, PreviewMaxPlaybackSpeed));
+                std::format("Speed must be between {} and {}", WorkerMinPlaybackSpeed, WorkerMaxPlaybackSpeed));
         controller.Playback(speed, false);
         controller.Notify(std::format("Speed {}x", speed));
         AwaitWorker(controller, WorkerTimeout, StatusOf);
@@ -346,7 +345,7 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
         RequireReady(snapshot);
         AwaitWorker(controller, WorkerTimeout, [](EditorController& session) {
             auto status = StatusOf(session);
-            status["inspection"] = EncodePreviewInspection(session.Snapshot().inspection);
+            status["inspection"] = EncodeSceneInspection(session.Snapshot().inspection);
             return status;
         });
         return std::nullopt;
@@ -372,24 +371,24 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
     }
     throw std::runtime_error("Unsupported command");
 }
-std::filesystem::path EditorControlService::WriteCapture(const PreviewPixels& image,
+std::filesystem::path EditorControlService::WriteCapture(const ViewportPixels& image,
                                                          const std::vector<FrameCaptureLabel>& labels,
                                                          const std::string& path, const std::string& prefix) {
     const auto png = _host.encodePng(image, labels);
     std::filesystem::path file =
-        path.empty() ? NewCapturePath(_captures, prefix) : std::filesystem::path(PreviewWide(path));
+        path.empty() ? NewCapturePath(_captures, prefix) : std::filesystem::path(WorkerWide(path));
     if (!file.is_absolute()) throw std::runtime_error("\"path\" must be absolute");
     file = file.lexically_normal().make_preferred();
     std::filesystem::create_directories(file.parent_path());
     if (!WriteBinaryFileAtomic(file, {reinterpret_cast<const char*>(png.data()), png.size()}))
-        throw std::runtime_error("Could not write " + PreviewUtf8(file.generic_wstring()));
+        throw std::runtime_error("Could not write " + WorkerUtf8(file.generic_wstring()));
     if (path.empty()) PruneCaptures(_captures, FrameCaptureKeep);
     return file;
 }
-nlohmann::json EditorControlService::Saved(const std::filesystem::path& file, const PreviewPixels& image,
+nlohmann::json EditorControlService::Saved(const std::filesystem::path& file, const ViewportPixels& image,
                                            const EditorController& controller) {
     auto status = StatusOf(controller);
-    status["path"] = PreviewUtf8(file.wstring());
+    status["path"] = WorkerUtf8(file.wstring());
     status["width"] = image.width;
     status["height"] = image.height;
     return status;
@@ -437,7 +436,7 @@ void EditorControlService::Frames(const nlohmann::json& arguments, EditorControl
         throw std::runtime_error("\"path\" must not be empty");
     struct Run {
         std::vector<double> times;
-        std::vector<PreviewPixels> tiles;
+        std::vector<ViewportPixels> tiles;
         std::vector<std::string> labels;
         std::uint64_t request = 0;
     };
@@ -455,7 +454,7 @@ void EditorControlService::Frames(const nlohmann::json& arguments, EditorControl
     Await("the frames", timeout,
           [this, run, shoot, options, columns, arguments](EditorController& session) -> std::optional<nlohmann::json> {
               const auto current = session.Snapshot();
-              if (!current.ready) throw std::runtime_error("The preview stopped: " + current.status);
+              if (!current.ready) throw std::runtime_error("The scene stopped: " + current.status);
               const auto& sync = session.LastSync();
               if (sync.request != run->request || sync.frames < FramesAfterSync) return std::nullopt;
               const auto frame = session.LatestFrame();

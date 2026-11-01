@@ -9,7 +9,7 @@ the remaining window area uses `letterbox`. `smoothCanvas` selects linear filter
 
 The runtime owns the frame. Scenes implement `Draw(Painter&)`; views receive the same Painter from their owner.
 Window, renderer and GPU implementation headers are private. `CanvasReady` borrows the completed canvas for
-preview transport without transferring ownership. `DrawWindow(Painter&)` draws in window pixels after canvas
+viewport transport without transferring ownership. `DrawWindow(Painter&)` draws in window pixels after canvas
 presentation; `DrawToolOverlay()` (tools only) renders native ToolUi on top after that drawing executed.
 
 ## Surfaces and scopes

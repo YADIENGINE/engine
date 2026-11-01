@@ -20,14 +20,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
             if (pointer) LocalFree(pointer);
         };
         std::unique_ptr<wchar_t*, decltype(release)> arguments(CommandLineToArgvW(GetCommandLineW(), &argc), release);
-        if (!arguments) ThrowPreviewWindowsError("Read editor arguments");
+        if (!arguments) ThrowWorkerWindowsError("Read editor arguments");
         if (argc == 3 && std::wstring(arguments.get()[1]) == L"--project")
             project = arguments.get()[2];
         else if (argc != 1)
             throw std::runtime_error("Usage: EngineEditor [--project file.json]");
         return RunEngineEditor(project);
     } catch (const std::exception& error) {
-        MessageBoxW(nullptr, PreviewWide(error.what()).c_str(), L"Engine Editor", MB_OK | MB_ICONERROR);
+        MessageBoxW(nullptr, WorkerWide(error.what()).c_str(), L"Engine Editor", MB_OK | MB_ICONERROR);
         return 1;
     }
 }

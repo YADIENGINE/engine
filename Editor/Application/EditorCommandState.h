@@ -4,12 +4,12 @@
 // Host state only: no worker protocol or UI dependency.
 struct EditorCommandContext {
     bool hasProject = false;
-    bool hasBuild = false; // A successful build exists to start a preview from
+    bool hasBuild = false; // A successful build exists to start a scene from
     bool hasSelection = false;
-    bool workerActive = false; // A catalog or preview worker runs
-    bool starting = false;     // A preview is starting and not ready yet
-    bool building = false;     // Build & Refresh builds; the running preview stays usable
-    bool replacing = false;    // The new build starts beside the running preview and will replace it
+    bool workerActive = false; // A catalog or worker process runs
+    bool starting = false;     // A scene is starting and not ready yet
+    bool building = false;     // Build & Refresh builds; the running scene stays usable
+    bool replacing = false;    // The new build starts beside the running scene and will replace it
     bool ready = false;
     bool paused = false;
     bool profilerBusy = false;

@@ -70,7 +70,7 @@ call it when a visual transition starts. Cancellation is allowed inside an input
 remains guarded.
 
 Runtime keeps sampling touch IDs while suppressing actions until every held key/contact has been released and the
-neutral frame has been consumed. External `ReadInput()` overrides own their focus/cancellation policy, so hidden preview
+neutral frame has been consumed. External `ReadInput()` overrides own their focus/cancellation policy, so hidden worker
 windows remain independent of OS focus. Pointer helpers accept canonical empty cancelled snapshots; forward one from
 InputCancelled to cancel and drain the old gesture without losing the next new press.
 
@@ -99,7 +99,7 @@ with it; for example, while a paused game is in the background on another screen
 game clock. TimeScale.Advance is not called while paused; hitstop/slow motion durations are preserved too. Pausing
 real-time menus requires a separate policy. `Time()` applies hitstop/slow motion. `FrameSeconds` customizes the host
 frame duration; `DrawSeconds` customizes presentation time. Decorative View drawing uses
-[Painter::Time](Graphics/Painter.md). UpdateReal also receives time after the FrameSeconds transformation; preview
+[Painter::Time](Graphics/Painter.md). UpdateReal also receives time after the FrameSeconds transformation; editor scene
 pause/speed/single-step apply to this hook.
 
 `SetScene` does not destroy a scene in the middle of a callback; it queues the transition. `SetScene(scene, true)`

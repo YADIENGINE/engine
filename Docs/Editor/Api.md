@@ -1,7 +1,7 @@
 # General editor API
 
-This document is the project-independent contract. Initial setup is in [GettingStarted](GettingStarted.md); using
-production drawing and designing content are in [CreatingPreviews](CreatingPreviews.md).
+This document is the project-independent contract for editor scenes. Initial setup is in [GettingStarted](GettingStarted.md); using
+production drawing and designing content are in [CreatingScenes](CreatingScenes.md).
 
 ## Registration
 
@@ -9,21 +9,21 @@ Public headers are under `Engine/Editor/Api/`; they contain no ImGui, Windows ha
 explicitly with the registry it receives:
 
 ```cpp
-void RegisterProjectPreviews(PreviewRegistry& registry) {
-    PreviewDefinition definition;
-    definition.id = "project.my-preview";
-    definition.name = "My preview";
+void RegisterProjectScenes(SceneRegistry& registry) {
+    SceneDefinition definition;
+    definition.id = "project.my-scene";
+    definition.name = "My scene";
     definition.category = "Drawing";
-    definition.parameters = {{"radius", "Radius", PreviewParameterKind::Float, 120.0, 8.0, 300.0}};
+    definition.parameters = {{"radius", "Radius", SceneParameterKind::Float, 120.0, 8.0, 300.0}};
     definition.actions = {{"emit", "Emit"}};
-    definition.create = [](const PreviewServices& services, const PreviewParameters& parameters) {
-        return std::make_unique<MyPreview>(services, parameters);
+    definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
+        return std::make_unique<MyScene>(services, parameters);
     };
     registry.Add(std::move(definition));
 }
 ```
 
-`MyPreview` derives from `EditorPreview` (a `GameObject`). Drawing without a model needs only `Draw(Painter&) const`;
+`MyScene` derives from `EditorScene` (a `GameObject`). Drawing without a model needs only `Draw(Painter&) const`;
 override `Start`, `Update(float)`, `Stop`, `HandleInput`, `ApplyParameter`, `ExecuteAction`, `CaptureParameters`, and
 `Inspect` as needed. Do not write a separate frame loop; content owns the model and real View, without a second copy of
 drawing for the editor.
@@ -33,23 +33,23 @@ Rules:
 - Registration adds only metadata / factories; it creates no window, assets, or instances. IDs are unique.
 - The factory is called on the engine thread when GL, text, and audio are ready; initial values are supplied as a
   complete map, without relying on `ApplyParameter` during setup.
-- `PreviewServices` supplies canvas size, audio reference, game font (`font`; for measurement outside drawing, e.g. hit
+- `SceneServices` supplies canvas size, audio reference, game font (`font`; for measurement outside drawing, e.g. hit
   testing; null if absent), and log/application-command callbacks. References outlive the instance; do not retain them
   after content stops.
-- `Update` receives scaled seconds. Visual time is `paint.Time()`: `PreviewScene::Seconds()` resets to 0 on every Reset
-  and supplies presentation time through `PreviewGame::DrawSeconds()`; content does not wire up a clock.
+- `Update` receives scaled seconds. Visual time is `paint.Time()`: `WorkerScene::Seconds()` resets to 0 on every Reset
+  and supplies presentation time through `WorkerGame::DrawSeconds()`; content does not wire up a clock.
 - `Stop` and destructors do not throw. Factory / hook failures may terminate the worker; the editor shows the error and
   exit code.
 
-`PreviewDefinition::benchmark` is an optional, repeatable workload contract. It carries stable identity/version, the
-names of two variants, and parameter differences. Without a definition, the preview supports only live measurement.
-`PreviewServices::profiler` is a borrowed module reference for recording custom CPU scopes/counters; use it only through
+`SceneDefinition::benchmark` is an optional, repeatable workload contract. It carries stable identity/version, the
+names of two variants, and parameter differences. Without a definition, the scene supports only live measurement.
+`SceneServices::profiler` is a borrowed module reference for recording custom CPU scopes/counters; use it only through
 `Modules/Profiler/Profiler.h`. [Profiler guide](Profiler.md).
 
 ## Parameter and action contract
 
-`PreviewValue`: `int64_t`, `double`, `bool`, normalized `PreviewColor`, or option text (`std::string`).
-`PreviewParameter` carries type, default, range / options, application time, `group`, and `description`. Numbers must be
+`SceneValue`: `int64_t`, `double`, `bool`, normalized `SceneColor`, or option text (`std::string`).
+`SceneParameter` carries type, default, range / options, application time, `group`, and `description`. Numbers must be
 finite and within range, color channels 0..1. Values are rejected, never silently clamped. Groups consisting of
 `advanced = true` fields start collapsed; search / Modified filter matches expand them. `applyAction` can name the
 consuming action only for NextAction fields; it must be a registered action. Inspector shows a shared application time
@@ -59,7 +59,7 @@ shows options in Inspector as buttons highlighting the selected value instead of
 columns according to panel width; the default is `false`. A positive `choiceButtonColumns` caps the column count; as
 space narrows, fewer columns keep buttons readable. The default `0` chooses one or two columns.
 
-`PreviewAction` carries identity, label, description, and optional `primary` (default `false`). At most one action may
+`SceneAction` carries identity, label, description, and optional `primary` (default `false`). At most one action may
 be marked primary; its list position does not matter. Inspector shows it full-width in a fixed footer, with other
 actions in an adaptive two-column group in scrollable content. A primary action is optional; in old catalogs without the
 field, all actions are secondary. This metadata changes neither action callbacks nor worker behavior.
@@ -78,17 +78,17 @@ reflection, or automatic source writing.
 
 ## Inspection
 
-`EditorPreview::Inspect()` returns read-only `PreviewInspection`: focus rectangle, labels / values, table tabs, hidden /
+`EditorScene::Inspect()` returns read-only `SceneInspection`: focus rectangle, labels / values, table tabs, hidden /
 disabled control and action IDs, `showImage`. It does not affect the recipe; changes are sent separately at most 10 Hz.
-General UI displays it without knowing project IDs. `PreviewReadout::kind` selects left-aligned wrapped text for default
+General UI displays it without knowing project IDs. `SceneReadout::kind` selects left-aligned wrapped text for default
 `Text`, right-aligned technical font for `Number`, and a short badge for `Status`. Status text also wraps if it does not
 fit. Units are part of the formatted value.
 
 ## Worker runtime
 
-`RunPreviewHost(argc, argv, RegisterProjectPreviews, settings)` takes an optional Game factory; the default is
-`PreviewGame`. `PreviewSession` separates IPC, instance lifecycle, and frame transfer from Game; the project can set up
-the same session in its own real Game (consumer's custom Game adapter). `PreviewSessionActions` wires quit / reset /
+`RunEditorWorker(argc, argv, RegisterProjectScenes, settings)` takes an optional Game factory; the default is
+`WorkerGame`. `WorkerSession` separates IPC, instance lifecycle, and frame transfer from Game; the project can set up
+the same session in its own real Game (consumer's custom Game adapter). `WorkerSessionActions` wires quit / reset /
 activate and application-command callbacks. Game hooks: `FrameSeconds` (host simulation time), `DrawSeconds`
 (presentation clock), `SetScene(scene, true)` (restarts the same scene's Enter flow). The host setting `fixedWindow`
 prevents Options from changing OS window / capture size.
@@ -100,20 +100,20 @@ Project CMake generates a configuration-specific JSON recipe; select another wit
 ```json
 {
   "version": 1,
-  "name": "My previews",
+  "name": "My scenes",
   "buildDirectory": "C:/MyProject/build",
-  "worker": {"executable": "C:/MyProject/build/Debug/MyPreviewHost.exe", "arguments": [],
+  "worker": {"executable": "C:/MyProject/build/Debug/MyEditorWorker.exe", "arguments": [],
              "directory": "C:/MyProject/build/Debug", "environment": {}},
   "build": {"executable": "C:/Tools/CMake/bin/cmake.exe",
-            "arguments": ["--build", "C:/MyProject/build", "--config", "Debug", "--target", "MyPreviewHost"],
+            "arguments": ["--build", "C:/MyProject/build", "--config", "Debug", "--target", "MyEditorWorker"],
             "directory": "C:/MyProject/build", "environment": {}}
 }
 ```
 
 Relative paths are relative to the recipe file; shell command text is not executed. `worker.executable` is build output;
 the editor starts workers from snapshot copies of it. Build & Refresh: build only the recipe target while the running
-preview stays open → snapshot on success → start a new worker beside the old one with the same state → replace when
-ready ([Architecture](Architecture.md#worker-flow)). Build errors leave the preview unchanged. A Windows Job Object owns
+scene stays open → snapshot on success → start a new worker beside the old one with the same state → replace when
+ready ([Architecture](Architecture.md#worker-flow)). Build errors leave the scene unchanged. A Windows Job Object owns
 only the process tree started by the editor; workers not exiting within 5 s are terminated. A mutex protects the same
 build directory across editor sessions.
 

@@ -173,7 +173,7 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
                             ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f;
         if (visible.empty())
             ToolEmptyState(scoped.empty() ? "No output yet" : "No matching output",
-                           scoped.empty() ? "Editor, preview, and build messages appear here."
+                           scoped.empty() ? "Editor, scene, and build messages appear here."
                                           : "Adjust the severity filters or search text.");
         int jump = -1;
         if (_jumpToError && !visible.empty()) {

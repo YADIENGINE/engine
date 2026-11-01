@@ -46,28 +46,28 @@ const char* SourceName(EditorLogSource source) {
     }
     return "editor";
 }
-const char* KindName(PreviewParameterKind kind) {
+const char* KindName(SceneParameterKind kind) {
     switch (kind) {
-    case PreviewParameterKind::Integer: return "integer";
-    case PreviewParameterKind::Float  : return "float";
-    case PreviewParameterKind::Boolean: return "boolean";
-    case PreviewParameterKind::Color  : return "color";
-    case PreviewParameterKind::Choice : return "choice";
+    case SceneParameterKind::Integer: return "integer";
+    case SceneParameterKind::Float  : return "float";
+    case SceneParameterKind::Boolean: return "boolean";
+    case SceneParameterKind::Color  : return "color";
+    case SceneParameterKind::Choice : return "choice";
     }
     return "float";
 }
-const char* ApplyName(PreviewApplyMode apply) {
+const char* ApplyName(SceneApplyMode apply) {
     switch (apply) {
-    case PreviewApplyMode::Immediate : return "immediate";
-    case PreviewApplyMode::NextAction: return "next-action";
-    case PreviewApplyMode::OnReset   : return "on-reset";
+    case SceneApplyMode::Immediate : return "immediate";
+    case SceneApplyMode::NextAction: return "next-action";
+    case SceneApplyMode::OnReset   : return "on-reset";
     }
     return "immediate";
 }
 std::string Line(const nlohmann::json& json) {
     return json.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
 }
-[[noreturn]] void Mismatch(const PreviewParameter& parameter, std::string_view expected) {
+[[noreturn]] void Mismatch(const SceneParameter& parameter, std::string_view expected) {
     throw std::runtime_error("Parameter '" + parameter.id + "' expects " + std::string(expected));
 }
 float HexChannel(std::string_view text, std::size_t at) {
@@ -77,7 +77,7 @@ float HexChannel(std::string_view text, std::size_t at) {
         throw std::runtime_error("Invalid color: " + std::string(text));
     return static_cast<float>(value) / 255.0f;
 }
-PreviewColor ColorOf(const PreviewParameter& parameter, const nlohmann::json& value) {
+SceneColor ColorOf(const SceneParameter& parameter, const nlohmann::json& value) {
     if (value.is_string()) {
         const auto text = value.get<std::string>();
         if (!text.starts_with('#') || (text.size() != 7 && text.size() != 9)) Mismatch(parameter, "\"#rrggbb(aa)\"");
@@ -149,12 +149,12 @@ std::string EncodeControlReply(nlohmann::json data) {
 }
 std::string EncodeControlError(std::string_view text) { return Line({{"type", "error"}, {"text", std::string(text)}}); }
 
-nlohmann::json ControlValue(const PreviewValue& value) {
+nlohmann::json ControlValue(const SceneValue& value) {
     nlohmann::json data;
     std::visit(
         [&data](const auto& item) {
             using T = std::decay_t<decltype(item)>;
-            if constexpr (std::is_same_v<T, PreviewColor>)
+            if constexpr (std::is_same_v<T, SceneColor>)
                 data = nlohmann::json::array({item.r, item.g, item.b, item.a});
             else
                 data = item;
@@ -162,9 +162,9 @@ nlohmann::json ControlValue(const PreviewValue& value) {
         value);
     return data;
 }
-PreviewValue ControlValueOf(const PreviewParameter& parameter, const nlohmann::json& value) {
+SceneValue ControlValueOf(const SceneParameter& parameter, const nlohmann::json& value) {
     switch (parameter.kind) {
-    case PreviewParameterKind::Integer: {
+    case SceneParameterKind::Integer: {
         if (value.is_number_integer()) return value.get<std::int64_t>();
         if (value.is_number_float()) {
             const double number = value.get<double>();
@@ -172,20 +172,20 @@ PreviewValue ControlValueOf(const PreviewParameter& parameter, const nlohmann::j
         }
         Mismatch(parameter, "a whole number");
     }
-    case PreviewParameterKind::Float:
+    case SceneParameterKind::Float:
         if (!value.is_number()) Mismatch(parameter, "a number");
         return value.get<double>();
-    case PreviewParameterKind::Boolean:
+    case SceneParameterKind::Boolean:
         if (!value.is_boolean()) Mismatch(parameter, "true or false");
         return value.get<bool>();
-    case PreviewParameterKind::Color: return ColorOf(parameter, value);
-    case PreviewParameterKind::Choice:
+    case SceneParameterKind::Color: return ColorOf(parameter, value);
+    case SceneParameterKind::Choice:
         if (!value.is_string()) Mismatch(parameter, "one of its choices");
         return value.get<std::string>();
     }
     Mismatch(parameter, "a known kind");
 }
-nlohmann::json ControlCatalogEntry(const PreviewDefinition& definition, const PreviewParameters& values) {
+nlohmann::json ControlCatalogEntry(const SceneDefinition& definition, const SceneParameters& values) {
     auto parameters = nlohmann::json::array();
     for (const auto& parameter : definition.parameters) {
         nlohmann::json entry{{"id", parameter.id},
@@ -194,11 +194,11 @@ nlohmann::json ControlCatalogEntry(const PreviewDefinition& definition, const Pr
                              {"apply", ApplyName(parameter.apply)}};
         const auto current = values.find(parameter.id);
         entry["value"] = ControlValue(current == values.end() ? parameter.initial : current->second);
-        if (parameter.kind == PreviewParameterKind::Integer || parameter.kind == PreviewParameterKind::Float) {
+        if (parameter.kind == SceneParameterKind::Integer || parameter.kind == SceneParameterKind::Float) {
             entry["minimum"] = parameter.minimum;
             entry["maximum"] = parameter.maximum;
         }
-        if (parameter.kind == PreviewParameterKind::Choice) entry["choices"] = parameter.choices;
+        if (parameter.kind == SceneParameterKind::Choice) entry["choices"] = parameter.choices;
         if (!parameter.group.empty()) entry["group"] = parameter.group;
         if (!parameter.description.empty()) entry["description"] = parameter.description;
         parameters.push_back(std::move(entry));

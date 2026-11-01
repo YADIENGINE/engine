@@ -3,14 +3,14 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
-#include "Editor/Api/PreviewRegistry.h"
+#include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
 
 // The editor's control endpoint: tools reach a running editor through a local named pipe (`python Engine refresh`,
 // `python Engine ctl ...`). While it runs, the editor announces the pipe in EditorControlFile inside its build
 // directory. Messages are JSON objects, one per '\n'-terminated UTF-8 line; a client sends one request and reads
 // replies until a "result" or "error". Reference: Docs/Editor/Automation.md.
-inline constexpr int EditorControlVersion = 2;
+inline constexpr int EditorControlVersion = 3;
 inline constexpr std::string_view EditorControlFile = "EngineEditor.control.json";
 inline constexpr std::size_t EditorControlMaxLineBytes = 64 * 1024;
 
@@ -58,10 +58,10 @@ struct EditorControlRequest {
 [[nodiscard]] std::string EncodeControlError(std::string_view text);
 
 // Plain JSON for tools: numbers, booleans, strings; colors as [r, g, b, a].
-[[nodiscard]] nlohmann::json ControlValue(const PreviewValue& value);
+[[nodiscard]] nlohmann::json ControlValue(const SceneValue& value);
 // The value a tool wrote for `parameter`, by its kind; integers accept whole numbers, colors [r, g, b(, a)] or
 // "#rrggbb(aa)". Throws with a readable message when it does not fit (range and choices are checked separately).
-[[nodiscard]] PreviewValue ControlValueOf(const PreviewParameter& parameter, const nlohmann::json& value);
+[[nodiscard]] SceneValue ControlValueOf(const SceneParameter& parameter, const nlohmann::json& value);
 // One catalog entry with its parameters (kind, range, choices, current value) and actions.
-[[nodiscard]] nlohmann::json ControlCatalogEntry(const PreviewDefinition& definition, const PreviewParameters& values);
+[[nodiscard]] nlohmann::json ControlCatalogEntry(const SceneDefinition& definition, const SceneParameters& values);
 [[nodiscard]] nlohmann::json ControlLogEntry(const EditorLogEntry& entry);

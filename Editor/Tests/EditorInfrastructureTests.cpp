@@ -5,12 +5,12 @@
 #include <limits>
 #include <memory>
 #include <string>
-#include "Editor/Api/PreviewRegistry.h"
+#include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Protocol/EditorControlProtocol.h"
-#include "Editor/Internals/Protocol/PreviewMessageReader.h"
+#include "Editor/Internals/Protocol/WorkerMessageReader.h"
 #include "Editor/Internals/Session/RefreshState.h"
 #include "Editor/Internals/Session/WorkerSnapshots.h"
-#include "Editor/Internals/Viewport/PreviewInputRouter.h"
+#include "Editor/Internals/Viewport/ViewportInputRouter.h"
 #include "Tests/Support/TempDirectory.h"
 #ifdef _WIN32
 #include "Editor/Internals/Platform/Windows/ControlChannel.h"
@@ -19,20 +19,20 @@
 #endif
 
 TEST_CASE("Editor.Viewport.LetterboxAndCoordinates", "[engine-editor]") {
-    const auto viewport = FitPreviewViewport({100.0f, 50.0f}, {1000.0f, 1000.0f}, {1600, 900});
-    REQUIRE_FALSE(MapPreviewPoint(viewport, {100.0f, 50.0f}));
-    const auto center = MapPreviewPoint(viewport, {600.0f, 550.0f});
+    const auto viewport = FitSceneViewport({100.0f, 50.0f}, {1000.0f, 1000.0f}, {1600, 900});
+    REQUIRE_FALSE(MapViewportPoint(viewport, {100.0f, 50.0f}));
+    const auto center = MapViewportPoint(viewport, {600.0f, 550.0f});
     REQUIRE(center);
     CHECK(*center == Vec2{800, 450});
-    CHECK_FALSE(MapPreviewPoint(viewport, {viewport.position.x + viewport.size.x, 550.0f}));
-    CHECK_FALSE(MapPreviewPoint(FitPreviewViewport({}, {}, {1600, 900}), {}));
-    const auto scaled = FitPreviewViewport({200.0f, 100.0f}, {2000.0f, 2000.0f}, {1600, 900});
-    CHECK(MapPreviewPoint(scaled, {1200.0f, 1100.0f}) == center);
+    CHECK_FALSE(MapViewportPoint(viewport, {viewport.position.x + viewport.size.x, 550.0f}));
+    CHECK_FALSE(MapViewportPoint(FitSceneViewport({}, {}, {1600, 900}), {}));
+    const auto scaled = FitSceneViewport({200.0f, 100.0f}, {2000.0f, 2000.0f}, {1600, 900});
+    CHECK(MapViewportPoint(scaled, {1200.0f, 1100.0f}) == center);
 }
 
 TEST_CASE("Editor.Input.OwnedDragReleaseAndFocus", "[engine-editor]") {
-    PreviewInputRouter router;
-    const auto viewport = FitPreviewViewport({}, {200.0f, 100.0f}, {400, 200});
+    ViewportInputRouter router;
+    const auto viewport = FitSceneViewport({}, {200.0f, 100.0f}, {400, 200});
     InputSample down;
     down.mousePressed = true;
     down.mouseDown = true;
@@ -58,8 +58,8 @@ TEST_CASE("Editor.Input.OwnedDragReleaseAndFocus", "[engine-editor]") {
 }
 
 TEST_CASE("Editor.Input.FocusCancellationDrainsHeldDevicesBeforeAcceptingANewPress", "[engine-editor]") {
-    PreviewInputRouter router;
-    const auto viewport = FitPreviewViewport({}, {200.0f, 100.0f}, {400, 200});
+    ViewportInputRouter router;
+    const auto viewport = FitSceneViewport({}, {200.0f, 100.0f}, {400, 200});
     InputSample down;
     down.mousePressed = down.mouseDown = true;
     down.keysDown[static_cast<std::size_t>(InputKey::Enter)] = true;
@@ -77,12 +77,12 @@ TEST_CASE("Editor.Input.FocusCancellationDrainsHeldDevicesBeforeAcceptingANewPre
 
 TEST_CASE("Editor.Viewport.ZoomedImageUsesCanvasCoordinatesAndVisibleClip", "[engine-editor]") {
     // A 2x image is panned behind an 800x600 visible panel.
-    const PreviewViewport viewport{{-900, -500}, {3200, 1800}, {1600, 900}, {100, 50}, {800, 600}};
-    CHECK(MapPreviewPoint(viewport, {100, 50}) == Vec2{500, 275});
-    CHECK(MapPreviewPoint(viewport, {500, 350}) == Vec2{700, 425});
-    CHECK_FALSE(MapPreviewPoint(viewport, {99, 350}));
-    CHECK_FALSE(MapPreviewPoint(viewport, {900, 350}));
-    PreviewInputRouter router;
+    const SceneViewport viewport{{-900, -500}, {3200, 1800}, {1600, 900}, {100, 50}, {800, 600}};
+    CHECK(MapViewportPoint(viewport, {100, 50}) == Vec2{500, 275});
+    CHECK(MapViewportPoint(viewport, {500, 350}) == Vec2{700, 425});
+    CHECK_FALSE(MapViewportPoint(viewport, {99, 350}));
+    CHECK_FALSE(MapViewportPoint(viewport, {900, 350}));
+    ViewportInputRouter router;
     InputSample down;
     down.mousePressed = true;
     down.mouseDown = true;
@@ -95,31 +95,31 @@ TEST_CASE("Editor.Viewport.ZoomedImageUsesCanvasCoordinatesAndVisibleClip", "[en
 }
 
 TEST_CASE("Editor.Protocol.InspectionIsReadOnlyAndRejectsInvalidGeometryAndRows", "[engine-editor]") {
-    PreviewInspection inspection;
-    inspection.focus = PreviewContentBounds{320, 250, 960, 400};
-    inspection.values = {{"State", "Playing", PreviewReadoutKind::Status},
-                         {"Count", "12", PreviewReadoutKind::Number},
+    SceneInspection inspection;
+    inspection.focus = SceneContentBounds{320, 250, 960, 400};
+    inspection.values = {{"State", "Playing", SceneReadoutKind::Status},
+                         {"Count", "12", SceneReadoutKind::Number},
                          {"Note", "A description that can wrap over multiple lines."}};
     inspection.tables = {{"Schedule", {"World", "Boss"}, {{"5", "Sample"}}}};
     inspection.hiddenParameters = {"inactive"};
     inspection.disabledParameters = {"fixed"};
-    const auto encoded = EncodePreviewInspection(inspection);
-    CHECK(DecodePreviewInspection(encoded) == inspection);
+    const auto encoded = EncodeSceneInspection(inspection);
+    CHECK(DecodeSceneInspection(encoded) == inspection);
     CHECK_FALSE(encoded.contains("parameters"));
     auto invalid = encoded;
     invalid["focus"] = {320, 250, -1, 400};
-    CHECK_THROWS(DecodePreviewInspection(invalid));
+    CHECK_THROWS(DecodeSceneInspection(invalid));
     invalid = encoded;
     invalid["tables"][0]["rows"][0] = {"missing column"};
-    CHECK_THROWS(DecodePreviewInspection(invalid));
+    CHECK_THROWS(DecodeSceneInspection(invalid));
     invalid = encoded;
     invalid["values"][0][2] = 99;
-    CHECK_THROWS(DecodePreviewInspection(invalid));
+    CHECK_THROWS(DecodeSceneInspection(invalid));
     invalid["values"][0][2] = 1.5;
-    CHECK_THROWS(DecodePreviewInspection(invalid));
+    CHECK_THROWS(DecodeSceneInspection(invalid));
     auto legacy = encoded;
     legacy["values"][0].erase(legacy["values"][0].begin() + 2);
-    CHECK(DecodePreviewInspection(legacy).values.front().kind == PreviewReadoutKind::Text);
+    CHECK(DecodeSceneInspection(legacy).values.front().kind == SceneReadoutKind::Text);
 }
 
 TEST_CASE("Editor.Input.SnapshotsPreserveEdges", "[engine-editor]") {
@@ -134,9 +134,9 @@ TEST_CASE("Editor.Input.SnapshotsPreserveEdges", "[engine-editor]") {
     DeviceInput up;
     up.mouseReleased = true;
     up.touches = {{7, std::nullopt}};
-    AccumulatePreviewInput(state, down);
-    AccumulatePreviewInput(state, up);
-    const auto frame = ConsumePreviewInput(state);
+    AccumulateViewportInput(state, down);
+    AccumulateViewportInput(state, up);
+    const auto frame = ConsumeViewportInput(state);
     CHECK(frame.mousePressed);
     CHECK(frame.mouseReleased);
     CHECK_FALSE(frame.mouseDown);
@@ -147,7 +147,7 @@ TEST_CASE("Editor.Input.SnapshotsPreserveEdges", "[engine-editor]") {
     REQUIRE(frame.touches.size() == 1);
     CHECK(frame.touches.front().id == 7);
     CHECK_FALSE(frame.touches.front().position);
-    const auto next = ConsumePreviewInput(state);
+    const auto next = ConsumeViewportInput(state);
     CHECK_FALSE(next.keysPressed[0]);
     CHECK_FALSE(next.mouseReleased);
     CHECK(next.pressPoints.empty());
@@ -165,8 +165,8 @@ TEST_CASE("Editor.Input.ProtocolPreservesTouchIdentityAndRejectsAmbiguousContact
     input.pressPoints = {{90, 110}, {150, 160}};
     input.heldPoints = {{160, 170}};
     input.touches = {{7, std::nullopt}, {9, Vec2{160, 170}}};
-    const auto encoded = EncodePreviewInput(input);
-    const auto decoded = DecodePreviewInput(encoded);
+    const auto encoded = EncodeWorkerInput(input);
+    const auto decoded = DecodeWorkerInput(encoded);
     CHECK(decoded.ShiftDown());
     CHECK(decoded.mousePress == input.mousePress);
     CHECK(decoded.mouseHover == input.mouseHover);
@@ -182,18 +182,18 @@ TEST_CASE("Editor.Input.ProtocolPreservesTouchIdentityAndRejectsAmbiguousContact
     CHECK(decoded.touches[1].position == Vec2{160, 170});
     auto invalid = encoded;
     invalid["touches"][1]["id"] = 7;
-    CHECK_THROWS(DecodePreviewInput(invalid));
+    CHECK_THROWS(DecodeWorkerInput(invalid));
     invalid = encoded;
     invalid["touches"][0]["id"] = std::numeric_limits<std::uint64_t>::max();
-    CHECK_THROWS(DecodePreviewInput(invalid));
+    CHECK_THROWS(DecodeWorkerInput(invalid));
     invalid = encoded;
     invalid["pressed"].push_back(false);
-    CHECK_THROWS(DecodePreviewInput(invalid));
+    CHECK_THROWS(DecodeWorkerInput(invalid));
 }
 
 TEST_CASE("Editor.Input.TouchOwnershipUsesTheSameCanvasContractAsMouse", "[engine-editor]") {
-    PreviewInputRouter router;
-    const auto viewport = FitPreviewViewport({}, {200.0f, 100.0f}, {400, 200});
+    ViewportInputRouter router;
+    const auto viewport = FitSceneViewport({}, {200.0f, 100.0f}, {400, 200});
     InputSample sample;
     sample.touches = {{7, {50, 60}}};
     auto input = router.Route(sample, {}, viewport, true, true, false, false);
@@ -222,126 +222,125 @@ TEST_CASE("Editor.Input.CancellationDiscardsOldEdgesAndPrecedesNewInput", "[engi
     old.keysPressed[0] = old.keysDown[0] = true;
     old.mousePressed = old.mouseDown = true;
     old.pressPoints = {{20, 30}};
-    AccumulatePreviewInput(state, old);
+    AccumulateViewportInput(state, old);
     const DeviceInput cancel{.cancelled = true};
-    const auto decoded = DecodePreviewInput(EncodePreviewInput(cancel));
+    const auto decoded = DecodeWorkerInput(EncodeWorkerInput(cancel));
     REQUIRE(decoded.cancelled);
-    AccumulatePreviewInput(state, decoded);
+    AccumulateViewportInput(state, decoded);
     DeviceInput next;
     next.keysPressed[1] = next.keysDown[1] = true;
     next.mousePressed = next.mouseDown = true;
     next.mousePosition = Vec2{40, 50};
     next.pressPoints = {{40, 50}};
-    AccumulatePreviewInput(state, next);
-    const auto barrier = ConsumePreviewInput(state);
+    AccumulateViewportInput(state, next);
+    const auto barrier = ConsumeViewportInput(state);
     CHECK(barrier.cancelled);
     CHECK_FALSE(barrier.keysPressed[0]);
     CHECK_FALSE(barrier.keysPressed[1]);
     CHECK(barrier.pressPoints.empty());
-    const auto fresh = ConsumePreviewInput(state);
+    const auto fresh = ConsumeViewportInput(state);
     CHECK_FALSE(fresh.cancelled);
     CHECK_FALSE(fresh.keysPressed[0]);
     CHECK(fresh.keysPressed[1]);
     CHECK(fresh.mousePressed);
     REQUIRE(fresh.pressPoints.size() == 1);
     CHECK(fresh.pressPoints.front() == Vec2{40, 50});
-    CHECK_FALSE(ConsumePreviewInput(state).keysPressed[1]);
+    CHECK_FALSE(ConsumeViewportInput(state).keysPressed[1]);
 }
 
 TEST_CASE("Editor.Protocol.FragmentationAndSessionIsolation", "[engine-editor]") {
-    const PreviewMessage message{"session-a", 3, 7, "pause", {{"paused", true}}};
-    const auto bytes = EncodePreviewMessage(message);
-    PreviewMessageReader reader("session-a");
+    const WorkerMessage message{"session-a", 3, 7, "pause", {{"paused", true}}};
+    const auto bytes = EncodeWorkerMessage(message);
+    WorkerMessageReader reader("session-a");
     CHECK(reader.Push(std::span(bytes).first(2)).empty());
     CHECK(reader.Push(std::span(bytes).subspan(2, 3)).empty());
     const auto received = reader.Push(std::span(bytes).subspan(5));
     REQUIRE(received.size() == 1);
     CHECK(received.front().generation == 3);
     CHECK(received.front().request == 7);
-    PreviewMessageReader wrongSession("session-b");
+    WorkerMessageReader wrongSession("session-b");
     CHECK_THROWS(wrongSession.Push(bytes));
-    auto invalid = nlohmann::json{{"version", PreviewProtocolVersion + 1},
+    auto invalid = nlohmann::json{{"version", WorkerProtocolVersion + 1},
                                   {"session", "session-a"},
                                   {"generation", 3},
                                   {"request", 7},
                                   {"type", "pause"},
                                   {"data", message.data}};
-    CHECK_THROWS(DecodePreviewMessage(invalid, "session-a"));
+    CHECK_THROWS(DecodeWorkerMessage(invalid, "session-a"));
     const std::array oversized{std::byte{0xff}, std::byte{0xff}, std::byte{0xff}, std::byte{0x7f}};
-    PreviewMessageReader bounded("session-a");
+    WorkerMessageReader bounded("session-a");
     CHECK_THROWS(bounded.Push(oversized));
 }
 
 TEST_CASE("Editor.Parameters.ValidationAndCompatibleRestore", "[engine-editor]") {
-    PreviewDefinition definition;
-    definition.parameters = {{"radius", "Radius", PreviewParameterKind::Float, 10.0, 1.0, 20.0},
-                             {"enabled", "Enabled", PreviewParameterKind::Boolean, true}};
-    CHECK(ValidatePreviewValue(definition.parameters[0], 15.0).empty());
-    CHECK_FALSE(ValidatePreviewValue(definition.parameters[0], std::int64_t{15}).empty());
-    CHECK_FALSE(ValidatePreviewValue(definition.parameters[0], std::numeric_limits<double>::infinity()).empty());
-    PreviewParameters saved{{"radius", 15.0}, {"enabled", std::string("old type")}, {"removed", true}};
+    SceneDefinition definition;
+    definition.parameters = {{"radius", "Radius", SceneParameterKind::Float, 10.0, 1.0, 20.0},
+                             {"enabled", "Enabled", SceneParameterKind::Boolean, true}};
+    CHECK(ValidateSceneValue(definition.parameters[0], 15.0).empty());
+    CHECK_FALSE(ValidateSceneValue(definition.parameters[0], std::int64_t{15}).empty());
+    CHECK_FALSE(ValidateSceneValue(definition.parameters[0], std::numeric_limits<double>::infinity()).empty());
+    SceneParameters saved{{"radius", 15.0}, {"enabled", std::string("old type")}, {"removed", true}};
     std::vector<std::string> messages;
-    const auto restored = RestorePreviewParameters(definition, saved, messages);
+    const auto restored = RestoreSceneParameters(definition, saved, messages);
     CHECK(std::get<double>(restored.at("radius")) == 15.0);
     CHECK(std::get<bool>(restored.at("enabled")));
     CHECK_FALSE(restored.contains("removed"));
     CHECK_FALSE(messages.empty());
-    CHECK(DecodePreviewParameters(EncodePreviewParameters(restored)) == restored);
-    CHECK_THROWS(DecodePreviewValue({{"type", 3}, {"value", {1.0, -1.0, 0.0, 1.0}}}));
+    CHECK(DecodeSceneParameters(EncodeSceneParameters(restored)) == restored);
+    CHECK_THROWS(DecodeSceneValue({{"type", 3}, {"value", {1.0, -1.0, 0.0, 1.0}}}));
 }
 
 TEST_CASE("Editor.Parameters.CapturedControlsAreAtomicAndPreserveResetRecipe", "[engine-editor]") {
-    PreviewDefinition definition;
+    SceneDefinition definition;
     definition.parameters = {
-        {"radius", "Radius", PreviewParameterKind::Float, 10.0, 1.0, 20.0},
-        {"copies", "Copies", PreviewParameterKind::Integer, std::int64_t{1}, 1.0, 4.0, PreviewApplyMode::NextAction},
-        {"seed", "Seed", PreviewParameterKind::Integer, std::int64_t{7}, 0.0, 100.0, PreviewApplyMode::OnReset}};
-    auto accepted = PreviewDefaults(definition);
+        {"radius", "Radius", SceneParameterKind::Float, 10.0, 1.0, 20.0},
+        {"copies", "Copies", SceneParameterKind::Integer, std::int64_t{1}, 1.0, 4.0, SceneApplyMode::NextAction},
+        {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{7}, 0.0, 100.0, SceneApplyMode::OnReset}};
+    auto accepted = SceneDefaults(definition);
     accepted["seed"] = std::int64_t{42};
-    const PreviewParameters capture{{"radius", 15.0}, {"copies", std::int64_t{3}}, {"seed", std::int64_t{7}}};
-    CHECK(MergePreviewCapture(definition, capture, accepted));
+    const SceneParameters capture{{"radius", 15.0}, {"copies", std::int64_t{3}}, {"seed", std::int64_t{7}}};
+    CHECK(MergeSceneCapture(definition, capture, accepted));
     CHECK(std::get<double>(accepted.at("radius")) == 15.0);
     CHECK(std::get<std::int64_t>(accepted.at("copies")) == 3);
     CHECK(std::get<std::int64_t>(accepted.at("seed")) == 42);
-    CHECK_FALSE(MergePreviewCapture(definition, capture, accepted));
+    CHECK_FALSE(MergeSceneCapture(definition, capture, accepted));
     const auto before = accepted;
-    CHECK_THROWS(MergePreviewCapture(definition, {{"copies", std::int64_t{2}}, {"radius", 25.0}}, accepted));
+    CHECK_THROWS(MergeSceneCapture(definition, {{"copies", std::int64_t{2}}, {"radius", 25.0}}, accepted));
     CHECK(accepted == before);
-    CHECK_THROWS(MergePreviewCapture(definition, {{"removed", true}}, accepted));
+    CHECK_THROWS(MergeSceneCapture(definition, {{"removed", true}}, accepted));
     CHECK(accepted == before);
-    CHECK(DecodePreviewParameters(EncodePreviewParameters(accepted)) == accepted);
+    CHECK(DecodeSceneParameters(EncodeSceneParameters(accepted)) == accepted);
 }
 
 TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") {
-    PreviewRegistry registry;
+    SceneRegistry registry;
     bool constructed = false;
-    PreviewDefinition definition;
-    definition.id = "test.preview";
+    SceneDefinition definition;
+    definition.id = "test.scene";
     definition.name = "Test";
     definition.categoryOrder = -1;
     definition.parameters = {{"type",
                               "Type",
-                              PreviewParameterKind::Choice,
+                              SceneParameterKind::Choice,
                               std::string("First"),
                               0,
                               1,
-                              PreviewApplyMode::Immediate,
+                              SceneApplyMode::Immediate,
                               {"First", "Second"}}};
     definition.parameters.front().choiceButtons = true;
     definition.parameters.front().choiceButtonColumns = 2;
-    definition.parameters.push_back({"radius", "Radius", PreviewParameterKind::Float, 10.0, 1.0, 20.0});
+    definition.parameters.push_back({"radius", "Radius", SceneParameterKind::Float, 10.0, 1.0, 20.0});
     definition.parameters.back().numericInput = true;
     definition.parameters.back().advanced = true;
-    definition.parameters.back().apply = PreviewApplyMode::NextAction;
+    definition.parameters.back().apply = SceneApplyMode::NextAction;
     definition.parameters.back().applyAction = "replay";
     definition.actions = {{"replay", "Replay", "Apply the prepared values.", true}};
-    definition.create = [&constructed](const PreviewServices&,
-                                       const PreviewParameters&) -> std::unique_ptr<EditorPreview> {
+    definition.create = [&constructed](const SceneServices&, const SceneParameters&) -> std::unique_ptr<EditorScene> {
         constructed = true;
         return {};
     };
     registry.Add(definition);
-    const auto catalog = DecodePreviewCatalog(EncodePreviewCatalog(registry.Entries()));
+    const auto catalog = DecodeSceneCatalog(EncodeSceneCatalog(registry.Entries()));
     CHECK_FALSE(constructed);
     REQUIRE_FALSE(catalog.empty());
     CHECK(catalog.front().id == definition.id);
@@ -353,31 +352,31 @@ TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") 
     CHECK(catalog.front().parameters.back().advanced);
     CHECK(catalog.front().parameters.back().applyAction == "replay");
     CHECK(catalog.front().actions.front().primary);
-    auto invalid = EncodePreviewCatalog(registry.Entries());
+    auto invalid = EncodeSceneCatalog(registry.Entries());
     invalid["entries"][0]["parameters"][1]["applyAction"] = "missing";
-    CHECK_THROWS(DecodePreviewCatalog(invalid));
-    invalid = EncodePreviewCatalog(registry.Entries());
-    invalid["entries"][0]["parameters"][1]["apply"] = PreviewApplyMode::Immediate;
-    CHECK_THROWS(DecodePreviewCatalog(invalid));
-    auto legacy = EncodePreviewCatalog(registry.Entries());
+    CHECK_THROWS(DecodeSceneCatalog(invalid));
+    invalid = EncodeSceneCatalog(registry.Entries());
+    invalid["entries"][0]["parameters"][1]["apply"] = SceneApplyMode::Immediate;
+    CHECK_THROWS(DecodeSceneCatalog(invalid));
+    auto legacy = EncodeSceneCatalog(registry.Entries());
     legacy["entries"][0].erase("categoryOrder");
-    CHECK(DecodePreviewCatalog(legacy).front().categoryOrder == 0);
+    CHECK(DecodeSceneCatalog(legacy).front().categoryOrder == 0);
     legacy["entries"][0]["parameters"][0].erase("choiceButtons");
-    CHECK_FALSE(DecodePreviewCatalog(legacy).front().parameters.front().choiceButtons);
+    CHECK_FALSE(DecodeSceneCatalog(legacy).front().parameters.front().choiceButtons);
     legacy["entries"][0]["parameters"][0].erase("choiceButtonColumns");
-    CHECK(DecodePreviewCatalog(legacy).front().parameters.front().choiceButtonColumns == 0);
+    CHECK(DecodeSceneCatalog(legacy).front().parameters.front().choiceButtonColumns == 0);
     legacy["entries"][0]["parameters"][1].erase("numericInput");
-    CHECK_FALSE(DecodePreviewCatalog(legacy).front().parameters.back().numericInput);
+    CHECK_FALSE(DecodeSceneCatalog(legacy).front().parameters.back().numericInput);
     legacy["entries"][0]["parameters"][1].erase("advanced");
     legacy["entries"][0]["parameters"][1].erase("applyAction");
-    const auto defaults = DecodePreviewCatalog(legacy);
+    const auto defaults = DecodeSceneCatalog(legacy);
     CHECK_FALSE(defaults.front().parameters.back().advanced);
     CHECK(defaults.front().parameters.back().applyAction.empty());
     CHECK_FALSE(catalog.front().create);
     CHECK_THROWS(registry.Add(definition));
 }
 
-TEST_CASE("Editor.Refresh.BuildThenStartBesideTheRunningPreview", "[engine-editor]") {
+TEST_CASE("Editor.Refresh.BuildThenStartBesideTheRunningScene", "[engine-editor]") {
     RefreshState state;
     CHECK_THROWS(state.BuildFinished(true));
     state.Begin();
@@ -385,7 +384,7 @@ TEST_CASE("Editor.Refresh.BuildThenStartBesideTheRunningPreview", "[engine-edito
     CHECK_THROWS(state.Begin());
     CHECK_THROWS(state.Started());
     state.BuildFinished(false);
-    CHECK_FALSE(state.Busy()); // A failed build leaves the running preview as it was
+    CHECK_FALSE(state.Busy()); // A failed build leaves the running scene as it was
     state.Begin();
     state.BuildFinished(true);
     CHECK(state.Phase() == RefreshPhase::Starting);
@@ -400,7 +399,7 @@ TEST_CASE("Editor.Refresh.BuildThenStartBesideTheRunningPreview", "[engine-edito
 TEST_CASE("Editor.Snapshots.WorkersRunFromCopiesOfTheBuild", "[engine-editor]") {
     const TempDirectory directory;
     ProcessCommand built;
-    built.executable = directory.Path() / "MyGamePreview.exe";
+    built.executable = directory.Path() / "MyGameWorker.exe";
     built.directory = directory.Path();
     WorkerSnapshots snapshots(built);
     CHECK_FALSE(snapshots.BuildAvailable());
@@ -476,20 +475,20 @@ TEST_CASE("Editor.Control.RequestsRepliesAndAnnouncement", "[engine-editor]") {
 }
 
 TEST_CASE("Editor.Protocol.OpenStateRoundTripsAndRejectsInvalidSpeed", "[engine-editor]") {
-    const PreviewOpenState state{"drawing.circle", {{"radius", 24.0}}, true, 2.0};
-    const auto decoded = DecodePreviewOpen(EncodePreviewOpen(state));
+    const WorkerOpenState state{"drawing.circle", {{"radius", 24.0}}, true, 2.0};
+    const auto decoded = DecodeWorkerOpen(EncodeWorkerOpen(state));
     CHECK(decoded.id == state.id);
     CHECK(decoded.parameters == state.parameters);
     CHECK(decoded.paused);
     CHECK(decoded.speed == 2.0);
-    auto invalid = EncodePreviewOpen(state);
-    invalid["speed"] = PreviewMaxPlaybackSpeed * 2;
-    CHECK_THROWS(DecodePreviewOpen(invalid));
+    auto invalid = EncodeWorkerOpen(state);
+    invalid["speed"] = WorkerMaxPlaybackSpeed * 2;
+    CHECK_THROWS(DecodeWorkerOpen(invalid));
 }
 
 #ifdef _WIN32
 TEST_CASE("Editor.Channel.CatalogAcknowledgementBeforeClose", "[engine-editor]") {
-    const auto session = NewPreviewSession();
+    const auto session = NewWorkerSession();
     ControlChannel server(session, true);
     CHECK(server.Poll().empty()); // No client: the poll must return rather than wait.
     ControlChannel client(session, false);
@@ -507,7 +506,7 @@ TEST_CASE("Editor.Channel.CatalogAcknowledgementBeforeClose", "[engine-editor]")
 }
 
 TEST_CASE("Editor.Frames.LatestCompleteGenerationOnly", "[engine-editor]") {
-    const auto session = NewPreviewSession();
+    const auto session = NewWorkerSession();
     SharedFrames producer(session, true);
     SharedFrames consumer(session, false);
     std::array<std::byte, 16> pixels{};
@@ -527,6 +526,6 @@ TEST_CASE("Editor.Frames.LatestCompleteGenerationOnly", "[engine-editor]") {
     REQUIRE(latest);
     CHECK(latest->sequence > first->sequence);
     CHECK(latest->rgba.front() == std::byte{0x42});
-    CHECK_THROWS(producer.Publish(2, PreviewMaxFrameWidth + 1, 2, pixels));
+    CHECK_THROWS(producer.Publish(2, WorkerMaxFrameWidth + 1, 2, pixels));
 }
 #endif

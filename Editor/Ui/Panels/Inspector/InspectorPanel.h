@@ -9,7 +9,7 @@ public:
 
 private:
     std::array<char, 128> _search{};
-    std::string _preview;
+    std::string _scene;
     bool _modifiedOnly = false;
     bool _searchVisible = false;
 };

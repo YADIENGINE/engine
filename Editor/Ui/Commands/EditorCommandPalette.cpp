@@ -72,12 +72,12 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
         const auto id = command.command;
         const char* shortcut =
             command.shortcutLabel ? command.shortcutLabel : (id == EditorPrimaryCommand(snapshot) ? "F5" : "");
-        entries.push_back({std::string("Preview: ") + EditorCommandLabel(id, snapshot), shortcut,
+        entries.push_back({std::string("Scene: ") + EditorCommandLabel(id, snapshot), shortcut,
                            snapshot.capabilities.Can(id), snapshot.capabilities.Reason(id),
                            [&, id] { actions.command(id); }});
     }
-    entries.push_back({"Project: Find preview", "Ctrl+P", true, {}, [&] { result.focusCatalog = true; }});
-    entries.push_back({maximized ? "View: Restore workspace" : "View: Focus preview", "", true, {}, [&] {
+    entries.push_back({"Project: Find scene", "Ctrl+P", true, {}, [&] { result.focusCatalog = true; }});
+    entries.push_back({maximized ? "View: Restore workspace" : "View: Focus viewport", "", true, {}, [&] {
                            result.toggleMaximize = true;
                        }});
     entries.push_back({"Window: Toggle last bottom tool", "Ctrl+J", true, {}, [&] { result.toggleBottom = true; }});
@@ -111,7 +111,7 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
     }
     bool execute = enter && count > 0 && entries[static_cast<std::size_t>(_selected)].enabled;
     if (ImGui::BeginChild("command-results", {0, std::min(320.0f * scale, viewport->Size.y * 0.5f)})) {
-        if (entries.empty()) ToolEmptyState("No matching commands", "Try a preview, panel or layout name.");
+        if (entries.empty()) ToolEmptyState("No matching commands", "Try a scene, panel or layout name.");
         for (int index = 0; index < count; ++index) {
             auto& entry = entries[static_cast<std::size_t>(index)];
             ImGui::PushID(index);

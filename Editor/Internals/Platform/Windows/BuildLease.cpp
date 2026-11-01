@@ -15,7 +15,7 @@ BuildLease::BuildLease(const std::filesystem::path& directory) {
     }
     const auto name = L"Local\\EngineEditor.Build." + std::to_wstring(hash);
     _mutex.Reset(CreateMutexW(nullptr, FALSE, name.c_str()));
-    if (!_mutex) ThrowPreviewWindowsError("Create build lock");
+    if (!_mutex) ThrowWorkerWindowsError("Create build lock");
     const DWORD wait = WaitForSingleObject(_mutex.Get(), 0);
     _owned = wait == WAIT_OBJECT_0 || wait == WAIT_ABANDONED;
     if (!_owned) throw std::runtime_error("Another editor is already building in this directory");

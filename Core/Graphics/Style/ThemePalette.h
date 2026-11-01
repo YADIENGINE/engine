@@ -5,7 +5,7 @@
 // categories) belong to the game's own palette.
 struct ThemePalette {
     Color4 background{0, 0, 0, 255};         // Screen background
-    Color4 surface{0, 0, 0, 255};            // Panel, card, preview body
+    Color4 surface{0, 0, 0, 255};            // Panel, card, editor scene body
     Color4 surfaceFrame{130, 130, 130, 255}; // Unselected / locked panel border
     Color4 text{255, 255, 255, 255};         // Primary text
     Color4 textSoft{200, 200, 200, 255};     // Secondary text: readable on dark surfaces

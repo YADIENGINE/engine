@@ -9,13 +9,13 @@ namespace {
 constexpr std::size_t SearchThreshold = 6;
 constexpr float MinimumSearchWidth = 100.0f;
 
-std::string ApplyHint(const PreviewParameter& parameter, const std::vector<PreviewAction>& actions) {
+std::string ApplyHint(const SceneParameter& parameter, const std::vector<SceneAction>& actions) {
     switch (parameter.apply) {
-    case PreviewApplyMode::Immediate : return {};
-    case PreviewApplyMode::OnReset   : return "Applies on toolbar Reset.";
-    case PreviewApplyMode::NextAction: {
-        const auto action = std::ranges::find(actions, parameter.applyAction, &PreviewAction::id);
-        return action == actions.end() ? "Applies on the next preview action." : "Applies on " + action->label + ".";
+    case SceneApplyMode::Immediate : return {};
+    case SceneApplyMode::OnReset   : return "Applies on toolbar Reset.";
+    case SceneApplyMode::NextAction: {
+        const auto action = std::ranges::find(actions, parameter.applyAction, &SceneAction::id);
+        return action == actions.end() ? "Applies on the next scene action." : "Applies on " + action->label + ".";
     }
     }
     return {};
@@ -25,14 +25,14 @@ std::string ApplyHint(const PreviewParameter& parameter, const std::vector<Previ
 void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     BeginInspectorStyle();
     if (!snapshot.selected) {
-        ToolEmptyState("No preview selected", "Choose a preview in Project to see its properties and actions.");
+        ToolEmptyState("No scene selected", "Choose a scene in Project to see its properties and actions.");
         EndInspectorStyle();
         return;
     }
     const auto& selected = *snapshot.selected;
-    const bool changedPreview = _preview != selected.id;
-    if (changedPreview) {
-        _preview = selected.id;
+    const bool changedScene = _scene != selected.id;
+    if (changedScene) {
+        _scene = selected.id;
         _search.fill('\0');
         _modifiedOnly = false;
         _searchVisible = false;
@@ -90,7 +90,7 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
         ImGui::InputTextWithHint("##property-search", "Search properties...", _search.data(), _search.size());
     }
     const auto query = EditorSearchText(_search.data());
-    const auto matches = [&](const PreviewParameter& parameter) {
+    const auto matches = [&](const SceneParameter& parameter) {
         if (hidden(parameter.id)) return false;
         const auto found = snapshot.parameters.find(parameter.id);
         if (found == snapshot.parameters.end()) return false;
@@ -105,13 +105,13 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
         const auto group = parameter.group.empty() ? "General" : parameter.group;
         if (std::ranges::find(groups, group) == groups.end()) groups.push_back(group);
     }
-    const auto primary = std::ranges::find(selected.actions, true, &PreviewAction::primary);
+    const auto primary = std::ranges::find(selected.actions, true, &SceneAction::primary);
     const float footerHeight = primary == selected.actions.end()
                                    ? 0
                                    : ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y * 2 + 1;
     const float contentHeight = std::max(1.0f, ImGui::GetContentRegionAvail().y - footerHeight);
     const bool drawContent = ImGui::BeginChild("##inspector-content", {0, contentHeight});
-    if (changedPreview) ImGui::SetScrollY(0);
+    if (changedScene) ImGui::SetScrollY(0);
     if (drawContent) {
         ImGui::BeginDisabled(!snapshot.ready);
         for (const auto& group : groups) {
@@ -130,7 +130,7 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
                 if ((parameter.group.empty() ? "General" : parameter.group) != group) continue;
                 const auto found = snapshot.parameters.find(parameter.id);
                 if (found == snapshot.parameters.end()) continue;
-                const bool choiceGrid = parameter.kind == PreviewParameterKind::Choice && parameter.choiceButtons;
+                const bool choiceGrid = parameter.kind == SceneParameterKind::Choice && parameter.choiceButtons;
                 if (choiceGrid && properties) {
                     EndInspectorProperties();
                     properties = false;

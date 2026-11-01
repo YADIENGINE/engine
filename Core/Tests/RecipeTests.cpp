@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "AgentDocs/Recipes/Code/AnimatedCharacter.h"
-#include "AgentDocs/Recipes/Code/CharacterPreview.h"
+#include "AgentDocs/Recipes/Code/CharacterScene.h"
 #include "AgentDocs/Recipes/Code/FxBurst.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
 #include "AgentDocs/Recipes/Code/SaveProgress.h"
@@ -65,7 +65,7 @@ TEST_CASE("Engine.Recipes.ViewsRecordAndCachedLayerInvalidates", "[engine][recip
     fx.Clear();
 }
 
-TEST_CASE("Engine.Recipes.ScenePreviewAndTextWorkWithoutWindow", "[engine][recipes]") {
+TEST_CASE("Engine.Recipes.EditorSceneAndTextWorkWithoutWindow", "[engine][recipes]") {
     RecipeScene scene;
     scene.Activate();
     scene.Tick(0.1f);
@@ -74,9 +74,9 @@ TEST_CASE("Engine.Recipes.ScenePreviewAndTextWorkWithoutWindow", "[engine][recip
     CHECK(scene.IsShutdown());
     const auto definition = RecipeCharacterDefinition();
     REQUIRE(definition.create);
-    auto preview = std::make_unique<RecipeCharacterPreview>();
+    auto editorScene = std::make_unique<RecipeCharacterScene>();
     ObjectList objects;
-    objects.Add(*preview);
+    objects.Add(*editorScene);
     objects.Update(0.1f);
     objects.Stop();
     RecipeTextView text(ENGINE_RECIPE_FONT);

@@ -50,7 +50,7 @@ Game::PrepareFrame is the general host boundary for commands/resets before an in
 The engine only notifies a borrowed FrameObserver; it does not depend on this module. Disabled callbacks do
 not read clocks, allocate samples or issue GPU queries.
 
-Automatic regions cover input, audio, application/scene updates, canvas CPU, preview bridge, present and
+Automatic regions cover input, audio, application/scene updates, canvas CPU, worker bridge, present and
 EndDrawing/wait. EndDrawing includes swap, frame limiting and event polling; it is not pure idle time.
 GPU timestamps surround canvas submission at existing render boundaries. Eight query pairs are allocated
 on first enabled use; results are read only after availability. No glFinish or blocking query retrieval is

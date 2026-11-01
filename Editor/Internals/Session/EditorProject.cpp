@@ -29,7 +29,7 @@ EditorProject ReadEditorProject(const std::filesystem::path& file) {
     if (json.at("version").get<int>() != 1) throw std::runtime_error("Unsupported editor project version");
     const auto root = std::filesystem::absolute(file).parent_path();
     EditorProject project;
-    project.name = json.value("name", "Preview project");
+    project.name = json.value("name", "Scene project");
     project.worker = ReadCommand(json.at("worker"), root);
     project.build = ReadCommand(json.at("build"), root);
     project.buildDirectory = Resolve(root, json.at("buildDirectory").get<std::string>());

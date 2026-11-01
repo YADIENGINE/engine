@@ -1,7 +1,7 @@
 # Engine
 
 A C++20 2D game engine for Windows desktop, built on raylib 5.5 for the window, input and audio, with its own
-GPU-backed 2D renderer (`Painter`), an ImGui editor with live previews, tuning files and a command-line toolchain.
+GPU-backed 2D renderer (`Painter`), an ImGui editor with live editor scenes, tuning files and a command-line toolchain.
 The engine's name and version live in [`EngineManifest.json`](EngineManifest.json).
 
 **To make games with it, install the launcher:** <https://github.com/YADIENGINE/yadien>. The launcher creates

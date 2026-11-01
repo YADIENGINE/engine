@@ -114,8 +114,8 @@ No value is silently clamped or partially applied.
 
 The Tuning panel lists all project tuning files (the build's `Tuning/TuningFiles.json`; new files appear after the next
 configure). Type numbers in the box and commit with Enter; leaving the box without Enter reverts the edit. Out-of-bounds
-values are rejected and the box stays red. The value is patched into the file on disk as a one-line change; the preview
-reads the file itself. The panel shows preview state: Live, Not applied (with line number), Build needed (with a Build &
+values are rejected and the box stays red. The value is patched into the file on disk as a one-line change; the worker
+reads the file itself. The panel shows worker state: Live, Not applied (with line number), Build needed (with a Build &
 Refresh button). Details: [Editor usage](Editor/Usage.md).
 
 ## Format check

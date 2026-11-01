@@ -1,5 +1,10 @@
 # Tools contract
 
+Current contract: **2** (engine 0.3.0). Contract 1 used `preview` / `previews` in `ctl` JSON;
+contract 2 uses `scene` / `scenes`. Command names and exit codes are unchanged. The editor control endpoint
+uses protocol version 3, so rebuild the editor with its tools. See the
+[cumulative migration table](Editor/Development/Migrations.md).
+
 All engine tools share one command line. The launcher (and any automation: AI agents, CI) communicates with the engine
 only through the commands in this document; the launcher runs tools from the project's own `Engine/`, so projects using
 different engine versions work side by side. Everything outside this document (module names, internal functions, output
@@ -26,8 +31,8 @@ use the same Python. Project root: `--project` if supplied; otherwise the engine
 | `run` | `--release` | Builds and runs the game; returns when the game closes |
 | `release` | | Builds Release and creates the `Release/<name>/` package folder and ZIP ([Release](Release.md)) |
 | `test` | `--filter RE`, `--label RE`, `--list`, `--clean` | Builds and runs headless tests; report `<tests.buildDirectory>/reports/<run-id>/results.json` |
-| `editor` | `--release`, `--build-only`, `--clean` | Builds the editor and project preview worker, opens the editor |
-| `refresh` | | Build & Refresh in the project's open editor (joins an existing refresh); streams output and exits with its result. The preview stays open during the build. Returns 2 if the editor is not open ([control gateway](Editor/Architecture.md#control-gateway)) |
+| `editor` | `--release`, `--build-only`, `--clean` | Builds the editor and project worker process, opens the editor |
+| `refresh` | | Build & Refresh in the project's open editor (joins an existing refresh); streams output and exits with its result. The editor scene stays open during the build. Returns 2 if the editor is not open ([control gateway](Editor/Architecture.md#control-gateway)) |
 | `ctl` | `status`, `list`, `open ID`, `set ID=VALUE...`, `action ID`, `pause`, `play`, `step [N]`, `speed X`, `reset`, `seek S`, `screenshot [--window] [--out P] [--scale S] [--crop X Y W H]`, `frames --from A --to B [--count N] [--columns C]`, `inspect`, `logs [--since N] [--limit N] [--level L]` | Drives and observes the project's open editor; prints one JSON answer. Returns 1 when the editor refuses the request, 2 if no editor is open ([Editor automation](Editor/Automation.md)) |
 | `new` | `--name AD`, `--dry-run` | Sets up the engine's parent folder as a new project; asks for the name without `--name` |
 | `info` | | Engine and project information, JSON (below) |
@@ -42,8 +47,8 @@ Settings are in `Project.json` ([ProjectSetup](ProjectSetup.md)).
 
 ```json
 {
-  "engine": { "name": "...", "version": "0.1.0", "root": "C:\\...\\MyGame\\Engine" },
-  "toolsContract": 1,
+  "engine": { "name": "...", "version": "0.3.0", "root": "C:\\...\\MyGame\\Engine" },
+  "toolsContract": 2,
   "project": { "name": "MyGame", "root": "C:\\...\\MyGame" }
 }
 ```
@@ -57,9 +62,9 @@ does not start Python for each project; it reads `Engine/EngineManifest.json` di
 
 ```json
 {
-  "name": "...", "version": "0.1.0", "toolsContract": 1,
+  "name": "...", "version": "0.3.0", "toolsContract": 2,
   "repository": "https://.../engine.git",
-  "notes": [ { "version": "0.1.0", "date": "2026-10-31", "changes": ["..."],
+  "notes": [ { "version": "0.3.0", "date": "2026-11-01", "changes": ["..."],
                "breaking": [ { "change": "...", "migrate": "..." } ] } ]
 }
 ```

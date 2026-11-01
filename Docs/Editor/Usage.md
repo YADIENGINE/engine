@@ -11,7 +11,7 @@ Profiler, and Console are closed. The bottom status bar has Output and Console b
 - **Center (Viewport):** the worker's actual image. In the panel's local View menu, Fit shows the whole canvas, Focus
   content shows the area reported by content, and 100% shows logical size. Zoom in the same menu or Ctrl+wheel zooms;
   middle-button dragging pans; Reset pan and zoom resets view settings. Without Ctrl, the wheel goes to the product. The
-  maximize button or double-clicking the view summary enables temporary focus mode. Closed, loading, or failed previews
+  maximize button or double-clicking the view summary enables temporary focus mode. Closed, loading, or failed editor scenes
   show a state explanation and an available start / retry / cancel action. Playback is only in the global toolbar.
 - **Right (Inspector):** the header's `?` opens the description by tooltip or click. Property search and the Modified
   counter find changed fields; with at most six visible fields, the Search button opens search. An accent dot marks a
@@ -24,7 +24,7 @@ Profiler, and Console are closed. The bottom status bar has Output and Console b
   letter by letter, with full text in tooltips. Advanced groups start collapsed; search and Modified filters expand
   matching groups. Live information shows numbers right-aligned in technical font, short statuses as badges, and
   explanations wrapped.
-- **Output:** `Last Build Try` shows output from the latest Build & Refresh click until the preview is ready, fails, or
+- **Output:** `Last Build Try` shows output from the latest Build & Refresh click until the scene is ready, fails, or
   is cancelled; `Full` shows the last 1000 lines from editor, worker, and all attempts. The latest attempt's start time,
   duration, result, and build exit code are visible. Info / Warning / Error counters, search, and Copy Visible apply to
   the selected scope. Click selects one line, Ctrl+click multiple lines, Shift+click a range. With the line area
@@ -36,7 +36,7 @@ Profiler, and Console are closed. The bottom status bar has Output and Console b
   10000 lines / 8 MiB; on overflow, the first error is retained and a reference to the full file appears. Build failures
   or refresh failures after a successful build open a popup once; cancellation does not. Read-only popup text supports
   mouse selection and Ctrl+C; Ctrl+A selects all text. Copy copies the error summary, build exit code if present, and
-  first error message together. Show Output exits maximized preview, brings Output forward, opens Last Build Try, and
+  first error message together. Show Output exits maximized scene, brings Output forward, opens Last Build Try, and
   scrolls to the first error. In this view, previous search/level preferences are temporarily removed; switching scope
   restores saved preferences.
 - **Console:** a real PowerShell session at the project root. Drag to select visible text and copy with Ctrl+C /
@@ -44,8 +44,8 @@ Profiler, and Console are closed. The bottom status bar has Output and Console b
   clears selection. Scrollback and double-click word selection are not yet available.
 - **Tuning:** the project's `*.tuning.json` files ([Tuning](../Tuning.md)); the list comes from the build's
   `Tuning/TuningFiles.json`, with new files appearing after the next configure. File selection is at the top, followed
-  by the preview's latest state for that file: Live, Not applied (invalid file; line and reason), Build needed (field /
-  length changed; Build & Refresh button), Unreadable. If the preview does not use the file or is not open, this is
+  by the scene's latest state for that file: Live, Not applied (invalid file; line and reason), Build needed (field /
+  length changed; Build & Refresh button), Unreadable. If the scene does not use the file or is not open, this is
   stated. Value fields are label / box rows; tables are grids. Type numbers, vec2, range, and colors (`#RRGGBB[AA]`) and
   commit with Enter; leaving a box without Enter reverts the edit; checkboxes write on click. Out-of-bounds or invalid
   values are not sent; the box stays red, with the reason in a tooltip. An accepted value is patched as a single value
@@ -55,13 +55,13 @@ Profiler, and Console are closed. The bottom status bar has Output and Console b
 - **Profiler:** Live / Benchmarks / Compare. Opens when a benchmark example is selected; warmup / measurement frames /
   repetition pairs are under Advanced benchmark settings. Glow override is one choice group; highlighting shows the last
   requested value. Compare's Export menu offers JSON and Markdown. Details: [Profiler](Profiler.md).
-- Panels can be docked, combined into tabs, closed, and reopened from Window. Preview → Language changes the selected
-  preview's language; it can be chosen before opening a preview and is used in the opening recipe. Language control is
-  not shown in Inspector. The menu always opens and explains previews without language support. The top View menu
-  manages Focus preview / Restore workspace, UI scale (75% / 100% / 125% / 150%), and preview performance metrics. The
+- Panels can be docked, combined into tabs, closed, and reopened from Window. Scene → Language changes the selected
+  scene's language; it can be chosen before opening a scene and is used in the opening recipe. Language control is
+  not shown in Inspector. The menu always opens and explains scenes without language support. The top View menu
+  manages Focus viewport / Restore workspace, UI scale (75% / 100% / 125% / 150%), and viewport performance metrics. The
   default 100% matches the previous 125% size; UI and technical text fonts scale with user scale and monitor DPI.
 
-Under Window → Layouts, Develop opens general preview layout, Inspect a wider Inspector, and Profile a Profiler-focused
+Under Window → Layouts, Develop opens general scene layout, Inspect a wider Inspector, and Profile a Profiler-focused
 layout. Last custom layout restores the last manual layout; selecting a preset does not erase it. Bottom-bar Output /
 Console buttons only toggle their respective panel; multiple panels can stay open. Window → Toggle last bottom tool or
 Ctrl+J toggles the last-used bottom panel without affecting others. Profiler opens from Window or the command palette.
@@ -76,14 +76,14 @@ to an overflow menu. Tooltips show name, shortcut, and the reason if unavailable
 
 | Button | Meaning |
 | --- | --- |
-| Open / Stop / Cancel | Opens selected content when closed; closes the preview when ready or paused; cancels catalog reading, startup, building without a preview, or benchmarking. Cancel an ongoing build with an open preview through Cancel build in the command palette |
+| Open / Stop / Cancel | Opens selected content when closed; closes the scene when ready or paused; cancels catalog reading, startup, building without a scene, or benchmarking. Cancel an ongoing build with an open scene through Cancel build in the command palette |
 | Pause / Resume | Freezes Update and presentation time; drawing, parameters, actions, and Reset remain available |
 | Step | Advances 1/60 s while paused |
 | Speed | 0.1×..4× |
 | Reset | Creates a new instance from the accepted recipe (clock starts at 0) |
-| Build & Refresh | Builds the worker target; the preview keeps running throughout. A successful build takes selection, values, pause, and speed and replaces the old one when ready; errors leave the preview unchanged. From terminal: `python Engine refresh` |
+| Build & Refresh | Builds the worker target; the scene keeps running throughout. A successful build takes selection, values, pause, and speed and replaces the old one when ready; errors leave the scene unchanged. From terminal: `python Engine refresh` |
 
-Reset recreates the preview in the same worker process. Use Open to restart the worker process.
+Reset recreates the scene in the same worker process. Use Open to restart the worker process.
 
 | Shortcut | Action |
 | --- | --- |
@@ -96,9 +96,9 @@ Reset recreates the preview in the same worker process. Use Open to restart the 
 | Ctrl+Shift+P | Command palette |
 | Ctrl+J | Toggle last bottom tool panel |
 
-Search preview actions, panel visibility, and layouts in the command palette; select with up / down, run with Enter,
+Search scene actions, panel visibility, and layouts in the command palette; select with up / down, run with Enter,
 close with Escape. Unavailable actions show their reason. Playback / build shortcuts do not run during text editing or
-popups; input consumed by the editor is not forwarded to the preview.
+popups; input consumed by the editor is not forwarded to the scene.
 
 Replay, Reset, and the product's own Pause screen differ: Replay restarts content's own presentation, Reset recreates
 the instance, toolbar Pause stops time.
@@ -115,7 +115,7 @@ the instance, toolbar Pause stops time.
 
 ## Product input
 
-Navigation, hover, selection, and scroll input in the previewed product UI are preserved. Clicking the image gives
+Navigation, hover, selection, and scroll input in the displayed product UI are preserved. Clicking the image gives
 keyboard focus; Inspector text boxes and popups consume input. Dragging started in the image preserves release outside
 the panel. Focus loss clears held keys.
 

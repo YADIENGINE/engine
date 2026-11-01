@@ -1,13 +1,13 @@
 if(ENGINE_BUILD_EDITOR)
     if(NOT WIN32)
-        message(FATAL_ERROR "Engine editor and preview executables currently support Windows desktop only")
+        message(FATAL_ERROR "Engine editor and worker executables currently support Windows desktop only")
     endif()
     if(NOT ENGINE_BUILD_RUNTIME)
-        message(FATAL_ERROR "Engine editor/preview executables require ENGINE_BUILD_RUNTIME=ON")
+        message(FATAL_ERROR "Engine editor/worker executables require ENGINE_BUILD_RUNTIME=ON")
     endif()
 endif()
 
-add_library(EngineEditorApi STATIC Api/EditorPreview.cpp Api/PreviewParameter.cpp Api/PreviewRegistry.cpp)
+add_library(EngineEditorApi STATIC Api/EditorScene.cpp Api/SceneParameter.cpp Api/SceneRegistry.cpp)
 # Editör include'ları engine köküne göredir (#include "Editor/Api/..."); Core'unkiler Core'a göre.
 target_include_directories(EngineEditorApi PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_link_libraries(EngineEditorApi PUBLIC EngineHeadless)
@@ -15,8 +15,8 @@ engine_warnings(EngineEditorApi)
 
 add_library(EngineEditorSupport STATIC
     Application/EditorCommandState.cpp
-    Internals/Protocol/PreviewProtocol.cpp
-    Internals/Protocol/PreviewMessageReader.cpp
+    Internals/Protocol/WorkerProtocol.cpp
+    Internals/Protocol/WorkerMessageReader.cpp
     Internals/Protocol/EditorControlProtocol.cpp
     Internals/Session/EditorProject.cpp
     Internals/Session/RefreshState.cpp
@@ -26,8 +26,8 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/BenchmarkState.cpp
     Internals/Session/FrameCapture.cpp
     Internals/Session/ViewportMark.cpp
-    Internals/Viewport/PreviewViewport.cpp
-    Internals/Viewport/PreviewInputRouter.cpp
+    Internals/Viewport/SceneViewport.cpp
+    Internals/Viewport/ViewportInputRouter.cpp
     Internals/Diagnostics/EditorDiagnostics.cpp
     Internals/Settings/EditorPreferences.cpp
     Internals/Settings/EditorSettingsStore.cpp
@@ -50,11 +50,11 @@ endif()
 
 set(editor_output "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
 if(ENGINE_BUILD_EDITOR)
-    add_library(EnginePreviewRuntime STATIC EXCLUDE_FROM_ALL
-        Preview/PreviewScene.cpp Preview/PreviewGame.cpp Preview/PreviewSession.cpp Preview/PreviewHost.cpp
-        Preview/PreviewProfiler.cpp Preview/GlowBenchmark.cpp Preview/RenderGallery.cpp)
-    target_link_libraries(EnginePreviewRuntime PUBLIC Engine EngineEditorApi EngineEditorSupport EngineProfilerRuntime)
-    engine_warnings(EnginePreviewRuntime)
+    add_library(EngineWorkerRuntime STATIC EXCLUDE_FROM_ALL
+        Worker/WorkerScene.cpp Worker/WorkerGame.cpp Worker/WorkerSession.cpp Worker/WorkerHost.cpp
+        Worker/WorkerProfiler.cpp Worker/GlowBenchmark.cpp Worker/RenderGallery.cpp)
+    target_link_libraries(EngineWorkerRuntime PUBLIC Engine EngineEditorApi EngineEditorSupport EngineProfilerRuntime)
+    engine_warnings(EngineWorkerRuntime)
 
     function(engine_editor_escape_json result value)
         string(REPLACE "\\" "\\\\" escaped "${value}")
@@ -62,22 +62,22 @@ if(ENGINE_BUILD_EDITOR)
         set(${result} "${escaped}" PARENT_SCOPE)
     endfunction()
 
-    # A project supplies its preview worker (own main via RunPreviewHost); EngineEditor finds it through the
+    # A project supplies its worker process (own main via RunEditorWorker); EngineEditor finds it through the
     # EngineEditor.project.json recipe generated beside both executables.
     # With no sources (a fresh project) the engine's starter worker stands in until the first source is added.
     function(engine_add_editor_worker target)
         cmake_parse_arguments(WORKER "" "NAME;ASSETS" "SOURCES;LIBRARIES" ${ARGN})
         set(useStarter FALSE)
         if(NOT WORKER_NAME)
-            set(WORKER_NAME "${PROJECT_NAME} previews")
+            set(WORKER_NAME "${PROJECT_NAME} scenes")
         endif()
         if(NOT WORKER_SOURCES)
-            message(STATUS "${target}: no preview sources yet; building the engine starter worker")
-            set(WORKER_SOURCES "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Preview/StarterWorker.cpp")
+            message(STATUS "${target}: no scene sources yet; building the engine starter worker")
+            set(WORKER_SOURCES "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Worker/StarterWorker.cpp")
             set(useStarter TRUE)
         endif()
         add_executable(${target} ${WORKER_SOURCES})
-        target_link_libraries(${target} PRIVATE EnginePreviewRuntime ${WORKER_LIBRARIES})
+        target_link_libraries(${target} PRIVATE EngineWorkerRuntime ${WORKER_LIBRARIES})
         set_target_properties(${target} PROPERTIES
             CXX_EXTENSIONS OFF RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
         engine_warnings(${target})
@@ -139,9 +139,9 @@ if(ENGINE_BUILD_EDITOR)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)
     target_link_libraries(EngineEditorUi PUBLIC EngineToolUi EngineTerminalUi EngineEditorSupport)
     engine_warnings(EngineEditorUi)
-    add_executable(EngineEditor WIN32 Host/Main.cpp Host/EditorApplication.cpp Host/FramePng.cpp Host/PreviewDisplay.cpp
+    add_executable(EngineEditor WIN32 Host/Main.cpp Host/EditorApplication.cpp Host/FramePng.cpp Host/ViewportDisplay.cpp
         Host/ProjectListLauncher.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp
-        Application/EditorControlService.cpp Application/PreviewBuild.cpp Application/PreviewWorker.cpp)
+        Application/EditorControlService.cpp Application/WorkerBuild.cpp Application/WorkerProcess.cpp)
     # Resolve raylib's CloseWindow/ShowCursor before the transitive user32 import library.
     target_link_libraries(EngineEditor PRIVATE Engine EngineEditorSupport EngineEditorUi raylib shell32)
     target_compile_definitions(EngineEditor PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)

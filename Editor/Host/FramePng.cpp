@@ -9,11 +9,11 @@ constexpr int LabelPadding = 4;
 constexpr Color LabelBackground{0, 0, 0, 190};
 } // namespace
 
-PreviewPixels ReadWindowPixels() {
+ViewportPixels ReadWindowPixels() {
     Image image = LoadImageFromScreen();
     if (!image.data) throw std::runtime_error("Could not read the editor window");
     ImageFormat(&image, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
-    PreviewPixels pixels;
+    ViewportPixels pixels;
     pixels.width = image.width;
     pixels.height = image.height;
     const auto* bytes = static_cast<const std::byte*>(image.data);
@@ -22,7 +22,7 @@ PreviewPixels ReadWindowPixels() {
     UnloadImage(image);
     return pixels;
 }
-std::vector<std::byte> EncodeFramePng(const PreviewPixels& frame, const std::vector<FrameCaptureLabel>& labels) {
+std::vector<std::byte> EncodeFramePng(const ViewportPixels& frame, const std::vector<FrameCaptureLabel>& labels) {
     Image image = GenImageColor(frame.width, frame.height, BLANK); // A copy raylib may draw into
     if (!image.data) throw std::runtime_error("PNG encoding failed");
     std::copy(frame.rgba.begin(), frame.rgba.end(), static_cast<std::byte*>(image.data));

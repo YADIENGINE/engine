@@ -115,7 +115,7 @@ std::string TuningWorkspace::Set(std::size_t index, const TuningLocation& at, co
     return error;
 }
 
-std::string TuningWorkspace::Report(const PreviewTuningStatus& status) {
+std::string TuningWorkspace::Report(const WorkerTuningStatus& status) {
     const auto key = Key(std::filesystem::path(
         std::u8string_view(reinterpret_cast<const char8_t*>(status.source.data()), status.source.size())));
     for (auto& file : _files)

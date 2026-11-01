@@ -4,7 +4,7 @@ Commands are for developers; documentation-only changes do not require builds/te
 commands and scope are in [API](Api.md#headless-editor-tests). The user performs real window/input/visual checks; select
 only the changed section.
 
-## Preview contract
+## Editor scene contract
 
 1. Catalog retrieval must work without creating GL/fonts/audio during registration.
 2. The factory must receive the complete initial recipe; invalid values must be rejected atomically.
@@ -18,7 +18,7 @@ only the changed section.
 1. Initial preferences use Develop: Project / Viewport / Inspector open, Output / Profiler closed. Dock panels / combine
    tabs; close and reopen from Window. Window → Layouts manages preset / custom layouts; Window → Toggle last bottom
    tool and Ctrl+J manage the last bottom panel. Fit / Focus / 100% and zoom work in Viewport's local View menu; the top
-   View menu changes Focus preview / Restore workspace, UI scale, and performance metrics.
+   View menu changes Focus viewport / Restore workspace, UI scale, and performance metrics.
 2. 75% / 100% / 125% / 150% UI scale and monitor DPI changes; long names wrap or truncate with tooltips in narrow
    panels. Secondary toolbar actions are in overflow; no horizontal toolbar scrolling.
 3. Ctrl+P opens and focuses Project search, even when hidden. The favorite star does not open content; Recent lists only
@@ -42,7 +42,7 @@ only the changed section.
    error / warning color; the notice stays until Output is actually viewed and restarts on the next warning. Reopening
    restores layout; View starts open and in front even if saved closed / collapsed. Closing while maximized preserves
    the previous layout.
-7. Product input does not arrive when the preview tab is hidden, behind another panel, or a menu is open.
+7. Product input does not arrive when the viewport tab is hidden, behind another panel, or a menu is open.
 8. The primary action is full-width and fixed at the panel bottom while scrolling; secondary actions use two columns
    when wide enough, one in narrow panels. Long label / option tooltips, number / color editing, and section toggles do
    not overflow. Live numbers are right-aligned, short statuses badged, long explanations wrapped; no horizontal
@@ -55,7 +55,7 @@ only the changed section.
 
 1. Build Debug; no warnings / errors. No second visible worker window / console.
 2. Image center / corner / margin clicks; drag out and release; panel, window, and DPI changes.
-3. Typing in Inspector does not send keyboard input to the preview; alt-tab clears held input.
+3. Typing in Inspector does not send keyboard input to the scene; alt-tab clears held input.
 4. The main button shows Open when closed, Stop when ready / paused, Cancel during startup / catalog / build /
    benchmark, disabled Stop while closing. Repeated Stop / Open / Reset keeps the editor PID fixed; old images are not
    considered live.

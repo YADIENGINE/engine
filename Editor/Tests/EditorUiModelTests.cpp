@@ -1,25 +1,25 @@
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
-#include "Editor/Api/PreviewRegistry.h"
+#include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
-#include "Editor/Internals/Protocol/PreviewProtocol.h"
+#include "Editor/Internals/Protocol/WorkerProtocol.h"
 #include "Editor/Internals/Settings/EditorSettingsStore.h"
-#include "Editor/Internals/Viewport/PreviewInputRouter.h"
+#include "Editor/Internals/Viewport/ViewportInputRouter.h"
 #include "Platform/Internals/FileStorage.h"
 #include "Tests/Support/TempDirectory.h"
 
 TEST_CASE("Editor.Catalog.PresentationMetadataIsOptional", "[engine-editor]") {
-    PreviewDefinition definition;
+    SceneDefinition definition;
     definition.id = "example";
     definition.name = "Example";
-    PreviewParameter parameter{"enabled", "Enabled", PreviewParameterKind::Boolean, true};
+    SceneParameter parameter{"enabled", "Enabled", SceneParameterKind::Boolean, true};
     parameter.group = "Appearance";
     parameter.description = "Show the overlay.";
     definition.parameters.push_back(parameter);
     definition.actions.push_back({"inspect", "Inspect"});
     definition.actions.push_back({"replay", "Replay", "Restart the sample animation.", true});
-    auto encoded = EncodePreviewCatalog({definition});
-    const auto decoded = DecodePreviewCatalog(encoded);
+    auto encoded = EncodeSceneCatalog({definition});
+    const auto decoded = DecodeSceneCatalog(encoded);
     CHECK(decoded.front().parameters.front().group == parameter.group);
     CHECK(decoded.front().parameters.front().description == parameter.description);
     CHECK_FALSE(decoded.front().actions.front().primary);
@@ -30,7 +30,7 @@ TEST_CASE("Editor.Catalog.PresentationMetadataIsOptional", "[engine-editor]") {
     entry["parameters"][0].erase("description");
     entry["actions"][0].erase("description");
     entry["actions"][1].erase("primary");
-    const auto legacy = DecodePreviewCatalog(encoded);
+    const auto legacy = DecodeSceneCatalog(encoded);
     CHECK(legacy.front().parameters.front().group.empty());
     CHECK(legacy.front().parameters.front().description.empty());
     CHECK(legacy.front().actions.front().description.empty());
@@ -38,19 +38,17 @@ TEST_CASE("Editor.Catalog.PresentationMetadataIsOptional", "[engine-editor]") {
 }
 
 TEST_CASE("Editor.Catalog.PrimaryActionMustBeUnambiguous", "[engine-editor]") {
-    PreviewDefinition definition;
+    SceneDefinition definition;
     definition.id = "actions";
     definition.name = "Actions";
     definition.actions = {{"inspect", "Inspect", "", true}, {"replay", "Replay", "", true}};
-    definition.create = [](const PreviewServices&, const PreviewParameters&) -> std::unique_ptr<EditorPreview> {
-        return {};
-    };
-    PreviewRegistry registry;
+    definition.create = [](const SceneServices&, const SceneParameters&) -> std::unique_ptr<EditorScene> { return {}; };
+    SceneRegistry registry;
     CHECK_THROWS(registry.Add(definition));
-    CHECK_THROWS(DecodePreviewCatalog(EncodePreviewCatalog({definition})));
+    CHECK_THROWS(DecodeSceneCatalog(EncodeSceneCatalog({definition})));
     definition.actions.front().primary = false;
     CHECK_NOTHROW(registry.Add(definition));
-    CHECK_NOTHROW(DecodePreviewCatalog(EncodePreviewCatalog({definition})));
+    CHECK_NOTHROW(DecodeSceneCatalog(EncodeSceneCatalog({definition})));
 }
 
 TEST_CASE("Editor.Diagnostics.BoundsFiltersAndUnreadDiagnostics", "[engine-editor]") {
@@ -103,7 +101,7 @@ TEST_CASE("Editor.Diagnostics.AttemptsIncludeRefreshAndExcludeLaterRuntimeOutput
     diagnostics.Append("compile complete", EditorLogLevel::Info, EditorLogSource::Build);
     diagnostics.BuildExited(0);
     CHECK(diagnostics.Attempt().result == EditorBuildResult::Running);
-    diagnostics.Append("preview startup failed", EditorLogLevel::Error);
+    diagnostics.Append("scene startup failed", EditorLogLevel::Error);
     diagnostics.FinishAttempt(EditorBuildResult::RefreshFailed);
     const auto captured = diagnostics.AttemptEntries().size();
     diagnostics.Append("later runtime output", EditorLogLevel::Error);
@@ -111,7 +109,7 @@ TEST_CASE("Editor.Diagnostics.AttemptsIncludeRefreshAndExcludeLaterRuntimeOutput
     CHECK(diagnostics.Attempt().result == EditorBuildResult::RefreshFailed);
     CHECK(diagnostics.Attempt().exitCode == 0);
     REQUIRE(diagnostics.Attempt().firstError);
-    CHECK(diagnostics.Attempt().firstError->text == "preview startup failed");
+    CHECK(diagnostics.Attempt().firstError->text == "scene startup failed");
     CHECK(std::ranges::none_of(diagnostics.AttemptEntries(), [](const auto& entry) {
         return entry.text == "previous runtime output" || entry.text == "later runtime output";
     }));
@@ -235,11 +233,11 @@ TEST_CASE("Editor.Settings.ProjectIsolationAndCorruptFileRecovery", "[engine-edi
 }
 
 TEST_CASE("Editor.Input.HiddenViewportCancelsOwnedInput", "[engine-editor]") {
-    PreviewInputRouter router;
+    ViewportInputRouter router;
     InputSample down;
     down.mousePressed = down.mouseDown = true;
     down.keysDown[static_cast<std::size_t>(InputKey::Enter)] = true;
-    const auto viewport = FitPreviewViewport({}, {200, 100}, {400, 200});
+    const auto viewport = FitSceneViewport({}, {200, 100}, {400, 200});
     (void)router.Route(down, {50, 50}, viewport, true, true, false, false);
     const auto hidden = router.Route(down, {50, 50}, {}, true, true, false, false);
     CHECK(hidden.cancelled);
@@ -250,8 +248,8 @@ TEST_CASE("Editor.Input.HiddenViewportCancelsOwnedInput", "[engine-editor]") {
 }
 
 TEST_CASE("Editor.Input.EditorCommandCancelsHeldDevicesUntilNeutral", "[engine-editor]") {
-    PreviewInputRouter router;
-    const auto viewport = FitPreviewViewport({}, {200, 100}, {400, 200});
+    ViewportInputRouter router;
+    const auto viewport = FitSceneViewport({}, {200, 100}, {400, 200});
     InputSample held;
     held.mousePressed = held.mouseDown = true;
     held.keysDown[static_cast<std::size_t>(InputKey::Enter)] = true;

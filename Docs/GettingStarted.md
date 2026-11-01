@@ -16,7 +16,7 @@ MyProject/
     CreateGame.cpp
     MyGame.h  MyGame.cpp
     MyScene.h  MyScene.cpp
-  Editor/                   (previews; see Editor/GettingStarted.md)
+  Editor/                   (editor scenes; see Editor/GettingStarted.md)
 ```
 
 ## CMakeLists.txt

@@ -20,8 +20,8 @@ TEST_CASE("Editor.Workspace.BuildFailurePopupIsOncePerFailedAttempt", "[engine-e
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     io.Fonts->SetTexID(ImTextureID{1});
     ApplyToolTheme();
-    const std::vector<PreviewDefinition> catalog;
-    const PreviewParameters parameters;
+    const std::vector<SceneDefinition> catalog;
+    const SceneParameters parameters;
     EditorDiagnostics diagnostics;
     const std::string status;
     EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Error, status};
@@ -56,7 +56,7 @@ TEST_CASE("Editor.Workspace.BuildFailurePopupIsOncePerFailedAttempt", "[engine-e
     CHECK(frame());
 }
 
-TEST_CASE("Editor.Workspace.ShortcutsCancelPreviewInputAndPaletteOwnsKeys", "[engine-editor]") {
+TEST_CASE("Editor.Workspace.ShortcutsCancelViewportInputAndPaletteOwnsKeys", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
                                                                                   ImGui::DestroyContext);
     auto& io = ImGui::GetIO();
@@ -71,8 +71,8 @@ TEST_CASE("Editor.Workspace.ShortcutsCancelPreviewInputAndPaletteOwnsKeys", "[en
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     io.Fonts->SetTexID(ImTextureID{1});
     ApplyToolTheme();
-    const std::vector<PreviewDefinition> catalog;
-    const PreviewParameters parameters;
+    const std::vector<SceneDefinition> catalog;
+    const SceneParameters parameters;
     const EditorDiagnostics diagnostics;
     const std::string status;
     EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};
@@ -95,26 +95,27 @@ TEST_CASE("Editor.Workspace.ShortcutsCancelPreviewInputAndPaletteOwnsKeys", "[en
     (void)frame();
     (void)frame();
     io.AddKeyEvent(ImGuiKey_F5, true);
-    CHECK(frame().cancelPreviewInput);
+    CHECK(frame().cancelViewportInput);
     CHECK(executed == 1);
     io.AddKeyEvent(ImGuiKey_F5, false);
     (void)frame();
     io.AddKeyEvent(ImGuiMod_Ctrl, true);
     io.AddKeyEvent(ImGuiMod_Shift, true);
     io.AddKeyEvent(ImGuiKey_P, true);
-    CHECK(frame().cancelPreviewInput);
+    CHECK(frame().cancelViewportInput);
     io.AddKeyEvent(ImGuiKey_P, false);
     io.AddKeyEvent(ImGuiMod_Ctrl, false);
     io.AddKeyEvent(ImGuiMod_Shift, false);
     (void)frame();
     io.AddKeyEvent(ImGuiKey_F5, true);
-    CHECK(frame().cancelPreviewInput);
+    CHECK(frame().cancelViewportInput);
     CHECK(executed == 1);
     io.AddKeyEvent(ImGuiKey_F5, false);
+    (void)frame(); // Apply the palette's search focus before injecting text.
     io.AddInputCharactersUTF8("layout inspect");
     (void)frame();
     io.AddKeyEvent(ImGuiKey_Enter, true);
-    CHECK(frame().cancelPreviewInput);
+    CHECK(frame().cancelViewportInput);
     CHECK(preferences.layout == EditorWorkspaceLayout::Inspect);
     CHECK_FALSE(preferences.Visible(EditorPanel::Catalog));
     CHECK_FALSE(preferences.customDocking.empty());
@@ -135,8 +136,8 @@ TEST_CASE("Editor.Workspace.StartsWithViewAndTogglesBottomPanelsIndependently", 
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     io.Fonts->SetTexID(ImTextureID{1});
     ApplyToolTheme();
-    const std::vector<PreviewDefinition> catalog;
-    const PreviewParameters parameters;
+    const std::vector<SceneDefinition> catalog;
+    const SceneParameters parameters;
     EditorDiagnostics diagnostics;
     const std::string status;
     EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};

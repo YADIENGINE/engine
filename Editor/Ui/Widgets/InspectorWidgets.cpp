@@ -4,7 +4,7 @@
 #include <cfloat>
 #include <cmath>
 #include <string>
-#include "Editor/Api/PreviewInspection.h"
+#include "Editor/Api/SceneInspection.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "ToolUi/ToolTheme.h"
@@ -91,7 +91,7 @@ bool InspectorResetButton(bool changed, bool pending, bool inlineRow) {
     ImGui::PopFont();
     return reset;
 }
-void InspectorAction(const PreviewAction& action, std::span<const std::string> disabled,
+void InspectorAction(const SceneAction& action, std::span<const std::string> disabled,
                      const std::function<void(const std::string&)>& execute) {
     ImGui::PushID(action.id.c_str());
     ImGui::BeginDisabled(std::ranges::find(disabled, action.id) != disabled.end());
@@ -150,25 +150,24 @@ bool BeginInspectorProperties(const char* id, float labelWidth, bool readOnly) {
     return true;
 }
 void EndInspectorProperties() { ImGui::EndTable(); }
-bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& value, bool pending,
-                             const char* applyHint) {
+bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value, bool pending, const char* applyHint) {
     const bool modified = value != parameter.initial;
     const std::string tooltip = parameter.label + (modified ? "\nModified from default." : "") +
                                 (parameter.description.empty() ? "" : "\n" + parameter.description);
     const std::string labelTooltip = tooltip + (*applyHint ? "\n" + std::string(applyHint) : "");
-    const bool compact = parameter.kind == PreviewParameterKind::Boolean ||
-                         (parameter.kind == PreviewParameterKind::Choice && !parameter.choiceButtons);
+    const bool compact = parameter.kind == SceneParameterKind::Boolean ||
+                         (parameter.kind == SceneParameterKind::Choice && !parameter.choiceButtons);
     if (compact) {
-        const float padding = parameter.kind == PreviewParameterKind::Boolean ? CheckboxPaddingY : DropdownPaddingY;
+        const float padding = parameter.kind == SceneParameterKind::Boolean ? CheckboxPaddingY : DropdownPaddingY;
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {ImGui::GetStyle().FramePadding.x, padding * InspectorScale()});
     }
     // Choice grids are standalone full-width blocks; ordinary fields share their group's table.
-    const bool choiceGrid = parameter.kind == PreviewParameterKind::Choice && parameter.choiceButtons;
+    const bool choiceGrid = parameter.kind == SceneParameterKind::Choice && parameter.choiceButtons;
     const bool inlineRow = !choiceGrid && ImGui::TableGetColumnCount() > 1;
     const float resetSize = ResetButtonSize * InspectorScale();
     const float gap = ImGui::GetStyle().ItemSpacing.x;
     const bool inlineCheckbox =
-        !inlineRow && parameter.kind == PreviewParameterKind::Boolean &&
+        !inlineRow && parameter.kind == SceneParameterKind::Boolean &&
         ImGui::GetContentRegionAvail().x >= resetSize + ImGui::GetFrameHeight() + gap * 2 + ImGui::GetFontSize();
     if (choiceGrid) {
         ImGui::BeginGroup();
@@ -192,16 +191,15 @@ bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& va
     if (edited) value = parameter.initial;
     if (inlineRow) ImGui::TableSetColumnIndex(1);
     ImGui::SetNextItemWidth(-FLT_MIN);
-    const bool technical = parameter.kind == PreviewParameterKind::Integer ||
-                           parameter.kind == PreviewParameterKind::Float ||
-                           parameter.kind == PreviewParameterKind::Color;
+    const bool technical = parameter.kind == SceneParameterKind::Integer ||
+                           parameter.kind == SceneParameterKind::Float || parameter.kind == SceneParameterKind::Color;
     if (technical) ImGui::PushFont(ToolFont(ToolFontRole::Technical), 0);
     if (modified) {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, InspectorScale());
         ImGui::PushStyleColor(ImGuiCol_Border, AccentSurface(ImGuiCol_Border, 0.35f, ToolTone::Warning));
     }
     const bool modifiedNumber =
-        modified && (parameter.kind == PreviewParameterKind::Integer || parameter.kind == PreviewParameterKind::Float);
+        modified && (parameter.kind == SceneParameterKind::Integer || parameter.kind == SceneParameterKind::Float);
     if (modifiedNumber) ImGui::PushStyleColor(ImGuiCol_Text, ToolToneColor(ToolTone::Warning));
     edited = EditorParameterWidget(parameter, value) || edited;
     if (modifiedNumber) ImGui::PopStyleColor();
@@ -220,31 +218,31 @@ bool InspectorParameterField(const PreviewParameter& parameter, PreviewValue& va
     }
     if (pending) {
         ToolStatusBadge("Pending", EditorPhaseColor(EditorPhase::Paused));
-        ToolTooltip("Waiting for the preview to accept this value.");
+        ToolTooltip("Waiting for the scene to accept this value.");
     }
     if (choiceGrid) ImGui::EndGroup();
     if (compact) ImGui::PopStyleVar();
     return edited;
 }
-void InspectorReadOnlyField(const PreviewReadout& value) {
+void InspectorReadOnlyField(const SceneReadout& value) {
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
     InspectorLabel(value.label.c_str(), "", false, ImGui::GetContentRegionAvail().x);
     if (ImGui::TableGetColumnCount() > 1) ImGui::TableSetColumnIndex(1);
     switch (value.kind) {
-    case PreviewReadoutKind::Number:
+    case SceneReadoutKind::Number:
         ImGui::PushFont(ToolFont(ToolFontRole::Technical), 0);
         InspectorText(value.value.c_str(), ImGui::GetContentRegionAvail().x, true);
         ImGui::PopFont();
         break;
-    case PreviewReadoutKind::Status:
+    case SceneReadoutKind::Status:
         if (ImGui::CalcTextSize(value.value.c_str()).x + ImGui::GetStyle().FramePadding.x * 2 <=
             ImGui::GetContentRegionAvail().x) {
             ToolStatusBadge(value.value.c_str(), ToolToneColor(ToolTone::Information));
             break;
         }
         [[fallthrough]];
-    case PreviewReadoutKind::Text:
+    case SceneReadoutKind::Text:
         ImGui::PushTextWrapPos(0);
         ImGui::TextUnformatted(value.value.c_str());
         ImGui::PopTextWrapPos();
@@ -271,13 +269,13 @@ void InspectorSummary(const char* title, const char* text) {
         }
     }
 }
-void InspectorPrimaryAction(const PreviewAction& action, std::span<const std::string> disabled,
+void InspectorPrimaryAction(const SceneAction& action, std::span<const std::string> disabled,
                             const std::function<void(const std::string&)>& execute) {
     InspectorAction(action, disabled, execute);
 }
-void InspectorActionGroup(std::span<const PreviewAction> actions, std::span<const std::string> disabled,
+void InspectorActionGroup(std::span<const SceneAction> actions, std::span<const std::string> disabled,
                           const std::function<void(const std::string&)>& execute, bool includePrimary) {
-    const auto primary = std::ranges::find(actions, true, &PreviewAction::primary);
+    const auto primary = std::ranges::find(actions, true, &SceneAction::primary);
     if (includePrimary && primary != actions.end()) InspectorAction(*primary, disabled, execute);
     if (actions.empty() || (actions.size() == 1 && primary != actions.end())) return;
     float minimumWidth = 0;

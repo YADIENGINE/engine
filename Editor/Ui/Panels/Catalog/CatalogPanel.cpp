@@ -20,10 +20,10 @@ void DrawCatalogFilterIcon(CatalogFilterIcon icon, ImVec2 center, float scale, I
     const float stroke = FilterStrokeWidth * scale;
     if (icon == CatalogFilterIcon::Star) {
         // Center the visible outline, independently of font bearings and baseline.
-        static constexpr std::array Points{
-            ImVec2{0, -0.5f},      ImVec2{0.15f, -0.17f}, ImVec2{0.5f, -0.12f}, ImVec2{0.24f, 0.14f},
-            ImVec2{0.31f, 0.5f},   ImVec2{0, 0.31f},      ImVec2{-0.31f, 0.5f}, ImVec2{-0.24f, 0.14f},
-            ImVec2{-0.5f, -0.12f}, ImVec2{-0.15f, -0.17f}};
+        static constexpr std::array Points{ImVec2{0, -0.5f},      ImVec2{0.15f, -0.17f}, ImVec2{0.5f, -0.12f},
+                                           ImVec2{0.24f, 0.14f},  ImVec2{0.31f, 0.5f},   ImVec2{0, 0.31f},
+                                           ImVec2{-0.31f, 0.5f},  ImVec2{-0.24f, 0.14f}, ImVec2{-0.5f, -0.12f},
+                                           ImVec2{-0.15f, -0.17f}};
         for (const auto& point : Points)
             draw->PathLineTo({center.x + point.x * size, center.y + point.y * size});
         draw->PathStroke(color, ImDrawFlags_Closed, stroke);
@@ -71,7 +71,7 @@ bool CatalogFilterButton(const char* id, CatalogFilterIcon icon, const char* too
 }
 } // namespace
 
-void CatalogPanel::Entry(const PreviewDefinition& entry, const EditorSnapshot& snapshot, const EditorUiActions& actions,
+void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& snapshot, const EditorUiActions& actions,
                          EditorPreferences& preferences) {
     ImGui::PushID(entry.id.c_str());
     const bool favorite = preferences.IsFavorite(entry.id);
@@ -100,17 +100,16 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
         ImGui::SetKeyboardFocusHere();
         _focusSearch = false;
     }
-    ImGui::InputTextWithHint("##search", "Search previews (Ctrl+P)", _search.data(), _search.size());
+    ImGui::InputTextWithHint("##search", "Search scenes (Ctrl+P)", _search.data(), _search.size());
     if (CatalogFilterButton("favorites-filter", CatalogFilterIcon::Star,
-                            _view == 1 ? "Favorites on. Click to show all previews." : "Show favorite previews.",
+                            _view == 1 ? "Favorites on. Click to show all scenes." : "Show favorite scenes.",
                             _view == 1))
         _view = _view == 1 ? 0 : 1;
     ContinueToolToolbar(FilterButtonSize * ToolUiScale());
     if (CatalogFilterButton("recent-filter", CatalogFilterIcon::Clock,
-                            _view == 2 ? "Recent on. Click to show all previews." : "Show recent previews.",
-                            _view == 2))
+                            _view == 2 ? "Recent on. Click to show all scenes." : "Show recent scenes.", _view == 2))
         _view = _view == 2 ? 0 : 2;
-    std::vector<const PreviewDefinition*> entries;
+    std::vector<const SceneDefinition*> entries;
     const auto query = EditorSearchText(_search.data());
     for (const auto& entry : snapshot.catalog) {
         if (_view == 1 && !preferences.IsFavorite(entry.id)) continue;
@@ -148,19 +147,19 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
         }
         if (entries.empty()) {
             if (snapshot.catalog.empty()) {
-                ToolEmptyState("No previews available", "Check Output for details, or refresh the preview catalog.");
+                ToolEmptyState("No scenes available", "Check Output for details, or refresh the scene catalog.");
                 ImGui::BeginDisabled(!snapshot.capabilities.Can(EditorCommand::Refresh));
                 if (ImGui::Button("Build & refresh")) actions.command(EditorCommand::Refresh);
                 ImGui::EndDisabled();
             } else {
                 const char* detail = !query.empty() ? "Try a different name, description, or category."
-                                     : _view == 1   ? "Star a preview to keep it here."
-                                                    : "Previews you open will appear here.";
-                ToolEmptyState(!query.empty() ? "No matching previews"
+                                     : _view == 1   ? "Star a scene to keep it here."
+                                                    : "Scenes you open will appear here.";
+                ToolEmptyState(!query.empty() ? "No matching scenes"
                                : _view == 1   ? "No favorites yet"
-                                              : "No recent previews",
+                                              : "No recent scenes",
                                detail);
-                if (ImGui::Button(!query.empty() ? "Clear search" : "Show all previews")) {
+                if (ImGui::Button(!query.empty() ? "Clear search" : "Show all scenes")) {
                     _search.fill('\0');
                     if (query.empty()) _view = 0;
                 }

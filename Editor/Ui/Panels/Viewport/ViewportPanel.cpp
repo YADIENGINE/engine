@@ -14,7 +14,7 @@ constexpr double NoticeSeconds = 3.0; // A control notice stays this long, fadin
 constexpr double NoticeFade = 0.75;
 constexpr float MarkFill = 0.15f;   // Alpha of the marked area
 constexpr float MarkOutline = 2.0f; // Pixels at 100% UI scale
-// The last change made through the control endpoint, over the top-left corner of the preview area.
+// The last change made through the control endpoint, over the top-left corner of the viewport area.
 void DrawNotice(const EditorSnapshot& snapshot, ImVec2 cursor) {
     if (snapshot.notice.empty() || snapshot.noticeAge >= NoticeSeconds) return;
     const float alpha = static_cast<float>(std::clamp((NoticeSeconds - snapshot.noticeAge) / NoticeFade, 0.0, 1.0));
@@ -35,8 +35,8 @@ bool ViewportPanel::Toolbar(bool maximized) {
     bool toggleMaximize = false;
     const auto& style = ImGui::GetStyle();
     constexpr std::array Modes{"Fit", "Focus content", "100%"};
-    if (ImGui::Button("View")) ImGui::OpenPopup("preview-view");
-    if (ImGui::BeginPopup("preview-view")) {
+    if (ImGui::Button("View")) ImGui::OpenPopup("viewport-view");
+    if (ImGui::BeginPopup("viewport-view")) {
         for (int i = 0; i < 3; ++i) {
             if (ImGui::MenuItem(Modes[static_cast<std::size_t>(i)], nullptr, _mode == i)) {
                 _mode = i;
@@ -60,22 +60,22 @@ bool ViewportPanel::Toolbar(bool maximized) {
         ImGui::AlignTextToFramePadding();
         ImGui::TextDisabled("%s / %.0f%%", Modes[static_cast<std::size_t>(_mode)], _zoom * 100.0f);
         toggleMaximize = ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-        ToolTooltip("Double-click to maximize or restore the preview.");
+        ToolTooltip("Double-click to maximize or restore the viewport.");
         ImGui::SameLine();
     }
     const float gap = ImGui::GetContentRegionAvail().x - maximizeWidth;
     if (gap > style.ItemSpacing.x) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + gap);
-    if (EditorIconButton("maximize-preview", maximized ? EditorGlyph::Restore : EditorGlyph::Expand,
-                         maximized ? "Restore workspace" : "Maximize preview"))
+    if (EditorIconButton("maximize-viewport", maximized ? EditorGlyph::Restore : EditorGlyph::Expand,
+                         maximized ? "Restore workspace" : "Maximize viewport"))
         toggleMaximize = true;
     return toggleMaximize;
 }
 
 EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                              const EditorPreviewImage& image, bool metrics, bool maximized) {
+                                              const ViewportImage& image, bool metrics, bool maximized) {
     EditorViewportInteraction result;
-    if (snapshot.selected && _preview != snapshot.selected->id) {
-        _preview = snapshot.selected->id;
+    if (snapshot.selected && _scene != snapshot.selected->id) {
+        _scene = snapshot.selected->id;
         _pan = {};
         _zoom = 1.0f;
     }
@@ -125,7 +125,7 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
     const auto available = ImGui::GetContentRegionAvail();
     const bool hasFrame = snapshot.ready && image.texture && image.generation == snapshot.generation;
     if (hasFrame && available.x > 1 && available.y > 1) {
-        PreviewContentBounds bounds{0, 0, snapshot.canvas.x, snapshot.canvas.y};
+        SceneContentBounds bounds{0, 0, snapshot.canvas.x, snapshot.canvas.y};
         if (_mode == 1 && snapshot.inspection.focus) bounds = *snapshot.inspection.focus;
         bounds.x = std::clamp(bounds.x, 0, snapshot.canvas.x - 1);
         bounds.y = std::clamp(bounds.y, 0, snapshot.canvas.y - 1);
@@ -135,7 +135,7 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
                                         : std::min(available.x / static_cast<float>(bounds.width),
                                                    available.y / static_cast<float>(bounds.height))) *
                             _zoom;
-        ImGui::InvisibleButton("preview-image", available,
+        ImGui::InvisibleButton("viewport-image", available,
                                ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonMiddle);
         result.hovered = ImGui::IsItemHovered();
         result.contentActive = ImGui::IsItemActive();
@@ -161,7 +161,7 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
         draw->AddImage(ImTextureID(image.texture), {position.x, position.y},
                        {position.x + size.x, position.y + size.y});
         draw->PopClipRect();
-        // Alt+drag (or click) marks a region of the preview; it pauses so the frame holds still. The toolbar's Mark
+        // Alt+drag (or click) marks a region of the scene; it pauses so the frame holds still. The toolbar's Mark
         // toggle works over the whole window (EditorWorkspace::MarkOverlay).
         const bool gesture = io.KeyAlt && !navigating;
         const Float2 mouse{io.MousePos.x, io.MousePos.y};
@@ -190,17 +190,17 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
         _focused = false;
         _markStart.reset();
         if (!snapshot.selected) {
-            ToolEmptyState("Choose a preview", "Select an item from the Catalog to start a preview.");
+            ToolEmptyState("Choose a scene", "Select an item from the Catalog to start a scene.");
         } else if (snapshot.phase == EditorPhase::Error) {
-            ToolEmptyState("Preview unavailable", "See Output for details, then retry or build and refresh.");
+            ToolEmptyState("Scene unavailable", "See Output for details, then retry or build and refresh.");
         } else if (snapshot.phase == EditorPhase::Stopped) {
-            ToolEmptyState("Preview stopped", "Start the selected preview when you are ready.");
+            ToolEmptyState("Scene stopped", "Start the selected scene when you are ready.");
         } else {
             ToolEmptyState(snapshot.ready ? "Waiting for a frame" : EditorPhaseLabel(snapshot.phase),
                            snapshot.status.c_str());
         }
         if (snapshot.selected && snapshot.capabilities.Can(EditorCommand::Open)) {
-            if (ImGui::Button(snapshot.phase == EditorPhase::Error ? "Retry preview" : "Start preview"))
+            if (ImGui::Button(snapshot.phase == EditorPhase::Error ? "Retry scene" : "Start scene"))
                 actions.command(EditorCommand::Open);
         } else if (snapshot.capabilities.Can(EditorCommand::Cancel)) {
             if (ImGui::Button("Cancel")) actions.command(EditorCommand::Cancel);

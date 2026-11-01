@@ -11,15 +11,15 @@
 #include "Tests/Support/TempDirectory.h"
 
 namespace {
-PreviewParameter Parameter(PreviewParameterKind kind) {
-    PreviewParameter parameter;
+SceneParameter Parameter(SceneParameterKind kind) {
+    SceneParameter parameter;
     parameter.id = "value";
     parameter.kind = kind;
     return parameter;
 }
 // A frame whose pixel (x, y) is (x, y, 0, 255).
-PreviewPixels Gradient(int width, int height) {
-    PreviewPixels frame;
+ViewportPixels Gradient(int width, int height) {
+    ViewportPixels frame;
     frame.width = width;
     frame.height = height;
     for (int y = 0; y < height; ++y)
@@ -28,40 +28,40 @@ PreviewPixels Gradient(int width, int height) {
                 frame.rgba.push_back(static_cast<std::byte>(channel));
     return frame;
 }
-int Channel(const PreviewPixels& frame, int x, int y, int channel) {
+int Channel(const ViewportPixels& frame, int x, int y, int channel) {
     return std::to_integer<int>(frame.rgba[static_cast<std::size_t>((y * frame.width + x) * 4 + channel)]);
 }
 } // namespace
 
 TEST_CASE("Editor.Control.ValuesFollowTheParameterKind", "[engine-editor]") {
-    CHECK(ControlValueOf(Parameter(PreviewParameterKind::Integer), 3) == PreviewValue{std::int64_t{3}});
-    CHECK(ControlValueOf(Parameter(PreviewParameterKind::Integer), 4.0) == PreviewValue{std::int64_t{4}});
-    CHECK_THROWS(ControlValueOf(Parameter(PreviewParameterKind::Integer), 4.5));
-    CHECK(ControlValueOf(Parameter(PreviewParameterKind::Float), 2) == PreviewValue{2.0});
-    CHECK_THROWS(ControlValueOf(Parameter(PreviewParameterKind::Float), "2"));
-    CHECK(ControlValueOf(Parameter(PreviewParameterKind::Boolean), true) == PreviewValue{true});
-    CHECK_THROWS(ControlValueOf(Parameter(PreviewParameterKind::Boolean), 1));
-    CHECK(ControlValueOf(Parameter(PreviewParameterKind::Choice), "Fast") == PreviewValue{std::string("Fast")});
-    CHECK(ControlValueOf(Parameter(PreviewParameterKind::Color), nlohmann::json::array({1, 0, 0})) ==
-          PreviewValue{PreviewColor{1.0f, 0.0f, 0.0f, 1.0f}});
-    CHECK(ControlValueOf(Parameter(PreviewParameterKind::Color), "#ff000080") ==
-          PreviewValue{PreviewColor{1.0f, 0.0f, 0.0f, 128.0f / 255.0f}});
-    CHECK_THROWS(ControlValueOf(Parameter(PreviewParameterKind::Color), "red"));
-    CHECK_THROWS(ControlValueOf(Parameter(PreviewParameterKind::Color), nlohmann::json::array({1, 0})));
+    CHECK(ControlValueOf(Parameter(SceneParameterKind::Integer), 3) == SceneValue{std::int64_t{3}});
+    CHECK(ControlValueOf(Parameter(SceneParameterKind::Integer), 4.0) == SceneValue{std::int64_t{4}});
+    CHECK_THROWS(ControlValueOf(Parameter(SceneParameterKind::Integer), 4.5));
+    CHECK(ControlValueOf(Parameter(SceneParameterKind::Float), 2) == SceneValue{2.0});
+    CHECK_THROWS(ControlValueOf(Parameter(SceneParameterKind::Float), "2"));
+    CHECK(ControlValueOf(Parameter(SceneParameterKind::Boolean), true) == SceneValue{true});
+    CHECK_THROWS(ControlValueOf(Parameter(SceneParameterKind::Boolean), 1));
+    CHECK(ControlValueOf(Parameter(SceneParameterKind::Choice), "Fast") == SceneValue{std::string("Fast")});
+    CHECK(ControlValueOf(Parameter(SceneParameterKind::Color), nlohmann::json::array({1, 0, 0})) ==
+          SceneValue{SceneColor{1.0f, 0.0f, 0.0f, 1.0f}});
+    CHECK(ControlValueOf(Parameter(SceneParameterKind::Color), "#ff000080") ==
+          SceneValue{SceneColor{1.0f, 0.0f, 0.0f, 128.0f / 255.0f}});
+    CHECK_THROWS(ControlValueOf(Parameter(SceneParameterKind::Color), "red"));
+    CHECK_THROWS(ControlValueOf(Parameter(SceneParameterKind::Color), nlohmann::json::array({1, 0})));
     // Values go back out as plain JSON
-    CHECK(ControlValue(PreviewColor{0.0f, 1.0f, 0.0f, 1.0f}) == nlohmann::json::array({0.0f, 1.0f, 0.0f, 1.0f}));
+    CHECK(ControlValue(SceneColor{0.0f, 1.0f, 0.0f, 1.0f}) == nlohmann::json::array({0.0f, 1.0f, 0.0f, 1.0f}));
     CHECK(ControlValue(std::int64_t{7}) == 7);
 }
 
 TEST_CASE("Editor.Control.CatalogEntryShowsCurrentValuesAndActions", "[engine-editor]") {
-    PreviewDefinition definition;
+    SceneDefinition definition;
     definition.id = "drawing.circle";
     definition.name = "Circle";
-    auto radius = Parameter(PreviewParameterKind::Float);
+    auto radius = Parameter(SceneParameterKind::Float);
     radius.id = "radius";
     radius.initial = 10.0;
     radius.maximum = 50.0;
-    auto mode = Parameter(PreviewParameterKind::Choice);
+    auto mode = Parameter(SceneParameterKind::Choice);
     mode.id = "mode";
     mode.initial = std::string("Slow");
     mode.choices = {"Slow", "Fast"};
@@ -106,7 +106,7 @@ TEST_CASE("Editor.Capture.CropsInCanvasUnitsAndScales", "[engine-editor]") {
     CHECK_THROWS(CaptureFrame(frame, {8, 4}, {FloatRect{6.0f, 0.0f, 4.0f, 2.0f}, 1.0}));
     CHECK_THROWS(CaptureFrame(frame, {8, 4}, {FloatRect{0.0f, 0.0f, 0.0f, 2.0f}, 1.0}));
     CHECK_THROWS(CaptureFrame(frame, {8, 4}, {std::nullopt, 10.0}));
-    CHECK_THROWS(CaptureFrame(PreviewPixels{}, {8, 4}, {}));
+    CHECK_THROWS(CaptureFrame(ViewportPixels{}, {8, 4}, {}));
 }
 
 TEST_CASE("Editor.Capture.FolderKeepsTheNewest", "[engine-editor]") {
@@ -146,7 +146,7 @@ TEST_CASE("Editor.Capture.GridPlacesTilesInRowsWithLabels", "[engine-editor]") {
 
 TEST_CASE("Editor.Mark.DragAndClickBecomeCanvasRegions", "[engine-editor]") {
     // A 1600x900 canvas shown at half size from (100, 50)
-    const PreviewViewport viewport{{100.0f, 50.0f}, {800.0f, 450.0f}, {1600, 900}, {}, {}};
+    const SceneViewport viewport{{100.0f, 50.0f}, {800.0f, 450.0f}, {1600, 900}, {}, {}};
     const auto drag = MarkRegion(viewport, {200.0f, 100.0f}, {300.0f, 150.0f});
     REQUIRE(drag);
     CHECK(*drag == FloatRect{200.0f, 100.0f, 200.0f, 100.0f});
@@ -164,19 +164,19 @@ TEST_CASE("Editor.Mark.DragAndClickBecomeCanvasRegions", "[engine-editor]") {
     CHECK_FALSE(MarkRegion(viewport, {50.0f, 50.0f}, {300.0f, 150.0f})); // Pressed outside the image
 }
 
-TEST_CASE("Editor.Mark.ContextNamesThePreviewTimeRegionImageAndChangedParameters", "[engine-editor]") {
-    PreviewDefinition definition;
+TEST_CASE("Editor.Mark.ContextNamesTheSceneTimeRegionImageAndChangedParameters", "[engine-editor]") {
+    SceneDefinition definition;
     definition.id = "drawing.circle";
-    auto radius = Parameter(PreviewParameterKind::Float);
+    auto radius = Parameter(SceneParameterKind::Float);
     radius.id = "radius";
     radius.initial = 10.0;
-    auto glow = Parameter(PreviewParameterKind::Boolean);
+    auto glow = Parameter(SceneParameterKind::Boolean);
     glow.id = "glow";
     glow.initial = false;
     definition.parameters = {radius, glow};
     const auto line = MarkContext(definition, {{"radius", 24.0}, {"glow", false}}, 1.5, true,
                                   FloatRect{10.0f, 20.0f, 300.0f, 200.0f}, {1600, 900}, "C:/captures/mark.png");
-    CHECK(line.starts_with("[editor] preview=drawing.circle t=1.50s(paused) region=10,20 300x200 of 1600x900"));
+    CHECK(line.starts_with("[editor] scene=drawing.circle t=1.50s(paused) region=10,20 300x200 of 1600x900"));
     CHECK(line.find("image=\"C:/captures/mark.png\"") != std::string::npos);
     CHECK(line.find("radius=24.0") != std::string::npos);
     CHECK(line.find("glow") == std::string::npos); // Unchanged from its initial value
@@ -198,6 +198,6 @@ TEST_CASE("Editor.Mark.WindowRegionsUseFramebufferPixels", "[engine-editor]") {
     CHECK(*click == FloatRect{0.0f, 0.0f, MarkWindowPointSize, MarkWindowPointSize});
     const auto line =
         WindowMarkContext(FloatRect{5.0f, 6.0f, 70.0f, 80.0f}, {2000, 1200}, "C:/m.png", "drawing.circle");
-    CHECK(line == "[editor] window region=5,6 70x80 of 2000x1200 image=\"C:/m.png\" open-preview=drawing.circle ");
-    CHECK(WindowMarkContext({}, {2000, 1200}, "m.png", {}).find("open-preview") == std::string::npos);
+    CHECK(line == "[editor] window region=5,6 70x80 of 2000x1200 image=\"C:/m.png\" open-scene=drawing.circle ");
+    CHECK(WindowMarkContext({}, {2000, 1200}, "m.png", {}).find("open-scene") == std::string::npos);
 }

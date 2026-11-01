@@ -18,7 +18,7 @@ struct UiStyle {
     ButtonAnimSettings buttonAnimation;
 };
 
-// Screen background roles (read by Ui/Backdrop): menus, surroundings of the game field, preview / gallery screens;
+// Screen background roles (read by Ui/Backdrop): menus, surroundings of the game field, editor scene / gallery screens;
 // scanline geometry is shared by all.
 struct BackdropTheme {
     BackdropStyle menu;

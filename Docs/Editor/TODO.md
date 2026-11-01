@@ -6,9 +6,9 @@ unused public API before implementing a capability.
 
 | Next capability | Required contract / infrastructure first |
 | --- | --- |
-| Savable parameter recipe presets | Persistent recipe format with preview identity and validated parameters; compatibility and load / save behavior. Then preset selection through Project / Inspector |
-| Multiple preview tabs / contexts | Each context's own selection, parameters, inspection, input focus, and resource ownership; then assess concurrent worker needs, adding independent worker lifecycle and command targeting if needed |
-| Visual A/B capture and comparison | Immutable captures with known source and preview context; then side-by-side image / comparison presentation. Existing Profiler A/B benchmarks are a separate feature |
+| Savable parameter recipe presets | Persistent recipe format with editor scene identity and validated parameters; compatibility and load / save behavior. Then preset selection through Project / Inspector |
+| Multiple editor scene tabs / contexts | Each context's own selection, parameters, inspection, input focus, and resource ownership; then assess concurrent worker needs, adding independent worker lifecycle and command targeting if needed |
+| Visual A/B capture and comparison | Immutable captures with known source and scene context; then side-by-side image / comparison presentation. Existing Profiler A/B benchmarks are a separate feature |
 | Scene / asset browser and gizmos | Project-supplied stable object / asset identity, selection, and editable property / transform contract; then shared selection model, panels, and viewport tools |
 | Save, dirty state, Undo / Redo | Source document and save ownership, edit transaction boundaries, and reversible commands; then modified-document state, save, and history UI |
 | Timeline scrubbing | Reconstructible deterministic state or timestamped snapshot / resimulation contract; then seek and timeline. Existing Pause / Reset / Step do not provide arbitrary-time jumps |

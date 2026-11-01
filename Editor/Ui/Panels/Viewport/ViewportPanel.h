@@ -3,10 +3,10 @@
 #include <optional>
 #include <string>
 #include "Editor/Application/EditorPresentation.h"
-#include "Editor/Internals/Viewport/PreviewViewport.h"
+#include "Editor/Internals/Viewport/SceneViewport.h"
 #include "Utilities/FloatRect.h"
 
-struct EditorPreviewImage {
+struct ViewportImage {
     std::uint64_t texture = 0;
     int width = 0;
     int height = 0;
@@ -16,7 +16,7 @@ struct EditorPreviewImage {
 };
 
 struct EditorViewportInteraction {
-    PreviewViewport viewport;
+    SceneViewport viewport;
     bool focused = false;
     bool hovered = false;
     bool contentActive = false;
@@ -28,7 +28,7 @@ struct EditorViewportInteraction {
 class ViewportPanel {
 public:
     [[nodiscard]] EditorViewportInteraction Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                                 const EditorPreviewImage& image, bool metrics, bool maximized);
+                                                 const ViewportImage& image, bool metrics, bool maximized);
     void ReleaseFocus() { _focused = false; }
 
 private:
@@ -37,6 +37,6 @@ private:
     int _mode = 1;
     float _zoom = 1.0f;
     Float2 _pan;
-    std::string _preview;
+    std::string _scene;
     std::optional<Float2> _markStart; // Screen point where the current mark drag began
 };

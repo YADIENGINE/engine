@@ -9,7 +9,7 @@ public:
     void FocusSearch() { _focusSearch = true; }
 
 private:
-    void Entry(const PreviewDefinition& entry, const EditorSnapshot& snapshot, const EditorUiActions& actions,
+    void Entry(const SceneDefinition& entry, const EditorSnapshot& snapshot, const EditorUiActions& actions,
                EditorPreferences& preferences);
     std::array<char, 256> _search{};
     int _view = 0;

@@ -1,7 +1,7 @@
 # Project setup
 
 The engine is a separate git repo, and each game uses it as a submodule named `Engine/` at its root. Game code, editor
-previews, and documentation stay in the game's repo; the engine repo sees no games.
+editor scenes, and documentation stay in the game's repo; the engine repo sees no games.
 
 ```text
 MyProject/                  (game repo)
@@ -9,7 +9,7 @@ MyProject/                  (game repo)
     Core/  Editor/  Docs/  Tools/  ThirdParty/  __main__.py  ...
   Game/                     game sources + Assets/ (.cpp files found automatically) + Distribution/ (notices sent
                             to players: GameNotices.txt, credits; see Release.md)
-  Editor/                   project preview worker (EngineEditor previews; .cpp files found automatically)
+  Editor/                   project worker process (EngineEditor scenes; .cpp files found automatically)
   CMakeLists.txt  CMakePresets.json
   Project.json              project settings read by engine tools
 ```
@@ -39,7 +39,7 @@ python Engine new --dry-run        # lists what it would create without writing
 `new` writes `Engine/Tools/ProjectTemplate/` into the project folder: `CMakeLists.txt`, `CMakePresets.json`,
 `Project.json`, `.gitignore`, `.gitattributes`, `Game/Assets/`, `Editor/`, `Game/Distribution/GameNotices.txt`. The
 project name is written to `project(...)` and the `Project.json` `"name"` field; the executable, Release package, and
-editor worker (`<name>Preview`) derive from this name. The name starts with a letter and contains only letters/digits/`_`.
+editor worker (`<name>Scene`) derive from this name. The name starts with a letter and contains only letters/digits/`_`.
 Existing files are not overwritten (skipped files are listed); if `Project.json` exists at the root, the project is
 considered set up and nothing is done. Finally, it reports missing tools (Python, CMake, Visual Studio C++ tools,
 Ninja). It does not touch Git; to keep Engine as a submodule, see [git](#git) below.
@@ -52,8 +52,8 @@ python Engine test      # headless tests (Engine tests)
 
 `Game/` and `Editor/` start empty (`Game/Assets/` and `.gitkeep`). While empty, `engine_add_game` and
 `engine_add_editor_worker` build the engine's starter game and starter worker: the game opens the "Game/ has no sources
-yet" screen, and the editor opens the Engine → Starter preview. When the first `.cpp` is added, CMake reconfigures and
-the project's code takes over: [First game](GettingStarted.md), [First editor preview](Editor/GettingStarted.md).
+yet" screen, and the editor opens the Engine → Starter scene. When the first `.cpp` is added, CMake reconfigures and
+the project's code takes over: [First game](GettingStarted.md), [First editor scene](Editor/GettingStarted.md).
 
 ## Using an AI agent
 
@@ -89,7 +89,7 @@ from `name`.
   },
   "editor": {
     "buildDirectory": "build/editor",
-    "worker": "MyProjectPreview",
+    "worker": "MyProjectWorker",
     "cacheVariables": { "APP_BUILD_GAME": "OFF", "APP_BUILD_EDITOR": "ON" }
   }
 }
@@ -101,7 +101,7 @@ from `name`.
 | `game.buildDirectory` | `build`, `run` | must match the configure preset's `binaryDir` |
 | `release` | `release` | `directory/name/` (default `Release/<name>/`) and adjacent ZIP: executable + `Assets` + generated `ThirdPartyNotices.txt` + `files`; [Release](Release.md) |
 | `tests` | `test` | test presets; result `buildDirectory/reports/<run-id>/results.json` |
-| `editor.worker` | `editor` | `engine_add_editor_worker` target (default `<name>Preview`) |
+| `editor.worker` | `editor` | `engine_add_editor_worker` target (default `<name>Scene`) |
 | `editor.cacheVariables` | `editor` | project options added to the editor build (such as disabling the game and enabling the worker) |
 | `hooks` | `release` | optional Python file (below) |
 

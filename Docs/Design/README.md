@@ -610,7 +610,7 @@ Durum: kabul edildi (2026-10-31); uygulama Aşama 4'te.
 ### D20. Editor automation through the control endpoint
 **Decision (2026-11-01):** the open editor is driven and observed through its existing control endpoint (named pipe,
 JSON lines), not a separate headless process. Workflow: the developer runs an AI CLI in the editor's Console; the agent
-lists, opens and adjusts previews (Game Flows are previews), seeks, takes screenshots, reads inspection and logs, and
+lists, opens and adjusts editor scenes (Game Flows are scenes), seeks, takes screenshots, reads inspection and logs, and
 brings the screen to the developer. Supersedes the separate-process plan of [AgentApi](AgentApi.md) for an open editor.
 - **Generic automation, not an AI feature:** commands name editor operations; no AI name or AI-specific behaviour (D14,
   D18). Any script or test can use them.

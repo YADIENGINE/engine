@@ -21,11 +21,11 @@
 // applied every earlier command and drawn a frame after that, so a screenshot never shows a stale state.
 // What the host (the editor window) provides for captures.
 struct EditorCaptureHost {
-    std::function<std::vector<std::byte>(const PreviewPixels&, const std::vector<FrameCaptureLabel>&)> encodePng;
+    std::function<std::vector<std::byte>(const ViewportPixels&, const std::vector<FrameCaptureLabel>&)> encodePng;
     // Asks for the window's pixels at the end of the next drawn frame; returns the sequence that capture will carry.
     std::function<std::uint64_t()> requestWindow;
     // The latest window capture when its sequence is at least the requested one, else null.
-    std::function<std::shared_ptr<const PreviewPixels>(std::uint64_t)> window;
+    std::function<std::shared_ptr<const ViewportPixels>(std::uint64_t)> window;
 };
 
 class EditorControlService {
@@ -37,7 +37,7 @@ public:
     void Tick(EditorController& controller);
     // Encodes and writes a capture: to `path` (absolute) or, when empty, a new `<prefix>-<time>.png` in the capture
     // folder, which keeps the newest FrameCaptureKeep files. Returns the file; throws when it cannot be written.
-    std::filesystem::path WriteCapture(const PreviewPixels& image, const std::vector<FrameCaptureLabel>& labels,
+    std::filesystem::path WriteCapture(const ViewportPixels& image, const std::vector<FrameCaptureLabel>& labels,
                                        const std::string& path, const std::string& prefix);
 
 private:
@@ -65,11 +65,11 @@ private:
     void AwaitWorker(EditorController& controller, std::chrono::steady_clock::duration timeout, Answer answer);
     void AwaitReady(const std::string& id);
     [[nodiscard]] nlohmann::json Screenshot(const nlohmann::json& arguments, EditorController& controller);
-    // The whole editor window after its next frame (no preview needed).
+    // The whole editor window after its next frame (no scene needed).
     void WindowShot(const nlohmann::json& arguments);
     // Seeks to evenly spaced times one after another and answers with one labelled grid image.
     void Frames(const nlohmann::json& arguments, EditorController& controller);
-    [[nodiscard]] static nlohmann::json Saved(const std::filesystem::path& file, const PreviewPixels& image,
+    [[nodiscard]] static nlohmann::json Saved(const std::filesystem::path& file, const ViewportPixels& image,
                                               const EditorController& controller);
     void Stream(EditorController& controller);
     void Poll(EditorController& controller);

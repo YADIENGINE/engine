@@ -1,9 +1,9 @@
 """`ctl`: drive and observe the project's open editor (Docs/Editor/Automation.md).
 
 Each subcommand sends one request to the editor's control endpoint and prints its answer as one JSON object on stdout:
-list and open previews (game flows included), change parameters, run actions, control playback, seek, take a
+list and open scenes (game flows included), change parameters, run actions, control playback, seek, take a
 screenshot, read inspection values and logs. Changes show a short notice in the editor. Answers that depend on the
-preview arrive after it has applied the request and drawn a new frame.
+scene arrive after it has applied the request and drawn a new frame.
 """
 
 import argparse
@@ -16,20 +16,20 @@ from .refresh import VERSION, connect, editor_pipe, replies
 
 
 def add_parser(commands) -> None:
-    command = commands.add_parser("ctl", help="drive the project's open editor: previews, playback, screenshots")
+    command = commands.add_parser("ctl", help="drive the project's open editor: scenes, playback, screenshots")
     actions = command.add_subparsers(dest="action", required=True, metavar="ACTION")
-    actions.add_parser("status", help="the open preview and playback state")
-    actions.add_parser("list", help="previews and game flows with their parameters and actions")
-    actions.add_parser("open", help="open a preview by id and wait until it runs").add_argument("id")
-    action = actions.add_parser("set", help="set parameters of the open preview: id=value (JSON, else text)")
+    actions.add_parser("status", help="the open scene and playback state")
+    actions.add_parser("list", help="scenes and game flows with their parameters and actions")
+    actions.add_parser("open", help="open a scene by id and wait until it runs").add_argument("id")
+    action = actions.add_parser("set", help="set parameters of the open scene: id=value (JSON, else text)")
     action.add_argument("values", nargs="+", metavar="ID=VALUE")
-    actions.add_parser("action", help="run an action of the open preview").add_argument("id")
+    actions.add_parser("action", help="run an action of the open scene").add_argument("id")
     actions.add_parser("pause", help="pause playback")
     actions.add_parser("play", help="resume playback")
     action = actions.add_parser("step", help="pause and advance 1/60 s per frame")
     action.add_argument("frames", nargs="?", type=int, default=1)
     actions.add_parser("speed", help="playback speed (0.1-4)").add_argument("speed", type=float)
-    actions.add_parser("reset", help="restart the open preview with its parameters")
+    actions.add_parser("reset", help="restart the open scene with its parameters")
     action = actions.add_parser("seek", help="pause at a playback time in seconds (replays from 0 to go back)")
     action.add_argument("seconds", type=float)
     action = actions.add_parser("screenshot", help="write the current frame as PNG and print its path")
@@ -45,7 +45,7 @@ def add_parser(commands) -> None:
     action.add_argument("--out", help="PNG path (default: the build folder's editor-captures/)")
     action.add_argument("--scale", type=float, help="tile scale (default: the grid fits about 1600 px across)")
     action.add_argument("--crop", type=float, nargs=4, metavar=("X", "Y", "W", "H"), help="canvas-space area")
-    actions.add_parser("inspect", help="the open preview's inspection values and tables")
+    actions.add_parser("inspect", help="the open scene's inspection values and tables")
     action = actions.add_parser("logs", help="editor, worker and build log entries")
     action.add_argument("--since", type=int, default=0, help="only entries after this sequence number")
     action.add_argument("--limit", type=int, default=100, help="newest entries to return (max 1000)")
