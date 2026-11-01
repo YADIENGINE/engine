@@ -2,8 +2,55 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <memory>
+#include <limits>
+#include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
 #include "ToolUi/ToolTheme.h"
+
+TEST_CASE("Editor.Catalog.WorkCategorySortsFirstInProjectPanel", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {800, 600};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    SceneDefinition ordinary;
+    ordinary.id = "myproject.alpha";
+    ordinary.name = "Ordinary subject";
+    ordinary.category = "Alpha"; // Alphabetically before Work, with a negative explicit order.
+    ordinary.categoryOrder = std::numeric_limits<int>::lowest() + 1;
+    SceneDefinition work;
+    work.id = "myproject.work.subject";
+    work.name = "Work subject";
+    work.category = WorkSceneCategory;
+    work.categoryOrder = WorkSceneCategoryOrder;
+    const std::vector catalog{ordinary, work};
+    const SceneParameters parameters;
+    const EditorDiagnostics diagnostics;
+    const std::string status;
+    EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};
+    CatalogPanel panel;
+    EditorPreferences preferences;
+    ImGui::NewFrame();
+    ImGui::SetNextWindowSize({700, 500});
+    ImGui::Begin("Project");
+    ImGui::LogToBuffer();
+    panel.Draw(snapshot, {}, preferences);
+    const std::string text = ImGui::GetCurrentContext()->LogBuffer.c_str();
+    ImGui::LogFinish();
+    ImGui::End();
+    ImGui::Render();
+    REQUIRE(text.find("Work") != std::string::npos);
+    REQUIRE(text.find("Alpha") != std::string::npos);
+    CHECK(text.find("Work") < text.find("Alpha"));
+}
 
 TEST_CASE("Editor.Workspace.BuildFailurePopupIsOncePerFailedAttempt", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),

@@ -79,12 +79,16 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/ThemedMenu.cpp"
     "${recipeRoot}/TuningValue.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/EditorScene.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneParameter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneRegistry.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneAutoRegistration.cpp"
 )
 target_include_directories(EngineRecipes PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 target_link_libraries(EngineRecipes PUBLIC EngineHeadless EnginePersistence)
 engine_warnings(EngineRecipes)
 engine_add_tuning(EngineRecipes ROOT "${recipeRoot}")
-engine_tests(EngineRecipeTests SOURCES RecipeTests.cpp LINKS EngineRecipes)
+# Registration-only examples must reach the executable directly, not through a static archive.
+engine_tests(EngineRecipeTests SOURCES RecipeTests.cpp "${recipeRoot}/WorkScene.cpp" LINKS EngineRecipes)
 target_compile_definitions(EngineRecipeTests PRIVATE
     ENGINE_RECIPE_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf")
 

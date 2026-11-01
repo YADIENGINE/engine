@@ -1,12 +1,44 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <algorithm>
+#include "Editor/Api/SceneAutoRegistration.h"
 #include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
 #include "Editor/Internals/Protocol/WorkerProtocol.h"
 #include "Editor/Internals/Settings/EditorSettingsStore.h"
+#include "Editor/Internals/Session/SceneAutoRegistration.h"
 #include "Editor/Internals/Viewport/ViewportInputRouter.h"
 #include "Platform/Internals/FileStorage.h"
 #include "Tests/Support/TempDirectory.h"
+
+namespace {
+int MakerCalls = 0;
+SceneDefinition MakeRegisteredScene() {
+    ++MakerCalls;
+    SceneDefinition definition;
+    definition.id = "myproject.work.registration-test";
+    definition.name = "Registered scene";
+    definition.category = WorkSceneCategory;
+    definition.categoryOrder = WorkSceneCategoryOrder;
+    definition.create = [](const SceneServices&, const SceneParameters&) -> std::unique_ptr<EditorScene> { return {}; };
+    return definition;
+}
+[[maybe_unused]] const bool Registered = RegisterEditorScene(&MakeRegisteredScene);
+} // namespace
+
+TEST_CASE("Editor.Catalog.AutoRegistrationDefersMakersAndRejectsDuplicateIds", "[engine-editor]") {
+    CHECK(MakerCalls == 0);
+    SceneRegistry registry;
+    AddRegisteredEditorScenes(registry);
+    CHECK(MakerCalls == 1);
+    const auto* definition = registry.Find("myproject.work.registration-test");
+    REQUIRE(definition);
+    CHECK(definition->category == WorkSceneCategory);
+    CHECK(definition->categoryOrder == WorkSceneCategoryOrder);
+    CHECK_THROWS_WITH(registry.Add(*definition), Catch::Matchers::ContainsSubstring(definition->id));
+    CHECK_THROWS_WITH(AddRegisteredEditorScenes(registry),
+                      Catch::Matchers::ContainsSubstring("myproject.work.registration-test"));
+}
 
 TEST_CASE("Editor.Catalog.PresentationMetadataIsOptional", "[engine-editor]") {
     SceneDefinition definition;

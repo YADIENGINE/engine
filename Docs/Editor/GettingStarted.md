@@ -2,7 +2,8 @@
 
 Complete [project setup](../ProjectSetup.md) first; the [first game](../GettingStarted.md) is not required. The editor
 runs on Windows desktop. The project's `Editor/` folder is a sibling of Engine and Game; `Editor/Api/...` includes refer
-to engine public headers. The `Editor/` folder created by setup is empty; `python Engine editor` then opens with the
+to engine public headers. Setup creates `Editor/Work/` for [task scenes](../../AgentDocs/Recipes/WorkScene.md); until
+worker sources are added, `python Engine editor` opens with the
 engine's starter worker (Engine → Starter scene).
 
 ## CMake target
@@ -11,14 +12,16 @@ With `APP_BUILD_EDITOR` enabled (`python Engine editor` supplies it automaticall
 every `.cpp` under `Editor/` and creates the worker:
 
 ```cmake
-engine_add_editor_worker(${PROJECT_NAME}EditorWorker SOURCES ${APP_EDITOR_SOURCES})
+engine_add_editor_worker(${PROJECT_NAME}EditorWorker SOURCES ${APP_EDITOR_SOURCES} SCENE_DIRS Editor/Work)
 target_include_directories(${PROJECT_NAME}EditorWorker PRIVATE Editor)
 ```
 
 The helper places the worker executable beside EngineEditor (`<build>/Editor/<Config>/`), links `EngineWorkerRuntime`,
 and generates the `EngineEditor.project.json` recipe in the same folder: the worker path and the `cmake --build` command
 for Build & Refresh. Arguments: `NAME` (catalog title; default `<project> scenes`), `SOURCES` (starter worker if empty),
-`LIBRARIES`, `ASSETS` (folder to copy beside the worker). One worker per build folder.
+`LIBRARIES`, `ASSETS` (folder to copy beside the worker), `SCENE_DIRS` (directories of auto-registered `*.cpp` scenes,
+linked as OBJECT libraries; excluded from `SOURCES`). Paths are relative to the calling CMake directory.
+One worker per build folder. Build & Refresh also picks up newly added scene files.
 
 If scenes draw game Views, move game code to a separate library (`add_library(... Game/...)`) and pass it to both game
 and worker through `LIBRARIES`; the worker does not compile the game's `CreateGame.cpp`.

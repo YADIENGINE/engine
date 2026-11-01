@@ -7,7 +7,8 @@ if(ENGINE_BUILD_EDITOR)
     endif()
 endif()
 
-add_library(EngineEditorApi STATIC Api/EditorScene.cpp Api/SceneParameter.cpp Api/SceneRegistry.cpp)
+add_library(EngineEditorApi STATIC Api/EditorScene.cpp Api/SceneParameter.cpp Api/SceneRegistry.cpp
+    Api/SceneAutoRegistration.cpp)
 # Editör include'ları engine köküne göredir (#include "Editor/Api/..."); Core'unkiler Core'a göre.
 target_include_directories(EngineEditorApi PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_link_libraries(EngineEditorApi PUBLIC EngineHeadless)
@@ -66,7 +67,7 @@ if(ENGINE_BUILD_EDITOR)
     # EngineEditor.project.json recipe generated beside both executables.
     # With no sources (a fresh project) the engine's starter worker stands in until the first source is added.
     function(engine_add_editor_worker target)
-        cmake_parse_arguments(WORKER "" "NAME;ASSETS" "SOURCES;LIBRARIES" ${ARGN})
+        cmake_parse_arguments(WORKER "" "NAME;ASSETS" "SOURCES;LIBRARIES;SCENE_DIRS" ${ARGN})
         set(useStarter FALSE)
         if(NOT WORKER_NAME)
             set(WORKER_NAME "${PROJECT_NAME} scenes")
@@ -81,6 +82,24 @@ if(ENGINE_BUILD_EDITOR)
         set_target_properties(${target} PROPERTIES
             CXX_EXTENSIONS OFF RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
         engine_warnings(${target})
+        set(sceneDirectoryIndex 0)
+        foreach(sceneDirectory IN LISTS WORKER_SCENE_DIRS)
+            get_filename_component(sceneDirectory "${sceneDirectory}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+            file(GLOB sceneSources CONFIGURE_DEPENDS "${sceneDirectory}/*.cpp")
+            if(sceneSources)
+                set(sceneTarget "${target}Scenes${sceneDirectoryIndex}")
+                add_library(${sceneTarget} OBJECT ${sceneSources})
+                target_link_libraries(${sceneTarget} PRIVATE EngineWorkerRuntime ${WORKER_LIBRARIES})
+                # Include project-local worker settings even when assigned after this helper returns.
+                target_include_directories(${sceneTarget} PRIVATE "$<TARGET_PROPERTY:${target},INCLUDE_DIRECTORIES>")
+                target_compile_definitions(${sceneTarget} PRIVATE "$<TARGET_PROPERTY:${target},COMPILE_DEFINITIONS>")
+                set_target_properties(${sceneTarget} PROPERTIES CXX_EXTENSIONS OFF)
+                engine_warnings(${sceneTarget})
+                # OBJECT libraries retain registration-only translation units without whole-archive flags.
+                target_link_libraries(${target} PRIVATE ${sceneTarget})
+            endif()
+            math(EXPR sceneDirectoryIndex "${sceneDirectoryIndex} + 1")
+        endforeach()
         if(WORKER_ASSETS)
             # Only changed files: the running worker keeps streamed music open, and Build & Refresh builds beside it.
             set(copyAssets copy_directory)

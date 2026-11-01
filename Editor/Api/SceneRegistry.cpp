@@ -6,7 +6,8 @@
 
 SceneRegistry::SceneRegistry() = default;
 void SceneRegistry::Add(SceneDefinition definition) {
-    if (definition.id.empty() || definition.name.empty() || !definition.create || Find(definition.id))
+    if (Find(definition.id)) throw std::invalid_argument("Duplicate editor scene ID: " + definition.id);
+    if (definition.id.empty() || definition.name.empty() || !definition.create)
         throw std::invalid_argument("Scene registration needs a unique ID, name and factory");
     std::set<std::string> parameters;
     for (const auto& parameter : definition.parameters) {

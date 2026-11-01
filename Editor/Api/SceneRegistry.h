@@ -5,8 +5,12 @@
 #include <vector>
 #include <array>
 #include <optional>
+#include <limits>
 #include "Editor/Api/EditorScene.h"
 #include "Editor/Api/SceneServices.h"
+
+inline constexpr const char* WorkSceneCategory = "Work";
+inline constexpr int WorkSceneCategoryOrder = std::numeric_limits<int>::lowest();
 
 struct SceneBenchmarkVariant {
     std::string name;

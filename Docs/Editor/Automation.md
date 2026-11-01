@@ -5,8 +5,8 @@ the launcher). Each command sends one request to the editor's [control endpoint]
 prints its answer as one JSON object on stdout. Game Flows are editor scenes, so everything below applies to them too.
 Design record: `Docs/Design/README.md` → D20 (engine repository).
 
-Typical loop: change code → `refresh` → `ctl open` → `ctl set` / `ctl seek` → `ctl screenshot` → read the PNG → fix →
-repeat; leave the editor showing the result for the developer.
+For visual or gameplay requests, follow the [Visual work loop](../../AgentDocs/Index.md#visual-work-loop): create a
+focused work scene, refresh, open it, read screenshots / frame grids, fix obvious defects and leave it open.
 
 ## Commands
 

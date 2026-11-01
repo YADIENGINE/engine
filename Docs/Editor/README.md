@@ -4,6 +4,9 @@ A Windows development tool that displays editor scenes using actual production d
 lives in `Engine/Editor/`; the game catalog and worker adapter live in the consumer project. Normal game and headless
 targets do not acquire editor/ImGui dependencies.
 
+For agent-driven visual or gameplay changes, follow the [Visual work loop](../../AgentDocs/Index.md#visual-work-loop)
+and [work-scene recipe](../../AgentDocs/Recipes/WorkScene.md).
+
 ## Terms
 
 editor scene (EditorScene): a catalog entry opened in the viewport; not an engine Scene. Game screens are engine

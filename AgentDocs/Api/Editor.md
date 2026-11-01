@@ -11,6 +11,10 @@ Use these generated signatures to locate public declarations; open the header fo
 - `EditorScene`: `[[nodiscard]] virtual SceneParameters CaptureParameters() const` — Report authored controls changed by an action or content interaction; omit transient animation state.
 - `EditorScene`: `[[nodiscard]] virtual SceneInspection Inspect() const`
 
+## `Editor/Api/SceneAutoRegistration.h`
+
+- `bool RegisterEditorScene(SceneDefinition(* make)())` — Store metadata makers only; definitions are made when RunEditorWorker builds its catalog.
+
 ## `Editor/Api/SceneInspection.h`
 
 - `struct SceneContentBounds`
@@ -78,6 +82,8 @@ Use these generated signatures to locate public declarations; open the header fo
 
 ## `Editor/Api/SceneRegistry.h`
 
+- `inline constexpr const char* WorkSceneCategory = "Work"`
+- `inline constexpr int WorkSceneCategoryOrder = std::numeric_limits<int>::lowest()`
 - `struct SceneBenchmarkVariant`
 - `SceneBenchmarkVariant`: `std::string name`
 - `SceneBenchmarkVariant`: `SceneParameters parameters`

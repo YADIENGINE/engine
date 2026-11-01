@@ -7,6 +7,20 @@ Read the linked Docs section only when you need the concept.
 Paths below start at the engine root; in a game the engine lives at `Engine/`. C++ includes omit `Core/`;
 editor and recipe includes start at the engine root. Run tools from the project root as `python Engine <command>`.
 
+## Visual work loop
+
+For a visual or gameplay change, check `python Engine ctl status`. If it succeeds and an editor is open:
+
+1. Create or reuse a work scene for this request in `Editor/Work/` ([recipe](Recipes/WorkScene.md)). Show only the
+   subject: no HUD, menus, unrelated objects or randomness unless asked. Expose likely-tweaked values as parameters.
+2. Implement the change in production code, then run `python Engine refresh`; keep the editor open.
+3. Run `python Engine ctl open <id>`, then `ctl screenshot` / `ctl frames`. Read the PNGs and fix obvious defects
+   (broken, clipped, invisible, wrong timing) before reporting.
+4. Leave the work scene open and give the developer a short checklist; aesthetic judgment is theirs.
+5. When the developer says the task is done, ask: delete the work scene, or move it to a permanent category?
+
+If no editor is open, say so and suggest opening it; do not launch it unless asked.
+
 ## Hard invariants
 
 - Draw through Painter: `Docs/Graphics/Painter.md#where-it-comes-from`.
@@ -69,6 +83,7 @@ editor and recipe includes start at the engine root. Run tools from the project 
 | Iterate UTF-8 characters | `Core/Utilities/Utf8.h` | - | `Docs/Graphics/Painter.md#text` |
 | Open a URL or copy text to clipboard | `Core/Platform/Shell.h` | - | `Docs/AssetsAndPlatforms.md#platform-responsibilities` |
 | Display a production View in an editor scene | `Editor/Api/EditorScene.h`<br>`Editor/Api/SceneRegistry.h`<br>`Editor/Api/SceneServices.h`<br>`Editor/Worker/WorkerHost.h` | `Recipes/CharacterScene.md` | `Docs/Editor/GettingStarted.md#cmake-target` |
+| Create a focused scene for a task | `Editor/Api/SceneAutoRegistration.h`<br>`Editor/Api/SceneRegistry.h` | `Recipes/WorkScene.md` | `Docs/Editor/Automation.md` |
 | Expose scene controls, actions or inspection | `Editor/Api/SceneParameter.h`<br>`Editor/Api/SceneInspection.h` | `Recipes/CharacterScene.md` | `Docs/Editor/GettingStarted.md#editorfirstscenecpp` |
 | Look at a scene or game flow: open, set, seek, screenshot, frame grid, inspect; show it to the developer | `Tools/commands/ctl.py` | - | `Docs/Editor/Automation.md#commands` |
 | Set up, run, check or test a project | `Tools/cli.py` | - | `Docs/ToolsContract.md#commands` |

@@ -39,6 +39,7 @@ class ProjectSetupTests(unittest.TestCase):
         self.assertFalse((self.root / "gitignore").exists())
         self.assertTrue((self.root / "Game" / "Assets").is_dir())
         self.assertTrue((self.root / "Editor").is_dir())
+        self.assertTrue((self.root / "Editor" / "Work" / "README.md").is_file())
 
     def test_no_wrapper_scripts_in_the_project(self):
         self.setup()

@@ -26,6 +26,8 @@ add_subdirectory(Engine)
 # When the folder is empty, prepare the Painter-based starter game / worker and its licensed font.
 file(GLOB_RECURSE APP_GAME_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Game/*.cpp")
 file(GLOB_RECURSE APP_EDITOR_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Editor/*.cpp")
+# Work scenes are compiled once through the worker's registration-preserving OBJECT libraries.
+list(FILTER APP_EDITOR_SOURCES EXCLUDE REGEX "/Editor/Work/[^/]+[.]cpp$")
 
 if(APP_BUILD_GAME)
     engine_add_game(${PROJECT_NAME} SOURCES ${APP_GAME_SOURCES} ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/Game/Assets")
@@ -35,6 +37,6 @@ if(APP_BUILD_GAME)
 endif()
 
 if(APP_BUILD_EDITOR)
-    engine_add_editor_worker(${PROJECT_NAME}EditorWorker SOURCES ${APP_EDITOR_SOURCES})
+    engine_add_editor_worker(${PROJECT_NAME}EditorWorker SOURCES ${APP_EDITOR_SOURCES} SCENE_DIRS Editor/Work)
     target_include_directories(${PROJECT_NAME}EditorWorker PRIVATE Editor)
 endif()
