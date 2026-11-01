@@ -3,10 +3,12 @@
 #include <imgui_internal.h>
 #include <memory>
 #include <limits>
+#include "Editor/Ui/Panels/Assets/AssetsPanel.h"
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
 #include "ToolUi/ToolTheme.h"
+#include "Tests/Support/TempDirectory.h"
 
 TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
@@ -465,4 +467,61 @@ TEST_CASE("Editor.Workspace.StartsWithViewAndTogglesBottomPanelsIndependently", 
     frame();
     CHECK(preferences.Visible(EditorPanel::Output));
     CHECK(preferences.Visible(EditorPanel::Profiler));
+}
+
+TEST_CASE("Editor.Assets.TreeRowsLeaveNoGapBetweenThem", "[engine-editor]") {
+    TempDirectory temp;
+    std::filesystem::create_directories(temp.Path() / "Game" / "Assets" / "Graphics");
+    std::filesystem::create_directories(temp.Path() / "Game" / "Assets" / "Audio");
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {1000, 700};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    const std::vector<SceneDefinition> catalog;
+    const SceneParameters parameters;
+    const EditorDiagnostics diagnostics;
+    const std::string status;
+    EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Ready, status};
+    AssetsPanel panel;
+    panel.SetRoots(temp.Path() / "Engine", temp.Path() / "Game" / "Assets");
+    EditorUiActions actions;
+    bool hovered = false;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({0, 0});
+        ImGui::SetNextWindowSize({1000, 700});
+        ImGui::Begin("Assets");
+        panel.Draw(snapshot, actions);
+        hovered = ImGui::IsAnyItemHovered();
+        ImGui::End();
+        ImGui::Render();
+    };
+    (void)frame();
+    (void)frame();
+    // Walk down the tree: once the first row is hit, every point until the last row is on some row.
+    constexpr float TreeX = 100;
+    float firstRow = -1;
+    float lastRow = -1;
+    int misses = 0;
+    for (float y = 80; y < 400; y += 2) { // Below the toolbar
+        io.AddMousePosEvent(TreeX, y);
+        (void)frame();
+        if (hovered) {
+            if (firstRow < 0) firstRow = y;
+            if (lastRow >= 0 && y - lastRow > 2) ++misses;
+            lastRow = y;
+        }
+    }
+    REQUIRE(firstRow >= 0);
+    CHECK(misses == 0);
+    CHECK(lastRow - firstRow > 100); // Five rows: Engine, Graphics, Game, Audio, Graphics
 }

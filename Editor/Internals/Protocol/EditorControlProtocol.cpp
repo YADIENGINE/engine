@@ -266,6 +266,11 @@ nlohmann::json ControlCatalogEntry(const SceneDefinition& definition, const Scen
     }
     nlohmann::json entry{{"id", definition.id}, {"name", definition.name}, {"category", definition.category}};
     if (!definition.description.empty()) entry["description"] = definition.description;
+    if (definition.asset) {
+        entry["kind"] = "graphic";
+        entry["file"] = definition.asset->file;
+        if (!definition.asset->usage.empty()) entry["usage"] = definition.asset->usage;
+    }
     entry["parameters"] = std::move(parameters);
     entry["actions"] = std::move(actions);
     return entry;

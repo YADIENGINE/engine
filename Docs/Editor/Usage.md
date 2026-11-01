@@ -39,6 +39,12 @@ Profiler, and Console are closed. The bottom status bar has Output and Console b
   first error message together. Show Output exits maximized scene, brings Output forward, opens Last Build Try, and
   scrolls to the first error. In this view, previous search/level preferences are temporarily removed; switching scope
   restores saved preferences.
+- **Assets:** the asset library: back and search across the top, a folder tree on the left (sets are rows too), a tile
+  grid on the right, and tile size at the bottom (or Ctrl+wheel). A click on a graphic opens it in the Viewport; a click
+  on a folder or set enters it. Back (Alt+Left) undoes the last move or opened graphic, in order. A click on a sound
+  plays it from the bar below the grid without touching the scene. Right-click for Copy usage, Copy path, Open code and
+  Show in Explorer. The Engine root is read-only. A graphic not built yet is dimmed.
+  Registering assets: [Api](Api.md#graphic-assets).
 - **Console:** a real PowerShell session at the project root. Drag to select visible text and copy with Ctrl+C /
   Ctrl+Shift+C or right-click Copy. Without selection, Ctrl+C interrupts the running program; Ctrl+V pastes, Escape
   clears selection. Scrollback and double-click word selection are not yet available.

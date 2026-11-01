@@ -27,6 +27,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Choose colors or work with floating geometry | `Core/Utilities/Color4.h`<br>`Core/Utilities/Float2.h`<br>`Core/Utilities/FloatRect.h`<br>`Core/Utilities/FloatRange.h` | - | `Docs/Graphics/Painter.md#basic-types` |
 | Ease a pose or animate a counter | `Core/Graphics/Anim/Easing.h`<br>`Core/Graphics/Anim/SpringPoint.h`<br>`Core/Graphics/Anim/AnimatedCounter.h`<br>`Core/Graphics/Anim/ButtonAnim.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Rendering.md#geometry-and-timing` |
 | Convert coordinates or use math helpers | `Core/Utilities/MathUtils.h`<br>`Core/Utilities/UiTransform.h`<br>`Core/Utilities/Vec2.h`<br>`Core/Utilities/Rect.h` | - | `Docs/Graphics/Rendering.md#geometry-and-timing` |
+| Browse or list a ready-made graphic in the editor | `Editor/Api/GraphicAsset.h` | | `Docs/Editor/Api.md` |
 | Draw a shared icon or add a new shape | `Core/Graphics/Icons/Icons.h` | `Recipes/IconShape.md` | `Docs/Graphics/Painter.md#helpers-and-theme` |
 | Choose a theme or make a themed button | `Core/Graphics/Style/Theme.h`<br>`Core/Graphics/Style/ThemePalette.h`<br>`Core/Graphics/Style/NeonArcadeTheme.h`<br>`Core/Graphics/Ui/UiDraw.h`<br>`Core/Graphics/Ui/UiButton.h` | `Recipes/ThemedMenu.md` | `Docs/Graphics/ThemesAndUi.md#themes-and-ui-widgets` |
 | Draw explicit-style neon shapes and UI | `Core/Graphics/Draw/DrawUtils.h`<br>`Core/Graphics/Draw/Neon.h` | - | `Docs/Graphics/Painter.md#helpers-and-theme` |

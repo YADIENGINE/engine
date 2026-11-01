@@ -21,6 +21,14 @@ struct SceneBenchmark {
     int version = 1;
     std::array<SceneBenchmarkVariant, 2> variants{{{"A", {}}, {"B", {}}}};
 };
+// Marks a catalog entry as an asset: the Assets panel shows it instead of the scene catalog.
+struct SceneAssetInfo {
+    std::string file; // Registration source, as AssetPathKey
+    std::string set;
+    std::string item; // Empty for a single drawing
+    std::string usage;
+    bool operator==(const SceneAssetInfo&) const = default;
+};
 struct SceneDefinition {
     std::string id;
     std::string name;
@@ -31,6 +39,7 @@ struct SceneDefinition {
     std::function<std::unique_ptr<EditorScene>(const SceneServices&, const SceneParameters&)> create;
     int categoryOrder = 0; // Lower values come first; use the same order for every entry in a category.
     std::optional<SceneBenchmark> benchmark;
+    std::optional<SceneAssetInfo> asset;
 };
 
 class SceneRegistry {

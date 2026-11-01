@@ -332,6 +332,31 @@ function(engine_copy_starter_font target)
         VERBATIM)
 endfunction()
 
+# Copies a project's asset folder beside the target. Graphics and Prefabs hold source code and stay out.
+# Only changed files, so a build beside a running game does not fail on its open (streamed) assets.
+function(engine_copy_assets target assets)
+    set(copyDirectory copy_directory)
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.26)
+        set(copyDirectory copy_directory_if_different)
+    endif()
+    set(destination "$<TARGET_FILE_DIR:${target}>/Assets")
+    add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory "${destination}" VERBATIM)
+    file(GLOB entries CONFIGURE_DEPENDS "${assets}/*")
+    foreach(entry IN LISTS entries)
+        get_filename_component(name "${entry}" NAME)
+        if(name STREQUAL "Graphics" OR name STREQUAL "Prefabs")
+            continue()
+        endif()
+        if(IS_DIRECTORY "${entry}")
+            add_custom_command(TARGET ${target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E ${copyDirectory} "${entry}" "${destination}/${name}" VERBATIM)
+        else()
+            add_custom_command(TARGET ${target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${entry}" "${destination}/${name}" VERBATIM)
+        endif()
+    endforeach()
+endfunction()
+
 # A project supplies CreateGame, its source list, and an optional asset directory.
 # With no sources (a fresh project) the engine's starter game stands in until the first source is added.
 function(engine_add_game target)
@@ -347,13 +372,7 @@ function(engine_add_game target)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     engine_warnings(${target})
     if(GAME_ASSETS)
-        # Only changed files, so a build beside a running game does not fail on its open (streamed) assets.
-        set(copyAssets copy_directory)
-        if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.26)
-            set(copyAssets copy_directory_if_different)
-        endif()
-        add_custom_command(TARGET ${target} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E ${copyAssets} "${GAME_ASSETS}" "$<TARGET_FILE_DIR:${target}>/Assets")
+        engine_copy_assets(${target} "${GAME_ASSETS}")
     endif()
     if(useStarter)
         engine_copy_starter_font(${target})

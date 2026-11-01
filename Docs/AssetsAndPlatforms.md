@@ -3,7 +3,8 @@
 ## Asset root
 
 On desktop, runtime uses the `Assets/` folder beside the executable; do not rely on the working directory.
-`engine_add_game(... ASSETS ".../Game/Assets")` copies this folder after building.
+`engine_add_game(... ASSETS ".../Game/Assets")` copies this folder after building. `Graphics` and `Prefabs` inside it
+are reserved for source code and are not copied ([Asset library](Design/AssetLibrary.md)).
 
 `GameSettings::assets` is the relative path list of files in use. Audio catalog paths are added automatically; list a
 custom font path explicitly:

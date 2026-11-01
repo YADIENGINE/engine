@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "Editor/Ui/Commands/EditorCommandPalette.h"
+#include "Editor/Ui/Panels/Assets/AssetsPanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
@@ -31,6 +32,9 @@ public:
     void OfferProjectList(bool offer) { _offerProjectList = offer; }
     // Konsolun kabuğu bu klasörde başlar (proje kökü).
     void SetConsoleDirectory(const std::filesystem::path& directory) { _console.SetDirectory(directory); }
+    void SetAssetRoots(const std::filesystem::path& engineDirectory, const std::filesystem::path& assetsDirectory) {
+        _assets.SetRoots(engineDirectory, assetsDirectory);
+    }
     // Shows the Console and pastes `text` (no Enter) into the agent session when there is one, else the selected
     // session, starting a shell if needed.
     void PasteToConsole(const std::string& text, EditorPreferences& preferences);
@@ -72,6 +76,7 @@ private:
     ProfilerPanel _profiler;
     TuningPanel _tuning;
     ConsolePanel _console;
+    AssetsPanel _assets;
     EditorShell _shell;
     EditorCommandPalette _palette;
     EditorAgentSetup _agentSetup;

@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <filesystem>
 #include <functional>
 #include <set>
 #include "Editor/Api/SceneRegistry.h"
@@ -55,10 +56,19 @@ struct EditorSnapshot {
     double hostTransferMs = 0.0;
     bool benchmarkCancelPending = false;
     const TuningWorkspace* tuning = nullptr; // Projenin tuning dosyaları; proje yoksa null
+    bool audioPlaying = false;               // The Assets panel's sound preview; set by the host
     std::string notice;                      // Last change made through the control endpoint
     double noticeAge = 0.0;
     std::uint64_t controlAttempt =
         0; // Build & Refresh attempt started through the control endpoint                  // Seconds since it was made
+};
+
+enum class AudioPreviewAction { Play, Stop, Volume };
+struct AudioPreviewRequest {
+    AudioPreviewAction action = AudioPreviewAction::Stop;
+    std::filesystem::path file; // Relative to the asset folder
+    bool loop = false;
+    float volume = 1.0f;
 };
 
 // References/callbacks are borrowed for the current UI frame; panels never retain session data.
@@ -74,4 +84,7 @@ struct EditorUiActions {
     std::function<void(bool)> openOutputLog;
     // Tuning dosyasındaki bir değeri diske yamar (Enter); dosya sırası TuningWorkspace::Files'tır.
     std::function<void(std::size_t, const TuningLocation&, const TuningValue&)> tune;
+    std::function<void(const AudioPreviewRequest&)> previewAudio;
+    // Opens a file or folder in its default application.
+    std::function<void(const std::filesystem::path&)> openPath;
 };

@@ -512,15 +512,17 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 (_focusCatalog && panel.id == EditorPanel::Catalog))
                 ImGui::SetNextWindowFocus();
             if (focusViewport) ImGui::SetNextWindowCollapsed(false);
-            if (panel.id == EditorPanel::Console) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+            const bool edgeToEdge = panel.id == EditorPanel::Console || panel.id == EditorPanel::Assets;
+            if (edgeToEdge) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, headerPadding);
             const bool drawPanel =
                 ImGui::Begin(panel.window, &preferences.Visible(panel.id),
-                             flags | (panel.id == EditorPanel::Viewport || panel.id == EditorPanel::Inspector
+                             flags | (panel.id == EditorPanel::Viewport || panel.id == EditorPanel::Inspector ||
+                                              panel.id == EditorPanel::Assets
                                           ? ImGuiWindowFlags_NoScrollbar
                                           : 0));
             ImGui::PopStyleVar(); // Panel contents keep their regular control spacing.
-            if (panel.id == EditorPanel::Console) ImGui::PopStyleVar();
+            if (edgeToEdge) ImGui::PopStyleVar();
             if (drawPanel) {
                 if (_focusBottom && *_focusBottom == panel.id) focusedBottomDrawn = true;
                 if (panel.dock == EditorDockGroup::Bottom && ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows))
@@ -547,7 +549,8 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                     if (const auto request = _console.Draw()) result.agentProblem = AddSession(*request, preferences);
                     consoleDrawn = true;
                     break;
-                case EditorPanel::Count: break;
+                case EditorPanel::Assets: _assets.Draw(snapshot, actions); break;
+                case EditorPanel::Count : break;
                 }
             }
             ImGui::End();

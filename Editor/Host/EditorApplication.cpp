@@ -11,6 +11,7 @@
 #include "Editor/Internals/Session/ViewportMark.h"
 #include "Input/Internals/InputReader.h"
 #include "Platform/Internals/UserData.h"
+#include "Platform/Shell.h"
 #include "ToolUi/ToolWindow.h"
 
 namespace {
@@ -59,7 +60,10 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     _observedFontSize = _fontSize;
     _launcher = LauncherFromEnvironment();
     _workspace.OfferProjectList(!_launcher.empty());
-    if (const auto& project = _controller.Project()) _workspace.SetConsoleDirectory(project->sourceDirectory);
+    if (const auto& project = _controller.Project()) {
+        _workspace.SetConsoleDirectory(project->sourceDirectory);
+        _workspace.SetAssetRoots(project->engineDirectory, project->assetsDirectory);
+    }
 }
 EditorApplication::~EditorApplication() { Stop(); }
 DeviceInput EditorApplication::ReadInput() {
@@ -113,6 +117,9 @@ void EditorApplication::Update(float realSeconds) {
         _sendScene = false;
     }
     if (!_agentProblem.empty()) _controller.Log(std::exchange(_agentProblem, {}), EditorLogLevel::Warning);
+    for (const auto& request : std::exchange(_audioRequests, {}))
+        HandleAudioPreview(request);
+    _audioPlaying = Audio().IsMusicPlaying();
     if (_control) {
         _control->SetAgentControl(_preferences.agent.control);
         std::map<std::string, ConsoleNote> notes;
@@ -178,6 +185,21 @@ void EditorApplication::SendScene() {
         _controller.Log(std::string("Send scene: ") + error.what(), EditorLogLevel::Warning);
     }
 }
+void EditorApplication::HandleAudioPreview(const AudioPreviewRequest& request) {
+    constexpr MusicId PreviewId{};
+    try {
+        auto& audio = Audio();
+        audio.SetMusicVolume(request.volume);
+        if (request.action == AudioPreviewAction::Stop) audio.StopMusic();
+        if (request.action != AudioPreviewAction::Play) return;
+        // Plays the worker's copy beside this executable, so a sound added since the last build is not there yet.
+        audio.LoadMusic(PreviewId, request.file);
+        audio.PlayMusic(PreviewId, request.loop);
+    } catch (const std::exception& error) {
+        _controller.Log(std::string("Sound preview: ") + error.what() + " (Build & Refresh copies new sounds)",
+                        EditorLogLevel::Warning);
+    }
+}
 void EditorApplication::Stop() {
     if (_stopped) return;
     _workspace.CaptureLayout(_preferences);
@@ -230,8 +252,15 @@ void EditorApplication::DrawToolOverlay() const {
         [&](bool attempt) { commands.emplace_back([this, attempt] { _controller.OpenOutputLog(attempt); }); },
         [&](std::size_t file, const TuningLocation& at, const TuningValue& value) {
             commands.emplace_back([this, file, at, value] { _controller.Tune(file, at, value); });
+        },
+        [&](const AudioPreviewRequest& request) { _audioRequests.push_back(request); },
+        [&](const std::filesystem::path& path) {
+            const auto text = path.u8string();
+            OpenExternalUrl(std::string_view(reinterpret_cast<const char*>(text.data()), text.size()));
         }};
-    const auto result = _workspace.Draw(_controller.Snapshot(), actions, _display.Image(), _preferences, _fontSize);
+    auto snapshot = _controller.Snapshot();
+    snapshot.audioPlaying = _audioPlaying;
+    const auto result = _workspace.Draw(snapshot, actions, _display.Image(), _preferences, _fontSize);
     _quit = result.quit;
     if (result.interaction.mark) _mark = result.interaction.mark;
     if (result.windowMark) _windowMark = result.windowMark;

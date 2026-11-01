@@ -8,6 +8,8 @@ struct EditorProject {
     ProcessCommand build;
     std::filesystem::path buildDirectory;
     std::filesystem::path sourceDirectory; // proje kökü (konsolun çalışma klasörü); eski tariflerde boş
+    std::filesystem::path engineDirectory; // Asset library roots; empty in older recipes
+    std::filesystem::path assetsDirectory;
 };
 
 [[nodiscard]] EditorProject ReadEditorProject(const std::filesystem::path& file);

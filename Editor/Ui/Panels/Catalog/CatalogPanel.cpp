@@ -112,6 +112,7 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
     std::vector<const SceneDefinition*> entries;
     const auto query = EditorSearchText(_search.data());
     for (const auto& entry : snapshot.catalog) {
+        if (entry.asset) continue; // The Assets panel's
         if (_view == 1 && !preferences.IsFavorite(entry.id)) continue;
         if (_view == 2 && std::ranges::find(preferences.recent, entry.id) == preferences.recent.end()) continue;
         if (!query.empty() &&

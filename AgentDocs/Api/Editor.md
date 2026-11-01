@@ -11,6 +11,17 @@ Use these generated signatures to locate public declarations; open the header fo
 - `EditorScene`: `[[nodiscard]] virtual SceneParameters CaptureParameters() const` — Report authored controls changed by an action or content interaction; omit transient animation state.
 - `EditorScene`: `[[nodiscard]] virtual SceneInspection Inspect() const`
 
+## `Editor/Api/GraphicAsset.h`
+
+- `struct GraphicItem`
+- `GraphicItem`: `std::string name`
+- `GraphicItem`: `std::string tags` — Extra search words
+- `struct GraphicAsset` — A ready-made graphic for the editor's Assets panel.
+- `GraphicAsset`: `std::vector<GraphicItem> items`
+- `GraphicAsset`: `std::function<void(Painter& paint, const FloatRect& box, std::size_t item, float time)> draw` — Draws one item fitted to `box`; `item` indexes `items` (0 for a single drawing).
+- `GraphicAsset`: `std::string usage` — The line "Copy usage" copies; `{item}` becomes the item's name.
+- `bool RegisterGraphicAsset(GraphicAsset(* make)(), std::source_location where = std::source_location::current())` — Stores the maker only; it runs when the worker builds its catalog.
+
 ## `Editor/Api/SceneAutoRegistration.h`
 
 - `bool RegisterEditorScene(SceneDefinition(* make)())` — Store metadata makers only; definitions are made when RunEditorWorker builds its catalog.
@@ -91,6 +102,12 @@ Use these generated signatures to locate public declarations; open the header fo
 - `SceneBenchmark`: `std::string id`
 - `SceneBenchmark`: `int version = 1`
 - `SceneBenchmark`: `std::array<SceneBenchmarkVariant, 2> variants { { { "A", { } }, { "B", { } } } }`
+- `struct SceneAssetInfo` — Marks a catalog entry as an asset: the Assets panel shows it instead of the scene catalog.
+- `SceneAssetInfo`: `std::string file` — Registration source, as AssetPathKey
+- `SceneAssetInfo`: `std::string set`
+- `SceneAssetInfo`: `std::string item` — Empty for a single drawing
+- `SceneAssetInfo`: `std::string usage`
+- `SceneAssetInfo`: `bool operator==(const SceneAssetInfo&) const = default`
 - `struct SceneDefinition`
 - `SceneDefinition`: `std::string id`
 - `SceneDefinition`: `std::string name`
@@ -101,6 +118,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `SceneDefinition`: `std::function<std::unique_ptr<EditorScene>(const SceneServices&, const SceneParameters&)> create`
 - `SceneDefinition`: `int categoryOrder = 0` — Lower values come first; use the same order for every entry in a category.
 - `SceneDefinition`: `std::optional<SceneBenchmark> benchmark`
+- `SceneDefinition`: `std::optional<SceneAssetInfo> asset`
 - `class SceneRegistry`
 - `SceneRegistry`: `SceneRegistry()`
 - `SceneRegistry`: `void Add(SceneDefinition definition)`

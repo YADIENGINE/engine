@@ -7,7 +7,7 @@
 #include "Editor/Api/SceneRegistry.h"
 #include "Input/Input.h"
 
-inline constexpr std::uint32_t WorkerProtocolVersion = 10;
+inline constexpr std::uint32_t WorkerProtocolVersion = 11;
 inline constexpr std::size_t WorkerMaxInputPoints = 32;
 inline constexpr std::size_t WorkerMaxMessageBytes = 1024 * 1024;
 inline constexpr std::size_t WorkerMaxQueuedMessages = 256;

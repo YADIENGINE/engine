@@ -46,6 +46,28 @@ names of two variants, and parameter differences. Without a definition, the scen
 `SceneServices::profiler` is a borrowed module reference for recording custom CPU scopes/counters; use it only through
 `Modules/Profiler/Profiler.h`. [Profiler guide](Profiler.md).
 
+## Graphic assets
+
+A file named `X.asset.cpp` under `Assets/Graphics` registers a graphic for the Assets panel. Only the editor worker
+compiles these files, so games carry no catalog. Keep the drawing itself in ordinary game code and call it here.
+
+```cpp
+#include "Editor/Api/GraphicAsset.h"
+
+namespace {
+GraphicAsset MakeGoblin() {
+    GraphicAsset asset;
+    asset.usage = "DrawGoblin(paint, center, size);";
+    asset.draw = [](Painter& paint, const FloatRect& box, std::size_t, float time) { /* fit to box */ };
+    return asset;
+}
+[[maybe_unused]] const bool Registered = RegisterGraphicAsset(&MakeGoblin);
+} // namespace
+```
+
+Fill `items` for a set: each item gets its own tile and catalog entry, and `{item}` in `usage` becomes its name. Ids are
+`asset:Graphics/Folder/Name[#Item]`; `ctl find` and `ctl open` reach them like scenes. Design: [Asset library](../Design/AssetLibrary.md).
+
 ## Parameter and action contract
 
 `SceneValue`: `int64_t`, `double`, `bool`, normalized `SceneColor`, or option text (`std::string`).

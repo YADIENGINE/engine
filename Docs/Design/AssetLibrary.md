@@ -1,7 +1,8 @@
 # Asset library (design)
 
-Status: accepted, not implemented. Decision record: [README → D22](README.md#d22-asset-library).
-Prefabs are deferred. Baking is a separate, deferred topic: [Visual assets](VisualAssets.md).
+Status: accepted; v1 steps 1-2 implemented (registration and panel; tiles still show icons). Decision record:
+[README → D22](README.md#d22-asset-library). Prefabs are deferred. Baking is a separate, deferred topic:
+[Visual assets](VisualAssets.md).
 
 ## Goal
 
@@ -19,8 +20,8 @@ Using it is optional. A project may keep its drawings anywhere; only what is und
 | `Game/Assets/Graphics` | The project's graphics | Free foldering |
 | `Game/Assets/Audio`, `Game/Assets/Fonts` | Runtime files, as today | Browse and preview; no moving in v1 |
 
-`Graphics` and `Prefabs` are reserved names under `Game/Assets`. They hold source code, so they are excluded from
-every copy of the asset folder: `engine_add_game`, the editor worker, and the `release` package.
+`Graphics` and `Prefabs` are reserved names under `Game/Assets`. They hold source code, so `engine_copy_assets` leaves
+them out when `engine_add_game` and the editor worker copy the folder; the `release` package reads that copy.
 
 ## Set assets
 
@@ -53,10 +54,11 @@ and never look assets up by string, so Release contains no catalog.
 ## Editor panel
 
 A dockable Assets panel in the lower editor area, in the style of Unity's Project window, separate from the scene
-catalog: folder tree on the left; breadcrumb, search, tile size and a tile grid on the right.
+catalog: back and search across the top, a folder tree on the left (sets are rows too), a tile grid on the right, and
+tile size in the footer.
 
-- **Shared viewport:** one click opens the graphic in the normal viewport, with the Inspector and Tuning panels. A
-  back button returns to the previous scene, because the running scene's state is lost.
+- **Shared viewport:** one click opens the graphic in the normal viewport, with the Inspector and Tuning panels.
+- **Back:** one history for browsing and opened graphics; each press undoes the last move or opened graphic.
 - **Tiles, not files:** `Goblin.h`, `Goblin.cpp`, `Goblin.asset.cpp` and `Goblin.tuning.json` are one tile, which can
   be expanded.
 - **Two data sources:** the editor scans the disk for the tree; the worker supplies metadata and previews. The tree
@@ -93,19 +95,20 @@ hover is not in v1.
 
 ### Audio
 
-- Clicking a sound does not touch the viewport or the running scene. The Inspector shows a small player: play/stop,
-  loop, volume, duration.
-- The editor process is the preferred player because it works during a broken build. Whether it can open an audio
-  device is unchecked; the fallback is the worker's `AudioSystem`.
+- Clicking a sound does not touch the viewport or the running scene. A bar below the grid has play/stop, loop and
+  volume, so it stays available when the Inspector is hidden. Duration needs a new `AudioSystem` query and is not shown yet.
+- The editor process plays it through its own `AudioSystem`, so it works during a broken build. That API only takes
+  paths under the asset root, so it plays the worker's copy beside the editor: a sound added since the last build
+  reports "Build & Refresh" in Output.
 - Audio cannot move in v1: audio catalogs hold file paths as strings.
-- The worker knows the catalog, so the panel can mark files the game does not use.
+- Later: the worker knows the audio catalog, so the panel could mark files the game does not use.
 
 ## v1 order
 
-1. Exclude source folders from copying and packaging; registration; `ctl` support.
-2. Panel: disk scan, tree, grid, search, audio player.
+1. Done: exclude source folders from copying and packaging; registration; `ctl` support.
+2. Done: panel with disk scan, tree, grid, search, audio player, copy usage, show in Explorer.
 3. Thumbnails.
-4. Engine default sets (first candidate: icons).
+4. Engine default sets. Icons are registered already, to exercise sets and the read-only root.
 5. New-graphic skeleton and folder actions, with include updates on move.
 
 ## Deferred

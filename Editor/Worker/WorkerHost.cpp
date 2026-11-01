@@ -7,6 +7,7 @@
 #include <string>
 #include <thread>
 #include "Editor/Internals/Platform/Windows/ControlChannel.h"
+#include "Editor/Internals/Session/GraphicAssetCatalog.h"
 #include "Editor/Internals/Session/SceneAutoRegistration.h"
 #include "Editor/Worker/WorkerGame.h"
 #include "Editor/Worker/GlowBenchmark.h"
@@ -70,6 +71,7 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
         registry.Add(GlowBenchmarkDefinition());
         registry.Add(RenderGalleryDefinition());
         AddRegisteredEditorScenes(registry);
+        AddRegisteredGraphicAssets(registry);
         registerScenes(registry); // Metadata and factories only: no GL/assets/instances.
         channel = std::make_unique<ControlChannel>(session, false);
         channel->Send({{}, 0, 0, "catalog", EncodeSceneCatalog(registry.Entries())});

@@ -19,8 +19,9 @@ target_include_directories(${PROJECT_NAME}EditorWorker PRIVATE Editor)
 The helper places the worker executable beside EngineEditor (`<build>/Editor/<Config>/`), links `EngineWorkerRuntime`,
 and generates the `EngineEditor.project.json` recipe in the same folder: the worker path and the `cmake --build` command
 for Build & Refresh. Arguments: `NAME` (catalog title; default `<project> scenes`), `SOURCES` (starter worker if empty),
-`LIBRARIES`, `ASSETS` (folder to copy beside the worker), `SCENE_DIRS` (directories of auto-registered `*.cpp` scenes,
-linked as OBJECT libraries; excluded from `SOURCES`). Paths are relative to the calling CMake directory.
+`LIBRARIES`, `ASSETS` (folder to copy beside the worker, also the Assets panel's project root), `SCENE_DIRS`
+(directories of auto-registered `*.cpp` scenes, linked as OBJECT libraries; excluded from `SOURCES`), `GRAPHIC_SOURCES`
+(drawing code under `Assets/Graphics` that no library in `LIBRARIES` holds). Paths are relative to the calling CMake directory.
 One worker per build folder. Build & Refresh also picks up newly added scene files.
 
 If scenes draw game Views, move game code to a separate library (`add_library(... Game/...)`) and pass it to both game
