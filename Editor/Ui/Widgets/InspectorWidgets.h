@@ -12,7 +12,7 @@ void EndInspectorStyle();
 [[nodiscard]] bool BeginInspectorProperties(const char* id, float labelWidth, bool readOnly = false);
 void EndInspectorProperties();
 [[nodiscard]] bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value, bool pending,
-                                           const char* applyHint = "");
+                                           const char* applyHint = "", bool* contextRequested = nullptr);
 void InspectorReadOnlyField(const SceneReadout& value);
 void InspectorSummary(const char* title, const char* description);
 void InspectorPrimaryAction(const SceneAction& action, std::span<const std::string> disabled,

@@ -79,6 +79,7 @@ std::string EditorSettingsStore::Load(const std::string& project, EditorPreferen
             loaded.agent.customCommand = agent->value("customCommand", std::string{});
             loaded.agent.customCommand.resize(std::min(loaded.agent.customCommand.size(), std::size_t{1024}));
             loaded.agent.control = agent->value("control", true);
+            loaded.agent.configured = agent->value("configured", false);
         }
         preferences = std::move(loaded);
         fontSize = ValidFontSize(font) ? font : 100;
@@ -98,7 +99,8 @@ std::string EditorSettingsStore::Save(const std::string& project, const EditorPr
         document["fontSize"] = ValidFontSize(fontSize) ? fontSize : 100;
         document["agent"] = {{"kind", AgentKindInfo(preferences.agent.kind).key},
                              {"customCommand", preferences.agent.customCommand},
-                             {"control", preferences.agent.control}};
+                             {"control", preferences.agent.control},
+                             {"configured", preferences.agent.configured}};
         const auto& filter = preferences.outputFilter;
         document["projects"][project] = {
             {"visible", preferences.visible},

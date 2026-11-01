@@ -94,6 +94,7 @@ Reset recreates the scene in the same worker process. Use Open to restart the wo
 | Ctrl+Shift+B | Build & Refresh |
 | Ctrl+P | Project search |
 | Ctrl+Shift+P | Command palette |
+| Ctrl+Shift+A | Open the chosen agent session (also while Console is focused) |
 | Ctrl+J | Toggle last bottom tool panel |
 
 Search scene actions, panel visibility, and layouts in the command palette; select with up / down, run with Enter,
@@ -132,27 +133,43 @@ editor context; it never calls a model itself. The agent drives the editor back 
 ([Automation](Automation.md)), and the project opts in to the engine's agent rules through `Engine/AgentDocs/Agent.md`
 ([Using an AI agent](../ProjectSetup.md#using-an-ai-agent)).
 
-- **Console sessions:** the Console holds several sessions as tabs: shells (`+` opens one) and at most one agent
-  session. Each session keeps running while the panel is hidden; closing a tab ends its program. A tab marked `*` rang
-  the terminal bell since you last looked at it: agent CLIs ring it when they wait for you.
-- **Agent menu** (also in the command palette, under "Agent:"):
+- **Console sessions:** the Console holds several sessions as tabs: shells and at most one agent session. The agent
+  tab has an accent icon and stays first. The `+` popup offers *New shell* and *Open <agent>*. Each session keeps running
+  while the panel is hidden; closing a tab ends its program. Closing a running agent asks for confirmation. Exited
+  programs have dimmed titles. A pulsing warning dot means the terminal bell rang since you last looked at that
+  session: agent CLIs ring it when they wait for you.
+- **Agent menu** groups Session, Send context and Settings (session and context commands are also in the command
+  palette, under "Agent:"):
   - *Open <agent>* starts the chosen CLI in the project folder, or selects its session. The session's shell stays open
-    after the CLI exits. A CLI missing from PATH is reported in Output.
+    after the CLI exits. Ctrl+Shift+A also opens the chosen agent, including from Console.
+  - On first use, a setup modal lets you choose Claude Code, Codex or Custom, checks the executable on PATH (or at its
+    full path), and offers an *Install...* link for the named CLIs. Custom shows a command field with an argument hint.
+    *Check again* rechecks installation; if PATH changed, restart the editor or use a full path. *Start* accepts the
+    choice and opens the session; *Cancel* leaves preferences unchanged. Setup also opens if the command is missing,
+    with a message in Output. Context sent during setup waits for Start; Cancel discards that pending context.
+    *Copy hint* copies: "Let the agent know the engine: add @Engine/AgentDocs/Agent.md to your CLAUDE.md (or AGENTS.md)".
   - *New shell* opens a plain shell session.
   - *Send scene* pastes the open scene's id, playback time, changed parameters and a capture of the frame
     (`editor-captures/scene-*.png`) into the agent session, without Enter: type your request after it.
   - *Send build failure* pastes the last failed Build & Refresh with its error lines; *Ask agent to fix build* also
-    asks for a fix and presses Enter. The build failure popup has the same *Ask Agent to Fix* button.
+    asks for a fix and presses Enter. The build failure popup makes *Ask Agent to Fix* the primary button, beside
+    Copy, Show Output and Close. Disabled context commands explain why in a tooltip.
   - *Agent control* (on by default): off, tools may observe the editor (status, list, screenshot, inspect, logs) but
     every command that changes it (open, set, action, playback, seek, frames, refresh) is refused. The status bar shows
     "Agent control off".
-  - *Agent CLI* chooses Claude Code (`claude`), Codex (`codex`) or a custom command line.
+  - *Agent CLI* uses radio choices for Claude Code (`claude`), Codex (`codex`) or Custom; the command field is shown
+    only for Custom. *Agent control* is a checkbox with a tooltip explaining read-only access.
 - **Output:** right-click → *Send Selected to Agent* pastes the selected lines.
+- **Inspector:** right-click a parameter's label or value → *Send to Agent* pastes its current value, range or choices
+  and description, without Enter. This is also available for disabled parameters.
 - **Marks** (toolbar Mark, Alt+drag) go to the agent session when there is one.
 - **Status bar:** with an agent session, "Agent: ..." shows *waiting for you* (bell), the agent's own report from
-  `python Engine ctl note TEXT --state working|waiting|idle` (its text is the tooltip), *running* or *exited*; clicking
-  it shows the session.
-- **Agent layout** (Window → Layouts): the Viewport beside a tall column holding the Console and the Inspector.
+  `python Engine ctl note TEXT --state working|waiting|idle`, *running* or *exited*. Working uses the accent color;
+  waiting pulses in the warning color with the same rhythm as unread Output. Idle/running is neutral and exited is
+  dimmed. The tooltip includes the agent's note and a click hint; clicking shows the session. The *Agent control off*
+  badge remains a warning.
+- **Agent layout** (Window → Layouts): the Viewport takes 60% of the width beside a tall 40% column shared by Console
+  and Inspector, with Console selected in front. The Viewport remains larger at 1440×900 and 2560×1440.
 
 Text sent to a session that is still starting waits until the CLI's output settles, so a just-started agent receives
 it in its prompt.
@@ -160,6 +177,6 @@ it in its prompt.
 ## Preferences
 
 Layout, last custom layout, visibility, scale, favorites, recent opens, and Output preferences are in
-`UserDataDirectory()/EngineEditor/preferences.json` (separated by build directory + project name). The agent CLI choice
-and the Agent control switch belong to the user and apply to every project. Player progress / settings files are
-unaffected.
+`UserDataDirectory()/EngineEditor/preferences.json` (separated by build directory + project name). The agent CLI choice,
+accepted setup and the Agent control switch belong to the user and apply to every project. Player progress / settings
+files are unaffected.

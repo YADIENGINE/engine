@@ -98,8 +98,8 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
     const auto attempt = snapshot.diagnostics.Attempt().result;
     const bool failed = attempt == EditorBuildResult::BuildFailed || attempt == EditorBuildResult::RefreshFailed;
     const auto agentEntry = [&](std::string label, bool enabled, const char* reason, EditorAgentRequest request) {
-        entries.push_back({"Agent: " + std::move(label), "", enabled, enabled ? "" : reason,
-                           [&result, request] { result.agent = request; }});
+        entries.push_back({"Agent: " + std::move(label), request == EditorAgentRequest::Open ? "Ctrl+Shift+A" : "",
+                           enabled, enabled ? "" : reason, [&result, request] { result.agent = request; }});
     };
     agentEntry(std::string("Open ") + AgentKindInfo(preferences.agent.kind).name, true, "", EditorAgentRequest::Open);
     agentEntry("New shell", true, "", EditorAgentRequest::NewShell);

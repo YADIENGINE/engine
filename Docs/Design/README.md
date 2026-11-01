@@ -659,8 +659,8 @@ an opt-in and the editor knows agent CLIs by name.
   a constant context share and a second interface, and dynamic catalogs cannot be static enums. Decide with
   measurements (an agent eval set: prompts + expected final `ctl status`), not by default.
 
-Durum: kabul edildi (2026-11-01); knowledge layer and agent workspace backend implemented; visual design of the
-workspace (menu, tabs, status bar, setup) pending.
+Durum: kabul edildi (2026-11-01); knowledge layer, agent workspace backend and workspace UI implemented
+(grouped menu, session tabs, state badges, setup and Inspector context).
 
 ## v1 iş sırası
 

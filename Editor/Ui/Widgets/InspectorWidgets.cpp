@@ -150,7 +150,13 @@ bool BeginInspectorProperties(const char* id, float labelWidth, bool readOnly) {
     return true;
 }
 void EndInspectorProperties() { ImGui::EndTable(); }
-bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value, bool pending, const char* applyHint) {
+bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value, bool pending, const char* applyHint,
+                             bool* contextRequested) {
+    const auto context = [&] {
+        if (contextRequested && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) &&
+            ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+            *contextRequested = true;
+    };
     const bool modified = value != parameter.initial;
     const std::string tooltip = parameter.label + (modified ? "\nModified from default." : "") +
                                 (parameter.description.empty() ? "" : "\n" + parameter.description);
@@ -178,12 +184,14 @@ bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value,
     if (inlineRow) {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetStyle().FramePadding.y);
         InspectorLabel(parameter.label.c_str(), labelTooltip.c_str(), modified, ImGui::GetContentRegionAvail().x);
+        context();
         ImGui::TableSetColumnIndex(2);
     } else {
         const float checkboxWidth = inlineCheckbox ? ImGui::GetFrameHeight() + gap : 0;
         const float labelWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - resetSize - gap - checkboxWidth);
         ImGui::AlignTextToFramePadding();
         InspectorLabel(parameter.label.c_str(), labelTooltip.c_str(), modified, labelWidth);
+        context();
         ImGui::SameLine(0, gap);
     }
     bool edited = false;
@@ -202,6 +210,7 @@ bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value,
         modified && (parameter.kind == SceneParameterKind::Integer || parameter.kind == SceneParameterKind::Float);
     if (modifiedNumber) ImGui::PushStyleColor(ImGuiCol_Text, ToolToneColor(ToolTone::Warning));
     edited = EditorParameterWidget(parameter, value) || edited;
+    context();
     if (modifiedNumber) ImGui::PopStyleColor();
     ToolTooltip(tooltip.c_str());
     if (modified) {
@@ -220,7 +229,10 @@ bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value,
         ToolStatusBadge("Pending", EditorPhaseColor(EditorPhase::Paused));
         ToolTooltip("Waiting for the scene to accept this value.");
     }
-    if (choiceGrid) ImGui::EndGroup();
+    if (choiceGrid) {
+        ImGui::EndGroup();
+        context();
+    }
     if (compact) ImGui::PopStyleVar();
     return edited;
 }

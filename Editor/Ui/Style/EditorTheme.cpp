@@ -1,6 +1,15 @@
 #include "Editor/Ui/Style/EditorTheme.h"
 #include <extras/IconsFontAwesome6.h>
+#include <cmath>
+#include <numbers>
 #include "ToolUi/ToolTheme.h"
+
+float EditorAttentionPulse() {
+    constexpr double PeriodSeconds = 1.4;
+    const float pulse =
+        static_cast<float>(0.5 + 0.5 * std::sin(ImGui::GetTime() * 2 * std::numbers::pi / PeriodSeconds));
+    return 0.12f + (0.48f - 0.12f) * pulse;
+}
 
 ImVec4 EditorPhaseColor(EditorPhase phase) {
     switch (phase) {

@@ -9,6 +9,7 @@
 #include "Editor/Ui/Panels/Profiler/ProfilerPanel.h"
 #include "Editor/Ui/Panels/Tuning/TuningPanel.h"
 #include "Editor/Ui/Shell/EditorShell.h"
+#include "Editor/Ui/Widgets/EditorAgentSetup.h"
 
 struct EditorWorkspaceResult {
     EditorViewportInteraction interaction;
@@ -71,6 +72,9 @@ private:
     ConsolePanel _console;
     EditorShell _shell;
     EditorCommandPalette _palette;
+    EditorAgentSetup _agentSetup;
+    std::string _pendingAgentText; // Context waits for the developer to accept setup.
+    bool _pendingAgentSubmit = false;
     std::string _restoreLayout;
     bool _initialized = false;
     bool _maximized = false;

@@ -41,7 +41,8 @@ public:
     void Close(std::size_t index);
     // Every frame, also while hidden: processes output and notices bells.
     void Update();
-    void Draw();
+    // Returns a request to open the chosen agent through the workspace's setup flow.
+    [[nodiscard]] bool Draw(const char* agentName);
     // The keyboard was in a terminal during the last draw.
     [[nodiscard]] bool Focused() const;
     [[nodiscard]] std::vector<ConsoleSessionInfo> Sessions() const;
@@ -68,6 +69,7 @@ private:
     std::size_t _selected = 0;
     bool _selectTab = false; // The selection changed outside the tab bar
     bool _focused = false;
+    std::optional<std::size_t> _confirmClose;
     std::filesystem::path _directory;
     std::vector<std::pair<std::string, std::string>> _environment;
 };

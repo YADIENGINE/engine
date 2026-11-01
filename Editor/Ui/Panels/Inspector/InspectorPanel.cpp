@@ -1,6 +1,7 @@
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
 #include <imgui.h>
 #include <algorithm>
+#include "Editor/Internals/Session/AgentContext.h"
 #include "Editor/Ui/Widgets/InspectorWidgets.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
@@ -33,6 +34,7 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
     const bool changedScene = _scene != selected.id;
     if (changedScene) {
         _scene = selected.id;
+        _contextParameter.clear();
         _search.fill('\0');
         _modifiedOnly = false;
         _searchVisible = false;
@@ -113,6 +115,7 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
     const bool drawContent = ImGui::BeginChild("##inspector-content", {0, contentHeight});
     if (changedScene) ImGui::SetScrollY(0);
     if (drawContent) {
+        bool openContext = false;
         ImGui::BeginDisabled(!snapshot.ready);
         for (const auto& group : groups) {
             bool advanced = true;
@@ -143,8 +146,14 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
                 ImGui::BeginDisabled(disabled(parameter.id));
                 auto value = found->second;
                 const auto hint = ApplyHint(parameter, selected.actions);
-                if (InspectorParameterField(parameter, value, snapshot.pending.contains(parameter.id), hint.c_str()))
+                bool contextRequested = false;
+                if (InspectorParameterField(parameter, value, snapshot.pending.contains(parameter.id), hint.c_str(),
+                                            &contextRequested))
                     actions.parameter(parameter.id, value);
+                if (contextRequested) {
+                    _contextParameter = parameter.id;
+                    openContext = true;
+                }
                 ImGui::EndDisabled();
                 ImGui::PopID();
             }
@@ -158,6 +167,17 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
         if (secondary && InspectorSection("Actions"))
             InspectorActionGroup(selected.actions, snapshot.inspection.disabledActions, actions.action, false);
         ImGui::EndDisabled();
+        if (openContext) ImGui::OpenPopup("parameter-context");
+        if (ImGui::BeginPopup("parameter-context")) {
+            const auto parameter = std::ranges::find(selected.parameters, _contextParameter, &SceneParameter::id);
+            const auto value = snapshot.parameters.find(_contextParameter);
+            if (parameter != selected.parameters.end() && value != snapshot.parameters.end()) {
+                if (ImGui::MenuItem("Send to Agent"))
+                    _agentText = ParameterContext(selected, *parameter, value->second);
+                ToolTooltip("Paste this parameter's value, range or choices and description into the agent session.");
+            }
+            ImGui::EndPopup();
+        }
         if (!snapshot.inspection.values.empty() && InspectorSection("Live information")) {
             if (BeginInspectorProperties("##live", labelWidth, true)) {
                 for (const auto& value : snapshot.inspection.values)

@@ -7,11 +7,12 @@
 #include "Editor/Internals/Session/ViewportMark.h"
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "ToolUi/ToolTheme.h"
+#include "ToolUi/ToolWidgets.h"
 
 namespace {
 constexpr float MarkOverlayTint = 0.06f;  // Alpha of the tint over the editor while marking
 constexpr float MarkOutline = 2.0f;       // Pixels at 100% UI scale
-constexpr float AgentColumnRatio = 0.40f; // Agent layout: width share of the Console + Inspector column
+constexpr float AgentColumnRatio = 0.40f; // 60% Viewport / 40% Console + Inspector at desktop sizes.
 constexpr float PanelMinWidthInFonts = 12.0f;
 constexpr float PanelMinHeightInLines = 6.0f;
 constexpr ImGuiWindowFlags HostFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
@@ -172,27 +173,31 @@ void EditorWorkspace::PasteToConsole(const std::string& text, EditorPreferences&
     _console.Paste(text);
 }
 std::string EditorWorkspace::OpenAgent(EditorPreferences& preferences) {
-    ShowConsole(preferences);
+    if (_agentSetup.Active()) return {};
     const auto& kind = AgentKindInfo(preferences.agent.kind);
     const auto command = AgentCommand(preferences.agent);
-    if (command.empty()) {
-        _console.OpenShell();
-        return "No agent command is set; choose one in Agent > Agent CLI";
+    const bool available = CommandOnPath(AgentProgram(command));
+    if (!preferences.agent.configured || !available) {
+        _agentSetup.Open(preferences.agent);
+        _viewport.ReleaseFocus();
+        if (!available)
+            return std::string(kind.name) + ": '" + AgentProgram(command) +
+                   "' was not found on PATH; choose an available command in agent setup";
+        return {};
     }
+    ShowConsole(preferences);
     _console.OpenAgent(kind.name, AgentCommandLine(DefaultTerminalShell(), command));
-    if (CommandOnPath(AgentProgram(command))) return {};
-    return std::string(kind.name) + ": '" + AgentProgram(command) + "' was not found on PATH" +
-           (*kind.install ? std::string("; install it from ") + kind.install : std::string()) +
-           " or choose another in Agent > Agent CLI";
+    return {};
 }
 std::string EditorWorkspace::SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences) {
     auto problem = OpenAgent(preferences);
-    if (_console.AgentSession()) {
+    if (_agentSetup.Active()) {
+        _pendingAgentText += text;
+        _pendingAgentSubmit = _pendingAgentSubmit || submit;
+    } else if (_console.AgentSession()) {
         const auto command = AgentCommand(preferences.agent);
         _console.SendToAgent(AgentKindInfo(preferences.agent.kind).name,
                              AgentCommandLine(DefaultTerminalShell(), command), text, submit);
-    } else {
-        _console.Paste(text); // No agent command: the shell OpenAgent opened
     }
     return problem;
 }
@@ -246,10 +251,11 @@ bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiAc
     const bool catalog = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, route);
     const bool bottom = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_J, route);
     const bool console = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_GraveAccent, route);
+    const bool agent = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_A, route);
     const bool primary = ImGui::Shortcut(ImGuiKey_F5, route);
     const auto& io = ImGui::GetIO();
     const bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
-    // Konsol odaktayken tuşlar kabuğundur (Ctrl+R, Ctrl+P ...); sadece alt alan, konsol ve palet editörde kalır.
+    // The Console owns ordinary chords; global panel, palette and agent shortcuts remain available.
     const bool blocked = popup || io.WantTextInput || _consoleFocused;
     bool consumed = false;
     if (palette && !popup) {
@@ -258,6 +264,10 @@ bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiAc
     }
     if (console && !popup) {
         result.bottomPanel = EditorPanel::Console;
+        consumed = true;
+    }
+    if (agent && !popup) {
+        result.agent = EditorAgentRequest::Open;
         consumed = true;
     }
     if (catalog && !popup && !_consoleFocused) {
@@ -470,6 +480,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         constexpr auto flags = ImGuiWindowFlags_NoCollapse;
         bool viewportDrawn = false;
         bool consoleDrawn = false;
+        bool focusedBottomDrawn = false;
         for (const auto& panel : EditorPanels) {
             if (!preferences.Visible(panel.id)) continue;
             const bool focusViewport = _focusViewport && panel.id == EditorPanel::Viewport;
@@ -485,6 +496,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                                           : 0));
             ImGui::PopStyleVar(); // Panel contents keep their regular control spacing.
             if (drawPanel) {
+                if (_focusBottom && *_focusBottom == panel.id) focusedBottomDrawn = true;
                 if (panel.dock == EditorDockGroup::Bottom && ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows))
                     preferences.lastBottomPanel = panel.id;
                 switch (panel.id) {
@@ -493,7 +505,11 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                     result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, false);
                     viewportDrawn = preferences.Visible(panel.id);
                     break;
-                case EditorPanel::Inspector: _inspector.Draw(snapshot, actions); break;
+                case EditorPanel::Inspector:
+                    _inspector.Draw(snapshot, actions);
+                    if (const auto text = _inspector.TakeAgentText(); !text.empty())
+                        result.agentProblem = SendToAgent(text, false, preferences);
+                    break;
                 case EditorPanel::Output:
                     _output.Draw(snapshot, actions, preferences);
                     if (const auto text = _output.TakeAgentText(); !text.empty())
@@ -502,7 +518,8 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 case EditorPanel::Profiler: _profiler.Draw(snapshot, actions); break;
                 case EditorPanel::Tuning  : _tuning.Draw(snapshot, actions); break;
                 case EditorPanel::Console:
-                    _console.Draw();
+                    if (_console.Draw(AgentKindInfo(preferences.agent.kind).name))
+                        HandleAgent(EditorAgentRequest::Open, snapshot, preferences, result);
                     consoleDrawn = true;
                     break;
                 case EditorPanel::Count: break;
@@ -510,7 +527,10 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             }
             ImGui::End();
         }
-        _focusBottom.reset();
+        if (_focusBottom) {
+            SelectPanelTab(EditorPanelInfo(*_focusBottom).window);
+            if (focusedBottomDrawn) _focusBottom.reset();
+        }
         _focusCatalog = false;
         _consoleFocused = consoleDrawn && _console.Focused();
         if (!viewportDrawn) {
@@ -547,21 +567,33 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         ImGui::InputTextMultiline("##failure-detail", _failureDetail.data(), _failureDetail.size(),
                                   {-1, ImGui::GetTextLineHeightWithSpacing() * 8}, ImGuiInputTextFlags_ReadOnly);
         ImGui::Separator();
-        if (ImGui::Button("Copy")) ImGui::SetClipboardText(_failureDetail.data());
-        ImGui::SameLine();
-        if (ImGui::Button("Show Output")) {
-            _showFailedOutput = true;
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Ask Agent to Fix")) {
+        if (ToolButton("Ask Agent to Fix", {}, true)) {
             _fixFailedBuild = true; // Handled next frame, outside this popup
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
+        if (ToolButton("Copy")) ImGui::SetClipboardText(_failureDetail.data());
+        ImGui::SameLine();
+        if (ToolButton("Show Output")) {
+            _showFailedOutput = true;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ToolButton("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
         result.cancelViewportInput = true;
+    }
+    if (_agentSetup.Active()) {
+        result.cancelViewportInput = true;
+        const auto setup = _agentSetup.Draw(preferences.agent);
+        if (setup == EditorAgentSetupResult::Started) {
+            const auto text = std::exchange(_pendingAgentText, {});
+            const bool submit = std::exchange(_pendingAgentSubmit, false);
+            result.agentProblem = text.empty() ? OpenAgent(preferences) : SendToAgent(text, submit, preferences);
+        } else if (setup == EditorAgentSetupResult::Canceled) {
+            _pendingAgentText.clear();
+            _pendingAgentSubmit = false;
+        }
     }
     if (_marking) MarkOverlay(snapshot, actions, menuHeight + toolbarHeight, result);
     if (result.cancelViewportInput) _viewport.ReleaseFocus();

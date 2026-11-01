@@ -7,6 +7,98 @@
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
 #include "ToolUi/ToolTheme.h"
 
+TEST_CASE("Editor.Workspace.AgentLayoutKeepsViewportLargerAndConsoleInFront", "[engine-editor]") {
+    for (const auto size : {ImVec2{1440, 900}, ImVec2{2560, 1440}}) {
+        CAPTURE(size.x, size.y);
+        const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                      ImGui::DestroyContext);
+        auto& io = ImGui::GetIO();
+        io.IniFilename = nullptr;
+        io.LogFilename = nullptr;
+        io.DisplaySize = size;
+        io.DeltaTime = 1.0f / 60.0f;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.Fonts->AddFontDefaultVector();
+        unsigned char* pixels = nullptr;
+        int width = 0, height = 0;
+        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+        io.Fonts->SetTexID(ImTextureID{1});
+        ApplyToolTheme();
+        const std::vector<SceneDefinition> catalog;
+        const SceneParameters parameters;
+        const EditorDiagnostics diagnostics;
+        const std::string status;
+        const EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};
+        EditorPreferences preferences;
+        preferences.layout = EditorWorkspaceLayout::Agent;
+        preferences.Visible(EditorPanel::Catalog) = false;
+        preferences.Visible(EditorPanel::Tuning) = false;
+        preferences.Visible(EditorPanel::Console) = true;
+        EditorWorkspace workspace;
+        int fontSize = 100;
+        for (int frame = 0; frame < 4; ++frame) {
+            ImGui::NewFrame();
+            (void)workspace.Draw(snapshot, {}, {}, preferences, fontSize);
+            ImGui::Render();
+        }
+        const auto* view = ImGui::FindWindowByName(EditorPanelInfo(EditorPanel::Viewport).window);
+        const auto* console = ImGui::FindWindowByName(EditorPanelInfo(EditorPanel::Console).window);
+        const auto* inspector = ImGui::FindWindowByName(EditorPanelInfo(EditorPanel::Inspector).window);
+        REQUIRE(view);
+        REQUIRE(console);
+        REQUIRE(inspector);
+        CHECK(view->Size.x > console->Size.x);
+        CHECK(console->DockId == inspector->DockId);
+        CHECK(console->DockTabIsVisible);
+        CHECK_FALSE(inspector->DockTabIsVisible);
+    }
+}
+
+TEST_CASE("Editor.Agent.SetupAcceptsAvailableCommandAndCancelPreservesPreferences", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {1440, 900};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigNavCursorVisibleAlways = true;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    AgentPreferences preferences{AgentKind::Custom, "cmd", false};
+    const auto before = preferences;
+    EditorAgentSetup setup;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        const auto result = setup.Draw(preferences);
+        ImGui::Render();
+        return result;
+    };
+    setup.Open(preferences);
+    CHECK(frame() == EditorAgentSetupResult::None);
+    CHECK(setup.Active());
+    CHECK(preferences == before);
+    io.AddKeyEvent(ImGuiKey_Escape, true);
+    CHECK(frame() == EditorAgentSetupResult::Canceled);
+    CHECK(preferences == before);
+    io.AddKeyEvent(ImGuiKey_Escape, false);
+    (void)frame(); // Let the closed popup leave ImGui's active-window set before reopening it.
+    setup.Open(preferences);
+    (void)frame();
+    (void)frame();
+    // The available primary action gets default keyboard focus.
+    io.AddKeyEvent(ImGuiKey_Enter, true);
+    CHECK(frame() == EditorAgentSetupResult::Started);
+    CHECK(preferences.configured);
+    CHECK_FALSE(preferences.control);
+    CHECK_FALSE(setup.Active());
+}
+
 TEST_CASE("Editor.Catalog.WorkCategorySortsFirstInProjectPanel", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
                                                                                   ImGui::DestroyContext);

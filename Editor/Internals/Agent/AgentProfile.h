@@ -27,6 +27,7 @@ struct AgentPreferences {
     std::string customCommand;
     // Off: the control endpoint refuses commands that change the editor; observing commands still answer.
     bool control = true;
+    bool configured = false; // The developer accepted the first-run setup.
     bool operator==(const AgentPreferences&) const = default;
 };
 

@@ -270,7 +270,8 @@ TEST_CASE("Editor.Settings.AgentChoiceBelongsToTheUser", "[engine-editor]") {
     EditorSettingsStore store(file);
     EditorPreferences preferences;
     preferences.layout = EditorWorkspaceLayout::Agent;
-    preferences.agent = {AgentKind::Custom, "my-agent --fast", false};
+    CHECK_FALSE(preferences.agent.configured);
+    preferences.agent = {AgentKind::Custom, "my-agent --fast", false, true};
     REQUIRE(store.Save("project-a", preferences, 100).empty());
     EditorSettingsStore reopened(file);
     EditorPreferences restored;
