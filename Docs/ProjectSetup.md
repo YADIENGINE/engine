@@ -112,6 +112,7 @@ from `name`.
 | `editor.worker` | `editor` | `engine_add_editor_worker` target (default `<name>EditorWorker`) |
 | `editor.cacheVariables` | `editor` | project options added to the editor build (such as disabling the game and enabling the worker) |
 | `hooks` | `release` | optional Python file (below) |
+| `engine.build` | `build`, `run`, `release`, `editor` | optional; `"source"` always compiles the engine instead of linking the [prebuilt engine](Prebuilt.md) |
 
 `editor` supplies `ENGINE_BUILD_RUNTIME/EDITOR=ON`, `ENGINE_BUILD_TESTS/EDITOR_TESTS=OFF`, and
 `CMAKE_CONFIGURATION_TYPES=Debug;Release` itself. The editor is configured in a separate build folder and does not touch

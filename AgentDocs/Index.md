@@ -66,6 +66,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Look at a scene or game flow: open, set, seek, screenshot, frame grid, inspect; show it to the developer | `Tools/commands/ctl.py` | - | `Docs/Editor/Automation.md#commands` |
 | Set up, run, check or test a project | `Tools/cli.py` | - | `Docs/ToolsContract.md#commands` |
 | Package a release and third-party notices | `Tools/commands/release.py` | - | `Docs/Release.md#checks` |
+| Why an engine source edit has no effect; step into engine code; full Debug | `Tools/prebuilt.py` | - | `Docs/Prebuilt.md#choosing-the-source-build` |
 | Generate audio assets offline | `Tools/AudioGeneration/generator.py` | - | `Docs/AudioGeneration.md#a-sound-set-in-one-file` |
 | Check a sound without hearing it: length, loudness, silent edges, clipping, waveform image (`audio info`, `audio waveform`) | `Tools/commands/audio.py` | - | `Docs/AudioTools.md#audio-files-and-catalog` |
 | Find unused sound files, missing catalog files, or which catalog ID plays a file (`audio usage`, `audio catalog`) | `Tools/commands/audio.py` | - | `Docs/AudioTools.md#audio-files-and-catalog` |

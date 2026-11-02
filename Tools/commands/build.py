@@ -7,9 +7,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..cmake import PYTHON_DEFINITION, clear_stale_build, remove_build_dir, run
+from ..cmake import PYTHON_DEFINITION, clear_stale_build, read_cache, remove_build_dir, run
 from ..errors import EXIT_FAILED, EXIT_OK
 from ..msvc import msvc_env, tool
+from ..prebuilt import cache_definition, prebuilt_directory, write_state
 from ..project import Project
 from ..project_status import write_last_build
 
@@ -48,13 +49,17 @@ def _compile(project: Project, release: bool, clean: bool) -> Path:
     game = project.section("game")
     config = config_name(release)
     build_dir = project.path(game.get("buildDirectory", "build"))
+    prebuilt, state = prebuilt_directory(project)
     if clean:
         remove_build_dir(build_dir, project.root)
     clear_stale_build(build_dir, project.root)
+    write_state(project, state)  # The folder that holds it may be the one just removed
 
     env = msvc_env(project.msvc_cache)
-    if needs_configure(project.root, build_dir):
-        run([tool("cmake"), "--preset", game["configurePreset"], PYTHON_DEFINITION], project.root, env)
+    definition = cache_definition(prebuilt)
+    cached = (read_cache(build_dir) or {}).get("ENGINE_PREBUILT_DIR", "")
+    if needs_configure(project.root, build_dir) or cached != definition.split("=", 1)[1]:
+        run([tool("cmake"), "--preset", game["configurePreset"], PYTHON_DEFINITION, definition], project.root, env)
         (build_dir / CONFIGURE_STAMP).touch()
     run([tool("cmake"), "--build", "--preset", game["buildPresets"][config]], project.root, env)
 

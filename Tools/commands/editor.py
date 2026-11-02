@@ -11,6 +11,7 @@ from pathlib import Path
 from ..cmake import PYTHON_DEFINITION, read_cache, remove_build_dir, run
 from ..errors import EXIT_FAILED, EXIT_OK, ToolError
 from ..msvc import GENERATOR, msvc_env, tool
+from ..prebuilt import prebuilt_directory
 from ..project import Project
 from .build import config_name
 
@@ -52,7 +53,9 @@ def editor(project: Project, release: bool, build_only: bool, clean: bool) -> in
         raise ToolError("The engine editor currently supports Windows desktop only")
     settings = project.section("editor")
     build_dir = editor_build_dir(project)
+    prebuilt, _ = prebuilt_directory(project)
     options = ENGINE_OPTIONS | settings.get("cacheVariables", {})
+    options["ENGINE_PREBUILT_DIR"] = prebuilt.as_posix() if prebuilt else ""
 
     cmake = tool("cmake")
     env = msvc_env(project.msvc_cache)
@@ -66,13 +69,17 @@ def editor(project: Project, release: bool, build_only: bool, clean: bool) -> in
 
     config = config_name(release)
     worker = settings.get("worker", project.name + "EditorWorker")
-    run([cmake, "--build", str(build_dir), "--config", config, "--target", "EngineEditor", worker], project.root, env)
+    # CMake decides whether the package fits this project; a package already holds the editor itself.
+    packaged = prebuilt is not None and (read_cache(build_dir) or {}).get("ENGINE_PREBUILT_USED") == "TRUE"
+    targets = [worker] if packaged else ["EngineEditor", worker]
+    run([cmake, "--build", str(build_dir), "--config", config, "--target", *targets], project.root, env)
     if build_only:
         return EXIT_OK
 
-    executable = build_dir / "Editor" / config / "EngineEditor.exe"
+    recipe_folder = build_dir / "Editor" / config
+    executable = prebuilt / "Editor" / "EngineEditor.exe" if packaged else recipe_folder / "EngineEditor.exe"
     print(f"> {executable}", flush=True)
     # Editörün kendi Build & Refresh alt süreçleri de MSVC / Ninja ortamını miras alır.
-    code = subprocess.run([str(executable), "--project", str(executable.parent / PROJECT_RECIPE)],
-                          cwd=executable.parent, env=env).returncode
+    code = subprocess.run([str(executable), "--project", str(recipe_folder / PROJECT_RECIPE)],
+                          cwd=recipe_folder, env=env).returncode
     return EXIT_OK if code == 0 else EXIT_FAILED

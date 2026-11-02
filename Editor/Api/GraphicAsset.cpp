@@ -27,6 +27,11 @@ auto& Makers() {
     return makers;
 }
 
+std::filesystem::path& EngineRoot() {
+    static std::filesystem::path root;
+    return root;
+}
+
 FloatRect PreviewBox(Vec2 canvas) {
     const float side = static_cast<float>(std::min(canvas.x, canvas.y)) * PreviewShare;
     return {(static_cast<float>(canvas.x) - side) * 0.5f, (static_cast<float>(canvas.y) - side) * 0.5f, side, side};
@@ -116,7 +121,7 @@ std::vector<GraphicThumbnail> RegisteredGraphicThumbnails() {
     std::vector<GraphicThumbnail> thumbnails;
     for (const auto& maker : Makers()) {
         auto asset = std::make_shared<const GraphicAsset>(maker.make());
-        const auto definitions = GraphicAssetDefinitions(*asset, maker.file, ENGINE_EDITOR_ROOT);
+        const auto definitions = GraphicAssetDefinitions(*asset, maker.file, EngineRoot());
         for (std::size_t item = 0; item < definitions.size(); ++item)
             thumbnails.push_back({definitions[item].id, asset, item});
     }
@@ -134,6 +139,8 @@ std::string AssetThumbnailFile(const std::string& id) {
 
 void AddRegisteredGraphicAssets(SceneRegistry& registry) {
     for (const auto& maker : Makers())
-        for (auto& definition : GraphicAssetDefinitions(maker.make(), maker.file, ENGINE_EDITOR_ROOT))
+        for (auto& definition : GraphicAssetDefinitions(maker.make(), maker.file, EngineRoot()))
             registry.Add(std::move(definition));
 }
+
+void SetGraphicAssetEngineRoot(const std::filesystem::path& root) { EngineRoot() = root; }

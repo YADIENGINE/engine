@@ -15,6 +15,8 @@
                                                                    const std::filesystem::path& file,
                                                                    const std::filesystem::path& engineRoot);
 void AddRegisteredGraphicAssets(SceneRegistry& registry);
+// The engine folder that tells registered engine assets from the project's own (set by each worker before main).
+void SetGraphicAssetEngineRoot(const std::filesystem::path& root);
 
 struct GraphicThumbnail {
     std::string id; // Its catalog entry

@@ -19,6 +19,7 @@ from .commands.ctl import add_parser as add_ctl_parser
 from .commands.ctl import ctl
 from .commands.editor import editor
 from .commands.new import new
+from .commands.prebuilt import prebuilt
 from .commands.refresh import refresh
 from .commands.release import package
 from .commands.test import run_tests
@@ -79,6 +80,9 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--name", help="project name (asked when omitted)")
     command.add_argument("--dry-run", action="store_true", help="list what would be created without writing")
 
+    command = commands.add_parser("prebuilt", help="compile this engine into a package that projects link")
+    command.add_argument("--output", type=Path, required=True, help="package folder; replaced if it exists")
+
     commands.add_parser("info", help="engine and project as JSON")
     command = commands.add_parser("check", help="check include boundaries, tuning files and AgentDocs freshness")
     command.add_argument("--fix", action="store_true", help="format tuning files and regenerate AgentDocs")
@@ -113,6 +117,8 @@ def dispatch(args: argparse.Namespace) -> int:
                              project.msvc_cache, args.filter, args.list, args.clean, label=args.label)
         case "editor":
             return editor(Project(root), args.release, args.build_only, args.clean)
+        case "prebuilt":
+            return prebuilt(args.output)
         case "refresh":
             return refresh(Project(root))
         case "ctl":

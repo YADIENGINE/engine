@@ -739,6 +739,26 @@ colors read in the viewport. Removing frames costs little and helps most; the pi
 already owned. An installed engine copy keeps its look until a project moves to a newer engine.
 Status: implemented (2026-11-02).
 
+### D24. Prebuilt engine
+**Decision:** The launcher carries the engine it ships compiled: Release static libraries and the editor executable, kept
+once beside the launcher, about 100 MB (15 MB compressed). A project links them and compiles only its own code. The
+sources stay in the project's `Engine/`, because the compiler reads the headers and developers and AI agents read the
+rest. There are no Debug libraries: a project's Debug configuration compiles its own code unoptimized against the Release
+libraries, with the same runtime. `"engine": { "build": "source" }` keeps the full Debug build, and a project falls back to
+it by itself when the package cannot be right: a checkout, an edited copy, an older compiler, its own runtime, tests.
+Details: [Prebuilt engine](../Prebuilt.md).
+
+**Why:** A new project spent nearly all of its first build (43 s on a 16-thread machine, likely minutes on a laptop) compiling
+code identical in every project; the project's own part took about 2 s. Static libraries keep the game a single
+executable, which DLLs would not; MSVC links across versions when the linker is at least as new as its inputs. This
+replaces the shared local build cache considered earlier: that left the first project waiting, and the third-party
+libraries it covered were only 4% of the build.
+
+**Cost:** No stepping into engine code in a prebuilt project, and no standard library debug checks; the source build
+restores both. Live tuning and the Painter's programmer-error checks are decided per executable
+(`ENGINE_TUNING_LIVE`, `Utilities/DevelopmentChecks.h`), so both builds keep them. Only the shipped engine has a package
+for now. Status: implemented (2026-11-02), window and debugger checks pending.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

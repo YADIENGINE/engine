@@ -23,6 +23,7 @@ CONTRACT = {
     "ctl": ["status"],
     "asset": ["unlisted", "Game/Assets/Graphics/Goblin.h"],
     "new": ["--name", "X", "--dry-run"],
+    "prebuilt": ["--output", "X"],
     "info": [],
     "check": ["--fix"],
 }

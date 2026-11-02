@@ -37,6 +37,11 @@ class Project:
             raise ToolError(f"{PROJECT_FILE} has no \"{name}\" section")
         return value
 
+    def setting(self, section: str, name: str) -> object:
+        """An optional value; None when the section or the value is absent."""
+        value = self._data.get(section)
+        return value.get(name) if isinstance(value, dict) else None
+
     def path(self, relative: str) -> Path:
         return self.root / relative
 

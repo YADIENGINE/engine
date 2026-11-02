@@ -36,6 +36,19 @@ macro(engine_use_catch2)
     include(Catch)
 endmacro()
 
+# Single source of engine identity: EngineManifest.json. Read ENGINE_NAME / ENGINE_VERSION; do not hardcode name or version.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/EngineManifest.json")
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/EngineManifest.json" engineManifest)
+string(JSON engineName GET "${engineManifest}" name)
+string(JSON engineVersion GET "${engineManifest}" version)
+
+# A compiled engine in place of the sources below, when the tools found a usable one (Docs/Prebuilt.md).
+include(Core/Prebuilt.cmake)
+set(ENGINE_PREBUILT_USED FALSE CACHE INTERNAL "Whether the project links the prebuilt engine")
+if(ENGINE_PREBUILT_DIR)
+    engine_use_prebuilt()
+endif()
+
 # Monocypher, private to JsonIO.
 add_library(Monocypher STATIC ThirdParty/Monocypher/monocypher.c)
 target_include_directories(Monocypher PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/Monocypher")
@@ -45,12 +58,6 @@ set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 set(JSON_Install OFF CACHE BOOL "" FORCE)
 set(JSON_SystemInclude ON CACHE BOOL "" FORCE)
 add_subdirectory(ThirdParty/nlohmann_json)
-
-# Single source of engine identity: EngineManifest.json. Read ENGINE_NAME / ENGINE_VERSION; do not hardcode name or version.
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/EngineManifest.json")
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/EngineManifest.json" engineManifest)
-string(JSON engineName GET "${engineManifest}" name)
-string(JSON engineVersion GET "${engineManifest}" version)
 
 if(ENGINE_BUILD_RUNTIME)
     set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -75,4 +82,7 @@ if(WIN32)
 endif()
 if(ENGINE_BUILD_EDITOR OR ENGINE_BUILD_EDITOR_TESTS)
     add_subdirectory(Editor)
+endif()
+if(ENGINE_PREBUILT_OUTPUT)
+    engine_export_prebuilt("${ENGINE_PREBUILT_OUTPUT}")
 endif()

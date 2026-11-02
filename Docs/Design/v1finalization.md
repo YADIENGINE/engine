@@ -62,8 +62,5 @@ Deferred on purpose. None of these block 1.0.0.
 - **llvm-mingw** (D8).
 - **Automatic code migration** (`python Engine migrate`, D16): a failed trial's report is copied to an AI for now.
 - **Console phase 2:** word and line selection ([Console](Console.md)).
-- **Shared dependency cache,** if build time becomes a problem: sources stay in `ThirdParty/`; the launcher keeps the first
-  compiled dependency libraries (raylib, imgui, Catch2 ...) in a cache shared between projects, keyed by engine version,
-  dependency, configuration (Debug / Release, runtime) and compiler version. A new project or `--clean` then does not
-  rebuild them. This replaces shipping prebuilt DLLs or binaries: compiling locally keeps ABI and runtime compatible on
-  every machine, Release stays a single exe, and the source stays readable for the debugger and AI.
+- **Prebuilt engine for downloaded versions:** only the engine the launcher ships has its compiled package (D24). A version
+  downloaded from GitHub still builds from source until its release carries the package too.

@@ -35,6 +35,7 @@ it and [Editor automation](Editor/Automation.md) lists what it can do. Agent mat
 | General JSON run archive | [RunTracking](Modules/RunTracking/README.md) |
 | Offline audio generation with Python | [Audio generation](AudioGeneration.md) |
 | Release package, license/credits notices | [Release](Release.md) |
+| Linking a compiled engine; building it from source | [Prebuilt engine](Prebuilt.md) |
 | Writing engine/module tests | [Testing](Contributing/Testing.md) |
 | Developing a new module | [Module rules](Contributing/ModuleRules.md) |
 | Public API / `Internals/` separation | [API boundaries](Contributing/ApiBoundaries.md) |

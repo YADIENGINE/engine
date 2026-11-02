@@ -37,6 +37,7 @@ use the same Python. Project root: `--project` if supplied; otherwise the engine
 | `asset` | `new NAME [--folder F]`, `mkdir F`, `move SRC DEST`, `unlisted [FILES...]` | The project's graphic assets under `Game/Assets/Graphics`: a graphic's skeleton, a folder, or a move that updates includes; JSON result. `unlisted` lists free `void DrawX(Painter& ...)` header functions whose names occur in no project `.asset.cpp`: JSON array of `file`, `line`, `function`; defaults to `Game/`, skips `build/`, `Engine/`, `Launcher/`, and always returns 0 (reminder only). Missing/deleted or non-header inputs are ignored ([Asset library](Design/AssetLibrary.md#authoring-rule)) |
 | `audio` | `info FILE... [--silence-db DB]`, `waveform FILE [--out P] [--width W] [--height H]`, `usage [FOLDER] [--unused \| --missing]`, `catalog` | Facts about sound files and the project's audio catalog, without an open editor: the built editor worker decodes. JSON answer; returns 1 when a file cannot be decoded, 2 when no editor worker is built ([Audio tools](AudioTools.md)) |
 | `new` | `--name AD`, `--dry-run` | Sets up the engine's parent folder as a new project; asks for the name without `--name` |
+| `prebuilt` | `--output FOLDER` | Compiles this engine into a package that projects link, replacing `FOLDER` ([Prebuilt engine](Prebuilt.md)) |
 | `info` | | Engine and project information, JSON (below) |
 | `check` | `--fix` | Internals include boundary ([API boundaries](Contributing/ApiBoundaries.md)), tuning validity / canonical format ([Tuning](Tuning.md)), and engine AgentDocs API/snippet freshness; `--fix` formats valid tuning files and regenerates API pages / recipe snippets |
 
@@ -87,13 +88,14 @@ notes in the manifest's `notes` field, and the launcher still reads those tags.
 
 Rules are in `Tools/manifest.py` `note_problems`; `Tools/Tests/test_manifest.py` checks the real files, so a version
 cannot increase without notes. The launcher's engine copy has a generated `EngineCopy.json` beside it (source tag /
-commit, file hashes); engine tools do not read it.
+commit, file hashes); tools read only its `files`, to tell whether a prebuilt engine still matches the copy.
 
 ## Environment variables
 
 | Variable | Reader | Meaning |
 | --- | --- | --- |
 | `ENGINE_LAUNCHER` | editor | Full path to the windowed executable of the launcher that started the editor. If present, "Back to project list" appears in File: the editor starts that executable and closes. The launcher sets it for every engine command; tools forward it unchanged to the editor |
+| `ENGINE_PREBUILT` | `build`, `run`, `release`, `editor` | Folder of the compiled engine for the project's version ([Prebuilt engine](Prebuilt.md)). The launcher sets it when it has one; tools remember it for commands run without the launcher |
 | `ENGINE_EDITOR_CONTROL` | `refresh`, `ctl` | The control pipe of the editor whose Console started the command; used instead of the build directory's announcement. The editor sets it for its Console's shell |
 
 ## Project status files
