@@ -52,7 +52,7 @@ Types/functions/constants: PascalCase; locals: camelCase; private members: _came
 Getters are `[[nodiscard]]` and const where applicable; avoid global names that collide with raylib.
 Python tools use only the standard library and resolve project paths through `Project.json`.
 Write documentation in English; existing untranslated documents may be edited in place.
-Commit messages are short, imperative and English. Manifest version changes need cumulative notes.
+Commit messages are short, imperative and English. Manifest version changes need `ReleaseNotes/<version>.json`.
 
 ## AgentDocs maintenance
 

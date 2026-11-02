@@ -65,10 +65,14 @@ does not start Python for each project; it reads `Engine/EngineManifest.json` di
 ```json
 {
   "name": "...", "version": "0.3.0", "toolsContract": 2,
-  "repository": "https://.../engine.git",
-  "notes": [ { "version": "0.3.0", "date": "2026-11-01", "changes": ["..."],
-               "breaking": [ { "change": "...", "migrate": "..." } ] } ]
+  "repository": "https://.../engine.git"
 }
+```
+
+Each version's notes are one file, `ReleaseNotes/<version>.json`; a new version adds its file and leaves the others alone:
+
+```json
+{ "date": "2026-11-01", "changes": ["..."], "breaking": [ { "change": "...", "migrate": "..." } ] }
 ```
 
 | Field | Meaning |
@@ -76,9 +80,12 @@ does not start Python for each project; it reads `Engine/EngineManifest.json` di
 | `version` | `ANA.ARA.YAMA`. In 0.x, an ARA increase, and after 1.0, an ANA increase, is a breaking change: a project built with the previous version needs manual changes |
 | `toolsContract` | version of this document |
 | `repository` | engine repo address (submodule source in developer mode) |
-| `notes` | cumulative patch notes, newest first; the first matches `version`. `breaking` lists breaking changes and how to comply (`migrate`); empty list if none. The launcher shows all intervening notes on update |
 
-Rules are in `Tools/manifest.py` `note_problems`; `Tools/Tests/test_manifest.py` checks the real manifest, so a version
+In a note, `breaking` lists breaking changes and how to comply (`migrate`); empty list if none. The launcher shows the
+notes of every version between a project's engine and the new one, so old files stay. Engines before 0.4.0 keep their
+notes in the manifest's `notes` field, and the launcher still reads those tags.
+
+Rules are in `Tools/manifest.py` `note_problems`; `Tools/Tests/test_manifest.py` checks the real files, so a version
 cannot increase without notes. The launcher's engine copy has a generated `EngineCopy.json` beside it (source tag /
 commit, file hashes); engine tools do not read it.
 

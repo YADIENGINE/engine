@@ -1,7 +1,7 @@
-"""Engine'in kimliği: EngineManifest.json (ad, sürüm, araç sözleşmesinin sürümü, repo adresi, birikimli notlar).
+"""Engine'in kimliği: EngineManifest.json (ad, sürüm, araç sözleşmesinin sürümü, repo adresi) ve ReleaseNotes/<sürüm>.json.
 
-Alanlar launcher ile sözleşmedir (Docs/ToolsContract.md → Manifest). Notların kuralları `note_problems`'ta; engine
-testi gerçek manifest'i onunla denetler, böylece notsuz sürüm artırılamaz.
+İkisi de launcher ile sözleşmedir (Docs/ToolsContract.md → Manifest). Notların kuralları `note_problems`'ta; engine
+testi gerçek dosyaları onunla denetler, böylece notsuz sürüm artırılamaz.
 """
 
 import json
@@ -13,6 +13,7 @@ from .errors import ToolError
 
 ENGINE_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_FILE = "EngineManifest.json"
+NOTES_FOLDER = "ReleaseNotes"
 VERSION_PATTERN = re.compile(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)")  # ANA.ARA.YAMA
 DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
 
@@ -42,31 +43,37 @@ def _strings(value) -> bool:
     return isinstance(value, list) and all(isinstance(item, str) and item.strip() for item in value)
 
 
-def note_problems(data: dict) -> list[str]:
-    """Manifest'in sürüm / not kuralları: `version` notların ilk satırı, sürümler azalan ve tekrarsız, her notta
+def load_notes(engine_root: Path = ENGINE_ROOT) -> list[dict]:
+    """Her ReleaseNotes/<sürüm>.json, en yeni sürüm önce; `version` dosya adından gelir. Adı sürüm olmayan dosya sona
+    düşer ve `note_problems` onu bildirir."""
+    notes = []
+    for path in (engine_root / NOTES_FOLDER).glob("*.json"):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise ToolError(f"{path}: {error}") from error
+        notes.append({**(data if isinstance(data, dict) else {}), "version": path.stem})
+    return sorted(notes, key=lambda note: parse_version(note["version"]) or (-1, -1, -1), reverse=True)
+
+
+def note_problems(data: dict, notes: list[dict]) -> list[str]:
+    """Manifest'in ve notların kuralları (`notes`: `load_notes` sırasıyla): `version` en yeni notun sürümü, her notta
     `date` (YYYY-MM-DD), `changes` (metin listesi) ve `breaking` ({change, migrate} listesi; kırıcı yoksa boş)."""
     problems = []
+    if "notes" in data:
+        problems.append(f"notes: release notes live in {NOTES_FOLDER}/<version>.json, not in the manifest")
     if parse_version(data.get("version")) is None:
         problems.append(f"version '{data.get('version')}' is not MAJOR.MINOR.PATCH")
     repository = data.get("repository")
     if not isinstance(repository, str) or not repository.strip():
         problems.append("repository: the engine repository's address is required")
-    notes = data.get("notes")
-    if not isinstance(notes, list) or not notes:
-        return problems + ["notes: at least the current version's note is required"]
+    if not notes:
+        return problems + [f"{NOTES_FOLDER}/{data.get('version')}.json: the current version's note is required"]
 
-    previous = None
-    for index, note in enumerate(notes):
-        where = f"notes[{index}]"
-        if not isinstance(note, dict):
-            problems.append(f"{where}: must be an object")
-            continue
-        version = parse_version(note.get("version"))
-        if version is None:
-            problems.append(f"{where}: version '{note.get('version')}' is not MAJOR.MINOR.PATCH")
-        elif previous is not None and version >= previous:
-            problems.append(f"{where}: versions must be newest first without repeats")
-        previous = version or previous
+    for note in notes:
+        where = f"{NOTES_FOLDER}/{note.get('version')}.json"
+        if parse_version(note.get("version")) is None:
+            problems.append(f"{where}: the file name is not MAJOR.MINOR.PATCH")
         if not isinstance(note.get("date"), str) or not DATE_PATTERN.fullmatch(note["date"]):
             problems.append(f"{where}: date must be YYYY-MM-DD")
         if not _strings(note.get("changes")):
@@ -75,7 +82,7 @@ def note_problems(data: dict) -> list[str]:
         if not isinstance(breaking, list) or not all(
                 isinstance(item, dict) and _strings([item.get("change"), item.get("migrate")]) for item in breaking):
             problems.append(f"{where}: breaking must be a list of {{\"change\", \"migrate\"}} (empty when nothing breaks)")
-    if notes and isinstance(notes[0], dict) and notes[0].get("version") != data.get("version"):
-        problems.append(f"notes[0] is {notes[0].get('version')}; the newest note must be the manifest's version "
-                        f"{data.get('version')}")
+    if notes[0].get("version") != data.get("version"):
+        problems.append(f"The newest note is {notes[0].get('version')}; it must be the manifest's version "
+                        f"{data.get('version')} ({NOTES_FOLDER}/{data.get('version')}.json)")
     return problems

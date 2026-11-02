@@ -532,13 +532,12 @@ istiyorsa kırıcıdır. Örnekler: public header / tip / fonksiyonun silinmesi,
 `Project.json` şema `version`'ı ya da `toolsContract`'ın artması; kayıt / ayar dosyası biçiminin eskiyi okuyamaması;
 editör önizleme API'si (`Editor/Api`). ARA: geriye uyumlu ekleme; YAMA: API'ye dokunmayan düzeltme.
 
-**Güncelleme notlarının biçimi (2026-10-31):** `EngineManifest.json` `"notes"`, birikimli, en yeni sürüm en üstte:
+**Güncelleme notlarının biçimi (2026-11-02):** her sürüme bir dosya, `ReleaseNotes/<sürüm>.json`; yeni sürüm yalnızca
+kendi dosyasını ekler (önceden manifest'in `"notes"` alanındaydı; eski tag'ler öyle kalır, launcher ikisini de okur):
 ```json
-"notes": [
-  { "version": "0.3.0", "date": "2026-11-20",
-    "changes": ["Tuning: color type"],
-    "breaking": [ { "change": "DrawUiChip takes a style", "migrate": "Pass CurrentTheme().ui.chip first" } ] }
-]
+{ "date": "2026-11-20",
+  "changes": ["Tuning: color type"],
+  "breaking": [ { "change": "DrawUiChip takes a style", "migrate": "Pass CurrentTheme().ui.chip first" } ] }
 ```
 Launcher güncellemede projenin sürümünden yeni sürüme kadar aradaki bütün notları gösterir; `breaking` satırlarının
 `migrate` açıklamasını öne çıkarır (AI da okuyup uygular). Engine testi tutarlılığı denetler: `version` notların ilk
