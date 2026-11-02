@@ -6,8 +6,8 @@ struct ToolUiOptions {
     bool keyboardNavigation = false; // Off when the keyboard also drives something else (an editor scene)
 };
 
-// The ImGui context of a tool window: rlImGui backend, Segoe UI with embedded Noto Sans fallback + Font Awesome,
-// Consolas for technical values (embedded fallback), theme and scaling. Create after the window (Game).
+// The ImGui context of a tool window: rlImGui backend, embedded IBM Plex Sans + Font Awesome, IBM Plex Mono for
+// technical values, theme, native title bar colors and scaling. Create after the window (Game).
 class ToolUiContext {
 public:
     explicit ToolUiContext(const ToolUiOptions& options = {});

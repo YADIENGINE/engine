@@ -8,10 +8,8 @@
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
-constexpr float FilterButtonSize = 36;
-constexpr float FilterIconSize = 16;
-constexpr float FilterCornerRadius = 8;
-constexpr float FilterStrokeWidth = 1.6f;
+constexpr float FilterIconSize = 14;
+constexpr float FilterStrokeWidth = 1.5f;
 enum class CatalogFilterIcon { Star, Clock };
 
 void DrawCatalogFilterIcon(CatalogFilterIcon icon, ImVec2 center, float scale, ImU32 color) {
@@ -37,35 +35,20 @@ void DrawCatalogFilterIcon(CatalogFilterIcon icon, ImVec2 center, float scale, I
 }
 
 bool CatalogFilterButton(const char* id, CatalogFilterIcon icon, const char* tooltip, bool selected) {
-    const float scale = ToolUiScale();
-    const float size = FilterButtonSize * scale;
-    const auto accent = ToolToneColor(ToolTone::Accent);
-    auto background = selected ? accent : ToolPalette::Control;
-    auto hovered = selected ? accent : ToolPalette::Hover;
-    auto pressedColor = selected ? accent : ToolPalette::Pressed;
-    auto border = selected ? accent : ToolPalette::Border;
-    if (selected) {
-        background.w = 0.22f;
-        hovered.w = 0.30f;
-        pressedColor.w = 0.38f;
-    } else {
-        border.w = 0.45f;
-    }
+    const float size = ImGui::GetFrameHeight();
     ImGui::PushID(id);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {0, 0});
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, FilterCornerRadius * scale);
-    ImGui::PushStyleColor(ImGuiCol_Button, background);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, pressedColor);
-    ImGui::PushStyleColor(ImGuiCol_Border, border);
+    ImGui::PushStyleColor(ImGuiCol_Button, selected ? ToolPalette::Selected : ImVec4{0, 0, 0, 0});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, selected ? ToolPalette::Selected : ToolPalette::Hover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ToolPalette::Pressed);
     const bool pressed = ImGui::Button("##filter", {size, size});
     const auto start = ImGui::GetItemRectMin();
     const auto end = ImGui::GetItemRectMax();
-    DrawCatalogFilterIcon(icon, {(start.x + end.x) * 0.5f, (start.y + end.y) * 0.5f}, scale,
-                          ImGui::GetColorU32(selected ? accent : ToolPalette::Secondary));
+    DrawCatalogFilterIcon(icon, {(start.x + end.x) * 0.5f, (start.y + end.y) * 0.5f}, ToolUiScale(),
+                          ImGui::GetColorU32(selected ? ToolPalette::Accent : ToolPalette::Muted));
     ToolTooltip(tooltip);
-    ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(3);
+    ImGui::PopStyleVar();
     ImGui::PopID();
     return pressed;
 }
@@ -75,40 +58,54 @@ void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& sna
                          EditorPreferences& preferences) {
     ImGui::PushID(entry.id.c_str());
     const bool favorite = preferences.IsFavorite(entry.id);
-    ImGui::PushStyleColor(ImGuiCol_Text, favorite ? ToolToneColor(ToolTone::Warning)
-                                                  : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-    if (EditorIconButton("favorite", EditorGlyph::Star, favorite ? "Remove favorite" : "Add favorite", favorite))
-        preferences.ToggleFavorite(entry.id);
-    ImGui::PopStyleColor();
-    ImGui::SameLine();
     const bool selected = snapshot.selected && snapshot.selected->id == entry.id;
     const bool enabled = !snapshot.busy || (selected && snapshot.capabilities.Can(EditorCommand::Open));
+    const float starWidth = ImGui::GetFrameHeight();
     ImGui::BeginDisabled(!enabled);
-    const bool clicked = ToolWrappedSelectable(entry.name.c_str(), selected, ImGuiSelectableFlags_None);
+    const bool clicked =
+        ToolWrappedSelectable(entry.name.c_str(), selected, ImGuiSelectableFlags_AllowOverlap, starWidth);
     ToolTooltip(entry.description.c_str());
     if (enabled && clicked) {
         actions.select(entry.id);
         actions.command(EditorCommand::Open);
     }
     ImGui::EndDisabled();
+    // The star stays out of the way until the row is hovered; a favorite always shows it.
+    const auto rowStart = ImGui::GetItemRectMin();
+    const auto rowEnd = ImGui::GetItemRectMax();
+    const bool hovered = ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(rowStart, rowEnd);
+    if (favorite || hovered) {
+        const auto after = ImGui::GetCursorScreenPos();
+        ImGui::SetCursorScreenPos({rowEnd.x - starWidth, rowStart.y + (rowEnd.y - rowStart.y - starWidth) * 0.5f});
+        ImGui::PushStyleColor(ImGuiCol_Text, favorite ? ToolPalette::Accent : ToolPalette::Muted);
+        if (EditorIconButton("favorite", EditorGlyph::Star, favorite ? "Remove favorite" : "Add favorite"))
+            preferences.ToggleFavorite(entry.id);
+        ImGui::PopStyleColor();
+        ImGui::SetCursorScreenPos(after);
+    }
     ImGui::PopID();
 }
 void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                         EditorPreferences& preferences) {
-    ImGui::SetNextItemWidth(-1);
+    const float gap = ToolMetrics::Space * ToolUiScale();
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {gap, ImGui::GetStyle().ItemSpacing.y});
+    const float filterWidth = (ImGui::GetFrameHeight() + gap) * 2;
+    ImGui::SetNextItemWidth(std::max(1.0f, ImGui::GetContentRegionAvail().x - filterWidth));
     if (_focusSearch) {
         ImGui::SetKeyboardFocusHere();
         _focusSearch = false;
     }
-    ImGui::InputTextWithHint("##search", "Search scenes (Ctrl+P)", _search.data(), _search.size());
+    ImGui::InputTextWithHint("##search", "Search (Ctrl+P)", _search.data(), _search.size());
+    ImGui::SameLine();
     if (CatalogFilterButton("favorites-filter", CatalogFilterIcon::Star,
                             _view == 1 ? "Favorites on. Click to show all scenes." : "Show favorite scenes.",
                             _view == 1))
         _view = _view == 1 ? 0 : 1;
-    ContinueToolToolbar(FilterButtonSize * ToolUiScale());
+    ImGui::SameLine();
     if (CatalogFilterButton("recent-filter", CatalogFilterIcon::Clock,
                             _view == 2 ? "Recent on. Click to show all scenes." : "Show recent scenes.", _view == 2))
         _view = _view == 2 ? 0 : 2;
+    ImGui::PopStyleVar();
     std::vector<const SceneDefinition*> entries;
     const auto query = EditorSearchText(_search.data());
     for (const auto& entry : snapshot.catalog) {
@@ -133,7 +130,7 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
     }
     const float scale = ToolUiScale();
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4 * scale, 2 * scale});
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {4 * scale, 2 * scale});
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {4 * scale, 1 * scale});
     if (ImGui::BeginChild("catalog-entries")) {
         std::string category;
         bool expanded = true;

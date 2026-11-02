@@ -8,7 +8,7 @@
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
-constexpr float PrimaryWidthInFonts = 8.0f;
+constexpr float PrimaryWidthInFonts = 5.5f;
 void DrawInvader(ImVec2 position, float size, ImU32 color) {
     constexpr std::array<unsigned, 8> Rows{0x104, 0x088, 0x1fc, 0x376, 0x7ff, 0x5fd, 0x505, 0x0d8};
     const float pixel = size / 11.0f;
@@ -34,20 +34,6 @@ EditorGlyph CommandGlyph(EditorCommand command, const EditorSnapshot& snapshot) 
 }
 std::string CommandButtonLabel(EditorCommand command, const EditorSnapshot& snapshot) {
     return std::string(EditorGlyphText(CommandGlyph(command, snapshot))) + "  " + EditorCommandLabel(command, snapshot);
-}
-ImVec4 CommandColor(EditorCommand command, const EditorSnapshot& snapshot) {
-    switch (command) {
-    case EditorCommand::Open   : return ToolToneColor(ToolTone::Success);
-    case EditorCommand::BuildAndPlay: return ToolToneColor(ToolTone::Success);
-    case EditorCommand::Stop   : return ToolToneColor(ToolTone::Error);
-    case EditorCommand::Pause  : return ToolToneColor(snapshot.paused ? ToolTone::Success : ToolTone::Warning);
-    case EditorCommand::Refresh: return {192.0f / 255, 164.0f / 255, 235.0f / 255, 1};
-    case EditorCommand::Cancel : return ToolToneColor(ToolTone::Warning);
-    case EditorCommand::Reset  :
-    case EditorCommand::Step   :
-    case EditorCommand::Count  : return ImGui::GetStyleColorVec4(ImGuiCol_Text);
-    }
-    return {};
 }
 std::string CommandTooltip(EditorCommand command, const EditorSnapshot& snapshot) {
     std::string text = EditorCommandLabel(command, snapshot);
@@ -118,55 +104,34 @@ float EditorCommandButtonWidth(EditorCommand command, const EditorSnapshot& snap
 
 bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, const EditorUiActions& actions,
                          bool showLabel) {
-    const auto tone = CommandColor(command, snapshot);
-    const auto base = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
-    auto background = ImGui::GetStyleColorVec4(ImGuiCol_Button);
-    auto hovered = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
-    auto pressedColor = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
-    auto border = ImGui::GetStyleColorVec4(ImGuiCol_Border);
-    auto text = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+    // One amber in the bar: starting the scene. Everything else stays neutral; a paused scene lights Resume.
+    const bool starts = command == EditorCommand::Open && command == EditorPrimaryCommand(snapshot);
     const bool active = command == EditorCommand::Pause && snapshot.paused;
-    if (command == EditorPrimaryCommand(snapshot)) {
-        background = tone;
-        hovered = ImLerp(tone, ToolPalette::Text, 0.12f);
-        pressedColor = ImLerp(tone, ToolPalette::Content, 0.16f);
-        border = tone;
-        text = ToolPalette::Content;
-    } else if (command == EditorCommand::Pause || command == EditorCommand::Refresh ||
-               command == EditorCommand::BuildAndPlay) {
-        background = ImLerp(base, tone, active ? 0.32f : 0.22f);
-        hovered = ImLerp(base, tone, active ? 0.42f : 0.34f);
-        pressedColor = ImLerp(base, tone, 0.46f);
-        border = ImLerp(border, tone, 0.48f);
-        text = tone;
-    }
     ImGui::PushID(static_cast<int>(command));
     ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
     ImGui::BeginDisabled(!snapshot.capabilities.Can(command));
-    ImGui::PushStyleColor(ImGuiCol_Button, background);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, pressedColor);
-    ImGui::PushStyleColor(ImGuiCol_Border, border);
-    ImGui::PushStyleColor(ImGuiCol_Text, text);
+    if (active) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ToolPalette::Selected);
+        ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Accent);
+    }
     std::string label =
         showLabel ? CommandButtonLabel(command, snapshot) : EditorGlyphText(CommandGlyph(command, snapshot));
     if (command == EditorCommand::BuildAndPlay) label.clear();
     label += "###command";
-    const bool pressed =
-        ToolButton(label.c_str(), {EditorCommandButtonWidth(command, snapshot, showLabel), ImGui::GetFrameHeight()});
+    const bool pressed = ToolButton(
+        label.c_str(), {EditorCommandButtonWidth(command, snapshot, showLabel), ImGui::GetFrameHeight()}, starts);
+    if (active) ImGui::PopStyleColor(2);
     if (command == EditorCommand::BuildAndPlay) {
         const auto start = ImGui::GetItemRectMin();
         const auto end = ImGui::GetItemRectMax();
         const float size = ImGui::GetFontSize();
         const float x = showLabel ? start.x + ImGui::GetStyle().FramePadding.x : (start.x + end.x - size) * 0.5f;
-        const auto color = ImGui::GetColorU32(ImGuiCol_Text);
-        DrawInvader({x, (start.y + end.y - size * 8.0f / 11.0f) * 0.5f}, size, color);
+        DrawInvader({x, (start.y + end.y - size * 8.0f / 11.0f) * 0.5f}, size, ImGui::GetColorU32(ToolPalette::Accent));
         if (showLabel)
             ImGui::GetWindowDrawList()->AddText(
-                {x + size + ImGui::CalcTextSize("  ").x, (start.y + end.y - size) * 0.5f}, color,
-                EditorCommandLabel(command, snapshot));
+                {x + size + ImGui::CalcTextSize("  ").x, ImGui::GetItemRectMin().y + ImGui::GetStyle().FramePadding.y},
+                ImGui::GetColorU32(ImGuiCol_Text), EditorCommandLabel(command, snapshot));
     }
-    ImGui::PopStyleColor(5);
     ImGui::EndDisabled();
     ImGui::PopFont();
     ToolTooltip(CommandTooltip(command, snapshot).c_str());

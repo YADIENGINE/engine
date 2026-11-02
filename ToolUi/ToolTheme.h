@@ -12,9 +12,9 @@ struct ToolMetrics {
     static constexpr float PanelHeaderPadding = 5;
     static constexpr float BodySize = 14;
     static constexpr float CaptionSize = 12;
-    static constexpr float SectionSize = 14;
-    static constexpr float IdentitySize = 16;
+    static constexpr float SectionSize = 13;
     static constexpr float HeadingSize = 18;
+    static constexpr float TitleSize = 28;
     static constexpr float IconSize = 14;
 };
 
@@ -23,10 +23,12 @@ enum class ToolFontRole { Ui, Medium, Heading, Technical };
 enum class ToolTone { Accent, Success, Warning, Error, Information };
 enum class ToolSurface { Header, Toolbar, Workspace, Content, Utility, Status, PanelHeader };
 
+// Cabinet: warm graphite surfaces separated by tone instead of lines, one amber light.
 struct ToolPalette {
-    static const ImVec4 Window;
-    static const ImVec4 Panel;
-    static const ImVec4 Content;
+    static const ImVec4 Window;   // The darkest frame: bars, and the gaps between panes
+    static const ImVec4 Panel;    // Panes
+    static const ImVec4 Elevated; // Popups and hover over a pane
+    static const ImVec4 Content;  // Recessed wells: inputs, the viewport, lists of content
     static const ImVec4 Control;
     static const ImVec4 Hover;
     static const ImVec4 Pressed;
@@ -39,7 +41,7 @@ struct ToolPalette {
     static const ImVec4 Secondary;
     static const ImVec4 Muted;
     static const ImVec4 Disabled;
-    static const ImVec4 Border;
+    static const ImVec4 Border; // Only what floats: popups and dialogs
     static const ImVec4 Separator;
 };
 void ApplyToolTheme();

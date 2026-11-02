@@ -153,9 +153,8 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         copyVisible = ImGui::MenuItem("Copy Visible", nullptr, false, !visible.empty());
         ImGui::EndPopup();
     }
-    ContinueToolToolbar(ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x +
-                        ImGui::CalcTextSize("Follow").x);
-    ImGui::Checkbox("Follow", &preferences.followOutput);
+    ContinueToolToolbar(ToolToggleWidth("Follow"));
+    (void)ToolToggle("Follow", preferences.followOutput);
     ToolTooltip("Keep new output in view while at the bottom and no lines are selected.");
     ContinueToolToolbar(ImGui::GetFrameHeight());
     ImGui::BeginDisabled(_lastAttempt || entries.empty());

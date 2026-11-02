@@ -3,7 +3,7 @@
 ## Window
 
 Saved dock layout and panel visibility are retained; Viewport starts open and in front on every editor launch. On first
-launch, Develop shows Project, Viewport, Inspector, and Tuning (a tab in the same right area as Inspector); Output,
+launch, Develop shows Scenes, Viewport, Inspector, and Tuning (a tab in the same right area as Inspector); Output,
 Profiler, and Console are closed. The bottom status bar has Output and Console buttons.
 
 The toolbar's **Build And Play** button, immediately right of Build, uses a pixel invader icon. It builds the
@@ -11,13 +11,16 @@ standalone game in Debug through the project tools, then opens it in its own win
 Build output and errors appear in Output; cancellation or a failed build never launches the game. It requires
 the recipe's Python, engine and source paths plus a game configuration in `Project.json`.
 
-- **Left (Project):** search, category, All / Favorites / Recent. Single-click opens content; Ctrl+P focuses search. The
-  star toggles favorites. Recent keeps the last 10 successful opens.
-- **Center (Viewport):** the worker's actual image. In the panel's local View menu, Fit shows the whole canvas, Focus
-  content shows the area reported by content, and 100% shows logical size. Zoom in the same menu or Ctrl+wheel zooms;
-  middle-button dragging pans; Reset pan and zoom resets view settings. Without Ctrl, the wheel goes to the product. The
-  maximize button or double-clicking the view summary enables temporary focus mode. Closed, loading, or failed editor scenes
-  show a state explanation and an available start / retry / cancel action. Playback is only in the global toolbar.
+- **Left (Scenes):** search, Favorites and Recent filters beside it, categories. Single-click opens content; Ctrl+P
+  focuses search. A row's star appears on hover (always on favorites) and toggles the favorite. Recent keeps the last 10
+  successful opens.
+- **Center (Viewport):** the worker's actual image on a neutral background. The summary at its top left ("Fit · 100%")
+  opens the View menu: Fit shows the whole canvas, Focus content shows the area reported by content, and 100% shows
+  logical size. Zoom in the same menu or Ctrl+wheel zooms; middle-button dragging pans; Reset pan and zoom resets view
+  settings. Without Ctrl, the wheel goes to the product. The maximize button or double-clicking the strip between them
+  enables temporary focus mode. Closed, loading, or failed editor scenes show a state explanation and an available start /
+  retry / cancel action; with no scene yet, also the shortcuts that get to one. Playback is only in the global toolbar,
+  centered, with the open scene's place at its left and Build, Play, speed and Mark at its right.
 - **Right (Inspector):** the header's `?` opens the description by tooltip or click. Property search and the Modified
   counter find changed fields; with at most six visible fields, the Search button opens search. An accent dot marks a
   value different from default; Pending marks a value awaiting worker response, not a setting applied on the next
@@ -115,7 +118,7 @@ Reset recreates the scene in the same worker process. Use Open to restart the wo
 | F7 | Single frame while paused |
 | Ctrl+R | Reset |
 | Ctrl+Shift+B | Build & Refresh |
-| Ctrl+P | Project search |
+| Ctrl+P | Scene search |
 | Ctrl+Shift+P | Command palette |
 | Ctrl+Shift+A | Open the chosen agent session (also while Console is focused) |
 | Ctrl+J | Toggle last bottom tool panel |

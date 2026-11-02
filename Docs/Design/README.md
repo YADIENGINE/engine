@@ -68,7 +68,7 @@ Durum: kabul edildi.
 | --- | --- | --- |
 | Kimin için | Engine ile oyun yapan herkes | Engine'i geliştirenler |
 | Projedeki `Engine/` | Launcher'ın taşıdığı sürümün düz kopyası | Engine reposunun git submodule'ü |
-| Engine kaynağının kaynağı | Launcher'ın yanındaki `Engines/<sürüm>/`; internet / GitHub gerekmez | Engine reposu (erişim gerekir) |
+| Engine kaynağının kaynağı | Launcher'ın taşıdığı tek sürüm; diğerleri GitHub tag'inden iner ([D16](#d16-sürümleme-ve-launcher-reposu)) | Engine reposu (erişim gerekir) |
 | Engine'i düzenlemek | Yasak: salt okunur, AI için okunacak belge | Serbest; değişiklik engine reposuna push'lanır |
 | Güncelleme | Launcher kopyayı yeni sürümle değiştirir | `submodule update --remote` |
 
@@ -438,7 +438,7 @@ terminalde çıktı vermez ve beklenmez (AI / CI çıkış kodunu okuyamaz).
 **UI hazırlığı (2026-10-31):** launcher ekranlarından önce verilen kararlar.
 - **Paylaşılan araç arayüzü katmanı:** `Engine/ToolUi/`, CMake hedefi `EngineToolUi`; include'lar engine köküne göre
   (`#include "ToolUi/ToolTheme.h"`). İçinde ImGui + rlImGui kaynakları, tema (renkler, ölçüler, `ToolTone`), fontlar
-  (Segoe UI, Consolas, Font Awesome; `ToolFont`), ImGui bağlamı + DPI / ölçek (`ToolUiContext`) ve genel widget'lar
+  (IBM Plex, Font Awesome; `ToolFont`; [D23](#d23-tool-look-cabinet)), ImGui bağlamı + DPI / ölçek (`ToolUiContext`) ve genel widget'lar
   (`ToolWidgets`: rozet, bölüm başlığı, boş durum, tooltip, ikon düğmesi, segment). Editöre özgü olanlar
   (`EditorPhase` renkleri, parametre / Inspector widget'ları, playback, docking) `Editor/`'de kalır; docking bağlam
   kurulurken seçenektir. Editör ve launcher aynı katmanı kullanır, kopya yoktur.
@@ -464,20 +464,18 @@ terminalde çıktı vermez ve beklenmez (AI / CI çıkış kodunu okuyamaz).
   yazılır; gerekirse sonra bir tabloya taşınır (çekirdek etkilenmez).
   **Neden:** çekirdeğin hata mesajları ve editör İngilizce; karışık dil olmaz.
 - **Düzen ve gezinme (Godot proje yöneticisi benzeri):** bölgeler ve eylemler burada, ölçü / renk / yerleşim UI'ın.
-  Üst gezinme (ad, sekmeler, sistem durumu noktası, Settings), kalıcı araç çubuğu, girintili proje çalışma alanı,
-  ayrı sağ yardımcı panel, alt durum çubuğu (launcher sürümü, proje sayısı, durum, "Developer mode"). Her bölge
-  kendi opak yüzeyi ve sınırıyla ayrılır; ortak tema `ToolUi/`'dadır. Hepsi tek uygulama modelinde.
-  - **Sekme** (`LauncherTab`, tam ekran, her an bir tane): **Projects**: araç çubuğu (Create, Import = var olanı
-    ekle, Projects Folder = klasör seç / varsayılan proje konumu olarak kaydet / otomatik tara, filtre: ad ya da
-    yol, sıralama: Last opened / Name / Path, `Settings.json`'da saklanır), tek seçimli yoğun liste
-    (çift tıklama = Open), sağ proje denetçisi. Boş listede aynı araçlar ve yapı
-    görünür; küçük boş durum mesajı listenin içindedir. **Engines**: launcher'ın taşıdığı sürümler (sürüm, tarih,
+  Üst gezinme (ad, sekmeler, sistem durumu, Settings), araç çubuğu, proje listesi, ayrı sağ yardımcı panel. Alt durum
+  çubuğu yoktur; görünüm kuralları [D23](#d23-tool-look-cabinet)'te, ortak tema `ToolUi/`'dadır. Hepsi tek uygulama
+  modelinde.
+  - **Sekme** (`LauncherTab`, tam ekran, her an bir tane): **Projects**: araç çubuğu (filtre: ad ya da yol, sıralama:
+    Last opened / Name / Path, `Settings.json`'da saklanır; Add existing, New project), tek seçimli liste
+    (çift tıklama = Open), sağ proje denetçisi. Hiç proje yokken bunların yerine kendi ilk açılış ekranı görünür
+    (New project, Add existing, derleme araçları ve engine durumu, proje klasörü). **Engines**: launcher'ın taşıdığı sürümler (sürüm, tarih,
     notlar; kırıcılar öne çıkar, kullanan proje sayısı); developer modunda "dev (main)" satırı; salt okunur.
-  - **Sağ proje denetçisi**: yalnız seçili projenin bilgileri ve eylemleri. Dar pencerede Project details açılır
-    panelinden erişilir. Launcher sekmesi, arayüz ölçeği ayarı ve tarama satırı yoktur. Varsayılan proje klasörü
-    yalnız Projects Folder düğmesinden belirlenir; PATH, kurulum klasörü, developer modu ve lisanslar Settings'tedir.
-    Seçim yokken aynı denetçi geçerli klasörü, Projects Folder / Create / Import kısayollarını ve kısa keşif
-    açıklamasını gösterir. Başlıklar ortak araç temasının tool-window şeritleridir; güncel renk paleti Arcade Cabinet'tir.
+  - **Sağ proje denetçisi**: yalnız seçili projenin bilgileri ve eylemleri; görünür bir proje varken model hep birini
+    seçili tutar (son açılan önce), denetçi boş kalmaz. Dar pencerede Project details açılır panelinden erişilir.
+    Launcher sekmesi, arayüz ölçeği ayarı ve tarama satırı yoktur. Varsayılan proje klasörü, PATH, kurulum klasörü,
+    developer modu ve lisanslar Settings'tedir.
     **Project eylemleri** (uygun olmayan pasif): Open; Run (`<engine> run` işi: derleme, sonra oyun kapanana kadar
     "Running" + Stop); Show in folder; kopya projede Update engine / Repair engine, kayıtsız projede Replace engine
     (onay paneli → iş); developer modu + git projesinde Engine git (Update from remote, Publish changes); Remove /
@@ -565,6 +563,28 @@ semver tamdır (kırıcı = ANA). Kırıcılık kuralı ve not testi aynıdır, 
   dosyalar yer kaplamaz, sadece değişen dosyalar büyütür.
 
 Durum: kabul edildi.
+
+**Sürümler isteğe bağlı iner, geçiş önce denenir (2026-11-02):** yukarıdaki "launcher 2–3 sürüm taşır" ve D4'teki
+"internet gerekmez" kararının yerine geçer.
+- **Launcher tek sürüm taşır** (`LauncherManifest.json` `engine`), böylece internetsiz kullanıcı ilk projesini açabilir.
+  `Engines/` repodan çıktı; `dev.py` o sürümü tag'den `build/Engines/`'e alır, paket oradan kopyalar. Diğer sürümler veri
+  klasöründeki önbelleğe iner (launcher güncellemesi silmez). Klasör sürüm başınadır (`Engine0.3.1`), seri başına değil.
+- **Kaynak:** tag'in kaynak arşivi + o tag'in GitHub Release'indeki `EngineCopy.json`. Launcher her dosyayı bu kayda göre
+  denetler; eksik, fazla ya da farklı dosya reddedilir. Engine yayını artık launcher yayını gerektirmez; launcher'ın
+  bilmediği `toolsContract` "önce launcher'ı güncelle" der. **Neden:** boyut değil (engine kurulumda yaklaşık 6 MB);
+  engine yayınını launcher'dan ayırmak ve her eski sürüme erişmek.
+- **Geçiş projenin geçici kopyasında denenir** (temiz oyun derlemesi, editör derlemesi, testler), proje karar verilene kadar
+  değişmez. Geçerse engine değişir ve build klasörleri silinir; kalırsa hatalar ve `migrate` notları gösterilir, seçenekler
+  "kal" ve "yine de geç". **Reddedilen:** engine'i proje içinde değiştirip derlemek, hata varsa geri koymak. **Neden:**
+  gerçek denemede (0.2.0 → 0.3.0) mevcut build ağacında derleme hiçbir şey derlemeden başarılı döndü, geri alınan engine
+  bozulmuş build ağacında derlenemedi, oyun ve testler geçerken editör kaldı. Kopyada geri alınacak bir şey yoktur; bedeli
+  ek disk ve geçişten sonra bir derleme daha. Ayrıntı: launcher `Docs/Engines.md`.
+- **"Yine de geç" şarttır:** kırıcı değişiklik tanım gereği derlemeyi bozar; yoksa hiçbir proje kırıcı sürümü geçemez.
+- **Geri dönüş seçilebilir**, uyarıyla: oyunun yeni engine ile yazdığı kayıtları eski engine okuyamayabilir, bunu derleme
+  yakalayamaz.
+- **Otomatik kod düzeltme yok** (ileride `python Engine migrate` olabilir). Rapor AI'a verilecek metin olarak kopyalanır.
+
+Durum: kabul edildi, uygulandı.
 
 ### D17. Render sistemi: kendi GPU katmanı üstünde yeni 2D çizim sistemi
 **Karar:** Çizim raylib'in anlık API'sinden alınır. Engine'e ait, raylib'siz bir `Painter` API'si çağrıları kare
@@ -689,6 +709,25 @@ half; baking stays in D10, deferred. Details: [Asset library](AssetLibrary.md).
 
 **Why:** the motivation is organization and reuse, not performance. A code-first engine still needs a place to look.
 Status: accepted (2026-11-01), not implemented.
+
+### D23. Tool look: Cabinet
+**Decision:** The launcher and editor share one look, in `ToolUi/`. Warm graphite surfaces (Cabinet palette) replace the
+earlier plum. Regions are separated by tone, not lines: panes and controls have no border, only what floats above them
+does. One corner radius (3 px) and one control height (30 px). At most one amber button on a screen. IBM Plex Sans and
+Mono are embedded and replace Segoe UI and Consolas. The identity comes from the logo's pixel block: `ToolPixel` draws
+the product name, project tiles, square state marks and the activity indicator from the launcher icon's 5x7 font.
+The native title bar is colored to match. The launcher loses its status bar, which only repeated the top bar. With no
+projects it shows its own first-run screen, and the list always keeps a visible project selected so the details panel
+is never empty. The editor's scene list is named Scenes, and the viewport sits on a neutral well.
+
+**Rejected on purpose:** gradients, glass and blur, glow, shadowed card grids, pill buttons, large radii, accent rails on
+cards, emoji, and greetings. Motion only shows that work is running. Nothing game-specific enters this layer.
+
+**Why:** the previous look framed everything equally, kept ImGui's stock parts (triangle headers, large square
+checkboxes, block combo arrows, permanent tab controls), and tinted every surface, which also changes how a game's
+colors read in the viewport. Removing frames costs little and helps most; the pixel block is an identity the product
+already owned. An installed engine copy keeps its look until a project moves to a newer engine.
+Status: implemented (2026-11-02).
 
 ## v1 iş sırası
 

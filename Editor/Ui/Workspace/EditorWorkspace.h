@@ -31,6 +31,8 @@ public:
     void ReleaseInput() { _viewport.ReleaseFocus(); }
     // File menu offers "Back to project list" (the host knows the launcher).
     void OfferProjectList(bool offer) { _offerProjectList = offer; }
+    // Shown at the menu bar's far end.
+    void SetProjectName(std::string name) { _projectName = std::move(name); }
     // Konsolun kabuğu bu klasörde başlar (proje kökü).
     void SetConsoleDirectory(const std::filesystem::path& directory) { _console.SetDirectory(directory); }
     void SetAssetRoots(const std::filesystem::path& engineDirectory, const std::filesystem::path& assetsDirectory) {
@@ -89,6 +91,7 @@ private:
     bool _initialized = false;
     bool _maximized = false;
     bool _offerProjectList = false;
+    std::string _projectName;
     bool _pendingToggle = false;
     bool _focusCatalog = false;
     bool _focusViewport = true;

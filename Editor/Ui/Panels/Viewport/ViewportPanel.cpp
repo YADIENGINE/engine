@@ -6,6 +6,7 @@
 #include "Editor/Internals/Session/ViewportMark.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "ToolUi/ToolPixel.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
 
@@ -14,6 +15,8 @@ constexpr double NoticeSeconds = 3.0; // A control notice stays this long, fadin
 constexpr double NoticeFade = 0.75;
 constexpr float MarkFill = 0.15f;   // Alpha of the marked area
 constexpr float MarkOutline = 2.0f; // Pixels at 100% UI scale
+constexpr float EmptyMarkCell = 6.0f;
+constexpr float EmptyGap = 16.0f;
 // The last change made through the control endpoint, over the top-left corner of the viewport area.
 void DrawNotice(const EditorSnapshot& snapshot, ImVec2 cursor) {
     if (snapshot.notice.empty() || snapshot.noticeAge >= NoticeSeconds) return;
@@ -29,13 +32,81 @@ void DrawNotice(const EditorSnapshot& snapshot, ImVec2 cursor) {
     draw->AddText({at.x + style.FramePadding.x, at.y + style.FramePadding.y}, ImGui::GetColorU32(ImGuiCol_Text, alpha),
                   text.c_str());
 }
+void CenterNext(float width, float areaWidth, float originX) {
+    ImGui::SetCursorPosX(originX + std::max(0.0f, (areaWidth - width) * 0.5f));
+}
+// The viewport with no frame to show: the mark, what to do next, and with no scene yet the shortcuts that get there.
+bool DrawEmptyViewport(const char* title, const char* detail, const char* button, bool hints, ImVec2 area) {
+    struct Hint {
+        const char* keys;
+        const char* action;
+    };
+    static constexpr std::array Hints{Hint{"Ctrl+P", "Find a scene"}, Hint{"Ctrl+Shift+P", "All commands"},
+                                      Hint{"Ctrl+J", "Bottom panel"}, Hint{"F5", "Run or stop"}};
+    const float scale = ToolUiScale();
+    const auto& style = ImGui::GetStyle();
+    const float cell = ToolPixelCell(EmptyMarkCell);
+    const float titleHeight = ToolMetrics::HeadingSize * scale * 1.3f;
+    const float rowHeight = ImGui::GetTextLineHeight() + ToolMetrics::Space * scale;
+    const float block = ToolPixelTextSize("Y", cell).y + EmptyGap * scale + titleHeight + ImGui::GetTextLineHeight() +
+                        (button ? ImGui::GetFrameHeight() + EmptyGap * scale : 0.0f) +
+                        (hints ? EmptyGap * 2 * scale + rowHeight * Hints.size() : 0.0f);
+    const float originX = ImGui::GetCursorPosX();
+    const float width = std::max(1.0f, area.x);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + std::max(0.0f, (area.y - block) * 0.5f));
+    CenterNext(ToolPixelTextSize("Y", cell).x, width, originX);
+    ToolPixelText("Y", EmptyMarkCell, ToolPalette::Control);
+    ImGui::Dummy({0, EmptyGap * scale - style.ItemSpacing.y});
+    ImGui::PushFont(ToolFont(ToolFontRole::Heading), ToolMetrics::HeadingSize);
+    const auto titleText = ToolClipText(title, width);
+    CenterNext(ImGui::CalcTextSize(titleText.c_str()).x, width, originX);
+    ImGui::TextUnformatted(titleText.c_str());
+    ImGui::PopFont();
+    const auto detailText = ToolClipText(detail, width);
+    CenterNext(ImGui::CalcTextSize(detailText.c_str()).x, width, originX);
+    ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Secondary);
+    ImGui::TextUnformatted(detailText.c_str());
+    ImGui::PopStyleColor();
+    if (*detail && detailText != detail) ToolTooltip(detail);
+    bool pressed = false;
+    if (button) {
+        ImGui::Dummy({0, EmptyGap * scale - style.ItemSpacing.y * 2});
+        CenterNext(ImGui::CalcTextSize(button).x + style.FramePadding.x * 2, width, originX);
+        pressed = ToolButton(button);
+    }
+    if (hints) {
+        ImGui::Dummy({0, EmptyGap * 2 * scale - style.ItemSpacing.y * 2});
+        ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
+        const float keyColumn = ImGui::CalcTextSize("Ctrl+Shift+P").x + ToolMetrics::SectionGap * scale;
+        ImGui::PopFont();
+        const float actionColumn = ImGui::CalcTextSize("Find a scene").x;
+        const float start = originX + std::max(0.0f, (width - keyColumn - actionColumn) * 0.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0, ToolMetrics::Space * scale});
+        for (const auto& hint : Hints) {
+            ImGui::SetCursorPosX(start);
+            ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
+            ImGui::TextColored(ToolPalette::Muted, "%s", hint.keys);
+            ImGui::PopFont();
+            ImGui::SameLine(start + keyColumn);
+            ImGui::TextColored(ToolPalette::Secondary, "%s", hint.action);
+        }
+        ImGui::PopStyleVar();
+    }
+    return pressed;
+}
 } // namespace
 
 bool ViewportPanel::Toolbar(bool maximized) {
     bool toggleMaximize = false;
-    const auto& style = ImGui::GetStyle();
     constexpr std::array Modes{"Fit", "Focus content", "100%"};
-    if (ImGui::Button("View")) ImGui::OpenPopup("viewport-view");
+    const auto viewLabel = std::string(Modes[static_cast<std::size_t>(_mode)]) + "  \xC2\xB7  " +
+                           std::to_string(static_cast<int>(_zoom * 100.0f + 0.5f)) + "%###viewport-view-button";
+    ImGui::PushStyleColor(ImGuiCol_Button, {0, 0, 0, 0});
+    ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Secondary);
+    const bool openView = ToolButton(viewLabel.c_str());
+    ImGui::PopStyleColor(2);
+    ToolTooltip("View mode and zoom. Middle-drag to pan; Ctrl+wheel to zoom.");
+    if (openView) ImGui::OpenPopup("viewport-view");
     if (ImGui::BeginPopup("viewport-view")) {
         for (int i = 0; i < 3; ++i) {
             if (ImGui::MenuItem(Modes[static_cast<std::size_t>(i)], nullptr, _mode == i)) {
@@ -55,16 +126,13 @@ bool ViewportPanel::Toolbar(bool maximized) {
         ImGui::EndPopup();
     }
     ImGui::SameLine();
-    const float maximizeWidth = ImGui::GetFrameHeight();
-    if (ImGui::GetContentRegionAvail().x > ImGui::GetFontSize() * 13.0f + maximizeWidth) {
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextDisabled("%s / %.0f%%", Modes[static_cast<std::size_t>(_mode)], _zoom * 100.0f);
+    // The strip between the two buttons works like a title bar.
+    const float gap = ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x;
+    if (gap > 1) {
+        ImGui::InvisibleButton("viewport-strip", {gap, ImGui::GetFrameHeight()});
         toggleMaximize = ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-        ToolTooltip("Double-click to maximize or restore the viewport.");
         ImGui::SameLine();
     }
-    const float gap = ImGui::GetContentRegionAvail().x - maximizeWidth;
-    if (gap > style.ItemSpacing.x) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + gap);
     if (EditorIconButton("maximize-viewport", maximized ? EditorGlyph::Restore : EditorGlyph::Expand,
                          maximized ? "Restore workspace" : "Maximize viewport"))
         toggleMaximize = true;
@@ -88,7 +156,6 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
                            image.transferMs);
         ImGui::PopFont();
     }
-    ImGui::Separator();
     if (snapshot.ready && !snapshot.inspection.tables.empty()) {
         const float tableHeight = snapshot.inspection.showImage ? ImGui::GetContentRegionAvail().y * 0.65f : 0.0f;
         ImGui::BeginChild("native-content", {0, tableHeight}, ImGuiChildFlags_Borders);
@@ -189,22 +256,27 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
     } else {
         _focused = false;
         _markStart.reset();
+        const char* title = snapshot.ready ? "Waiting for a frame" : EditorPhaseLabel(snapshot.phase);
+        const char* detail = snapshot.status.c_str();
         if (!snapshot.selected) {
-            ToolEmptyState("Choose a scene", "Select an item from the Catalog to start a scene.");
+            title = "Choose a scene";
+            detail = "Pick one from the Scenes panel.";
         } else if (snapshot.phase == EditorPhase::Error) {
-            ToolEmptyState("Scene unavailable", "See Output for details, then retry or build and refresh.");
+            title = "Scene unavailable";
+            detail = "See Output for details, then retry or build and refresh.";
         } else if (snapshot.phase == EditorPhase::Stopped) {
-            ToolEmptyState("Scene stopped", "Start the selected scene when you are ready.");
-        } else {
-            ToolEmptyState(snapshot.ready ? "Waiting for a frame" : EditorPhaseLabel(snapshot.phase),
-                           snapshot.status.c_str());
+            title = "Scene stopped";
+            detail = "Start the selected scene when you are ready.";
         }
+        const char* button = nullptr;
+        EditorCommand command = EditorCommand::Open;
         if (snapshot.selected && snapshot.capabilities.Can(EditorCommand::Open)) {
-            if (ImGui::Button(snapshot.phase == EditorPhase::Error ? "Retry scene" : "Start scene"))
-                actions.command(EditorCommand::Open);
+            button = snapshot.phase == EditorPhase::Error ? "Retry scene" : "Start scene";
         } else if (snapshot.capabilities.Can(EditorCommand::Cancel)) {
-            if (ImGui::Button("Cancel")) actions.command(EditorCommand::Cancel);
+            button = "Cancel";
+            command = EditorCommand::Cancel;
         }
+        if (DrawEmptyViewport(title, detail, button, !snapshot.selected, available)) actions.command(command);
     }
     DrawNotice(snapshot, cursor);
     return result;

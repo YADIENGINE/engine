@@ -82,7 +82,7 @@ Edit Control(const char* id, TuningValue& value, float width) {
         return ImGui::InputFloat(id, number, 0, 0, "%g", Enter) ? Edit::Commit : Edit::None;
     if (auto* integer = std::get_if<int>(&value))
         return ImGui::InputInt(id, integer, 0, 0, Enter) ? Edit::Commit : Edit::None;
-    if (auto* flag = std::get_if<bool>(&value)) return ImGui::Checkbox(id, flag) ? Edit::Commit : Edit::None;
+    if (auto* flag = std::get_if<bool>(&value)) return ToolToggle(id, *flag) ? Edit::Commit : Edit::None;
     if (auto* point = std::get_if<Float2>(&value)) {
         std::array<float, 2> pair{point->x, point->y};
         ImGui::SetNextItemWidth(width * 2);
@@ -252,7 +252,7 @@ void TuningPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         _rejected.clear();
     }
     ImGui::SetNextItemWidth(-1);
-    if (ImGui::BeginCombo("##tuning.file", (selected->label + Suffix(*selected)).c_str())) {
+    if (ToolBeginCombo("##tuning.file", (selected->label + Suffix(*selected)).c_str())) {
         for (const auto& file : *files) {
             const bool current = file.source == _file;
             if (ImGui::Selectable((file.label + Suffix(file) + "##" + file.label).c_str(), current)) {

@@ -170,9 +170,6 @@ bool ConsolePanel::DrawSessionRow(std::size_t index, const ConsoleSessionInfo& i
     if (info.selected || hovered)
         draw->AddRectFilled(start, end, ImGui::GetColorU32(info.selected ? ToolPalette::Selected : ToolPalette::Hover),
                             ToolMetrics::Radius * ToolUiScale());
-    if (info.selected)
-        draw->AddRectFilled({start.x + scale, start.y + gap}, {start.x + 3 * scale, end.y - gap},
-                            ImGui::GetColorU32(ToolPalette::Accent), scale);
     // State and close share one trailing slot; closing a row does not also select it.
     ImGui::PushStyleColor(ImGuiCol_Header, {0, 0, 0, 0});
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, {0, 0, 0, 0});
@@ -261,16 +258,10 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
     if (BeginToolPanel("console-session-list", {listWidth, available.y}, ToolSurface::Utility, 0,
                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse, ToolMetrics::Space)) {
         const float buttonWidth = ImGui::GetContentRegionAvail().x;
-        auto addBorder = ToolPalette::Border;
-        addBorder.w *= 0.45f;
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, scale);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, ToolMetrics::Radius * scale);
-        ImGui::PushStyleColor(ImGuiCol_Border, addBorder);
         ImGui::PushStyleColor(ImGuiCol_Text, ToolToneColor(ToolTone::Accent));
         const bool add = ToolButton(ICON_FA_PLUS "###console-add-terminal",
                                     {buttonWidth, EditorToolbarMetrics::ControlHeight * scale});
-        ImGui::PopStyleColor(2);
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor();
         ToolTooltip("Add terminal");
         if (add) ImGui::OpenPopup("Add terminal");
         if (ImGui::BeginPopup("Add terminal")) {
@@ -344,9 +335,8 @@ std::vector<ConsoleSessionInfo> ConsolePanel::Sessions() const {
 }
 std::optional<std::size_t> ConsolePanel::AgentSession() const {
     if (_selected < _sessions.size() && _sessions[_selected]->agent) return _selected;
-    const auto found = std::ranges::find_if(_sessions, [&](const auto& session) {
-        return session->id == _lastAgent && session->agent.has_value();
-    });
+    const auto found = std::ranges::find_if(
+        _sessions, [&](const auto& session) { return session->id == _lastAgent && session->agent.has_value(); });
     if (found == _sessions.end()) return std::nullopt;
     return static_cast<std::size_t>(found - _sessions.begin());
 }

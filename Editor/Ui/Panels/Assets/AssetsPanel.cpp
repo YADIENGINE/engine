@@ -142,9 +142,6 @@ TreeClick DrawTreeRow(const TreeRow& row) {
     if (row.selected || hovered)
         draw->AddRectFilled(start, end, ImGui::GetColorU32(row.selected ? ToolPalette::Selected : ToolPalette::Hover),
                             radius);
-    if (row.selected)
-        draw->AddRectFilled({start.x, start.y + scale * 3}, {start.x + scale * 3, end.y - scale * 3},
-                            ImGui::GetColorU32(ToolPalette::Accent), scale);
     for (int level = 0; level < row.depth; ++level) {
         const float x = start.x + indent * static_cast<float>(level) + arrowWidth * 0.5f;
         draw->AddLine({x, start.y}, {x, end.y}, ImGui::GetColorU32(ToolPalette::Separator), scale);

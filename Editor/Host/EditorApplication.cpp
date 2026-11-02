@@ -70,13 +70,14 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     _launcher = LauncherFromEnvironment();
     _workspace.OfferProjectList(!_launcher.empty());
     if (const auto& project = _controller.Project()) {
+        _workspace.SetProjectName(project->name);
         _workspace.SetConsoleDirectory(project->sourceDirectory);
         _workspace.SetAssetRoots(project->engineDirectory, project->assetsDirectory);
         const auto background = ImGui::ColorConvertFloat4ToU32(ToolPalette::Content);
         _assetCommands.Configure(project->python, project->engineDirectory, project->sourceDirectory);
-        _thumbnails.Configure(project->worker, project->buildDirectory / "asset-thumbnails",
-                              std::format("{:02x}{:02x}{:02x}", background & 0xFF, (background >> 8) & 0xFF,
-                                          (background >> 16) & 0xFF));
+        _thumbnails.Configure(
+            project->worker, project->buildDirectory / "asset-thumbnails",
+            std::format("{:02x}{:02x}{:02x}", background & 0xFF, (background >> 8) & 0xFF, (background >> 16) & 0xFF));
     }
 }
 EditorApplication::~EditorApplication() { Stop(); }
@@ -141,10 +142,10 @@ void EditorApplication::Update(float realSeconds) {
     _assetCommands.Tick([this](const std::string& text, bool failed) {
         _controller.Log(text, failed ? EditorLogLevel::Warning : EditorLogLevel::Info);
     });
-    _thumbnails.Tick(snapshot.building || snapshot.phase == EditorPhase::Building,
-                     std::ranges::any_of(snapshot.catalog,
-                                         [](const SceneDefinition& entry) { return entry.asset.has_value(); }),
-                     [this](const std::string& problem) { _controller.Log(problem, EditorLogLevel::Warning); });
+    _thumbnails.Tick(
+        snapshot.building || snapshot.phase == EditorPhase::Building,
+        std::ranges::any_of(snapshot.catalog, [](const SceneDefinition& entry) { return entry.asset.has_value(); }),
+        [this](const std::string& problem) { _controller.Log(problem, EditorLogLevel::Warning); });
     if (_control) {
         _control->SetAgentControl(_preferences.agent.control);
         std::map<std::string, ConsoleNote> notes;

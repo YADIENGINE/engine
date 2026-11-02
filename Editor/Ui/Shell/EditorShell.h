@@ -34,7 +34,7 @@ class EditorShell {
 public:
     [[nodiscard]] EditorShellResult Menu(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                                          EditorPreferences& preferences, int& fontSize, bool maximized,
-                                         bool offerProjectList) const;
+                                         bool offerProjectList, const std::string& projectName) const;
     [[nodiscard]] float Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
                                 float width, bool& marking) const;
     [[nodiscard]] float Status(const EditorSnapshot& snapshot, const EditorPreferences& preferences,

@@ -132,7 +132,7 @@ void ProfilerPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& 
 void ProfilerPanel::Live(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     bool enabled = snapshot.profiler.liveEnabled;
     ImGui::BeginDisabled(!snapshot.ready || snapshot.profiler.busy);
-    if (ImGui::Checkbox("Record live", &enabled))
+    if (ToolToggle("Record live", enabled))
         actions.profiler(enabled ? EditorProfilerCommand::Enable : EditorProfilerCommand::Disable, {}, {});
     ImGui::EndDisabled();
     ImGui::TextWrapped("Stream FPS %.1f | readback %.2f | publish %.2f | host upload %.2f ms", snapshot.streamFps,
@@ -149,7 +149,7 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
     ImGui::BeginDisabled(snapshot.busy);
     const char* selected =
         snapshot.selected && snapshot.selected->benchmark ? snapshot.selected->name.c_str() : "Choose benchmark";
-    if (ImGui::BeginCombo("Scenario", selected)) {
+    if (ToolBeginCombo("Scenario", selected)) {
         for (const auto& entry : snapshot.catalog) {
             if (!entry.benchmark) continue;
             if (ImGui::Selectable(entry.name.c_str(), snapshot.selected && entry.id == snapshot.selected->id)) {

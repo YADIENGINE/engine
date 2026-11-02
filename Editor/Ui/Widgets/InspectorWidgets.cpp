@@ -27,25 +27,10 @@ ImVec4 AccentSurface(ImGuiCol surface, float amount, ToolTone tone = ToolTone::A
     return {std::lerp(base.x, accent.x, amount), std::lerp(base.y, accent.y, amount),
             std::lerp(base.z, accent.z, amount), base.w};
 }
-std::string InspectorDisplayText(const char* text, float width) {
-    std::string display = text;
-    if (ImGui::CalcTextSize(text).x > width) {
-        const float ellipsisWidth = ImGui::CalcTextSize("...").x;
-        if (ellipsisWidth > width) return {};
-        while (!display.empty() && ImGui::CalcTextSize(display.c_str()).x + ellipsisWidth > width) {
-            auto end = display.size() - 1;
-            while (end > 0 && (static_cast<unsigned char>(display[end]) & 0xc0) == 0x80)
-                --end;
-            display.resize(end);
-        }
-        display += "...";
-    }
-    return display;
-}
 void InspectorText(const char* text, float width, bool rightAligned = false) {
     width = std::max(1.0f, width);
     const auto position = ImGui::GetCursorScreenPos();
-    const auto display = InspectorDisplayText(text, width);
+    const auto display = ToolClipText(text, width);
     const float offset = rightAligned ? std::max(0.0f, width - ImGui::CalcTextSize(display.c_str()).x) : 0.0f;
     ImGui::Dummy({width, ImGui::GetTextLineHeight()});
     const ImVec4 clip{position.x, position.y, position.x + width, position.y + ImGui::GetTextLineHeight()};
@@ -57,10 +42,12 @@ void InspectorLabel(const char* label, const char* description, bool modified, f
     const float scale = InspectorScale();
     const float markerWidth = std::min(8 * scale, std::max(0.0f, width - 1));
     const auto marker = ImGui::GetCursorScreenPos();
-    if (modified && markerWidth >= 6 * scale)
-        ImGui::GetWindowDrawList()->AddCircleFilled(
-            {marker.x + 2 * scale, marker.y + ImGui::GetTextLineHeight() * 0.5f}, 2 * scale,
-            ImGui::GetColorU32(ToolToneColor(ToolTone::Warning)));
+    if (modified && markerWidth >= 6 * scale) {
+        const float side = std::max(2.0f, std::round(4 * scale));
+        const ImVec2 from{std::floor(marker.x), std::floor(marker.y + (ImGui::GetTextLineHeight() - side) * 0.5f)};
+        ImGui::GetWindowDrawList()->AddRectFilled(from, {from.x + side, from.y + side},
+                                                  ImGui::GetColorU32(ToolToneColor(ToolTone::Warning)));
+    }
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + markerWidth);
     InspectorText(label, std::max(1.0f, width - markerWidth));
     if (*description) ToolTooltip(description);
@@ -114,8 +101,8 @@ void BeginInspectorStyle() {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8 * scale, 5 * scale});
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {6 * scale, 4 * scale});
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {4 * scale, 2 * scale});
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4 * scale);
-    ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 3 * scale);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, ToolMetrics::Radius * scale);
+    ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, ToolMetrics::Radius * scale);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0);
     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgHovered));
@@ -174,7 +161,7 @@ bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value,
     const float gap = ImGui::GetStyle().ItemSpacing.x;
     const bool inlineCheckbox =
         !inlineRow && parameter.kind == SceneParameterKind::Boolean &&
-        ImGui::GetContentRegionAvail().x >= resetSize + ImGui::GetFrameHeight() + gap * 2 + ImGui::GetFontSize();
+        ImGui::GetContentRegionAvail().x >= resetSize + ToolToggleWidth("##value") + gap * 2 + ImGui::GetFontSize();
     if (choiceGrid) {
         ImGui::BeginGroup();
     } else {
@@ -187,7 +174,7 @@ bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value,
         context();
         ImGui::TableSetColumnIndex(2);
     } else {
-        const float checkboxWidth = inlineCheckbox ? ImGui::GetFrameHeight() + gap : 0;
+        const float checkboxWidth = inlineCheckbox ? ToolToggleWidth("##value") + gap : 0;
         const float labelWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - resetSize - gap - checkboxWidth);
         ImGui::AlignTextToFramePadding();
         InspectorLabel(parameter.label.c_str(), labelTooltip.c_str(), modified, labelWidth);
@@ -264,9 +251,9 @@ void InspectorReadOnlyField(const SceneReadout& value) {
 void InspectorSummary(const char* title, const char* text) {
     const float helpWidth = *text ? ImGui::GetFrameHeight() : 0;
     const float gap = *text ? ImGui::GetStyle().ItemSpacing.x : 0;
-    const float titleSize = ImGui::GetStyle().FontSizeBase * 1.1f;
+    const float titleSize = ImGui::GetStyle().FontSizeBase * 1.15f;
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x - helpWidth - gap);
-    ImGui::PushFont(ToolFont(ToolFontRole::Ui), titleSize);
+    ImGui::PushFont(ToolFont(ToolFontRole::Heading), titleSize);
     InspectorText(title, width);
     ImGui::PopFont();
     if (*text) {

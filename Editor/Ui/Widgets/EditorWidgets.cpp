@@ -47,7 +47,7 @@ bool EditorParameterWidget(const SceneParameter& parameter, SceneValue& value) {
     }
     case SceneParameterKind::Boolean: {
         bool enabled = std::get<bool>(value);
-        if (ImGui::Checkbox("##value", &enabled)) {
+        if (ToolToggle("##value", enabled)) {
             value = enabled;
             return true;
         }
@@ -88,20 +88,22 @@ bool EditorParameterWidget(const SceneParameter& parameter, SceneValue& value) {
                 for (const auto& choice : parameter.choices) {
                     ImGui::TableNextColumn();
                     const bool selected = choice == std::get<std::string>(value);
-                    if (selected)
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+                    ImGui::PushStyleColor(ImGuiCol_Button, selected ? ToolPalette::Selected : ToolPalette::Control);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                                          selected ? ToolPalette::Selected : ToolPalette::Hover);
+                    ImGui::PushStyleColor(ImGuiCol_Text, selected ? ToolPalette::Accent : ToolPalette::Secondary);
                     if (ToolSingleLineButton(choice.c_str()) && !selected) {
                         value = choice;
                         changed = true;
                     }
-                    if (selected) ImGui::PopStyleColor();
+                    ImGui::PopStyleColor(3);
                 }
                 ImGui::EndTable();
             }
             return changed;
         }
         const auto& selected = std::get<std::string>(value);
-        const bool open = ImGui::BeginCombo("##value", selected.c_str());
+        const bool open = ToolBeginCombo("##value", selected.c_str());
         if (!open) ToolTooltip(selected.c_str());
         if (open) {
             static ImGuiTextFilter filter;

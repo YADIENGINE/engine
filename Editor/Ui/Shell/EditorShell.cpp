@@ -5,6 +5,7 @@
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorPlaybackControls.h"
 #include "Editor/Ui/Widgets/EditorAgentSetup.h"
+#include "ToolUi/ToolPixel.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
 
@@ -13,9 +14,30 @@ constexpr ImGuiWindowFlags BarFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindo
                                       ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
                                       ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar |
                                       ImGuiWindowFlags_NoScrollWithMouse;
+constexpr float StatusGap = 10.0f;
 ImVec4 TintSurface(ImVec4 base, ImVec4 tone, float amount) {
     return {base.x + (tone.x - base.x) * amount, base.y + (tone.y - base.y) * amount,
             base.z + (tone.z - base.z) * amount, base.w};
+}
+bool PhaseIsWorking(const EditorSnapshot& snapshot) {
+    return snapshot.profiler.busy || snapshot.building || snapshot.phase == EditorPhase::Building ||
+           snapshot.phase == EditorPhase::Starting || snapshot.phase == EditorPhase::ReadingCatalog;
+}
+// The phase as a square cell (or walking cells while working) and its name, aligned with the bar's buttons.
+void StatusPhase(const EditorSnapshot& snapshot) {
+    const char* phase = snapshot.profiler.busy ? (snapshot.benchmarkCancelPending ? "Canceling benchmark"
+                                                                                  : snapshot.profiler.phase.c_str())
+                                               : EditorPhaseLabel(snapshot.phase);
+    const float y = ImGui::GetCursorPosY();
+    ImGui::SetCursorPosY(y + ImGui::GetStyle().FramePadding.y);
+    if (PhaseIsWorking(snapshot))
+        ToolActivity();
+    else
+        ToolStateCell(EditorPhaseColor(snapshot.phase));
+    ImGui::SameLine();
+    ImGui::SetCursorPosY(y);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(phase);
 }
 void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     const SceneParameter* language = nullptr;
@@ -69,7 +91,7 @@ void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorSh
     ToolTooltip(failed ? "Send the build errors and ask the agent to fix them. This presses Enter."
                        : "The last Build & Refresh did not fail.");
     ImGui::SeparatorText("Settings");
-    ImGui::Checkbox("Agent control", &agent.control);
+    (void)ToolToggle("Agent control", agent.control);
     ToolTooltip("Allow agent tools (python Engine ctl) to change the editor.\n"
                 "Off: tools can still observe status, logs, parameters and screenshots.");
     if (ImGui::BeginMenu("Agent CLI")) {
@@ -81,9 +103,11 @@ void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorSh
 } // namespace
 EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                                     EditorPreferences& preferences, int& fontSize, bool maximized,
-                                    bool offerProjectList) const {
+                                    bool offerProjectList, const std::string& projectName) const {
     EditorShellResult result;
     if (!ImGui::BeginMainMenuBar()) return result;
+    ToolPixelText("Y", 2, ToolPalette::Accent, ImGui::GetFrameHeight());
+    ImGui::SameLine();
     if (ImGui::BeginMenu("File")) {
         result.focusCatalog = ImGui::MenuItem("Find scene", "Ctrl+P");
         EditorCommandMenuItem(EditorCommand::Open, snapshot, actions);
@@ -138,6 +162,11 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
         ImGui::EndMenu();
     }
     AgentMenu(snapshot, preferences.agent, result);
+    if (const float width = ImGui::CalcTextSize(projectName.c_str()).x;
+        !projectName.empty() && width < ImGui::GetContentRegionAvail().x) {
+        ImGui::SameLine(ImGui::GetWindowWidth() - width - ImGui::GetStyle().WindowPadding.x * 2);
+        ImGui::TextDisabled("%s", projectName.c_str());
+    }
     ImGui::EndMainMenuBar();
     return result;
 }
@@ -150,9 +179,11 @@ float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions
     ImGui::SetNextWindowSize({width, height});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
                         {EditorToolbarMetrics::PaddingX * scale, EditorToolbarMetrics::PaddingY * scale});
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Window);
     if (ImGui::Begin("Toolbar###editor.toolbar", nullptr, BarFlags))
         DrawEditorPlaybackControls(snapshot, actions, marking);
     ImGui::End();
+    ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     return height;
 }
@@ -165,6 +196,7 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
     ImGui::SetNextWindowSize({width, height});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8.0f * scale, 2.0f * scale});
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {6.0f * scale, 2.0f * scale});
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Window);
     if (ImGui::Begin("Status###editor.status", nullptr, BarFlags)) {
         const auto errors = snapshot.diagnostics.UnreadErrors();
         const auto warnings = snapshot.diagnostics.UnreadWarnings();
@@ -172,18 +204,14 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
         const auto output =
             (unread ? "Output (" + std::to_string(unread) + ")" : std::string("Output")) + "###editor.output-status";
         const bool outputVisible = preferences.visible[static_cast<std::size_t>(EditorPanel::Output)];
-        if (unread) {
-            const auto tone = EditorLevelColor(errors ? EditorLogLevel::Error : EditorLogLevel::Warning);
-            const auto base = ImGui::GetStyleColorVec4(outputVisible ? ImGuiCol_TabSelected : ImGuiCol_Tab);
-            const auto background = TintSurface(base, tone, EditorAttentionPulse());
-            ImGui::PushStyleColor(ImGuiCol_Tab, background);
-            ImGui::PushStyleColor(ImGuiCol_TabSelected, background);
-        }
-        if (ToolSegment(output.c_str(), outputVisible)) result.bottomPanel = EditorPanel::Output;
-        if (unread) {
-            ImGui::PopStyleColor(2);
-            ToolTooltip("Unread errors or warnings. Open Output for details.");
-        }
+        const float gap = StatusGap * scale;
+        const auto base = ToolSurfaceColor(ToolSurface::Status);
+        const ImVec4 outputAttention =
+            unread ? TintSurface(base, EditorLevelColor(errors ? EditorLogLevel::Error : EditorLogLevel::Warning),
+                                 EditorAttentionPulse())
+                   : ImVec4{0, 0, 0, 0};
+        if (ToolSegment(output.c_str(), outputVisible, outputAttention)) result.bottomPanel = EditorPanel::Output;
+        if (unread) ToolTooltip("Unread errors or warnings. Open Output for details.");
         ImGui::SameLine();
         if (ToolSegment("Console", preferences.visible[static_cast<std::size_t>(EditorPanel::Console)]))
             result.bottomPanel = EditorPanel::Console;
@@ -195,11 +223,10 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
             const auto label = (icon[0] ? std::string(icon) + " " : std::string()) + agent.title + ": " +
                                SessionStateName(agent.state) + "###editor.agent-status";
             const auto tone = EditorSessionStateColor(agent.state);
-            ImGui::PushStyleColor(ImGuiCol_Tab, TintSurface(ToolSurfaceColor(ToolSurface::Status), tone,
-                                                            waiting ? EditorAttentionPulse() : 0.12f));
             ImGui::PushStyleColor(ImGuiCol_TextDisabled, tone);
-            if (ToolSegment(label.c_str(), false)) result.agent = EditorAgentRequest::Open;
-            ImGui::PopStyleColor(2);
+            if (ToolSegment(label.c_str(), false, TintSurface(base, tone, waiting ? EditorAttentionPulse() : 0.12f)))
+                result.agent = EditorAgentRequest::Open;
+            ImGui::PopStyleColor();
             const auto detail =
                 (agent.activity.empty() ? std::string() : agent.activity + "\n\n") + "Click to show the agent session";
             ToolTooltip(detail.c_str());
@@ -210,23 +237,36 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
             ToolTooltip("Agent tools can observe the editor, but commands that change it are refused.");
             ImGui::SameLine();
         }
-        const char* phase = snapshot.profiler.busy ? (snapshot.benchmarkCancelPending ? "Canceling benchmark"
-                                                                                      : snapshot.profiler.phase.c_str())
-                                                   : EditorPhaseLabel(snapshot.phase);
-        ToolStatusBadge(phase, EditorPhaseColor(snapshot.profiler.busy ? EditorPhase::Starting : snapshot.phase));
-        ImGui::SameLine();
+        // After the buttons, so they stay in place while the phase's name changes.
+        ImGui::SameLine(0, gap);
+        StatusPhase(snapshot);
+        ImGui::SameLine(0, gap);
+        // The scene's size and rate at the far end, the status message in what is left.
+        std::string metrics;
+        if (snapshot.ready)
+            metrics = std::to_string(snapshot.canvas.x) + "\xC3\x97" + std::to_string(snapshot.canvas.y) +
+                      "  \xC2\xB7  " + std::to_string(static_cast<int>(snapshot.streamFps + 0.5)) + " fps";
+        const float rowHeight = ImGui::GetFrameHeight();
+        ImGui::PushFont(ToolFont(ToolFontRole::Ui), ToolMetrics::CaptionSize);
+        const float metricsWidth = metrics.empty() ? 0.0f : ImGui::CalcTextSize(metrics.c_str()).x + gap;
         const auto cursor = ImGui::GetCursorScreenPos();
         const auto available = ImGui::GetContentRegionAvail();
-        if (available.x > ImGui::GetFontSize() * 3.0f) {
-            ImGui::InvisibleButton("status-detail", {available.x, ImGui::GetTextLineHeight()});
-            auto* draw = ImGui::GetWindowDrawList();
-            draw->PushClipRect(cursor, {cursor.x + available.x, cursor.y + ImGui::GetTextLineHeight()}, true);
-            draw->AddText(cursor, ImGui::GetColorU32(ImGuiCol_TextDisabled), snapshot.status.c_str());
-            draw->PopClipRect();
+        const float detailWidth = available.x - metricsWidth;
+        const float textY = cursor.y + (rowHeight - ImGui::GetTextLineHeight()) * 0.5f;
+        auto* draw = ImGui::GetWindowDrawList();
+        if (detailWidth > ImGui::GetFontSize() * 3.0f) {
+            ImGui::InvisibleButton("status-detail", {detailWidth, rowHeight});
+            const auto detail = ToolClipText(snapshot.status.c_str(), detailWidth - gap);
+            draw->AddText({cursor.x + gap * 0.5f, textY}, ImGui::GetColorU32(ToolPalette::Muted), detail.c_str());
             ToolTooltip(snapshot.status.c_str());
         }
+        if (!metrics.empty() && metricsWidth < available.x)
+            draw->AddText({cursor.x + available.x - metricsWidth + gap, textY}, ImGui::GetColorU32(ToolPalette::Muted),
+                          metrics.c_str());
+        ImGui::PopFont();
     }
     ImGui::End();
+    ImGui::PopStyleColor();
     ImGui::PopStyleVar(2);
     return height;
 }

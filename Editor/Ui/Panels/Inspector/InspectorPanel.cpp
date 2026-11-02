@@ -26,7 +26,7 @@ std::string ApplyHint(const SceneParameter& parameter, const std::vector<SceneAc
 void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     BeginInspectorStyle();
     if (!snapshot.selected) {
-        ToolEmptyState("No scene selected", "Choose a scene in Project to see its properties and actions.");
+        ToolEmptyState("No scene selected", "Pick a scene to see its properties and actions.");
         EndInspectorStyle();
         return;
     }

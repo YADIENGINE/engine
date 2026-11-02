@@ -5,12 +5,13 @@
 
 // Editor-only presentation on top of the shared tool theme (ToolUi/ToolTheme.h).
 struct EditorToolbarMetrics {
-    static constexpr float ControlHeight = 36;
-    static constexpr float Radius = 6;
+    static constexpr float ControlHeight = 30;
     static constexpr float Gap = 6;
-    static constexpr float ButtonPadding = 11;
-    static constexpr float PaddingX = 10;
-    static constexpr float PaddingY = 8;
+    static constexpr float TransportGap = 2; // Between the buttons of the centered playback group
+    static constexpr float GroupGap = 16;    // Between the bar's three zones
+    static constexpr float ButtonPadding = 10;
+    static constexpr float PaddingX = 12;
+    static constexpr float PaddingY = 7;
 };
 
 enum class EditorGlyph { Play, Pause, Stop, Reset, Build, Cancel, Star, Expand, Restore, More, Clear, Step, Mark };

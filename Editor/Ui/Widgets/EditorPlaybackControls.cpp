@@ -1,5 +1,6 @@
 #include "Editor/Ui/Widgets/EditorPlaybackControls.h"
 #include <imgui.h>
+#include <algorithm>
 #include <array>
 #include <cstdio>
 #include <string>
@@ -9,13 +10,14 @@
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
+constexpr float MinimumCrumbWidthInFonts = 6.0f;
 std::string PlaybackLabel(double speed) {
     std::array<char, 16> label{};
     std::snprintf(label.data(), label.size(), "%.2gx", speed);
     return label.data();
 }
 float PlaybackSpeedWidth() {
-    return ImGui::CalcTextSize("0.25x").x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetFrameHeight();
+    return ImGui::CalcTextSize("0.25x").x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetFontSize();
 }
 void PlaybackSpeed(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool inMenu) {
     ImGui::BeginDisabled(!snapshot.capabilities.playbackEnabled);
@@ -30,7 +32,7 @@ void PlaybackSpeed(const EditorSnapshot& snapshot, const EditorUiActions& action
         }
     } else {
         ImGui::SetNextItemWidth(PlaybackSpeedWidth());
-        if (ImGui::BeginCombo("##speed", PlaybackLabel(snapshot.playbackSpeed).c_str())) {
+        if (ToolBeginCombo("##speed", PlaybackLabel(snapshot.playbackSpeed).c_str())) {
             for (const double speed : Speeds)
                 if (ImGui::Selectable(PlaybackLabel(speed).c_str(), speed == snapshot.playbackSpeed) &&
                     actions.playback)
@@ -42,6 +44,22 @@ void PlaybackSpeed(const EditorSnapshot& snapshot, const EditorUiActions& action
     ToolTooltip(snapshot.capabilities.playbackEnabled ? "Playback speed"
                                                       : snapshot.capabilities.playbackDisabledReason);
 }
+// Where the open scene sits in the catalog: "Category / Scene", or only the scene when that does not fit.
+void SceneCrumb(const EditorSnapshot& snapshot, float width) {
+    if (!snapshot.selected) return;
+    const auto& scene = *snapshot.selected;
+    ImGui::AlignTextToFramePadding();
+    const auto category = scene.category.empty() ? std::string() : scene.category + "  /  ";
+    const float categoryWidth = ImGui::CalcTextSize(category.c_str()).x;
+    const float nameWidth = ImGui::CalcTextSize(scene.name.c_str()).x;
+    if (!category.empty() && categoryWidth + nameWidth <= width) {
+        ImGui::TextDisabled("%s", category.c_str());
+        ImGui::SameLine(0, 0);
+        ImGui::TextUnformatted(scene.name.c_str());
+    } else {
+        ImGui::TextUnformatted(ToolClipText(scene.name.c_str(), width).c_str());
+    }
+}
 } // namespace
 
 void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool& marking) {
@@ -50,18 +68,19 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
                         {EditorToolbarMetrics::ButtonPadding * scale,
                          (EditorToolbarMetrics::ControlHeight - ToolMetrics::BodySize) * 0.5f * scale});
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, EditorToolbarMetrics::Radius * scale);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
                         {EditorToolbarMetrics::Gap * scale, ImGui::GetStyle().ItemSpacing.y});
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetStyleColorVec4(ImGuiCol_Button));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, {0, 0, 0, 0});
     ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered));
     ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
     ImGui::PushID("editor-playback");
     ImGui::BeginGroup();
-    const auto& style = ImGui::GetStyle();
     const float available = ImGui::GetContentRegionAvail().x;
+    const float origin = ImGui::GetCursorPosX();
     const float iconWidth = ImGui::GetFrameHeight();
-    const float gap = style.ItemSpacing.x;
+    const float gap = EditorToolbarMetrics::Gap * scale;
+    const float transportGap = EditorToolbarMetrics::TransportGap * scale;
+    const float groupGap = EditorToolbarMetrics::GroupGap * scale;
     const auto primary = EditorPrimaryCommand(snapshot);
     const float primaryWidth = EditorCommandButtonWidth(primary, snapshot, true);
     const float buildLabelWidth = EditorCommandButtonWidth(EditorCommand::Refresh, snapshot, true);
@@ -72,39 +91,42 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     bool showBuildLabel = true;
     bool showBuild = true;
     bool showPrimaryLabel = true;
-    const auto rowWidth = [&] {
-        const bool overflow = !showSpeed || !showReset || !showStep || !showBuild;
-        int controls = 3; // Primary, pause, mark
-        float width = (showPrimaryLabel ? primaryWidth : iconWidth) + iconWidth * 2;
-        if (showStep) {
-            width += iconWidth;
-            ++controls;
-        }
-        if (showReset) {
-            width += iconWidth;
-            ++controls;
-        }
-        if (showSpeed) {
-            width += PlaybackSpeedWidth();
-            ++controls;
-        }
-        if (overflow) {
-            width += iconWidth;
-            ++controls;
-        }
-        width += gap * static_cast<float>(controls - 1);
-        if (showBuild)
-            width += (showBuildLabel ? buildLabelWidth + playLabelWidth : iconWidth * 2) + gap * 2;
-        if (showBuild && showSpeed) width += gap * 3 + 1;
-        width += gap * 3 + 1; // Separator before the mark button.
+    const auto transportWidth = [&] {
+        float width = (showPrimaryLabel ? primaryWidth : iconWidth) + iconWidth + transportGap;
+        if (showStep) width += iconWidth + transportGap;
+        if (showReset) width += iconWidth + transportGap;
         return width;
     };
-    if (rowWidth() > available) showSpeed = false;
-    if (rowWidth() > available) showReset = false;
-    if (rowWidth() > available) showStep = false;
-    if (rowWidth() > available) showBuildLabel = false;
-    if (rowWidth() > available) showBuild = false;
-    if (rowWidth() > available) showPrimaryLabel = false;
+    const auto overflow = [&] { return !showSpeed || !showReset || !showStep || !showBuild; };
+    const auto toolsWidth = [&] {
+        float width = iconWidth; // Mark
+        if (showSpeed) width += PlaybackSpeedWidth() + gap;
+        if (showBuild) width += (showBuildLabel ? buildLabelWidth + playLabelWidth : iconWidth * 2) + gap * 2;
+        if (overflow()) width += iconWidth + gap;
+        return width;
+    };
+    const auto fits = [&] { return transportWidth() + toolsWidth() + groupGap <= available; };
+    if (!fits()) showSpeed = false;
+    if (!fits()) showReset = false;
+    if (!fits()) showStep = false;
+    if (!fits()) showBuildLabel = false;
+    if (!fits()) showBuild = false;
+    if (!fits()) showPrimaryLabel = false;
+    // Playback sits in the window's center while the tools leave it room, sliding left when they do not.
+    const float transport = transportWidth();
+    const float tools = toolsWidth();
+    const float transportStart =
+        std::clamp((available - transport) * 0.5f, 0.0f, std::max(0.0f, available - tools - groupGap - transport));
+    const float crumbWidth = transportStart - groupGap;
+    const bool showCrumb = snapshot.selected && crumbWidth >= ImGui::GetFontSize() * MinimumCrumbWidthInFonts;
+    // Inside the group SameLine's offset counts from the group's start, SetCursorPosX's from the window's.
+    if (showCrumb) {
+        SceneCrumb(snapshot, crumbWidth);
+        ImGui::SameLine(transportStart);
+    } else if (transportStart > 0) {
+        ImGui::SetCursorPosX(origin + transportStart);
+    }
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {transportGap, ImGui::GetStyle().ItemSpacing.y});
     EditorCommandButton(primary, snapshot, actions, showPrimaryLabel);
     ImGui::SameLine();
     EditorCommandButton(EditorCommand::Pause, snapshot, actions);
@@ -116,29 +138,13 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         ImGui::SameLine();
         EditorCommandButton(EditorCommand::Reset, snapshot, actions);
     }
-    if (showBuild) {
-        ImGui::SameLine();
-        EditorCommandButton(EditorCommand::Refresh, snapshot, actions, showBuildLabel);
-        ImGui::SameLine();
-        EditorCommandButton(EditorCommand::BuildAndPlay, snapshot, actions, showBuildLabel);
-    }
+    ImGui::PopStyleVar();
+    ImGui::SameLine(std::max(available - tools, transportStart + transport + groupGap));
     if (showSpeed) {
-        if (showBuild) {
-            ImGui::SameLine(0, gap * 2);
-            const auto separator = ImGui::GetCursorScreenPos();
-            const float inset = EditorToolbarMetrics::Gap * scale;
-            ImGui::GetWindowDrawList()->AddLine({separator.x, separator.y + inset},
-                                                {separator.x, separator.y + iconWidth - inset},
-                                                ImGui::GetColorU32(ImGuiCol_Separator));
-            ImGui::Dummy({1, iconWidth});
-            ImGui::SameLine(0, gap * 2);
-        } else {
-            ImGui::SameLine();
-        }
         PlaybackSpeed(snapshot, actions, false);
-    }
-    if (!showSpeed || !showReset || !showStep || !showBuild) {
         ImGui::SameLine();
+    }
+    if (overflow()) {
         if (EditorIconButton("more", EditorGlyph::More, "More playback controls")) ImGui::OpenPopup("more-controls");
         if (ImGui::BeginPopup("more-controls")) {
             if (!showStep) EditorCommandMenuItem(EditorCommand::Step, snapshot, actions);
@@ -153,24 +159,23 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
             }
             ImGui::EndPopup();
         }
+        ImGui::SameLine();
     }
-    ImGui::SameLine(0, gap * 2);
-    const auto separator = ImGui::GetCursorScreenPos();
-    const float inset = EditorToolbarMetrics::Gap * scale;
-    ImGui::GetWindowDrawList()->AddLine({separator.x, separator.y + inset},
-                                        {separator.x, separator.y + iconWidth - inset},
-                                        ImGui::GetColorU32(ImGuiCol_Separator));
-    ImGui::Dummy({1, iconWidth});
-    ImGui::SameLine(0, gap * 2);
     if (!snapshot.ready) marking = false;
     ImGui::BeginDisabled(!snapshot.ready);
     if (EditorIconButton("mark", EditorGlyph::Mark,
                          "Mark a region of the scene and paste it into the Console (or Alt+drag)", marking))
         marking = !marking;
     ImGui::EndDisabled();
+    if (showBuild) {
+        ImGui::SameLine();
+        EditorCommandButton(EditorCommand::Refresh, snapshot, actions, showBuildLabel);
+        ImGui::SameLine();
+        EditorCommandButton(EditorCommand::BuildAndPlay, snapshot, actions, showBuildLabel);
+    }
     ImGui::EndGroup();
     ImGui::PopID();
     ImGui::PopStyleColor(3);
-    ImGui::PopStyleVar(3);
+    ImGui::PopStyleVar(2);
     ImGui::PopFont();
 }

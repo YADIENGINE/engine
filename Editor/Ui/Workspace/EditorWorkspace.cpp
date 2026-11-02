@@ -322,7 +322,9 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
     ImGui::SetNextWindowSize(size);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Window);
     ImGui::Begin("Workspace###editor.workspace", nullptr, HostFlags);
+    ImGui::PopStyleColor();
     const ImGuiID dock = ImGui::GetID("editor.dockspace");
     if (reset || !ImGui::DockBuilderGetNode(dock)) {
         ImGui::DockBuilderRemoveNode(dock);
@@ -407,7 +409,13 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
         ImGui::DockBuilderDockWindow(panel.window, target);
         ImGui::DockBuilderFinish(dock);
     }
-    ImGui::DockSpace(dock, {}, _maximized ? ImGuiDockNodeFlags_KeepAliveOnly : ImGuiDockNodeFlags_None);
+    // Panes are told apart by their gaps: the splitters take the frame's color until touched. A tab closes itself on
+    // hover, so the tab bar's own close button would only repeat it.
+    ImGui::PushStyleColor(ImGuiCol_Separator, ToolPalette::Window);
+    ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_NoCloseButton;
+    if (_maximized) dockFlags |= ImGuiDockNodeFlags_KeepAliveOnly;
+    ImGui::DockSpace(dock, {}, dockFlags);
+    ImGui::PopStyleColor();
     ImGui::End();
     ImGui::PopStyleVar(2);
 }
@@ -461,7 +469,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         _viewport.ReleaseFocus();
         result.cancelViewportInput = true;
     }
-    auto menu = _shell.Menu(snapshot, actions, preferences, fontSize, _maximized, _offerProjectList);
+    auto menu = _shell.Menu(snapshot, actions, preferences, fontSize, _maximized, _offerProjectList, _projectName);
     result.cancelViewportInput |= Shortcuts(snapshot, actions, menu);
     if (_palette.Draw(snapshot, actions, preferences, _maximized, menu)) {
         result.cancelViewportInput = true;
@@ -512,9 +520,11 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         ImGui::SetNextWindowSize(workspaceSize);
         constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar;
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Content);
         if (ImGui::Begin("Viewport###editor.maximized", nullptr, flags))
             result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, true);
         ImGui::End();
+        ImGui::PopStyleColor();
     } else {
         constexpr auto flags = ImGuiWindowFlags_NoCollapse;
         bool viewportDrawn = false;
@@ -531,12 +541,15 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                                     panel.id == EditorPanel::AudioPreview;
             if (edgeToEdge) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, headerPadding);
+            // The game sits on a neutral well: a tinted frame would change how its colors read.
+            if (panel.id == EditorPanel::Viewport) ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Content);
             const bool drawPanel =
                 ImGui::Begin(panel.window, &preferences.Visible(panel.id),
                              flags | (panel.id == EditorPanel::Viewport || panel.id == EditorPanel::Inspector ||
                                               panel.id == EditorPanel::Assets || panel.id == EditorPanel::AudioPreview
                                           ? ImGuiWindowFlags_NoScrollbar
                                           : 0));
+            if (panel.id == EditorPanel::Viewport) ImGui::PopStyleColor();
             ImGui::PopStyleVar(); // Panel contents keep their regular control spacing.
             if (edgeToEdge) ImGui::PopStyleVar();
             if (drawPanel) {

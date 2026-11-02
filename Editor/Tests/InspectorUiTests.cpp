@@ -2,11 +2,111 @@
 #include <imgui.h>
 #include <array>
 #include <memory>
+#include <string>
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "Editor/Ui/Widgets/InspectorWidgets.h"
+#include "ToolUi/ToolPixel.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
+
+TEST_CASE("ToolUi.PixelInitial.IsTheFirstLetterOrDigit", "[engine-editor]") {
+    CHECK(ToolPixelInitial("Snake") == 'S');
+    CHECK(ToolPixelInitial("snake") == 'S');
+    CHECK(ToolPixelInitial("  3D Game") == '3');
+    CHECK(ToolPixelInitial("(Prototype)") == 'P');
+    CHECK(ToolPixelInitial("") == '-');
+    CHECK(ToolPixelInitial("...") == '-');
+}
+
+TEST_CASE("ToolUi.PixelInitial.FoldsTurkishLettersToTheirBase", "[engine-editor]") {
+    CHECK(ToolPixelInitial("\xC3\x87"
+                           "al\xC4\xB1\xC5\x9Fma") == 'C'); // Çalışma
+    CHECK(ToolPixelInitial("\xC4\x9F") == 'G');
+    CHECK(ToolPixelInitial("\xC4\xB0stanbul") == 'I');
+    CHECK(ToolPixelInitial("\xC4\xB1") == 'I');
+    CHECK(ToolPixelInitial("\xC3\x96zel") == 'O');
+    CHECK(ToolPixelInitial("\xC5\x9E"
+                           "ehir") == 'S');
+    CHECK(ToolPixelInitial("\xC3\xBC") == 'U');
+}
+
+TEST_CASE("ToolUi.TileColors.StayWithTheName", "[engine-editor]") {
+    const auto first = ToolTileColorsFor("MyGame");
+    const auto second = ToolTileColorsFor("MyGame");
+    CHECK(first.background.x == second.background.x);
+    CHECK(first.foreground.z == second.foreground.z);
+}
+
+TEST_CASE("ToolUi.Clipping.KeepsWhatFitsAndBothEndsOfAPath", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.DisplaySize = {800, 600};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ImGui::NewFrame();
+    const char* path = "C:\\Projects\\Some\\Very\\Long\\Folder\\Chain\\MyGame";
+    const float full = ImGui::CalcTextSize(path).x;
+    CHECK(ToolClipMiddle(path, full + 1) == path);
+    CHECK(ToolClipText(path, full + 1) == path);
+    const float narrow = full * 0.6f;
+    const auto middle = ToolClipMiddle(path, narrow);
+    CHECK(ImGui::CalcTextSize(middle.c_str()).x <= narrow);
+    CHECK(middle.starts_with("C:"));
+    CHECK(middle.ends_with("MyGame"));
+    CHECK(middle.find("...") != std::string::npos);
+    const auto end = ToolClipText(path, narrow);
+    CHECK(ImGui::CalcTextSize(end.c_str()).x <= narrow);
+    CHECK(end.ends_with("..."));
+    CHECK(ToolClipMiddle(path, 1).empty());
+    ImGui::EndFrame();
+}
+
+TEST_CASE("ToolUi.Toggle.FlipsOnClickAndReportsIt", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.DisplaySize = {800, 600};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    bool value = false;
+    int flips = 0;
+    ImVec2 center{};
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({10, 10});
+        ImGui::SetNextWindowSize({300, 200});
+        ImGui::Begin("Fixture");
+        if (ToolToggle("Follow", value)) ++flips;
+        center = {(ImGui::GetItemRectMin().x + ImGui::GetItemRectMax().x) * 0.5f,
+                  (ImGui::GetItemRectMin().y + ImGui::GetItemRectMax().y) * 0.5f};
+        ImGui::End();
+        ImGui::Render();
+    };
+    frame();
+    frame();
+    CHECK(flips == 0);
+    io.AddMousePosEvent(center.x, center.y);
+    frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    frame();
+    CHECK(flips == 1);
+    CHECK(value);
+}
 
 TEST_CASE("ToolUi.FontRoles.FollowTheRegisteredContext", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> editor(ImGui::CreateContext(),
