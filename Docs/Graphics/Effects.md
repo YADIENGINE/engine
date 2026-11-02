@@ -43,6 +43,10 @@ focus, punch uses the base target. Draw through the result: `auto view = paint.T
 `MotionIntensity()` feeds the same smoothed intensity to independently drawn speed lines: `DrawSpeedLines(paint, bounds,
 intensity, color, time, style)` clips itself to `bounds`.
 
+For animated arbitrary drawing callbacks, opt into [Popup](../Modules/Popup/README.md). For numeric labels with
+accumulation, configurable formatting and local particle juice, opt into [NumberPopup](../Modules/NumberPopup/README.md).
+Both are explicitly owned/updated modules; the caller controls their placement relative to the FxStage layers.
+
 Floating text uses `FloatingTextStyle` for velocity, lifetime, pop/fade and `FxTextStyle` for size, the anchor point on
 the text, width fitting and shadow (`Fx/FxText.h`; drawn with the game's font). `OverlayEffects2D` takes its
 waiting-toast capacity at construction and explicit styles per trigger. It draws flash, banner, then toast within

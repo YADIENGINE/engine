@@ -1,0 +1,1 @@
+engine_tests(EngineNumberPopupTests SOURCES NumberPopupTests.cpp LINKS EngineNumberPopup)

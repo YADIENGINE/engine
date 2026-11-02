@@ -36,6 +36,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Customize particles or trails | `Core/Fx/ParticleSystem2D.h`<br>`Core/Fx/ParticleRecipes.h`<br>`Core/Graphics/Draw/ParticleDraw.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#graphics-and-fx` |
 | Frame a cinematic camera or transform world drawing | `Core/Utilities/CameraView.h`<br>`Core/Fx/CameraShot.h`<br>`Core/Fx/CameraEffects2D.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
 | Add pop text, toast, banner or speed lines | `Core/Fx/FloatingText2D.h`<br>`Core/Fx/FxText.h`<br>`Core/Fx/OverlayEffects2D.h`<br>`Core/Fx/SpeedLines.h` | - | `Docs/Graphics/Effects.md#graphics-and-fx` |
+| Animate arbitrary popup drawing or emit numeric feedback | `Core/Modules/Popup/Popup.h`<br>`Core/Modules/NumberPopup/NumberPopup.h` | `Recipes/PopupEffects.md` | `Docs/Modules/Popup/README.md`<br>`Docs/Modules/NumberPopup/README.md` |
 | Add rings, shockwaves, glitch or a pulse | `Core/Fx/RingEffects2D.h`<br>`Core/Fx/ShockwaveEffects2D.h`<br>`Core/Fx/GlitchEffects2D.h`<br>`Core/Fx/PulseOverlay2D.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
 | Draw an iris transition or shatter geometry | `Core/Fx/IrisTransition.h`<br>`Core/Fx/ShatterPattern.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
 | Pause gameplay, add hitstop or slow motion | `Core/Fx/TimeScale.h`<br>`Core/Scene/Scene.h` | - | `Docs/Runtime.md#input-and-time-selection` |

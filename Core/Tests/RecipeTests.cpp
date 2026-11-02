@@ -4,6 +4,7 @@
 #include "AgentDocs/Recipes/Code/FxBurst.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
+#include "AgentDocs/Recipes/Code/PopupEffects.h"
 #include "AgentDocs/Recipes/Code/SaveProgress.h"
 #include "AgentDocs/Recipes/Code/SceneTransition.h"
 #include "AgentDocs/Recipes/Code/SpriteLayer.h"
@@ -11,6 +12,7 @@
 #include "AgentDocs/Recipes/Code/ThemedMenu.h"
 #include "AgentDocs/Recipes/Code/TuningValue.h"
 #include "Graphics/Surface/Surface.h"
+#include "Graphics/Text/FontFace.h"
 #include "Input/Input.h"
 #include "Modules/Persistence/Persistence.h"
 #include "Options/GameOptions.h"
@@ -85,4 +87,25 @@ TEST_CASE("Engine.Recipes.EditorSceneAndTextWorkWithoutWindow", "[engine][recipe
     RecipeTextView text(ENGINE_RECIPE_FONT);
     CHECK(text.Measured().x > 0.0f);
     CHECK(RecipeRadius() > 0.0f);
+}
+
+TEST_CASE("Engine.Recipes.PopupEffectsDrawWithThePublicApi", "[engine][recipes]") {
+    const auto font = FontFace::FromFile(ENGINE_RECIPE_FONT);
+    PaintHarness harness;
+    harness.context.font = &font;
+    RecipePopupEffects effects;
+    effects.SetQuality({.particlePercent = 50, .flashes = false});
+    effects.Hit({120.0f, 100.0f}, 120, {42});
+    effects.Hit({120.0f, 100.0f}, 30, {42});
+    effects.Reward({250.0f, 100.0f}, "BONUS");
+    effects.Update(0.125f);
+    harness.Begin();
+    CHECK_NOTHROW(effects.Draw(harness.paint));
+    harness.End();
+    CHECK_FALSE(harness.Draws().empty());
+    effects.Clear();
+    harness.Begin();
+    effects.Draw(harness.paint);
+    harness.End();
+    CHECK(harness.Draws().empty());
 }

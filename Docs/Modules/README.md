@@ -13,6 +13,8 @@ for player options; other modules are the game's choice.
 | [Profiler](Profiler/README.md) / EngineProfiler (+ EngineProfilerRuntime) | Opt-in CPU/GPU measurement, frame statistics, and performance comparisons |
 | [Version](Version/README.md) / EngineVersion | Installed-version changes and patch-note queries |
 | [Steam](Steam/README.md) / EngineSteam | Launch/account detection; current backend limits in README |
+| [Popup](Popup/README.md) / EnginePopup | Animated drawing callbacks, lifetimes, motion and handles |
+| [NumberPopup](NumberPopup/README.md) / EngineNumberPopup | Numeric feedback, label formatting, accumulation and local juice |
 
 ```cmake
 engine_add_game(MyGame SOURCES Game/CreateGame.cpp Game/MyGame.cpp

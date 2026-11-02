@@ -72,6 +72,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/FxBurst.cpp"
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"
+    "${recipeRoot}/PopupEffects.cpp"
     "${recipeRoot}/SaveProgress.cpp"
     "${recipeRoot}/SceneGame.cpp"
     "${recipeRoot}/SceneTransition.cpp"
@@ -85,7 +86,7 @@ add_library(EngineRecipes STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneAutoRegistration.cpp"
 )
 target_include_directories(EngineRecipes PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../..")
-target_link_libraries(EngineRecipes PUBLIC EngineHeadless EnginePersistence)
+target_link_libraries(EngineRecipes PUBLIC EngineHeadless EnginePersistence EngineNumberPopup)
 engine_warnings(EngineRecipes)
 engine_add_tuning(EngineRecipes ROOT "${recipeRoot}")
 # Registration-only examples must reach the executable directly, not through a static archive.

@@ -261,6 +261,28 @@ target_link_libraries(EngineVersion PUBLIC EngineHeadless)
 set_target_properties(EngineVersion PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_warnings(EngineVersion)
 
+# Opt-in animated content; no core system depends on these presentation modules.
+add_library(EnginePopup STATIC EXCLUDE_FROM_ALL
+    Modules/Popup/Popup.cpp
+    Modules/Popup/Internals/State.cpp
+)
+target_include_directories(EnginePopup PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(EnginePopup PUBLIC cxx_std_20)
+target_link_libraries(EnginePopup PUBLIC EngineHeadless)
+set_target_properties(EnginePopup PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_warnings(EnginePopup)
+
+add_library(EngineNumberPopup STATIC EXCLUDE_FROM_ALL
+    Modules/NumberPopup/NumberPopup.cpp
+    Modules/NumberPopup/Internals/State.cpp
+    Modules/NumberPopup/Internals/Formatting.cpp
+)
+target_include_directories(EngineNumberPopup PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(EngineNumberPopup PUBLIC cxx_std_20)
+target_link_libraries(EngineNumberPopup PUBLIC EnginePopup)
+set_target_properties(EngineNumberPopup PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_warnings(EngineNumberPopup)
+
 # Opt-in: only consumers of EngineSteam compile Steam detection.
 add_library(EngineSteam STATIC EXCLUDE_FROM_ALL
     Modules/Steam/Steam.cpp
