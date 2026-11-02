@@ -740,8 +740,9 @@ already owned. An installed engine copy keeps its look until a project moves to 
 Status: implemented (2026-11-02).
 
 ### D24. Prebuilt engine
-**Decision:** The launcher carries the engine it ships compiled: Release static libraries and the editor executable, kept
-once beside the launcher, about 100 MB (15 MB compressed). A project links them and compiles only its own code. The
+**Decision:** Each engine release publishes the engine compiled: Release static libraries and the editor executable, about
+100 MB (15 MB compressed). The launcher downloads it with the engine and also carries the one for the engine it ships, so
+an engine release needs no launcher release and the first project is fast offline. A project links them and compiles only its own code. The
 sources stay in the project's `Engine/`, because the compiler reads the headers and developers and AI agents read the
 rest. There are no Debug libraries: a project's Debug configuration compiles its own code unoptimized against the Release
 libraries, with the same runtime. `"engine": { "build": "source" }` keeps the full Debug build, and a project falls back to
@@ -756,8 +757,8 @@ libraries it covered were only 4% of the build.
 
 **Cost:** No stepping into engine code in a prebuilt project, and no standard library debug checks; the source build
 restores both. Live tuning and the Painter's programmer-error checks are decided per executable
-(`ENGINE_TUNING_LIVE`, `Utilities/DevelopmentChecks.h`), so both builds keep them. Only the shipped engine has a package
-for now. Status: implemented (2026-11-02), window and debugger checks pending.
+(`ENGINE_TUNING_LIVE`, `Utilities/DevelopmentChecks.h`), so both builds keep them. Status: implemented (2026-11-02), window
+and debugger checks pending.
 
 ## v1'de kalan işler
 

@@ -16,9 +16,10 @@ EngineTargets.cmake   The same target names as a source build, as imported libra
 Prebuilt.json         Engine version and compiler version
 ```
 
-The launcher stores it as `EnginePrebuilt/<version>/` and passes the folder as `ENGINE_PREBUILT`
-([Tools contract](ToolsContract.md#environment-variables)). Tools remember it in `build/.engine-prebuilt.json`, so
-commands run without the launcher (`python Engine build`) make the same choice.
+Each engine release publishes it beside its record, so a new engine brings its package without a launcher release. The
+launcher downloads it with the engine, carries the one for the engine it ships, and passes the folder as
+`ENGINE_PREBUILT` ([Tools contract](ToolsContract.md#environment-variables)). Tools remember it in
+`build/.engine-prebuilt.json`, so commands run without the launcher (`python Engine build`) make the same choice.
 
 ## What changes in a development build
 

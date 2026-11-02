@@ -62,5 +62,3 @@ Deferred on purpose. None of these block 1.0.0.
 - **llvm-mingw** (D8).
 - **Automatic code migration** (`python Engine migrate`, D16): a failed trial's report is copied to an AI for now.
 - **Console phase 2:** word and line selection ([Console](Console.md)).
-- **Prebuilt engine for downloaded versions:** only the engine the launcher ships has its compiled package (D24). A version
-  downloaded from GitHub still builds from source until its release carries the package too.
