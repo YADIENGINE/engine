@@ -1,0 +1,12 @@
+{
+  "date": "2026-11-02",
+  "changes": [
+    "Editor quality of life changes."
+  ],
+  "breaking": [
+    {
+      "change": "",
+      "migrate": ""
+    }
+  ]
+}
