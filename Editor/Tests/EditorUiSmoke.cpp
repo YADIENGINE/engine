@@ -25,7 +25,7 @@
 #include "ToolUi/ToolWindow.h"
 
 namespace {
-enum class SmokeView { Idle, Running, Paused, Building, Inspector, QuickOpen, Palette, BuildFailed };
+enum class SmokeView { Idle, Running, Paused, Building, Inspector, QuickOpen, Palette, BuildFailed, AgentStrip };
 struct SmokeStage {
     const char* name;
     SmokeView view;
@@ -48,7 +48,7 @@ constexpr std::array Stages{
     SmokeStage{"tuning", SmokeView::Running, 1600, 900, 100, EditorPanel::Tuning},
     SmokeStage{"assets", SmokeView::Running, 1600, 900, 100, EditorPanel::Assets},
     SmokeStage{"audio", SmokeView::Running, 1600, 900, 100, EditorPanel::AudioPreview},
-    SmokeStage{"activity", SmokeView::Running, 1600, 900, 100, EditorPanel::Activity},
+    SmokeStage{"agent-strip", SmokeView::AgentStrip},
     SmokeStage{"quick-open", SmokeView::QuickOpen},
     SmokeStage{"palette", SmokeView::Palette},
     SmokeStage{"build-failed", SmokeView::BuildFailed},
@@ -341,6 +341,7 @@ protected:
         snapshot.audio.position = 0.7f;
         snapshot.audio.waveform = {WaveformState::Ready, _waveform, {}};
         snapshot.controlEvents = &_events;
+        snapshot.controlEventCount = _events.size();
         // A failure reported through the control endpoint opens no popup; only the one stage wants it.
         snapshot.controlAttempt = stage.view == SmokeView::BuildFailed ? 0 : _diagnostics.Attempt().id;
         const ViewportImage image{_frame.id, _frame.width, _frame.height, 1, 1, 0.0};
@@ -361,6 +362,7 @@ protected:
             SelectTab(EditorPanelInfo(*stage.panel).window);
         }
         (void)_workspace.Draw(snapshot, _actions, _frame.id != 0 ? image : ViewportImage{}, _preferences, _fontSize);
+        if (stage.view == SmokeView::AgentStrip) DrawAgentStrips(snapshot);
         if (_frameIndex == FramesPerStage) {
             for (const auto* name : {"Toolbar###editor.toolbar", "Status###editor.status"}) {
                 const auto* window = ImGui::FindWindowByName(name);
@@ -382,6 +384,31 @@ protected:
     }
 
 private:
+    // Each state at each width over the workspace (no Console session runs here), then the last one's list.
+    void DrawAgentStrips(const EditorSnapshot& snapshot) const {
+        constexpr std::array States{SessionState::Idle, SessionState::Working, SessionState::Waiting,
+                                    SessionState::Done};
+        constexpr std::array Widths{EditorAgentActivityMetrics::Ideal, EditorAgentActivityMetrics::Medium,
+                                    EditorAgentActivityMetrics::Compact};
+        ImGui::SetNextWindowPos({340, 130});
+        ImGui::SetNextWindowSize({860, 620});
+        ImGui::Begin("Agent strips", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
+        std::size_t strip = 0;
+        for (const auto state : States) {
+            for (const float width : Widths) {
+                EditorAgentStatus agent{.session = true, .title = "Claude", .state = state};
+                if (state == SessionState::Working) agent.activity = "Edit EditorAgentActivity.cpp";
+                ImGui::PushID(static_cast<int>(strip));
+                if (_frameIndex == 1 && strip + 1 == _agentStrips.size()) _agentStrips[strip].Show();
+                _agentStrips[strip++].Draw(snapshot, _actions, agent, width);
+                ImGui::PopID();
+                ImGui::SameLine();
+            }
+            ImGui::NewLine();
+        }
+        ImGui::End();
+    }
+
     std::filesystem::path _output;
     std::vector<SceneDefinition> _catalog;
     SceneParameters _parameters;
@@ -397,6 +424,7 @@ private:
     Texture2D _frame{};
     mutable EditorPreferences _preferences;
     mutable EditorWorkspace _workspace;
+    mutable std::array<EditorAgentActivity, 12> _agentStrips;
     mutable int _fontSize = 100;
     mutable int _failures = 0;
     mutable ToolUiContext _ui;

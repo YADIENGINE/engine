@@ -7,7 +7,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from Tools import cli
-from Tools.commands.ctl import brief, ctl, describe_scene, find_scenes, open_scene, parse_value, request_of, with_hint
+from Tools.commands.ctl import (brief, ctl, describe_scene, find_scenes, open_scene, parse_value, request_of,
+                                tool_note, with_hint)
 from Tools.commands.refresh import ENVIRONMENT, editor_pipe
 from Tools.errors import EXIT_FAILED, EXIT_INFRA, ToolError
 
@@ -223,6 +224,39 @@ class HookNoteTests(unittest.TestCase):
                 patch("Tools.commands.ctl.editor_pipe", return_value="pipe"):
             self.assertEqual(ctl(None, args), 0)
         self.assertEqual(sent[0]["text"], "")
+
+
+class ToolNoteTests(unittest.TestCase):
+    """`note --hook --tool-stdin` names the tool for the toolbar without adding to the activity list."""
+
+    def test_a_tool_is_named_with_what_it_works_on(self):
+        self.assertEqual(tool_note({"tool_name": "Edit", "tool_input": {"file_path": r"C:\a\Player.cpp"}}),
+                         "Edit Player.cpp")
+        self.assertEqual(tool_note({"tool_name": "Bash", "tool_input": {"description": "Run tests", "command": "x"}}),
+                         "Bash Run tests")
+        self.assertEqual(tool_note({"tool_name": "Bash", "tool_input": {"command": "one\ntwo"}}), "Bash one")
+        self.assertEqual(tool_note({"tool_name": "mcp__docs__read", "tool_input": {}}), "read")
+
+    def test_an_unknown_shape_says_what_there_is(self):
+        self.assertEqual(tool_note({}), "")
+        self.assertEqual(tool_note({"tool_name": "Edit", "tool_input": "text"}), "Edit")
+
+    def run_hook(self, stdin: bytes) -> list:
+        sent = []
+        args = cli.build_parser().parse_args(["ctl", "note", "--hook", "--tool-stdin"])
+        with patch.dict(os.environ, {"ENGINE_EDITOR_SESSION": "4"}, clear=True), \
+                patch("Tools.commands.ctl.send", lambda _pipe, data: sent.append(data) or {}), \
+                patch("Tools.commands.ctl.editor_pipe", return_value="pipe"), \
+                patch("sys.stdin", io.TextIOWrapper(io.BytesIO(stdin))):
+            self.assertEqual(ctl(None, args), 0)
+        return sent
+
+    def test_the_note_is_live(self):
+        sent = self.run_hook(b'{"tool_name": "Read", "tool_input": {"file_path": "a/b.h"}}')
+        self.assertEqual((sent[0]["text"], sent[0]["live"], sent[0]["state"]), ("Read b.h", True, "working"))
+
+    def test_a_broken_payload_never_fails_the_hook(self):
+        self.assertEqual(self.run_hook(b"not json"), [])
 
 
 class EditorPipeTests(unittest.TestCase):

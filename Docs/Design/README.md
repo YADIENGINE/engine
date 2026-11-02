@@ -723,6 +723,10 @@ is never empty. The editor's scene list is named Scenes, and the viewport sits o
 **Rejected on purpose:** gradients, glass and blur, glow, shadowed card grids, pill buttons, large radii, accent rails on
 cards, emoji, and greetings. Motion only shows that work is running. Nothing game-specific enters this layer.
 
+The editor adds one hue of its own, a periwinkle only the agent uses (the toolbar's agent strip, a working Console
+session), so an agent at work never reads as the amber primary button or as a result's green or red. Amber on the strip
+means the agent is waiting for the developer.
+
 **Why:** the previous look framed everything equally, kept ImGui's stock parts (triangle headers, large square
 checkboxes, block combo arrows, permanent tab controls), and tinted every surface, which also changes how a game's
 colors read in the viewport. Removing frames costs little and helps most; the pixel block is an identity the product

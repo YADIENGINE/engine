@@ -56,9 +56,6 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
   while a scene is maximized or text is being typed, and an attempt started through the control endpoint reports to its
   client; the status bar shows the error count until the next build either way, and a click on it opens Problems. While
   building, the status bar shows Ninja's count and the time so far ("Building 12/48 · 14 s").
-- **Agent Activity:** what agent tools did through the control endpoint this session, newest first: changes, notes and
-  screenshots. A changed parameter has *Undo* while its scene stays open and the value is still the agent's; a screenshot
-  has *Open*. Agent → Show activity opens it.
 - **Assets:** the asset library: back and search across the top, a folder tree on the left (sets are rows too), a tile
   grid on the right, and tile size at the bottom (or Ctrl+wheel). A click on a graphic opens it in the Viewport; a click
   on a folder or set enters it. Back (Alt+Left) undoes the last move or opened graphic, in order. A click on a sound
@@ -208,7 +205,7 @@ editor context; it never calls a model itself. The agent drives the editor back 
   - *Send build failure* pastes the last failed Build & Refresh with its error lines; *Ask agent to fix build* also
     asks for a fix and presses Enter, as *Fix all with agent* in Output → Problems does. Disabled context commands
     explain why in a tooltip.
-  - *Show activity* opens Agent Activity.
+  - *Show activity* opens the agent strip's list.
   - *Agent control* (on by default): off, tools may observe the editor (status, list, screenshot, inspect, logs) but
     every command that changes it (open, set, action, playback, seek, frames, refresh) is refused. The status bar shows
     "Agent control off".
@@ -218,10 +215,15 @@ editor context; it never calls a model itself. The agent drives the editor back 
 - **Inspector:** right-click a parameter's label or value → *Send to Agent* pastes its current value, range or choices
   and description, without Enter. This is also available for disabled parameters.
 - **Marks** (toolbar Mark, Alt+drag) go to the agent session when there is one.
-- **Status bar:** with an agent session, its title and state use the same clock, question mark and check icons as the
-  Console list. Working uses the accent color; waiting pulses in the warning color with the same rhythm as unread
-  Output; done uses the success color. Idle is neutral and exited is dimmed. The tooltip includes the agent's note
-  and a click hint; clicking shows the session. The *Agent control off* badge remains a warning.
+- **Agent strip** (toolbar, far right): the agent session's state in color, its latest activity and how many came
+  before ("+47", "99+" past two digits; filled until you have opened the list). Working uses the agent's own hue with
+  the walking cells and shows what the session says it is doing; waiting pulses in the warning color; done stays green
+  for a few seconds, then neutral. A new activity lights the strip once. An older entry shows its age ("4m"). In a
+  narrow window the text shortens, then the tools move to overflow, and last only the mark and the count remain.
+  A click opens what agent tools did through the control endpoint this session, newest first: changes, notes and
+  screenshots. A changed parameter has *Undo* while its scene stays open and the value is still the agent's; a
+  screenshot has *Open*; *Open session* shows the agent's session. Without a Console session, the strip still shows
+  activity from agents elsewhere, in neutral. The status bar keeps the *Agent control off* warning.
 - **Agent layout** (Window → Layouts): the Viewport takes 60% of the width beside a tall 40% column shared by Console
   and Inspector, with Console selected in front. The Viewport remains larger at 1440×900 and 2560×1440.
 

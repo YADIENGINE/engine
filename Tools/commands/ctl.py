@@ -14,6 +14,7 @@ import difflib
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 from ..errors import EXIT_FAILED, EXIT_OK, ToolError
@@ -23,6 +24,10 @@ from .refresh import VERSION, connect, editor_pipe, replies
 
 
 SESSION_ENVIRONMENT = "ENGINE_EDITOR_SESSION"  # Set by the editor for each Console session; `note` names its session
+# What a tool works on, most telling first: (key in its input, whether it is a path).
+NOTE_SUBJECTS = (("file_path", True), ("notebook_path", True), ("description", False), ("pattern", False),
+                 ("command", False), ("query", False), ("url", False), ("path", True))
+NOTE_TOOL_MAX_CHARS = 120
 WORKFLOW = """typical use:
   python Engine ctl status                      is an editor open, what runs
   python Engine ctl find ice dragon             which scene shows it; prints the command that opens it
@@ -91,11 +96,14 @@ def add_parser(commands) -> None:
     sound.add_parser("seek", help="go to a time; a stopped sound starts there").add_argument("seconds", type=float)
     sound.add_parser("volume", help="preview volume 0-1").add_argument("volume", type=float)
     sound.add_parser("loop", help="loop the sound or not").add_argument("state", choices=("on", "off"))
-    action = actions.add_parser("note", help="report what the agent is doing; shown in the editor's status bar")
+    action = actions.add_parser("note", help="report what the agent is doing; shown in the editor's toolbar")
     action.add_argument("text", nargs="*", metavar="WORD")
     action.add_argument("--state", choices=("working", "waiting", "idle"), default="working")
     action.add_argument("--hook", action="store_true",
                         help="for agent hooks: no output, always exit 0, nothing outside an editor Console session")
+    action.add_argument("--tool-stdin", action="store_true",
+                        help="with --hook: name the tool from the hook's JSON on stdin; shown live, not kept in the "
+                             "editor's activity list")
 
 
 def parse_value(text: str):
@@ -355,6 +363,22 @@ def open_scene(pipe: str, args: argparse.Namespace) -> dict:
     return answer
 
 
+def tool_note(payload: dict) -> str:
+    """What a tool hook's payload ({"tool_name": ..., "tool_input": {...}}) says in one short line: "Edit Player.cpp",
+    "Bash Run the tests". Files show their name only; an unknown shape shows what there is."""
+    tool = str(payload.get("tool_name") or "").rsplit("__", 1)[-1]
+    tool_input = payload.get("tool_input")
+    subject = ""
+    if isinstance(tool_input, dict):
+        for key, is_file in NOTE_SUBJECTS:
+            value = tool_input.get(key)
+            if isinstance(value, str) and value.strip():
+                lines = value.strip().splitlines()
+                subject = re.split(r"[\\/]", lines[0])[-1] if is_file else lines[0]
+                break
+    return " ".join(part for part in (tool, subject) if part)[:NOTE_TOOL_MAX_CHARS]
+
+
 def hook_note(project: Project, args: argparse.Namespace) -> int:
     """`note --hook`: an agent CLI's hook must never fail or print (some hooks block the agent on a non-zero exit),
     and outside the editor's Console there is no session to report to. A JSON argument some CLIs append to their
@@ -363,7 +387,10 @@ def hook_note(project: Project, args: argparse.Namespace) -> int:
         return EXIT_OK
     args.text = [word for word in args.text if not word.lstrip().startswith("{")]
     try:
-        send(editor_pipe(project), request_of(args))
+        request = request_of(args)
+        if args.tool_stdin:
+            request.update(text=tool_note(json.loads(sys.stdin.buffer.read().decode("utf-8", "replace"))), live=True)
+        send(editor_pipe(project), request)
     except Exception:  # noqa: BLE001 - a closed or busy editor must not disturb the agent
         pass
     return EXIT_OK

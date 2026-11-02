@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include "Editor/Ui/Commands/EditorCommandPalette.h"
-#include "Editor/Ui/Panels/Activity/ActivityPanel.h"
 #include "Editor/Ui/Panels/Assets/AssetsPanel.h"
 #include "Editor/Ui/Panels/Audio/AudioPreviewPanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
@@ -84,7 +83,7 @@ private:
     ConsolePanel _console;
     AssetsPanel _assets;
     AudioPreviewPanel _audioPreview;
-    ActivityPanel _activity;
+    EditorAgentActivity _agentActivity;
     EditorShell _shell;
     EditorCommandPalette _palette;
     EditorAgentSetup _agentSetup;

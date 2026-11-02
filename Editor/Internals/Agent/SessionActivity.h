@@ -32,3 +32,11 @@ struct SessionSignals {
 // The hover text: the agent's note when it is current, else the terminal title the program set (CLIs put their
 // current task there); empty when neither says anything.
 [[nodiscard]] std::string SessionActivityText(const SessionSignals& signals, const std::string& terminalTitle);
+
+// The toolbar's agent strip. Its one line: a question comes first, then what the session says it is doing while it
+// works; otherwise the last recorded activity (`lastEvent`, empty when none).
+[[nodiscard]] std::string AgentHeadline(SessionState state, const std::string& activity, const std::string& lastEvent);
+// How many activities came before the last one of `total`: empty for none, "99+" past two digits.
+[[nodiscard]] std::string AgentEarlierLabel(std::size_t total);
+// How old an activity is, once that is worth saying: empty while recent, then "4m", "2h".
+[[nodiscard]] std::string AgentAgeLabel(double seconds);

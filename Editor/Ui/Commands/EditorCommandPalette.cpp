@@ -185,6 +185,7 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
     agentEntry("Send build failure", failed, "The last Build & Refresh did not fail",
                EditorAgentRequest::SendBuildFailure);
     agentEntry("Ask agent to fix build", failed, "The last Build & Refresh did not fail", EditorAgentRequest::FixBuild);
+    entries.push_back({"Agent", "Show activity", "", "", true, {}, [&result] { result.showActivity = true; }});
     entries.push_back({"Agent",
                        preferences.agent.control ? "Turn agent control off" : "Turn agent control on",
                        "",

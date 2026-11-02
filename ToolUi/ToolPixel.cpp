@@ -179,24 +179,28 @@ void ToolStateCell(ImVec4 color) {
     ImGui::GetWindowDrawList()->AddRectFilled(from, {from.x + side, from.y + side}, ImGui::GetColorU32(color));
 }
 
-void ToolActivity() {
+float ToolActivitySide() { return ToolPixelCell(ActivityCell) * 3 + ToolPixelCell(ActivityGap) * 2; }
+void ToolDrawActivity(ImDrawList& draw, ImVec2 position, ImVec4 color, bool running) {
     // The square's edge, clockwise from the top left.
     static constexpr std::array<ImVec2, 8> Ring{ImVec2{0, 0}, ImVec2{1, 0}, ImVec2{2, 0}, ImVec2{2, 1},
                                                 ImVec2{2, 2}, ImVec2{1, 2}, ImVec2{0, 2}, ImVec2{0, 1}};
     const float cell = ToolPixelCell(ActivityCell);
     const float gap = ToolPixelCell(ActivityGap);
-    const float side = cell * 3 + gap * 2;
+    const ImVec2 origin{std::floor(position.x), std::floor(position.y)};
+    const auto head = static_cast<std::size_t>(ImGui::GetTime() / ActivityStepSeconds) % Ring.size();
+    const float alpha = color.w;
+    for (std::size_t index = 0; index < Ring.size(); ++index) {
+        const std::size_t behind = (head + Ring.size() - index) % Ring.size();
+        color.w = alpha * (!running || behind == 0 ? 1.0f : behind <= 2 ? ActivityTrailBright : ActivityDim);
+        const ImVec2 from{origin.x + Ring[index].x * (cell + gap), origin.y + Ring[index].y * (cell + gap)};
+        draw.AddRectFilled(from, {from.x + cell, from.y + cell}, ImGui::GetColorU32(color));
+    }
+}
+void ToolActivity() {
+    const float side = ToolActivitySide();
     const float height = std::max(ImGui::GetTextLineHeight(), side);
     const auto start = ImGui::GetCursorScreenPos();
     ImGui::Dummy({side, height});
-    const ImVec2 origin{std::floor(start.x), std::floor(start.y + (height - side) * 0.5f)};
-    const auto head = static_cast<std::size_t>(ImGui::GetTime() / ActivityStepSeconds) % Ring.size();
-    auto color = ToolToneColor(ToolTone::Accent);
-    auto* draw = ImGui::GetWindowDrawList();
-    for (std::size_t index = 0; index < Ring.size(); ++index) {
-        const std::size_t behind = (head + Ring.size() - index) % Ring.size();
-        color.w = behind == 0 ? 1.0f : behind <= 2 ? ActivityTrailBright : ActivityDim;
-        const ImVec2 from{origin.x + Ring[index].x * (cell + gap), origin.y + Ring[index].y * (cell + gap)};
-        draw->AddRectFilled(from, {from.x + cell, from.y + cell}, ImGui::GetColorU32(color));
-    }
+    ToolDrawActivity(*ImGui::GetWindowDrawList(), {start.x, start.y + (height - side) * 0.5f},
+                     ToolToneColor(ToolTone::Accent), true);
 }

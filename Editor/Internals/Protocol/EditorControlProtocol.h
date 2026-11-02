@@ -55,11 +55,12 @@ struct AgentNote {
     AgentActivityState state = AgentActivityState::Working;
     std::string text;
     std::string session; // The Console session it came from (its ENGINE_EDITOR_SESSION); empty from elsewhere
+    bool live = false;   // Describes this moment only: shown while current, not kept in the session's activity
 };
 inline constexpr std::size_t AgentNoteMaxBytes = 200;
 inline constexpr std::size_t AgentSessionMaxBytes = 64;
-// {"text": "...", "state": "working" | "waiting" | "idle", "session": "..."} (state optional, default working; session
-// optional); text and session are cut to their limits. Throws for an unknown state.
+// {"text": "...", "state": "working" | "waiting" | "idle", "session": "...", "live": true} (state optional, default
+// working; session and live optional); text and session are cut to their limits. Throws for an unknown state.
 [[nodiscard]] AgentNote DecodeAgentNote(const nlohmann::json& arguments);
 [[nodiscard]] const char* AgentActivityName(AgentActivityState state);
 // Commands that change the editor (scene, playback, build). The developer's "Agent control" switch refuses them;

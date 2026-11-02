@@ -29,7 +29,7 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 | `frames --from A --to B [--count N] [--columns C] [--out PATH] [--scale S] [--crop X Y W H]` | One grid PNG of N frames between A and B seconds (pauses there); status + `path`, `frames` (times), `columns` ([Animation](#screenshots)) |
 | `inspect` | Status + `inspection` (readout values, tables, focus, disabled controls) |
 | `logs [--since N] [--limit N] [--level L]` | `entries` (sequence, level, source, text) after N, newest `limit` (100, max 1000) at or above L; `last` sequence |
-| `note [WORD...] [--state working\|waiting\|idle] [--hook]` | Reports what the agent is doing (default `working`); `--hook`: see Agent hooks below. Run from a Console session (`ENGINE_EDITOR_SESSION` set, sent as `session`), it sets that session's state and hover text until the developer types into it again. `state`, `text` (up to 200 bytes), `control` |
+| `note [WORD...] [--state working\|waiting\|idle] [--hook] [--tool-stdin]` | Reports what the agent is doing (default `working`); `--hook`: see Agent hooks below. Run from a Console session (`ENGINE_EDITOR_SESSION` set, sent as `session`), it sets that session's state and hover text until the developer types into it again. `state`, `text` (up to 200 bytes), `control` |
 | `audio` | The Audio Preview panel: `loaded`, `catalog` (whether a worker has reported the audio catalog), `loop`, `volume`; with a sound also `file`, `asset` (path in the asset folder), `playing`, `paused`, `position`, `length` (seconds), `waveform` (`decoding` / `ready` / `failed`), `uses` (catalog entries: kind, id, name, label), `error` |
 | `audio play FILE [--at S] [--loop\|--no-loop]` | Loads the sound into Audio Preview (shown if hidden) and plays it from its source file; the scene is not touched. FILE is absolute or relative to the current folder, project root or asset folder. Answers the `audio` state once playing; exit 1 when it cannot be loaded |
 | `audio pause`, `resume`, `stop`, `seek S`, `volume V`, `loop on\|off` | The loaded sound's transport; `seek` starts a stopped sound there, `volume` is 0–1; the `audio` state |
@@ -49,7 +49,7 @@ prompt or a stop on exit 2) and does nothing outside an editor Console session. 
     "UserPromptSubmit": [{"hooks": [{"type": "command", "shell": "bash", "timeout": 10,
       "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --state working"}]}],
     "PostToolUse": [{"hooks": [{"type": "command", "shell": "bash", "timeout": 10, "async": true,
-      "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --state working"}]}],
+      "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --tool-stdin --state working"}]}],
     "Notification": [{"matcher": "permission_prompt", "hooks": [{"type": "command", "shell": "bash", "timeout": 10,
       "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --state | `note [WORD...] [--state working|waiting|idle] [--hook]` |"}]}],
     "Stop": [{"hooks": [{"type": "command", "shell": "bash", "timeout": 10,
@@ -59,7 +59,8 @@ prompt or a stop on exit 2) and does nothing outside an editor Console session. 
 ```
 
 `permission_prompt` keeps Claude Code's idle reminder from showing as a question; PostToolUse returns the session to
-working after an approval. An interrupted turn (Esc) runs no Stop hook; the state follows your next input. Codex runs
+working after an approval, and with `--tool-stdin` also names the tool from the hook's JSON on stdin ("Edit
+Player.cpp"). That text is live: the toolbar's agent strip shows it, the activity list does not keep it. An interrupted turn (Esc) runs no Stop hook; the state follows your next input. Codex runs
 `notify` (in `~/.codex/config.toml`) only when a turn completes:
 `notify = ["python", "<project>/Engine", "ctl", "note", "--hook", "--state", "idle"]` (the JSON payload it appends is
 ignored).

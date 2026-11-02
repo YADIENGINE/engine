@@ -139,6 +139,8 @@ AgentNote DecodeAgentNote(const nlohmann::json& arguments) {
     }
     if (const auto session = arguments.find("session"); session != arguments.end() && session->is_string())
         note.session = session->get<std::string>().substr(0, AgentSessionMaxBytes);
+    if (const auto live = arguments.find("live"); live != arguments.end() && live->is_boolean())
+        note.live = live->get<bool>();
     if (const auto state = arguments.find("state"); state != arguments.end()) {
         const auto name = state->is_string() ? state->get<std::string>() : std::string{};
         bool known = false;

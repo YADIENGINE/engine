@@ -31,3 +31,6 @@ void ToolPixelTile(std::string_view name, float size);
 void ToolStateCell(ImVec4 color);
 // "Work is running": lit cells walking around a 3x3 square, as an item centered in the current text line.
 void ToolActivity();
+// The same square at `position`, in real pixels and any color: walking while `running`, otherwise fully lit.
+[[nodiscard]] float ToolActivitySide();
+void ToolDrawActivity(ImDrawList& draw, ImVec2 position, ImVec4 color, bool running);

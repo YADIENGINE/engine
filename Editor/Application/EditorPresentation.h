@@ -90,7 +90,8 @@ struct EditorSnapshot {
     const AudioUsage* audioUsage = nullptr;  // Which sound files the project's audio catalog plays
     std::string notice;                      // Last change made through the control endpoint
     double noticeAge = 0.0;
-    const std::deque<EditorControlEvent>* controlEvents = nullptr; // Oldest first
+    const std::deque<EditorControlEvent>* controlEvents = nullptr; // Oldest first; the latest ones when there were many
+    std::size_t controlEventCount = 0;                             // All of this session's, kept or not
     std::uint64_t controlAttempt =
         0; // Build & Refresh attempt started through the control endpoint                  // Seconds since it was made
 };

@@ -3,7 +3,7 @@
 
 // Sıra kayıtlı tercihlerin (görünürlük) sırasıdır: yeni panel sona, Count'tan önce eklenir.
 // clang-format off
-enum class EditorPanel { Catalog, Viewport, Inspector, Output, Profiler, Tuning, Console, Assets, AudioPreview, Activity, Count };
+enum class EditorPanel { Catalog, Viewport, Inspector, Output, Profiler, Tuning, Console, Assets, AudioPreview, Count };
 // clang-format on
 enum class EditorDockGroup { Left, Center, Right, Bottom };
 // Saved as numbers: new layouts go last. Agent: the scene beside a tall Console for an agent session.
@@ -30,13 +30,11 @@ inline constexpr std::array EditorPanels{
     EditorPanelDefinition{EditorPanel::Console, "Console", "Console###editor.console", false, EditorDockGroup::Bottom},
     EditorPanelDefinition{EditorPanel::Assets, "Assets", "Assets###editor.assets", true, EditorDockGroup::Bottom},
     EditorPanelDefinition{EditorPanel::AudioPreview, "Audio Preview", "Audio Preview###editor.audio-preview", false,
-                          EditorDockGroup::Bottom},
-    EditorPanelDefinition{EditorPanel::Activity, "Agent Activity", "Agent Activity###editor.activity", false,
                           EditorDockGroup::Bottom}};
 
 // Alt dock'un panelleri (Ctrl+J son kullanılan paneli bağımsız açıp kapatır).
-inline constexpr std::array EditorBottomPanels{EditorPanel::Output, EditorPanel::Profiler,     EditorPanel::Console,
-                                               EditorPanel::Assets, EditorPanel::AudioPreview, EditorPanel::Activity};
+inline constexpr std::array EditorBottomPanels{EditorPanel::Output, EditorPanel::Profiler, EditorPanel::Console,
+                                               EditorPanel::Assets, EditorPanel::AudioPreview};
 
 struct EditorLayoutDefinition {
     EditorWorkspaceLayout id;

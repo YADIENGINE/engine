@@ -46,7 +46,7 @@ public:
     // A change made through the control endpoint: logged, shown briefly over the viewport and, unless the caller
     // records its own detail, kept in the session's activity.
     void Notify(const std::string& text, bool record = true);
-    // One entry of the activity (the Agent Activity panel); the oldest leave after ControlEventsKept.
+    // One entry of the activity (the toolbar's agent strip); the oldest leave after ControlEventsKept.
     void RecordControl(EditorControlEvent event);
     // Opens a file from build output at a line: VS Code when it is on PATH, otherwise the file's default application.
     // A relative path counts from the project root.
@@ -170,6 +170,7 @@ private:
     double _seconds = 0.0;
     std::string _notice;
     std::deque<EditorControlEvent> _controlEvents;
+    std::size_t _controlEventCount = 0; // Every entry this session, also those that left the deque
     std::uint64_t _controlAttempt = 0;
     std::chrono::steady_clock::time_point _noticeAt;
     std::string _status = "No project";

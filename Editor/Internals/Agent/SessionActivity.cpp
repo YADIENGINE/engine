@@ -44,3 +44,22 @@ std::string SessionActivityText(const SessionSignals& signals, const std::string
     if (NoteCurrent(signals) && !signals.note->text.empty()) return signals.note->text;
     return Trimmed(terminalTitle);
 }
+std::string AgentHeadline(SessionState state, const std::string& activity, const std::string& lastEvent) {
+    if (state == SessionState::Waiting) return "Waiting for you";
+    if (state == SessionState::Working)
+        return !activity.empty() ? activity : !lastEvent.empty() ? lastEvent : "Working";
+    if (!lastEvent.empty()) return lastEvent;
+    return state == SessionState::Done ? "Done" : "No agent activity";
+}
+std::string AgentEarlierLabel(std::size_t total) {
+    constexpr std::size_t Shown = 99;
+    if (total <= 1) return {};
+    return total - 1 > Shown ? std::to_string(Shown) + "+" : "+" + std::to_string(total - 1);
+}
+std::string AgentAgeLabel(double seconds) {
+    constexpr double Recent = 60;
+    constexpr double Hour = 3600;
+    if (seconds < Recent) return {};
+    if (seconds < Hour) return std::to_string(static_cast<int>(seconds / Recent)) + "m";
+    return std::to_string(static_cast<int>(seconds / Hour)) + "h";
+}

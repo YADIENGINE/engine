@@ -13,7 +13,8 @@
 namespace {
 constexpr float SearchMaximumWidth = 560.0f;
 constexpr float SearchMinimumWidth = 120.0f;
-constexpr float SearchHintMinimum = 100.0f; // The shortcut shows only when the hint keeps this much room
+constexpr float SearchHintMinimum = 100.0f;  // The shortcut shows only when the hint keeps this much room
+constexpr float SearchComfortWidth = 280.0f; // The agent strip gives up its text before the box goes below this
 std::string PlaybackLabel(double speed) {
     std::array<char, 16> label{};
     std::snprintf(label.data(), label.size(), "%.2gx", speed);
@@ -81,7 +82,8 @@ void SearchBox(float width, EditorToolbarSearch& search) {
 } // namespace
 
 void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool& marking,
-                                EditorToolbarSearch& search) {
+                                EditorToolbarSearch& search, const EditorAgentStatus& agent,
+                                EditorAgentActivity& activity) {
     const float scale = ToolUiScale();
     ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
@@ -116,14 +118,17 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         return width;
     };
     const auto overflow = [&] { return !showSpeed || !showReset || !showStep || !showBuild; };
+    float agentWidth = 0;
     const auto toolsWidth = [&] {
-        float width = iconWidth; // Mark
+        float width = iconWidth + agentWidth + gap; // Mark and the agent strip
         if (showSpeed) width += PlaybackSpeedWidth() + gap;
         if (showBuild) width += (showBuildLabel ? buildLabelWidth + playLabelWidth : iconWidth * 2) + gap * 2;
         if (overflow()) width += iconWidth + gap;
         return width;
     };
     const float searchMinimum = SearchMinimumWidth * scale;
+    agentWidth = std::clamp(available - transportWidth() - toolsWidth() - SearchComfortWidth * scale - groupGap * 2,
+                            EditorAgentActivityMetrics::Medium * scale, EditorAgentActivityMetrics::Ideal * scale);
     const auto fits = [&] { return transportWidth() + toolsWidth() + searchMinimum + groupGap * 2 <= available; };
     if (!fits()) showSpeed = false;
     if (!fits()) showReset = false;
@@ -131,6 +136,7 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     if (!fits()) showBuildLabel = false;
     if (!fits()) showBuild = false;
     if (!fits()) showPrimaryLabel = false;
+    if (!fits()) agentWidth = EditorAgentActivityMetrics::Compact * scale;
     // The search box sits in the window's center while playback and the tools leave it room, sliding when they do not.
     const float transport = transportWidth();
     const float tools = toolsWidth();
@@ -186,6 +192,8 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         ImGui::SameLine();
         EditorCommandButton(EditorCommand::BuildAndPlay, snapshot, actions, showBuildLabel);
     }
+    ImGui::SameLine();
+    activity.Draw(snapshot, actions, agent, agentWidth);
     ImGui::EndGroup();
     ImGui::PopID();
     ImGui::PopStyleColor(3);

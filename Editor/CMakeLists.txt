@@ -177,9 +177,9 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Widgets/EditorAgentSetup.cpp
         Ui/Widgets/InspectorWidgets.cpp
         Ui/Widgets/EditorPlaybackControls.cpp
+        Ui/Widgets/EditorAgentActivity.cpp
         Ui/Shell/EditorShell.cpp
         Ui/Workspace/EditorWorkspace.cpp
-        Ui/Panels/Activity/ActivityPanel.cpp
         Ui/Panels/Assets/AssetsPanel.cpp
         Ui/Panels/Audio/AudioPreviewPanel.cpp
         Ui/Panels/Catalog/CatalogPanel.cpp

@@ -395,7 +395,7 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
     case EditorControlCommand::Note: {
         _activity = {DecodeAgentNote(arguments), std::chrono::steady_clock::now(), _activity.sequence + 1};
         if (!_activity.note.session.empty()) _sessionActivity[_activity.note.session] = _activity;
-        if (!_activity.note.text.empty())
+        if (!_activity.note.text.empty() && !_activity.note.live)
             controller.RecordControl({std::chrono::system_clock::now(), _activity.note.text, {}, {}, {}, {}});
         return nlohmann::json{{"state", AgentActivityName(_activity.note.state)},
                               {"text", _activity.note.text},

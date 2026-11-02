@@ -476,8 +476,10 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     const auto* viewport = ImGui::GetMainViewport();
     const float menuHeight = ImGui::GetFrameHeight();
     EditorToolbarSearch search;
+    if (menu.showActivity) _agentActivity.Show();
     const float toolbarHeight = _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight},
-                                               viewport->Size.x, _marking, search);
+                                               viewport->Size.x, _marking, search, AgentStatus(), _agentActivity);
+    if (_agentActivity.TakeOpenSession()) menu.agent = EditorAgentRequest::Open;
     _palette.SetAnchor(search.centerX, search.top);
     _openQuickOpen = search.pressed;
     const float statusHeight =
@@ -571,7 +573,6 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                         result.agentProblem = SendToAgent(text, false, preferences);
                     if (_output.TakeFixRequest()) _fixFailedBuild = true; // Handled next frame, with the other requests
                     break;
-                case EditorPanel::Activity: _activity.Draw(snapshot, actions); break;
                 case EditorPanel::Profiler: _profiler.Draw(snapshot, actions); break;
                 case EditorPanel::Tuning  : _tuning.Draw(snapshot, actions); break;
                 case EditorPanel::Console:

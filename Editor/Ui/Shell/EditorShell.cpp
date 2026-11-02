@@ -16,10 +16,6 @@ constexpr ImGuiWindowFlags BarFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindo
                                       ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar |
                                       ImGuiWindowFlags_NoScrollWithMouse;
 constexpr float StatusGap = 10.0f;
-ImVec4 TintSurface(ImVec4 base, ImVec4 tone, float amount) {
-    return {base.x + (tone.x - base.x) * amount, base.y + (tone.y - base.y) * amount,
-            base.z + (tone.z - base.z) * amount, base.w};
-}
 bool PhaseIsWorking(const EditorSnapshot& snapshot) {
     return snapshot.profiler.busy || snapshot.building || snapshot.phase == EditorPhase::Building ||
            snapshot.phase == EditorPhase::Starting || snapshot.phase == EditorPhase::ReadingCatalog;
@@ -91,7 +87,7 @@ void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorSh
     if (ImGui::MenuItem("Ask agent to fix build", nullptr, false, failed)) result.agent = EditorAgentRequest::FixBuild;
     ToolTooltip(failed ? "Send the build errors and ask the agent to fix them. This presses Enter."
                        : "The last Build & Refresh did not fail.");
-    if (ImGui::MenuItem("Show activity")) result.bottomPanel = EditorPanel::Activity;
+    if (ImGui::MenuItem("Show activity")) result.showActivity = true;
     ToolTooltip("What agent tools changed or captured in this session, with Undo.");
     ImGui::SeparatorText("Settings");
     (void)ToolToggle("Agent control", agent.control);
@@ -174,7 +170,8 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
     return result;
 }
 float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position, float width,
-                           bool& marking, EditorToolbarSearch& search) const {
+                           bool& marking, EditorToolbarSearch& search, const EditorAgentStatus& agent,
+                           EditorAgentActivity& activity) const {
     const float scale = ToolUiScale();
     const float height = std::max(EditorToolbarMetrics::ControlHeight * scale, ImGui::GetFrameHeight()) +
                          EditorToolbarMetrics::PaddingY * 2 * scale;
@@ -184,7 +181,7 @@ float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions
                         {EditorToolbarMetrics::PaddingX * scale, EditorToolbarMetrics::PaddingY * scale});
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Window);
     if (ImGui::Begin("Toolbar###editor.toolbar", nullptr, BarFlags))
-        DrawEditorPlaybackControls(snapshot, actions, marking, search);
+        DrawEditorPlaybackControls(snapshot, actions, marking, search, agent, activity);
     ImGui::End();
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
@@ -210,8 +207,8 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
         const float gap = StatusGap * scale;
         const auto base = ToolSurfaceColor(ToolSurface::Status);
         const ImVec4 outputAttention =
-            unread ? TintSurface(base, EditorLevelColor(errors ? EditorLogLevel::Error : EditorLogLevel::Warning),
-                                 EditorAttentionPulse())
+            unread ? EditorTintSurface(base, EditorLevelColor(errors ? EditorLogLevel::Error : EditorLogLevel::Warning),
+                                       EditorAttentionPulse())
                    : ImVec4{0, 0, 0, 0};
         if (ToolSegment(output.c_str(), outputVisible, outputAttention)) result.bottomPanel = EditorPanel::Output;
         if (unread) ToolTooltip("Unread errors or warnings. Open Output for details.");
@@ -225,24 +222,9 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
             const auto label =
                 std::format("{} error{}###editor.problems-status", buildErrors, buildErrors == 1 ? "" : "s");
             ImGui::PushStyleColor(ImGuiCol_TextDisabled, tone);
-            if (ToolSegment(label.c_str(), false, TintSurface(base, tone, 0.14f))) result.showProblems = true;
+            if (ToolSegment(label.c_str(), false, EditorTintSurface(base, tone, 0.14f))) result.showProblems = true;
             ImGui::PopStyleColor();
             ToolTooltip("The last build failed. Click to see its problems.");
-            ImGui::SameLine();
-        }
-        if (agent.session) {
-            const bool waiting = agent.state == SessionState::Waiting;
-            const auto* icon = EditorSessionStateIcon(agent.state);
-            const auto label = (icon[0] ? std::string(icon) + " " : std::string()) + agent.title + ": " +
-                               SessionStateName(agent.state) + "###editor.agent-status";
-            const auto tone = EditorSessionStateColor(agent.state);
-            ImGui::PushStyleColor(ImGuiCol_TextDisabled, tone);
-            if (ToolSegment(label.c_str(), false, TintSurface(base, tone, waiting ? EditorAttentionPulse() : 0.12f)))
-                result.agent = EditorAgentRequest::Open;
-            ImGui::PopStyleColor();
-            const auto detail =
-                (agent.activity.empty() ? std::string() : agent.activity + "\n\n") + "Click to show the agent session";
-            ToolTooltip(detail.c_str());
             ImGui::SameLine();
         }
         if (!agent.control) {

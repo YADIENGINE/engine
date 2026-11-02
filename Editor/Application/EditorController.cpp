@@ -239,6 +239,7 @@ void EditorController::Notify(const std::string& text, bool record) {
 void EditorController::RecordControl(EditorControlEvent event) {
     constexpr std::size_t ControlEventsKept = 500;
     _controlEvents.push_back(std::move(event));
+    ++_controlEventCount;
     if (_controlEvents.size() > ControlEventsKept) _controlEvents.pop_front();
 }
 void EditorController::OpenSource(const std::string& file, int line) {
@@ -331,6 +332,7 @@ EditorSnapshot EditorController::Snapshot() const {
                             _project ? &_tuning : nullptr};
     snapshot.notice = _notice;
     snapshot.controlEvents = &_controlEvents;
+    snapshot.controlEventCount = _controlEventCount;
     snapshot.audioUsage = &_audioUsage;
     snapshot.controlAttempt = _controlAttempt;
     snapshot.noticeAge = std::chrono::duration<double>(std::chrono::steady_clock::now() - _noticeAt).count();

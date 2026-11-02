@@ -10,6 +10,11 @@ float EditorAttentionPulse() {
         static_cast<float>(0.5 + 0.5 * std::sin(ImGui::GetTime() * 2 * std::numbers::pi / PeriodSeconds));
     return 0.12f + (0.48f - 0.12f) * pulse;
 }
+ImVec4 EditorAgentColor() { return {0xa3 / 255.0f, 0xae / 255.0f, 0xf5 / 255.0f, 1.0f}; }
+ImVec4 EditorTintSurface(ImVec4 base, ImVec4 tone, float amount) {
+    return {base.x + (tone.x - base.x) * amount, base.y + (tone.y - base.y) * amount,
+            base.z + (tone.z - base.z) * amount, base.w};
+}
 
 const char* EditorSessionStateIcon(SessionState state) {
     switch (state) {
@@ -23,7 +28,7 @@ const char* EditorSessionStateIcon(SessionState state) {
 }
 ImVec4 EditorSessionStateColor(SessionState state) {
     switch (state) {
-    case SessionState::Working: return ToolToneColor(ToolTone::Accent);
+    case SessionState::Working: return EditorAgentColor();
     case SessionState::Waiting: {
         auto color = ToolToneColor(ToolTone::Warning);
         color.w *= 0.52f + EditorAttentionPulse();

@@ -223,6 +223,8 @@ TEST_CASE("Editor.Control.NotesAndWhichCommandsChangeTheEditor", "[engine-editor
     CHECK(note.text == "reading");
     CHECK(DecodeAgentNote(nlohmann::json::object()).state == AgentActivityState::Working);
     CHECK(DecodeAgentNote({{"session", "7"}}).session == "7"); // Its Console session's ENGINE_EDITOR_SESSION
+    CHECK(DecodeAgentNote({{"live", true}}).live);
+    CHECK_FALSE(DecodeAgentNote(nlohmann::json::object()).live);
     CHECK(DecodeAgentNote({{"text", std::string(AgentNoteMaxBytes * 2, 'x')}}).text.size() == AgentNoteMaxBytes);
     CHECK_THROWS(DecodeAgentNote({{"state", "sleeping"}}));
     // The agent-control switch blocks changes, never observation or notes
@@ -314,6 +316,24 @@ TEST_CASE("Editor.Agent.IdentityFollowsLiveCliProcessesBackToTheShell", "[engine
     CHECK(DetectRunningAgent(nested, AgentKind::ClaudeCode) == AgentKind::ClaudeCode);
     CHECK(DetectRunningAgent(nested, AgentKind::Codex) == AgentKind::Codex);
     CHECK_FALSE(DetectRunningAgent({}, AgentKind::ClaudeCode));
+}
+
+TEST_CASE("Editor.Agent.StripSaysTheQuestionThenTheWorkThenTheLastActivity", "[engine-editor]") {
+    CHECK(AgentHeadline(SessionState::Waiting, "Edit a.cpp", "Opened fight") == "Waiting for you");
+    CHECK(AgentHeadline(SessionState::Working, "Edit a.cpp", "Opened fight") == "Edit a.cpp");
+    CHECK(AgentHeadline(SessionState::Working, "", "Opened fight") == "Opened fight");
+    CHECK(AgentHeadline(SessionState::Done, "Edit a.cpp", "Opened fight") == "Opened fight");
+    CHECK(AgentHeadline(SessionState::Idle, "", "") == "No agent activity");
+
+    CHECK(AgentEarlierLabel(0).empty());
+    CHECK(AgentEarlierLabel(1).empty()); // The only one is the one on show
+    CHECK(AgentEarlierLabel(2) == "+1");
+    CHECK(AgentEarlierLabel(100) == "+99");
+    CHECK(AgentEarlierLabel(101) == "99+");
+
+    CHECK(AgentAgeLabel(10).empty());
+    CHECK(AgentAgeLabel(240) == "4m");
+    CHECK(AgentAgeLabel(7200) == "2h");
 }
 
 TEST_CASE("Editor.Agent.SessionStateFollowsInputOutputBellsAndNotes", "[engine-editor]") {
