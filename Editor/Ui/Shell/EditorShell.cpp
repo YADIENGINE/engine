@@ -81,7 +81,7 @@ void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorSh
     if (ImGui::MenuItem("Send scene", nullptr, false, snapshot.ready)) result.agent = EditorAgentRequest::SendScene;
     ToolTooltip(snapshot.ready
                     ? "Paste the open scene, its time, changed values and a screenshot into the agent session."
-                    : "Open a scene before sending its context.");
+                    : "Run a scene before sending its context.");
     const bool failed = BuildFailed(snapshot);
     if (ImGui::MenuItem("Send build failure", nullptr, false, failed))
         result.agent = EditorAgentRequest::SendBuildFailure;
@@ -171,7 +171,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
     return result;
 }
 float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position, float width,
-                           bool& marking) const {
+                           bool& marking, bool& revealScene) const {
     const float scale = ToolUiScale();
     const float height = std::max(EditorToolbarMetrics::ControlHeight * scale, ImGui::GetFrameHeight()) +
                          EditorToolbarMetrics::PaddingY * 2 * scale;
@@ -181,7 +181,7 @@ float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions
                         {EditorToolbarMetrics::PaddingX * scale, EditorToolbarMetrics::PaddingY * scale});
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Window);
     if (ImGui::Begin("Toolbar###editor.toolbar", nullptr, BarFlags))
-        DrawEditorPlaybackControls(snapshot, actions, marking);
+        DrawEditorPlaybackControls(snapshot, actions, marking, revealScene);
     ImGui::End();
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();

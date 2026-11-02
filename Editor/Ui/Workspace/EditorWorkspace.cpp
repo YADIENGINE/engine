@@ -477,8 +477,9 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     }
     const auto* viewport = ImGui::GetMainViewport();
     const float menuHeight = ImGui::GetFrameHeight();
-    const float toolbarHeight =
-        _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight}, viewport->Size.x, _marking);
+    bool revealScene = false;
+    const float toolbarHeight = _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight},
+                                               viewport->Size.x, _marking, revealScene);
     const float statusHeight =
         _shell.Status(snapshot, preferences, AgentStatus(), {viewport->Pos.x, viewport->Pos.y + viewport->Size.y},
                       viewport->Size.x, menu);
@@ -494,6 +495,13 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         preferences.Visible(EditorPanel::Catalog) = true;
         _catalog.FocusSearch();
         _focusCatalog = true;
+    }
+    if (revealScene) {
+        SetMaximized(false, preferences);
+        preferences.Visible(EditorPanel::Catalog) = true;
+        _catalog.RevealSelected();
+        _focusCatalog = true;
+        result.cancelViewportInput = true;
     }
     if (menu.layout) ApplyLayout(*menu.layout, preferences);
     if (_maximized && oldVisibility != preferences.visible) SetMaximized(false, preferences);
@@ -522,7 +530,8 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar;
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Content);
         if (ImGui::Begin("Viewport###editor.maximized", nullptr, flags))
-            result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, true);
+            result.interaction =
+                _viewport.Draw(snapshot, actions, image, preferences.recent, preferences.showMetrics, true);
         ImGui::End();
         ImGui::PopStyleColor();
     } else {
@@ -559,7 +568,8 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 switch (panel.id) {
                 case EditorPanel::Catalog: _catalog.Draw(snapshot, actions, preferences); break;
                 case EditorPanel::Viewport:
-                    result.interaction = _viewport.Draw(snapshot, actions, image, preferences.showMetrics, false);
+                    result.interaction =
+                        _viewport.Draw(snapshot, actions, image, preferences.recent, preferences.showMetrics, false);
                     viewportDrawn = preferences.Visible(panel.id);
                     break;
                 case EditorPanel::Inspector:

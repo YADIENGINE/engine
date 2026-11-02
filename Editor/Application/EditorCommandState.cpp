@@ -16,7 +16,7 @@ EditorCapabilities ResolveEditorCapabilities(const EditorCommandContext& context
                                   : context.phase == EditorPhase::ReadingCatalog
                                       ? "Wait for the catalog to load."
                                       : "Wait for the current operation to finish.";
-    const char* sceneReason = locked ? operationReason : "Open a scene first.";
+    const char* sceneReason = locked ? operationReason : "Run a scene first.";
     const bool canControl = context.ready && !locked;
     set(EditorCommand::Open, context.hasProject && context.hasBuild && context.hasSelection && !locked,
         !context.hasProject     ? "No project configured."
@@ -33,8 +33,8 @@ EditorCapabilities ResolveEditorCapabilities(const EditorCommandContext& context
     set(EditorCommand::BuildAndPlay, context.hasProject && context.hasGame && !context.building && !locked,
         !context.hasProject ? "No project configured."
         : !context.hasGame  ? "No game configuration or project tools available."
-        : context.building ? "A build is already running."
-                           : operationReason);
+        : context.building  ? "A build is already running."
+                            : operationReason);
     const bool cancellable = context.profilerBusy || context.building || context.replacing || context.starting ||
                              (context.workerActive && context.phase == EditorPhase::ReadingCatalog);
     set(EditorCommand::Cancel, cancellable && !benchmarkCancelPending,

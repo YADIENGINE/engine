@@ -17,6 +17,7 @@ constexpr float ToggleInset = 2.0f;
 constexpr float SectionPaddingY = 5.0f;
 constexpr float SectionTopGap = 4.0f;
 constexpr float SectionChevronGap = 6.0f;
+constexpr float SliderEdgeWidth = 2.0f;
 
 bool ItemDisabled() { return (ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled) != 0; }
 bool PushDisabledTextColor() {
@@ -67,7 +68,58 @@ std::size_t NextCharacter(std::string_view text, std::size_t start) {
         ++index;
     return index;
 }
+// ImGui draws the frame, handle and value in one go. The frame and handle are made transparent and the bar is drawn
+// beneath them on a lower channel, so the value stays on top.
+template <typename T>
+bool DrawSlider(const char* label, ImGuiDataType type, T& value, T minimum, T maximum, const char* format) {
+    auto* draw = ImGui::GetWindowDrawList();
+    const auto well = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+    constexpr ImVec4 Clear{0, 0, 0, 0};
+    draw->ChannelsSplit(2);
+    draw->ChannelsSetCurrent(1);
+    for (const auto color : {ImGuiCol_FrameBg, ImGuiCol_FrameBgHovered, ImGuiCol_FrameBgActive, ImGuiCol_SliderGrab,
+                             ImGuiCol_SliderGrabActive})
+        ImGui::PushStyleColor(color, Clear);
+    const bool changed =
+        ImGui::SliderScalar(label, type, &value, &minimum, &maximum, format, ImGuiSliderFlags_AlwaysClamp);
+    ImGui::PopStyleColor(5);
+    draw->ChannelsSetCurrent(0);
+    const auto start = ImGui::GetItemRectMin();
+    const auto end = ImGui::GetItemRectMax();
+    const bool active = ImGui::IsItemActive();
+    const bool hovered = ImGui::IsItemHovered();
+    const float rounding = ImGui::GetStyle().FrameRounding;
+    draw->AddRectFilled(start, end, ImGui::GetColorU32(well), rounding);
+    const double range = static_cast<double>(maximum) - static_cast<double>(minimum);
+    const double ratio = range > 0 ? (static_cast<double>(value) - static_cast<double>(minimum)) / range : 0.0;
+    const float edge = std::round(start.x + (end.x - start.x) * static_cast<float>(std::clamp(ratio, 0.0, 1.0)));
+    if (edge > start.x) {
+        draw->AddRectFilled(start, {edge, end.y},
+                            ImGui::GetColorU32(active || hovered ? ToolPalette::Hover : ToolPalette::Control), rounding,
+                            ImDrawFlags_RoundCornersLeft);
+        // Only while dragging: at rest a line would cut through the centered value.
+        if (active) {
+            const float width = std::max(1.0f, std::round(SliderEdgeWidth * ToolUiScale()));
+            draw->AddRectFilled({std::max(start.x, edge - width), start.y}, {edge, end.y},
+                                ImGui::GetColorU32(ToolPalette::Accent));
+        }
+    }
+    draw->ChannelsMerge();
+    return changed;
+}
 } // namespace
+bool ToolSlider(const char* label, float& value, float minimum, float maximum, const char* format) {
+    return DrawSlider(label, ImGuiDataType_Float, value, minimum, maximum, format);
+}
+bool ToolSlider(const char* label, double& value, double minimum, double maximum, const char* format) {
+    return DrawSlider(label, ImGuiDataType_Double, value, minimum, maximum, format);
+}
+bool ToolSlider(const char* label, int& value, int minimum, int maximum, const char* format) {
+    return DrawSlider(label, ImGuiDataType_S32, value, minimum, maximum, format);
+}
+bool ToolSlider(const char* label, long long& value, long long minimum, long long maximum, const char* format) {
+    return DrawSlider(label, ImGuiDataType_S64, value, minimum, maximum, format);
+}
 std::string ToolClipText(const char* text, float width) {
     std::string display = text;
     if (ImGui::CalcTextSize(text).x <= width) return display;
@@ -121,7 +173,7 @@ void ToolTooltip(const char* text) {
         ImGui::EndTooltip();
     }
 }
-bool ToolSectionHeader(const char* label, bool defaultOpen, bool forceOpen) {
+bool ToolSectionHeader(const char* label, bool defaultOpen, bool forceOpen, const char* detail) {
     const float scale = ToolUiScale();
     ImGui::PushFont(ToolFont(ToolFontRole::Heading), ToolMetrics::SectionSize);
     ImGui::Dummy({0, SectionTopGap * scale});
@@ -132,7 +184,8 @@ bool ToolSectionHeader(const char* label, bool defaultOpen, bool forceOpen) {
     const float height = ImGui::GetTextLineHeight() + SectionPaddingY * 2 * scale;
     const float chevron = ChevronSize * scale;
     const float textStart = chevron + SectionChevronGap * scale;
-    const auto display = ToolClipText(label, std::max(1.0f, width - textStart));
+    const float detailWidth = detail ? ImGui::CalcTextSize(detail).x + ToolMetrics::Space * scale : 0.0f;
+    const auto display = ToolClipText(label, std::max(1.0f, width - textStart - detailWidth));
     const auto start = ImGui::GetCursorScreenPos();
     if (ImGui::InvisibleButton(label, {width, height})) {
         open = !open;
@@ -151,6 +204,9 @@ bool ToolSectionHeader(const char* label, bool defaultOpen, bool forceOpen) {
     ImGui::PushStyleColor(ImGuiCol_Text, color);
     ImGui::RenderText({start.x + textStart + scale, start.y + SectionPaddingY * scale}, display.c_str());
     ImGui::PopStyleColor();
+    if (detail && detailWidth + textStart < width)
+        draw->AddText({start.x + width - detailWidth, start.y + SectionPaddingY * scale},
+                      ImGui::GetColorU32(ToolPalette::Muted), detail);
     ImGui::PopFont();
     return open;
 }

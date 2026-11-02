@@ -57,7 +57,8 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
         if (hidden(parameter.id) || found == snapshot.parameters.end()) continue;
         ++visibleCount;
         if (found->second != parameter.initial) ++modifiedCount;
-        if (!parameter.choiceButtons) labelWidth = std::max(labelWidth, ImGui::CalcTextSize(parameter.label.c_str()).x);
+        if (!parameter.choiceButtons || InspectorChoiceFitsRow(parameter))
+            labelWidth = std::max(labelWidth, ImGui::CalcTextSize(parameter.label.c_str()).x);
     }
     for (const auto& value : snapshot.inspection.values)
         labelWidth = std::max(labelWidth, ImGui::CalcTextSize(value.label.c_str()).x);
@@ -127,13 +128,14 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
             }
             if (!InspectorSection(group.c_str(), !query.empty() || _modifiedOnly, !advanced)) continue;
             ImGui::PushID(group.c_str());
+            const float contentWidth = ImGui::GetContentRegionAvail().x;
             bool properties = false;
             for (const auto& parameter : selected.parameters) {
                 if (!matches(parameter)) continue;
                 if ((parameter.group.empty() ? "General" : parameter.group) != group) continue;
                 const auto found = snapshot.parameters.find(parameter.id);
                 if (found == snapshot.parameters.end()) continue;
-                const bool choiceGrid = parameter.kind == SceneParameterKind::Choice && parameter.choiceButtons;
+                const bool choiceGrid = InspectorChoiceIsBlock(parameter, labelWidth, contentWidth);
                 if (choiceGrid && properties) {
                     EndInspectorProperties();
                     properties = false;

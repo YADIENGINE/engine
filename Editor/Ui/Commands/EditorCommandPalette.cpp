@@ -72,7 +72,8 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
         const auto id = command.command;
         const char* shortcut =
             command.shortcutLabel ? command.shortcutLabel : (id == EditorPrimaryCommand(snapshot) ? "F5" : "");
-        entries.push_back({std::string("Scene: ") + EditorCommandLabel(id, snapshot), shortcut,
+        const bool project = id == EditorCommand::Refresh || id == EditorCommand::BuildAndPlay;
+        entries.push_back({std::string(project ? "Project: " : "Scene: ") + EditorCommandLabel(id, snapshot), shortcut,
                            snapshot.capabilities.Can(id), snapshot.capabilities.Reason(id),
                            [&, id] { actions.command(id); }});
     }
@@ -128,7 +129,7 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
     }
     bool execute = enter && count > 0 && entries[static_cast<std::size_t>(_selected)].enabled;
     if (ImGui::BeginChild("command-results", {0, std::min(320.0f * scale, viewport->Size.y * 0.5f)})) {
-        if (entries.empty()) ToolEmptyState("No matching commands", "Try a scene, panel or layout name.");
+        if (entries.empty()) ToolEmptyState("No matching commands", "Try a command, panel or layout name.");
         for (int index = 0; index < count; ++index) {
             auto& entry = entries[static_cast<std::size_t>(index)];
             ImGui::PushID(index);

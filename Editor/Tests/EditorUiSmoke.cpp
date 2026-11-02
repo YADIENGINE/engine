@@ -4,11 +4,18 @@
 #include <imgui_internal.h>
 #include <raylib.h>
 #include <rlgl.h>
+#include <algorithm>
 #include <array>
+#include <cmath>
+#include <ctime>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <memory>
+#include <optional>
 #include <string>
 #include <vector>
+#include "Editor/Internals/Session/TuningWorkspace.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
 #include "Runtime/Game.h"
 #include "ToolUi/ToolTheme.h"
@@ -16,13 +23,14 @@
 #include "ToolUi/ToolWindow.h"
 
 namespace {
-enum class SmokeView { Idle, Running, Paused, Building, Inspector };
+enum class SmokeView { Idle, Running, Paused, Building, Inspector, Palette, BuildFailed };
 struct SmokeStage {
     const char* name;
     SmokeView view;
     int width = 1600;
     int height = 900;
     int scale = 100;
+    std::optional<EditorPanel> panel = std::nullopt; // Brought to the front of its dock
 };
 constexpr std::array Stages{
     SmokeStage{"idle", SmokeView::Idle},
@@ -32,8 +40,123 @@ constexpr std::array Stages{
     SmokeStage{"narrow", SmokeView::Running, 1100, 680},
     SmokeStage{"narrow-150", SmokeView::Running, 1280, 760, 150},
     SmokeStage{"inspector-200", SmokeView::Inspector, 1600, 900, 200},
+    SmokeStage{"output", SmokeView::Running, 1600, 900, 100, EditorPanel::Output},
+    SmokeStage{"output-narrow", SmokeView::Running, 1100, 680, 100, EditorPanel::Output},
+    SmokeStage{"profiler", SmokeView::Running, 1600, 900, 100, EditorPanel::Profiler},
+    SmokeStage{"tuning", SmokeView::Running, 1600, 900, 100, EditorPanel::Tuning},
+    SmokeStage{"assets", SmokeView::Running, 1600, 900, 100, EditorPanel::Assets},
+    SmokeStage{"audio", SmokeView::Running, 1600, 900, 100, EditorPanel::AudioPreview},
+    SmokeStage{"palette", SmokeView::Palette},
+    SmokeStage{"build-failed", SmokeView::BuildFailed},
 };
 constexpr int FramesPerStage = 8;
+
+void WriteFile(const std::filesystem::path& file, std::string_view text = "x") {
+    std::filesystem::create_directories(file.parent_path());
+    std::ofstream(file, std::ios::binary) << text;
+}
+
+// Brings a docked panel's tab forward; a no-op until the panel has a tab.
+void SelectTab(const char* window) {
+    auto* found = ImGui::FindWindowByName(window);
+    if (found && found->DockNode && found->DockNode->TabBar) found->DockNode->TabBar->NextSelectedTabId = found->TabId;
+}
+
+EditorUiActions QuietActions() {
+    EditorUiActions actions;
+    actions.command = [](EditorCommand) {};
+    actions.select = [](const std::string&) {};
+    actions.parameter = [](const std::string&, const SceneValue&) {};
+    actions.action = [](const std::string&) {};
+    actions.clearOutput = [] {};
+    actions.acknowledgeOutput = [] {};
+    actions.playback = [](double, bool) {};
+    actions.profiler = [](EditorProfilerCommand, Profiler::Recipe, const std::string&) {};
+    actions.openOutputLog = [](bool) {};
+    actions.tune = [](std::size_t, const TuningLocation&, const TuningValue&) {};
+    actions.previewAudio = [](const AudioPreviewRequest&) {};
+    actions.openPath = [](const std::filesystem::path&) {};
+    actions.assetThumbnail = [](const std::string&) { return std::uint64_t{0}; };
+    actions.assetCommand = [](const std::vector<std::string>&) {};
+    return actions;
+}
+
+// A made-up live capture: steady frames with a few spikes, under three scopes.
+std::shared_ptr<const Profiler::Capture> SampleCapture() {
+    auto capture = std::make_shared<Profiler::Capture>();
+    capture->scopes = {"Update", "Draw", "Fx"};
+    Profiler::Run run;
+    for (std::uint64_t index = 0; index < 180; ++index) {
+        const double spike = index % 47 == 0 ? 9.0 : 0.0;
+        Profiler::FrameSample frame;
+        frame.id = index;
+        frame.intervalMs = 15.5 + std::sin(static_cast<double>(index) * 0.2) * 1.5 + spike;
+        frame.scopes = {{0, 4.2 + spike * 0.5, 3.9}, {1, 7.1, 5.1}, {2, 2.0 + spike * 0.5, 2.0}};
+        run.frames.push_back(std::move(frame));
+    }
+    capture->runs.push_back(std::move(run));
+    return capture;
+}
+
+std::shared_ptr<const Profiler::Summary> SampleSummary() {
+    auto summary = std::make_shared<Profiler::Summary>();
+    summary->fps = 60.0;
+    summary->frame = {180, 16.2, 16.0, 18.4, 24.2, 25.0};
+    summary->scopes = {{"Update", {180, 4.4, 4.2, 6.1, 8.7, 8.7}, {}},
+                       {"Draw", {180, 7.1, 7.0, 7.6, 8.0, 8.1}, {}},
+                       {"Fx", {180, 2.2, 2.0, 3.9, 6.5, 6.5}, {}}};
+    return summary;
+}
+
+AudioWaveform SampleWaveform() {
+    AudioWaveform waveform;
+    waveform.sampleRate = 44100;
+    waveform.channels = 2;
+    waveform.seconds = 2.4f;
+    for (int index = 0; index < 1024; ++index) {
+        const float t = static_cast<float>(index) / 1024.0f;
+        const float envelope = std::exp(-3.0f * t) * (0.6f + 0.4f * std::sin(t * 90.0f));
+        waveform.peaks.push_back(std::abs(envelope));
+        waveform.rms.push_back(std::abs(envelope) * 0.55f);
+    }
+    return waveform;
+}
+
+// Files for the Assets, Audio Preview and Tuning panels, in a folder of their own.
+class SmokeProject {
+public:
+    SmokeProject() {
+        std::error_code error;
+        _root = std::filesystem::temp_directory_path(error) / ("editor-ui-smoke-" + std::to_string(::time(nullptr)));
+        WriteFile(EngineDirectory() / "Assets" / "Graphics" / "Icons" / "Icons.asset.cpp");
+        WriteFile(EngineDirectory() / "Assets" / "Graphics" / "Backdrops" / "Stars.asset.cpp");
+        for (const char* file :
+             {"Graphics/Enemies/Slime.asset.cpp", "Graphics/Enemies/Dragon.asset.cpp", "Graphics/Player/Hero.asset.cpp",
+              "Audio/SE/Hit.wav", "Audio/SE/Pickup.wav", "Audio/SE/Explosion.wav", "Audio/Music/Theme.ogg"})
+            WriteFile(AssetsDirectory() / file);
+        const auto tuning = _root / "Game" / "Enemy.tuning.json";
+        WriteFile(tuning, "{\n  \"radius\": { \"value\": 12, \"min\": 0, \"max\": 40 },\n"
+                          "  \"speed\": { \"value\": 2.5, \"min\": 0, \"max\": 10 },\n"
+                          "  \"visible\": { \"value\": true }\n}\n");
+        WriteFile(_root / "build" / "Tuning" / "TuningFiles.json",
+                  "{ \"version\": 1, \"files\": [ { \"target\": \"MyGame\", \"source\": \"" + tuning.generic_string() +
+                      "\" } ] }");
+    }
+    ~SmokeProject() {
+        std::error_code error;
+        std::filesystem::remove_all(_root, error);
+    }
+    [[nodiscard]] std::filesystem::path EngineDirectory() const { return _root / "Engine"; }
+    [[nodiscard]] std::filesystem::path AssetsDirectory() const { return _root / "Game" / "Assets"; }
+    [[nodiscard]] std::filesystem::path BuildDirectory() const { return _root / "build"; }
+
+private:
+    std::filesystem::path _root;
+
+public:
+    SmokeProject(const SmokeProject&) = delete;
+    SmokeProject& operator=(const SmokeProject&) = delete;
+};
 
 GameSettings SmokeSettings() {
     WindowSettings window;
@@ -135,9 +258,20 @@ public:
         , _ui(ToolUiOptions{.docking = true}) {
         _parameters["level"] = std::int64_t{7};
         _status = "Scene running";
-        _diagnostics.Append("Build finished, no warnings");
+        _diagnostics.BeginAttempt();
+        _diagnostics.Append("[12/48] Building Enemy.cpp", EditorLogLevel::Info, EditorLogSource::Build);
+        _diagnostics.Append("Enemy.cpp(88): warning C4100: 'delta': unreferenced parameter", EditorLogLevel::Warning,
+                            EditorLogSource::Build);
+        _diagnostics.Append("Enemy.cpp(142): error C2065: 'cone': undeclared identifier", EditorLogLevel::Error,
+                            EditorLogSource::Build);
+        _diagnostics.BuildExited(1);
+        _diagnostics.FinishAttempt(EditorBuildResult::BuildFailed);
+        _diagnostics.Acknowledge();
         if (!image.empty()) _frame = LoadTexture(image.string().c_str());
         _preferences.Visible(EditorPanel::Console) = true;
+        _preferences.recent = {"sample.fight", "sample.Boss intro", "sample.category.Visuals"};
+        _workspace.SetAssetRoots(_project.EngineDirectory(), _project.AssetsDirectory());
+        _tuning.Open(_project.BuildDirectory());
     }
     ~EditorUiSmoke() override {
         if (_frame.id != 0) UnloadTexture(_frame);
@@ -156,6 +290,7 @@ protected:
         }
         if (_frameIndex == 0) SetWindowSize({Stages[_stage].width, Stages[_stage].height});
         ++_frameIndex;
+        _tuning.Poll();
     }
     void DrawToolOverlay() const override {
         if (_stage == Stages.size()) return;
@@ -176,9 +311,36 @@ protected:
         snapshot.streamFps = 60.0;
         snapshot.inspection.values = {SceneReadout{"Boss HP", "100%", SceneReadoutKind::Number},
                                       SceneReadout{"Time", "12.4 s", SceneReadoutKind::Number}};
+        snapshot.profiler.liveEnabled = true;
+        snapshot.profiler.live = _capture;
+        snapshot.profiler.liveSummary = _summary;
+        snapshot.tuning = &_tuning;
+        snapshot.audio.file = _project.AssetsDirectory() / "Audio" / "SE" / "Hit.wav";
+        snapshot.audio.length = _waveform->seconds;
+        snapshot.audio.position = 0.7f;
+        snapshot.audio.waveform = {WaveformState::Ready, _waveform, {}};
+        // A failure reported through the control endpoint opens no popup; only the one stage wants it.
+        snapshot.controlAttempt = stage.view == SmokeView::BuildFailed ? 0 : _diagnostics.Attempt().id;
         const ViewportImage image{_frame.id, _frame.width, _frame.height, 1, 1, 0.0};
+        // The keys that open the palette, then close it when the next stage begins.
+        auto& io = ImGui::GetIO();
+        const auto press = [&](bool down) {
+            if (stage.view == SmokeView::Palette) {
+                io.AddKeyEvent(ImGuiMod_Ctrl, down);
+                io.AddKeyEvent(ImGuiMod_Shift, down);
+                io.AddKeyEvent(ImGuiKey_P, down);
+            } else if (stage.view == SmokeView::BuildFailed) {
+                io.AddKeyEvent(ImGuiKey_Escape, down);
+            }
+        };
+        if (_frameIndex == 2) press(true);
+        if (_frameIndex == 3) press(false);
         _ui.BeginFrame(stage.scale);
-        (void)_workspace.Draw(snapshot, {}, _frame.id != 0 ? image : ViewportImage{}, _preferences, _fontSize);
+        if (stage.panel) {
+            _preferences.Visible(*stage.panel) = true;
+            SelectTab(EditorPanelInfo(*stage.panel).window);
+        }
+        (void)_workspace.Draw(snapshot, _actions, _frame.id != 0 ? image : ViewportImage{}, _preferences, _fontSize);
         if (_frameIndex == FramesPerStage) {
             for (const auto* name : {"Toolbar###editor.toolbar", "Status###editor.status"}) {
                 const auto* window = ImGui::FindWindowByName(name);
@@ -205,6 +367,12 @@ private:
     SceneParameters _parameters;
     EditorDiagnostics _diagnostics;
     std::string _status;
+    SmokeProject _project;
+    TuningWorkspace _tuning;
+    EditorUiActions _actions = QuietActions();
+    std::shared_ptr<const Profiler::Capture> _capture = SampleCapture();
+    std::shared_ptr<const Profiler::Summary> _summary = SampleSummary();
+    std::shared_ptr<const AudioWaveform> _waveform = std::make_shared<AudioWaveform>(SampleWaveform());
     Texture2D _frame{};
     mutable EditorPreferences _preferences;
     mutable EditorWorkspace _workspace;

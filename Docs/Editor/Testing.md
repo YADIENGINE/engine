@@ -17,21 +17,21 @@ only the changed section.
 
 1. Initial preferences use Develop: Project / Viewport / Inspector open, Output / Profiler closed. Dock panels / combine
    tabs; close and reopen from Window. Window → Layouts manages preset / custom layouts; Window → Toggle last bottom
-   tool and Ctrl+J manage the last bottom panel. Fit / Focus / 100% and zoom work in Viewport's local View menu; the top
+   tool and Ctrl+J manage the last bottom panel. Fit / Focus content / Actual size and zoom work in Viewport's local View menu; the top
    View menu changes Focus viewport / Restore workspace, UI scale, and performance metrics.
 2. 75% / 100% / 125% / 150% UI scale and monitor DPI changes; long names wrap or truncate with tooltips in narrow
    panels. Secondary toolbar actions are in overflow; no horizontal toolbar scrolling.
 3. Ctrl+P opens and focuses Project search, even when hidden. The favorite star does not open content; Recent lists only
    successful opens. Empty search / favorites / history states show meaningful explanations.
 4. Inspector Search / Modified counter, `?` description, changed-value marker, Pending / rejection, and single-field
-   reset; choice groups use full width. Narrowing the panel reduces columns for three-way choices such as Phase; normal
+   reset; up to four choices that fit share a row with their label, more use full width. Narrowing the panel reduces columns for three-way choices such as Phase; normal
    controls move below labels, checkboxes stay on the same line when they fit. Button text does not become vertical
    letter columns. Reset for OnReset. Application time appears once per group or in `*` tooltips for mixed groups.
    Unchanged-field reset appears on hover / keyboard focus; layout stays still. Advanced groups start collapsed; search
    / Modified expand matches. Authored group, primary, and disabled metadata remain intact.
-5. Output Last Build Try / Full separation, scope-specific counters / search / Copy Visible; click / Ctrl selection /
+5. Output Last build / Full separation, scope-specific counters / search / Copy Visible; click / Ctrl selection /
    Shift range / Ctrl+A / Ctrl+C / right-click copy / double-click text details. Text copying in search and details
-   remains available; scrolling up or selecting stops Follow. Clear clears only Full; Open Log opens the whole session
+   remains available; scrolling up or selecting stops Follow. Clear clears only Full; Open log opens the whole session
    or attempt output. Long output preserves the first error. A failed build opens the popup once; Show Output returns
    from closed or maximized layout to Output and shows the first error, unaffected by old search or a disabled Error
    filter. No popup on cancellation; worker startup failure after successful build is explained separately. New attempts

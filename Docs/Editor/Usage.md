@@ -6,45 +6,51 @@ Saved dock layout and panel visibility are retained; Viewport starts open and in
 launch, Develop shows Scenes, Viewport, Inspector, and Tuning (a tab in the same right area as Inspector); Output,
 Profiler, and Console are closed. The bottom status bar has Output and Console buttons.
 
-The toolbar's **Build And Play** button, immediately right of Build, uses a pixel invader icon. It builds the
+The toolbar's **Play game** button, immediately right of Build, uses a pixel invader icon. It builds the
 standalone game in Debug through the project tools, then opens it in its own window after a successful build.
 Build output and errors appear in Output; cancellation or a failed build never launches the game. It requires
 the recipe's Python, engine and source paths plus a game configuration in `Project.json`.
 
-- **Left (Scenes):** search, Favorites and Recent filters beside it, categories. Single-click opens content; Ctrl+P
-  focuses search. A row's star appears on hover (always on favorites) and toggles the favorite. Recent keeps the last 10
-  successful opens.
-- **Center (Viewport):** the worker's actual image on a neutral background. The summary at its top left ("Fit · 100%")
-  opens the View menu: Fit shows the whole canvas, Focus content shows the area reported by content, and 100% shows
-  logical size. Zoom in the same menu or Ctrl+wheel zooms; middle-button dragging pans; Reset pan and zoom resets view
-  settings. Without Ctrl, the wheel goes to the product. The maximize button or double-clicking the strip between them
-  enables temporary focus mode. Closed, loading, or failed editor scenes show a state explanation and an available start /
-  retry / cancel action; with no scene yet, also the shortcuts that get to one. Playback is only in the global toolbar,
-  centered, with the open scene's place at its left and Build, Play, speed and Mark at its right.
+- **Left (Scenes):** search, Favorites and Recent filters beside it, categories with their scene count. Single-click
+  runs content; Ctrl+P focuses search. A newly selected scene opens its category and scrolls into view once; collapsing
+  it afterwards stays collapsed. A row's star appears on hover (always on favorites) and toggles the favorite. Recent
+  keeps the last 10 successful opens.
+- **Center (Viewport):** the worker's actual image on a neutral background. The dropdown at its top left ("Fit · 56%")
+  names the view mode and the image's real scale, screen pixels per canvas pixel. Fit shows the whole canvas, Focus
+  content shows the area reported by content, and Actual size shows it at 100%. Zoom in the same menu or Ctrl+wheel
+  multiplies the mode's scale; middle-button dragging pans; Reset pan and zoom resets view settings. Without Ctrl, the
+  wheel goes to the product. The maximize button or double-clicking the strip between them enables temporary focus mode.
+  Closed, loading, or failed editor scenes show a state explanation and an available run / retry / cancel action; with
+  no scene or a stopped one, also the last five scenes opened, one click from running again, and with no scene the
+  shortcuts. A short viewport drops the shortcuts first, then the recent scenes. Playback is only in the global
+  toolbar, centered, with the open scene's place at its left (a click shows it in Scenes) and Build, Play game, speed
+  and Mark at its right.
 - **Right (Inspector):** the header's `?` opens the description by tooltip or click. Property search and the Modified
   counter find changed fields; with at most six visible fields, the Search button opens search. An accent dot marks a
   value different from default; Pending marks a value awaiting worker response, not a setting applied on the next
   action. Reset icons appear on changed fields, or on hover / keyboard focus for others, resetting only that field. The
   primary action is fixed at the panel bottom; settings, secondary Actions, and Live information scroll in their own
-  area. Choice controls are searchable; large integers such as seeds can be typed directly. Choice buttons use full
-  panel width immediately below the label. Normal controls move below labels in narrow panels; checkboxes stay on the
+  area. Choice controls are searchable; large integers such as seeds can be typed directly. Sliders are filled bars with
+  the value written over them; Ctrl+click types a value. Up to four choice buttons that fit share a row with their
+  label; more use full panel width below it. Normal controls move below labels in narrow panels; checkboxes stay on the
   label line when they fit. Normal fields share a label column; button and field names truncate instead of wrapping
   letter by letter, with full text in tooltips. Advanced groups start collapsed; search and Modified filters expand
   matching groups. Live information shows numbers right-aligned in technical font, short statuses as badges, and
   explanations wrapped.
-- **Output:** `Last Build Try` shows output from the latest Build & Refresh click until the scene is ready, fails, or
-  is cancelled; `Full` shows the last 1000 lines from editor, worker, and all attempts. The latest attempt's start time,
-  duration, result, and build exit code are visible. Info / Warning / Error counters, search, and Copy Visible apply to
+- **Output:** one row of controls above the lines. `Last build` shows output from the latest Build & Refresh click
+  until the scene is ready, fails, or is cancelled; `Full` shows the last 1000 lines from editor, worker, and all
+  attempts. Under the row, `Last build` names the attempt's start time, duration, result, and build exit code. Info /
+  Warning / Error counters, search, and Copy Visible apply to
   the selected scope. Click selects one line, Ctrl+click multiple lines, Shift+click a range. With the line area
   focused, Ctrl+A selects visible lines, Ctrl+C copies selection; right-click also offers Copy Selected / Copy Visible.
   Double-click opens the message in read-only details with mouse text selection. Normal Ctrl+A / Ctrl+C work in search
   and detail text fields. Follow stops on scrolling up or selecting a line. Clear clears only the Full buffer; the last
-  attempt and files remain. `Open Log` opens the selected scope's full file. Files are kept per session and attempt
+  attempt and files remain. `Open log` opens the selected scope's full file. Files are kept per session and attempt
   under `editor-logs/` in the build directory; they are not deleted automatically. The last-attempt buffer is limited to
   10000 lines / 8 MiB; on overflow, the first error is retained and a reference to the full file appears. Build failures
   or refresh failures after a successful build open a popup once; cancellation does not. Read-only popup text supports
   mouse selection and Ctrl+C; Ctrl+A selects all text. Copy copies the error summary, build exit code if present, and
-  first error message together. Show Output exits maximized scene, brings Output forward, opens Last Build Try, and
+  first error message together. Show Output exits maximized scene, brings Output forward, opens Last build, and
   scrolls to the first error. In this view, previous search/level preferences are temporarily removed; switching scope
   restores saved preferences.
 - **Assets:** the asset library: back and search across the top, a folder tree on the left (sets are rows too), a tile
@@ -62,7 +68,8 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
   in the background). Click or drag on the waveform to seek. Below it: previous sound in the folder, play/pause (Space),
   stop, next sound, loop and volume. It plays in the editor process from the source file, so a new sound needs no Build
   & Refresh, and it leaves the viewport and running scene alone.
-- **Console:** a real PowerShell session at the project root. Drag to select visible text and copy with Ctrl+C /
+- **Console:** a real PowerShell session at the project root. With one session the right edge holds only the add
+  button and the session's icon; with more, a named list that can be resized. Drag to select visible text and copy with Ctrl+C /
   Ctrl+Shift+C or right-click Copy. Without selection, Ctrl+C interrupts the running program; Ctrl+V pastes, Escape
   clears selection. Wheel, the scrollbar and Shift+PageUp/PageDown browse shell history; typing returns to live output.
   In live applications such as Claude and Codex, wheel input follows the requested mouse protocol; full-screen
@@ -96,20 +103,20 @@ error or warning color; errors take priority.
 
 ## Toolbar
 
-The global toolbar has one primary action: Open, Stop, or Cancel according to state. Pause / Resume is a separate time
+The global toolbar has one primary action: Run, Stop, or Cancel according to state. Pause / Resume is a separate time
 control. The primary action and Build & Refresh have labels when space allows; in narrow areas, secondary controls move
 to an overflow menu. Tooltips show name, shortcut, and the reason if unavailable.
 
 | Button | Meaning |
 | --- | --- |
-| Open / Stop / Cancel | Opens selected content when closed; closes the scene when ready or paused; cancels catalog reading, startup, building without a scene, or benchmarking. Cancel an ongoing build with an open scene through Cancel build in the command palette |
+| Run / Stop / Cancel | Runs selected content when closed; closes the scene when ready or paused; cancels catalog reading, startup, building without a scene, or benchmarking. Cancel an ongoing build with an open scene through Cancel build in the command palette |
 | Pause / Resume | Freezes Update and presentation time; drawing, parameters, actions, and Reset remain available |
 | Step | Advances 1/60 s while paused |
 | Speed | 0.1×..4× |
 | Reset | Creates a new instance from the accepted recipe (clock starts at 0) |
 | Build & Refresh | Builds the worker target; the scene keeps running throughout. A successful build takes selection, values, pause, and speed and replaces the old one when ready; errors leave the scene unchanged. From terminal: `python Engine refresh` |
 
-Reset recreates the scene in the same worker process. Use Open to restart the worker process.
+Reset recreates the scene in the same worker process. Use Run to restart the worker process.
 
 | Shortcut | Action |
 | --- | --- |

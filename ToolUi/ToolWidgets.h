@@ -14,7 +14,9 @@ void ToolTooltip(const char* text);
 [[nodiscard]] bool BeginToolPanel(const char* id, ImVec2 size, ToolSurface surface, ImGuiChildFlags flags = 0,
                                   ImGuiWindowFlags windowFlags = 0, float padding = ToolMetrics::Padding);
 void EndToolPanel();
-[[nodiscard]] bool ToolSectionHeader(const char* label, bool defaultOpen = true, bool forceOpen = false);
+// `detail`: a short muted note at the row's right end, such as a count; not part of the header's identity.
+[[nodiscard]] bool ToolSectionHeader(const char* label, bool defaultOpen = true, bool forceOpen = false,
+                                     const char* detail = nullptr);
 void ToolEmptyState(const char* title, const char* detail);
 void ToolStatusBadge(const char* label, ImVec4 color);
 // Medium-weight labels with the same sizing, hover, pressed, disabled and keyboard focus behavior.
@@ -26,6 +28,15 @@ void ToolStatusBadge(const char* label, ImVec4 color);
 // A switch with its label on the right ("##" hides the label). Returns true when it flipped.
 [[nodiscard]] bool ToolToggle(const char* label, bool& value);
 [[nodiscard]] float ToolToggleWidth(const char* label);
+// A filled bar with the value written over it, so the handle never covers the number; Ctrl+click types a value.
+// Clamped to the range. Width comes from SetNextItemWidth. `format` nullptr: the type's default; "" hides the value.
+[[nodiscard]] bool ToolSlider(const char* label, float& value, float minimum, float maximum,
+                              const char* format = "%.2f");
+[[nodiscard]] bool ToolSlider(const char* label, double& value, double minimum, double maximum,
+                              const char* format = "%.3f");
+[[nodiscard]] bool ToolSlider(const char* label, int& value, int minimum, int maximum, const char* format = nullptr);
+[[nodiscard]] bool ToolSlider(const char* label, long long& value, long long minimum, long long maximum,
+                              const char* format = nullptr);
 // BeginCombo with a thin chevron; pair with ImGui::EndCombo when it returns true.
 [[nodiscard]] bool ToolBeginCombo(const char* label, const char* preview, ImGuiComboFlags flags = 0);
 // Places the next toolbar item on the same row when it fits, otherwise on a new row.

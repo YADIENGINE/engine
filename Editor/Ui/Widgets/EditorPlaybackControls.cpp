@@ -45,9 +45,10 @@ void PlaybackSpeed(const EditorSnapshot& snapshot, const EditorUiActions& action
                                                       : snapshot.capabilities.playbackDisabledReason);
 }
 // Where the open scene sits in the catalog: "Category / Scene", or only the scene when that does not fit.
-void SceneCrumb(const EditorSnapshot& snapshot, float width) {
+void SceneCrumb(const EditorSnapshot& snapshot, float width, bool& reveal) {
     if (!snapshot.selected) return;
     const auto& scene = *snapshot.selected;
+    ImGui::BeginGroup();
     ImGui::AlignTextToFramePadding();
     const auto category = scene.category.empty() ? std::string() : scene.category + "  /  ";
     const float categoryWidth = ImGui::CalcTextSize(category.c_str()).x;
@@ -59,10 +60,15 @@ void SceneCrumb(const EditorSnapshot& snapshot, float width) {
     } else {
         ImGui::TextUnformatted(ToolClipText(scene.name.c_str(), width).c_str());
     }
+    ImGui::EndGroup();
+    if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    ToolTooltip("Show in Scenes");
+    if (ImGui::IsItemClicked()) reveal = true;
 }
 } // namespace
 
-void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool& marking) {
+void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool& marking,
+                                bool& revealScene) {
     const float scale = ToolUiScale();
     ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
@@ -121,7 +127,7 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     const bool showCrumb = snapshot.selected && crumbWidth >= ImGui::GetFontSize() * MinimumCrumbWidthInFonts;
     // Inside the group SameLine's offset counts from the group's start, SetCursorPosX's from the window's.
     if (showCrumb) {
-        SceneCrumb(snapshot, crumbWidth);
+        SceneCrumb(snapshot, crumbWidth, revealScene);
         ImGui::SameLine(transportStart);
     } else if (transportStart > 0) {
         ImGui::SetCursorPosX(origin + transportStart);

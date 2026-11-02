@@ -14,6 +14,7 @@ private:
     void Frames(const Profiler::Capture& capture);
     Profiler::Recipe _recipe;
     std::array<char, 128> _filename{'b', 'a', 's', 'e', 'l', 'i', 'n', 'e', '.', 'j', 's', 'o', 'n', '\0'};
+    int _tab = 0; // Live, Benchmarks, Compare
     int _run = 0, _frame = 0;
     int _glow = -1;
     std::uint64_t _glowGeneration = 0;

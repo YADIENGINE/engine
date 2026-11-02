@@ -63,12 +63,15 @@ TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[en
     REQUIRE(panel.Sessions().size() == 1); // First draw still opens a shell.
     REQUIRE(list);
     REQUIRE(terminal);
-    REQUIRE(rows);
+    CHECK_FALSE(rows); // A lone session needs no list, only room for the add button and its icon.
     CHECK(terminal->Pos.x + terminal->Size.x <= list->Pos.x);
     CHECK(terminal->Size.x > list->Size.x);
+    const float loneWidth = list->Size.x;
     panel.OpenShell();
     (void)frame();
     REQUIRE(panel.Selected() == 1);
+    REQUIRE(rows);
+    CHECK(list->Size.x > loneWidth);
     (void)click({rows->WorkRect.Min.x + 30, rows->WorkRect.Min.y + rowHeight * 0.5f});
     CHECK(panel.Selected() == 0);
     CHECK(panel.Sessions()[0].selected);

@@ -113,20 +113,15 @@ void ProfilerPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& 
         ImGui::TextWrapped("%s", profiler.error.c_str());
         ImGui::PopStyleColor();
     }
-    if (ImGui::BeginTabBar("profiler-tabs")) {
-        if (ImGui::BeginTabItem("Live")) {
-            Live(snapshot, actions);
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Benchmarks")) {
-            Benchmarks(snapshot, actions);
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Compare")) {
-            Compare(snapshot, actions);
-            ImGui::EndTabItem();
-        }
-        ImGui::EndTabBar();
+    if (ToolSegment("Live", _tab == 0)) _tab = 0;
+    ContinueToolToolbar("Benchmarks");
+    if (ToolSegment("Benchmarks", _tab == 1)) _tab = 1;
+    ContinueToolToolbar("Compare");
+    if (ToolSegment("Compare", _tab == 2)) _tab = 2;
+    switch (_tab) {
+    case 0 : Live(snapshot, actions); break;
+    case 1 : Benchmarks(snapshot, actions); break;
+    default: Compare(snapshot, actions); break;
     }
 }
 void ProfilerPanel::Live(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
@@ -186,7 +181,7 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
                        "scene resets afterwards. Release builds are recommended; Debug results stay labeled Debug.");
     ImGui::BeginDisabled(!snapshot.ready || !snapshot.selected || !snapshot.selected->benchmark ||
                          !snapshot.pending.empty());
-    if (ImGui::Button("Compare A / B")) actions.profiler(EditorProfilerCommand::Start, _recipe, {});
+    if (ToolButton("Compare A / B")) actions.profiler(EditorProfilerCommand::Start, _recipe, {});
     ImGui::EndDisabled();
     ImGui::EndDisabled();
     if (snapshot.profiler.busy) {
@@ -261,16 +256,16 @@ void ProfilerPanel::Compare(const EditorSnapshot& snapshot, const EditorUiAction
     ImGui::InputText("Baseline filename", _filename.data(), _filename.size());
     ImGui::BeginDisabled(snapshot.profiler.busy);
     ImGui::BeginDisabled(!snapshot.profiler.result);
-    if (ImGui::Button("Save Baseline")) actions.profiler(EditorProfilerCommand::SaveBaseline, {}, _filename.data());
+    if (ToolButton("Save Baseline")) actions.profiler(EditorProfilerCommand::SaveBaseline, {}, _filename.data());
     ContinueToolToolbar("Export");
-    if (ImGui::Button("Export")) ImGui::OpenPopup("export-report");
+    if (ToolButton("Export")) ImGui::OpenPopup("export-report");
     if (ImGui::BeginPopup("export-report")) {
         if (ImGui::MenuItem("JSON")) actions.profiler(EditorProfilerCommand::ExportJson, {}, _filename.data());
         if (ImGui::MenuItem("Markdown")) actions.profiler(EditorProfilerCommand::ExportMarkdown, {}, _filename.data());
         ImGui::EndPopup();
     }
     ImGui::EndDisabled();
-    if (ImGui::Button("Compare with Baseline"))
+    if (ToolButton("Compare with Baseline"))
         actions.profiler(EditorProfilerCommand::CompareBaseline, {}, _filename.data());
     ImGui::EndDisabled();
     if (!snapshot.profiler.file.empty()) ImGui::TextWrapped("%s", snapshot.profiler.file.c_str());
@@ -286,7 +281,7 @@ void ProfilerPanel::Compare(const EditorSnapshot& snapshot, const EditorUiAction
 void ProfilerPanel::Frames(const Profiler::Capture& capture) {
     if (capture.runs.empty()) return;
     _run = std::clamp(_run, 0, static_cast<int>(capture.runs.size() - 1));
-    ImGui::SliderInt("Run", &_run, 0, static_cast<int>(capture.runs.size() - 1));
+    (void)ToolSlider("Run", _run, 0, static_cast<int>(capture.runs.size() - 1));
     const auto& run = capture.runs[static_cast<std::size_t>(_run)];
     if (run.frames.empty()) return;
     ImGui::Text("%s | repeat %d", capture.variants[static_cast<std::size_t>(run.variant)].c_str(), run.repeat + 1);
@@ -298,7 +293,7 @@ void ProfilerPanel::Frames(const Profiler::Capture& capture) {
     ImGui::PlotLines("Frame ms", getter, const_cast<std::vector<Profiler::FrameSample>*>(&run.frames),
                      static_cast<int>(run.frames.size()), 0, nullptr, 0, FLT_MAX, {0, ImGui::GetFontSize() * 6});
     _frame = std::clamp(_frame, 0, static_cast<int>(run.frames.size() - 1));
-    ImGui::SliderInt("Frame", &_frame, 0, static_cast<int>(run.frames.size() - 1));
+    (void)ToolSlider("Frame", _frame, 0, static_cast<int>(run.frames.size() - 1));
     const auto& frame = run.frames[static_cast<std::size_t>(_frame)];
     ImGui::Text("Frame %.3f ms", frame.intervalMs);
     if (frame.gpuMs)

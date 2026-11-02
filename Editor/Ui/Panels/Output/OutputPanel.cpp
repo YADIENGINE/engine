@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <algorithm>
 #include <ctime>
+#include <format>
 #include "Editor/Internals/Session/AgentContext.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
@@ -9,6 +10,7 @@
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
+constexpr float SearchMinimumWidth = 140.0f;
 const char* SourceLabel(EditorLogSource source) {
     switch (source) {
     case EditorLogSource::Editor: return "Editor";
@@ -48,10 +50,10 @@ std::string TimeLabel(std::chrono::system_clock::time_point value) {
     std::strftime(stamp.data(), stamp.size(), "%H:%M:%S", &local);
     return stamp.data();
 }
-void SeverityFilter(EditorLogLevel level, std::size_t count, bool& value, bool sameLine) {
+void SeverityFilter(EditorLogLevel level, std::size_t count, bool& value, bool separateGroup) {
     const std::string text = std::string(LevelLabel(level)) + " " + std::to_string(count);
     const std::string label = text + "###severity";
-    if (sameLine) ContinueToolToolbar(text.c_str());
+    ContinueToolToolbar(text.c_str(), separateGroup);
     ImGui::PushID(static_cast<int>(level));
     if (ToolSegment(label.c_str(), value)) value = !value;
     ToolTooltip(value ? "Hide this severity" : "Show this severity");
@@ -83,9 +85,11 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         _failureView = false;
         _initialized = false;
     }
-    const bool last = ToolSegment("Last Build Try", _lastAttempt);
+    const bool last = ToolSegment("Last build", _lastAttempt);
+    ToolTooltip("Output of the latest Build & Refresh, until the scene is ready, fails or is canceled.");
     ContinueToolToolbar("Full");
     const bool full = ToolSegment("Full", !_lastAttempt);
+    ToolTooltip("Recent editor, worker and build output (up to 1000 lines). Open log has the whole session.");
     if (last || full) {
         _lastAttempt = last;
         _failureView = false;
@@ -94,30 +98,6 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         _anchor = 0;
         _jumpToError = false;
     }
-    ContinueToolToolbar("Open Log");
-    const auto& archive = diagnostics.ArchivePath(_lastAttempt);
-    std::error_code fileError;
-    ImGui::BeginDisabled(archive.empty() || !std::filesystem::is_regular_file(archive, fileError));
-    if (ImGui::Button("Open Log")) actions.openOutputLog(_lastAttempt);
-    ImGui::EndDisabled();
-    ToolTooltip("Open the complete log file for this scope. Clear only removes the Full view's buffered lines.");
-    if (_lastAttempt) {
-        if (attempt.id) {
-            ImGui::TextWrapped("Attempt #%llu | Started %s | %.1f s | %s", static_cast<unsigned long long>(attempt.id),
-                               TimeLabel(attempt.started).c_str(), diagnostics.AttemptSeconds(),
-                               ResultLabel(attempt.result));
-            if (attempt.exitCode) ImGui::Text("Build exit code: %lu", *attempt.exitCode);
-        } else {
-            ImGui::TextDisabled("Use Build & Refresh to start a build attempt.");
-        }
-        if (attempt.truncated)
-            ImGui::TextWrapped(
-                "Older lines were removed from this view. The first error is pinned; use Open Log for all output.");
-    } else {
-        ImGui::TextWrapped(
-            "Recent editor, worker, and build output (up to 1000 lines). Open Log contains the full session.");
-    }
-    if (!diagnostics.ArchiveError().empty()) ImGui::TextWrapped("%s", diagnostics.ArchiveError().c_str());
     auto& filter = _failureView ? _failureFilter : preferences.outputFilter;
     if (!_initialized) {
         _search.fill(0);
@@ -134,10 +114,17 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
     std::array<std::size_t, 3> counts{};
     for (const auto* entry : scoped)
         ++counts[static_cast<std::size_t>(entry->level)];
-    SeverityFilter(EditorLogLevel::Info, counts[0], filter.info, false);
-    SeverityFilter(EditorLogLevel::Warning, counts[1], filter.warning, true);
-    SeverityFilter(EditorLogLevel::Error, counts[2], filter.error, true);
-    ImGui::SetNextItemWidth(-1);
+    SeverityFilter(EditorLogLevel::Info, counts[0], filter.info, true);
+    SeverityFilter(EditorLogLevel::Warning, counts[1], filter.warning, false);
+    SeverityFilter(EditorLogLevel::Error, counts[2], filter.error, false);
+    // Search takes what the row has left; the buttons after it keep their size and wrap together when it is too narrow.
+    const auto& style = ImGui::GetStyle();
+    const float scale = ToolUiScale();
+    const float buttons = ImGui::CalcTextSize("Copy").x + ImGui::CalcTextSize("Open log").x + style.FramePadding.x * 4 +
+                          ToolToggleWidth("Follow") + ImGui::GetFrameHeight() + style.ItemSpacing.x * 5;
+    const float searchWidth = SearchMinimumWidth * scale;
+    ContinueToolToolbar(searchWidth + buttons, true);
+    ImGui::SetNextItemWidth(std::max(searchWidth, ImGui::GetContentRegionAvail().x - buttons));
     if (ImGui::InputTextWithHint("##search", "Search output...", _search.data(), _search.size()))
         filter.search = _search.data();
     std::vector<const EditorLogEntry*> visible;
@@ -147,7 +134,10 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         return !std::ranges::binary_search(visible, id, {}, [](const auto* e) { return e->sequence; });
     });
     bool copyVisible = false, copySelected = false;
-    if (ImGui::Button("Copy")) ImGui::OpenPopup("copy-output");
+    ContinueToolToolbar("Copy");
+    if (ToolButton("Copy")) ImGui::OpenPopup("copy-output");
+    ToolTooltip("Click a line to select it, Ctrl+click to add or remove, Shift+click for a range; double-click shows "
+                "its text.");
     if (ImGui::BeginPopup("copy-output")) {
         copySelected = ImGui::MenuItem("Copy Selected", "Ctrl+C", false, !_selected.empty());
         copyVisible = ImGui::MenuItem("Copy Visible", nullptr, false, !visible.empty());
@@ -164,7 +154,32 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         visible.clear();
     }
     ImGui::EndDisabled();
-    ImGui::TextWrapped("Click to select | Ctrl: add/remove | Shift: range | Double-click: text details");
+    ContinueToolToolbar("Open log");
+    const auto& archive = diagnostics.ArchivePath(_lastAttempt);
+    std::error_code fileError;
+    ImGui::BeginDisabled(archive.empty() || !std::filesystem::is_regular_file(archive, fileError));
+    if (ToolButton("Open log")) actions.openOutputLog(_lastAttempt);
+    ImGui::EndDisabled();
+    ToolTooltip("Open the complete log file for this scope. Clear only removes the Full view's buffered lines.");
+    if (_lastAttempt) {
+        ImGui::PushTextWrapPos(0);
+        ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Muted);
+        if (attempt.id) {
+            auto summary = "Attempt #" + std::to_string(attempt.id) + "  \xC2\xB7  " + TimeLabel(attempt.started) +
+                           "  \xC2\xB7  " + std::format("{:.1f} s", diagnostics.AttemptSeconds()) + "  \xC2\xB7  " +
+                           ResultLabel(attempt.result);
+            if (attempt.exitCode) summary += "  \xC2\xB7  exit code " + std::to_string(*attempt.exitCode);
+            ImGui::TextUnformatted(summary.c_str());
+        } else {
+            ImGui::TextUnformatted("Use Build to start a build attempt.");
+        }
+        if (attempt.truncated)
+            ImGui::TextUnformatted(
+                "Older lines were removed from this view. The first error is pinned; use Open log for all output.");
+        ImGui::PopStyleColor();
+        ImGui::PopTextWrapPos();
+    }
+    if (!diagnostics.ArchiveError().empty()) ImGui::TextWrapped("%s", diagnostics.ArchiveError().c_str());
     ImGui::Separator();
     ImGui::PushFont(ToolFont(ToolFontRole::Technical), 0);
     bool openDetail = false;
@@ -279,7 +294,7 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         ImGui::TextWrapped("Select text with the mouse, then Ctrl+C. Ctrl+A selects this message.");
         ImGui::InputTextMultiline("##detail", _detail.data(), _detail.size(), {-1, -ImGui::GetFrameHeightWithSpacing()},
                                   ImGuiInputTextFlags_ReadOnly);
-        if (ImGui::Button("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
+        if (ToolButton("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
     ImGui::PopFont();

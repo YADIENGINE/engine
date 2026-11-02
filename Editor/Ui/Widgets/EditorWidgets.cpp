@@ -9,6 +9,11 @@
 bool EditorIconButton(const char* id, EditorGlyph glyph, const char* tooltip, bool selected) {
     return ToolIconButton(id, EditorGlyphText(glyph), tooltip, selected);
 }
+int EditorChoiceColumns(const SceneParameter& parameter) {
+    constexpr std::size_t OneRowChoices = 4;
+    if (parameter.choiceButtonColumns > 0) return parameter.choiceButtonColumns;
+    return parameter.choices.size() <= OneRowChoices ? std::max(1, static_cast<int>(parameter.choices.size())) : 2;
+}
 bool EditorParameterWidget(const SceneParameter& parameter, SceneValue& value) {
     switch (parameter.kind) {
     case SceneParameterKind::Integer: {
@@ -22,9 +27,9 @@ bool EditorParameterWidget(const SceneParameter& parameter, SceneValue& value) {
             }
             break;
         }
-        if (ImGui::SliderScalar("##value", ImGuiDataType_S64, &number, &minimum, &maximum, nullptr,
-                                ImGuiSliderFlags_AlwaysClamp)) {
-            value = number;
+        long long slider = number;
+        if (ToolSlider("##value", slider, static_cast<long long>(minimum), static_cast<long long>(maximum))) {
+            value = static_cast<std::int64_t>(slider);
             return true;
         }
         break;
@@ -38,8 +43,7 @@ bool EditorParameterWidget(const SceneParameter& parameter, SceneValue& value) {
             }
             break;
         }
-        if (ImGui::SliderScalar("##value", ImGuiDataType_Double, &number, &parameter.minimum, &parameter.maximum,
-                                "%.3f", ImGuiSliderFlags_AlwaysClamp)) {
+        if (ToolSlider("##value", number, parameter.minimum, parameter.maximum)) {
             value = number;
             return true;
         }
@@ -75,16 +79,12 @@ bool EditorParameterWidget(const SceneParameter& parameter, SceneValue& value) {
             for (const auto& choice : parameter.choices)
                 minimumWidth = std::max(minimumWidth, ImGui::CalcTextSize(choice.c_str()).x);
             minimumWidth += style.FramePadding.x * 2 + style.CellPadding.x * 2;
-            int columns = parameter.choiceButtonColumns > 0 ? parameter.choiceButtonColumns : 2;
+            int columns = EditorChoiceColumns(parameter);
             while (columns > 1 && ImGui::GetContentRegionAvail().x < minimumWidth * static_cast<float>(columns))
                 --columns;
-            const float width = parameter.choiceButtonColumns > 0 ? std::min(ImGui::GetContentRegionAvail().x,
-                                                                             minimumWidth * static_cast<float>(columns))
-                                                                  : 0.0f;
             if (ImGui::BeginTable("##choices", columns,
                                   ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoPadOuterX |
-                                      ImGuiTableFlags_NoSavedSettings,
-                                  {width, 0})) {
+                                      ImGuiTableFlags_NoSavedSettings)) {
                 for (const auto& choice : parameter.choices) {
                     ImGui::TableNextColumn();
                     const bool selected = choice == std::get<std::string>(value);

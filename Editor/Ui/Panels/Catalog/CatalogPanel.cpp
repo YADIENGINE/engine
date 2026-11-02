@@ -2,6 +2,8 @@
 #include <imgui.h>
 #include <algorithm>
 #include <array>
+#include <map>
+#include <string>
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "ToolUi/ToolTheme.h"
@@ -65,6 +67,7 @@ void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& sna
     const bool clicked =
         ToolWrappedSelectable(entry.name.c_str(), selected, ImGuiSelectableFlags_AllowOverlap, starWidth);
     ToolTooltip(entry.description.c_str());
+    if (selected && _reveal && !ImGui::IsItemVisible()) ImGui::SetScrollHereY(0.5f);
     if (enabled && clicked) {
         actions.select(entry.id);
         actions.command(EditorCommand::Open);
@@ -85,8 +88,17 @@ void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& sna
     }
     ImGui::PopID();
 }
+void CatalogPanel::RevealSelected() {
+    _search.fill('\0');
+    _view = 0;
+    _reveal = true;
+}
 void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                         EditorPreferences& preferences) {
+    if (const auto scene = snapshot.selected ? snapshot.selected->id : std::string(); scene != _revealedScene) {
+        _revealedScene = scene;
+        _reveal = !scene.empty();
+    }
     const float gap = ToolMetrics::Space * ToolUiScale();
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {gap, ImGui::GetStyle().ItemSpacing.y});
     const float filterWidth = (ImGui::GetFrameHeight() + gap) * 2;
@@ -132,22 +144,29 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4 * scale, 2 * scale});
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {4 * scale, 1 * scale});
     if (ImGui::BeginChild("catalog-entries")) {
+        std::map<std::string, int> counts;
+        for (const auto* entry : entries)
+            ++counts[entry->category];
         std::string category;
         bool expanded = true;
         bool first = true;
         for (const auto* entry : entries) {
             if (_view != 2 && (first || category != entry->category)) {
                 category = entry->category;
-                expanded = ToolSectionHeader(category.empty() ? "General" : category.c_str(), false, !query.empty());
+                const char* name = category.empty() ? "General" : category.c_str();
+                if (_reveal && snapshot.selected && snapshot.selected->category == category)
+                    ImGui::GetStateStorage()->SetBool(ImGui::GetID(name), true);
+                expanded = ToolSectionHeader(name, false, !query.empty(), std::to_string(counts[category]).c_str());
                 first = false;
             }
             if (expanded) Entry(*entry, snapshot, actions, preferences);
         }
+        _reveal = false;
         if (entries.empty()) {
             if (snapshot.catalog.empty()) {
                 ToolEmptyState("No scenes available", "Check Output for details, or refresh the scene catalog.");
                 ImGui::BeginDisabled(!snapshot.capabilities.Can(EditorCommand::Refresh));
-                if (ImGui::Button("Build & refresh")) actions.command(EditorCommand::Refresh);
+                if (ToolButton("Build & refresh")) actions.command(EditorCommand::Refresh);
                 ImGui::EndDisabled();
             } else {
                 const char* detail = !query.empty() ? "Try a different name, description, or category."
@@ -157,7 +176,7 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
                                : _view == 1   ? "No favorites yet"
                                               : "No recent scenes",
                                detail);
-                if (ImGui::Button(!query.empty() ? "Clear search" : "Show all scenes")) {
+                if (ToolButton(!query.empty() ? "Clear search" : "Show all scenes")) {
                     _search.fill('\0');
                     if (query.empty()) _view = 0;
                 }

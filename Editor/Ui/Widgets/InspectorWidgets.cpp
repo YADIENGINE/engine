@@ -19,6 +19,7 @@ constexpr float CheckboxPaddingY = 2.0f;
 constexpr float MaximumLabelWidth = 140.0f;
 constexpr float MinimumControlWidth = 96.0f;
 constexpr float LabelWidthFraction = 0.36f;
+constexpr std::size_t MaximumRowChoices = 4;
 
 float InspectorScale() { return ImGui::GetFontSize() / BaseFontSize; }
 ImVec4 AccentSurface(ImGuiCol surface, float amount, ToolTone tone = ToolTone::Accent) {
@@ -82,15 +83,17 @@ void InspectorAction(const SceneAction& action, std::span<const std::string> dis
                      const std::function<void(const std::string&)>& execute) {
     ImGui::PushID(action.id.c_str());
     ImGui::BeginDisabled(std::ranges::find(disabled, action.id) != disabled.end());
-    if (action.primary) {
-        ImGui::PushStyleColor(ImGuiCol_Button, AccentSurface(ImGuiCol_FrameBg, 0.18f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, AccentSurface(ImGuiCol_FrameBg, 0.27f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, AccentSurface(ImGuiCol_FrameBg, 0.36f));
-    }
+    // The Inspector's buttons take the field color (its choice grids), which would read as an input here.
+    ImGui::PushStyleColor(ImGuiCol_Button,
+                          action.primary ? AccentSurface(ImGuiCol_FrameBg, 0.18f) : ToolPalette::Control);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                          action.primary ? AccentSurface(ImGuiCol_FrameBg, 0.27f) : ToolPalette::Hover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,
+                          action.primary ? AccentSurface(ImGuiCol_FrameBg, 0.36f) : ToolPalette::Pressed);
     if (ToolSingleLineButton(action.label.c_str())) execute(action.id);
     const std::string tooltip = action.label + (action.description.empty() ? "" : "\n" + action.description);
     ToolTooltip(tooltip.c_str());
-    if (action.primary) ImGui::PopStyleColor(3);
+    ImGui::PopStyleColor(3);
     ImGui::EndDisabled();
     ImGui::PopID();
 }
@@ -137,6 +140,24 @@ bool BeginInspectorProperties(const char* id, float labelWidth, bool readOnly) {
     return true;
 }
 void EndInspectorProperties() { ImGui::EndTable(); }
+bool InspectorChoiceFitsRow(const SceneParameter& parameter) {
+    if (parameter.kind != SceneParameterKind::Choice || !parameter.choiceButtons) return false;
+    return parameter.choices.size() <= MaximumRowChoices &&
+           EditorChoiceColumns(parameter) >= static_cast<int>(parameter.choices.size());
+}
+bool InspectorChoiceIsBlock(const SceneParameter& parameter, float labelWidth, float width) {
+    if (parameter.kind != SceneParameterKind::Choice || !parameter.choiceButtons) return false;
+    if (!InspectorChoiceFitsRow(parameter)) return true;
+    const auto& style = ImGui::GetStyle();
+    const float scale = InspectorScale();
+    const float label = std::min({labelWidth, MaximumLabelWidth * scale, width * LabelWidthFraction});
+    const float control = width - label - ResetButtonSize * scale - style.CellPadding.x * 6;
+    float button = 0;
+    for (const auto& choice : parameter.choices)
+        button = std::max(button, ImGui::CalcTextSize(choice.c_str()).x);
+    button += style.FramePadding.x * 2 + style.CellPadding.x * 2;
+    return control < MinimumControlWidth * scale || control < button * static_cast<float>(parameter.choices.size());
+}
 bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value, bool pending, const char* applyHint,
                              bool* contextRequested) {
     const auto context = [&] {
@@ -154,8 +175,9 @@ bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value,
         const float padding = parameter.kind == SceneParameterKind::Boolean ? CheckboxPaddingY : DropdownPaddingY;
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {ImGui::GetStyle().FramePadding.x, padding * InspectorScale()});
     }
-    // Choice grids are standalone full-width blocks; ordinary fields share their group's table.
-    const bool choiceGrid = parameter.kind == SceneParameterKind::Choice && parameter.choiceButtons;
+    // Choice blocks stand outside any table (InspectorChoiceIsBlock); everything else shares its group's table.
+    const bool choiceGrid =
+        parameter.kind == SceneParameterKind::Choice && parameter.choiceButtons && ImGui::TableGetColumnCount() == 0;
     const bool inlineRow = !choiceGrid && ImGui::TableGetColumnCount() > 1;
     const float resetSize = ResetButtonSize * InspectorScale();
     const float gap = ImGui::GetStyle().ItemSpacing.x;
@@ -258,8 +280,7 @@ void InspectorSummary(const char* title, const char* text) {
     ImGui::PopFont();
     if (*text) {
         ImGui::SameLine(0, gap);
-        if (ImGui::Button("?##description", {helpWidth, helpWidth})) ImGui::OpenPopup("##description");
-        ToolTooltip(text);
+        if (ToolIconButton("description", "?", text)) ImGui::OpenPopup("##description");
         if (ImGui::BeginPopup("##description")) {
             ImGui::PushTextWrapPos(ImGui::GetFontSize() * 28);
             ImGui::TextUnformatted(text);
@@ -278,10 +299,16 @@ void InspectorActionGroup(std::span<const SceneAction> actions, std::span<const 
     if (includePrimary && primary != actions.end()) InspectorAction(*primary, disabled, execute);
     if (actions.empty() || (actions.size() == 1 && primary != actions.end())) return;
     float minimumWidth = 0;
+    int secondary = 0;
     for (const auto& action : actions)
-        if (!action.primary) minimumWidth = std::max(minimumWidth, ImGui::CalcTextSize(action.label.c_str()).x);
+        if (!action.primary) {
+            minimumWidth = std::max(minimumWidth, ImGui::CalcTextSize(action.label.c_str()).x);
+            ++secondary;
+        }
     minimumWidth += ImGui::GetStyle().FramePadding.x * 2;
-    const int columns = ImGui::GetContentRegionAvail().x >= minimumWidth * 2 + ImGui::GetStyle().ItemSpacing.x ? 2 : 1;
+    // A lone action fills the row like the primary one; a half-width button looks like a missing neighbor.
+    const int columns =
+        secondary > 1 && ImGui::GetContentRegionAvail().x >= minimumWidth * 2 + ImGui::GetStyle().ItemSpacing.x ? 2 : 1;
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {ImGui::GetStyle().ItemSpacing.x * 0.5f, 2 * InspectorScale()});
     if (ImGui::BeginTable("##actions", columns,
                           ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoPadOuterX |

@@ -550,7 +550,10 @@ void AssetsPanel::Footer() {
     ImGui::TextDisabled("%s", std::format("{} {}", _tileIndex, _tileIndex == 1 ? "item" : "items").c_str());
     ImGui::SameLine(ImGui::GetContentRegionMax().x - SizeSliderWidth * scale);
     ImGui::SetNextItemWidth(SizeSliderWidth * scale);
-    ImGui::SliderFloat("##tile-size", &_tileSize, MinTileSize, MaxTileSize, "");
+    // The grid's surface is as dark as a field; a lighter well shows the slider's whole length.
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ToolPalette::Panel);
+    (void)ToolSlider("##tile-size", _tileSize, MinTileSize, MaxTileSize, "");
+    ImGui::PopStyleColor();
     ToolTooltip("Tile size (Ctrl+wheel over the grid)");
 }
 

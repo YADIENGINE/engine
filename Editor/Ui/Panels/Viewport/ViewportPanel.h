@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 #include "Editor/Application/EditorPresentation.h"
 #include "Editor/Internals/Viewport/SceneViewport.h"
 #include "Utilities/FloatRect.h"
@@ -28,14 +29,17 @@ struct EditorViewportInteraction {
 class ViewportPanel {
 public:
     [[nodiscard]] EditorViewportInteraction Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                                 const ViewportImage& image, bool metrics, bool maximized);
+                                                 const ViewportImage& image, const std::vector<std::string>& recent,
+                                                 bool metrics, bool maximized);
     void ReleaseFocus() { _focused = false; }
 
 private:
     [[nodiscard]] bool Toolbar(bool maximized);
     bool _focused = false;
     int _mode = 1;
-    float _zoom = 1.0f;
+    std::size_t _dataView = 0; // The inspection table shown
+    float _zoom = 1.0f;        // Multiplies the mode's own scale
+    float _shownScale = 0.0f;  // Screen pixels per canvas pixel in the last drawn frame; 0 while there is none
     Float2 _pan;
     std::string _scene;
     std::optional<Float2> _markStart; // Screen point where the current mark drag began

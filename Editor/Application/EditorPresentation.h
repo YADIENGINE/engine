@@ -24,7 +24,7 @@ struct EditorCapabilities {
     std::array<bool, static_cast<std::size_t>(EditorCommand::Count)> enabled{};
     std::array<const char*, static_cast<std::size_t>(EditorCommand::Count)> disabledReasons{};
     bool playbackEnabled = false;
-    const char* playbackDisabledReason = "Open a scene first.";
+    const char* playbackDisabledReason = "Run a scene first.";
     [[nodiscard]] bool Can(EditorCommand command) const {
         const auto index = static_cast<std::size_t>(command);
         return index < enabled.size() && enabled[index];

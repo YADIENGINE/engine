@@ -8,7 +8,7 @@ target is defined in Windows builds with `ENGINE_BUILD_RUNTIME` enabled and buil
 | --- | --- |
 | `ToolUiContext` | ImGui context (rlImGui), fonts, theme, scale. `ToolUiOptions { docking, keyboardNavigation }`. Created after the window (Game), destroyed before it; `BeginFrame(scalePercent)` / `EndFrame()` every frame |
 | `ToolTheme` | Cabinet theme (`ApplyToolTheme`), central `ToolPalette` colors / `ToolMetrics` dimensions, font roles (`Ui / Medium / Heading / Technical`), font-independent scale (`ToolUiScale()`), semantic colors (`ToolToneColor`), panel surfaces (`ToolSurfaceColor`) |
-| `ToolWidgets` | `BeginToolPanel` / `EndToolPanel`, `ToolTooltip`, `ToolClipText` / `ToolClipMiddle`, `ToolSectionHeader`, `ToolEmptyState`, `ToolStatusBadge`, `ToolButton`, `ToolSegment`, `ToolIconButton`, `ToolToggle`, `ToolBeginCombo`, `ContinueToolToolbar`, `ToolSingleLineButton`, `ToolWrappedSelectable` |
+| `ToolWidgets` | `BeginToolPanel` / `EndToolPanel`, `ToolTooltip`, `ToolClipText` / `ToolClipMiddle`, `ToolSectionHeader`, `ToolEmptyState`, `ToolStatusBadge`, `ToolButton`, `ToolSegment`, `ToolIconButton`, `ToolToggle`, `ToolSlider`, `ToolBeginCombo`, `ContinueToolToolbar`, `ToolSingleLineButton`, `ToolWrappedSelectable` |
 | `ToolPixel` | The identity: the 5x7 pixel font of the launcher's icon as `ToolPixelText`, project tiles (`ToolPixelTile`, initial and color from the name), `ToolStateCell`, `ToolActivity` |
 | `ToolWindow` | `ToolGameSettings(applicationId, WindowSettings)`: tool window without a settings file, canvas content, audio, or game font |
 
@@ -42,6 +42,9 @@ Decision and rules of the look: [D23](Design/README.md#d23-tool-look-cabinet).
   bar to match: dark on Windows 10, the exact color on Windows 11.
 - **Look at it:** `LauncherUiSmoke` (launcher `Docs/Development.md`) and `EngineEditorUiSmoke
   <folder> [viewport-image.png]` (editor; target of a tree with `ENGINE_BUILD_EDITOR_TESTS`) draw the real panels in a
-  hidden window and write PNGs, so a look change can be judged without opening either tool.
+  hidden window and write PNGs, so a look change can be judged without opening either tool. The editor's covers every
+  panel with sample data, the command palette and the build failure popup; add a stage with any new panel.
+- **Use the shared parts:** a panel uses `ToolButton`, `ToolSlider` and `ToolSegment` (for tabs inside a panel), not
+  ImGui's `Button`, `SliderFloat` or `BeginTabBar`.
 - A new shared widget belongs here only if it serves multiple tools; tool-specific widgets stay in that tool's folder
   (editor parameter / Inspector widgets: `Editor/Ui/Widgets`).

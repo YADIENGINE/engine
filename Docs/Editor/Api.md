@@ -166,7 +166,7 @@ cmake --build build/engine-editor --config Debug --target EngineEditor
 
 - Control: Windows named pipe (byte mode, `PIPE_NOWAIT`), 4-byte little-endian length + UTF-8 JSON. Messages up to 1
   MiB; send queue up to 256 messages / 8 MiB; 64 KiB read / write budget per poll. Poll only on the owning thread.
-  Process stdout / stderr goes to Output; Full keeps the last 1000 lines, Last Build Try keeps the latest attempt's
+  Process stdout / stderr goes to Output; Full keeps the last 1000 lines, Last build keeps the latest attempt's
   10000-line / 8 MiB buffer and first error. Full session / attempt logs are under `editor-logs/` in the build
   directory. On process exit, remaining output is fully drained regardless of the 64 KiB poll limit; buffer limits do
   not truncate output written to files.

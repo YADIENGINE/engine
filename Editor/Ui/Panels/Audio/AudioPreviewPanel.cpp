@@ -222,8 +222,7 @@ void AudioPreviewPanel::Transport(const AudioPreviewState& audio, const EditorUi
     ImGui::SameLine();
     ImGui::SetNextItemWidth(volumeWidth);
     float volume = audio.volume;
-    if (ImGui::SliderFloat("##volume", &volume, 0.0f, 1.0f, "%.2f"))
-        send({AudioPreviewAction::Volume, {}, audio.loop, volume});
+    if (ToolSlider("##volume", volume, 0.0f, 1.0f)) send({AudioPreviewAction::Volume, {}, audio.loop, volume});
     ToolTooltip("Volume");
 }
 

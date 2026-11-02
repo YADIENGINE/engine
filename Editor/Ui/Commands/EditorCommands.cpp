@@ -52,7 +52,7 @@ std::string CommandTooltip(EditorCommand command, const EditorSnapshot& snapshot
 
 const std::array<EditorCommandInfo, static_cast<std::size_t>(EditorCommand::Count)>& EditorCommands() {
     static constexpr std::array commands{
-        EditorCommandInfo{EditorCommand::Open, "Open", EditorGlyph::Play, 0, nullptr},
+        EditorCommandInfo{EditorCommand::Open, "Run", EditorGlyph::Play, 0, nullptr},
         EditorCommandInfo{EditorCommand::Stop, "Stop", EditorGlyph::Stop, 0, nullptr},
         EditorCommandInfo{EditorCommand::Pause, "Pause", EditorGlyph::Pause, ImGuiKey_F6, "F6"},
         EditorCommandInfo{EditorCommand::Reset, "Reset", EditorGlyph::Reset, ImGuiMod_Ctrl | ImGuiKey_R, "Ctrl+R"},
@@ -60,7 +60,7 @@ const std::array<EditorCommandInfo, static_cast<std::size_t>(EditorCommand::Coun
                           ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_B, "Ctrl+Shift+B"},
         EditorCommandInfo{EditorCommand::Cancel, "Cancel operation", EditorGlyph::Cancel, 0, nullptr},
         EditorCommandInfo{EditorCommand::Step, "Step one frame", EditorGlyph::Step, ImGuiKey_F7, "F7"},
-        EditorCommandInfo{EditorCommand::BuildAndPlay, "Play", EditorGlyph::Play, 0, nullptr}};
+        EditorCommandInfo{EditorCommand::BuildAndPlay, "Play game", EditorGlyph::Play, 0, nullptr}};
     return commands;
 }
 

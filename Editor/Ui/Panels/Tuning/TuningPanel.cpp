@@ -4,6 +4,7 @@
 #include <array>
 #include <charconv>
 #include <cstdio>
+#include <cstring>
 #include <optional>
 #include <vector>
 #include "Editor/Internals/Session/TuningWorkspace.h"
@@ -74,29 +75,45 @@ std::optional<Color4> ParseColor(std::string_view text) {
     return Color4{channels[0], channels[1], channels[2], channels[3]};
 }
 
+// A number box that commits on Enter. It is a text box because ImGui's numeric inputs refuse EnterReturnsTrue; the
+// typed text lives in ImGui until then, so leaving without Enter reverts. Text that is not a number commits nothing.
+template <typename T> bool NumberBox(const char* id, T& value, const char* format, ImGuiInputTextFlags characters) {
+    std::array<char, 32> text{};
+    std::snprintf(text.data(), text.size(), format, value);
+    if (!ImGui::InputText(id, text.data(), text.size(), characters | ImGuiInputTextFlags_EnterReturnsTrue))
+        return false;
+    T parsed{};
+    const char* end = text.data() + std::strlen(text.data());
+    const auto result = std::from_chars(text.data(), end, parsed);
+    if (result.ec != std::errc{} || result.ptr != end) return false;
+    value = parsed;
+    return true;
+}
+bool FloatBox(const char* id, float& value) { return NumberBox(id, value, "%g", ImGuiInputTextFlags_CharsScientific); }
+// Two boxes side by side, `width` each; true when either committed.
+bool PairBoxes(const char* id, float& first, float& second, float width) {
+    ImGui::PushID(id);
+    ImGui::SetNextItemWidth(width);
+    bool committed = FloatBox("##first", first);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(width);
+    committed = FloatBox("##second", second) || committed;
+    ImGui::PopID();
+    return committed;
+}
+
 // Tek değerin kutusu. Sayılar ve renk Enter'la girer; onay kutusu tıklanınca.
 Edit Control(const char* id, TuningValue& value, float width) {
     constexpr auto Enter = ImGuiInputTextFlags_EnterReturnsTrue;
     ImGui::SetNextItemWidth(width);
-    if (auto* number = std::get_if<float>(&value))
-        return ImGui::InputFloat(id, number, 0, 0, "%g", Enter) ? Edit::Commit : Edit::None;
+    if (auto* number = std::get_if<float>(&value)) return FloatBox(id, *number) ? Edit::Commit : Edit::None;
     if (auto* integer = std::get_if<int>(&value))
-        return ImGui::InputInt(id, integer, 0, 0, Enter) ? Edit::Commit : Edit::None;
+        return NumberBox(id, *integer, "%d", ImGuiInputTextFlags_CharsDecimal) ? Edit::Commit : Edit::None;
     if (auto* flag = std::get_if<bool>(&value)) return ToolToggle(id, *flag) ? Edit::Commit : Edit::None;
-    if (auto* point = std::get_if<Float2>(&value)) {
-        std::array<float, 2> pair{point->x, point->y};
-        ImGui::SetNextItemWidth(width * 2);
-        if (!ImGui::InputFloat2(id, pair.data(), "%g", Enter)) return Edit::None;
-        *point = {pair[0], pair[1]};
-        return Edit::Commit;
-    }
-    if (auto* range = std::get_if<FloatRange>(&value)) {
-        std::array<float, 2> pair{range->min, range->max};
-        ImGui::SetNextItemWidth(width * 2);
-        if (!ImGui::InputFloat2(id, pair.data(), "%g", Enter)) return Edit::None;
-        *range = {pair[0], pair[1]};
-        return Edit::Commit;
-    }
+    if (auto* point = std::get_if<Float2>(&value))
+        return PairBoxes(id, point->x, point->y, width) ? Edit::Commit : Edit::None;
+    if (auto* range = std::get_if<FloatRange>(&value))
+        return PairBoxes(id, range->min, range->max, width) ? Edit::Commit : Edit::None;
     auto& color = std::get<Color4>(value);
     const ImVec4 swatch{color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f};
     ImGui::ColorButton((std::string(id) + ".swatch").c_str(), swatch, ImGuiColorEditFlags_AlphaPreviewHalf);
@@ -173,7 +190,7 @@ void Status(const TuningFileState& file, const EditorSnapshot& snapshot, const E
     case WorkerTuningState::NeedsBuild:
         ToolStatusBadge("Build needed", ToolToneColor(ToolTone::Warning));
         ImGui::TextWrapped("%s", worker.text.c_str());
-        if (snapshot.capabilities.Can(EditorCommand::Refresh) && ImGui::Button("Build & Refresh"))
+        if (snapshot.capabilities.Can(EditorCommand::Refresh) && ToolButton("Build & Refresh"))
             actions.command(EditorCommand::Refresh);
         break;
     case WorkerTuningState::Unreadable:
