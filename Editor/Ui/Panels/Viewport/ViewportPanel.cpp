@@ -66,7 +66,7 @@ EmptyViewportChoice DrawEmptyViewport(const char* title, const char* detail, con
         const char* keys;
         const char* action;
     };
-    static constexpr std::array Hints{Hint{"Ctrl+P", "Find a scene"}, Hint{"Ctrl+Shift+P", "All commands"},
+    static constexpr std::array Hints{Hint{"Ctrl+P", "Find anything"}, Hint{"Ctrl+Shift+P", "All commands"},
                                       Hint{"Ctrl+J", "Bottom panel"}, Hint{"F5", "Run or stop"}};
     const float scale = ToolUiScale();
     const auto& style = ImGui::GetStyle();
@@ -123,7 +123,7 @@ EmptyViewportChoice DrawEmptyViewport(const char* title, const char* detail, con
         ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
         const float keyColumn = ImGui::CalcTextSize("Ctrl+Shift+P").x + ToolMetrics::SectionGap * scale;
         ImGui::PopFont();
-        const float actionColumn = ImGui::CalcTextSize("Find a scene").x;
+        const float actionColumn = ImGui::CalcTextSize("Find anything").x;
         const float start = originX + std::max(0.0f, (width - keyColumn - actionColumn) * 0.5f);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0, ToolMetrics::Space * scale});
         for (const auto& hint : Hints) {

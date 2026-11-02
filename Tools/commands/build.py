@@ -11,6 +11,7 @@ from ..cmake import PYTHON_DEFINITION, clear_stale_build, remove_build_dir, run
 from ..errors import EXIT_FAILED, EXIT_OK
 from ..msvc import msvc_env, tool
 from ..project import Project
+from ..project_status import write_last_build
 
 CONFIGURE_STAMP = ".configured"  # Son başarılı configure; bkz. needs_configure
 
@@ -30,6 +31,19 @@ def needs_configure(root: Path, build_dir: Path) -> bool:
 
 
 def build(project: Project, release: bool, clean: bool) -> Path:
+    """Compiles the game and records the result for a launcher (Docs/ToolsContract.md, Project status files)."""
+    build_dir = project.path(project.section("game").get("buildDirectory", "build"))
+    try:
+        built = _compile(project, release, clean)
+    except BaseException as failure:
+        if not isinstance(failure, KeyboardInterrupt):
+            write_last_build(build_dir, False)
+        raise
+    write_last_build(build_dir, True)
+    return built
+
+
+def _compile(project: Project, release: bool, clean: bool) -> Path:
     """Oyunu derler ve exe'nin yolunu döndürür."""
     game = project.section("game")
     config = config_name(release)

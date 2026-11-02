@@ -470,7 +470,7 @@ terminalde çıktı vermez ve beklenmez (AI / CI çıkış kodunu okuyamaz).
   - **Sekme** (`LauncherTab`, tam ekran, her an bir tane): **Projects**: araç çubuğu (filtre: ad ya da yol, sıralama:
     Last opened / Name / Path, `Settings.json`'da saklanır; Add existing, New project), tek seçimli liste
     (çift tıklama = Open), sağ proje denetçisi. Hiç proje yokken bunların yerine kendi ilk açılış ekranı görünür
-    (New project, Add existing, derleme araçları ve engine durumu, proje klasörü). **Engines**: launcher'ın taşıdığı sürümler (sürüm, tarih,
+    (New project, Add existing, derleme araçları ve engine durumu, proje klasörü). **Engines**: bu bilgisayardaki ve indirilebilen sürümler (sürüm, tarih,
     notlar; kırıcılar öne çıkar, kullanan proje sayısı); developer modunda "dev (main)" satırı; salt okunur.
   - **Sağ proje denetçisi**: yalnız seçili projenin bilgileri ve eylemleri; görünür bir proje varken model hep birini
     seçili tutar (son açılan önce), denetçi boş kalmaz. Dar pencerede Project details açılır panelinden erişilir.
@@ -511,7 +511,8 @@ terminalde çıktı vermez ve beklenmez (AI / CI çıkış kodunu okuyamaz).
 **Launcher reposu (2026-10-31):** GitHub'da `YADIENGINE/yadien` (D19). Repo adı ürünün görünen adı değildir:
 launcher kodu ve belgeleri adı yine sabit yazmaz, gösterdiği ad içe aktarılan engine manifest'inden gelir.
 
-**Aktif engine launcher reposunda submodule (2026-10-31):**
+**Aktif engine launcher reposunda submodule (2026-10-31; 2026-11-02'de kalktı, launcher'ın checkout'unu artık `dev.py`
+seçer, launcher `Docs/Development.md`; `Engines/` de aşağıdaki "Sürümler isteğe bağlı iner" ile repodan çıktı):**
 ```
 <launcher reposu>/
   Engine/        submodule: engine reposu, main (aktif geliştirme; iki adımlı akışla düzenlenir)
@@ -707,7 +708,7 @@ the editor worker only, so Release has no catalog. Use is optional. Prefabs are 
 half; baking stays in D10, deferred. Details: [Asset library](AssetLibrary.md).
 
 **Why:** the motivation is organization and reuse, not performance. A code-first engine still needs a place to look.
-Status: accepted (2026-11-01), not implemented.
+Status: accepted (2026-11-01), implemented; prefabs and baking deferred.
 
 ### D23. Tool look: Cabinet
 **Decision:** The launcher and editor share one look, in `ToolUi/`. Warm graphite surfaces (Cabinet palette) replace the
@@ -728,65 +729,6 @@ colors read in the viewport. Removing frames costs little and helps most; the pi
 already owned. An installed engine copy keeps its look until a project moves to a newer engine.
 Status: implemented (2026-11-02).
 
-## v1 iş sırası
+## v1'de kalan işler
 
-Kabul edildi: [Plan](Plan.md) (Aşama 0 hazırlık → 1 editör döngüsü → 2 tuning → 3 launcher MVP → 4 dağıtım;
-5 görsel asset'ler ayrı oturumda; 6 debug en son).
-
-## Açık sorular
-
-Aşama 3 (launcher çekirdeği) için, tek tek konuşulur; karar alınınca ilgili D'ye yazılır:
-
-1. ~~Launcher'ın dili; CLI ile UI aynı exe mi~~ → D15 (C++20 çekirdek; `.exe` pencere + `.com` CLI).
-2. ~~Launcher reposunun adı ve yeri~~ → D16 (`YADIENGINE/yadien`).
-3. ~~Gömülü araçların launcher'a nasıl girdiği~~ → D8 (kilit dosyası + özetli indirme betiği).
-4. ~~Kopyadaki manifest'in adı ve biçimi~~ → D4 (`EngineManifest.json` aynen + üretilen `EngineCopy.json`).
-5. ~~Developer modunun nasıl açıldığı~~ → D4 (Ayarlar'da şifre; repoda sadece PBKDF2 özeti).
-6. ~~Kullanıcı modundaki launcher'ın submodule'lü bir projeyi açınca ne yapacağı~~ → D4 (her tür açılır;
-   engine işlemleri türe göre: kopya / submodule / kayıtsız).
-7. ~~Engine `CLAUDE.md`'sinin kopyadan çıkarılması; developer modunda AI dosyası~~ → D14 (`export-ignore` +
-   `git archive`; AI dosyası yok).
-8. ~~Kırıcı değişikliğin tanımı~~ → D16 (elle değişiklik isteyen her şey; birikimli notlar + `migrate`).
-9. ~~İlk yayın 1.0.0 mı 0.x mi~~ → D16 (0.x; 0.x'te ARA kırıcı; 1.0.0 v1 bitince).
-10. ~~Var olan oyunun launcher'a geçişi~~ → [Plan](Plan.md) Aşama 3 (belgeler `<engine>` komutuna, launcher
-    kurulup kabul testi geçince).
-11. ~~Launcher'ın kendi komutları ile devredilenlerin ayrımı~~ → D6 (`<engine> launcher <iş>`; gerisi aynen devir).
-
-Aşama 4 (dağıtım) için, tek tek konuşulur:
-
-1. ~~Paketin biçimi: kurulumu kim yapar~~ → D15 (Velopack; geri dönüş Inno Setup 6.6). ~~İmza~~ → D15
-   (açık kaynak + SignPath Foundation; o güne kadar imzasız).
-2. ~~Paketin sürümü~~ → D15 (launcher'ın kendi sürümü).
-3. ~~`Settings.json`'un yeri ve kaldırmanın sildikleri~~ → D15 (Velopack kökü; kaldırma iz bırakmaz, projeler ve
-   MSVC kalır).
-4. ~~Güncelleme sırasında çalışan süreçler; aynı / eski sürümün tekrar kurulması~~ → D15 (elle kurulumda Velopack
-   kapatır, kabul; otomatik güncelleme yalnız boşta uygulanır).
-5. ~~"Ses araçlarını kur"~~ → D7 (istendiğinde, özeti sabit wheel'ler, `current/` dışına).
-6. ~~Yayın yeri ve CI~~ → D19 (hemen public; `YADIENGINE` organizasyonu; yayın elle, CI/CD ve SignPath ertelendi).
-7. ~~Lisans~~ → D19 (iki repo da MIT, "YADIEN contributors").
-8. ~~Public belgelerin dili~~ → D19 (İngilizce; önce kullanıcıya dönük belgeler).
-9. ~~Developer modu~~ → D4 / D19 (şifre kalkar, uyarılı düz anahtar).
-10. ~~Açılmadan önceki temizlik~~ → D19 (gizli commit adresi, geçmiş yeniden yazılmaz, oyun adları genelleşir).
-
-Kapanan ilk liste:
-
-Kapananlar:
-
-1. ~~Exe modeli~~ → [D3](#d3-exe-modeli-launcher--projeden-derlenen-editör).
-2. ~~Engine dağıtımı~~ → [D4](#d4-engine-dağıtımı-kullanıcı-modu-ve-developer-modu).
-3. ~~Ajan API'si~~ → [D5](#d5-ajan-apisi-v1-sonrası-stratejik-öncelik).
-4. ~~CLI~~ → [D6](#d6-cli-launcher-exe-aynı-zamanda-komut-satırı-aracıdır-editör-açıksa-derlemenin-sahibi-editördür).
-5. ~~Python~~ → [D7](#d7-python-launcher-gömülü-python-taşır-araçlar-projenin-engineinden-çalışır).
-6. ~~Toolchain ve bağımlılıklar~~ → [D8](#d8-derleyici-msvc-launcher-otomatik-kurar).
-7. ~~Döngü hızı~~ → [D9](#d9-döngü-hızı-hot-reload-yok-yanına-derle-sonra-değiştir).
-8. ~~Kod asset'leri~~ → [D10](#d10-görsel-assetler-katalog-galeri-ve-pişirme).
-9. ~~Uzamsal tasarım~~ → [D11](#d11-uzamsal-değerler-v1de-sadece-sayı).
-10. ~~Debug~~ → [D12](#d12-hata-ayıklama-dış-debuggera-kolay-bağlanma--metin-çökme-raporu).
-
-## Mevcut altyapı
-
-Plan sıfırdan başlamıyor:
-- Proje kurma: `EngineSetup.py` + `Tools/ProjectTemplate/` ([ProjectSetup](../ProjectSetup.md)).
-- Editör: ayrı süreçte worker, IPC, Build & Refresh, parametre / inspection API'si
-  ([Editor architecture](../Editor/Architecture.md)).
-- Build / test: `Tools/build_cli.py`, `test_runner.py` (JSON sonuç), `project_config.py` (`Project.json`).
+[v1 finalization](v1finalization.md).

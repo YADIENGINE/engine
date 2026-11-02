@@ -96,6 +96,17 @@ commit, file hashes); engine tools do not read it.
 | `ENGINE_LAUNCHER` | editor | Full path to the windowed executable of the launcher that started the editor. If present, "Back to project list" appears in File: the editor starts that executable and closes. The launcher sets it for every engine command; tools forward it unchanged to the editor |
 | `ENGINE_EDITOR_CONTROL` | `refresh`, `ctl` | The control pipe of the editor whose Console started the command; used instead of the build directory's announcement. The editor sets it for its Console's shell |
 
+## Project status files
+
+Optional files in a project's build directories, for a launcher to show the project. Older engines do not write them, so
+a reader treats a missing or unreadable file as "nothing known"; deleting them is always safe.
+
+| File | Writer | Contents |
+| --- | --- | --- |
+| `<game.buildDirectory>/LastBuild.json` | `build`, `run` | `{"ok": bool, "finished": "2026-11-02T12:30:05Z"}` (UTC) |
+| `<editor.buildDirectory>/LastBuild.json` | editor | The same, for its last Build & Refresh |
+| `<editor.buildDirectory>/LastFrame.png` | editor | A recent frame of the running scene, at most 960 px on its longer side |
+
 ## Reserved name
 
 `<engine> launcher ...` is for the launcher's own commands; the launcher forwards all other arguments unchanged to the

@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <stdexcept>
@@ -44,15 +45,15 @@ EditorController::~EditorController() { Shutdown(); }
 void EditorController::Execute(EditorCommand command) {
     if (!Snapshot().capabilities.Can(command)) return;
     switch (command) {
-    case EditorCommand::Open   : Open(); break;
-    case EditorCommand::Stop   : Stop(); break;
-    case EditorCommand::Pause  : Pause(); break;
-    case EditorCommand::Reset  : Reset(); break;
-    case EditorCommand::Refresh: Refresh(); break;
+    case EditorCommand::Open        : Open(); break;
+    case EditorCommand::Stop        : Stop(); break;
+    case EditorCommand::Pause       : Pause(); break;
+    case EditorCommand::Reset       : Reset(); break;
+    case EditorCommand::Refresh     : Refresh(); break;
     case EditorCommand::BuildAndPlay: BuildAndPlay(); break;
-    case EditorCommand::Cancel : Cancel(); break;
-    case EditorCommand::Step   : Playback(_playbackSpeed, true); break;
-    case EditorCommand::Count  : break;
+    case EditorCommand::Cancel      : Cancel(); break;
+    case EditorCommand::Step        : Playback(_playbackSpeed, true); break;
+    case EditorCommand::Count       : break;
     }
 }
 void EditorController::Open() {
@@ -229,10 +230,34 @@ SceneParameters EditorController::Values(const std::string& id) const {
     const auto found = _accepted.find(id);
     return found == _accepted.end() ? SceneParameters{} : found->second;
 }
-void EditorController::Notify(const std::string& text) {
+void EditorController::Notify(const std::string& text, bool record) {
     Log("Control: " + text);
     _notice = text;
     _noticeAt = std::chrono::steady_clock::now();
+    if (record) RecordControl({std::chrono::system_clock::now(), text, {}, {}, {}, {}});
+}
+void EditorController::RecordControl(EditorControlEvent event) {
+    constexpr std::size_t ControlEventsKept = 500;
+    _controlEvents.push_back(std::move(event));
+    if (_controlEvents.size() > ControlEventsKept) _controlEvents.pop_front();
+}
+void EditorController::OpenSource(const std::string& file, int line) {
+    std::filesystem::path path(std::u8string(reinterpret_cast<const char8_t*>(file.data()), file.size()));
+    if (path.is_relative() && _project) path = _project->sourceDirectory / path;
+    std::error_code error;
+    if (const auto canonical = std::filesystem::weakly_canonical(path, error); !error) path = canonical;
+    std::array<wchar_t, MAX_PATH> code{};
+    if (SearchPathW(nullptr, L"code.cmd", nullptr, static_cast<DWORD>(code.size()), code.data(), nullptr) > 0) {
+        const auto target = path.wstring() + (line > 0 ? L":" + std::to_wstring(line) : std::wstring());
+        const auto arguments = L"/c code --goto \"" + target + L"\"";
+        const auto opened = reinterpret_cast<std::intptr_t>(
+            ShellExecuteW(nullptr, L"open", L"cmd.exe", arguments.c_str(), nullptr, SW_HIDE));
+        if (opened > 32) return;
+    }
+    const auto opened =
+        reinterpret_cast<std::intptr_t>(ShellExecuteW(nullptr, L"open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+    if (opened <= 32)
+        Log("Could not open " + file + " (Windows shell code " + std::to_string(opened) + ").", EditorLogLevel::Error);
 }
 void EditorController::Input(const DeviceInput& input) {
     if (_profiler.Snapshot().busy || !_ready) return;
@@ -305,6 +330,7 @@ EditorSnapshot EditorController::Snapshot() const {
                             benchmarkCancelPending,
                             _project ? &_tuning : nullptr};
     snapshot.notice = _notice;
+    snapshot.controlEvents = &_controlEvents;
     snapshot.audioUsage = &_audioUsage;
     snapshot.controlAttempt = _controlAttempt;
     snapshot.noticeAge = std::chrono::duration<double>(std::chrono::steady_clock::now() - _noticeAt).count();
@@ -551,14 +577,13 @@ void EditorController::BuildFinished(const WorkerBuildExit& exit) {
         }
         if (exit.outcome == WorkerBuildOutcome::Failed) {
             _status = "Game build failed";
-            Log(_status + " (exit " + std::to_string(exit.code) + ").", EditorLogLevel::Error,
-                EditorLogSource::Build);
+            Log(_status + " (exit " + std::to_string(exit.code) + ").", EditorLogLevel::Error, EditorLogSource::Build);
             _output.FinishAttempt(EditorBuildResult::BuildFailed);
             return;
         }
         const auto directory = game->executable.parent_path();
-        const auto launched = reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", game->executable.c_str(),
-                                                                      nullptr, directory.c_str(), SW_SHOWNORMAL));
+        const auto launched = reinterpret_cast<INT_PTR>(
+            ShellExecuteW(nullptr, L"open", game->executable.c_str(), nullptr, directory.c_str(), SW_SHOWNORMAL));
         if (launched <= 32) {
             _status = "Game built but could not start (shell error " + std::to_string(launched) + ")";
             Log(_status, EditorLogLevel::Error);

@@ -234,22 +234,15 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
     const float fontSize = ImGui::GetFontSize();
     const float splitterWidth = ToolMetrics::Space * scale;
     const float maxWidth = std::max(1.0f, available.x - splitterWidth - fontSize * 6);
-    // A lone session needs no list: just the add button and its icon, wide enough for one control.
-    constexpr float NamedRowWidthInFonts = 11.0f;
-    const bool lone = sessions.size() <= 1;
-    const float minWidth = std::min(
-        lone ? ImGui::GetFrameHeight() + ToolMetrics::Space * scale * 2 : fontSize * NamedRowWidthInFonts, maxWidth);
-    if (!lone && _sessionListWidth <= 0) _sessionListWidth = minWidth / scale;
-    float listWidth = lone ? minWidth : std::clamp(_sessionListWidth * scale, minWidth, maxWidth);
+    constexpr float NamedRowWidthInFonts = 11.0f; // Room for a session's icon, name and state
+    const float minWidth = std::min(fontSize * NamedRowWidthInFonts, maxWidth);
+    if (_sessionListWidth <= 0) _sessionListWidth = minWidth / scale;
+    float listWidth = std::clamp(_sessionListWidth * scale, minWidth, maxWidth);
     float terminalWidth = std::max(1.0f, available.x - listWidth - splitterWidth);
     ImGui::SetCursorPos({origin.x + terminalWidth, origin.y});
-    bool resizing = false;
-    bool resizeHovered = false;
-    if (!lone) {
-        ImGui::InvisibleButton("console-session-splitter", {splitterWidth, std::max(1.0f, available.y)});
-        resizing = ImGui::IsItemActive();
-        resizeHovered = ImGui::IsItemHovered();
-    }
+    ImGui::InvisibleButton("console-session-splitter", {splitterWidth, std::max(1.0f, available.y)});
+    const bool resizing = ImGui::IsItemActive();
+    const bool resizeHovered = ImGui::IsItemHovered();
     if (resizing || resizeHovered) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
     if (resizing) {
         listWidth = std::clamp(listWidth - ImGui::GetIO().MouseDelta.x, minWidth, maxWidth);
@@ -282,14 +275,7 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
             ImGui::EndPopup();
         }
         ImGui::Separator();
-        if (lone && !sessions.empty()) {
-            const auto& only = sessions.front();
-            const auto detail = only.title + "\n" + SessionStateName(only.state) +
-                                (only.activity.empty() ? std::string() : "\n" + only.activity);
-            ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Accent);
-            (void)ToolIconButton("only-session", only.agent ? ICON_FA_ROBOT : ICON_FA_TERMINAL, detail.c_str());
-            ImGui::PopStyleColor();
-        } else if (!lone && ImGui::BeginChild("sessions")) {
+        if (ImGui::BeginChild("sessions")) {
             for (std::size_t index = 0; index < sessions.size(); ++index) {
                 if (DrawSessionRow(index, sessions[index])) {
                     if (sessions[index].agent && sessions[index].state != SessionState::Exited) {
@@ -301,7 +287,7 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
                 }
             }
         }
-        if (!lone) ImGui::EndChild();
+        ImGui::EndChild();
     }
     EndToolPanel();
     ImGui::PopStyleVar(2);

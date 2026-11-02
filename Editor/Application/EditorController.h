@@ -43,8 +43,14 @@ public:
     // Playback seconds since open / reset, as last reported by the worker.
     [[nodiscard]] double Seconds() const { return _seconds; }
     [[nodiscard]] SceneParameters Values(const std::string& id) const;
-    // A change made through the control endpoint: logged and shown briefly over the viewport.
-    void Notify(const std::string& text);
+    // A change made through the control endpoint: logged, shown briefly over the viewport and, unless the caller
+    // records its own detail, kept in the session's activity.
+    void Notify(const std::string& text, bool record = true);
+    // One entry of the activity (the Agent Activity panel); the oldest leave after ControlEventsKept.
+    void RecordControl(EditorControlEvent event);
+    // Opens a file from build output at a line: VS Code when it is on PATH, otherwise the file's default application.
+    // A relative path counts from the project root.
+    void OpenSource(const std::string& file, int line);
     // The current Build & Refresh attempt was started through the control endpoint: its client gets the result, so a
     // failure does not open the blocking dialog.
     void MarkControlAttempt() { _controlAttempt = _output.Attempt().id; }
@@ -163,6 +169,7 @@ private:
     EditorSync _sync;
     double _seconds = 0.0;
     std::string _notice;
+    std::deque<EditorControlEvent> _controlEvents;
     std::uint64_t _controlAttempt = 0;
     std::chrono::steady_clock::time_point _noticeAt;
     std::string _status = "No project";

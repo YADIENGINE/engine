@@ -7,6 +7,8 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
+#include "Editor/Internals/Diagnostics/BuildProblems.h"
 
 enum class EditorLogLevel { Info, Warning, Error };
 enum class EditorLogSource { Editor, Worker, Build };
@@ -55,6 +57,11 @@ public:
     [[nodiscard]] const std::deque<EditorLogEntry>& Entries() const { return _entries; }
     [[nodiscard]] const std::deque<EditorLogEntry>& AttemptEntries() const { return _attemptEntries; }
     [[nodiscard]] const EditorBuildAttempt& Attempt() const { return _attempt; }
+    // The latest attempt's diagnostics, errors first, without repeats (a header's error appears once per source file).
+    [[nodiscard]] const std::vector<BuildProblem>& Problems() const { return _problems; }
+    [[nodiscard]] std::size_t ProblemErrors() const { return _problemErrors; }
+    // The attempt's latest Ninja status while it builds.
+    [[nodiscard]] const std::optional<BuildProgress>& Progress() const { return _progress; }
     [[nodiscard]] double AttemptSeconds() const;
     [[nodiscard]] const std::filesystem::path& ArchivePath(bool attempt) const;
     [[nodiscard]] const std::string& ArchiveError() const { return _archiveError; }
@@ -66,6 +73,9 @@ private:
     std::size_t _unreadWarnings = 0;
     EditorBuildAttempt _attempt;
     std::deque<EditorLogEntry> _attemptEntries;
+    std::vector<BuildProblem> _problems;
+    std::size_t _problemErrors = 0;
+    std::optional<BuildProgress> _progress;
     std::size_t _attemptBytes = 0;
     std::chrono::steady_clock::time_point _attemptStarted;
     std::filesystem::path _archivePath;

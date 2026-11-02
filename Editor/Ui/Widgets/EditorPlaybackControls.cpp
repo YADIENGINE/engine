@@ -1,4 +1,5 @@
 #include "Editor/Ui/Widgets/EditorPlaybackControls.h"
+#include <extras/IconsFontAwesome6.h>
 #include <imgui.h>
 #include <algorithm>
 #include <array>
@@ -10,7 +11,9 @@
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
-constexpr float MinimumCrumbWidthInFonts = 6.0f;
+constexpr float SearchMaximumWidth = 560.0f;
+constexpr float SearchMinimumWidth = 120.0f;
+constexpr float SearchHintMinimum = 100.0f; // The shortcut shows only when the hint keeps this much room
 std::string PlaybackLabel(double speed) {
     std::array<char, 16> label{};
     std::snprintf(label.data(), label.size(), "%.2gx", speed);
@@ -44,31 +47,41 @@ void PlaybackSpeed(const EditorSnapshot& snapshot, const EditorUiActions& action
     ToolTooltip(snapshot.capabilities.playbackEnabled ? "Playback speed"
                                                       : snapshot.capabilities.playbackDisabledReason);
 }
-// Where the open scene sits in the catalog: "Category / Scene", or only the scene when that does not fit.
-void SceneCrumb(const EditorSnapshot& snapshot, float width, bool& reveal) {
-    if (!snapshot.selected) return;
-    const auto& scene = *snapshot.selected;
-    ImGui::BeginGroup();
-    ImGui::AlignTextToFramePadding();
-    const auto category = scene.category.empty() ? std::string() : scene.category + "  /  ";
-    const float categoryWidth = ImGui::CalcTextSize(category.c_str()).x;
-    const float nameWidth = ImGui::CalcTextSize(scene.name.c_str()).x;
-    if (!category.empty() && categoryWidth + nameWidth <= width) {
-        ImGui::TextDisabled("%s", category.c_str());
-        ImGui::SameLine(0, 0);
-        ImGui::TextUnformatted(scene.name.c_str());
-    } else {
-        ImGui::TextUnformatted(ToolClipText(scene.name.c_str(), width).c_str());
+// Looks like a search field and opens quick open, which appears right over it and takes the typing.
+void SearchBox(float width, EditorToolbarSearch& search) {
+    const float scale = ToolUiScale();
+    const float height = ImGui::GetFrameHeight();
+    const auto start = ImGui::GetCursorScreenPos();
+    search.pressed = ImGui::InvisibleButton("quick-open", {width, height});
+    search.centerX = start.x + width * 0.5f;
+    search.top = start.y;
+    const bool hovered = ImGui::IsItemHovered();
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->AddRectFilled(start, {start.x + width, start.y + height},
+                        ImGui::GetColorU32(hovered ? ToolPalette::Elevated : ToolPalette::Panel),
+                        ToolMetrics::Radius * scale);
+    const float inset = EditorToolbarMetrics::ButtonPadding * scale;
+    const float textY = start.y + (height - ImGui::GetTextLineHeight()) * 0.5f;
+    const auto muted = ImGui::GetColorU32(ToolPalette::Muted);
+    constexpr const char* Icon = ICON_FA_MAGNIFYING_GLASS;
+    draw->AddText({start.x + inset, textY}, muted, Icon);
+    const float textX = start.x + inset + ImGui::CalcTextSize(Icon).x + inset * 0.75f;
+    float right = start.x + width - inset;
+    ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
+    constexpr const char* Shortcut = "Ctrl+P";
+    const float shortcutWidth = ImGui::CalcTextSize(Shortcut).x;
+    if (right - shortcutWidth - textX > SearchHintMinimum * scale) {
+        draw->AddText({right - shortcutWidth, start.y + (height - ImGui::GetTextLineHeight()) * 0.5f}, muted, Shortcut);
+        right -= shortcutWidth + inset;
     }
-    ImGui::EndGroup();
-    if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-    ToolTooltip("Show in Scenes");
-    if (ImGui::IsItemClicked()) reveal = true;
+    ImGui::PopFont();
+    draw->AddText({textX, textY}, muted, ToolClipText("Search everything", std::max(1.0f, right - textX)).c_str());
+    ToolTooltip("Scenes, their choices, graphics, sounds and commands (Ctrl+P)");
 }
 } // namespace
 
 void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool& marking,
-                                bool& revealScene) {
+                                EditorToolbarSearch& search) {
     const float scale = ToolUiScale();
     ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
@@ -82,7 +95,6 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
     ImGui::PushID("editor-playback");
     ImGui::BeginGroup();
     const float available = ImGui::GetContentRegionAvail().x;
-    const float origin = ImGui::GetCursorPosX();
     const float iconWidth = ImGui::GetFrameHeight();
     const float gap = EditorToolbarMetrics::Gap * scale;
     const float transportGap = EditorToolbarMetrics::TransportGap * scale;
@@ -111,27 +123,21 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         if (overflow()) width += iconWidth + gap;
         return width;
     };
-    const auto fits = [&] { return transportWidth() + toolsWidth() + groupGap <= available; };
+    const float searchMinimum = SearchMinimumWidth * scale;
+    const auto fits = [&] { return transportWidth() + toolsWidth() + searchMinimum + groupGap * 2 <= available; };
     if (!fits()) showSpeed = false;
     if (!fits()) showReset = false;
     if (!fits()) showStep = false;
     if (!fits()) showBuildLabel = false;
     if (!fits()) showBuild = false;
     if (!fits()) showPrimaryLabel = false;
-    // Playback sits in the window's center while the tools leave it room, sliding left when they do not.
+    // The search box sits in the window's center while playback and the tools leave it room, sliding when they do not.
     const float transport = transportWidth();
     const float tools = toolsWidth();
-    const float transportStart =
-        std::clamp((available - transport) * 0.5f, 0.0f, std::max(0.0f, available - tools - groupGap - transport));
-    const float crumbWidth = transportStart - groupGap;
-    const bool showCrumb = snapshot.selected && crumbWidth >= ImGui::GetFontSize() * MinimumCrumbWidthInFonts;
-    // Inside the group SameLine's offset counts from the group's start, SetCursorPosX's from the window's.
-    if (showCrumb) {
-        SceneCrumb(snapshot, crumbWidth, revealScene);
-        ImGui::SameLine(transportStart);
-    } else if (transportStart > 0) {
-        ImGui::SetCursorPosX(origin + transportStart);
-    }
+    const float room = std::max(1.0f, available - transport - tools - groupGap * 2);
+    const float searchWidth = std::min(SearchMaximumWidth * scale, room);
+    const float searchStart = std::clamp((available - searchWidth) * 0.5f, transport + groupGap,
+                                         std::max(transport + groupGap, available - tools - groupGap - searchWidth));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {transportGap, ImGui::GetStyle().ItemSpacing.y});
     EditorCommandButton(primary, snapshot, actions, showPrimaryLabel);
     ImGui::SameLine();
@@ -145,7 +151,10 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         EditorCommandButton(EditorCommand::Reset, snapshot, actions);
     }
     ImGui::PopStyleVar();
-    ImGui::SameLine(std::max(available - tools, transportStart + transport + groupGap));
+    // Inside the group SameLine's offset counts from the group's start.
+    ImGui::SameLine(searchStart);
+    SearchBox(searchWidth, search);
+    ImGui::SameLine(std::max(available - tools, searchStart + searchWidth + groupGap));
     if (showSpeed) {
         PlaybackSpeed(snapshot, actions, false);
         ImGui::SameLine();
@@ -167,12 +176,10 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         }
         ImGui::SameLine();
     }
-    if (!snapshot.ready) marking = false;
-    ImGui::BeginDisabled(!snapshot.ready);
-    if (EditorIconButton("mark", EditorGlyph::Mark,
-                         "Mark a region of the scene and paste it into the Console (or Alt+drag)", marking))
+    if (EditorIconButton(
+            "mark", EditorGlyph::Mark,
+            "Mark a region of the scene or the editor and paste it into the Console (or Alt+drag on a scene)", marking))
         marking = !marking;
-    ImGui::EndDisabled();
     if (showBuild) {
         ImGui::SameLine();
         EditorCommandButton(EditorCommand::Refresh, snapshot, actions, showBuildLabel);

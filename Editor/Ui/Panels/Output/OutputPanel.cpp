@@ -1,6 +1,7 @@
 #include "Editor/Ui/Panels/Output/OutputPanel.h"
 #include <imgui.h>
 #include <algorithm>
+#include <cmath>
 #include <ctime>
 #include <format>
 #include "Editor/Internals/Session/AgentContext.h"
@@ -66,6 +67,7 @@ std::string DisplayLine(const EditorLogEntry& entry) {
 
 void OutputPanel::ShowLastAttempt(std::uint64_t attempt) {
     _attemptSeen = attempt;
+    _problems = false;
     _lastAttempt = true;
     _failureView = true;
     _failureFilter = {};
@@ -74,6 +76,87 @@ void OutputPanel::ShowLastAttempt(std::uint64_t attempt) {
     _anchor = 0;
     _jumpToError = true;
     _initialized = true;
+}
+// The latest attempt's diagnostics, one click from the code.
+void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
+    const auto& diagnostics = snapshot.diagnostics;
+    const auto& attempt = diagnostics.Attempt();
+    const auto& problems = diagnostics.Problems();
+    const auto errors = diagnostics.ProblemErrors();
+    const auto warnings = problems.size() - errors;
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextColored(ToolPalette::Muted, "%s",
+                       std::format("{} error{}, {} warning{}  \xC2\xB7  {}  \xC2\xB7  {:.1f} s", errors,
+                                   errors == 1 ? "" : "s", warnings, warnings == 1 ? "" : "s",
+                                   ResultLabel(attempt.result), diagnostics.AttemptSeconds())
+                           .c_str());
+    if (errors > 0) {
+        ContinueToolToolbar("Fix all with agent", true);
+        if (ToolButton("Fix all with agent")) _fixAll = true;
+        ToolTooltip("Send the build errors to the agent session and ask it to fix them. This presses Enter.");
+    }
+    ImGui::Separator();
+    if (!ImGui::BeginChild("problems")) {
+        ImGui::EndChild();
+        return;
+    }
+    if (problems.empty())
+        ToolEmptyState(attempt.id ? "No problems found" : "No build yet",
+                       attempt.result == EditorBuildResult::BuildFailed ||
+                               attempt.result == EditorBuildResult::RefreshFailed
+                           ? "This failure has no compiler messages. See Last build for the whole output."
+                           : "Errors and warnings from the latest build appear here.");
+    const float scale = ToolUiScale();
+    const float rowHeight = ImGui::GetTextLineHeight() * 2 + ToolMetrics::Space * scale * 2;
+    const float fixWidth = ImGui::CalcTextSize("Fix").x + ImGui::GetStyle().FramePadding.x * 2;
+    ImGuiListClipper clipper;
+    clipper.Begin(static_cast<int>(problems.size()), rowHeight + ImGui::GetStyle().ItemSpacing.y);
+    while (clipper.Step())
+        for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index) {
+            const auto& problem = problems[static_cast<std::size_t>(index)];
+            ImGui::PushID(index);
+            const auto start = ImGui::GetCursorScreenPos();
+            const float width = ImGui::GetContentRegionAvail().x;
+            if (ImGui::Selectable("##problem", false, ImGuiSelectableFlags_AllowOverlap, {0, rowHeight}) &&
+                !problem.file.empty())
+                actions.openSource(problem.file, problem.line);
+            const auto where = problem.line > 0 ? std::format("{}:{}", problem.file, problem.line) : problem.file;
+            const auto message = (problem.code.empty() ? "" : problem.code + "  ") + problem.text;
+            ToolTooltip((where.empty() ? message : where + "\n" + message).c_str());
+            const bool hovered = ImGui::IsItemHovered();
+            if (ImGui::BeginPopupContextItem("##problem-menu")) {
+                if (ImGui::MenuItem("Copy")) ImGui::SetClipboardText((where + ": " + message).c_str());
+                ImGui::EndPopup();
+            }
+            auto* draw = ImGui::GetWindowDrawList();
+            const float inset = ToolMetrics::Space * scale;
+            const float textX = start.x + inset * 4;
+            const float textWidth = std::max(1.0f, width - inset * 5 - fixWidth);
+            const float cell = std::round(6 * scale);
+            const auto tone = EditorLevelColor(problem.level == BuildProblemLevel::Error ? EditorLogLevel::Error
+                                                                                         : EditorLogLevel::Warning);
+            const float top = start.y + inset;
+            const float lineHeight = ImGui::GetTextLineHeight();
+            draw->AddRectFilled({start.x + inset, top + (lineHeight - cell) * 0.5f},
+                                {start.x + inset + cell, top + (lineHeight + cell) * 0.5f}, ImGui::GetColorU32(tone));
+            draw->AddText({textX, top}, ImGui::GetColorU32(ImGuiCol_Text),
+                          ToolClipText(message.c_str(), textWidth).c_str());
+            ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
+            draw->AddText({textX, top + lineHeight}, ImGui::GetColorU32(ToolPalette::Muted),
+                          ToolClipMiddle(where.c_str(), textWidth).c_str());
+            ImGui::PopFont();
+            if (hovered && problem.level == BuildProblemLevel::Error) {
+                const auto after = ImGui::GetCursorScreenPos();
+                ImGui::SetCursorScreenPos({start.x + width - fixWidth - inset, top});
+                if (ToolButton("Fix"))
+                    _agentText =
+                        "[editor] Fix this build error:\n" + (where.empty() ? message : where + ": " + message) + "\n";
+                ToolTooltip("Paste this error into the agent session, without Enter.");
+                ImGui::SetCursorScreenPos(after);
+            }
+            ImGui::PopID();
+        }
+    ImGui::EndChild();
 }
 void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions, EditorPreferences& preferences) {
     const auto& diagnostics = snapshot.diagnostics;
@@ -85,12 +168,22 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
         _failureView = false;
         _initialized = false;
     }
-    const bool last = ToolSegment("Last build", _lastAttempt);
+    const auto problemsLabel = std::format("Problems {}###problems", diagnostics.Problems().size());
+    if (ToolSegment(problemsLabel.c_str(), _problems)) _problems = true;
+    ToolTooltip("Errors and warnings of the latest build. A click opens the file at the line.");
+    ContinueToolToolbar("Last build");
+    const bool last = ToolSegment("Last build", !_problems && _lastAttempt);
     ToolTooltip("Output of the latest Build & Refresh, until the scene is ready, fails or is canceled.");
     ContinueToolToolbar("Full");
-    const bool full = ToolSegment("Full", !_lastAttempt);
+    const bool full = ToolSegment("Full", !_problems && !_lastAttempt);
     ToolTooltip("Recent editor, worker and build output (up to 1000 lines). Open log has the whole session.");
+    if (_problems && !last && !full) {
+        DrawProblems(snapshot, actions);
+        actions.acknowledgeOutput();
+        return;
+    }
     if (last || full) {
+        _problems = false;
         _lastAttempt = last;
         _failureView = false;
         _initialized = false;

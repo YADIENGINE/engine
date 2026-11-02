@@ -21,7 +21,8 @@ only the changed section.
    View menu changes Focus viewport / Restore workspace, UI scale, and performance metrics.
 2. 75% / 100% / 125% / 150% UI scale and monitor DPI changes; long names wrap or truncate with tooltips in narrow
    panels. Secondary toolbar actions are in overflow; no horizontal toolbar scrolling.
-3. Ctrl+P opens and focuses Project search, even when hidden. The favorite star does not open content; Recent lists only
+3. Ctrl+P opens quick open and finds scenes, their choices, graphics, sounds and commands; Ctrl+Shift+P the same with
+   commands only. The favorite star does not open content; Recent lists only
    successful opens. Empty search / favorites / history states show meaningful explanations.
 4. Inspector Search / Modified counter, `?` description, changed-value marker, Pending / rejection, and single-field
    reset; up to four choices that fit share a row with their label, more use full width. Narrowing the panel reduces columns for three-way choices such as Phase; normal
@@ -32,10 +33,11 @@ only the changed section.
 5. Output Last build / Full separation, scope-specific counters / search / Copy Visible; click / Ctrl selection /
    Shift range / Ctrl+A / Ctrl+C / right-click copy / double-click text details. Text copying in search and details
    remains available; scrolling up or selecting stops Follow. Clear clears only Full; Open log opens the whole session
-   or attempt output. Long output preserves the first error. A failed build opens the popup once; Show Output returns
-   from closed or maximized layout to Output and shows the first error, unaffected by old search or a disabled Error
-   filter. No popup on cancellation; worker startup failure after successful build is explained separately. New attempts
-   do not mix with previous attempts.
+   or attempt output. Long output preserves the first error. A failed build brings Output forward once, on Problems,
+   whose rows open the file at the line; it waits while maximized or typing. A failure without compiler messages shows
+   the first error, unaffected by old search or a disabled Error filter. Nothing comes forward on cancellation. The
+   status bar's error count opens Problems and lasts until the next build; a running build shows Ninja's count. New
+   attempts do not mix with previous attempts.
 6. Switching Develop / Inspect / Profile does not erase the last custom layout; Last custom layout restores it. Output /
    Console bottom buttons and Ctrl+J toggle only the target panel, preserving other open panels. Profiler is absent from
    the bottom bar; it opens from View and the palette. Errors / warnings while Output is closed flash the button in

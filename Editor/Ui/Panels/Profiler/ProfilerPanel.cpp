@@ -2,13 +2,21 @@
 #include <imgui.h>
 #include <algorithm>
 #include <cfloat>
+#include <cmath>
+#include <format>
+#include <functional>
 #include <string>
+#include <vector>
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
+constexpr double FrameBudgetMs = 1000.0 / 60.0;
+constexpr double GraphHeadroom = 1.5; // The budget line stays below the top even when every frame is under it
+constexpr float GraphHeight = 96.0f;
+
 void StatisticsRow(const char* name, const Profiler::Statistics& stats) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
@@ -20,6 +28,95 @@ void StatisticsRow(const char* name, const Profiler::Statistics& stats) {
             ImGui::Text("%.3f", value);
         else
             ImGui::TextDisabled("Unavailable");
+    }
+    ImGui::PopFont();
+}
+// One bar per frame (per few frames when they outnumber the pixels, showing the slowest), against the 60 FPS budget.
+// A click or drag selects a frame.
+void FrameGraph(const std::vector<Profiler::FrameSample>& frames, int& selected) {
+    const float scale = ToolUiScale();
+    const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+    const float height = GraphHeight * scale;
+    const auto start = ImGui::GetCursorScreenPos();
+    ImGui::InvisibleButton("frame-graph", {width, height});
+    const auto count = static_cast<int>(frames.size());
+    const float barWidth = std::max(1.0f, std::floor(width / static_cast<float>(count)));
+    const int bars = std::min(count, static_cast<int>(width / barWidth));
+    const auto barOf = [&](int frame) { return frame * bars / count; };
+    double slowest = FrameBudgetMs * GraphHeadroom;
+    for (const auto& frame : frames)
+        slowest = std::max(slowest, frame.intervalMs);
+    const auto heightOf = [&](double ms) { return static_cast<float>(ms / slowest) * height; };
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->AddRectFilled(start, {start.x + width, start.y + height}, ImGui::GetColorU32(ToolPalette::Content),
+                        ToolMetrics::Radius * scale);
+    const auto muted = ImGui::GetColorU32(ToolPalette::Muted);
+    const auto over = ImGui::GetColorU32(ToolToneColor(ToolTone::Error));
+    const auto accent = ImGui::GetColorU32(ToolToneColor(ToolTone::Accent));
+    int first = 0;
+    for (int bar = 0; bar < bars; ++bar) {
+        double worst = 0;
+        bool hasSelected = false;
+        int frame = first;
+        for (; frame < count && barOf(frame) == bar; ++frame) {
+            worst = std::max(worst, frames[static_cast<std::size_t>(frame)].intervalMs);
+            hasSelected = hasSelected || frame == selected;
+        }
+        first = frame;
+        const float x = start.x + static_cast<float>(bar) * barWidth;
+        draw->AddRectFilled({x, start.y + height - heightOf(worst)},
+                            {x + std::max(1.0f, barWidth - (barWidth > 2 ? 1.0f : 0.0f)), start.y + height},
+                            hasSelected             ? accent
+                            : worst > FrameBudgetMs ? over
+                                                    : muted);
+    }
+    const float budgetY = start.y + height - heightOf(FrameBudgetMs);
+    draw->AddLine({start.x, budgetY}, {start.x + width, budgetY}, ImGui::GetColorU32(ToolPalette::Separator), scale);
+    ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
+    constexpr const char* BudgetLabel = "16.7 ms";
+    draw->AddText({start.x + width - ImGui::CalcTextSize(BudgetLabel).x - ToolMetrics::Space * scale,
+                   budgetY - ImGui::GetTextLineHeight()},
+                  muted, BudgetLabel);
+    ImGui::PopFont();
+    if (ImGui::IsItemHovered() || ImGui::IsItemActive()) {
+        const float bar = (ImGui::GetIO().MousePos.x - start.x) / barWidth;
+        const int frame = std::clamp(static_cast<int>(bar) * count / std::max(1, bars), 0, count - 1);
+        if (ImGui::IsItemActive()) selected = frame;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Frame %d: %.2f ms", frame, frames[static_cast<std::size_t>(frame)].intervalMs);
+    }
+}
+// The selected frame's own time per scope, as shares of one bar, slowest first.
+void ScopeStrip(const Profiler::Capture& capture, const Profiler::FrameSample& frame) {
+    std::vector<const Profiler::ScopeSample*> scopes;
+    double total = 0;
+    for (const auto& scope : frame.scopes)
+        if (scope.id < capture.scopes.size() && scope.selfMs > 0) {
+            scopes.push_back(&scope);
+            total += scope.selfMs;
+        }
+    if (scopes.empty()) return;
+    std::ranges::sort(scopes, std::greater{}, &Profiler::ScopeSample::selfMs);
+    const float scale = ToolUiScale();
+    const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+    const float height = ImGui::GetFrameHeight();
+    const auto start = ImGui::GetCursorScreenPos();
+    ImGui::Dummy({width, height});
+    auto* draw = ImGui::GetWindowDrawList();
+    ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
+    float x = start.x;
+    for (std::size_t index = 0; index < scopes.size(); ++index) {
+        const auto& scope = *scopes[index];
+        const float share = width * static_cast<float>(scope.selfMs / total);
+        const ImVec2 from{x, start.y};
+        const ImVec2 to{x + std::max(1.0f, share - scale), start.y + height};
+        draw->AddRectFilled(from, to, ImGui::GetColorU32(index == 0 ? ToolPalette::Selected : ToolPalette::Control));
+        const auto label = std::format("{} {:.1f}", capture.scopes[scope.id], scope.selfMs);
+        const auto shown = ToolClipText(label.c_str(), share - ToolMetrics::Space * scale * 2);
+        if (!shown.empty())
+            draw->AddText({x + ToolMetrics::Space * scale, start.y + (height - ImGui::GetTextLineHeight()) * 0.5f},
+                          ImGui::GetColorU32(ToolPalette::Secondary), shown.c_str());
+        x += share;
     }
     ImGui::PopFont();
 }
@@ -130,15 +227,17 @@ void ProfilerPanel::Live(const EditorSnapshot& snapshot, const EditorUiActions& 
     if (ToolToggle("Record live", enabled))
         actions.profiler(enabled ? EditorProfilerCommand::Enable : EditorProfilerCommand::Disable, {}, {});
     ImGui::EndDisabled();
-    ImGui::TextWrapped("Stream FPS %.1f | readback %.2f | publish %.2f | host upload %.2f ms", snapshot.streamFps,
-                       snapshot.captureMs, snapshot.publishMs, snapshot.hostTransferMs);
-    ImGui::TextWrapped("Live timing includes scene transport and the worker frame limit. Use Benchmarks for "
-                       "controlled performance comparisons.");
+    ToolTooltip("Live timing includes scene transport and the worker frame limit. Use Benchmarks for controlled "
+                "performance comparisons.");
+    ContinueToolToolbar("Stream FPS 60.0 | readback 0.00 | publish 0.00 | host upload 0.00 ms", true);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextColored(ToolPalette::Muted, "Stream FPS %.1f | readback %.2f | publish %.2f | host upload %.2f ms",
+                       snapshot.streamFps, snapshot.captureMs, snapshot.publishMs, snapshot.hostTransferMs);
+    if (snapshot.profiler.live) Frames(*snapshot.profiler.live);
     if (snapshot.profiler.liveSummary)
         Summary(*snapshot.profiler.liveSummary);
     else
         ToolEmptyState("No live samples", "Enable Record live while a scene is running to inspect timing.");
-    if (snapshot.profiler.live) Frames(*snapshot.profiler.live);
 }
 void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     ImGui::BeginDisabled(snapshot.busy);
@@ -281,25 +380,21 @@ void ProfilerPanel::Compare(const EditorSnapshot& snapshot, const EditorUiAction
 void ProfilerPanel::Frames(const Profiler::Capture& capture) {
     if (capture.runs.empty()) return;
     _run = std::clamp(_run, 0, static_cast<int>(capture.runs.size() - 1));
-    (void)ToolSlider("Run", _run, 0, static_cast<int>(capture.runs.size() - 1));
+    if (capture.runs.size() > 1) (void)ToolSlider("Run", _run, 0, static_cast<int>(capture.runs.size() - 1));
     const auto& run = capture.runs[static_cast<std::size_t>(_run)];
     if (run.frames.empty()) return;
-    ImGui::Text("%s | repeat %d", capture.variants[static_cast<std::size_t>(run.variant)].c_str(), run.repeat + 1);
-    const auto getter = [](void* data, int index) {
-        return static_cast<float>(
-            (*static_cast<const std::vector<Profiler::FrameSample>*>(data))[static_cast<std::size_t>(index)]
-                .intervalMs);
-    };
-    ImGui::PlotLines("Frame ms", getter, const_cast<std::vector<Profiler::FrameSample>*>(&run.frames),
-                     static_cast<int>(run.frames.size()), 0, nullptr, 0, FLT_MAX, {0, ImGui::GetFontSize() * 6});
+    if (capture.runs.size() > 1)
+        ImGui::Text("%s | repeat %d", capture.variants[static_cast<std::size_t>(run.variant)].c_str(), run.repeat + 1);
     _frame = std::clamp(_frame, 0, static_cast<int>(run.frames.size() - 1));
-    (void)ToolSlider("Frame", _frame, 0, static_cast<int>(run.frames.size() - 1));
+    FrameGraph(run.frames, _frame);
     const auto& frame = run.frames[static_cast<std::size_t>(_frame)];
-    ImGui::Text("Frame %.3f ms", frame.intervalMs);
+    ImGui::Text("Frame %d: %.3f ms", _frame, frame.intervalMs);
+    ContinueToolToolbar("GPU unavailable for this frame", true);
     if (frame.gpuMs)
         ImGui::Text("GPU %.3f ms", *frame.gpuMs);
     else
         ImGui::TextDisabled("GPU unavailable for this frame");
+    ScopeStrip(capture, frame);
     if (ImGui::BeginTable("selected-frame", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH)) {
         ImGui::TableSetupColumn("CPU scope");
         ImGui::TableSetupColumn("Inclusive ms");

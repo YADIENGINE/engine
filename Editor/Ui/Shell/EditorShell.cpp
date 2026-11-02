@@ -1,5 +1,6 @@
 #include "Editor/Ui/Shell/EditorShell.h"
 #include <algorithm>
+#include <format>
 #include <string>
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Style/EditorTheme.h"
@@ -90,6 +91,8 @@ void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorSh
     if (ImGui::MenuItem("Ask agent to fix build", nullptr, false, failed)) result.agent = EditorAgentRequest::FixBuild;
     ToolTooltip(failed ? "Send the build errors and ask the agent to fix them. This presses Enter."
                        : "The last Build & Refresh did not fail.");
+    if (ImGui::MenuItem("Show activity")) result.bottomPanel = EditorPanel::Activity;
+    ToolTooltip("What agent tools changed or captured in this session, with Undo.");
     ImGui::SeparatorText("Settings");
     (void)ToolToggle("Agent control", agent.control);
     ToolTooltip("Allow agent tools (python Engine ctl) to change the editor.\n"
@@ -109,7 +112,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
     ToolPixelText("Y", 2, ToolPalette::Accent, ImGui::GetFrameHeight());
     ImGui::SameLine();
     if (ImGui::BeginMenu("File")) {
-        result.focusCatalog = ImGui::MenuItem("Find scene", "Ctrl+P");
+        result.openQuick = ImGui::MenuItem("Quick open", "Ctrl+P");
         EditorCommandMenuItem(EditorCommand::Open, snapshot, actions);
         ImGui::Separator();
         // Only when a launcher started this editor (ENGINE_LAUNCHER; Docs/ToolsContract.md).
@@ -171,7 +174,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
     return result;
 }
 float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position, float width,
-                           bool& marking, bool& revealScene) const {
+                           bool& marking, EditorToolbarSearch& search) const {
     const float scale = ToolUiScale();
     const float height = std::max(EditorToolbarMetrics::ControlHeight * scale, ImGui::GetFrameHeight()) +
                          EditorToolbarMetrics::PaddingY * 2 * scale;
@@ -181,7 +184,7 @@ float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions
                         {EditorToolbarMetrics::PaddingX * scale, EditorToolbarMetrics::PaddingY * scale});
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Window);
     if (ImGui::Begin("Toolbar###editor.toolbar", nullptr, BarFlags))
-        DrawEditorPlaybackControls(snapshot, actions, marking, revealScene);
+        DrawEditorPlaybackControls(snapshot, actions, marking, search);
     ImGui::End();
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
@@ -217,6 +220,16 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
             result.bottomPanel = EditorPanel::Console;
         ToolTooltip("Terminal in the project folder (Ctrl+`)");
         ImGui::SameLine();
+        if (const auto buildErrors = snapshot.diagnostics.ProblemErrors(); buildErrors > 0 && BuildFailed(snapshot)) {
+            const auto tone = EditorLevelColor(EditorLogLevel::Error);
+            const auto label =
+                std::format("{} error{}###editor.problems-status", buildErrors, buildErrors == 1 ? "" : "s");
+            ImGui::PushStyleColor(ImGuiCol_TextDisabled, tone);
+            if (ToolSegment(label.c_str(), false, TintSurface(base, tone, 0.14f))) result.showProblems = true;
+            ImGui::PopStyleColor();
+            ToolTooltip("The last build failed. Click to see its problems.");
+            ImGui::SameLine();
+        }
         if (agent.session) {
             const bool waiting = agent.state == SessionState::Waiting;
             const auto* icon = EditorSessionStateIcon(agent.state);
@@ -256,9 +269,15 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
         auto* draw = ImGui::GetWindowDrawList();
         if (detailWidth > ImGui::GetFontSize() * 3.0f) {
             ImGui::InvisibleButton("status-detail", {detailWidth, rowHeight});
-            const auto detail = ToolClipText(snapshot.status.c_str(), detailWidth - gap);
+            // While building: how far it got, from Ninja's own count.
+            const auto& progress = snapshot.diagnostics.Progress();
+            const bool counting = (snapshot.building || snapshot.phase == EditorPhase::Building) && progress;
+            const auto text = counting ? std::format("Building {}/{}  \xC2\xB7  {:.0f} s", progress->done,
+                                                     progress->total, snapshot.diagnostics.AttemptSeconds())
+                                       : snapshot.status;
+            const auto detail = ToolClipText(text.c_str(), detailWidth - gap);
             draw->AddText({cursor.x + gap * 0.5f, textY}, ImGui::GetColorU32(ToolPalette::Muted), detail.c_str());
-            ToolTooltip(snapshot.status.c_str());
+            ToolTooltip(text.c_str());
         }
         if (!metrics.empty() && metricsWidth < available.x)
             draw->AddText({cursor.x + available.x - metricsWidth + gap, textY}, ImGui::GetColorU32(ToolPalette::Muted),

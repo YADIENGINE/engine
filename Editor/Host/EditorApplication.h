@@ -26,6 +26,10 @@ protected:
 
 private:
     void SavePreferences(bool force);
+    // The files a launcher reads (Docs/ToolsContract.md, Project status files): the last build's result and, now and
+    // then, a recent frame of the running scene.
+    void UpdateProjectStatus();
+    void SaveLastFrame();
     // Saves the marked region of the latest frame and pastes its context line into the Console.
     void PasteMark(const FloatRect& region);
     void PasteWindowMark(const FloatRect& region, const ViewportPixels& window);
@@ -70,5 +74,7 @@ private:
     mutable std::uint64_t _windowSequence = 0;
     mutable std::shared_ptr<const ViewportPixels> _window;
     bool _stopped = false;
+    std::uint64_t _statusAttempt = 0; // The build attempt LastBuild.json last recorded
+    double _lastFrameAt = 0;          // WorkerTimestamp of the last LastFrame.png
     std::optional<FrameExecutionSettings> _beforeBenchmark;
 };

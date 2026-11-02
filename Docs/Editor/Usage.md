@@ -11,8 +11,8 @@ standalone game in Debug through the project tools, then opens it in its own win
 Build output and errors appear in Output; cancellation or a failed build never launches the game. It requires
 the recipe's Python, engine and source paths plus a game configuration in `Project.json`.
 
-- **Left (Scenes):** search, Favorites and Recent filters beside it, categories with their scene count. Single-click
-  runs content; Ctrl+P focuses search. A newly selected scene opens its category and scrolls into view once; collapsing
+- **Left (Scenes):** Favorites and Recent filters, search beside them, categories with their scene count. Single-click
+  runs content. A newly selected scene opens its category and scrolls into view once; collapsing
   it afterwards stays collapsed. A row's star appears on hover (always on favorites) and toggles the favorite. Recent
   keeps the last 10 successful opens.
 - **Center (Viewport):** the worker's actual image on a neutral background. The dropdown at its top left ("Fit · 56%")
@@ -23,8 +23,8 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
   Closed, loading, or failed editor scenes show a state explanation and an available run / retry / cancel action; with
   no scene or a stopped one, also the last five scenes opened, one click from running again, and with no scene the
   shortcuts. A short viewport drops the shortcuts first, then the recent scenes. Playback is only in the global
-  toolbar, centered, with the open scene's place at its left (a click shows it in Scenes) and Build, Play game, speed
-  and Mark at its right.
+  toolbar, at its left, with the search box (quick open, Ctrl+P) in the middle and speed, Mark, Build and Play game at
+  its right. Mark needs no running scene: a region on a scene's image marks the scene, anywhere else the editor window.
 - **Right (Inspector):** the header's `?` opens the description by tooltip or click. Property search and the Modified
   counter find changed fields; with at most six visible fields, the Search button opens search. An accent dot marks a
   value different from default; Pending marks a value awaiting worker response, not a setting applied on the next
@@ -37,7 +37,10 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
   letter by letter, with full text in tooltips. Advanced groups start collapsed; search and Modified filters expand
   matching groups. Live information shows numbers right-aligned in technical font, short statuses as badges, and
   explanations wrapped.
-- **Output:** one row of controls above the lines. `Last build` shows output from the latest Build & Refresh click
+- **Output:** one row of controls above the lines. `Problems` lists the latest build's compiler, linker and CMake
+  messages, errors first and without repeats; a click opens the file at the line (VS Code when `code` is on PATH,
+  otherwise the file's default application), *Fix* pastes that error into the agent session and *Fix all with agent*
+  sends them all and presses Enter. `Last build` shows output from the latest Build & Refresh click
   until the scene is ready, fails, or is cancelled; `Full` shows the last 1000 lines from editor, worker, and all
   attempts. Under the row, `Last build` names the attempt's start time, duration, result, and build exit code. Info /
   Warning / Error counters, search, and Copy Visible apply to
@@ -47,12 +50,15 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
   and detail text fields. Follow stops on scrolling up or selecting a line. Clear clears only the Full buffer; the last
   attempt and files remain. `Open log` opens the selected scope's full file. Files are kept per session and attempt
   under `editor-logs/` in the build directory; they are not deleted automatically. The last-attempt buffer is limited to
-  10000 lines / 8 MiB; on overflow, the first error is retained and a reference to the full file appears. Build failures
-  or refresh failures after a successful build open a popup once; cancellation does not. Read-only popup text supports
-  mouse selection and Ctrl+C; Ctrl+A selects all text. Copy copies the error summary, build exit code if present, and
-  first error message together. Show Output exits maximized scene, brings Output forward, opens Last build, and
-  scrolls to the first error. In this view, previous search/level preferences are temporarily removed; switching scope
-  restores saved preferences.
+  10000 lines / 8 MiB; on overflow, the first error is retained and a reference to the full file appears. A failed build
+  brings Output forward once, on Problems; a failure with no compiler messages (a worker that would not start) opens
+  Last build at the first error instead, with earlier search / level filters set aside until the scope changes. It waits
+  while a scene is maximized or text is being typed, and an attempt started through the control endpoint reports to its
+  client; the status bar shows the error count until the next build either way, and a click on it opens Problems. While
+  building, the status bar shows Ninja's count and the time so far ("Building 12/48 · 14 s").
+- **Agent Activity:** what agent tools did through the control endpoint this session, newest first: changes, notes and
+  screenshots. A changed parameter has *Undo* while its scene stays open and the value is still the agent's; a screenshot
+  has *Open*. Agent → Show activity opens it.
 - **Assets:** the asset library: back and search across the top, a folder tree on the left (sets are rows too), a tile
   grid on the right, and tile size at the bottom (or Ctrl+wheel). A click on a graphic opens it in the Viewport; a click
   on a folder or set enters it. Back (Alt+Left) undoes the last move or opened graphic, in order. A click on a sound
@@ -68,8 +74,8 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
   in the background). Click or drag on the waveform to seek. Below it: previous sound in the folder, play/pause (Space),
   stop, next sound, loop and volume. It plays in the editor process from the source file, so a new sound needs no Build
   & Refresh, and it leaves the viewport and running scene alone.
-- **Console:** a real PowerShell session at the project root. With one session the right edge holds only the add
-  button and the session's icon; with more, a named list that can be resized. Drag to select visible text and copy with Ctrl+C /
+- **Console:** a real PowerShell session at the project root, with the sessions in a named list at the right that can be
+  resized. Drag to select visible text and copy with Ctrl+C /
   Ctrl+Shift+C or right-click Copy. Without selection, Ctrl+C interrupts the running program; Ctrl+V pastes, Escape
   clears selection. Wheel, the scrollbar and Shift+PageUp/PageDown browse shell history; typing returns to live output.
   In live applications such as Claude and Codex, wheel input follows the requested mouse protocol; full-screen
@@ -125,13 +131,15 @@ Reset recreates the scene in the same worker process. Use Run to restart the wor
 | F7 | Single frame while paused |
 | Ctrl+R | Reset |
 | Ctrl+Shift+B | Build & Refresh |
-| Ctrl+P | Scene search |
-| Ctrl+Shift+P | Command palette |
+| Ctrl+P | Quick open: scenes and their choices, graphics, sounds, commands |
+| Ctrl+Shift+P | The same window, commands only |
 | Ctrl+Shift+A | Open the chosen agent session (also while Console is focused) |
 | Ctrl+J | Toggle last bottom tool panel |
 
-Search scene actions, panel visibility, and layouts in the command palette; select with up / down, run with Enter,
-close with Escape. Unavailable actions show their reason. Playback / build shortcuts do not run during text editing or
+Quick open starts with the scenes opened last, then the commands; typing finds anything by any of its words, in any
+order ("medusa boss"). Picking a scene runs it, picking one of its choices ("Boss flow · boss: Medusa") runs it with that
+value, picking a sound plays it in Audio Preview. Select with up / down, run with Enter, close with Escape. Unavailable
+actions show their reason. Playback / build shortcuts do not run during text editing or
 popups; input consumed by the editor is not forwarded to the scene.
 
 Replay, Reset, and the product's own Pause screen differ: Replay restarts content's own presentation, Reset recreates
@@ -194,12 +202,13 @@ editor context; it never calls a model itself. The agent drives the editor back 
   setup waits for Start; Cancel discards that pending context. *Copy hint* copies: "Let the agent know the engine:
   add @Engine/AgentDocs/Agent.md to your CLAUDE.md (or AGENTS.md)".
 - **Agent menu** groups Send context and Settings. Open agent and New shell are available through the Console's add
-  button and remain in the command palette under "Agent:", alongside the context commands:
+  button and remain in the command palette as "Agent" entries, alongside the context commands:
   - *Send scene* pastes the open scene's id, playback time, changed parameters and a capture of the frame
     (`editor-captures/scene-*.png`) into the agent session, without Enter: type your request after it.
   - *Send build failure* pastes the last failed Build & Refresh with its error lines; *Ask agent to fix build* also
-    asks for a fix and presses Enter. The build failure popup makes *Ask Agent to Fix* the primary button, beside
-    Copy, Show Output and Close. Disabled context commands explain why in a tooltip.
+    asks for a fix and presses Enter, as *Fix all with agent* in Output → Problems does. Disabled context commands
+    explain why in a tooltip.
+  - *Show activity* opens Agent Activity.
   - *Agent control* (on by default): off, tools may observe the editor (status, list, screenshot, inspect, logs) but
     every command that changes it (open, set, action, playback, seek, frames, refresh) is refused. The status bar shows
     "Agent control off".

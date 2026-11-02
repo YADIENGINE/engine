@@ -36,10 +36,12 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/FrameCapture.cpp
     Internals/Session/ViewportMark.cpp
     Internals/Session/AgentContext.cpp
+    Internals/Session/QuickOpen.cpp
     Internals/Agent/AgentProfile.cpp
     Internals/Agent/SessionActivity.cpp
     Internals/Viewport/SceneViewport.cpp
     Internals/Viewport/ViewportInputRouter.cpp
+    Internals/Diagnostics/BuildProblems.cpp
     Internals/Diagnostics/EditorDiagnostics.cpp
     Internals/Settings/EditorPreferences.cpp
     Internals/Settings/EditorSettingsStore.cpp
@@ -177,6 +179,7 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Widgets/EditorPlaybackControls.cpp
         Ui/Shell/EditorShell.cpp
         Ui/Workspace/EditorWorkspace.cpp
+        Ui/Panels/Activity/ActivityPanel.cpp
         Ui/Panels/Assets/AssetsPanel.cpp
         Ui/Panels/Audio/AudioPreviewPanel.cpp
         Ui/Panels/Catalog/CatalogPanel.cpp

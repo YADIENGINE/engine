@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <chrono>
 #include <ctime>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -23,7 +25,7 @@
 #include "ToolUi/ToolWindow.h"
 
 namespace {
-enum class SmokeView { Idle, Running, Paused, Building, Inspector, Palette, BuildFailed };
+enum class SmokeView { Idle, Running, Paused, Building, Inspector, QuickOpen, Palette, BuildFailed };
 struct SmokeStage {
     const char* name;
     SmokeView view;
@@ -42,10 +44,12 @@ constexpr std::array Stages{
     SmokeStage{"inspector-200", SmokeView::Inspector, 1600, 900, 200},
     SmokeStage{"output", SmokeView::Running, 1600, 900, 100, EditorPanel::Output},
     SmokeStage{"output-narrow", SmokeView::Running, 1100, 680, 100, EditorPanel::Output},
-    SmokeStage{"profiler", SmokeView::Running, 1600, 900, 100, EditorPanel::Profiler},
+    SmokeStage{"profiler", SmokeView::Running, 1600, 1200, 100, EditorPanel::Profiler},
     SmokeStage{"tuning", SmokeView::Running, 1600, 900, 100, EditorPanel::Tuning},
     SmokeStage{"assets", SmokeView::Running, 1600, 900, 100, EditorPanel::Assets},
     SmokeStage{"audio", SmokeView::Running, 1600, 900, 100, EditorPanel::AudioPreview},
+    SmokeStage{"activity", SmokeView::Running, 1600, 900, 100, EditorPanel::Activity},
+    SmokeStage{"quick-open", SmokeView::QuickOpen},
     SmokeStage{"palette", SmokeView::Palette},
     SmokeStage{"build-failed", SmokeView::BuildFailed},
 };
@@ -106,6 +110,14 @@ std::shared_ptr<const Profiler::Summary> SampleSummary() {
                        {"Draw", {180, 7.1, 7.0, 7.6, 8.0, 8.1}, {}},
                        {"Fx", {180, 2.2, 2.0, 3.9, 6.5, 6.5}, {}}};
     return summary;
+}
+
+std::deque<EditorControlEvent> SampleEvents() {
+    const auto now = std::chrono::system_clock::now();
+    return {{now, "Opened Enemy fight", {}, {}, {}, {}},
+            {now, "level: 4 \xE2\x86\x92 7", "sample.fight", "level", SceneValue{std::int64_t{4}}, {}},
+            {now, "Trying the fight at a higher level", {}, {}, {}, {}},
+            {now, "Screenshot shot-1230.png", {}, {}, {}, "shot-1230.png"}};
 }
 
 AudioWaveform SampleWaveform() {
@@ -258,14 +270,7 @@ public:
         , _ui(ToolUiOptions{.docking = true}) {
         _parameters["level"] = std::int64_t{7};
         _status = "Scene running";
-        _diagnostics.BeginAttempt();
-        _diagnostics.Append("[12/48] Building Enemy.cpp", EditorLogLevel::Info, EditorLogSource::Build);
-        _diagnostics.Append("Enemy.cpp(88): warning C4100: 'delta': unreferenced parameter", EditorLogLevel::Warning,
-                            EditorLogSource::Build);
-        _diagnostics.Append("Enemy.cpp(142): error C2065: 'cone': undeclared identifier", EditorLogLevel::Error,
-                            EditorLogSource::Build);
-        _diagnostics.BuildExited(1);
-        _diagnostics.FinishAttempt(EditorBuildResult::BuildFailed);
+        FailBuild();
         _diagnostics.Acknowledge();
         if (!image.empty()) _frame = LoadTexture(image.string().c_str());
         _preferences.Visible(EditorPanel::Console) = true;
@@ -277,6 +282,20 @@ public:
         if (_frame.id != 0) UnloadTexture(_frame);
     }
     [[nodiscard]] int Failures() const { return _failures; }
+
+private:
+    void FailBuild() const {
+        _diagnostics.BeginAttempt();
+        _diagnostics.Append("[12/48] Building Enemy.cpp", EditorLogLevel::Info, EditorLogSource::Build);
+        _diagnostics.Append("Enemy.cpp(88): warning C4100: 'delta': unreferenced parameter", EditorLogLevel::Warning,
+                            EditorLogSource::Build);
+        _diagnostics.Append("Game/Enemies/Enemy.cpp(142): error C2065: 'cone': undeclared identifier",
+                            EditorLogLevel::Error, EditorLogSource::Build);
+        _diagnostics.Append("Enemy.obj : error LNK2019: unresolved external symbol \"void __cdecl Spawn(void)\"",
+                            EditorLogLevel::Error, EditorLogSource::Build);
+        _diagnostics.BuildExited(1);
+        _diagnostics.FinishAttempt(EditorBuildResult::BuildFailed);
+    }
 
 protected:
     void Update(float) override {
@@ -295,6 +314,8 @@ protected:
     void DrawToolOverlay() const override {
         if (_stage == Stages.size()) return;
         const auto& stage = Stages[_stage];
+        // A new failure, so the workspace reacts to it as it does to one the developer started.
+        if (stage.view == SmokeView::BuildFailed && _frameIndex == 2) FailBuild();
         const auto phase = stage.view == SmokeView::Idle       ? EditorPhase::Stopped
                            : stage.view == SmokeView::Paused   ? EditorPhase::Paused
                            : stage.view == SmokeView::Building ? EditorPhase::Building
@@ -319,22 +340,21 @@ protected:
         snapshot.audio.length = _waveform->seconds;
         snapshot.audio.position = 0.7f;
         snapshot.audio.waveform = {WaveformState::Ready, _waveform, {}};
+        snapshot.controlEvents = &_events;
         // A failure reported through the control endpoint opens no popup; only the one stage wants it.
         snapshot.controlAttempt = stage.view == SmokeView::BuildFailed ? 0 : _diagnostics.Attempt().id;
         const ViewportImage image{_frame.id, _frame.width, _frame.height, 1, 1, 0.0};
-        // The keys that open the palette, then close it when the next stage begins.
+        // Escape closes what the last stage opened, then the keys that open this stage's palette.
         auto& io = ImGui::GetIO();
-        const auto press = [&](bool down) {
-            if (stage.view == SmokeView::Palette) {
-                io.AddKeyEvent(ImGuiMod_Ctrl, down);
-                io.AddKeyEvent(ImGuiMod_Shift, down);
-                io.AddKeyEvent(ImGuiKey_P, down);
-            } else if (stage.view == SmokeView::BuildFailed) {
-                io.AddKeyEvent(ImGuiKey_Escape, down);
-            }
-        };
-        if (_frameIndex == 2) press(true);
-        if (_frameIndex == 3) press(false);
+        const bool floating = stage.view == SmokeView::QuickOpen || stage.view == SmokeView::Palette ||
+                              stage.view == SmokeView::BuildFailed;
+        if (floating && _frameIndex <= 2) io.AddKeyEvent(ImGuiKey_Escape, _frameIndex == 1);
+        if ((stage.view == SmokeView::QuickOpen || stage.view == SmokeView::Palette) && _frameIndex >= 3 &&
+            _frameIndex <= 4) {
+            io.AddKeyEvent(ImGuiMod_Ctrl, _frameIndex == 3);
+            if (stage.view == SmokeView::Palette) io.AddKeyEvent(ImGuiMod_Shift, _frameIndex == 3);
+            io.AddKeyEvent(ImGuiKey_P, _frameIndex == 3);
+        }
         _ui.BeginFrame(stage.scale);
         if (stage.panel) {
             _preferences.Visible(*stage.panel) = true;
@@ -365,7 +385,7 @@ private:
     std::filesystem::path _output;
     std::vector<SceneDefinition> _catalog;
     SceneParameters _parameters;
-    EditorDiagnostics _diagnostics;
+    mutable EditorDiagnostics _diagnostics;
     std::string _status;
     SmokeProject _project;
     TuningWorkspace _tuning;
@@ -373,6 +393,7 @@ private:
     std::shared_ptr<const Profiler::Capture> _capture = SampleCapture();
     std::shared_ptr<const Profiler::Summary> _summary = SampleSummary();
     std::shared_ptr<const AudioWaveform> _waveform = std::make_shared<AudioWaveform>(SampleWaveform());
+    std::deque<EditorControlEvent> _events = SampleEvents();
     Texture2D _frame{};
     mutable EditorPreferences _preferences;
     mutable EditorWorkspace _workspace;

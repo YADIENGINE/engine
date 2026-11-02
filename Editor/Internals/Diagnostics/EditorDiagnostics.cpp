@@ -7,6 +7,7 @@
 #include <utility>
 
 namespace {
+constexpr std::size_t MaxProblems = 500;
 constexpr std::size_t MaxEntries = 1000;
 constexpr std::size_t MaxLineBytes = 16 * 1024;
 constexpr std::size_t MaxAttemptEntries = 10000;
@@ -57,6 +58,19 @@ void EditorDiagnostics::Append(std::string_view text, EditorLogLevel level, Edit
         ArchiveLine(_archive, entry, line, _archiveError);
         if (_attempt.result == EditorBuildResult::Running) {
             ArchiveLine(_attemptArchive, entry, line, _archiveError);
+            if (source == EditorLogSource::Build) {
+                if (const auto progress = ParseBuildProgress(entry.text)) _progress = progress;
+                if (auto problem = ParseBuildProblem(entry.text);
+                    problem && _problems.size() < MaxProblems &&
+                    std::ranges::find(_problems, *problem) == _problems.end()) {
+                    // Errors stay ahead of warnings, each in the order they came.
+                    const bool error = problem->level == BuildProblemLevel::Error;
+                    _problems.insert(_problems.begin() +
+                                         static_cast<std::ptrdiff_t>(error ? _problemErrors : _problems.size()),
+                                     std::move(*problem));
+                    if (error) ++_problemErrors;
+                }
+            }
             // Prefer the actual compiler diagnostic over Ninja's preceding FAILED target marker.
             if (level == EditorLogLevel::Error &&
                 (!_attempt.firstError || _attempt.firstError->text.starts_with("FAILED:")))
@@ -95,6 +109,9 @@ void EditorDiagnostics::BeginAttempt() {
     _attemptStarted = std::chrono::steady_clock::now();
     _attempt.result = EditorBuildResult::Running;
     _attemptEntries.clear();
+    _problems.clear();
+    _problemErrors = 0;
+    _progress.reset();
     _attemptBytes = 0;
     _attemptArchive.close();
     _attemptArchive.clear();

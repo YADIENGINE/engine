@@ -5,6 +5,7 @@
 #include "Editor/Application/EditorPresentation.h"
 #include "Editor/Internals/Agent/SessionActivity.h"
 #include "Editor/Internals/Settings/EditorPreferences.h"
+#include "Editor/Ui/Widgets/EditorPlaybackControls.h"
 
 // Agent menu / palette / status bar requests (Docs/Editor/Usage.md → Agent workspace).
 enum class EditorAgentRequest { Open, NewShell, SendScene, SendBuildFailure, FixBuild };
@@ -22,8 +23,9 @@ struct EditorShellResult {
     bool quit = false;
     bool returnToProjectList = false;
     bool toggleMaximize = false;
-    bool openCommands = false;
-    bool focusCatalog = false;
+    bool openCommands = false; // The palette with commands only
+    bool openQuick = false;    // The palette over everything
+    bool showProblems = false;
     bool toggleBottom = false;
     std::optional<EditorPanel> bottomPanel;
     std::optional<EditorWorkspaceLayout> layout;
@@ -36,7 +38,7 @@ public:
                                          EditorPreferences& preferences, int& fontSize, bool maximized,
                                          bool offerProjectList, const std::string& projectName) const;
     [[nodiscard]] float Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
-                                float width, bool& marking, bool& revealScene) const;
+                                float width, bool& marking, EditorToolbarSearch& search) const;
     [[nodiscard]] float Status(const EditorSnapshot& snapshot, const EditorPreferences& preferences,
                                const EditorAgentStatus& agent, ImVec2 position, float width,
                                EditorShellResult& result) const;

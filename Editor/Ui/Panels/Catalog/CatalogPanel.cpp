@@ -88,11 +88,6 @@ void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& sna
     }
     ImGui::PopID();
 }
-void CatalogPanel::RevealSelected() {
-    _search.fill('\0');
-    _view = 0;
-    _reveal = true;
-}
 void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                         EditorPreferences& preferences) {
     if (const auto scene = snapshot.selected ? snapshot.selected->id : std::string(); scene != _revealedScene) {
@@ -101,14 +96,6 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
     }
     const float gap = ToolMetrics::Space * ToolUiScale();
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {gap, ImGui::GetStyle().ItemSpacing.y});
-    const float filterWidth = (ImGui::GetFrameHeight() + gap) * 2;
-    ImGui::SetNextItemWidth(std::max(1.0f, ImGui::GetContentRegionAvail().x - filterWidth));
-    if (_focusSearch) {
-        ImGui::SetKeyboardFocusHere();
-        _focusSearch = false;
-    }
-    ImGui::InputTextWithHint("##search", "Search (Ctrl+P)", _search.data(), _search.size());
-    ImGui::SameLine();
     if (CatalogFilterButton("favorites-filter", CatalogFilterIcon::Star,
                             _view == 1 ? "Favorites on. Click to show all scenes." : "Show favorite scenes.",
                             _view == 1))
@@ -117,6 +104,9 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
     if (CatalogFilterButton("recent-filter", CatalogFilterIcon::Clock,
                             _view == 2 ? "Recent on. Click to show all scenes." : "Show recent scenes.", _view == 2))
         _view = _view == 2 ? 0 : 2;
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(std::max(1.0f, ImGui::GetContentRegionAvail().x));
+    ImGui::InputTextWithHint("##search", "Search scenes", _search.data(), _search.size());
     ImGui::PopStyleVar();
     std::vector<const SceneDefinition*> entries;
     const auto query = EditorSearchText(_search.data());

@@ -93,7 +93,7 @@ private:
     // Seeks to evenly spaced times one after another and answers with one labelled grid image.
     void Frames(const nlohmann::json& arguments, EditorController& controller);
     [[nodiscard]] static nlohmann::json Saved(const std::filesystem::path& file, const ViewportPixels& image,
-                                              const EditorController& controller);
+                                              EditorController& controller);
     void Stream(EditorController& controller);
     void Poll(EditorController& controller);
     EditorControlPipe _pipe;

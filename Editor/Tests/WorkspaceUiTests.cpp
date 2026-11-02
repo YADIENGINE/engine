@@ -63,15 +63,14 @@ TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[en
     REQUIRE(panel.Sessions().size() == 1); // First draw still opens a shell.
     REQUIRE(list);
     REQUIRE(terminal);
-    CHECK_FALSE(rows); // A lone session needs no list, only room for the add button and its icon.
+    REQUIRE(rows); // One session is listed like any number of them, so the list keeps its look.
     CHECK(terminal->Pos.x + terminal->Size.x <= list->Pos.x);
     CHECK(terminal->Size.x > list->Size.x);
-    const float loneWidth = list->Size.x;
+    const float oneSessionWidth = list->Size.x;
     panel.OpenShell();
     (void)frame();
     REQUIRE(panel.Selected() == 1);
-    REQUIRE(rows);
-    CHECK(list->Size.x > loneWidth);
+    CHECK(list->Size.x == oneSessionWidth);
     (void)click({rows->WorkRect.Min.x + 30, rows->WorkRect.Min.y + rowHeight * 0.5f});
     CHECK(panel.Selected() == 0);
     CHECK(panel.Sessions()[0].selected);
@@ -279,7 +278,7 @@ TEST_CASE("Editor.Catalog.WorkCategorySortsFirstInProjectPanel", "[engine-editor
     CHECK(text.find("Work") < text.find("Alpha"));
 }
 
-TEST_CASE("Editor.Workspace.BuildFailurePopupIsOncePerFailedAttempt", "[engine-editor]") {
+TEST_CASE("Editor.Workspace.BuildFailureShowsOutputOncePerAttempt", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
                                                                                   ImGui::DestroyContext);
     auto& io = ImGui::GetIO();
@@ -302,32 +301,40 @@ TEST_CASE("Editor.Workspace.BuildFailurePopupIsOncePerFailedAttempt", "[engine-e
     EditorPreferences preferences;
     EditorWorkspace workspace;
     EditorUiActions actions;
+    actions.acknowledgeOutput = [] {};
     int fontSize = 100;
-    const auto frame = [&] {
-        ImGui::NewFrame();
-        (void)workspace.Draw(snapshot, actions, {}, preferences, fontSize);
-        const bool popup = ImGui::IsPopupOpen("Build & Refresh failed");
-        ImGui::Render();
-        return popup;
+    // Whether Output came forward: it takes a frame to notice the failure and another to apply it.
+    const auto outputShown = [&] {
+        for (int frame = 0; frame < 2; ++frame) {
+            ImGui::NewFrame();
+            (void)workspace.Draw(snapshot, actions, {}, preferences, fontSize);
+            ImGui::Render();
+        }
+        const bool shown = preferences.Visible(EditorPanel::Output);
+        preferences.Visible(EditorPanel::Output) = false;
+        return shown;
     };
-    CHECK_FALSE(frame());
+    CHECK_FALSE(outputShown());
     diagnostics.BeginAttempt();
     diagnostics.Append("compile error", EditorLogLevel::Error, EditorLogSource::Build);
     diagnostics.BuildExited(1);
     diagnostics.FinishAttempt(EditorBuildResult::BuildFailed);
-    CHECK(frame());
-    io.AddKeyEvent(ImGuiKey_Escape, true);
-    CHECK_FALSE(frame());
-    io.AddKeyEvent(ImGuiKey_Escape, false);
-    CHECK_FALSE(frame());
+    CHECK(outputShown());
+    CHECK_FALSE(outputShown()); // Once per attempt
     diagnostics.BeginAttempt();
     diagnostics.FinishAttempt(EditorBuildResult::Canceled);
-    CHECK_FALSE(frame());
+    CHECK_FALSE(outputShown());
     diagnostics.BeginAttempt();
     diagnostics.BuildExited(0);
     diagnostics.Append("startup error", EditorLogLevel::Error);
     diagnostics.FinishAttempt(EditorBuildResult::RefreshFailed);
-    CHECK(frame());
+    CHECK(outputShown());
+    // An attempt started through the control endpoint reports to its client instead.
+    diagnostics.BeginAttempt();
+    diagnostics.BuildExited(1);
+    diagnostics.FinishAttempt(EditorBuildResult::BuildFailed);
+    snapshot.controlAttempt = diagnostics.Attempt().id;
+    CHECK_FALSE(outputShown());
 }
 
 TEST_CASE("Editor.Workspace.ShortcutsCancelViewportInputAndPaletteOwnsKeys", "[engine-editor]") {

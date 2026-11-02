@@ -1,8 +1,13 @@
 #include "Editor/Host/EditorApplication.h"
 #include <imgui.h>
+#include <nlohmann/json.hpp>
 #include <algorithm>
+#include <chrono>
+#include <filesystem>
 #include <format>
+#include <fstream>
 #include <map>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Editor/Host/EditorEntryPoint.h"
@@ -18,6 +23,22 @@
 
 namespace {
 constexpr double SettingsSaveDelay = 0.5;
+constexpr double LastFrameSeconds = 30.0; // Rare enough that encoding it never shows in the scene's frame rate
+constexpr double LastFrameMaxSide = 960.0;
+// Beside the target and renamed over it, so a reader never sees half a file.
+bool WriteStatusFile(const std::filesystem::path& file, std::string_view content) {
+    std::error_code error;
+    std::filesystem::create_directories(file.parent_path(), error);
+    auto partial = file;
+    partial += ".partial";
+    {
+        std::ofstream stream(partial, std::ios::binary);
+        stream.write(content.data(), static_cast<std::streamsize>(content.size()));
+        if (!stream) return false;
+    }
+    std::filesystem::rename(partial, file, error);
+    return !error;
+}
 GameSettings EditorSettings() {
     WindowSettings window;
     window.title = "Engine Editor";
@@ -98,11 +119,44 @@ void EditorApplication::SavePreferences(bool force) {
         _controller.Log(error, EditorLogLevel::Warning);
     _dirty = false;
 }
+void EditorApplication::UpdateProjectStatus() {
+    const auto& project = _controller.Project();
+    if (!project) return;
+    const auto snapshot = _controller.Snapshot();
+    const auto& attempt = snapshot.diagnostics.Attempt();
+    const bool finished = attempt.result == EditorBuildResult::Succeeded ||
+                          attempt.result == EditorBuildResult::BuildFailed ||
+                          attempt.result == EditorBuildResult::RefreshFailed;
+    if (finished && attempt.id != _statusAttempt) {
+        _statusAttempt = attempt.id;
+        const auto now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
+        const nlohmann::json status{{"ok", attempt.result == EditorBuildResult::Succeeded},
+                                    {"finished", std::format("{:%FT%T}Z", now)}};
+        (void)WriteStatusFile(project->buildDirectory / "LastBuild.json", status.dump() + "\n");
+    }
+    if (snapshot.ready && WorkerTimestamp() - _lastFrameAt >= LastFrameSeconds) SaveLastFrame();
+}
+void EditorApplication::SaveLastFrame() {
+    const auto& project = _controller.Project();
+    const auto frame = _controller.LatestFrame();
+    if (!project || !frame) return;
+    _lastFrameAt = WorkerTimestamp();
+    try {
+        const auto snapshot = _controller.Snapshot();
+        const double scale =
+            std::min(1.0, LastFrameMaxSide / std::max(snapshot.canvas.x, std::max(snapshot.canvas.y, 1)));
+        const auto png = EncodeFramePng(CaptureFrame(*frame, snapshot.canvas, {std::nullopt, scale}), {});
+        (void)WriteStatusFile(project->buildDirectory / "LastFrame.png",
+                              std::string_view(reinterpret_cast<const char*>(png.data()), png.size()));
+    } catch (const std::exception&) { // Only informs a launcher; never in the way of working
+    }
+}
 void EditorApplication::Update(float realSeconds) {
     (void)realSeconds;
     if (_quit) RequestQuit();
     _controller.Tick();
     if (_control) _control->Tick(_controller);
+    UpdateProjectStatus();
     if (_controller.Snapshot().profiler.busy && !_beforeBenchmark) {
         _beforeBenchmark = FrameExecution();
         auto execution = *_beforeBenchmark;
@@ -260,6 +314,7 @@ void EditorApplication::Stop() {
     if (_stopped) return;
     _workspace.CaptureLayout(_preferences);
     SavePreferences(true);
+    SaveLastFrame();
     _control.reset();
     _controller.Shutdown();
     _stopped = true;
@@ -315,7 +370,10 @@ void EditorApplication::DrawToolOverlay() const {
             OpenExternalUrl(std::string_view(reinterpret_cast<const char*>(text.data()), text.size()));
         },
         [&](const std::string& id) { return _thumbnails.Texture(id); },
-        [&](const std::vector<std::string>& arguments) { _assetCommands.Run(arguments); }};
+        [&](const std::vector<std::string>& arguments) { _assetCommands.Run(arguments); },
+        [&](const std::string& file, int line) {
+            commands.emplace_back([this, file, line] { _controller.OpenSource(file, line); });
+        }};
     auto snapshot = _controller.Snapshot();
     snapshot.audio = _audio;
     const auto result = _workspace.Draw(snapshot, actions, _display.Image(), _preferences, _fontSize);

@@ -9,8 +9,8 @@ Open any editor scene or application flow, then select Record live. Worker FPS m
 Stream FPS measures image publication. The worker normally runs at 30 FPS. Live data includes image
 transport, frame limiting and profiler communication; use Benchmarks for controlled comparisons.
 
-The panel shows frame/CPU/GPU statistics, custom counters, a frame graph and selected-frame inclusive/self
-CPU times. The live history holds at most 600 frames, with at most ten publications per second. Host upload
+The panel shows a frame graph against the 16.7 ms budget (frames over it are red; a click or drag selects one), the
+selected frame's scopes as shares of a bar and as inclusive/self CPU times, frame/CPU/GPU statistics and custom counters. The live history holds at most 600 frames, with at most ten publications per second. Host upload
 measures editor texture upload; the viewport transfer metric additionally contains transport latency.
 CPU and GPU execute concurrently and their timings must not be added together.
 

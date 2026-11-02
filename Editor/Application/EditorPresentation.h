@@ -1,5 +1,7 @@
 #pragma once
 #include <array>
+#include <chrono>
+#include <deque>
 #include <filesystem>
 #include <functional>
 #include <set>
@@ -49,6 +51,17 @@ struct AudioPreviewState {
     std::uint64_t handled = 0; // Requests the host has carried out, counting from 1
 };
 
+// Something an agent tool did through the control endpoint.
+struct EditorControlEvent {
+    std::chrono::system_clock::time_point time;
+    std::string text;
+    // A changed parameter, undoable while that scene stays open.
+    std::string scene;
+    std::string parameter;
+    std::optional<SceneValue> previous;
+    std::filesystem::path file; // A screenshot it took
+};
+
 struct EditorSnapshot {
     const std::vector<SceneDefinition>& catalog;
     const SceneDefinition* selected;
@@ -77,6 +90,7 @@ struct EditorSnapshot {
     const AudioUsage* audioUsage = nullptr;  // Which sound files the project's audio catalog plays
     std::string notice;                      // Last change made through the control endpoint
     double noticeAge = 0.0;
+    const std::deque<EditorControlEvent>* controlEvents = nullptr; // Oldest first
     std::uint64_t controlAttempt =
         0; // Build & Refresh attempt started through the control endpoint                  // Seconds since it was made
 };
@@ -110,4 +124,6 @@ struct EditorUiActions {
     std::function<std::uint64_t(const std::string&)> assetThumbnail;
     // Arguments after `python Engine asset`: the Assets panel's file actions.
     std::function<void(const std::vector<std::string>&)> assetCommand;
+    // A file named in build output, at a line (0: none), in the developer's code editor.
+    std::function<void(const std::string&, int)> openSource;
 };

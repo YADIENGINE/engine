@@ -252,10 +252,20 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
         }
         std::string notice = "Set";
         for (const auto& [id, value] : changes) {
+            const auto before = snapshot.parameters.find(id);
+            const auto previous =
+                before == snapshot.parameters.end() ? std::optional<SceneValue>{} : std::optional(before->second);
+            controller.RecordControl(
+                {std::chrono::system_clock::now(),
+                 id + (previous ? ": " + Describe(*previous) + " \xE2\x86\x92 " : ": ") + Describe(value),
+                 definition.id,
+                 id,
+                 previous,
+                 {}});
             controller.Parameter(id, value);
             notice += " " + id + "=" + Describe(value);
         }
-        controller.Notify(notice);
+        controller.Notify(notice, false);
         const auto answer = [definition = definition.id, changes](EditorController& session) {
             const auto current = session.Values(definition);
             nlohmann::json applied = nlohmann::json::object();
@@ -385,6 +395,8 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
     case EditorControlCommand::Note: {
         _activity = {DecodeAgentNote(arguments), std::chrono::steady_clock::now(), _activity.sequence + 1};
         if (!_activity.note.session.empty()) _sessionActivity[_activity.note.session] = _activity;
+        if (!_activity.note.text.empty())
+            controller.RecordControl({std::chrono::system_clock::now(), _activity.note.text, {}, {}, {}, {}});
         return nlohmann::json{{"state", AgentActivityName(_activity.note.state)},
                               {"text", _activity.note.text},
                               {"control", _agentControl}};
@@ -505,7 +517,9 @@ std::filesystem::path EditorControlService::WriteCapture(const ViewportPixels& i
     return file;
 }
 nlohmann::json EditorControlService::Saved(const std::filesystem::path& file, const ViewportPixels& image,
-                                           const EditorController& controller) {
+                                           EditorController& controller) {
+    controller.RecordControl(
+        {std::chrono::system_clock::now(), "Screenshot " + WorkerUtf8(file.filename().wstring()), {}, {}, {}, file});
     auto status = StatusOf(controller);
     status["path"] = WorkerUtf8(file.wstring());
     status["width"] = image.width;

@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "Editor/Ui/Commands/EditorCommandPalette.h"
+#include "Editor/Ui/Panels/Activity/ActivityPanel.h"
 #include "Editor/Ui/Panels/Assets/AssetsPanel.h"
 #include "Editor/Ui/Panels/Audio/AudioPreviewPanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
@@ -38,6 +39,7 @@ public:
     void SetAssetRoots(const std::filesystem::path& engineDirectory, const std::filesystem::path& assetsDirectory) {
         _assets.SetRoots(engineDirectory, assetsDirectory);
         _audioPreview.SetAssetsDirectory(assetsDirectory);
+        _palette.SetAssetRoots(engineDirectory, assetsDirectory);
     }
     // Shows the Console and pastes `text` (no Enter) into the agent session when there is one, else the selected
     // session, starting a shell if needed.
@@ -82,6 +84,7 @@ private:
     ConsolePanel _console;
     AssetsPanel _assets;
     AudioPreviewPanel _audioPreview;
+    ActivityPanel _activity;
     EditorShell _shell;
     EditorCommandPalette _palette;
     EditorAgentSetup _agentSetup;
@@ -100,9 +103,9 @@ private:
     bool _consoleFocused = false; // önceki karede klavye konsoldaydı
     std::optional<EditorPanel> _focusBottom;
     std::uint64_t _failureAttempt = 0;
-    std::vector<char> _failureDetail;
     bool _showFailedOutput = false;
-    bool _fixFailedBuild = false; // The failure popup's "Ask Agent to Fix"
+    bool _fixFailedBuild = false; // Problems' "Fix all with agent"
+    bool _openQuickOpen = false;  // The toolbar search box was pressed
     bool _agentControl = true;
     ImGuiID _centerDock = 0;
     int _ignoreLayoutChanges = 0;

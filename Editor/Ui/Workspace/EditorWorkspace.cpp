@@ -273,7 +273,7 @@ bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiAc
     constexpr auto route = ImGuiInputFlags_RouteGlobal;
     // Register stable global routes even when a popup/text field temporarily blocks execution.
     const bool palette = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P, route);
-    const bool catalog = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, route);
+    const bool quickOpen = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, route);
     const bool bottom = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_J, route);
     const bool console = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_GraveAccent, route);
     const bool agent = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_A, route);
@@ -295,8 +295,8 @@ bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiAc
         result.agent = EditorAgentRequest::Open;
         consumed = true;
     }
-    if (catalog && !popup && !_consoleFocused) {
-        result.focusCatalog = true;
+    if (quickOpen && !popup && !_consoleFocused) {
+        result.openQuick = true;
         consumed = true;
     }
     if (bottom && !popup && !io.WantTextInput) {
@@ -447,7 +447,11 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         preferences.Visible(EditorPanel::Output) = true;
         preferences.lastBottomPanel = EditorPanel::Output;
         _focusBottom = EditorPanel::Output;
-        _output.ShowLastAttempt(snapshot.diagnostics.Attempt().id);
+        // A failure without compiler messages (a worker that would not start) is only readable in the log.
+        if (snapshot.diagnostics.Problems().empty())
+            _output.ShowLastAttempt(snapshot.diagnostics.Attempt().id);
+        else
+            _output.ShowProblems();
         _viewport.ReleaseFocus();
         _showFailedOutput = false;
         result.cancelViewportInput = true;
@@ -455,31 +459,27 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     const auto& attempt = snapshot.diagnostics.Attempt();
     const bool failed =
         attempt.result == EditorBuildResult::BuildFailed || attempt.result == EditorBuildResult::RefreshFailed;
-    constexpr const char* FailurePopup = "Build & Refresh failed";
-    if (failed && attempt.id != _failureAttempt && attempt.id != snapshot.controlAttempt &&
-        !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel)) {
+    // A new failure brings its problems forward, unless that would interrupt typing or a focused scene; the status bar
+    // keeps the count either way.
+    if (failed && attempt.id != _failureAttempt) {
         _failureAttempt = attempt.id;
-        std::string detail = attempt.result == EditorBuildResult::RefreshFailed ? "Build succeeded, refresh failed."
-                                                                                : "Build & Refresh could not complete.";
-        if (attempt.exitCode) detail += "\nBuild exit code: " + std::to_string(*attempt.exitCode);
-        if (attempt.firstError) detail += "\n\n" + attempt.firstError->text;
-        _failureDetail.assign(detail.begin(), detail.end());
-        _failureDetail.push_back(0);
-        ImGui::OpenPopup(FailurePopup);
-        _viewport.ReleaseFocus();
-        result.cancelViewportInput = true;
+        const bool busy = _maximized || _consoleFocused || ImGui::GetIO().WantTextInput;
+        if (attempt.id != snapshot.controlAttempt && !busy) _showFailedOutput = true;
     }
     auto menu = _shell.Menu(snapshot, actions, preferences, fontSize, _maximized, _offerProjectList, _projectName);
     result.cancelViewportInput |= Shortcuts(snapshot, actions, menu);
+    if (std::exchange(_openQuickOpen, false)) menu.openQuick = true; // The toolbar's search box, last frame
     if (_palette.Draw(snapshot, actions, preferences, _maximized, menu)) {
         result.cancelViewportInput = true;
         _viewport.ReleaseFocus();
     }
     const auto* viewport = ImGui::GetMainViewport();
     const float menuHeight = ImGui::GetFrameHeight();
-    bool revealScene = false;
+    EditorToolbarSearch search;
     const float toolbarHeight = _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight},
-                                               viewport->Size.x, _marking, revealScene);
+                                               viewport->Size.x, _marking, search);
+    _palette.SetAnchor(search.centerX, search.top);
+    _openQuickOpen = search.pressed;
     const float statusHeight =
         _shell.Status(snapshot, preferences, AgentStatus(), {viewport->Pos.x, viewport->Pos.y + viewport->Size.y},
                       viewport->Size.x, menu);
@@ -490,19 +490,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     if (menu.agent) HandleAgent(*menu.agent, snapshot, preferences, result);
     if (menu.toggleMaximize) SetMaximized(!_maximized, preferences);
     if (menu.toggleBottom || menu.bottomPanel) ToggleBottom(preferences, menu.bottomPanel);
-    if (menu.focusCatalog) {
-        SetMaximized(false, preferences);
-        preferences.Visible(EditorPanel::Catalog) = true;
-        _catalog.FocusSearch();
-        _focusCatalog = true;
-    }
-    if (revealScene) {
-        SetMaximized(false, preferences);
-        preferences.Visible(EditorPanel::Catalog) = true;
-        _catalog.RevealSelected();
-        _focusCatalog = true;
-        result.cancelViewportInput = true;
-    }
+    if (menu.showProblems) _showFailedOutput = true;
     if (menu.layout) ApplyLayout(*menu.layout, preferences);
     if (_maximized && oldVisibility != preferences.visible) SetMaximized(false, preferences);
     for (const auto panel : EditorBottomPanels)
@@ -510,7 +498,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             _focusBottom = panel;
             preferences.lastBottomPanel = panel;
         }
-    if (menu.focusCatalog || menu.toggleBottom || menu.bottomPanel || menu.layout || menu.toggleMaximize)
+    if (menu.showProblems || menu.toggleBottom || menu.bottomPanel || menu.layout || menu.toggleMaximize)
         result.cancelViewportInput = true;
     const ImVec2 workspacePosition{viewport->Pos.x, viewport->Pos.y + menuHeight + toolbarHeight};
     const ImVec2 workspaceSize{viewport->Size.x,
@@ -581,7 +569,9 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                     _output.Draw(snapshot, actions, preferences);
                     if (const auto text = _output.TakeAgentText(); !text.empty())
                         result.agentProblem = SendToAgent(text, false, preferences);
+                    if (_output.TakeFixRequest()) _fixFailedBuild = true; // Handled next frame, with the other requests
                     break;
+                case EditorPanel::Activity: _activity.Draw(snapshot, actions); break;
                 case EditorPanel::Profiler: _profiler.Draw(snapshot, actions); break;
                 case EditorPanel::Tuning  : _tuning.Draw(snapshot, actions); break;
                 case EditorPanel::Console:
@@ -627,29 +617,6 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         --_ignoreLayoutChanges;
     } else if (!_maximized && ImGui::GetIO().WantSaveIniSettings) {
         CaptureLayout(preferences);
-    }
-    ImGui::SetNextWindowSize({ImGui::GetFontSize() * 40, 0}, ImGuiCond_Appearing);
-    if (ImGui::BeginPopupModal(FailurePopup, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (attempt.id != _failureAttempt) ImGui::CloseCurrentPopup(); // A newer Build & Refresh replaced it
-        ImGui::TextWrapped("Select text with the mouse, then Ctrl+C. Ctrl+A selects all text.");
-        ImGui::InputTextMultiline("##failure-detail", _failureDetail.data(), _failureDetail.size(),
-                                  {-1, ImGui::GetTextLineHeightWithSpacing() * 8}, ImGuiInputTextFlags_ReadOnly);
-        ImGui::Separator();
-        if (ToolButton("Ask Agent to Fix", {}, true)) {
-            _fixFailedBuild = true; // Handled next frame, outside this popup
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ToolButton("Copy")) ImGui::SetClipboardText(_failureDetail.data());
-        ImGui::SameLine();
-        if (ToolButton("Show Output")) {
-            _showFailedOutput = true;
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ToolButton("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
-        ImGui::EndPopup();
-        result.cancelViewportInput = true;
     }
     if (_agentSetup.Active()) {
         result.cancelViewportInput = true;
