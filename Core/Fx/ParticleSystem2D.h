@@ -51,6 +51,8 @@ struct ParticleSystemSettings {
 class ParticleSystem2D {
 public:
     explicit ParticleSystem2D(const ParticleSystemSettings& settings);
+    // What Emit accepts; Emit throws invalid_argument otherwise.
+    [[nodiscard]] static bool IsValid(const ParticleEmission& emission, const ParticleAppearance& appearance);
     // Emit makes particlePercent of the requested particles.
     void SetQuality(const FxQuality& quality) { _quality = quality; }
     void Emit(Float2 position, int count, const ParticleEmission& emission, const ParticleAppearance& appearance);

@@ -1,4 +1,5 @@
 #pragma once
+#include <string_view>
 #include <vector>
 #include "Modules/Popup/Popup.h"
 
@@ -15,20 +16,24 @@ public:
         double dismissedAt = 0.0;
         PopupPulse pulse;
         double pulseAt = -1.0;
-        std::uint64_t order = 0;
     };
 
     explicit State(const PopupSettings& options);
-    void RequireMutable() const;
+    // False (logic_error when strict) while Draw runs: nothing may change the entries under it.
+    [[nodiscard]] bool CanMutate() const;
+    // Throws invalid_argument when strict; otherwise records the rejection and the caller skips its work.
+    void Reject(std::string_view message) const;
     [[nodiscard]] Entry* Find(PopupHandle handle);
     [[nodiscard]] const Entry* Find(PopupHandle handle) const;
     [[nodiscard]] static double Lifetime(const Entry& entry);
-    [[nodiscard]] static PopupFrame Sample(const Entry& entry);
-    static void ValidatePosition(Float2 position);
+    [[nodiscard]] PopupFrame Sample(const Entry& entry) const;
 
     PopupSettings settings;
-    std::shared_ptr<const std::byte> owner = std::make_shared<const std::byte>();
     std::vector<Entry> entries;
-    std::uint64_t nextSequence = 1;
     bool drawing = false;
+    mutable std::size_t rejected = 0;
+    mutable std::string firstRejection;
+
+private:
+    [[nodiscard]] float Curve(const PopupTransition& transition, float progress) const;
 };

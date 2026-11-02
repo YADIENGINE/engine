@@ -13,20 +13,6 @@ float Sample(std::mt19937& rng, FloatRange range) {
     return std::uniform_real_distribution<float>(range.min, range.max)(rng);
 }
 
-void Validate(const ParticleEmission& emission, const ParticleAppearance& appearance) {
-    if (!ValidRange(emission.speed) || !ValidRange(emission.lifetime) || emission.lifetime.min <= 0.0f ||
-        !ValidRange(emission.size) || emission.size.min < 0.0f || !ValidRange(emission.rotation) ||
-        !ValidRange(emission.spin) || !std::isfinite(emission.direction) || !std::isfinite(emission.spread) ||
-        emission.spread < 0.0f || !std::isfinite(emission.acceleration.x) || !std::isfinite(emission.acceleration.y) ||
-        !std::isfinite(emission.drag) || emission.drag < 0.0f || !std::isfinite(appearance.endSizeScale) ||
-        appearance.endSizeScale < 0.0f || !std::isfinite(appearance.sizeScale) || appearance.sizeScale < 0.0f ||
-        !std::isfinite(appearance.fadeFraction) || appearance.fadeFraction < 0.0f || appearance.fadeFraction > 1.0f ||
-        !std::isfinite(appearance.sparkTrailSeconds) || appearance.sparkTrailSeconds < 0.0f ||
-        !std::isfinite(appearance.sparkThickness) || appearance.sparkThickness < 0.0f ||
-        !std::isfinite(appearance.sparkMinThickness) || appearance.sparkMinThickness < 0.0f) {
-        throw std::invalid_argument("Invalid particle emission or appearance");
-    }
-}
 } // namespace
 
 ParticleSystem2D::ParticleSystem2D(const ParticleSystemSettings& settings)
@@ -35,9 +21,24 @@ ParticleSystem2D::ParticleSystem2D(const ParticleSystemSettings& settings)
     _particles.reserve(_capacity);
 }
 
+bool ParticleSystem2D::IsValid(const ParticleEmission& emission, const ParticleAppearance& appearance) {
+    return ValidRange(emission.speed) && ValidRange(emission.lifetime) && emission.lifetime.min > 0.0f &&
+           ValidRange(emission.size) && emission.size.min >= 0.0f && ValidRange(emission.rotation) &&
+           ValidRange(emission.spin) && std::isfinite(emission.direction) && std::isfinite(emission.spread) &&
+           emission.spread >= 0.0f && std::isfinite(emission.acceleration.x) &&
+           std::isfinite(emission.acceleration.y) && std::isfinite(emission.drag) && emission.drag >= 0.0f &&
+           std::isfinite(appearance.endSizeScale) && appearance.endSizeScale >= 0.0f &&
+           std::isfinite(appearance.sizeScale) && appearance.sizeScale >= 0.0f &&
+           std::isfinite(appearance.fadeFraction) && appearance.fadeFraction >= 0.0f &&
+           appearance.fadeFraction <= 1.0f && std::isfinite(appearance.sparkTrailSeconds) &&
+           appearance.sparkTrailSeconds >= 0.0f && std::isfinite(appearance.sparkThickness) &&
+           appearance.sparkThickness >= 0.0f && std::isfinite(appearance.sparkMinThickness) &&
+           appearance.sparkMinThickness >= 0.0f;
+}
+
 void ParticleSystem2D::Emit(Float2 position, int count, const ParticleEmission& emission,
                             const ParticleAppearance& appearance) {
-    Validate(emission, appearance);
+    if (!IsValid(emission, appearance)) throw std::invalid_argument("Invalid particle emission or appearance");
     count = _quality.ParticleCount(count);
     if (count <= 0) return;
     const auto available = std::min(static_cast<std::size_t>(count), _capacity - _particles.size());

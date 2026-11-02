@@ -23,7 +23,8 @@ engine_add_game(MyGame SOURCES Game/CreateGame.cpp Game/MyGame.cpp
 
 Each README explains API, dependencies, ownership, and errors. Future work: [JsonIO](JsonIO/Roadmap.md),
 [Persistence](Persistence/Roadmap.md), [Localization](Localization/Roadmap.md), [ScoreBoard](ScoreBoard/Roadmap.md),
-[Version](Version/Roadmap.md), [Steam](Steam/Roadmap.md). Planned work is not a supported feature; for example, real
+[Version](Version/Roadmap.md), [Steam](Steam/Roadmap.md), [Popup](Popup/Roadmap.md),
+[NumberPopup](NumberPopup/Roadmap.md). Planned work is not a supported feature; for example, real
 achievement unlocking is not promised without Steam's SDK backend.
 
 When developing a module, follow [Module rules](../Contributing/ModuleRules.md) and

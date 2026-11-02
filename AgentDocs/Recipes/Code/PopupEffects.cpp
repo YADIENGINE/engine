@@ -1,22 +1,22 @@
 // [recipe:PopupEffects]
 #include "AgentDocs/Recipes/Code/PopupEffects.h"
 #include <utility>
-#include "Graphics/Paint/Painter.h"
 
-void RecipePopupEffects::Hit(Float2 position, NumberPopupValue value, NumberPopupMergeKey group) {
-    _numbers.Emit(position, value, _impact, 1.0f, group);
+void RecipePopupEffects::Hit(Float2 position, NumberPopupValue value, RecipeHitGroup group, int target) {
+    _numbers.Emit(position, value, NumberPopupPreset::Burst, {.mergeKey = NumberPopupMergeKey::Of(group, target)});
+}
+
+void RecipePopupEffects::Heal(Float2 position, NumberPopupValue value) {
+    _numbers.Emit(position, value, NumberPopupPreset::Float, {.color = Color4{90, 255, 140, 255}});
 }
 
 void RecipePopupEffects::Reward(Float2 position, std::string label) {
-    auto style = Popup::Preset(PopupPreset::Pop);
-    style.enter.scale = {0.5f, 1.3f};
-    style.motion.velocity = {0.0f, -80.0f};
-    _popups.Emit(
-        position,
-        [label = std::move(label)](Painter& paint, const PopupFrame&) {
-            paint.Text(label, {}, {.size = 28.0f, .align = TextAlign::Center});
-        },
-        style);
+    _numbers.EmitLabel(position, std::move(label), NumberPopupPreset::Heavy, {.color = Color4{255, 200, 60, 255}});
+}
+
+// Plain Popup: any drawing; PopupText is the ready label.
+void RecipePopupEffects::Notice(Float2 position, std::string label) {
+    _popups.Emit(position, PopupText(std::move(label), {.size = 28.0f}), PopupPreset::Pop);
 }
 
 void RecipePopupEffects::SetQuality(const FxQuality& quality) { _numbers.SetQuality(quality); }

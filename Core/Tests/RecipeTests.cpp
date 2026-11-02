@@ -95,9 +95,11 @@ TEST_CASE("Engine.Recipes.PopupEffectsDrawWithThePublicApi", "[engine][recipes]"
     harness.context.font = &font;
     RecipePopupEffects effects;
     effects.SetQuality({.particlePercent = 50, .flashes = false});
-    effects.Hit({120.0f, 100.0f}, 120, {42});
-    effects.Hit({120.0f, 100.0f}, 30, {42});
+    effects.Hit({120.0f, 100.0f}, 120, RecipeHitGroup::Melee, 1);
+    effects.Hit({120.0f, 100.0f}, 30, RecipeHitGroup::Melee, 1);
+    effects.Heal({180.0f, 100.0f}, 12);
     effects.Reward({250.0f, 100.0f}, "BONUS");
+    effects.Notice({320.0f, 100.0f}, "SAVED");
     effects.Update(0.125f);
     harness.Begin();
     CHECK_NOTHROW(effects.Draw(harness.paint));

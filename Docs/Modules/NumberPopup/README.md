@@ -11,17 +11,19 @@ Own one instance in a View/Scene. Styles are reusable values; emissions snapshot
 
 ```cpp
 NumberPopup numbers;
-auto impact = NumberPopup::Preset(NumberPopupPreset::Burst);
-impact.text.color = {255, 190, 60, 255};
+
+numbers.Emit(hitPosition, 120);                                   // Default style
+numbers.Emit(hitPosition, 850, NumberPopupPreset::Heavy,          // A preset, with per-emission choices
+             {.intensity = 1.4f, .color = Color4{255, 190, 60, 255}});
+numbers.EmitLabel(hitPosition, "CRIT!", NumberPopupPreset::Burst); // Text with the same animation and juice
+
+auto impact = NumberPopup::Preset(NumberPopupPreset::Burst);      // An edited, reusable style
 impact.text.outline.width = 2.0f;
 
-numbers.Emit(hitPosition, 120);
-numbers.Emit(hitPosition, 850, impact, 1.4f);
-
-NumberPopupMergeKey group{42}; // Caller-defined stream, e.g. a target + event category
-auto handle = numbers.Emit(hitPosition, 120, impact, 1.0f, group);
-numbers.Emit(hitPosition, 30, impact, 1.0f, group); // 150, with a fresh pulse
-numbers.Add(handle, 10);                         // 160
+const auto group = NumberPopupMergeKey::Of(DamageKind::Poison, targetId); // Caller-defined stream
+auto handle = numbers.Emit(hitPosition, 120, impact, {.mergeKey = group});
+numbers.Emit(hitPosition, 30, impact, {.mergeKey = group}); // 150, with a fresh pulse
+numbers.Add(handle, 10);                                    // 160
 
 // Once per frame in the owner's update/draw:
 numbers.Update(dt);
@@ -39,9 +41,10 @@ behind the numbers. Number entries may expire slightly before their final partic
 | Operation | Contract |
 | --- | --- |
 | `NumberPopup(settings = {})` | Owns a private Popup and particle system. Default capacities: 128 numbers, 1024 particles. |
-| `Preset(preset)` | Editable Float, Pop, Burst or Heavy visual style. |
-| `Format(value, format = {})` | Formats a label without emitting/drawing. |
-| `Emit(position, value, style = {}, intensity = 1, mergeKey = {})` | Creates or explicitly groups numeric feedback. Empty handle on capacity rejection. |
+| `Preset(preset)` | Editable Pop (the default style), Float, Burst or Heavy visual style. |
+| `Format(value, format = {})` | Formats a label without emitting/drawing. Decimals are clamped to 0..9 here. |
+| `Emit(position, value, style or preset = {}, options = {})` | Creates or explicitly groups numeric feedback. Empty handle on capacity rejection or skipped invalid input. |
+| `EmitLabel(position, label, style or preset = {}, options = {})` | The same animation and juice for text. No value, `format` or merging; `Add` returns false. |
 | `Add(handle, delta)` | Adds a value, refreshes the label, pulses and extends hold within the lifetime cap. |
 | `Pulse(handle, intensity = 1)` | Local pulse/flash/smaller particle burst without changing the value or lifetime. |
 | `SetAnchor(handle, position)` | Translates the live trajectory; already emitted particles keep their own flight. |
@@ -50,12 +53,16 @@ behind the numbers. Number entries may expire slightly before their final partic
 | `Update(deltaSeconds)` | Updates both owned systems. Nonpositive/nonfinite deltas do nothing. |
 | `Draw(paint) const` | Draws both systems without advancing time or random state. |
 | `Clear()` | Removes all numbers/particles, releases callbacks, invalidates handles and resets the local clock. |
-| `IsAlive(handle)` / `Value(handle)` / `Frame(handle)` | Liveness, optional numeric value, optional owned pose snapshot. |
-| `ActiveCount()` | Number entries including delayed entries, not residual particles. |
+| `IsAlive(handle)` / `Value(handle)` / `Frame(handle)` | Liveness, optional numeric value (empty for labels), optional owned pose snapshot. |
+| `ActiveCount()` / `ParticleCount()` | Number entries including delayed entries / live residual particles. |
+| `RejectedCount()` / `FirstRejection()` | Calls skipped for invalid input (non-strict only) and the first reason. |
 
 All handle mutations return false for expired/foreign handles. `Add` and `Pulse` also return false once Exit starts.
 Dismiss does not restart an existing exit. Capacity policy is `PopupOverflow::ReplaceOldest` by default, or RejectNew;
 capacity zero disables emission. A valid merge can still succeed at capacity because it uses an existing entry.
+
+`NumberPopupEmit` holds the per-emission choices: `intensity`, `mergeKey` and a `color` that replaces the style's text
+color for that entry, so one style serves every color.
 
 ## Styles and juice
 
@@ -64,9 +71,10 @@ capacity zero disables emission. A valid merge can still succeed at capacity bec
   laid-out label is centered on the popup origin; alignment controls lines within it. Layout is cached per entry and
   refreshed on value/font changes. No Painter or FontFace is retained.
 - `format`: sign, decimals, compact notation, trailing-zero trimming, prefix/suffix or a custom complete-label formatter.
-- `juice`: launch-velocity scatter, rotation spread, short color flash, particle count/speed/lifetime/size/shape and
-  the reusable pulse. Angles are clockwise radians. The popup motion also offers damped wobble.
-- `merge`: sliding merge window and maximum extended lifetime.
+- `juice`: launch-velocity scatter, rotation spread, short color flash, the reusable pulse, and particles as the
+  engine's own `ParticleEmission` and `ParticleAppearance` plus `particleCount`. Particles take the text color unless
+  `particlesUseTextColor` is false. Angles are clockwise radians. The popup motion also offers damped wobble and drag.
+- `merge`: sliding merge window, hold gained per addition, maximum extended lifetime and `followAnchor`.
 
 Intensity is finite and in 0..4. It scales launch variation, entrance squash/rotation, wobble, pulse, flash strength
 and particle count/speed. Zero retains readable numeric feedback and its base flight/fade. Intensity never changes
@@ -82,9 +90,9 @@ when an Update first activates them; a step that skips the entire entry does not
 
 `NumberPopupValue` is `variant<int64_t, double>`: normal signed integer inputs select the integral alternative,
 float/double inputs select double. Pure integral accumulation and unabridged integral labels retain all 64 bits.
-Integer overflow and nonfinite floating sums throw `overflow_error` without changing the visible value. Mixed
-integral/floating additions use double and its precision. Unsigned inputs must fit the signed alternative; explicitly
-convert larger domains according to the application's rules.
+Accumulation saturates at the type's limits instead of failing. Mixed integral/floating additions use double and its
+precision. Unsigned inputs must fit the signed alternative; explicitly convert larger domains according to the
+application's rules.
 
 Default formatting is fixed zero decimal places, negative sign only. Decimal places are 0..9. Compact labels use
 K/M/B/T, promoting a unit when rounding would produce 1000 of the previous unit. Rounding follows the standard
@@ -95,16 +103,23 @@ emission and successful value changes, never during Draw. Formatter errors propa
 
 ## Merging and lifecycle
 
-Key zero means independent emission. A nonzero key groups compatible events chosen by the application. Position alone
-never merges entries. Within the first entry's configured window, equal keys with compatible signs add numerically,
-retaining that entry's anchor, style and original launch. Opposite nonzero signs stay separate. The incoming style
-can disable auto-merge with a zero window; otherwise the first entry's merge configuration governs the group.
+Key zero means independent emission. A nonzero key groups compatible events chosen by the application;
+`NumberPopupMergeKey::Of(parts...)` builds one from integers and enums. Position alone never merges entries. Within the
+first entry's configured window, equal keys with compatible signs add numerically, retaining that entry's style and
+original launch, and its anchor unless `merge.followAnchor` moves it to the incoming position. Opposite nonzero signs
+stay separate. The incoming style can disable auto-merge with a zero window; otherwise the first entry's merge
+configuration governs the group. A delayed entry's window starts when it activates, so hits merge while it waits.
 
-Each accepted addition refreshes the sliding window, replaces the short pulse and adds at most one window of hold
+Each accepted addition refreshes the sliding window, replaces the short pulse and adds `merge.extendSeconds` of hold
 time, capped by maxLifetimeSeconds. This cap never shortens a longer initial animation. Exit is never rewound or
 extended, so continuous events cannot keep an entry alive indefinitely. Explicit Add may cross signs and uses the
-same extension/pulse behavior. Pulse alone does not refresh the merge window.
+same extension/pulse behavior, also when the window is zero. Pulse alone does not refresh the merge window.
 
 Instances are noncopyable/nonmovable and main-thread only. Captured formatter resources must outlive the entry;
-formatters/easing must not reenter the owner. Invalid parameters throw invalid_argument, including when a handle is
-stale; invalid deltas are ignored. No game, core FxStage or theme is automatically modified by linking this module.
+formatters/easing must not reenter the owner. No game, core FxStage or theme is automatically modified by linking this
+module.
+
+Errors follow [Popup](../Popup/README.md#ownership-and-failures): `NumberPopupSettings::strict` defaults to on in Debug
+and off in Release. Invalid positions, values, deltas, styles and intensities throw when strict; otherwise the call is
+skipped and counted. This applies even when the handle is stale. Nonpositive or nonfinite `Update` deltas are ignored
+in both modes.

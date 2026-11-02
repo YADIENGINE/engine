@@ -4,10 +4,10 @@ Use these generated signatures to locate public declarations; open the header fo
 
 ## `Core/Modules/Popup/Popup.h`
 
-- `enum class PopupPreset { Fade, Pop, Float, Bounce }`
+- `enum class PopupPreset { Pop, Fade, Float, Bounce }` — Pop comes first: value-initialized, it equals the default PopupStyle.
 - `enum class PopupPhase { Delayed, Enter, Hold, Exit }`
 - `enum class PopupOverflow { RejectNew, ReplaceOldest }`
-- `class PopupHandle` — Opaque identity, local to its owning Popup.
+- `class PopupHandle` — Opaque identity, unique across all Popup instances.
 - `PopupHandle`: `PopupHandle() = default`
 - `PopupHandle`: `[[nodiscard]] explicit operator bool() const`
 - `struct PopupTransition` — Endpoint relative to the normal pose.
@@ -20,6 +20,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `struct PopupMotion`
 - `PopupMotion`: `Float2 velocity { }`
 - `PopupMotion`: `Float2 acceleration { }`
+- `PopupMotion`: `float drag = 0.0f` — Exponential velocity decay / second: rises, then slows without falling back
 - `PopupMotion`: `float rotation = 0.0f`
 - `PopupMotion`: `float rotationSpeed = 0.0f` — Radians / second
 - `PopupMotion`: `float wobbleRadians = 0.0f`
@@ -35,9 +36,11 @@ Use these generated signatures to locate public declarations; open the header fo
 - `struct PopupSettings`
 - `PopupSettings`: `std::size_t capacity = 128` — Zero disables emission
 - `PopupSettings`: `PopupOverflow overflow = PopupOverflow::ReplaceOldest`
+- `PopupSettings`: `bool strict = false` — Invalid input: strict throws at the call; otherwise the call is skipped and counted (RejectedCount).
+- `PopupSettings`: `bool strict = true`
 - `struct PopupPulse` — A bounded, decaying overlay.
 - `PopupPulse`: `float seconds = 0.18f`
-- `PopupPulse`: `Float2 scale { 0.18f, 0.18f }` — Additional fraction of the current scale
+- `PopupPulse`: `Float2 scale { 0.18f, 0.18f }` — Additional fraction of the current scale; negative squashes that axis
 - `PopupPulse`: `float rotation = 0.0f`
 - `struct PopupFrame` — Owned snapshot in the caller's coordinate space.
 - `PopupFrame`: `PopupPhase phase = PopupPhase::Delayed`
@@ -49,11 +52,15 @@ Use these generated signatures to locate public declarations; open the header fo
 - `PopupFrame`: `float rotation = 0.0f`
 - `PopupFrame`: `float opacity = 0.0f`
 - `using PopupDraw = std::function<void(Painter&, const PopupFrame&)>`
+- `[[nodiscard]] PopupDraw PopupText(std::string text, const TextStyle& style)` — A fixed label centered on the popup origin, whatever its line count or TextAlign; uses Painter::Font.
+- `void DrawPopupText(Painter& paint, const FontFace& font, const TextBlock& block, const TextStyle& style)` — Draws a laid-out text centered on local (0, 0), so the pose's scale and rotation pivot at its middle.
 - `class Popup final` — Explicitly updated, main-thread popup collection.
 - `Popup`: `explicit Popup(const PopupSettings& settings = { })`
 - `Popup`: `[[nodiscard]] static PopupStyle Preset(PopupPreset preset)`
-- `Popup`: `[[nodiscard]] static float Duration(const PopupStyle& style)` — Validates the style; returns active lifetime, excluding delay.
+- `Popup`: `[[nodiscard]] static bool IsValid(const PopupStyle& style)`
+- `Popup`: `[[nodiscard]] static float Duration(const PopupStyle& style)` — Active lifetime of a style, excluding delay.
 - `Popup`: `PopupHandle Emit(Float2 position, PopupDraw draw, const PopupStyle& style = { })` — Callback draws around local (0, 0); cannot mutate/reenter this collection.
+- `Popup`: `PopupHandle Emit(Float2 position, PopupDraw draw, PopupPreset preset)`
 - `Popup`: `void Update(float deltaSeconds)`
 - `Popup`: `void Draw(Painter& paint) const`
 - `Popup`: `void Clear()`
@@ -65,3 +72,5 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Popup`: `[[nodiscard]] bool IsAlive(PopupHandle handle) const`
 - `Popup`: `[[nodiscard]] std::optional<PopupFrame> Frame(PopupHandle handle) const`
 - `Popup`: `[[nodiscard]] std::size_t ActiveCount() const`
+- `Popup`: `[[nodiscard]] std::size_t RejectedCount() const` — Calls skipped since construction because of invalid input (non-strict only), and the first one's reason.
+- `Popup`: `[[nodiscard]] const std::string& FirstRejection() const`

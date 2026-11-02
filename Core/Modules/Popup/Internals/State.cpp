@@ -2,11 +2,15 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 #include "Utilities/MathUtils.h"
 
 namespace {
+// Closed form of dv/dt = acceleration - drag * v, so update subdivision never changes the path.
 Float2 Travel(const PopupMotion& motion, float age) {
-    return motion.velocity * age + motion.acceleration * (0.5f * age * age);
+    if (motion.drag <= 0.0f) return motion.velocity * age + motion.acceleration * (0.5f * age * age);
+    const Float2 terminal = motion.acceleration * (1.0f / motion.drag);
+    return terminal * age + (motion.velocity - terminal) * (-std::expm1(-motion.drag * age) / motion.drag);
 }
 
 float Rotation(const PopupMotion& motion, float age) {
@@ -14,23 +18,33 @@ float Rotation(const PopupMotion& motion, float age) {
            motion.wobbleRadians * std::sin(2.0f * Pi * motion.wobbleFrequency * age) *
                std::exp(-motion.wobbleDamping * age);
 }
-
-float Curve(const PopupTransition& transition, float progress) {
-    const float value = transition.easing(Clamp01(progress));
-    if (!std::isfinite(value)) throw std::invalid_argument("Popup easing returned a non-finite value");
-    return value;
-}
 } // namespace
 
 Popup::State::State(const PopupSettings& options)
     : settings(options) {
-    if (options.overflow != PopupOverflow::RejectNew && options.overflow != PopupOverflow::ReplaceOldest)
-        throw std::invalid_argument("Invalid popup overflow policy");
     entries.reserve(options.capacity);
 }
 
-void Popup::State::RequireMutable() const {
-    if (drawing) throw std::logic_error("Cannot mutate or reenter Popup during Draw");
+bool Popup::State::CanMutate() const {
+    if (!drawing) return true;
+    if (settings.strict) throw std::logic_error("Cannot mutate or reenter Popup during Draw");
+    Reject("Popup mutated or reentered during Draw");
+    return false;
+}
+
+void Popup::State::Reject(std::string_view message) const {
+    if (settings.strict) throw std::invalid_argument(std::string(message));
+    if (rejected == 0) firstRejection = message;
+    ++rejected;
+}
+
+// A broken custom easing falls back to linear instead of poisoning the pose.
+float Popup::State::Curve(const PopupTransition& transition, float progress) const {
+    const float clamped = Clamp01(progress);
+    const float value = transition.easing(clamped);
+    if (std::isfinite(value)) return value;
+    Reject("Popup easing returned a non-finite value");
+    return clamped;
 }
 
 Popup::State::Entry* Popup::State::Find(PopupHandle handle) {
@@ -51,7 +65,7 @@ double Popup::State::Lifetime(const Entry& entry) {
            entry.style.exit.seconds;
 }
 
-PopupFrame Popup::State::Sample(const Entry& entry) {
+PopupFrame Popup::State::Sample(const Entry& entry) const {
     PopupFrame frame;
     frame.position = entry.anchor;
     if (entry.age < 0.0) return frame;
@@ -108,9 +122,4 @@ PopupFrame Popup::State::Sample(const Entry& entry) {
     frame.scale.y = std::max(0.0f, frame.scale.y);
     frame.opacity = Clamp01(frame.opacity);
     return frame;
-}
-
-void Popup::State::ValidatePosition(Float2 position) {
-    if (!std::isfinite(position.x) || !std::isfinite(position.y))
-        throw std::invalid_argument("Popup position must be finite");
 }

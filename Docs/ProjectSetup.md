@@ -60,7 +60,8 @@ the project's code takes over: [First game](GettingStarted.md), [First editor sc
 The project template ships no AI file or setting. To opt in, import `Engine/AgentDocs/Agent.md` from your own agent
 file: for Claude Code, put `@Engine/AgentDocs/Agent.md` in your project's `CLAUDE.md`; for other agents, the
 equivalent line in `AGENTS.md`. It is a short always-loaded page: tool rules, hard invariants, and a table of skills
-(`AgentDocs/Skills/<name>/SKILL.md`: editor, visual-change, build-fix, api) the agent reads when a request matches.
+(`AgentDocs/Skills/<name>/SKILL.md`: editor, visual-change, graphic-asset, build-fix, api, audio) the agent reads when a
+request matches.
 Skills follow the Agent Skills format, so agents that load skills by description can also use them from their skill
 folder. Claude Code users can keep `Engine/CLAUDE.md` (engine contributor rules) out of a game's context with
 `"claudeMdExcludes": ["Engine/CLAUDE.md"]` in the project's `.claude/settings.json`.

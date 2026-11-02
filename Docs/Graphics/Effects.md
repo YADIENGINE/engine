@@ -43,9 +43,17 @@ focus, punch uses the base target. Draw through the result: `auto view = paint.T
 `MotionIntensity()` feeds the same smoothed intensity to independently drawn speed lines: `DrawSpeedLines(paint, bounds,
 intensity, color, time, style)` clips itself to `bounds`.
 
-For animated arbitrary drawing callbacks, opt into [Popup](../Modules/Popup/README.md). For numeric labels with
-accumulation, configurable formatting and local particle juice, opt into [NumberPopup](../Modules/NumberPopup/README.md).
-Both are explicitly owned/updated modules; the caller controls their placement relative to the FxStage layers.
+#### Choosing a text effect
+
+| Need | Use |
+| --- | --- |
+| A short themed label, nothing else | `FxStage::FloatText` / `PopText` (no extra target) |
+| A number: merging, formatting, intensity, particles | [NumberPopup](../Modules/NumberPopup/README.md) `Emit` |
+| A text label with the same animation and juice | NumberPopup `EmitLabel` |
+| Arbitrary drawing, or text with handles and no juice | [Popup](../Modules/Popup/README.md), with `PopupText` for text |
+
+Popup and NumberPopup are explicitly owned/updated modules; the caller controls their placement relative to the FxStage
+layers. They read no theme, so the owner copies any theme values it wants into their styles.
 
 Floating text uses `FloatingTextStyle` for velocity, lifetime, pop/fade and `FxTextStyle` for size, the anchor point on
 the text, width fitting and shadow (`Fx/FxText.h`; drawn with the game's font). `OverlayEffects2D` takes its

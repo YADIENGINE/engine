@@ -303,6 +303,7 @@ Public visual FX.
 - `ParticleSystemSettings`: `std::optional<std::uint32_t> seed { }`
 - `class ParticleSystem2D`
 - `ParticleSystem2D`: `explicit ParticleSystem2D(const ParticleSystemSettings& settings)`
+- `ParticleSystem2D`: `[[nodiscard]] static bool IsValid(const ParticleEmission& emission, const ParticleAppearance& appearance)` — What Emit accepts; Emit throws invalid_argument otherwise.
 - `ParticleSystem2D`: `void SetQuality(const FxQuality& quality)` — Emit makes particlePercent of the requested particles.
 - `ParticleSystem2D`: `void Emit(Float2 position, int count, const ParticleEmission& emission, const ParticleAppearance& appearance)`
 - `ParticleSystem2D`: `void Update(float deltaSeconds)`

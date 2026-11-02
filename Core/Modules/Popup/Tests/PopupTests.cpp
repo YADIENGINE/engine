@@ -1,8 +1,10 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include <limits>
 #include <stdexcept>
 #include <vector>
+#include "Graphics/Text/FontFace.h"
 #include "Modules/Popup/Popup.h"
 #include "Tests/PaintHarness.h"
 
@@ -122,6 +124,96 @@ TEST_CASE("Popup.DrawScopesRecoverAfterCallbackFailureAndRejectMutation", "[popu
     CHECK_THROWS_AS(popups.Draw(harness.paint), std::runtime_error);
     popups.Clear();
     CHECK_NOTHROW(harness.End());
+}
+
+TEST_CASE("Popup.PulseOverlaysAndDecaysWithoutAccumulating", "[popup]") {
+    Popup popups;
+    const auto handle = popups.Emit({}, Content, Still());
+    CHECK(popups.Pulse(handle, {.seconds = 0.5f, .scale = {1.0f, -0.5f}}));
+    CHECK(popups.Pulse(handle, {.seconds = 0.5f, .scale = {1.0f, -0.5f}}));
+    const auto pulsed = *popups.Frame(handle);
+    CHECK(pulsed.scale.x == Catch::Approx(2.0f));
+    CHECK(pulsed.scale.y == Catch::Approx(0.5f));
+    popups.Update(0.5f);
+    CHECK(popups.Frame(handle)->scale.x == Catch::Approx(1.0f));
+    CHECK(popups.Frame(handle)->scale.y == Catch::Approx(1.0f));
+}
+
+TEST_CASE("Popup.DragSlowsTheFlightIndependentlyOfUpdateSteps", "[popup]") {
+    auto style = Still();
+    style.motion = {.velocity = {0.0f, -100.0f}, .drag = 4.0f};
+    Popup whole;
+    Popup stepped;
+    const auto a = whole.Emit({}, Content, style);
+    const auto b = stepped.Emit({}, Content, style);
+    whole.Update(0.5f);
+    for (int i = 0; i < 4; ++i)
+        stepped.Update(0.125f);
+    const float early = whole.Frame(a)->position.y;
+    CHECK(early == Catch::Approx(stepped.Frame(b)->position.y));
+    CHECK(early < 0.0f);
+    CHECK(early > style.motion.velocity.y * 0.5f);
+    whole.Update(0.25f);
+    const float travelled = whole.Frame(a)->position.y - early;
+    CHECK(travelled < 0.0f);
+    CHECK(travelled > early * 0.5f);
+}
+
+TEST_CASE("Popup.TextLabelPivotsAtItsMiddle", "[popup]") {
+    const auto font = FontFace::FromFile(ENGINE_TEST_FONT);
+    constexpr float Size = 24.0f;
+    constexpr Float2 Origin{200.0f, 100.0f};
+    Popup popups;
+    popups.Emit(Origin, PopupText("BONUS", {.size = Size}), Still());
+    PaintHarness harness({400.0f, 200.0f}, 1.0f);
+    harness.context.font = &font;
+    harness.Begin();
+    popups.Draw(harness.paint);
+    harness.End();
+    REQUIRE_FALSE(harness.Draws().empty());
+    float left = std::numeric_limits<float>::max();
+    float right = std::numeric_limits<float>::lowest();
+    float top = left;
+    float bottom = right;
+    for (const auto& vertex : harness.Drawn()) {
+        left = std::min(left, vertex.x);
+        right = std::max(right, vertex.x);
+        top = std::min(top, vertex.y);
+        bottom = std::max(bottom, vertex.y);
+    }
+    CHECK((left + right) * 0.5f == Catch::Approx(Origin.x).margin(Size * 0.25f));
+    CHECK((top + bottom) * 0.5f == Catch::Approx(Origin.y).margin(Size * 0.25f));
+}
+
+TEST_CASE("Popup.NonStrictSkipsAndCountsInvalidInput", "[popup]") {
+    Popup popups({.strict = false});
+    auto style = Still();
+    style.enter.easing = nullptr;
+    CHECK_FALSE(static_cast<bool>(popups.Emit({}, Content, style)));
+    CHECK_FALSE(static_cast<bool>(popups.Emit({}, {})));
+    CHECK(popups.ActiveCount() == 0);
+    CHECK(popups.RejectedCount() == 2);
+    CHECK_FALSE(popups.FirstRejection().empty());
+    auto broken = Still();
+    broken.enter = {.seconds = 1.0f, .easing = [](float) { return std::numeric_limits<float>::quiet_NaN(); }};
+    const auto handle = popups.Emit({}, Content, broken);
+    popups.Update(0.5f);
+    REQUIRE(popups.Frame(handle));
+    CHECK(popups.Frame(handle)->opacity == Catch::Approx(1.0f));
+    CHECK(popups.RejectedCount() > 2);
+}
+
+TEST_CASE("Popup.PresetDefaultsToTheDefaultStyleAndDurationSumsPhases", "[popup]") {
+    const auto preset = Popup::Preset({});
+    const PopupStyle plain;
+    CHECK(preset.holdSeconds == plain.holdSeconds);
+    CHECK(preset.enter.seconds == plain.enter.seconds);
+    auto style = Still();
+    style.enter.seconds = 0.25f;
+    style.exit.seconds = 0.5f;
+    CHECK(Popup::Duration(style) == Catch::Approx(1.75f));
+    Popup popups;
+    CHECK(popups.IsAlive(popups.Emit({}, Content, PopupPreset::Float)));
 }
 
 TEST_CASE("Popup.RejectsInvalidInputsBeforeChangingTheCollection", "[popup]") {

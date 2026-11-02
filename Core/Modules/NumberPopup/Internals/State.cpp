@@ -11,64 +11,84 @@
 namespace {
 bool Nonnegative(float value) { return std::isfinite(value) && value >= 0.0f; }
 bool Finite(Float2 value) { return std::isfinite(value.x) && std::isfinite(value.y); }
-bool Range(FloatRange range) { return Nonnegative(range.min) && std::isfinite(range.max) && range.max >= range.min; }
 } // namespace
 
 NumberPopup::State::State(const NumberPopupSettings& settings)
-    : popups({.capacity = settings.capacity, .overflow = settings.overflow})
+    : popups({.capacity = settings.capacity, .overflow = settings.overflow, .strict = settings.strict})
     , particles({.capacity = settings.particleCapacity, .seed = settings.seed})
-    , rng(settings.seed ? *settings.seed : std::random_device{}()) {
+    , rng(settings.seed ? *settings.seed : std::random_device{}())
+    , strict(settings.strict) {
     entries.reserve(settings.capacity);
 }
 
-void NumberPopup::State::RequireMutable() const {
-    if (drawing) throw std::logic_error("Cannot mutate or reenter NumberPopup during Draw");
+bool NumberPopup::State::CanMutate() const {
+    if (!drawing) return true;
+    if (strict) throw std::logic_error("Cannot mutate or reenter NumberPopup during Draw");
+    Reject("NumberPopup mutated or reentered during Draw");
+    return false;
+}
+
+void NumberPopup::State::Reject(std::string_view message) const {
+    if (strict) throw std::invalid_argument(std::string(message));
+    if (rejected == 0) firstRejection = message;
+    ++rejected;
 }
 
 void NumberPopup::State::Prune() {
-    std::erase_if(entries, [&](const auto& entry) { return !popups.IsAlive(entry->popup); });
+    std::erase_if(entries, [](const auto& entry) { return entry.use_count() == 1; });
 }
 
 std::shared_ptr<NumberPopup::State::Entry> NumberPopup::State::Find(PopupHandle handle) const {
-    if (!popups.IsAlive(handle)) return {};
-    const auto found =
-        std::find_if(entries.begin(), entries.end(), [&](const auto& entry) { return entry->popup == handle; });
+    const auto found = std::find_if(entries.begin(), entries.end(),
+                                    [&](const auto& entry) { return entry->popup == handle && entry.use_count() > 1; });
     return found == entries.end() ? nullptr : *found;
 }
 
-void NumberPopup::State::ValidateIntensity(float intensity) {
-    if (!std::isfinite(intensity) || intensity < 0.0f || intensity > 4.0f)
-        throw std::invalid_argument("Number popup intensity must be between 0 and 4");
+bool NumberPopup::State::ValidIntensity(float intensity) {
+    return std::isfinite(intensity) && intensity >= 0.0f && intensity <= 4.0f;
 }
 
-void NumberPopup::State::ValidateStyle(const NumberPopupStyle& style) {
-    (void)Popup::Duration(style.popup);
-    ValidateFormat(style.format);
-    const auto& text = style.text;
+bool NumberPopup::State::ValidStyle(const NumberPopupStyle& style) {
     const auto& juice = style.juice;
-    if (!std::isfinite(text.size) || text.size <= 0.0f || !Nonnegative(text.maxWidth) ||
-        !std::isfinite(text.letterSpacing) || !Nonnegative(text.lineSpacing) || !Nonnegative(text.lineHeight) ||
-        !Nonnegative(text.outline.width) || !Finite(text.shadow.offset) || !Nonnegative(text.glow.radius) ||
-        !Nonnegative(text.glow.strength) || !Nonnegative(text.emission) || !Finite(juice.scatterVelocity) ||
-        juice.scatterVelocity.x < 0.0f || juice.scatterVelocity.y < 0.0f ||
-        !Nonnegative(juice.scatterVelocity.x * 8.0f) || !Nonnegative(juice.scatterVelocity.y * 8.0f) ||
-        !Nonnegative(juice.rotationSpread * 8.0f) || !Nonnegative(juice.flashSeconds) || juice.particleCount < 0 ||
-        !Range(juice.particleSpeed) || !Nonnegative(juice.particleSpeed.max * 4.0f) || !Range(juice.particleLifetime) ||
-        juice.particleLifetime.min <= 0.0f || !Range(juice.particleSize) || !Finite(juice.particleAcceleration) ||
-        !std::isfinite(juice.pulse.seconds) || juice.pulse.seconds <= 0.0f || !Finite(juice.pulse.scale) ||
-        juice.pulse.scale.x < 0.0f || juice.pulse.scale.y < 0.0f || !Nonnegative(juice.pulse.scale.x * 4.0f) ||
-        !Nonnegative(juice.pulse.scale.y * 4.0f) || !std::isfinite(juice.pulse.rotation * 4.0f) ||
-        !Nonnegative(style.merge.windowSeconds) || !std::isfinite(style.merge.maxLifetimeSeconds) ||
-        style.merge.maxLifetimeSeconds <= 0.0f)
-        throw std::invalid_argument("Invalid number popup style");
-    switch (juice.particleShape) {
-    case ParticleShape::Circle:
-    case ParticleShape::Square:
-    case ParticleShape::Pixel:
-    case ParticleShape::Spark:
-    case ParticleShape::Star  : break;
-    default                   : throw std::invalid_argument("Invalid number popup particle shape");
+    const auto& merge = style.merge;
+    return Popup::IsValid(style.popup) && ValidFormat(style.format) && std::isfinite(style.text.size) &&
+           style.text.size > 0.0f && Nonnegative(juice.scatterVelocity.x) && Nonnegative(juice.scatterVelocity.y) &&
+           Nonnegative(juice.rotationSpread) && Nonnegative(juice.flashSeconds) && juice.particleCount >= 0 &&
+           ParticleSystem2D::IsValid(juice.particles, juice.particleLook) && std::isfinite(juice.pulse.seconds) &&
+           juice.pulse.seconds > 0.0f && Finite(juice.pulse.scale) && std::isfinite(juice.pulse.rotation) &&
+           Nonnegative(merge.windowSeconds) && Nonnegative(merge.extendSeconds) &&
+           std::isfinite(merge.maxLifetimeSeconds) && merge.maxLifetimeSeconds > 0.0f;
+}
+
+PopupHandle NumberPopup::State::Launch(Float2 position, const std::shared_ptr<Entry>& entry,
+                                       const NumberPopupEmit& options) {
+    const NumberPopupStyle& style = entry->style;
+    entry->changedAt = clock + style.popup.delaySeconds;
+    entry->intensity = options.intensity;
+    entry->flashIntensity = options.intensity;
+    entry->flashes = quality.flashes;
+    PopupStyle animation = style.popup;
+    const auto sample = [&](float spread) {
+        return std::uniform_real_distribution<float>(-spread, spread)(rng) * options.intensity;
+    };
+    animation.motion.velocity += Float2{sample(style.juice.scatterVelocity.x), sample(style.juice.scatterVelocity.y)};
+    animation.motion.rotation += sample(style.juice.rotationSpread);
+    animation.motion.wobbleRadians *= options.intensity;
+    animation.enter.scale = Float2{1.0f, 1.0f} + (animation.enter.scale - Float2{1.0f, 1.0f}) * options.intensity;
+    animation.enter.scale.x = std::max(0.0f, animation.enter.scale.x);
+    animation.enter.scale.y = std::max(0.0f, animation.enter.scale.y);
+    animation.enter.rotation *= options.intensity;
+    entry->popup = popups.Emit(
+        position, [entry](Painter& paint, const PopupFrame& frame) { DrawEntry(paint, frame, *entry); }, animation);
+    if (!entry->popup) return {};
+    Prune(); // Emit may have evicted the oldest entry
+    entries.push_back(entry);
+    const auto frame = popups.Frame(entry->popup);
+    if (frame && frame->phase != PopupPhase::Delayed) {
+        Burst(*entry, frame->position, options.intensity);
+        entry->pendingBurst = false;
     }
+    return entry->popup;
 }
 
 void NumberPopup::State::Burst(const Entry& entry, Float2 position, float intensity) {
@@ -77,21 +97,11 @@ void NumberPopup::State::Burst(const Entry& entry, Float2 position, float intens
     const double scaled = static_cast<double>(juice.particleCount) * intensity;
     const int count = static_cast<int>(std::min(scaled, static_cast<double>(std::numeric_limits<int>::max() / 100)));
     if (count == 0) return;
-    particles.Emit(position, count,
-                   {.speed = {juice.particleSpeed.min * intensity, juice.particleSpeed.max * intensity},
-                    .lifetime = juice.particleLifetime,
-                    .size = juice.particleSize,
-                    .rotation = {-Pi, Pi},
-                    .spin = {-4.0f, 4.0f},
-                    .acceleration = juice.particleAcceleration,
-                    .drag = 2.0f},
-                   {.color = entry.style.text.color,
-                    .shape = juice.particleShape,
-                    .blend = ParticleBlend::Additive,
-                    .endSizeScale = 0.2f,
-                    .fadeFraction = 0.8f,
-                    .sparkTrailSeconds = 0.035f,
-                    .sparkThickness = 0.5f});
+    ParticleEmission emission = juice.particles;
+    emission.speed = {emission.speed.min * intensity, emission.speed.max * intensity};
+    ParticleAppearance look = juice.particleLook;
+    if (juice.particlesUseTextColor) look.color = entry.style.text.color;
+    particles.Emit(position, count, emission, look);
 }
 
 bool NumberPopup::State::Emphasize(Entry& entry, float intensity) {
@@ -108,15 +118,16 @@ bool NumberPopup::State::Emphasize(Entry& entry, float intensity) {
 }
 
 bool NumberPopup::State::Accumulate(Entry& entry, NumberPopupValue delta, float intensity) {
+    if (!entry.value) return false;
     const auto frame = popups.Frame(entry.popup);
     if (!frame || frame->phase == PopupPhase::Exit) return false;
-    NumberPopupValue sum = Sum(entry.value, delta);
+    NumberPopupValue sum = Sum(*entry.value, delta);
     std::string text = FormatValue(sum, entry.style.format);
     entry.value = sum;
     entry.text = std::move(text);
     entry.layout.reset();
-    entry.changedAt = clock;
-    popups.Extend(entry.popup, entry.style.merge.windowSeconds, entry.style.merge.maxLifetimeSeconds);
+    entry.changedAt = std::max(entry.changedAt, clock);
+    popups.Extend(entry.popup, entry.style.merge.extendSeconds, entry.style.merge.maxLifetimeSeconds);
     return Emphasize(entry, intensity);
 }
 
@@ -130,7 +141,5 @@ void NumberPopup::State::DrawEntry(Painter& paint, const PopupFrame& frame, cons
             1.0f - EaseOutCubic(Since(frame.ageSeconds, entry.flashAt) / entry.style.juice.flashSeconds);
         text.color = Mix(text.color, entry.style.juice.flashColor, flash * std::min(1.0f, entry.flashIntensity));
     }
-    const Float2 size = entry.layout->Extent();
-    const float side = text.align == TextAlign::Left ? 0.0f : text.align == TextAlign::Right ? 1.0f : 0.5f;
-    paint.Text(font, *entry.layout, {size.x * (side - 0.5f), -size.y * 0.5f}, text);
+    DrawPopupText(paint, font, *entry.layout, text);
 }

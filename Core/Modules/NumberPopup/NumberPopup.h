@@ -1,20 +1,23 @@
 #pragma once
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include "Fx/FxQuality.h"
-#include "Graphics/Draw/ParticleDraw.h"
+#include "Fx/ParticleSystem2D.h"
 #include "Graphics/Text/TextStyle.h"
 #include "Modules/Popup/Popup.h"
-#include "Utilities/FloatRange.h"
+#include "Utilities/MathUtils.h"
 
 class Painter;
 
-enum class NumberPopupPreset { Float, Pop, Burst, Heavy };
+// Pop comes first: value-initialized, it equals the default NumberPopupStyle.
+enum class NumberPopupPreset { Pop, Float, Burst, Heavy };
 enum class NumberPopupSign { NegativeOnly, Always, None };
 
 // Integral input retains signed 64-bit precision. Floating input (including float) uses double.
@@ -34,6 +37,15 @@ private:
 // Zero means independent emission. A nonzero key identifies one compatible, caller-defined value stream.
 struct NumberPopupMergeKey {
     std::uint64_t value = 0;
+    // A nonzero key from integers and enums, e.g. Of(ScoreGroup::Food, playerIndex). Order matters.
+    template <class... Parts>
+        requires(sizeof...(Parts) > 0) && ((std::is_integral_v<Parts> || std::is_enum_v<Parts>) && ...)
+    [[nodiscard]] static constexpr NumberPopupMergeKey Of(Parts... parts) {
+        constexpr std::uint64_t Prime = 1099511628211ull;
+        std::uint64_t hash = 14695981039346656037ull;
+        ((hash = (hash ^ static_cast<std::uint64_t>(parts)) * Prime), ...);
+        return {hash == 0 ? 1 : hash};
+    }
     friend bool operator==(NumberPopupMergeKey, NumberPopupMergeKey) = default;
 };
 
@@ -54,17 +66,28 @@ struct NumberPopupJuice {
     float flashSeconds = 0.06f;
     Color4 flashColor{255, 255, 255, 255};
     int particleCount = 0;
-    FloatRange particleSpeed{60.0f, 140.0f};
-    FloatRange particleLifetime{0.15f, 0.3f};
-    FloatRange particleSize{1.5f, 3.0f};
-    Float2 particleAcceleration{0.0f, 120.0f};
-    ParticleShape particleShape = ParticleShape::Star;
+    ParticleEmission particles{.speed = {60.0f, 140.0f},
+                               .lifetime = {0.15f, 0.3f},
+                               .size = {1.5f, 3.0f},
+                               .rotation = {-Pi, Pi},
+                               .spin = {-4.0f, 4.0f},
+                               .acceleration = {0.0f, 120.0f},
+                               .drag = 2.0f};
+    ParticleAppearance particleLook{.shape = ParticleShape::Star,
+                                    .blend = ParticleBlend::Additive,
+                                    .endSizeScale = 0.2f,
+                                    .fadeFraction = 0.8f,
+                                    .sparkTrailSeconds = 0.035f,
+                                    .sparkThickness = 0.5f};
+    bool particlesUseTextColor = true; // False: particleLook.color
     PopupPulse pulse;
 };
 
 struct NumberPopupMerge {
     float windowSeconds = 0.12f;     // Measured since the most recent accepted value change; zero disables auto-merge
+    float extendSeconds = 0.12f;     // Hold time each merge or Add gains, up to maxLifetimeSeconds
     float maxLifetimeSeconds = 1.5f; // Caps extensions; never shortens the original style's lifetime
+    bool followAnchor = false;       // A merge moves the entry to the incoming position (moving targets)
 };
 
 struct NumberPopupStyle {
@@ -78,11 +101,24 @@ struct NumberPopupStyle {
     NumberPopupMerge merge;
 };
 
+// Per-emission choices beside the reusable style.
+struct NumberPopupEmit {
+    float intensity = 1.0f; // 0..4; launch variation, squash/rotation, flash, particles; never the numeric value
+    NumberPopupMergeKey mergeKey;
+    std::optional<Color4> color; // Replaces style.text.color for this entry
+};
+
 struct NumberPopupSettings {
     std::size_t capacity = 128;
     PopupOverflow overflow = PopupOverflow::ReplaceOldest;
     std::size_t particleCapacity = 1024;
     std::optional<std::uint32_t> seed;
+    // Invalid input: strict throws at the call; otherwise the call is skipped and counted (RejectedCount).
+#ifdef NDEBUG
+    bool strict = false;
+#else
+    bool strict = true;
+#endif
 };
 
 // Owns its Popup and local particle system. Main-thread only; no automatic scene, audio, camera or theme access.
@@ -91,13 +127,23 @@ public:
     explicit NumberPopup(const NumberPopupSettings& settings = {});
     ~NumberPopup();
     [[nodiscard]] static NumberPopupStyle Preset(NumberPopupPreset preset);
+    // Decimals outside 0..9 are clamped here; Emit treats them as invalid input.
     [[nodiscard]] static std::string Format(NumberPopupValue value, const NumberPopupFormat& format = {});
-    // Intensity 0..4 scales launch variation, squash/rotation, flash and particles, never the numeric value.
     // Equal nonzero keys merge before Exit, within the first entry's window, and only for compatible signs.
-    // The first entry's anchor/style are retained. Empty handle on capacity rejection.
+    // The first entry's anchor (unless merge.followAnchor)/style are retained. Empty handle on capacity rejection or
+    // skipped invalid input.
     NumberPopupHandle Emit(Float2 position, NumberPopupValue value, const NumberPopupStyle& style = {},
-                           float intensity = 1.0f, NumberPopupMergeKey mergeKey = {});
-    // Adds exactly for integral + integral (overflow throws); mixed values use double. False during Exit/if stale.
+                           const NumberPopupEmit& options = {});
+    NumberPopupHandle Emit(Float2 position, NumberPopupValue value, NumberPopupPreset preset,
+                           const NumberPopupEmit& options = {});
+    // Text with the same animation and juice ("CRIT!"). Style format and options.mergeKey are not used; it has no
+    // Value and Add returns false for it.
+    NumberPopupHandle EmitLabel(Float2 position, std::string label, const NumberPopupStyle& style = {},
+                                const NumberPopupEmit& options = {});
+    NumberPopupHandle EmitLabel(Float2 position, std::string label, NumberPopupPreset preset,
+                                const NumberPopupEmit& options = {});
+    // Adds exactly for integral + integral, saturating at the limits; mixed values use double. False during Exit/if
+    // stale.
     bool Add(NumberPopupHandle handle, NumberPopupValue delta);
     bool Pulse(NumberPopupHandle handle, float intensity = 1.0f);
     bool SetAnchor(NumberPopupHandle handle, Float2 position);
@@ -113,6 +159,11 @@ public:
     [[nodiscard]] std::optional<PopupFrame> Frame(NumberPopupHandle handle) const;
     // Number entries, including delayed entries; particles may briefly outlive them.
     [[nodiscard]] std::size_t ActiveCount() const;
+    // Live local particles, after FxQuality.
+    [[nodiscard]] std::size_t ParticleCount() const;
+    // Calls skipped since construction because of invalid input (non-strict only), and the first one's reason.
+    [[nodiscard]] std::size_t RejectedCount() const;
+    [[nodiscard]] const std::string& FirstRejection() const;
 
 private:
     class State;

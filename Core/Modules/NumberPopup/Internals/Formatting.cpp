@@ -1,11 +1,11 @@
 #include "Modules/NumberPopup/Internals/State.h"
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <iomanip>
 #include <limits>
 #include <locale>
 #include <sstream>
-#include <stdexcept>
 #include <string_view>
 
 namespace {
@@ -19,40 +19,37 @@ std::string Fixed(double value, int decimals) {
 bool IsZero(std::string_view value) { return value.find_first_not_of("-0.") == std::string_view::npos; }
 } // namespace
 
-void NumberPopup::State::ValidateValue(const NumberPopupValue& value) {
-    if (const auto* decimal = std::get_if<double>(&value); decimal && !std::isfinite(*decimal))
-        throw std::invalid_argument("Number popup value must be finite");
+bool NumberPopup::State::ValidValue(const NumberPopupValue& value) {
+    const auto* decimal = std::get_if<double>(&value);
+    return !decimal || std::isfinite(*decimal);
 }
 
+// A cosmetic counter saturates at the limits instead of failing the game.
 NumberPopupValue NumberPopup::State::Sum(const NumberPopupValue& left, const NumberPopupValue& right) {
-    ValidateValue(right);
     if (const auto* a = std::get_if<std::int64_t>(&left)) {
         if (const auto* b = std::get_if<std::int64_t>(&right)) {
-            if ((*b > 0 && *a > std::numeric_limits<std::int64_t>::max() - *b) ||
-                (*b < 0 && *a < std::numeric_limits<std::int64_t>::min() - *b))
-                throw std::overflow_error("Number popup integer sum overflow");
+            if (*b > 0 && *a > std::numeric_limits<std::int64_t>::max() - *b)
+                return std::numeric_limits<std::int64_t>::max();
+            if (*b < 0 && *a < std::numeric_limits<std::int64_t>::min() - *b)
+                return std::numeric_limits<std::int64_t>::min();
             return *a + *b;
         }
     }
     const auto decimal = [](const NumberPopupValue& value) {
         return std::visit([](auto number) { return static_cast<double>(number); }, value);
     };
-    const double result = decimal(left) + decimal(right);
-    if (!std::isfinite(result)) throw std::overflow_error("Number popup decimal sum overflow");
-    return result;
+    constexpr double Limit = std::numeric_limits<double>::max();
+    return std::clamp(decimal(left) + decimal(right), -Limit, Limit);
 }
 
-void NumberPopup::State::ValidateFormat(const NumberPopupFormat& format) {
-    if (format.decimals < 0 || format.decimals > 9 ||
-        (format.sign != NumberPopupSign::NegativeOnly && format.sign != NumberPopupSign::Always &&
-         format.sign != NumberPopupSign::None))
-        throw std::invalid_argument("Invalid number popup format");
+bool NumberPopup::State::ValidFormat(const NumberPopupFormat& format) {
+    return format.decimals >= 0 && format.decimals <= 9;
 }
 
-std::string NumberPopup::State::FormatValue(const NumberPopupValue& value, const NumberPopupFormat& format) {
-    ValidateValue(value);
-    ValidateFormat(format);
-    if (format.formatter) return format.formatter(value);
+std::string NumberPopup::State::FormatValue(const NumberPopupValue& value, const NumberPopupFormat& requested) {
+    if (requested.formatter) return requested.formatter(value);
+    NumberPopupFormat format = requested;
+    format.decimals = std::clamp(format.decimals, 0, 9);
 
     const double decimal = std::visit([](auto number) { return static_cast<double>(number); }, value);
     const bool abbreviated = format.compact && std::abs(decimal) >= 999.0;
