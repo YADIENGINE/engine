@@ -3,10 +3,5 @@
   "changes": [
     "Editor quality of life changes."
   ],
-  "breaking": [
-    {
-      "change": "",
-      "migrate": ""
-    }
-  ]
+  "breaking": []
 }
