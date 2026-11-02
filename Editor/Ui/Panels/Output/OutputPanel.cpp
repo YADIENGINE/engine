@@ -152,7 +152,9 @@ void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiAct
                     _agentText =
                         "[editor] Fix this build error:\n" + (where.empty() ? message : where + ": " + message) + "\n";
                 ToolTooltip("Paste this error into the agent session, without Enter.");
-                ImGui::SetCursorScreenPos(after);
+                // Dummy clears ImGui's pending SetCursorPos state; starting one spacing above preserves `after`.
+                ImGui::SetCursorScreenPos({after.x, after.y - ImGui::GetStyle().ItemSpacing.y});
+                ImGui::Dummy({0, 0});
             }
             ImGui::PopID();
         }

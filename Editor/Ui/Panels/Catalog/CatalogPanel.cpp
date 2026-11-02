@@ -84,7 +84,9 @@ void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& sna
         if (EditorIconButton("favorite", EditorGlyph::Star, favorite ? "Remove favorite" : "Add favorite"))
             preferences.ToggleFavorite(entry.id);
         ImGui::PopStyleColor();
-        ImGui::SetCursorScreenPos(after);
+        // Dummy clears ImGui's pending SetCursorPos state; starting one spacing above preserves `after`.
+        ImGui::SetCursorScreenPos({after.x, after.y - ImGui::GetStyle().ItemSpacing.y});
+        ImGui::Dummy({0, 0});
     }
     ImGui::PopID();
 }
