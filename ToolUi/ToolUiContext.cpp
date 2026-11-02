@@ -94,6 +94,9 @@ ToolUiContext::ToolUiContext(const ToolUiOptions& options) {
     if (options.docking) io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     if (options.keyboardNavigation) io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
+#ifdef NDEBUG
+    io.ConfigDebugHighlightIdConflicts = false; // A developer diagnostic; Release tools never show it to their users.
+#endif
 }
 ToolUiContext::~ToolUiContext() {
     ClearToolFonts();

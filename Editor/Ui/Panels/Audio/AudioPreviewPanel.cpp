@@ -184,9 +184,11 @@ void AudioPreviewPanel::Transport(const AudioPreviewState& audio, const EditorUi
     ImGui::SameLine();
     const bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput;
     const bool space = focused && ImGui::IsKeyPressed(ImGuiKey_Space, false);
-    if (ToolIconButton("play", audio.playing ? ICON_FA_PAUSE : ICON_FA_PLAY,
-                       audio.playing ? "Pause (Space)" : "Play (Space)") ||
-        space) {
+    ImGui::PushStyleColor(ImGuiCol_Text, audio.playing ? ToolPalette::Text : ToolToneColor(ToolTone::Success));
+    const bool playPressed = ToolIconButton("play", audio.playing ? ICON_FA_PAUSE : ICON_FA_PLAY,
+                                            audio.playing ? "Pause (Space)" : "Play (Space)");
+    ImGui::PopStyleColor();
+    if (playPressed || space) {
         if (audio.playing)
             send({AudioPreviewAction::Pause, {}, audio.loop, audio.volume});
         else if (audio.paused)

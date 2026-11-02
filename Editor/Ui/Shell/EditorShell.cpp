@@ -34,7 +34,7 @@ void StatusPhase(const EditorSnapshot& snapshot) {
     ImGui::SameLine();
     ImGui::SetCursorPosY(y);
     ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(phase);
+    ImGui::TextColored(PhaseIsWorking(snapshot) ? EditorInfoColor() : EditorPhaseColor(snapshot.phase), "%s", phase);
 }
 void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     const SceneParameter* language = nullptr;
@@ -57,9 +57,13 @@ void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions
     const auto found = snapshot.parameters.find(language->id);
     const auto* selected = found != snapshot.parameters.end() ? std::get_if<std::string>(&found->second) : nullptr;
     ImGui::BeginDisabled(!enabled);
-    for (const auto& choice : language->choices)
+    int row = 0;
+    for (const auto& choice : language->choices) {
+        ImGui::PushID(row++); // Choice names come from the project and may repeat.
         if (ImGui::MenuItem(choice.c_str(), nullptr, selected && *selected == choice))
             actions.parameter(language->id, choice);
+        ImGui::PopID();
+    }
     ImGui::EndDisabled();
     if (snapshot.pending.contains(language->id)) ImGui::TextDisabled("Pending");
     if (snapshot.busy)

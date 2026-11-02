@@ -85,8 +85,10 @@ bool EditorParameterWidget(const SceneParameter& parameter, SceneValue& value) {
             if (ImGui::BeginTable("##choices", columns,
                                   ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoPadOuterX |
                                       ImGuiTableFlags_NoSavedSettings)) {
+                int row = 0;
                 for (const auto& choice : parameter.choices) {
                     ImGui::TableNextColumn();
+                    ImGui::PushID(row++); // Choice names come from the project and may repeat.
                     const bool selected = choice == std::get<std::string>(value);
                     ImGui::PushStyleColor(ImGuiCol_Button, selected ? ToolPalette::Selected : ToolPalette::Control);
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
@@ -97,6 +99,7 @@ bool EditorParameterWidget(const SceneParameter& parameter, SceneValue& value) {
                         changed = true;
                     }
                     ImGui::PopStyleColor(3);
+                    ImGui::PopID();
                 }
                 ImGui::EndTable();
             }
@@ -112,13 +115,16 @@ bool EditorParameterWidget(const SceneParameter& parameter, SceneValue& value) {
                 ImGui::SetKeyboardFocusHere();
             }
             filter.Draw("Search");
+            int row = 0;
             for (const auto& choice : parameter.choices) {
-                if (!filter.PassFilter(choice.c_str())) continue;
-                if (ToolWrappedSelectable(choice.c_str(), choice == std::get<std::string>(value),
+                ImGui::PushID(row++); // Choice names come from the project and may repeat.
+                if (filter.PassFilter(choice.c_str()) &&
+                    ToolWrappedSelectable(choice.c_str(), choice == std::get<std::string>(value),
                                           ImGuiSelectableFlags_None)) {
                     value = choice;
                     changed = true;
                 }
+                ImGui::PopID();
             }
             ImGui::EndCombo();
         }

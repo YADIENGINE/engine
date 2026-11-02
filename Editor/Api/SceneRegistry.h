@@ -37,7 +37,7 @@ struct SceneDefinition {
     std::vector<SceneParameter> parameters;
     std::vector<SceneAction> actions;
     std::function<std::unique_ptr<EditorScene>(const SceneServices&, const SceneParameters&)> create;
-    int categoryOrder = 0; // Lower values come first; use the same order for every entry in a category.
+    int categoryOrder = 0; // Lower values come first; a category sorts by the lowest order among its entries.
     std::optional<SceneBenchmark> benchmark;
     std::optional<SceneAssetInfo> asset;
 };

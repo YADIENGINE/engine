@@ -117,7 +117,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `SceneDefinition`: `std::vector<SceneParameter> parameters`
 - `SceneDefinition`: `std::vector<SceneAction> actions`
 - `SceneDefinition`: `std::function<std::unique_ptr<EditorScene>(const SceneServices&, const SceneParameters&)> create`
-- `SceneDefinition`: `int categoryOrder = 0` — Lower values come first; use the same order for every entry in a category.
+- `SceneDefinition`: `int categoryOrder = 0` — Lower values come first; a category sorts by the lowest order among its entries.
 - `SceneDefinition`: `std::optional<SceneBenchmark> benchmark`
 - `SceneDefinition`: `std::optional<SceneAssetInfo> asset`
 - `class SceneRegistry`

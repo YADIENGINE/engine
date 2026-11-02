@@ -27,3 +27,10 @@ enum class EditorGlyph { Play, Pause, Stop, Reset, Build, Cancel, Star, Expand, 
 // The hue only the agent uses: amber stays the primary button's, green and red stay results.
 [[nodiscard]] ImVec4 EditorAgentColor();
 [[nodiscard]] ImVec4 EditorTintSurface(ImVec4 base, ImVec4 tone, float amount);
+// Work in progress and building, never a result.
+[[nodiscard]] ImVec4 EditorInfoColor();
+// Button colors for the next ToolButton; each pairs with PopEditorButton. Skip them on a disabled button.
+void PushEditorGoButton();                                  // Filled green: starts something
+void PushEditorTintedButton(ImVec4 tone, ImVec4 textColor); // Quiet tint: stopping, or handing work to the agent
+void PopEditorButton();
+[[nodiscard]] ImVec4 EditorStopTextColor();

@@ -54,6 +54,12 @@ bool CatalogFilterButton(const char* id, CatalogFilterIcon icon, const char* too
     ImGui::PopID();
     return pressed;
 }
+
+// An empty category shows as General, so the two are one group.
+const std::string& CategoryLabel(const SceneDefinition& entry) {
+    static const std::string General = "General";
+    return entry.category.empty() ? General : entry.category;
+}
 } // namespace
 
 void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& snapshot, const EditorUiActions& actions,
@@ -127,9 +133,20 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
             return std::ranges::find(preferences.recent, a->id) < std::ranges::find(preferences.recent, b->id);
         });
     } else {
-        std::ranges::stable_sort(entries, [](const auto* a, const auto* b) {
-            if (a->categoryOrder != b->categoryOrder) return a->categoryOrder < b->categoryOrder;
-            return a->category < b->category;
+        // Read over the whole catalog, so a search does not reorder the categories.
+        std::map<std::string, int> categoryOrders;
+        for (const auto& entry : snapshot.catalog) {
+            if (entry.asset) continue;
+            const auto [order, added] = categoryOrders.try_emplace(CategoryLabel(entry), entry.categoryOrder);
+            if (!added) order->second = std::min(order->second, entry.categoryOrder);
+        }
+        std::ranges::stable_sort(entries, [&](const auto* a, const auto* b) {
+            const auto& labelA = CategoryLabel(*a);
+            const auto& labelB = CategoryLabel(*b);
+            const int orderA = categoryOrders.at(labelA);
+            const int orderB = categoryOrders.at(labelB);
+            if (orderA != orderB) return orderA < orderB;
+            return labelA < labelB;
         });
     }
     const float scale = ToolUiScale();
@@ -138,17 +155,17 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
     if (ImGui::BeginChild("catalog-entries")) {
         std::map<std::string, int> counts;
         for (const auto* entry : entries)
-            ++counts[entry->category];
+            ++counts[CategoryLabel(*entry)];
         std::string category;
         bool expanded = true;
         bool first = true;
         for (const auto* entry : entries) {
-            if (_view != 2 && (first || category != entry->category)) {
-                category = entry->category;
-                const char* name = category.empty() ? "General" : category.c_str();
-                if (_reveal && snapshot.selected && snapshot.selected->category == category)
-                    ImGui::GetStateStorage()->SetBool(ImGui::GetID(name), true);
-                expanded = ToolSectionHeader(name, false, !query.empty(), std::to_string(counts[category]).c_str());
+            if (_view != 2 && (first || category != CategoryLabel(*entry))) {
+                category = CategoryLabel(*entry);
+                if (_reveal && snapshot.selected && CategoryLabel(*snapshot.selected) == category)
+                    ImGui::GetStateStorage()->SetBool(ImGui::GetID(category.c_str()), true);
+                expanded = ToolSectionHeader(category.c_str(), false, !query.empty(),
+                                             std::to_string(counts[category]).c_str());
                 first = false;
             }
             if (expanded) Entry(*entry, snapshot, actions, preferences);

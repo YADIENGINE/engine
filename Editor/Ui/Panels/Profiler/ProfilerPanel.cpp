@@ -246,10 +246,12 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
     if (ToolBeginCombo("Scenario", selected)) {
         for (const auto& entry : snapshot.catalog) {
             if (!entry.benchmark) continue;
+            ImGui::PushID(entry.id.c_str()); // Scene names may repeat; IDs may not.
             if (ImGui::Selectable(entry.name.c_str(), snapshot.selected && entry.id == snapshot.selected->id)) {
                 actions.select(entry.id);
                 actions.command(EditorCommand::Open);
             }
+            ImGui::PopID();
         }
         ImGui::EndCombo();
     }
@@ -315,11 +317,9 @@ void ProfilerPanel::Benchmarks(const EditorSnapshot& snapshot, const EditorUiAct
             ImGui::Text("%s repeat medians: %.3f .. %.3f ms (%.1f%% span)", _statisticsFor->variants[variant].c_str(),
                         minimum, maximum, minimum > 0 ? (maximum - minimum) * 100.0 / minimum : 0);
             const std::string label = "Full statistics: " + _statisticsFor->variants[variant];
-            if (ImGui::CollapsingHeader(label.c_str())) {
-                ImGui::PushID(static_cast<int>(variant));
-                Summary(_variantStatistics[variant]);
-                ImGui::PopID();
-            }
+            ImGui::PushID(static_cast<int>(variant));
+            if (ImGui::CollapsingHeader(label.c_str())) Summary(_variantStatistics[variant]);
+            ImGui::PopID();
         }
         if (ImGui::BeginTable("repeats", 6,
                               ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_ScrollX)) {

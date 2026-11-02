@@ -727,6 +727,12 @@ The editor adds one hue of its own, a periwinkle only the agent uses (the toolba
 session), so an agent at work never reads as the amber primary button or as a result's green or red. Amber on the strip
 means the agent is waiting for the developer.
 
+Editor buttons and status text carry meaning through color, on the unchanged surfaces. Green fills the button that starts
+the scene and marks a live state. A rose tint marks Stop, never a solid fill, so stopping does not read as an error. Teal
+is work in progress and the Build icon. Amber stays with selection, pause, warnings and the Inspector's primary action.
+Only a button that starts something is filled; other colors stay on icons, text and quiet tints. These colors live in
+`Editor/Ui/Style/EditorTheme`, so the launcher keeps its amber primary button.
+
 **Why:** the previous look framed everything equally, kept ImGui's stock parts (triangle headers, large square
 checkboxes, block combo arrows, permanent tab controls), and tinted every surface, which also changes how a game's
 colors read in the viewport. Removing frames costs little and helps most; the pixel block is an identity the product

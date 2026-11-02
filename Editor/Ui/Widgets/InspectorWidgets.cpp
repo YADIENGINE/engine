@@ -85,15 +85,16 @@ void InspectorAction(const SceneAction& action, std::span<const std::string> dis
     ImGui::BeginDisabled(std::ranges::find(disabled, action.id) != disabled.end());
     // The Inspector's buttons take the field color (its choice grids), which would read as an input here.
     ImGui::PushStyleColor(ImGuiCol_Button,
-                          action.primary ? AccentSurface(ImGuiCol_FrameBg, 0.18f) : ToolPalette::Control);
+                          action.primary ? AccentSurface(ImGuiCol_FrameBg, 0.26f) : ToolPalette::Control);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                          action.primary ? AccentSurface(ImGuiCol_FrameBg, 0.27f) : ToolPalette::Hover);
+                          action.primary ? AccentSurface(ImGuiCol_FrameBg, 0.36f) : ToolPalette::Hover);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive,
-                          action.primary ? AccentSurface(ImGuiCol_FrameBg, 0.36f) : ToolPalette::Pressed);
+                          action.primary ? AccentSurface(ImGuiCol_FrameBg, 0.18f) : ToolPalette::Pressed);
+    ImGui::PushStyleColor(ImGuiCol_Text, action.primary ? ToolPalette::Accent : ToolPalette::Text);
     if (ToolSingleLineButton(action.label.c_str())) execute(action.id);
     const std::string tooltip = action.label + (action.description.empty() ? "" : "\n" + action.description);
     ToolTooltip(tooltip.c_str());
-    ImGui::PopStyleColor(3);
+    ImGui::PopStyleColor(4);
     ImGui::EndDisabled();
     ImGui::PopID();
 }

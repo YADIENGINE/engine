@@ -25,6 +25,7 @@ constexpr float MaxTileSize = 160;
 constexpr float TileWheelStep = 8;
 constexpr float TileIconShare = 0.42f; // Of the tile's width
 constexpr int BackMouseButton = 3;
+constexpr ImVec4 FontKindColor{0xd0 / 255.0f, 0xcb / 255.0f, 0x7c / 255.0f, 1.0f};
 
 const char* KindIcon(AssetKind kind) {
     switch (kind) {
@@ -41,9 +42,9 @@ const char* KindIcon(AssetKind kind) {
 ImVec4 KindColor(AssetKind kind) {
     switch (kind) {
     case AssetKind::Folder : return ToolToneColor(ToolTone::Warning);
-    case AssetKind::Graphic: return ToolToneColor(ToolTone::Accent);
+    case AssetKind::Graphic: return EditorInfoColor();
     case AssetKind::Audio  : return ToolToneColor(ToolTone::Success);
-    case AssetKind::Font   : return ToolToneColor(ToolTone::Information);
+    case AssetKind::Font   : return FontKindColor;
     case AssetKind::Code   :
     case AssetKind::File   : return ToolPalette::Secondary;
     }

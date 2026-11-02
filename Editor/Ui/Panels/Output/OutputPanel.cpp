@@ -92,7 +92,9 @@ void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiAct
                            .c_str());
     if (errors > 0) {
         ContinueToolToolbar("Fix all with agent", true);
+        PushEditorTintedButton(EditorAgentColor(), EditorAgentColor());
         if (ToolButton("Fix all with agent")) _fixAll = true;
+        PopEditorButton();
         ToolTooltip("Send the build errors to the agent session and ask it to fix them. This presses Enter.");
     }
     ImGui::Separator();

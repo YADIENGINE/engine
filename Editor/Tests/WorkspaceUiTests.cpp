@@ -6,6 +6,7 @@
 #include "Editor/Ui/Panels/Assets/AssetsPanel.h"
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
+#include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
 #include "ToolUi/ToolTheme.h"
 #include "Tests/Support/TempDirectory.h"
@@ -276,6 +277,97 @@ TEST_CASE("Editor.Catalog.WorkCategorySortsFirstInProjectPanel", "[engine-editor
     REQUIRE(text.find("Work") != std::string::npos);
     REQUIRE(text.find("Alpha") != std::string::npos);
     CHECK(text.find("Work") < text.find("Alpha"));
+}
+
+TEST_CASE("Editor.Catalog.CategoryIsOneGroupWhateverItsEntriesOrders", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {800, 600};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    const auto scene = [](const char* id, const char* category, int order) {
+        SceneDefinition definition;
+        definition.id = id;
+        definition.name = id;
+        definition.category = category;
+        definition.categoryOrder = order;
+        return definition;
+    };
+    // Shared is split by order and has Middle between its entries; General also arrives as an empty category.
+    const std::vector catalog{scene("one", "Shared", -1), scene("two", "Middle", 0), scene("three", "Shared", 0),
+                              scene("four", "", 0), scene("five", "General", 0)};
+    const SceneParameters parameters;
+    const EditorDiagnostics diagnostics;
+    const std::string status;
+    EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};
+    CatalogPanel panel;
+    EditorPreferences preferences;
+    ImGui::NewFrame();
+    ImGui::SetNextWindowSize({700, 500});
+    ImGui::Begin("Project");
+    ImGui::LogToBuffer();
+    panel.Draw(snapshot, {}, preferences);
+    const std::string text = ImGui::GetCurrentContext()->LogBuffer.c_str();
+    ImGui::LogFinish();
+    ImGui::End();
+    ImGui::Render();
+    const auto occurrences = [&](const std::string& word) {
+        std::size_t count = 0;
+        for (auto at = text.find(word); at != std::string::npos; at = text.find(word, at + word.size()))
+            ++count;
+        return count;
+    };
+    CHECK(occurrences("Shared") == 1);
+    CHECK(occurrences("General") == 1);
+    // A category sorts by its lowest order.
+    CHECK(text.find("Shared") < text.find("General"));
+    CHECK(text.find("Shared") < text.find("Middle"));
+}
+
+TEST_CASE("Editor.Widgets.RepeatedChoiceNamesDoNotConflict", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {800, 600};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    SceneParameter parameter;
+    parameter.kind = SceneParameterKind::Choice;
+    parameter.choiceButtons = true;
+    parameter.choices = {"Same", "Same"};
+    SceneValue value = std::string("Other");
+    bool conflict = false;
+    // ImGui only reports a conflict on the hovered item, a frame after it hovers.
+    for (int frame = 0; frame < 4; ++frame) {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({0, 0});
+        ImGui::SetNextWindowSize({700, 500});
+        ImGui::Begin("Inspector");
+        const auto start = ImGui::GetCursorScreenPos();
+        io.AddMousePosEvent(start.x + 8, start.y + 8);
+        (void)EditorParameterWidget(parameter, value);
+        ImGui::End();
+        ImGui::Render();
+        conflict = conflict || ImGui::GetCurrentContext()->HoveredIdPreviousFrameItemCount > 1 ||
+                   ImGui::GetCurrentContext()->DebugDrawIdConflictsId != 0;
+    }
+    CHECK(ImGui::GetCurrentContext()->HoveredIdPreviousFrame != 0);
+    CHECK_FALSE(conflict);
 }
 
 TEST_CASE("Editor.Workspace.BuildFailureShowsOutputOncePerAttempt", "[engine-editor]") {

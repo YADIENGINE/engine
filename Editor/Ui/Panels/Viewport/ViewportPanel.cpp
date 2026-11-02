@@ -60,7 +60,7 @@ bool RecentRow(const SceneDefinition& scene, float width) {
 }
 // The viewport with no frame to show: the mark and what to do next, then as room allows the scenes opened last and,
 // with no scene yet, the shortcuts that get there.
-EmptyViewportChoice DrawEmptyViewport(const char* title, const char* detail, const char* button,
+EmptyViewportChoice DrawEmptyViewport(const char* title, const char* detail, const char* button, bool buttonStarts,
                                       const std::vector<const SceneDefinition*>& recent, bool hints, ImVec2 area) {
     struct Hint {
         const char* keys;
@@ -86,7 +86,7 @@ EmptyViewportChoice DrawEmptyViewport(const char* title, const char* detail, con
     const float width = std::max(1.0f, area.x);
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + std::max(0.0f, (area.y - block) * 0.5f));
     CenterNext(ToolPixelTextSize("Y", cell).x, width, originX);
-    ToolPixelText("Y", EmptyMarkCell, ToolPalette::Control);
+    ToolPixelText("Y", EmptyMarkCell, ToolPalette::Accent);
     ImGui::Dummy({0, EmptyGap * scale - style.ItemSpacing.y});
     ImGui::PushFont(ToolFont(ToolFontRole::Heading), ToolMetrics::HeadingSize);
     const auto titleText = ToolClipText(title, width);
@@ -103,7 +103,9 @@ EmptyViewportChoice DrawEmptyViewport(const char* title, const char* detail, con
     if (button) {
         ImGui::Dummy({0, EmptyGap * scale - style.ItemSpacing.y * 2});
         CenterNext(ImGui::CalcTextSize(button).x + style.FramePadding.x * 2, width, originX);
+        if (buttonStarts) PushEditorGoButton();
         choice.button = ToolButton(button);
+        if (buttonStarts) PopEditorButton();
     }
     if (showRecent && !recent.empty()) {
         const float listWidth = std::min(RecentRowWidth * scale, width);
@@ -341,7 +343,8 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
                 const auto found = std::ranges::find(snapshot.catalog, id, &SceneDefinition::id);
                 if (found != snapshot.catalog.end()) scenes.push_back(&*found);
             }
-        const auto choice = DrawEmptyViewport(title, detail, button, scenes, !snapshot.selected, available);
+        const auto choice = DrawEmptyViewport(title, detail, button, command == EditorCommand::Open, scenes,
+                                              !snapshot.selected, available);
         if (choice.button) actions.command(command);
         if (choice.recent) {
             actions.select(choice.recent->id);
