@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include "EngineShaders.h" // Generated from Shaders/*.glsl (Core/CMakeLists.txt)
+#include "Utilities/DevelopmentChecks.h"
 
 namespace {
 constexpr std::size_t InitialVertexBytes = std::size_t{4} << 20;
@@ -153,13 +154,11 @@ GlDevice::GlDevice() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     _debugGroups = glad_glPushDebugGroup != nullptr;
-#ifndef NDEBUG
-    if (glad_glDebugMessageCallback) {
+    if (DevelopmentChecks() && glad_glDebugMessageCallback) {
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(DebugMessage, nullptr);
     }
-#endif
     ForgetState();
 }
 
@@ -173,9 +172,7 @@ GlDevice::~GlDevice() {
     glDeleteVertexArrays(1, &_paintLayout);
     glDeleteVertexArrays(1, &_emptyLayout);
     glDeleteTextures(1, &_white);
-#ifndef NDEBUG
-    if (glad_glDebugMessageCallback) glDebugMessageCallback(nullptr, nullptr);
-#endif
+    if (DevelopmentChecks() && glad_glDebugMessageCallback) glDebugMessageCallback(nullptr, nullptr);
 }
 
 GpuTexture GlDevice::AddTexture(const GpuTextureDesc& desc, bool owned) {

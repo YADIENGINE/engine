@@ -36,8 +36,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `struct PopupSettings`
 - `PopupSettings`: `std::size_t capacity = 128` — Zero disables emission
 - `PopupSettings`: `PopupOverflow overflow = PopupOverflow::ReplaceOldest`
-- `PopupSettings`: `bool strict = false` — Invalid input: strict throws at the call; otherwise the call is skipped and counted (RejectedCount).
-- `PopupSettings`: `bool strict = true`
+- `PopupSettings`: `bool strict = DevelopmentChecks()` — Invalid input: strict throws at the call; otherwise the call is skipped and counted (RejectedCount).
 - `struct PopupPulse` — A bounded, decaying overlay.
 - `PopupPulse`: `float seconds = 0.18f`
 - `PopupPulse`: `Float2 scale { 0.18f, 0.18f }` — Additional fraction of the current scale; negative squashes that axis

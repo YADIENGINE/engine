@@ -1,5 +1,4 @@
 #include "Tuning/TuningLive.h"
-#if ENGINE_TUNING_LIVE
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -203,4 +202,3 @@ void SetTuningReporter(std::function<void(const TuningReport&)> reporter) {
     const std::scoped_lock lock(state.mutex);
     state.reporter = std::move(reporter);
 }
-#endif

@@ -12,6 +12,7 @@
 #include "Fx/ParticleSystem2D.h"
 #include "Graphics/Text/TextStyle.h"
 #include "Modules/Popup/Popup.h"
+#include "Utilities/DevelopmentChecks.h"
 #include "Utilities/MathUtils.h"
 
 class Painter;
@@ -114,11 +115,7 @@ struct NumberPopupSettings {
     std::size_t particleCapacity = 1024;
     std::optional<std::uint32_t> seed;
     // Invalid input: strict throws at the call; otherwise the call is skipped and counted (RejectedCount).
-#ifdef NDEBUG
-    bool strict = false;
-#else
-    bool strict = true;
-#endif
+    bool strict = DevelopmentChecks();
 };
 
 // Owns its Popup and local particle system. Main-thread only; no automatic scene, audio, camera or theme access.

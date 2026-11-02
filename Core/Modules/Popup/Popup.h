@@ -7,6 +7,7 @@
 #include <string>
 #include "Graphics/Anim/Easing.h"
 #include "Graphics/Text/TextStyle.h"
+#include "Utilities/DevelopmentChecks.h"
 #include "Utilities/Float2.h"
 
 class FontFace;
@@ -64,11 +65,7 @@ struct PopupSettings {
     std::size_t capacity = 128; // Zero disables emission
     PopupOverflow overflow = PopupOverflow::ReplaceOldest;
     // Invalid input: strict throws at the call; otherwise the call is skipped and counted (RejectedCount).
-#ifdef NDEBUG
-    bool strict = false;
-#else
-    bool strict = true;
-#endif
+    bool strict = DevelopmentChecks();
 };
 
 // A bounded, decaying overlay. Retriggering replaces the pulse, never accumulates unbounded scale.

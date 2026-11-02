@@ -1,8 +1,7 @@
 #pragma once
-// Live side of tuning values (Docs/Tuning.md): available only in development builds (ENGINE_TUNING_LIVE).
-// Generated struct fields are registered at runtime; when a file changes, Game reads it through PollTuning at
-// frame start and applies all values or none. This header is empty in Release; reading / watching code is not compiled.
-#if ENGINE_TUNING_LIVE
+// Live side of tuning values (Docs/Tuning.md). Generated struct fields are registered at runtime; when a file changes,
+// Game reads it through PollTuning at frame start and applies all values or none. The engine always carries this code,
+// so one set of libraries serves both modes; only code built with ENGINE_TUNING_LIVE registers anything.
 #include <array>
 #include <cstddef>
 #include <filesystem>
@@ -132,4 +131,3 @@ public:
 private:
     T _value{};
 };
-#endif

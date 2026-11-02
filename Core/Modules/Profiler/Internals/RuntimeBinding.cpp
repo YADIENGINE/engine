@@ -6,6 +6,7 @@
 #include <thread>
 #include <stdexcept>
 #include "Runtime/Game.h"
+#include "Utilities/DevelopmentChecks.h"
 #ifdef _WIN32
 #define NOGDI
 #define NOUSER
@@ -68,11 +69,7 @@ void ProfilerRuntimeBinding::Poll() {
 Profiler::Metadata ProfilerRuntimeBinding::MetadataValue() const {
     Profiler::Metadata metadata;
     metadata.gpu = _gpu.Description();
-#ifdef NDEBUG
-    metadata.build = "Release";
-#else
-    metadata.build = "Debug";
-#endif
+    metadata.build = DevelopmentChecks() ? "Debug" : "Release";
 #ifdef _WIN32
     std::array<char, 256> cpu{};
     DWORD bytes = static_cast<DWORD>(cpu.size());

@@ -91,8 +91,10 @@ void GlowView::Draw(Painter& paint) const {
 | When the file changes | Game checks at each frame's start (at most once per 200 ms), applies all or nothing | — |
 | Cost | Reading a struct field | Constant |
 
-The mode is the `ENGINE_TUNING_LIVE` definition (0 in Release, MinSizeRel, RelWithDebInfo). Development executables read
-the file from its compiled source path; rebuild if the project folder moves. Live values refresh on the main thread.
+The mode is the `ENGINE_TUNING_LIVE` definition (0 in Release, MinSizeRel, RelWithDebInfo), read where `Tuning<T>()` is
+compiled. The engine libraries always carry the live code, and a Release game simply registers nothing with it.
+Development executables read the file from its compiled source path; rebuild if the project folder moves. Live values
+refresh on the main thread.
 
 ## When changes require a build
 

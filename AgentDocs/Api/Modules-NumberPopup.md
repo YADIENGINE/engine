@@ -51,8 +51,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `NumberPopupSettings`: `PopupOverflow overflow = PopupOverflow::ReplaceOldest`
 - `NumberPopupSettings`: `std::size_t particleCapacity = 1024`
 - `NumberPopupSettings`: `std::optional<std::uint32_t> seed`
-- `NumberPopupSettings`: `bool strict = false` — Invalid input: strict throws at the call; otherwise the call is skipped and counted (RejectedCount).
-- `NumberPopupSettings`: `bool strict = true`
+- `NumberPopupSettings`: `bool strict = DevelopmentChecks()` — Invalid input: strict throws at the call; otherwise the call is skipped and counted (RejectedCount).
 - `class NumberPopup final` — Owns its Popup and local particle system.
 - `NumberPopup`: `explicit NumberPopup(const NumberPopupSettings& settings = { })`
 - `NumberPopup`: `[[nodiscard]] static NumberPopupStyle Preset(NumberPopupPreset preset)`

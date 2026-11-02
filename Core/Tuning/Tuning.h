@@ -1,5 +1,7 @@
 #pragma once
+#if ENGINE_TUNING_LIVE
 #include "Tuning/TuningLive.h"
+#endif
 
 // Values of a tuning file (Docs/Tuning.md). T is the `XTuning` struct generated from `X.tuning.json`:
 //

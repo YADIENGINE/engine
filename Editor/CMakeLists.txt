@@ -104,7 +104,8 @@ if(ENGINE_BUILD_EDITOR)
             set(WORKER_SOURCES "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Worker/StarterWorker.cpp")
             set(useStarter TRUE)
         endif()
-        add_executable(${target} ${WORKER_SOURCES})
+        add_executable(${target} ${WORKER_SOURCES}
+            "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../Core/Runtime/Internals/DevelopmentChecksBinding.cpp")
         target_link_libraries(${target} PRIVATE EngineWorkerRuntime ${WORKER_LIBRARIES})
         set_target_properties(${target} PROPERTIES
             CXX_EXTENSIONS OFF RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")

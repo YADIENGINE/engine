@@ -42,7 +42,7 @@ Tuning file format (Docs/Tuning.md): reading, validation and single-value patchi
 
 ## `Core/Tuning/TuningLive.h`
 
-Live side of tuning values (Docs/Tuning.md): available only in development builds (ENGINE_TUNING_LIVE).
+Live side of tuning values (Docs/Tuning.md).
 
 - `template<> struct TuningTypeOf<float>`
 - `TuningTypeOf`: `static constexpr TuningType Value = TuningType::Float`

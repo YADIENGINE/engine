@@ -8,6 +8,7 @@
 #include "Graphics/Paint/Path.h"
 #include "Graphics/Surface/Surface.h"
 #include "Tests/PaintHarness.h"
+#include "Utilities/DevelopmentChecks.h"
 #include "Utilities/MathUtils.h"
 
 using Catch::Approx;
@@ -266,6 +267,17 @@ TEST_CASE("Engine.Paint.InvalidStylesThrowDegenerateShapesDrawNothing", "[engine
     h.paint.Polygon(std::vector<Float2>{{0.0f, 0.0f}, {1.0f, 1.0f}}, Fill(Red));
     h.End();
     CHECK(h.Draws().empty());
+}
+
+TEST_CASE("Engine.Paint.StrictDefaultFollowsDevelopmentChecks", "[engine][paint]") {
+    const bool original = DevelopmentChecks();
+    SetDevelopmentChecks(false);
+    const DrawList relaxed;
+    SetDevelopmentChecks(true);
+    const DrawList strict;
+    SetDevelopmentChecks(original);
+    CHECK_FALSE(relaxed.Strict());
+    CHECK(strict.Strict());
 }
 
 TEST_CASE("Engine.Paint.WithoutStrictChecksInvalidCallsAreSkippedAndCounted", "[engine][paint]") {

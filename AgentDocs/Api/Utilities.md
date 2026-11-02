@@ -56,6 +56,11 @@ Selectable value lists for settings screens (scheme, FPS limit, language ...): r
 - `[[nodiscard]] inline Color4 Mix(Color4 from, Color4 to, float t)` — Channel-wise blend from 'from' to 'to' by 't' (clamped to 0..1), alpha included.
 - `[[nodiscard]] inline Color4 Hsv(float hue, float saturation, float value, std::uint8_t alpha = 255)` — Colour from hue (degrees, any value; wraps), saturation and value (0..1, clamped).
 
+## `Core/Utilities/DevelopmentChecks.h`
+
+- `[[nodiscard]] bool DevelopmentChecks()` — Whether programmer errors stop the program (a throw at the call, graphics debug output) or are skipped and counted.
+- `void SetDevelopmentChecks(bool enabled)`
+
 ## `Core/Utilities/EnumTable.h`
 
 - `template<class Rows> constexpr bool RowsInIdOrder(const Rows& rows)` — Row tables in enum order: each row's 'id' equals its index and the table covers all enum values (Id::Count).

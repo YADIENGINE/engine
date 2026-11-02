@@ -56,7 +56,8 @@ Programmer errors (negative widths or radii, mismatched spans, a clip under a ro
 of order) throw in Debug builds: `invalid_argument` at the call, `logic_error` for scopes when the frame ends. Release
 builds never throw for them: the call draws nothing (a rotated clip uses its bounding box), the frame goes on,
 `RenderStats::paintErrors` counts it and the first message is written to stderr. Drawing helpers report their own
-invalid arguments the same way with `paint.Reject("...")`.
+invalid arguments the same way with `paint.Reject("...")`. The game's own build decides, not the engine libraries'
+(`Utilities/DevelopmentChecks.h`).
 
 ## Images and surfaces
 

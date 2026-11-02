@@ -19,7 +19,6 @@
 #include "Editor/Worker/RenderGallery.h"
 #include "Tuning/TuningLive.h"
 
-#if ENGINE_TUNING_LIVE
 namespace {
 WorkerTuningState StateOf(TuningOutcome outcome) {
     switch (outcome) {
@@ -55,7 +54,6 @@ public:
     TuningForwarding& operator=(const TuningForwarding&) = delete;
 };
 } // namespace
-#endif
 
 namespace {
 void PrepareHiddenWindow(GameSettings& settings) {
@@ -127,9 +125,7 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
                 std::this_thread::sleep_for(std::chrono::milliseconds(2));
             }
         }
-#if ENGINE_TUNING_LIVE
         const TuningForwarding tuning(*channel); // Oyun kurulurken kaydolan dosyaların ilk raporu da gitsin
-#endif
         // Readback's per-frame INFO messages must not displace useful diagnostics in the output panel.
         SetTraceLogLevel(LOG_WARNING);
         PrepareHiddenWindow(settings);

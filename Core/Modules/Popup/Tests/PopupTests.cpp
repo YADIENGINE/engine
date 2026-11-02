@@ -185,6 +185,17 @@ TEST_CASE("Popup.TextLabelPivotsAtItsMiddle", "[popup]") {
     CHECK((top + bottom) * 0.5f == Catch::Approx(Origin.y).margin(Size * 0.25f));
 }
 
+TEST_CASE("Popup.StrictDefaultFollowsDevelopmentChecks", "[popup]") {
+    const bool original = DevelopmentChecks();
+    SetDevelopmentChecks(false);
+    const PopupSettings relaxed;
+    SetDevelopmentChecks(true);
+    const PopupSettings strict;
+    SetDevelopmentChecks(original);
+    CHECK_FALSE(relaxed.strict);
+    CHECK(strict.strict);
+}
+
 TEST_CASE("Popup.NonStrictSkipsAndCountsInvalidInput", "[popup]") {
     Popup popups({.strict = false});
     auto style = Still();

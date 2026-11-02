@@ -12,6 +12,7 @@
 #include "Graphics/Paint/PaintStyle.h"
 #include "Utilities/Affine2.h"
 #include "Utilities/Color4.h"
+#include "Utilities/DevelopmentChecks.h"
 #include "Utilities/FloatRect.h"
 
 // A render target as recorded drawing sees it.
@@ -85,8 +86,8 @@ public:
     void Fail(std::string message);
 
     // --- Programmer errors in drawing calls ---
-    // Strict (the default in Debug builds): Reject throws invalid_argument at the call and Finish throws for scope
-    // errors. Otherwise (Release) the call draws nothing, the error is counted and the frame goes on.
+    // Strict (the default with DevelopmentChecks): Reject throws invalid_argument at the call and Finish throws for
+    // scope errors. Otherwise the call draws nothing, the error is counted and the frame goes on.
     void SetStrict(bool strict) { _strict = strict; }
     [[nodiscard]] bool Strict() const { return _strict; }
     void Reject(std::string_view message);
@@ -141,10 +142,6 @@ private:
     std::string _error;
     std::string _firstRejection;
     std::uint32_t _rejected = 0;
-#ifdef NDEBUG
-    bool _strict = false;
-#else
-    bool _strict = true;
-#endif
+    bool _strict = DevelopmentChecks();
     bool _finished = true;
 };

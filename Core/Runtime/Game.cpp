@@ -314,9 +314,7 @@ void Game::Run() {
         while (loaded && !_quitRequested && !_renderer->ShouldClose()) {
             PrepareFrame();
             if (_quitRequested) break;
-#if ENGINE_TUNING_LIVE
             PollTuning(); // Değişen tuning dosyaları karenin başında, ya hep ya hiç uygulanır
-#endif
             _frameStart = Window::ClockSeconds();
             FrameObserver* observer = _frameObserver;
             if (observer) {
