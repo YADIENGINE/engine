@@ -71,8 +71,8 @@ if(ENGINE_BUILD_RUNTIME)
     engine_add_raylib()
 endif()
 
-if(ENGINE_BUILD_TESTS)
-    enable_testing()
+if(ENGINE_BUILD_TESTS OR ENGINE_BUILD_EDITOR_TESTS)
+    enable_testing() # In the top directory, or ctest there finds nothing and still exits 0
 endif()
 add_subdirectory(Core)
 if(ENGINE_BUILD_RUNTIME AND WIN32)

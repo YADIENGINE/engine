@@ -13,6 +13,7 @@
 struct TapeVerification {
     std::uint64_t steps = 0;
     std::uint64_t hash = 0;               // Of the final state
+    std::uint64_t hashes = 0;             // Stored hashes the run reaches; 0: nothing could be compared
     std::optional<TapeMismatch> mismatch; // Empty: every stored hash matched
     bool sameVersions = true;
 };

@@ -50,9 +50,9 @@ TEST_CASE("Engine.Text.MeasureScalesWithSizeAndCountsLines", "[engine][paint][te
 
 TEST_CASE("Engine.Text.WordWrapKeepsLinesWithinTheWidth", "[engine][paint][text]") {
     const FontFace& font = TestFont();
-    const float word = font.Measure("snake", 20.0f).x;
+    const float word = font.Measure("pixel", 20.0f).x;
     TextStyle style{.size = 20.0f, .maxWidth = word * 2.5f, .wrap = TextWrap::Word};
-    const TextBlock block = font.Layout("snake snake snake snake", style);
+    const TextBlock block = font.Layout("pixel pixel pixel pixel", style);
     REQUIRE(block.Lines().size() == 2);
     for (const TextBlock::Line& line : block.Lines()) {
         CHECK(line.width <= style.maxWidth);
@@ -61,10 +61,10 @@ TEST_CASE("Engine.Text.WordWrapKeepsLinesWithinTheWidth", "[engine][paint][text]
     }
     CHECK(block.Lines()[1].top == Approx(font.LineHeight(20.0f)));
     style.lineHeight = 31.0f; // Absolute pitch replaces the font's line height
-    CHECK(font.Layout("snake snake snake snake", style).Lines()[1].top == Approx(31.0f));
+    CHECK(font.Layout("pixel pixel pixel pixel", style).Lines()[1].top == Approx(31.0f));
     style.lineHeight = 0.0f;
     style.maxWidth = word * 0.5f; // A word longer than the line breaks between characters
-    const TextBlock broken = font.Layout("snake", style);
+    const TextBlock broken = font.Layout("pixel", style);
     CHECK(broken.Lines().size() >= 2);
     for (const TextBlock::Line& line : broken.Lines())
         CHECK(line.width <= style.maxWidth + 1e-3f);

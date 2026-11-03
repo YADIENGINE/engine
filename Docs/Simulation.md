@@ -124,7 +124,7 @@ object on stdout; build output goes to stderr. All take `--release`.
 | --- | --- | --- |
 | `sim list` | `simulations`: id, version, step rate, players, buttons, axes | |
 | `sim run SCENARIO [--out TAPE]` | `passed`, `steps`, `hash`, `failures`, `reads` | An expectation failed |
-| `sim verify TAPE` | `match`, `steps`, `hash`, `hashEvery`, `sameVersions`, `recorded`; `mismatch` with `lastMatch`, `firstMismatch` | The hashes differ |
+| `sim verify TAPE` | `match`, `hashes`, `steps`, `hash`, `hashEvery`, `sameVersions`, `recorded`; `mismatch` with `lastMatch`, `firstMismatch`; `reason` when the tape holds no hashes | The hashes differ, or there are none to compare |
 | `sim diverge TAPE` | `deterministic`; `step` and `fields` (`field`, `first`, `second`) when two runs differ | Two runs differ |
 | `sim state TAPE [--step N]` | `step`, `hash`, `state` (the flat dump) | |
 

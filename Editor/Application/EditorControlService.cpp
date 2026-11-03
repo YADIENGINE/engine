@@ -65,6 +65,11 @@ void RequireSimulation(const EditorController& controller) {
     if (!controller.SimulationState().is_object() || !controller.SimulationState().contains("step"))
         throw std::runtime_error("The open scene has no simulation");
 }
+// The step the scene stands on: a seek can give up before its target, for example under slow motion.
+std::uint64_t ReachedStep(const EditorController& controller) {
+    const auto& state = controller.SimulationState();
+    return state.is_object() ? state.value("step", std::uint64_t{0}) : std::uint64_t{0};
+}
 // Stepping needs time per step: how long a fast replay of 'steps' may take before the wait gives up.
 std::chrono::steady_clock::duration StepWait(const EditorController& controller, std::uint64_t steps) {
     const int rate = controller.SimulationState().at("stepsPerSecond").get<int>();
@@ -392,10 +397,11 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
         const auto action = Text(arguments, "action");
         if (action != "load" && action != "save") throw std::runtime_error("\"action\" must be load or save");
         controller.Replay(action, Text(arguments, "path"));
-        controller.Notify(action == "load" ? "Replay loaded" : "Replay saved");
-        AwaitWorker(controller, WorkerTimeout, [](EditorController& session) {
+        const std::string done = action == "load" ? "Replay loaded" : "Replay saved";
+        AwaitWorker(controller, WorkerTimeout, [done](EditorController& session) {
             auto status = StatusOf(session);
             if (status.contains("error")) throw std::runtime_error(status.at("error").get<std::string>());
+            session.Notify(done);
             return status;
         });
         return std::nullopt;
@@ -656,7 +662,7 @@ void EditorControlService::Frames(const nlohmann::json& arguments, EditorControl
               const auto frame = session.LatestFrame();
               if (!frame) throw std::runtime_error("No frame to capture");
               run->tiles.push_back(CaptureFrame(*frame, current.canvas, options));
-              run->labels.push_back(steps ? std::format("step {:.0f}", run->times[run->tiles.size() - 1])
+              run->labels.push_back(steps ? std::format("step {}", ReachedStep(session))
                                           : std::format("{:.2f}s", sync.seconds));
               if (run->tiles.size() < run->times.size()) {
                   shoot(session);

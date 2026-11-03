@@ -26,6 +26,7 @@ TEST_CASE("Engine.Simulation.Verify.MatchesAnUnchangedRun", "[engine][simulation
     const auto result = VerifyTape(definition, tape);
     CHECK_FALSE(result.mismatch);
     CHECK(result.steps == 120);
+    CHECK(result.hashes == 121);
     CHECK(result.sameVersions);
     CHECK(tape.hashes.size() == 121); // Every step, plus the start
     CHECK(FormatStateHash(result.hash) == FormatStateHash(tape.hashes.back()));
@@ -73,6 +74,14 @@ TEST_CASE("Engine.Simulation.Verify.ADifferentStartDiffersAtOnce", "[engine][sim
     REQUIRE(result.mismatch);
     CHECK(result.mismatch->firstMismatch == 0);
     CHECK_FALSE(result.mismatch->lastMatch);
+}
+TEST_CASE("Engine.Simulation.Verify.ReportsATapeWithNoHashes", "[engine][simulation]") {
+    const auto definition = ToyDefinition();
+    auto tape = Played(definition, {.seed = 3, .players = 2});
+    tape.hashes.clear();
+    const auto result = VerifyTape(definition, tape);
+    CHECK(result.hashes == 0);
+    CHECK_FALSE(result.mismatch);
 }
 TEST_CASE("Engine.Simulation.Verify.RefusesATapeThatCannotPlay", "[engine][simulation]") {
     const auto definition = ToyDefinition();

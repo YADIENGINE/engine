@@ -56,6 +56,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `struct TapeVerification` — A fresh run of a tape against its stored hashes.
 - `TapeVerification`: `std::uint64_t steps = 0`
 - `TapeVerification`: `std::uint64_t hash = 0` — Of the final state
+- `TapeVerification`: `std::uint64_t hashes = 0` — Stored hashes the run reaches; 0: nothing could be compared
 - `TapeVerification`: `std::optional<TapeMismatch> mismatch` — Empty: every stored hash matched
 - `TapeVerification`: `bool sameVersions = true`
 - `[[nodiscard]] TapeVerification VerifyTape(const SimulationDefinition& definition, const InputTape& tape)`

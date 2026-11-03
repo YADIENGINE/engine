@@ -73,7 +73,10 @@ int Verify(const SimulationRegistry& registry, const std::vector<std::string_vie
     const auto tape = InputTape::Load(std::filesystem::path(arguments.at(0)));
     const auto result = VerifyTape(DefinitionFor(registry, tape), tape);
     auto answer = JsonIO::Document::MakeObject();
-    answer["match"] = !result.mismatch.has_value();
+    const bool matched = result.hashes > 0 && !result.mismatch;
+    answer["match"] = matched;
+    answer["hashes"] = result.hashes;
+    if (result.hashes == 0) answer["reason"] = "The tape holds no hashes, so nothing was compared";
     answer["steps"] = result.steps;
     answer["hash"] = FormatStateHash(result.hash);
     answer["hashEvery"] = tape.hashEvery;
@@ -93,7 +96,7 @@ int Verify(const SimulationRegistry& registry, const std::vector<std::string_vie
         answer["mismatch"] = std::move(mismatch);
     }
     Print(answer);
-    return result.mismatch ? ExitFailed : ExitOk;
+    return matched ? ExitOk : ExitFailed;
 }
 int Diverge(const SimulationRegistry& registry, const std::vector<std::string_view>& arguments) {
     const auto tape = InputTape::Load(std::filesystem::path(arguments.at(0)));

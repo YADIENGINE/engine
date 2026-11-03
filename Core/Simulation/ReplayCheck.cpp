@@ -1,4 +1,5 @@
 #include "Simulation/ReplayCheck.h"
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
 #include "Simulation/StateDump.h"
@@ -31,6 +32,8 @@ TapeVerification VerifyTape(const SimulationDefinition& definition, const InputT
     TapeVerification result;
     result.steps = run.runner.StepIndex();
     result.hash = HashState(*run.simulation);
+    result.hashes =
+        std::min<std::uint64_t>(tape.hashes.size(), tape.steps / static_cast<std::uint64_t>(tape.hashEvery) + 1U);
     result.mismatch = run.runner.Mismatch();
     result.sameVersions = tape.SameVersions(definition.settings);
     return result;

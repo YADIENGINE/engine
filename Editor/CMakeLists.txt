@@ -135,6 +135,5 @@ if(ENGINE_BUILD_EDITOR)
 endif()
 
 if(ENGINE_BUILD_EDITOR_TESTS)
-    enable_testing()
     add_subdirectory(Tests)
 endif()

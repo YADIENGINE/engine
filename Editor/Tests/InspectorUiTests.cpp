@@ -11,8 +11,8 @@
 #include "ToolUi/ToolWidgets.h"
 
 TEST_CASE("ToolUi.PixelInitial.IsTheFirstLetterOrDigit", "[engine-editor]") {
-    CHECK(ToolPixelInitial("Snake") == 'S');
-    CHECK(ToolPixelInitial("snake") == 'S');
+    CHECK(ToolPixelInitial("MyGame") == 'M');
+    CHECK(ToolPixelInitial("myGame") == 'M');
     CHECK(ToolPixelInitial("  3D Game") == '3');
     CHECK(ToolPixelInitial("(Prototype)") == 'P');
     CHECK(ToolPixelInitial("") == '-');
