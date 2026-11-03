@@ -54,6 +54,17 @@ live tuning reports to the host in `tuning` messages (`WorkerTuningStatus`: sour
 to the active worker: it resets when the worker changes; during Build & Refresh, the new worker's reports switch with
 it. Release-built workers neither read live nor send reports. Presentation is `Ui/Panels/Tuning/TuningPanel`.
 
+## Source control
+
+`Internals/Git` knows no ImGui. `GitService` owns one thread, which runs the system's `git.exe` (`GitClient`, through
+`Platform/Windows/CapturedProcess`, which keeps stdout and stderr apart) and publishes immutable `GitSnapshot`s; the UI
+draws the latest and sends `GitRequest`s, so it never waits for git or caches its state. `GitSchedule` decides when to
+fetch and refresh, `GitOperations` holds the safety rules, and `GitParsing` is pure. A request cancels a background fetch
+rather than waiting behind it. Actions that change files set `GitService::SourcesBusy`, which disables building
+(`EditorCommandContext::sourcesBusy`), and refuse to start during a build. `Ui/Widgets/EditorGitBar` draws in the menu bar;
+`Ui/Panels/Git` is not a dock panel but windows held above the docks, so the layout never changes. Why:
+[D25](../Design/README.md#d25-source-control).
+
 ## Control gateway
 
 Tools reach an open editor through a local named pipe (`Internals/Protocol/EditorControlProtocol`,

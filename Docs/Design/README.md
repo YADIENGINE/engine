@@ -760,6 +760,26 @@ restores both. Live tuning and the Painter's programmer-error checks are decided
 (`ENGINE_TUNING_LIVE`, `Utilities/DevelopmentChecks.h`), so both builds keep them. Status: implemented (2026-11-02), window
 and debugger checks pending.
 
+### D25. Source control
+**Decision:** Git is a fixed part of the editor, not a dock panel. The state and the three actions live in the menu bar's
+empty right end; the file list is a drawer that opens above the panels. It runs the system's `git.exe`, not libgit2, so
+LFS, the credential manager, hooks and submodules behave as in the developer's terminal. The design serves people who
+make games and may be new to git: every state has a next step in plain words, and nothing it offers can lose work. So
+there is no force push, reset or discard, Pull only fast-forwards unless the developer chooses Merge, a stash is named and
+kept on conflict, nothing is ticked by default, and submodules never leave their branch.
+
+**Why:** A dock panel can be closed, which would hide the signal it exists for, and a fixed one needs no layout code. A
+permanent 280 px panel would have cost 53% of a 16:9 scene's pixels at 1600×900 to show what is one line of state most of
+the time; the menu bar's free space costs nothing. Pull pulses for 6 seconds and then stays tinted, because a button that
+blinks for hours stops being read, competes with the scene and overrides the unread-error and waiting-agent pulses.
+
+**Rejected on purpose:** history graphs, rebase and a three-way merge editor in the first version. They add risk and
+little of the engine's own value. That value is in reading game files: pictures and sounds compared as what they are.
+Conflicts in text go to the developer's editor or the agent.
+
+**Later:** an agent-written commit message, parameter-level tuning diffs, and marking files an agent changed.
+Status: implemented (2026-11-03), first real-window check pending.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

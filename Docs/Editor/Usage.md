@@ -164,6 +164,37 @@ If the catalog offers such an entry, the worker can run production scenes throug
 and in-memory profile policy are project-defined. The product's Back action belongs to game navigation; toolbar Stop
 closes the worker. The host keeps OS window and capture size fixed.
 
+## Source control
+
+The right end of the menu bar always shows the project's git state: repository, branch, **Fetch**, and **Pull**,
+**Commit** and **Push** with their counts. Hovering Fetch or Pull also tells when the last fetch was. Only the next sensible step is colored: conflicts, then Pull, Commit, Push. It
+needs [Git](https://git-scm.com/downloads) on the machine and uses it as your terminal does, with the same sign-in, LFS
+and hooks. A project not in version control gets **Set up Git**, which starts a repository with the template's ignore
+rules; nothing leaves the computer until you publish.
+
+- **Fetching** happens on opening, every 10 minutes, and on returning to the window (at most every 2 minutes). It never
+  asks for anything, and the buttons' icons animate while it runs. New commits pulse Pull for 6 seconds and leave it tinted with the count; more commits pulse it again.
+  A refused sign-in stops automatic fetching until you click **Sign-in needed**, since repeated failures can lock an
+  account.
+- **Pull** only fast-forwards, and hovering it lists what is coming. It waits for a running build, and builds wait for it.
+  When it brings changes, the editor builds them. If your changed files overlap the incoming ones it stops and offers
+  **Stash & Pull**. If both sides have commits, the button becomes **Merge** and asks first.
+- **Commit** (Ctrl+Shift+G) opens the drawer over the left of the workspace without moving any panel. Nothing is ticked
+  to begin with: only the files you choose are committed, even if someone else staged others, so sharing the folder with
+  an agent or a teammate is safe. A file's name opens its change in the viewport's place; Esc returns to the scene.
+  Pictures show before and after side by side, and sounds play either way. Right-click an untracked file for
+  **Add to .gitignore**. Files of 100 MB or more that LFS does not track ask first, and the build folder is refused.
+- **Conflicts** turn Commit into **Resolve**: choose **Mine** or **Theirs** per file (the only option for pictures and
+  sounds), mark a hand-edited file **Resolved**, or use **Fix with agent**. **Cancel it** undoes the whole merge.
+- **Push** becomes **Publish** for a branch the remote does not have; a project with no remote asks for its address.
+  A push is refused while it records submodule commits that exist only on this machine, with **Push them too** offered.
+- **Submodules** appear in the branch menu, each with its own counts, and that repository becomes the one the bar acts on.
+  A pull moves a submodule forward on its current branch rather than detaching it, and leaves it alone when it has
+  uncommitted or unrecorded work. A commit on a detached HEAD is refused until you choose a branch.
+
+There is no force push, reset or discard here; those stay in the Console, where they are a deliberate act. Git's own
+words for any failure are in Output.
+
 ## Agent workspace
 
 The editor runs the developer's own agent CLI (Claude Code, Codex or any command) in a Console session and hands it
