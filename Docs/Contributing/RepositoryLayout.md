@@ -20,8 +20,9 @@
 | `ThirdParty/` | Unmodified vendored dependencies, notices and notice tests; see [Third-party rules](../../ThirdParty/README.md) |
 | `Tools/` | Standard-library Python CLI and project template (offline audio authoring has separate NumPy/SciPy dependencies) |
 
-`EngineHeadless` contains platform-free code; `Engine` adds the runtime platform layer.
-Create consuming targets with `engine_add_game` and `engine_add_editor_worker`.
+`EngineHeadless` contains platform-free code; `Engine` adds the runtime platform layer. `EngineSimulation` and
+`EngineTuning` sit below `EngineHeadless` and reach neither drawing nor audio, so simulation code can link only them.
+Create consuming targets with `engine_add_game`, `engine_add_simulation` and `engine_add_editor_worker`.
 Add each new `.cpp` to its target. Module targets and testing rules live in
 [Module rules](ModuleRules.md#1-directory-structure) and [Testing](Testing.md#adding-tests).
 Graphics dependency directions and ownership have one source:

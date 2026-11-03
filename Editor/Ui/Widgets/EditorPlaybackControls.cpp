@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <format>
 #include <string>
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
@@ -157,6 +158,18 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         EditorCommandButton(EditorCommand::Reset, snapshot, actions);
     }
     ImGui::PopStyleVar();
+    if (snapshot.simulation) { // Only in the room between playback and search; ctl status always has it
+        const auto& simulation = *snapshot.simulation;
+        const auto label = std::format("Step {}{}", simulation.step,
+                                       simulation.differs     ? "  differs from the replay"
+                                       : simulation.replaying ? "  replay"
+                                                              : "");
+        if (transport + groupGap * 2 + ImGui::CalcTextSize(label.c_str()).x <= searchStart) {
+            ImGui::SameLine(transport + groupGap);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(label.c_str());
+        }
+    }
     // Inside the group SameLine's offset counts from the group's start.
     ImGui::SameLine(searchStart);
     SearchBox(searchWidth, search);

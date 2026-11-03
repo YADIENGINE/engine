@@ -160,6 +160,22 @@ Selectable value lists for settings screens (scheme, FPS limit, language ...): r
 - `Rect`: `[[nodiscard]] constexpr bool ContainsCircle(Vec2 point) const`
 - `Rect`: `constexpr operator FloatRect() const` — Lossless widening to continuous coordinates (Painter takes FloatRect); defined in Utilities/FloatRect.h.
 
+## `Core/Utilities/Rng.h`
+
+- `class Rng` — The engine's seeded random generator (PCG32): the same seed and stream give the same sequence in every build, because no standard library distribution is involved.
+- `Rng`: `explicit constexpr Rng(std::uint64_t seed = 0, std::uint64_t stream = 0)`
+- `Rng`: `[[nodiscard]] constexpr std::uint32_t Next()`
+- `Rng`: `[[nodiscard]] constexpr std::uint32_t Below(std::uint32_t count)` — A uniform value in 0..count-1 without modulo bias; count > 0.
+- `Rng`: `[[nodiscard]] constexpr int Int(int low, int high)` — A uniform whole number in low..high, both included; low <= high.
+- `Rng`: `[[nodiscard]] constexpr std::size_t Index(std::size_t count)` — A uniform index in 0..count-1; count > 0.
+- `Rng`: `[[nodiscard]] constexpr float Float01()` — Uniform in [0, 1).
+- `Rng`: `[[nodiscard]] constexpr float Float(float low, float high)`
+- `Rng`: `[[nodiscard]] constexpr double Double01()` — Uniform in [0, 1), with more resolution than Float01.
+- `Rng`: `[[nodiscard]] constexpr bool Chance(float probability)` — True with the given probability.
+- `Rng`: `template<class Container> constexpr void Shuffle(Container& items)` — Fisher-Yates over any random access container.
+- `Rng`: `[[nodiscard]] constexpr std::uint64_t State() const` — The whole generator state, for state hashing and dumps.
+- `Rng`: `[[nodiscard]] constexpr std::uint64_t Increment() const`
+
 ## `Core/Utilities/UiTransform.h`
 
 - `class UiTransform` — Centered, aspect-preserving source-to-target mapping.
@@ -196,4 +212,4 @@ Selectable value lists for settings screens (scheme, FPS limit, language ...): r
 
 ## `Core/Utilities/WeightedPick.h`
 
-- `template<class Weights, class Rng> [[nodiscard]] std::size_t WeightedIndex(const Weights& weights, Rng& rng)` — Weighted random choice: returns an index in proportion to 'weights' (zero weights never occur; at least one must be > 0).
+- `template<class Weights> [[nodiscard]] std::size_t WeightedIndex(const Weights& weights, Rng& rng)` — Weighted random choice: returns an index in proportion to 'weights' (zero and negative weights never occur; at least one must be > 0).

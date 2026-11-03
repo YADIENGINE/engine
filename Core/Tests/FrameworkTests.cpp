@@ -2,7 +2,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
 #include <array>
-#include <random>
 #include <string>
 #include <vector>
 #include "Tests/Support/TempDirectory.h"
@@ -124,7 +123,7 @@ TEST_CASE("Engine.TimedEffectSet.FirstTimedKeepsPickupOrderUntilExpiration", "[e
 }
 
 TEST_CASE("Engine.WeightedIndex.NeverPicksZeroWeights", "[engine][random]") {
-    std::mt19937 rng(7);
+    Rng rng(7);
     const std::vector<int> weights{0, 3, 0, 1};
     for (int i = 0; i < 16; ++i) {
         const std::size_t picked = WeightedIndex(weights, rng);

@@ -54,6 +54,14 @@ Use these generated signatures to locate public declarations; open the header fo
 - `DeviceInput`: `[[nodiscard]] constexpr bool Down(InputKey key) const`
 - `DeviceInput`: `[[nodiscard]] constexpr bool ShiftDown() const`
 
+## `Core/Input/InputBindings.h`
+
+- `class InputBindings` — Translates a frame of device input into per-player actions: a plain player, action, key table.
+- `InputBindings`: `explicit InputBindings(int players)`
+- `InputBindings`: `template<class Button> void Bind(int player, Button button, InputKey key)` — An action may have several keys, and a key may serve several players.
+- `InputBindings`: `void Clear()`
+- `InputBindings`: `[[nodiscard]] std::span<PlayerInput> Read(const DeviceInput& input)` — Borrowed until the next Read.
+
 ## `Core/Input/InputNavigation.h`
 
 - `class InputNavigation final` — Borrowed navigation view.

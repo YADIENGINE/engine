@@ -52,6 +52,7 @@ engine_tests(EngineTests
         SceneSafetyTests.cpp
         SceneTimeTests.cpp
         ShatterTests.cpp
+        SimulationSceneTests.cpp
         TuningTests.cpp
         UiTransformTests.cpp
     LINKS EngineHeadless EngineStorage
@@ -61,6 +62,23 @@ target_compile_definitions(EngineTests PRIVATE
     ENGINE_TUNING_TEST_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Tuning/TestValues.tuning.json"
     ENGINE_TUNING_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/Tests/TuningCases"
     ENGINE_TEST_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf")
+
+# Links only the simulation target, so a simulation that reaches drawing or audio fails to build here. The toy simulation
+# also goes through the console tool, end to end.
+engine_tests(EngineSimulationTests
+    SOURCES
+        Simulation/ReplayCheckTests.cpp
+        Simulation/RngTests.cpp
+        Simulation/RunnerTests.cpp
+        Simulation/ScenarioTests.cpp
+        Simulation/TapeTests.cpp
+    LINKS EngineToySimulation
+)
+target_compile_definitions(EngineSimulationTests PRIVATE ENGINE_VERSION_FOR_TESTS="${engineVersion}")
+add_dependencies(EngineTestSuite EngineToySimulationTool)
+add_test(NAME Engine.SimulationTool
+    COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyScenario.json")
+set_tests_properties(Engine.SimulationTool PROPERTIES LABELS engine TIMEOUT 30)
 
 # Compile all consumer examples, including runtime-only factories. The static archive lets the headless smoke
 # executable exercise public logic/drawing without pulling the runtime factory or opening a platform window.
@@ -76,6 +94,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/SaveProgress.cpp"
     "${recipeRoot}/SceneGame.cpp"
     "${recipeRoot}/SceneTransition.cpp"
+    "${recipeRoot}/SimulationPlay.cpp"
     "${recipeRoot}/SpriteLayer.cpp"
     "${recipeRoot}/TextLayout.cpp"
     "${recipeRoot}/ThemedMenu.cpp"
@@ -84,6 +103,7 @@ add_library(EngineRecipes STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneParameter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneAutoRegistration.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SimulationHost.cpp"
 )
 target_include_directories(EngineRecipes PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 target_link_libraries(EngineRecipes PUBLIC EngineHeadless EnginePersistence EngineNumberPopup)

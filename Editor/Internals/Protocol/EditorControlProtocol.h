@@ -40,6 +40,7 @@ enum class EditorControlCommand {
     Note,
     Audio,        // The Audio Preview panel's state
     AudioControl, // Plays, pauses, stops, seeks or changes the Audio Preview sound ("action")
+    Replay,       // Loads or saves the open simulation's replay ("action", "path")
     Count
 };
 

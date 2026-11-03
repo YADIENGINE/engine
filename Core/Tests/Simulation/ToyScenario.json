@@ -1,0 +1,17 @@
+{
+  "simulation": "engine.toy",
+  "seed": 7,
+  "players": 2,
+  "start": { "startScore": 100 },
+  "script": [
+    { "hold": "Right" },
+    { "run": 60 },
+    { "release": "Right" },
+    { "tap": "Fire", "player": 1 },
+    { "run": 1 },
+    { "command": "bonus", "value": 5 },
+    { "run": 1 },
+    { "expect": { "steps": 62, "player[0].x": { "min": 119, "max": 121 }, "player[1].shots": 1, "score": { "min": 105 } } },
+    { "read": ["score", "player[0].x"] }
+  ]
+}

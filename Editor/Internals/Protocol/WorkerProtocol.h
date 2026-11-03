@@ -9,7 +9,7 @@
 #include "Editor/Internals/Session/AudioUsage.h"
 #include "Input/Input.h"
 
-inline constexpr std::uint32_t WorkerProtocolVersion = 12;
+inline constexpr std::uint32_t WorkerProtocolVersion = 13;
 inline constexpr std::size_t WorkerMaxInputPoints = 32;
 inline constexpr std::size_t WorkerMaxMessageBytes = 1024 * 1024;
 inline constexpr std::size_t WorkerMaxQueuedMessages = 256;

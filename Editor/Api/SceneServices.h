@@ -7,6 +7,7 @@
 class AudioSystem;
 class FontFace;
 class Profiler;
+class SimulationHost;
 
 // References outlive the scene. Never retain these services after Stop/destruction.
 // Presentation time is Painter::Time(), which the worker host pauses and scales.
@@ -18,4 +19,5 @@ struct SceneServices {
     const FontFace* font = nullptr;
     std::function<std::string(const std::string&, const SceneParameters&)> applicationCommand;
     Profiler* profiler = nullptr;
+    SimulationHost* simulation = nullptr; // Use it through HostedSimulation; null outside the editor
 };

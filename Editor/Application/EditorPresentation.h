@@ -4,6 +4,7 @@
 #include <deque>
 #include <filesystem>
 #include <functional>
+#include <optional>
 #include <set>
 #include <string>
 #include "Editor/Api/SceneRegistry.h"
@@ -63,6 +64,13 @@ struct EditorControlEvent {
     std::filesystem::path file; // A screenshot it took
 };
 
+// The open scene's simulation, for the toolbar.
+struct EditorSimulationStatus {
+    std::uint64_t step = 0;
+    bool replaying = false;
+    bool differs = false; // A played replay disagrees with its recorded hashes
+};
+
 struct EditorSnapshot {
     const std::vector<SceneDefinition>& catalog;
     const SceneDefinition* selected;
@@ -83,6 +91,7 @@ struct EditorSnapshot {
     double publishMs = 0.0;
     SceneInspection inspection;
     double playbackSpeed = 1.0;
+    std::optional<EditorSimulationStatus> simulation;
     ProfilerSessionSnapshot profiler;
     double hostTransferMs = 0.0;
     bool benchmarkCancelPending = false;

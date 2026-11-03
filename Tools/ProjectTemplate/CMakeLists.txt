@@ -30,11 +30,23 @@ file(GLOB_RECURSE APP_EDITOR_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_D
 list(FILTER APP_EDITOR_SOURCES EXCLUDE REGEX "/Editor/Work/[^/]+[.]cpp$")
 # Asset registrations (X.asset.cpp) reach only the editor worker; their drawing code reaches both.
 list(FILTER APP_GAME_SOURCES EXCLUDE REGEX "[.]asset[.]cpp$")
+# Game/Simulation holds the game's rules without drawing or audio; game, worker and the `sim` tool all link them.
+file(GLOB_RECURSE APP_SIMULATION_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Game/Simulation/*.cpp")
+list(FILTER APP_GAME_SOURCES EXCLUDE REGEX "/Game/Simulation/")
 set(APP_GRAPHIC_SOURCES ${APP_GAME_SOURCES})
 list(FILTER APP_GRAPHIC_SOURCES INCLUDE REGEX "/Game/Assets/Graphics/")
 
+set(APP_LIBRARIES)
+if(APP_SIMULATION_SOURCES)
+    engine_add_simulation(${PROJECT_NAME}Simulation SOURCES ${APP_SIMULATION_SOURCES})
+    target_include_directories(${PROJECT_NAME}Simulation PUBLIC Game)
+    engine_add_tuning(${PROJECT_NAME}Simulation ROOT Game)
+    set(APP_LIBRARIES ${PROJECT_NAME}Simulation)
+endif()
+
 if(APP_BUILD_GAME)
-    engine_add_game(${PROJECT_NAME} SOURCES ${APP_GAME_SOURCES} ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/Game/Assets")
+    engine_add_game(${PROJECT_NAME} SOURCES ${APP_GAME_SOURCES} ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/Game/Assets"
+        LIBRARIES ${APP_LIBRARIES})
     target_include_directories(${PROJECT_NAME} PRIVATE Game)
     # *.tuning.json files under Game/ (Engine/Docs/Tuning.md); adds nothing when no files exist.
     engine_add_tuning(${PROJECT_NAME} ROOT Game)
@@ -42,6 +54,7 @@ endif()
 
 if(APP_BUILD_EDITOR)
     engine_add_editor_worker(${PROJECT_NAME}EditorWorker SOURCES ${APP_EDITOR_SOURCES} SCENE_DIRS Editor/Work
-        ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/Game/Assets" GRAPHIC_SOURCES ${APP_GRAPHIC_SOURCES})
+        ASSETS "${CMAKE_CURRENT_SOURCE_DIR}/Game/Assets" GRAPHIC_SOURCES ${APP_GRAPHIC_SOURCES}
+        LIBRARIES ${APP_LIBRARIES})
     target_include_directories(${PROJECT_NAME}EditorWorker PRIVATE Editor Game)
 endif()

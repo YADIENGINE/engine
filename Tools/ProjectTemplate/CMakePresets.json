@@ -26,12 +26,26 @@
         "APP_BUILD_TESTS": "ON",
         "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
+    },
+    {
+      "name": "simulation",
+      "inherits": "desktop",
+      "displayName": "Simulation console tool, without a window",
+      "binaryDir": "${sourceDir}/build/simulation",
+      "cacheVariables": {
+        "APP_BUILD_GAME": "OFF",
+        "APP_BUILD_TESTS": "OFF"
+      }
     }
   ],
   "buildPresets": [
     { "name": "debug", "configurePreset": "desktop", "configuration": "Debug" },
     { "name": "release", "configurePreset": "desktop", "configuration": "Release" },
-    { "name": "tests-debug", "configurePreset": "tests", "configuration": "Debug", "targets": ["EngineTestSuite"] }
+    { "name": "tests-debug", "configurePreset": "tests", "configuration": "Debug", "targets": ["EngineTestSuite"] },
+    { "name": "simulation-debug", "configurePreset": "simulation", "configuration": "Debug",
+      "targets": ["@PROJECT_NAME@SimulationTool"] },
+    { "name": "simulation-release", "configurePreset": "simulation", "configuration": "Release",
+      "targets": ["@PROJECT_NAME@SimulationTool"] }
   ],
   "testPresets": [
     { "name": "tests-debug", "configurePreset": "tests", "configuration": "Debug",

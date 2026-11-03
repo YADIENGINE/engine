@@ -24,6 +24,7 @@ Read the matching skill before acting. Each one is a short procedure; follow its
 | fix a failed build, test or refresh, or warnings | `AgentDocs/Skills/build-fix/SKILL.md` |
 | write code against the engine API (find headers, recipes, concepts) | `AgentDocs/Skills/api/SKILL.md` |
 | check, compare, clean up or play a sound; find unused or missing sounds | `AgentDocs/Skills/audio/SKILL.md` |
+| test gameplay without a window, reproduce a replay, write gameplay rules as a simulation | `AgentDocs/Skills/simulation/SKILL.md` |
 
 ## Hard invariants
 
@@ -35,5 +36,6 @@ Read the matching skill before acting. Each one is a short procedure; follow its
 - Game code includes no engine Internals or raylib: `Docs/Contributing/ApiBoundaries.md#three-tiers`, `Docs/AssetsAndPlatforms.md#platform-responsibilities`.
 - Do not keep a decorative View clock; use paint.Time(): `Docs/Runtime.md#input-and-time-selection`.
 - Pass real frame duration through TimeScale; scenes select their time domain: `Docs/Runtime.md#input-and-time-selection`.
+- Simulation code stays free of drawing, audio, clocks and `<random>`; everything deciding gameplay comes from its start or its steps: `Docs/Simulation.md#writing-a-simulation`.
 - Keep registered objects alive; shut scenes down before members die: `Docs/Runtime.md#lifecycle`.
 - Own surfaces in the scene/View, before renderer teardown: `Docs/Graphics/Painter.md#images-and-surfaces`.

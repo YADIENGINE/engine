@@ -26,6 +26,7 @@ CONTRACT = {
     "prebuilt": ["--output", "X"],
     "info": [],
     "check": ["--fix"],
+    "sim": ["list"],
 }
 
 

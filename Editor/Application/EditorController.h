@@ -37,11 +37,17 @@ public:
     void SetPaused(bool paused);
     // Pauses and advances the playback clock to `seconds`, or by `seconds` when relative (replaying from 0 to go back).
     void Seek(double seconds, bool relative = false);
+    // The same in the open simulation's steps.
+    void SeekStep(std::uint64_t step, bool relative = false);
+    // Loads or saves a replay of the open simulation ("load", "save"); the answer is in SimulationState().
+    void Replay(const std::string& action, const std::string& path);
     // Asks the ready worker to confirm the commands sent so far; the answer arrives in LastSync(). Returns its request.
     [[nodiscard]] std::uint64_t Sync();
     [[nodiscard]] const EditorSync& LastSync() const { return _sync; }
     // Playback seconds since open / reset, as last reported by the worker.
     [[nodiscard]] double Seconds() const { return _seconds; }
+    // The worker's report of the open scene's simulation (WorkerSimulation::State); null without one.
+    [[nodiscard]] const nlohmann::json& SimulationState() const { return _simulationState; }
     [[nodiscard]] SceneParameters Values(const std::string& id) const;
     // A change made through the control endpoint: logged, shown briefly over the viewport and, unless the caller
     // records its own detail, kept in the session's activity.
@@ -171,6 +177,7 @@ private:
     std::uint64_t _syncRequest = 0;
     EditorSync _sync;
     double _seconds = 0.0;
+    nlohmann::json _simulationState;
     std::string _notice;
     std::deque<EditorControlEvent> _controlEvents;
     std::size_t _controlEventCount = 0; // Every entry this session, also those that left the deque

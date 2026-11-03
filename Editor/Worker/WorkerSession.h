@@ -5,6 +5,7 @@
 #include <optional>
 #include "Editor/Internals/Platform/Windows/ControlChannel.h"
 #include "Editor/Internals/Platform/Windows/SharedFrames.h"
+#include "Editor/Internals/Session/WorkerSimulation.h"
 #include "Editor/Worker/WorkerScene.h"
 #include "Runtime/FrameExecutionSettings.h"
 #include "Runtime/GameSettings.h"
@@ -25,6 +26,8 @@ public:
     ~WorkerSession();
     [[nodiscard]] WorkerScene& Scene() { return _scene; }
     [[nodiscard]] const WorkerScene& Scene() const { return _scene; }
+    // For a custom Game adapter whose own scene hosts a simulation (HostedSimulation does this for editor scenes).
+    [[nodiscard]] SimulationHost& Simulation() { return _simulation; }
     [[nodiscard]] DeviceInput ReadInput();
     void PrepareFrame();
     void Capture();
@@ -34,9 +37,11 @@ public:
 
 private:
     // A seek in progress: playback advances in fixed steps, unthrottled and without frame readback, until the clock
-    // reaches the target; commands after it wait (their replies then describe the arrived state).
+    // or the simulation's step counter reaches the target; commands after it wait (their replies then describe the
+    // arrived state).
     struct Seek {
         double target = 0.0;
+        std::optional<std::uint64_t> step; // Set: the target is this simulation step, not a playback time
         std::uint64_t request = 0;
         int stepsLeft = 0;
         FrameExecutionSettings execution;
@@ -49,6 +54,9 @@ private:
     void SendParameters();
     void Restart();
     void StartSeek(const WorkerMessage& message);
+    void BeginSeek(const WorkerMessage& message, double target, std::optional<std::uint64_t> step, int planned);
+    void Rewind();
+    void Replay(const WorkerMessage& message);
     void FinishSeek();
     // Re-runs recorded actions whose time has come again after a rewind.
     void ReplayDue();
@@ -59,6 +67,7 @@ private:
     Vec2 _canvas;
     mutable SharedFrames _frames;
     WorkerSessionActions _actions;
+    WorkerSimulation _simulation;
     WorkerScene _scene;
     mutable WorkerProfiler _profiler;
     DeviceInput _inputState;
@@ -70,7 +79,8 @@ private:
     std::optional<Seek> _seek;
     std::deque<WorkerMessage> _queued; // Read but not yet applied (waiting behind a seek)
     std::size_t _droppedLogs = 0;
-    // Actions since open / reset at their playback time; a rewind replays them as the clock passes them again.
+    // Actions since open / reset at their playback time; a rewind replays them as the clock passes them again. A scene
+    // with a simulation keeps none here: its actions are commands on the tape (D26).
     struct TimedAction {
         double seconds = 0.0;
         std::string id;
@@ -81,4 +91,5 @@ private:
     mutable double _statsStartedAt = 0, _inspectionAt = -1;
     mutable std::uint64_t _publishedFrames = 0;
     mutable SceneInspection _inspection;
+    mutable nlohmann::json _publishedSimulation;
 };

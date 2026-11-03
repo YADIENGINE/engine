@@ -15,10 +15,29 @@
         "ENGINE_BUILD_RUNTIME": "OFF",
         "ENGINE_BUILD_TESTS": "ON"
       }
+    },
+    {
+      "name": "simulation",
+      "displayName": "The engine's small simulation and its console tool",
+      "description": "python . sim in this repository, in Debug and Release",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build/simulation",
+      "architecture": { "value": "x64", "strategy": "external" },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
+        "ENGINE_BUILD_RUNTIME": "OFF",
+        "ENGINE_BUILD_TOY_SIMULATION": "ON"
+      }
     }
   ],
   "buildPresets": [
-    { "name": "tests-debug", "configurePreset": "tests", "configuration": "Debug", "targets": ["EngineTestSuite"] }
+    { "name": "tests-debug", "configurePreset": "tests", "configuration": "Debug", "targets": ["EngineTestSuite"] },
+    { "name": "simulation-debug", "configurePreset": "simulation", "configuration": "Debug",
+      "targets": ["EngineToySimulationTool"] },
+    { "name": "simulation-release", "configurePreset": "simulation", "configuration": "Release",
+      "targets": ["EngineToySimulationTool"] }
   ],
   "testPresets": [
     { "name": "tests-debug", "configurePreset": "tests", "configuration": "Debug",

@@ -7,6 +7,8 @@ They never link the consuming game's core or include its source headers.
 | Executable | Sources | Links | Tags |
 | --- | --- | --- | --- |
 | EngineTests | Engine/Core/Tests/*.cpp | EngineHeadless, EngineStorage | engine + subsystem |
+| EngineSimulationTests | Engine/Core/Tests/Simulation/*.cpp | EngineToySimulation (only low-level targets, so reaching drawing or audio fails to build) | engine + simulation |
+| Engine.SimulationTool | The toy simulation's console tool running `ToyScenario.json` | EngineToySimulationTool | engine |
 | EngineRecipeTests | `Core/Tests/RecipeTests.cpp` + compiled `AgentDocs/Recipes/Code/` archive | EngineRecipes, EngineHeadless, EnginePersistence | engine + recipes |
 | Engine&lt;Module&gt;Tests | module Tests/*.cpp | module and declared dependencies | module tag |
 | Engine.IncludeBoundaries | `python Engine check` over the source tree ([API boundaries](ApiBoundaries.md)) | none (Python 3.10+) | engine |

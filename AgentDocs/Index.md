@@ -40,6 +40,10 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Add rings, shockwaves, glitch or a pulse | `Core/Fx/RingEffects2D.h`<br>`Core/Fx/ShockwaveEffects2D.h`<br>`Core/Fx/GlitchEffects2D.h`<br>`Core/Fx/PulseOverlay2D.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
 | Draw an iris transition or shatter geometry | `Core/Fx/IrisTransition.h`<br>`Core/Fx/ShatterPattern.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
 | Pause gameplay, add hitstop or slow motion | `Core/Fx/TimeScale.h`<br>`Core/Scene/Scene.h` | - | `Docs/Runtime.md#input-and-time-selection` |
+| Write gameplay in fixed steps with replay | `Core/Simulation/Simulation.h`<br>`Core/Simulation/SimulationRunner.h`<br>`Core/Simulation/StepSmoothed.h`<br>`Core/Simulation/SimulationRegistry.h`<br>`Editor/Api/HostedSimulation.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#writing-a-simulation` |
+| Bind keys to per-player actions | `Core/Input/InputBindings.h`<br>`Core/Simulation/PlayerInput.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#input-and-tapes` |
+| Test gameplay without a window (`sim run`), or check a replay (`sim verify`, `sim diverge`) | `Tools/commands/sim.py`<br>`Core/Simulation/Scenario.h`<br>`Core/Simulation/ReplayCheck.h`<br>`Core/Simulation/InputTape.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#scenarios` |
+| Use seeded random numbers | `Core/Utilities/Rng.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#writing-a-simulation` |
 | Read keys and navigate a menu | `Core/Input/Input.h`<br>`Core/Input/InputNavigation.h`<br>`Core/Menus/MenuSelection.h`<br>`Core/Menus/MenuInput.h` | `Recipes/ThemedMenu.md` | `Docs/Input.md#physical-snapshot-and-semantic-queries` |
 | Handle pointer collections or dragging | `Core/Input/CollectionPointer.h`<br>`Core/Input/DragPointer.h` | - | `Docs/Input.md#collections-and-drag-and-drop` |
 | Navigate a grid, headers or a scrolling viewport | `Core/Menus/GridMenuSelection.h`<br>`Core/Menus/HeaderGridNavigation.h`<br>`Core/Menus/GridViewport.h` | - | `Docs/Input.md#menu-selection-and-viewport` |

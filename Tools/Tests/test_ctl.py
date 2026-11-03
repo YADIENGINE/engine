@@ -50,6 +50,23 @@ class RequestTests(unittest.TestCase):
         self.assertEqual(shot["crop"], [0, 0, 800, 450])
         self.assertEqual(request("screenshot", "--window"), {"command": "screenshot", "window": True})
 
+    def test_simulation_steps(self):
+        self.assertEqual(request("step"), {"command": "step", "frames": 1})
+        self.assertEqual(request("step", "5"), {"command": "step", "frames": 5})
+        self.assertEqual(request("step", "5", "--sim"), {"command": "step", "frames": 5, "sim": True})
+        self.assertEqual(request("seek", "--step", "1200"), {"command": "seek", "step": 1200})
+        for argv in (("seek",), ("seek", "1.5", "--step", "3")):
+            with self.subTest(argv=argv), self.assertRaises(ToolError):
+                request(*argv)
+        grid = request("frames", "--from", "100", "--to", "400", "--steps")
+        self.assertEqual((grid["from"], grid["to"], grid["steps"]), (100.0, 400.0, True))
+
+    def test_replay(self):
+        answer = request("replay", "load", "run.replay")
+        self.assertEqual((answer["command"], answer["action"]), ("replay", "load"))
+        self.assertEqual(Path(answer["path"]), Path("run.replay").resolve())
+        self.assertEqual(request("replay", "save", "out.replay")["action"], "save")
+
     def test_frames(self):
         self.assertEqual(request("frames", "--from", "0", "--to", "2"),
                          {"command": "frames", "from": 0.0, "to": 2.0, "count": 9})

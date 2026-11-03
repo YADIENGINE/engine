@@ -102,6 +102,10 @@ frame duration; `DrawSeconds` customizes presentation time. Decorative View draw
 [Painter::Time](Graphics/Painter.md). UpdateReal also receives time after the FrameSeconds transformation; editor scene
 pause/speed/single-step apply to this hook.
 
+Gameplay that must replay runs as a [simulation](Simulation.md#hosting-it-in-a-scene): a scene in `TimeDomain::Game` hands
+the scaled seconds to a `SimulationRunner`, which runs fixed steps. This frame order does not change, and hitstop and slow
+motion only change how many steps run per real second.
+
 `SetScene` does not destroy a scene in the middle of a callback; it queues the transition. `SetScene(scene, true)`
 allows reentry to the same scene. Model/View state requiring a reset must be cleared explicitly in `Enter`; `Start` is
 not called again. The transition commit follows Game.Update; a change requested in a scene callback may wait for the

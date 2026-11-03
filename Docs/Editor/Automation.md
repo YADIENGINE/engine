@@ -13,7 +13,7 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 
 | Command | Answer |
 | --- | --- |
-| `status` | `editor` (`open`), `phase`, `status`, `ready`, `building`, `scene`, `control`; while ready also `paused`, `speed`, `seconds`, `canvas`; with no scene a `next` hint |
+| `status` | `editor` (`open`), `phase`, `status`, `ready`, `building`, `scene`, `control`; while ready also `paused`, `speed`, `seconds`, `canvas`; a scene with a simulation adds `step`, `stepsPerSecond`, `tapeSteps`, `replay` (`live` or `playing`) and, when a loaded replay differs, `mismatch`; with no scene a `next` hint |
 | `list` | `scenes`: id, name, category, `parameters` (id, kind, apply, current `value`, range or `choices`, `applyAction` when set), `actions` (`primary` when set). `--brief`: only id, name, category |
 | `find WORD... [--limit N]` | `matches` (best N, default 5): id, name, category, `matched`, `set` (choices the words select), `action`, `commands` that open it, compact `parameters`, `actions`; `more` when cut ([Finding a scene](#finding-a-scene)) |
 | `describe ID` | `scene`: that scene's `list` entry; exit 1 with close ids when unknown |
@@ -22,11 +22,15 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 | `action ID` | Runs a scene action; status |
 | `pause`, `play` | Playback; status |
 | `step [FRAMES]` | Pauses and advances FRAMES × 1/60 s (default 1, max 600); status |
+| `step [N] --sim` | Pauses and runs N simulation steps (default 1); status. Exit 1 on a scene without a simulation |
 | `speed X` | Playback speed, 0.1–4; status |
 | `reset` | Restarts the scene with its parameters, waits until it runs; status |
 | `seek SECONDS` | Pauses at that playback time (0–600); status. Going back replays from 0 with the current parameters and re-runs the actions taken since open / reset at their times (an action after a rewind replaces the later ones) |
+| `seek --step N` | Pauses at that simulation step; status. Going back replays the tape from step 0 with the current parameters and keeps what follows. Exit 1 on a scene without a simulation |
+| `replay load FILE` | Plays a saved replay in the open scene from its first step, paused, with the replay's own start; status. Exit 1 when it is for another simulation, step rate or action list |
+| `replay save FILE` | Writes the open simulation's tape; status |
 | `screenshot [--window] [--out PATH] [--scale S] [--crop X Y W H]` | Writes the current frame as PNG; status + `path`, `width`, `height`. Crop is in canvas units, applied before scaling (0.05–4). `--window`: the whole editor window instead (panels included, no scene needed; crop in window pixels; also `window` size) |
-| `frames --from A --to B [--count N] [--columns C] [--out PATH] [--scale S] [--crop X Y W H]` | One grid PNG of N frames between A and B seconds (pauses there); status + `path`, `frames` (times), `columns` ([Animation](#screenshots)) |
+| `frames --from A --to B [--count N] [--columns C] [--steps] [--out PATH] [--scale S] [--crop X Y W H]` | One grid PNG of N frames between A and B seconds, or simulation steps with `--steps` (pauses there); status + `path`, `frames` (times), `columns` ([Animation](#screenshots)) |
 | `inspect` | Status + `inspection` (readout values, tables, focus, disabled controls) |
 | `logs [--since N] [--limit N] [--level L]` | `entries` (sequence, level, source, text) after N, newest `limit` (100, max 1000) at or above L; `last` sequence |
 | `note [WORD...] [--state working\|waiting\|idle] [--hook] [--tool-stdin]` | Reports what the agent is doing (default `working`); `--hook`: see Agent hooks below. Run from a Console session (`ENGINE_EDITOR_SESSION` set, sent as `session`), it sets that session's state and hover text until the developer types into it again. `state`, `text` (up to 200 bytes), `control` |
@@ -67,7 +71,7 @@ ignored).
 
 **Agent control:** the developer can turn off Agent → Agent control ([Agent workspace](Usage.md#agent-workspace)).
 While it is off, `status` reports `"control": false` and commands that change the editor (`open`, `set`, `action`,
-`pause`, `play`, `step`, `speed`, `reset`, `seek`, `frames`, `refresh`, and `audio` with an action) are refused;
+`pause`, `play`, `step`, `speed`, `reset`, `seek`, `replay`, `frames`, `refresh`, and `audio` with an action) are refused;
 `status`, `list`, `find`, `describe`, `screenshot`, `inspect`, `logs`, `note` and plain `audio` still answer.
 
 ## Finding a scene
@@ -98,7 +102,9 @@ Use `describe ID` when the compact `parameters` are not enough; `list` is the wh
   has applied every earlier request and drawn a frame after that. A screenshot never shows the state before a change.
 - **Reproducible time:** playback `seconds` count from open / reset. `seek` and `step` advance in fixed 1/60 s steps, as
   fast as the worker can draw, so the same parameters, actions and time give the same frame for deterministic scenes.
-  Pointer and keyboard input is not recorded.
+  Pointer and keyboard input is not recorded, except in a scene with a [simulation](../Simulation.md#in-the-editor): there
+  the tape holds input and actions, and `seek --step` lands on an exact step. Hitstop makes seconds and steps drift apart,
+  so prefer steps in such a scene.
 - **Visible changes:** each state-changing command shows "Control: ..." over the viewport for a few seconds and is logged
   in Output. The developer's own input keeps working; the editor does not lock.
 - **No blocking dialogs:** a Build & Refresh started through the endpoint (`refresh`) reports a failure to its client

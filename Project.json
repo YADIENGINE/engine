@@ -5,5 +5,12 @@
     "configurePreset": "tests",
     "buildPreset": "tests-debug",
     "testPreset": "tests-debug"
+  },
+  "simulation": {
+    "buildDirectory": "build/simulation",
+    "configurePreset": "simulation",
+    "buildPresets": { "Debug": "simulation-debug", "Release": "simulation-release" },
+    "sources": "Core/Tests/Simulation",
+    "target": "EngineToySimulationTool"
   }
 }

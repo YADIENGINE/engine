@@ -9,6 +9,7 @@ option(ENGINE_BUILD_RUNTIME "Build the raylib runtime" ON)
 option(ENGINE_BUILD_TESTS "Build headless Engine and module tests (desktop only)" OFF)
 option(ENGINE_BUILD_EDITOR "Build the standalone Windows engine editor" OFF)
 option(ENGINE_BUILD_EDITOR_TESTS "Build opt-in headless editor infrastructure tests" OFF)
+option(ENGINE_BUILD_TOY_SIMULATION "Build the small simulation behind `python . sim` in this repository" OFF)
 
 function(engine_warnings target)
     if(MSVC)

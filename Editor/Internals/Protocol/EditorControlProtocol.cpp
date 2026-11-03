@@ -30,6 +30,7 @@ constexpr std::array CommandRows{
     CommandRow{EditorControlCommand::Note, "note"},
     CommandRow{EditorControlCommand::Audio, "audio"},
     CommandRow{EditorControlCommand::AudioControl, "audio-control"},
+    CommandRow{EditorControlCommand::Replay, "replay"},
 };
 static_assert(RowsInIdOrder(CommandRows));
 
@@ -167,7 +168,8 @@ bool ControlCommandChangesEditor(EditorControlCommand command) {
     case EditorControlCommand::Reset:
     case EditorControlCommand::Seek:
     case EditorControlCommand::Frames:
-    case EditorControlCommand::AudioControl: return true;
+    case EditorControlCommand::AudioControl:
+    case EditorControlCommand::Replay      : return true;
     case EditorControlCommand::Status      :
     case EditorControlCommand::List        :
     case EditorControlCommand::Screenshot  :

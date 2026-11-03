@@ -219,6 +219,22 @@ void EditorController::Seek(double seconds, bool relative) {
         FailScene(error.what());
     }
 }
+void EditorController::SeekStep(std::uint64_t step, bool relative) {
+    if (!_ready || _profiler.Snapshot().busy) return;
+    try {
+        Send("seek", {{"step", step}, {"relative", relative}});
+    } catch (const std::exception& error) {
+        FailScene(error.what());
+    }
+}
+void EditorController::Replay(const std::string& action, const std::string& path) {
+    if (!_ready || _profiler.Snapshot().busy) return;
+    try {
+        Send("replay", {{"action", action}, {"path", path}});
+    } catch (const std::exception& error) {
+        FailScene(error.what());
+    }
+}
 std::uint64_t EditorController::Sync() {
     if (!_ready) throw std::runtime_error("The scene is not ready");
     Send("sync");
@@ -282,6 +298,13 @@ void EditorController::OpenOutputLog(bool attempt) {
     if (result <= 32)
         Log("Could not open output log (Windows shell code " + std::to_string(result) + ").", EditorLogLevel::Error);
 }
+namespace {
+std::optional<EditorSimulationStatus> SimulationStatusOf(const nlohmann::json& state) {
+    if (!state.is_object() || !state.contains("step")) return std::nullopt;
+    return EditorSimulationStatus{state.at("step").get<std::uint64_t>(), state.value("replay", "") == "playing",
+                                  state.contains("mismatch")};
+}
+} // namespace
 EditorSnapshot EditorController::Snapshot() const {
     std::set<std::string> pending;
     for (const auto& [request, id] : _pendingParameters) {
@@ -327,6 +350,7 @@ EditorSnapshot EditorController::Snapshot() const {
                             _publishMilliseconds,
                             _inspection,
                             _playbackSpeed,
+                            SimulationStatusOf(_simulationState),
                             _profiler.Snapshot(),
                             _hostTransferMs,
                             benchmarkCancelPending,
@@ -408,6 +432,7 @@ void EditorController::StopActive(const std::string& status) {
 void EditorController::Invalidate(std::uint64_t generation) {
     _generation = generation;
     _inspection = {};
+    _simulationState = nullptr;
     _ready = false;
     _paused = false;
     _playbackSpeed = 1.0;
@@ -504,13 +529,17 @@ void EditorController::Receive(const WorkerMessage& message) {
         _captureMilliseconds = capture;
         _publishMilliseconds = publish;
         _streamFps = fps;
+    } else if (message.type == "simulation") {
+        _simulationState = message.data;
     } else if (message.type == "state") {
         _paused = message.data.at("paused").get<bool>();
         _playbackSpeed = message.data.value("speed", _playbackSpeed);
         _seconds = message.data.value("seconds", _seconds);
+        _simulationState = message.data.value("simulation", nlohmann::json());
     } else if (message.type == "synced") {
         _paused = message.data.at("paused").get<bool>();
         _seconds = message.data.at("seconds").get<double>();
+        _simulationState = message.data.value("simulation", nlohmann::json());
         if (message.request == _syncRequest) _sync = {message.request, _seconds, _paused, 0};
     } else if (message.type == "accepted" || message.type == "rejected") {
         const auto pending = _pendingParameters.find(message.request);
@@ -533,6 +562,7 @@ void EditorController::ApplyReady(const WorkerMessage& message) {
     _displayed = _accepted[_selected];
     _paused = message.data.at("paused").get<bool>();
     _playbackSpeed = message.data.at("speed").get<double>();
+    _simulationState = message.data.value("simulation", nlohmann::json());
     _ready = true;
     _active->MarkReady();
     if (_profiler.Snapshot().liveEnabled) Send("profiler", {{"operation", "enable"}, {"enabled", true}});

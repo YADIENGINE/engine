@@ -2,6 +2,7 @@
 #include <raylib.h>
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <span>
 #include <utility>
 #include <stdexcept>
@@ -11,6 +12,7 @@
 namespace {
 constexpr double StepSeconds = 1.0 / 60.0; // One Step, and one seek step
 constexpr double MaxSeekSeconds = 600.0;
+constexpr std::uint64_t MaxSeekSteps = 600 * 240; // Ten minutes at the highest step rate
 constexpr double SeekTolerance = 1e-6;
 constexpr int SeekStepAllowance = 4; // Steps a seek may take per planned step before it gives up where it is
 constexpr int SeekExtraSteps = 120;
@@ -44,6 +46,7 @@ WorkerSession::WorkerSession(Game& game, const GameSettings& settings, const Sce
                 })
     , _lastInput(std::chrono::steady_clock::now()) {
     _scene.SetApplicationCommand(_actions.application);
+    _scene.SetSimulationHost(&_simulation);
 }
 WorkerSession::~WorkerSession() {
     try {
@@ -56,20 +59,25 @@ float WorkerSession::Advance(float realSeconds) {
     if (_profiler.Busy()) return _profiler.Advance();
     ReplayDue();
     float seconds = _paused ? 0.0f : realSeconds * _speed;
+    const double fixedSeconds = _simulation.StepSeconds(StepSeconds);
     if (_seek) {
+        const auto* runner = _simulation.Runner();
         const double remaining = _seek->target - _elapsed;
-        if (remaining <= SeekTolerance || --_seek->stepsLeft < 0) {
+        const bool arrived =
+            _seek->step ? (!runner || runner->StepIndex() >= *_seek->step) : remaining <= SeekTolerance;
+        if (arrived || --_seek->stepsLeft < 0) {
             FinishSeek(); // This frame draws (and publishes) the arrived state
             seconds = 0.0f;
         } else {
-            double step = std::min(StepSeconds, remaining);
+            double step = _seek->step ? fixedSeconds : std::min(fixedSeconds, remaining);
             if (_applied < _timeline.size())
                 step = std::min(step, _timeline[_applied].seconds - _elapsed); // Land on it
             seconds = static_cast<float>(step);
         }
     } else if (_step) {
         _step = false;
-        seconds = static_cast<float>(StepSeconds);
+        if (auto* runner = _simulation.Runner()) runner->DropRemainder();
+        seconds = static_cast<float>(fixedSeconds);
     }
     _elapsed += seconds;
     return seconds;
@@ -93,7 +101,9 @@ void WorkerSession::Reply(const WorkerMessage& message, const std::string& type,
     _channel.Send({{}, _generation, message.request, type, std::move(data)});
 }
 nlohmann::json WorkerSession::PlaybackState() const {
-    return {{"paused", _paused}, {"speed", _speed}, {"seconds", _elapsed}};
+    nlohmann::json state{{"paused", _paused}, {"speed", _speed}, {"seconds", _elapsed}};
+    if (auto simulation = _simulation.State(); !simulation.is_null()) state["simulation"] = std::move(simulation);
+    return state;
 }
 void WorkerSession::Restart() {
     _profiler.Reset(_generation);
@@ -104,28 +114,78 @@ void WorkerSession::Restart() {
     _actions.reset();
     _actions.activate(_scene);
 }
+void WorkerSession::Rewind() { // Replays from the start: current parameters, recorded actions or the tape
+    _simulation.PrepareRewind();
+    Restart();
+    _scene.Reset();
+    _applied = 0;
+}
 void WorkerSession::StartSeek(const WorkerMessage& message) {
+    if (const auto step = message.data.find("step"); step != message.data.end()) {
+        auto* runner = _simulation.Runner();
+        if (!runner) {
+            Reply(message, "rejected", {{"text", "The open scene has no simulation"}});
+            return;
+        }
+        const std::uint64_t amount = step->get<std::uint64_t>();
+        const std::uint64_t target = message.data.value("relative", false) ? runner->StepIndex() + amount : amount;
+        if (target > MaxSeekSteps) {
+            Reply(message, "rejected", {{"text", "Seek step is out of range"}});
+            return;
+        }
+        if (target < runner->StepIndex()) Rewind();
+        runner = _simulation.Runner();
+        if (!runner) { // The rebuilt scene hosts no simulation any more
+            Reply(message, "rejected", {{"text", "The open scene has no simulation"}});
+            return;
+        }
+        runner->DropRemainder(); // Whole steps from here, so the counter lands exactly
+        BeginSeek(message, 0.0, target, static_cast<int>(target - runner->StepIndex()));
+        return;
+    }
     const double seconds = message.data.at("seconds").get<double>();
     const double target = message.data.value("relative", false) ? _elapsed + seconds : seconds;
     if (!std::isfinite(target) || target < 0.0 || target > MaxSeekSeconds) {
         Reply(message, "rejected", {{"text", "Seek time must be between 0 and 600 seconds"}});
         return;
     }
-    if (target + SeekTolerance < _elapsed) { // Rewinding replays from the start: current parameters, recorded actions
-        Restart();
-        _scene.Reset();
-        _applied = 0;
-    }
+    if (target + SeekTolerance < _elapsed) Rewind();
+    BeginSeek(message, target, std::nullopt,
+              static_cast<int>(std::ceil((target - _elapsed) / _simulation.StepSeconds(StepSeconds))));
+}
+void WorkerSession::BeginSeek(const WorkerMessage& message, double target, std::optional<std::uint64_t> step,
+                              int planned) {
     _paused = true;
     _step = false;
     _inputState = {};
     _inputState.cancelled = true;
-    const int planned = static_cast<int>(std::ceil((target - _elapsed) / StepSeconds));
-    _seek = Seek{target, message.request, planned * SeekStepAllowance + SeekExtraSteps, _game.FrameExecution()};
+    _seek = Seek{target, step, message.request, planned * SeekStepAllowance + SeekExtraSteps, _game.FrameExecution()};
     auto unthrottled = _seek->execution;
     unthrottled.fpsLimit = 0;
     unthrottled.vsync = false;
     _game.ConfigureFrameExecution(unthrottled);
+}
+void WorkerSession::Replay(const WorkerMessage& message) {
+    const auto action = message.data.at("action").get<std::string>();
+    const auto text = message.data.at("path").get<std::string>();
+    const std::filesystem::path file(std::u8string(text.begin(), text.end()));
+    if (action == "load") {
+        if (_simulation.Load(file)) { // Paused at its first step, as a seek leaves a scene
+            Restart();
+            _scene.Reset();
+            _timeline.clear();
+            _applied = 0;
+            _paused = true;
+            _step = false;
+            _inputState = {};
+            _inputState.cancelled = true;
+        }
+    } else if (action == "save") {
+        (void)_simulation.Save(file);
+    } else {
+        _simulation.SetLastError("Unknown replay action: " + action);
+    }
+    Reply(message, "state", PlaybackState());
 }
 void WorkerSession::ReplayDue() {
     bool replayed = false;
@@ -153,6 +213,7 @@ void WorkerSession::Command(const WorkerMessage& message) {
         if (!definition) throw std::runtime_error("Selected scene is missing from the new catalog");
         _generation = message.generation;
         Restart();
+        _simulation.Forget();
         _timeline.clear();
         _applied = 0;
         _scene.Open(*definition, state.parameters);
@@ -170,6 +231,7 @@ void WorkerSession::Command(const WorkerMessage& message) {
         if (message.generation <= _generation || !_scene.HasContent()) return;
         _generation = message.generation;
         Restart();
+        _simulation.Forget();
         _timeline.clear();
         _applied = 0;
         _scene.Reset();
@@ -211,6 +273,8 @@ void WorkerSession::Command(const WorkerMessage& message) {
         Reply(message, "state", PlaybackState());
     } else if (message.type == "seek") {
         StartSeek(message);
+    } else if (message.type == "replay") {
+        Replay(message);
     } else if (message.type == "sync") {
         _inspectionAt = -1.0; // The next frame reports inspection, so a reader after the sync sees current values
         Reply(message, "synced", PlaybackState());
@@ -230,9 +294,11 @@ void WorkerSession::Command(const WorkerMessage& message) {
             Reply(message, "rejected", {{"text", error}});
             return;
         }
-        _timeline.resize(_applied); // Acting after a rewind replaces what followed
-        _timeline.push_back({_elapsed, id});
-        _applied = _timeline.size();
+        if (!_simulation.Runner()) {    // With a simulation the action is a command on the tape, if it changes gameplay
+            _timeline.resize(_applied); // Acting after a rewind replaces what followed
+            _timeline.push_back({_elapsed, id});
+            _applied = _timeline.size();
+        }
         if (_scene.CaptureParameters()) SendParameters();
     } else {
         Reply(message, "rejected", {{"text", "Unsupported scene command: " + message.type}});
@@ -272,6 +338,10 @@ void WorkerSession::Capture() {
 void WorkerSession::CanvasReady(const Texture2D& texture) const {
     if (_profiler.Busy() || _seek) return;
     if (!_scene.HasContent()) return;
+    if (auto simulation = _simulation.State(); simulation != _publishedSimulation) {
+        _channel.SendLatest({{}, _generation, 0, "simulation", simulation});
+        _publishedSimulation = std::move(simulation);
+    }
     if (texture.width > WorkerMaxFrameWidth || texture.height > WorkerMaxFrameHeight)
         throw std::runtime_error("Scene canvas exceeds the bounded frame transport");
     const double startedAt = WorkerTimestamp();
@@ -312,7 +382,8 @@ void WorkerSession::CanvasReady(const Texture2D& texture) const {
                        {{"parameters", EncodeSceneParameters(_scene.Parameters())},
                         {"paused", _paused},
                         {"speed", _speed},
-                        {"canvas", nlohmann::json::array({_canvas.x, _canvas.y})}}});
+                        {"canvas", nlohmann::json::array({_canvas.x, _canvas.y})},
+                        {"simulation", _simulation.State()}}});
         _readyPending = false;
     }
 }

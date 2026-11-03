@@ -55,8 +55,8 @@ Deferred on purpose. None of these block 1.0.0.
 
 - **Baking cache** (D10, [Visual assets](VisualAssets.md)): needs measurement first.
 - **Prefabs** ([Asset library](AssetLibrary.md), D22).
-- **Rest of the agent API** ([Agent API](AgentApi.md), D5): rendering without an open editor, scripted input scenarios,
-  MCP. The open-editor part is already done through `ctl` (D20, D21).
+- **Rest of the agent API** ([Agent API](AgentApi.md), D5): rendering without an open editor, MCP. The open-editor part
+  is done through `ctl` (D20, D21), scripted input scenarios through `sim` (D26).
 - **Draggable spatial tuning** (D11), **flipbook and disk cache** (D10).
 - **CI/CD and SignPath signing** (D19): build and test on GitHub Actions, release from a tag.
 - **llvm-mingw** (D8).

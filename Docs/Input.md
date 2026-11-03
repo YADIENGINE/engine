@@ -9,6 +9,7 @@ Input is engine runtime infrastructure. Supported public headers:
 | `Input/Input.h` | `DeviceInput`, `InputKey`, `InputTouch`; raylib-free snapshot |
 | `Input/InputNavigation.h` | `InputNavigation` reading a snapshot by reference |
 | `Input/DragPointer.h` | Free dragging and tap on release |
+| `Input/InputBindings.h` | Keys to per-player actions for a [simulation](Simulation.md#input-and-tapes) |
 | `Input/CollectionPointer.h` | Collection tap, hover, and row scrolling |
 
 Games and project editor code use only these headers. `Input/Internals/` is not supported API. Device reading, window

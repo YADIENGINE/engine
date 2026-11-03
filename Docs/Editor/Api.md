@@ -125,7 +125,9 @@ fit. Units are part of the formatted value.
 `WorkerGame`. `WorkerSession` separates IPC, instance lifecycle, and frame transfer from Game; the project can set up
 the same session in its own real Game (consumer's custom Game adapter). `WorkerSessionActions` wires quit / reset /
 activate and application-command callbacks. Game hooks: `FrameSeconds` (host simulation time), `DrawSeconds`
-(presentation clock), `SetScene(scene, true)` (restarts the same scene's Enter flow). The host setting `fixedWindow`
+(presentation clock), `SetScene(scene, true)` (restarts the same scene's Enter flow). `WorkerSession::Simulation()` is the
+host a custom adapter's own scene passes to `HostedSimulation`; editor scenes get it as `SceneServices::simulation`
+([Simulation](../Simulation.md#in-the-editor)). The host setting `fixedWindow`
 prevents Options from changing OS window / capture size.
 
 ## Project recipe and build

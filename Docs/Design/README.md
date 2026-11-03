@@ -666,7 +666,7 @@ brings the screen to the developer. Supersedes the separate-process plan of [Age
 - **Phase B (2026-11-01):** `ctl frames` (labelled grid of evenly spaced times), viewport Mark (toolbar toggle or
   Alt+drag; pauses, saves the region, pastes a context line into the Console without Enter), and an `Errors (N):`
   summary after failed builds (Python, `Tools/build_errors.py`).
-- **Later:** scripted input scenarios, headless rendering without an open editor, several clients at once.
+- **Later:** headless rendering without an open editor, several clients at once. Scripted input scenarios: D26.
 
 Durum: kabul edildi (2026-11-01); uygulandı.
 
@@ -779,6 +779,109 @@ Conflicts in text go to the developer's editor or the agent.
 
 **Later:** an agent-written commit message, parameter-level tuning diffs, and marking files an agent changed.
 Status: implemented (2026-11-03), first real-window check pending.
+
+### D26. Deterministic simulation, replay and scenario tests
+Status: implemented (2026-11-04), first real-window check pending. Usage: [Simulation](../Simulation.md).
+
+**Goal:** gameplay advances in fixed steps from a seed and per-step input, so a run can be replayed, checked by hash and
+driven without a window by an agent. The guarantee is the same build on the same machine. Same-screen multiplayer and
+replay are in scope; online play is not.
+
+**Measured (2026-11-04):** one toy simulation (7200 steps; float and double arithmetic, CRT math, engine helpers, standard
+distributions, containers) and a second program for tight vectorizable loops, compile-time folding, sums and denormals.
+MSVC 19.44, x64, one machine, the engine's normal flags (no `/fp` or `/arch` set, so `/fp:precise` and SSE2).
+
+| Compared | Result |
+| --- | --- |
+| Debug, Release, RelWithDebInfo; each run twice (toy simulation) | Identical at every step |
+| Debug against Release (33 values) | Only raw bytes of a struct with padding differ |
+| Two runs of the same Release program | Same exception: padding bytes change from run to run |
+| Debug against Release with `/arch:AVX2` | Same exception only |
+| Debug against Release with `/fp:fast` | 22 of 33 differ; the compiler switches to vector math calls |
+| Negative control: one input moved by one unit in the last place | Detected |
+
+This does not widen the guarantee: other compilers, other CPUs and a real game were not measured. Live tuning is a real
+Debug/Release difference that this test does not cover: `ENGINE_TUNING_LIVE` reads files in Debug and compiles constants
+in Release ([Tuning](../Tuning.md)).
+
+**Follows from the code and the measurement:**
+- `Game` cannot run without a window: its constructor creates the `Renderer`, and `Runtime/Game.cpp` belongs to the raylib
+  `Engine` target. Headless code cannot go through it.
+- Simulation code is built with an explicit `/fp:precise`, so that a project flag cannot change it silently.
+- State is hashed field by field, never as raw struct bytes.
+- No global random generator. A simulation owns its generators and seeds them from the run's seed; visual code owns
+  separate ones, so it cannot touch the simulation's sequence. `WeightedIndex` moves to the engine's generator and
+  `std::discrete_distribution` is removed. Its only caller today is a test.
+- Hitstop and slow motion stay in `TimeScale`, outside the simulation: scaled time feeds the step accumulator, so only the
+  steps per second change. Time is never recorded. The simulation asks for hitstop through state or events that the scene
+  reads. Playback seconds are therefore not linear in steps, and steps are the exact position in a run.
+- An input latch sits between frames and steps. Presses are remembered until the next step and delivered to one step only;
+  held state always follows the latest frame. Cancellation clears pending presses and releases held actions. A press
+  during hitstop survives; a paused scene does not feed the latch.
+- Too many steps owed in one frame are dropped, up to a fixed limit per frame. The tape counts steps, so this cannot harm a
+  replay.
+- Tuning belongs to the build, not to the tape. A tape replayed under changed values gives a different run, and the hash
+  check reports it.
+- Launcher: not affected. It does not call `ctl` and only checks `toolsContract`, and this design only adds commands and
+  options, so the contract stays at 2. A bump would make current launchers reject the engine.
+
+**Decided:**
+1. *Where the simulation lives (2026-11-04):* a plain `Simulation` class in a low-level target that cannot reach drawing
+   or audio, hosted by a scene through a `SimulationRunner`; not a new `TimeDomain` that runs scenes in fixed steps. The
+   frame loop in `Game::Run` does not change, and menus and UI keep variable time. The headless tool runs the simulation
+   without a scene. One `State(StateVisitor&)` function feeds the hash, the readable dump and scenario checks. Rejected:
+   `TimeDomain::Fixed`, because scene children mix views, effects and model in one update chain.
+2. *What the tape stores (2026-11-04):* per-player actions, not raw `DeviceInput`. The game declares named buttons (at
+   most 32 per player) and axes; the tape stores `held` and `pressed` separately, so a tap shorter than a step survives.
+   Axes are rounded to a fixed precision before the simulation sees them, so live play and replay read the same value.
+   A command channel carries events that are not keys, such as `{"at": 300, "command": "pick_upgrade", "value": 3}`.
+   The engine adds `InputBindings`, a plain player, action and key table; new devices change bindings, not the format.
+   Bindings run before the tape, so a replay does not reproduce binding bugs; those need their own unit tests. Rejected:
+   raw `DeviceInput`, because it mixes same-keyboard players and ties tapes to key layout, canvas coordinates and devices.
+3. *Step rate and `ctl` (2026-11-04):* each simulation declares a whole number of steps per second, 1 to 240, default 60.
+   The tape stores it and it does not change during a run; slow motion lowers steps per real second instead. Existing
+   commands keep their meaning on every scene: `ctl step N` is N × 1/60 s and `ctl seek S` is playback seconds. New
+   options work in exact steps: `ctl step --sim N`, `ctl seek --step N`, `ctl frames --steps`; `ctl status` adds `step`
+   and `stepsPerSecond`. On a scene without a simulation these options exit with 1. The accumulator rounds float noise
+   to a whole step, so 1/60 s is exactly one step at 60 Hz. `seek --step` runs frames at the fixed step duration until
+   the counter arrives, hitstop frames included. Rejected: `ctl step` counting steps in simulation scenes, because one
+   command would silently mean different durations by scene and rate.
+4. *Editor timeline (2026-11-04):* one log per scene: the tape in a simulation scene, the existing action timeline
+   elsewhere. Viewport input and `ctl action` both reach the tape, the action through `SimulationRunner::Command`.
+   Rewinding resets the scene and replays the tape to the target from step 0, keeping what follows; playing on replays
+   the rest, then goes live. A press or a command during that replay cuts the tape there; mouse movement alone does not.
+   Rewinding uses current parameters and recomputes the tape's hashes, so a value can be changed and watched under the
+   same input. An action that only changes the view is a parameter, because parameters survive a reset. `ctl replay
+   load FILE` and `ctl replay save FILE` are new; `ctl status` adds `replay`. No snapshots yet: rewinding costs what
+   `seek` costs today and keeps view effects correct. Rejected: actions on the timeline beside a tape, because a saved
+   replay would lack them and seconds and steps drift apart under hitstop; and replacing the timeline everywhere,
+   because a scene without a simulation has no steps.
+5. *How tools find the simulation (2026-11-04):* a project implements `RegisterSimulations(SimulationRegistry&)`.
+   `engine_add_simulation` builds its sources into a static library linked by the game, the worker and the tests, plus
+   a console tool that needs no window. The new `sim` command builds and runs that tool: `sim list`, `sim run SCENARIO
+   [--out TAPE]`, `sim verify TAPE`, `sim diverge TAPE`, `sim state TAPE --step N`, each with `--release`. Answers are
+   one JSON object; exit 1 is a failed check, exit 2 is usage or a missing simulation. Scenarios are JSON files, and C++
+   tests use the same `Scenario` class. Tuning moves to its own low-level target, because simulations read tuning.
+   Rejected: a mode of the game executable, because `Game` needs a window.
+6. *Tape file, hashes, identity (2026-11-04):* text JSON with sparse changes, so an agent can read and write it. Hashes
+   are FNV-1a 64 over state fields, at step 0 and then every `hashEvery` steps: one second of steps for game recordings,
+   every step for `sim run` and the editor. `sim verify` reports the range the first difference lies in, which is one
+   exact step at `hashEvery` 1. `sim diverge` runs a tape twice and names the first differing step and fields, which
+   finds nondeterminism such as uninitialized memory. The tape stores the simulation id and version, engine version,
+   configuration, step rate, players, schema, seed and start parameters. A different id, step rate or schema refuses to
+   play; different versions are reported and the hashes decide; configuration is information only, as measured above.
+
+**As built (2026-11-04):** `HostedSimulation<T>` links a scene's simulation to the editor; the worker keeps the tape in
+`WorkerSimulation`. `ctl replay` is the only way to load a replay, because the editor has no file dialog yet. A Build &
+Refresh starts a new worker, so the tape does not carry over. The `configuration` in a tape names the engine library, so
+a project on the prebuilt engine records Release even in its Debug build. Visual randomness in `ParticleSystem2D` and
+`NumberPopup` keeps its own `std::mt19937`: separate from any simulation by construction, so moving it to `Rng` is not
+needed for this guarantee.
+
+**Measured on the finished tools (2026-11-04):** a tape recorded by the Debug tool verifies in the Release tool and through
+the prebuilt package, with the same hashes, and a tape saved by a running editor verifies in the tool.
+
+**Out of scope:** collision, tweens, 2.5D, the bullet kit, gamepad, online play, crash reports (D12).
 
 ## v1'de kalan işler
 

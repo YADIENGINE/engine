@@ -12,6 +12,7 @@ public:
     [[nodiscard]] bool HasContent() const { return _scene != nullptr; }
     [[nodiscard]] const SceneDefinition* Definition() const { return _definition; }
     void SetProfiler(Profiler* profiler) { _services.profiler = profiler; }
+    void SetSimulationHost(SimulationHost* host) { _services.simulation = host; }
     [[nodiscard]] const SceneParameters& Parameters() const { return _parameters; }
     [[nodiscard]] std::string SetParameter(const std::string& id, const SceneValue& value);
     [[nodiscard]] std::string Action(const std::string& id);

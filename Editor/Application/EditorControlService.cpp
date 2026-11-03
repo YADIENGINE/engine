@@ -21,6 +21,7 @@ constexpr double SeekWaitPerSecond = 0.5;                // Extra wait per sough
 constexpr double MaxSeekSeconds = 600.0;
 constexpr double StepSeconds = 1.0 / 60.0;
 constexpr int MaxSteps = 600;
+constexpr double MaxSeekSteps = 600.0 * 240.0;          // Ten minutes at the highest step rate
 constexpr std::uint64_t FramesAfterSync = 2;            // The second frame after the answer was drawn after it
 constexpr auto AudioTimeout = std::chrono::seconds(10); // Loading a long sound from disk
 constexpr std::size_t DefaultLogLimit = 100;
@@ -56,8 +57,19 @@ nlohmann::json StatusOf(const EditorController& controller) {
         status["speed"] = snapshot.playbackSpeed;
         status["seconds"] = controller.Seconds();
         status["canvas"] = {snapshot.canvas.x, snapshot.canvas.y};
+        if (controller.SimulationState().is_object()) status.update(controller.SimulationState());
     }
     return status;
+}
+void RequireSimulation(const EditorController& controller) {
+    if (!controller.SimulationState().is_object() || !controller.SimulationState().contains("step"))
+        throw std::runtime_error("The open scene has no simulation");
+}
+// Stepping needs time per step: how long a fast replay of 'steps' may take before the wait gives up.
+std::chrono::steady_clock::duration StepWait(const EditorController& controller, std::uint64_t steps) {
+    const int rate = controller.SimulationState().at("stepsPerSecond").get<int>();
+    return WorkerTimeout + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                               std::chrono::duration<double>(static_cast<double>(steps) * SeekWaitPerSecond / rate));
 }
 const char* WaveformName(const AudioPreviewState& audio) {
     switch (audio.waveform.state) {
@@ -78,6 +90,14 @@ double Number(const nlohmann::json& arguments, const char* key) {
     if (found == arguments.end() || !found->is_number() || !std::isfinite(found->get<double>()))
         throw std::runtime_error(std::format("\"{}\" must be a number", key));
     return found->get<double>();
+}
+// A whole number of steps from an argument, checked; used by step --sim, seek --step and frames --steps.
+std::uint64_t StepNumber(const nlohmann::json& arguments, const char* key, double minimum) {
+    const double value = Number(arguments, key);
+    if (value < minimum || value > MaxSeekSteps || std::trunc(value) != value)
+        throw std::runtime_error(
+            std::format("\"{}\" must be a whole number from {} to {}", key, minimum, MaxSeekSteps));
+    return static_cast<std::uint64_t>(value);
 }
 const SceneDefinition& Selected(const EditorSnapshot& snapshot) {
     if (!snapshot.selected) throw std::runtime_error("No scene is selected; open one first");
@@ -305,6 +325,14 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
     }
     case EditorControlCommand::Step: {
         RequireReady(snapshot);
+        if (arguments.value("sim", false)) {
+            RequireSimulation(controller);
+            const std::uint64_t steps = arguments.contains("frames") ? StepNumber(arguments, "frames", 1.0) : 1;
+            controller.SeekStep(steps, true);
+            controller.Notify(std::format("Step {} simulation step(s)", steps));
+            AwaitWorker(controller, StepWait(controller, steps), StatusOf);
+            return std::nullopt;
+        }
         const double frames = arguments.contains("frames") ? Number(arguments, "frames") : 1.0;
         if (frames < 1.0 || frames > MaxSteps || std::trunc(frames) != frames)
             throw std::runtime_error(std::format("\"frames\" must be a whole number from 1 to {}", MaxSteps));
@@ -337,6 +365,15 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
     }
     case EditorControlCommand::Seek: {
         RequireReady(snapshot);
+        if (arguments.contains("step")) {
+            RequireSimulation(controller);
+            const auto step = StepNumber(arguments, "step", 0.0);
+            controller.SeekStep(step);
+            controller.Notify(std::format("Seek step {}", step));
+            const auto travel = std::max(step, controller.SimulationState().at("step").get<std::uint64_t>());
+            AwaitWorker(controller, StepWait(controller, travel), StatusOf);
+            return std::nullopt;
+        }
         const double seconds = Number(arguments, "seconds");
         if (seconds < 0.0 || seconds > MaxSeekSeconds)
             throw std::runtime_error(std::format("\"seconds\" must be between 0 and {}", MaxSeekSeconds));
@@ -347,6 +384,20 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
                     WorkerTimeout + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                                         std::chrono::duration<double>(travel * SeekWaitPerSecond)),
                     StatusOf);
+        return std::nullopt;
+    }
+    case EditorControlCommand::Replay: {
+        RequireReady(snapshot);
+        RequireSimulation(controller);
+        const auto action = Text(arguments, "action");
+        if (action != "load" && action != "save") throw std::runtime_error("\"action\" must be load or save");
+        controller.Replay(action, Text(arguments, "path"));
+        controller.Notify(action == "load" ? "Replay loaded" : "Replay saved");
+        AwaitWorker(controller, WorkerTimeout, [](EditorController& session) {
+            auto status = StatusOf(session);
+            if (status.contains("error")) throw std::runtime_error(status.at("error").get<std::string>());
+            return status;
+        });
         return std::nullopt;
     }
     case EditorControlCommand::Screenshot: {
@@ -553,8 +604,11 @@ void EditorControlService::WindowShot(const nlohmann::json& arguments) {
 void EditorControlService::Frames(const nlohmann::json& arguments, EditorController& controller) {
     const auto snapshot = controller.Snapshot();
     const double from = Number(arguments, "from"), to = Number(arguments, "to");
-    if (from < 0.0 || to <= from || to > MaxSeekSeconds)
-        throw std::runtime_error(std::format("Need 0 <= from < to <= {}", MaxSeekSeconds));
+    const bool steps = arguments.value("steps", false);
+    if (steps) RequireSimulation(controller);
+    const double limit = steps ? MaxSeekSteps : MaxSeekSeconds;
+    if (from < 0.0 || to <= from || to > limit)
+        throw std::runtime_error(std::format("Need 0 <= from < to <= {}", limit));
     const int count = arguments.value("count", DefaultGridFrames);
     if (count < 2 || count > FrameGridMaxFrames)
         throw std::runtime_error(std::format("\"count\" must be from 2 to {}", FrameGridMaxFrames));
@@ -575,17 +629,26 @@ void EditorControlService::Frames(const nlohmann::json& arguments, EditorControl
     };
     auto run = std::make_shared<Run>();
     for (int i = 0; i < count; ++i)
-        run->times.push_back(from + (to - from) * i / (count - 1));
-    const auto shoot = [run](EditorController& session) {
-        session.Seek(run->times[run->tiles.size()]);
+        run->times.push_back(steps ? std::round(from + (to - from) * i / (count - 1))
+                                   : from + (to - from) * i / (count - 1));
+    const auto shoot = [run, steps](EditorController& session) {
+        const double target = run->times[run->tiles.size()];
+        if (steps)
+            session.SeekStep(static_cast<std::uint64_t>(target));
+        else
+            session.Seek(target);
         run->request = session.Sync();
     };
     shoot(controller);
-    controller.Notify(std::format("Frames {:.2f}-{:.2f} s ({})", from, to, count));
-    const auto timeout = WorkerTimeout + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                             std::chrono::duration<double>(count * 2.0 + to * SeekWaitPerSecond));
+    controller.Notify(steps ? std::format("Frames steps {:.0f}-{:.0f} ({})", from, to, count)
+                            : std::format("Frames {:.2f}-{:.2f} s ({})", from, to, count));
+    const double travelSeconds = steps ? to / controller.SimulationState().at("stepsPerSecond").get<int>() : to;
+    const auto timeout =
+        WorkerTimeout + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                            std::chrono::duration<double>(count * 2.0 + travelSeconds * SeekWaitPerSecond));
     Await("the frames", timeout,
-          [this, run, shoot, options, columns, arguments](EditorController& session) -> std::optional<nlohmann::json> {
+          [this, run, shoot, options, columns, arguments,
+           steps](EditorController& session) -> std::optional<nlohmann::json> {
               const auto current = session.Snapshot();
               if (!current.ready) throw std::runtime_error("The scene stopped: " + current.status);
               const auto& sync = session.LastSync();
@@ -593,7 +656,8 @@ void EditorControlService::Frames(const nlohmann::json& arguments, EditorControl
               const auto frame = session.LatestFrame();
               if (!frame) throw std::runtime_error("No frame to capture");
               run->tiles.push_back(CaptureFrame(*frame, current.canvas, options));
-              run->labels.push_back(std::format("{:.2f}s", sync.seconds));
+              run->labels.push_back(steps ? std::format("step {:.0f}", run->times[run->tiles.size() - 1])
+                                          : std::format("{:.2f}s", sync.seconds));
               if (run->tiles.size() < run->times.size()) {
                   shoot(session);
                   return std::nullopt;

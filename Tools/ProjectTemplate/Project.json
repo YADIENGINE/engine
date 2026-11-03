@@ -17,6 +17,12 @@
     "buildPreset": "tests-debug",
     "testPreset": "tests-debug"
   },
+  "simulation": {
+    "buildDirectory": "build/simulation",
+    "configurePreset": "simulation",
+    "buildPresets": { "Debug": "simulation-debug", "Release": "simulation-release" },
+    "sources": "Game/Simulation"
+  },
   "editor": {
     "buildDirectory": "build/editor",
     "cacheVariables": {

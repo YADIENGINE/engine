@@ -8,7 +8,7 @@ if(ENGINE_BUILD_EDITOR)
 endif()
 
 add_library(EngineEditorApi STATIC Api/EditorScene.cpp Api/SceneParameter.cpp Api/SceneRegistry.cpp
-    Api/SceneAutoRegistration.cpp Api/GraphicAsset.cpp)
+    Api/SceneAutoRegistration.cpp Api/GraphicAsset.cpp Api/SimulationHost.cpp)
 # Editör include'ları engine köküne göredir (#include "Editor/Api/..."); Core'unkiler Core'a göre.
 target_include_directories(EngineEditorApi PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_link_libraries(EngineEditorApi PUBLIC EngineHeadless)
@@ -28,6 +28,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/EditorProject.cpp
     Internals/Session/RefreshState.cpp
     Internals/Session/TuningWorkspace.cpp
+    Internals/Session/WorkerSimulation.cpp
     Internals/Session/WorkerSnapshots.cpp
     Internals/Session/ProfilerSession.cpp
     Internals/Session/BenchmarkState.cpp

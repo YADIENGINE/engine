@@ -7,6 +7,7 @@
 #include "AgentDocs/Recipes/Code/PopupEffects.h"
 #include "AgentDocs/Recipes/Code/SaveProgress.h"
 #include "AgentDocs/Recipes/Code/SceneTransition.h"
+#include "AgentDocs/Recipes/Code/SimulationPlay.h"
 #include "AgentDocs/Recipes/Code/SpriteLayer.h"
 #include "AgentDocs/Recipes/Code/TextLayout.h"
 #include "AgentDocs/Recipes/Code/ThemedMenu.h"
@@ -16,6 +17,8 @@
 #include "Input/Input.h"
 #include "Modules/Persistence/Persistence.h"
 #include "Options/GameOptions.h"
+#include "Simulation/ReplayCheck.h"
+#include "Simulation/StateHash.h"
 #include "Tests/PaintHarness.h"
 #include "Tests/Support/TempDirectory.h"
 
@@ -29,6 +32,31 @@ TEST_CASE("Engine.Recipes.MenuNavigatesAndConfirms", "[engine][recipes]") {
     confirm.keysPressed[static_cast<std::size_t>(InputKey::Enter)] = true;
     CHECK(menu.Navigate(confirm));
     menu.Update(0.1f);
+}
+
+TEST_CASE("Engine.Recipes.SimulationPlaysInASceneAndWithoutOne", "[engine][recipes]") {
+    TimeScale time;
+    RecipePlayScene scene(time, 1);
+    scene.Activate();
+    DeviceInput right;
+    right.keysDown[static_cast<std::size_t>(InputKey::D)] = true;
+    for (int frame = 0; frame < 60; ++frame) {
+        scene.ReadInput(right);
+        scene.Tick(time.Advance(1.0f / 60.0f));
+    }
+    CHECK(scene.Runner().StepIndex() == 60);
+    CHECK(scene.Sim().ShipX(1.0f) > 230.0f);
+
+    const auto definition = RecipePlayDefinition();
+    const auto replay = VerifyTape(definition, scene.Runner().Tape());
+    CHECK_FALSE(replay.mismatch);
+    CHECK(replay.hash == HashState(scene.Sim()));
+}
+
+TEST_CASE("Engine.Recipes.SimulationSceneRunsOutsideTheEditor", "[engine][recipes]") {
+    const auto definition = RecipePlaySceneDefinition();
+    CHECK(definition.actions.front().id == "add_score");
+    CHECK(definition.parameters.front().id == "seed");
 }
 
 TEST_CASE("Engine.Recipes.SavedProgressSurvivesReopening", "[engine][recipes]") {

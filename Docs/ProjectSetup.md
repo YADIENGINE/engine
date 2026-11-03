@@ -8,7 +8,8 @@ MyProject/                  (game repo)
   Engine/                   ← submodule: engine repo
     Core/  Editor/  Docs/  Tools/  ThirdParty/  __main__.py  ...
   Game/                     game sources + Assets/ (.cpp files found automatically) + Distribution/ (notices sent
-                            to players: GameNotices.txt, credits; see Release.md)
+                            to players: GameNotices.txt, credits; see Release.md) + Simulation/ (optional: rules that
+                            run without a window, see Simulation.md)
   Editor/                   project worker process (EngineEditor scenes; .cpp files found automatically)
   CMakeLists.txt  CMakePresets.json
   Project.json              project settings read by engine tools
@@ -109,6 +110,7 @@ from `name`.
 | `game.buildDirectory` | `build`, `run` | must match the configure preset's `binaryDir` |
 | `release` | `release` | `directory/name/` (default `Release/<name>/`) and adjacent ZIP: executable + `Assets` + generated `ThirdPartyNotices.txt` + `files`; [Release](Release.md) |
 | `tests` | `test` | test presets; result `buildDirectory/reports/<run-id>/results.json` |
+| `simulation` | `sim` | `buildDirectory`, `configurePreset`, `buildPresets` (Debug, Release), `sources` (default `Game/Simulation`), `target` (default `<name>SimulationTool`). A project from an older template adds this section, the `simulation` presets and the `engine_add_simulation` block of `Tools/ProjectTemplate/` by hand ([Simulation](Simulation.md#tools)) |
 | `editor.worker` | `editor` | `engine_add_editor_worker` target (default `<name>EditorWorker`) |
 | `editor.cacheVariables` | `editor` | project options added to the editor build (such as disabling the game and enabling the worker) |
 | `hooks` | `release` | optional Python file (below) |

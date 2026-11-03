@@ -118,6 +118,31 @@ function(engine_copy_assets target assets)
     endforeach()
 endfunction()
 
+# Simulation code is always built with precise floats, so that a project flag cannot change its results silently.
+# Measured: /fp:fast makes Debug and Release disagree, because Release switches to vector math (Docs/Simulation.md).
+function(engine_simulation_flags target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /fp:precise)
+    endif()
+endfunction()
+
+# engine_add_simulation(<target> SOURCES <files...> [LIBRARIES <libraries...>]): a project's simulations. <target> is a
+# static library for the game, the worker and tests; <target>Tool is the console tool behind `<engine> sim`, without a
+# window. The sources implement RegisterSimulations (Simulation/SimulationRegistry.h).
+function(engine_add_simulation target)
+    cmake_parse_arguments(SIMULATION "" "" "SOURCES;LIBRARIES" ${ARGN})
+    add_library(${target} STATIC ${SIMULATION_SOURCES})
+    target_link_libraries(${target} PUBLIC EngineSimulation EngineTuning ${SIMULATION_LIBRARIES})
+    set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
+    engine_simulation_flags(${target})
+    engine_warnings(${target})
+    add_executable(${target}Tool "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Simulation/Internals/SimulationTool.cpp")
+    target_link_libraries(${target}Tool PRIVATE ${target})
+    set_target_properties(${target}Tool PROPERTIES CXX_EXTENSIONS OFF
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>")
+    engine_warnings(${target}Tool)
+endfunction()
+
 # A project supplies CreateGame, its source list, and an optional asset directory.
 # With no sources (a fresh project) the engine's starter game stands in until the first source is added.
 function(engine_add_game target)

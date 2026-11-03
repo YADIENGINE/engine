@@ -9,7 +9,7 @@ only the changed section.
 1. Catalog retrieval must work without creating GL/fonts/audio during registration.
 2. The factory must receive the complete initial recipe; invalid values must be rejected atomically.
 3. Immediate / NextAction / OnReset, rejection, Default, and capture must appear correctly in Inspector.
-4. Pause must freeze decorative time and Update; Step must be 1/60 s, Reset clock 0.
+4. Pause must freeze decorative time and Update; Step must be 1/60 s (one step in a scene with a simulation), Reset clock 0.
 5. Reset/Stop/reopening must release resources before the old context closes.
 6. Player settings/progress/telemetry files belonging to another project must not change.
 

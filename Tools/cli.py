@@ -22,6 +22,8 @@ from .commands.new import new
 from .commands.prebuilt import prebuilt
 from .commands.refresh import refresh
 from .commands.release import package
+from .commands.sim import add_parser as add_sim_parser
+from .commands.sim import sim
 from .commands.test import run_tests
 from .errors import EXIT_FAILED, EXIT_OK, ToolError
 from .include_boundaries import violations
@@ -75,6 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_ctl_parser(commands)
     add_asset_parser(commands)
     add_audio_parser(commands)
+    add_sim_parser(commands)
 
     command = commands.add_parser("new", help="set up the folder above Engine/ as a new project")
     command.add_argument("--name", help="project name (asked when omitted)")
@@ -127,6 +130,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return asset(Project(root), args)
         case "audio":
             return audio(Project(root), args)
+        case "sim":
+            return sim(Project(root), args)
         case "new":
             return new(ENGINE_ROOT, args.project.resolve() if args.project else ENGINE_ROOT.parent, args.name,
                        args.dry_run)

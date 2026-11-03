@@ -7,6 +7,10 @@
 
 Sadece engine'in include köklerine göre çözülen ve engine'de var olan `#include "..."` yolları denetlenir; projenin
 kendi `Internals/` klasörleri bu denetimin konusu değildir. Komut: `python Engine check` (CTest `Engine.IncludeBoundaries`).
+
+Simulation code (the engine's `Core/Simulation` and a project's simulation folder) also stays away from everything that
+would make a replay differ or tie it to a window: drawing, audio, scenes, the runtime, clocks and standard random
+numbers. The build enforces the same at link time; this names the mistake earlier (Docs/Simulation.md).
 """
 
 import re
@@ -18,6 +22,11 @@ CORE = "Core"  # Oyuna giren engine kodu; include kökü
 SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".inl"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
 CONSUMER_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]')
+SIMULATION_FORBIDDEN = re.compile(
+    r'''^\s*#\s*include\s*(?:"(?:Graphics|Audio|Fx|Scene|Runtime|GameObjects|Input|Menus|Options|Platform|Editor'''
+    r'''|Terminal|ToolUi)/[^"]*"'''
+    r'''|[<"](?:[^>"/]*/)*(?:raylib|raymath|rlgl)\.h[>"]|<(?:random|chrono|ctime|time\.h|thread|future|mutex)>)''')
+PROJECT_SIMULATION_FOLDER = "Game/Simulation"
 PLATFORM_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:[^>"/]*/)*(raylib|raymath|rlgl)\.h[>"]')
 
 
@@ -54,8 +63,14 @@ def _owner(include: str, engine_root: Path) -> tuple[Path, str] | None:
     return engine_root, "Engine"
 
 
+def _simulation_folders(project_root: Path, engine_root: Path) -> list[Path]:
+    project = project_root / PROJECT_SIMULATION_FOLDER
+    return [engine_root / CORE / "Simulation", engine_root / CORE / "Tests" / "Simulation", project]
+
+
 def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]:
     project_root, engine_root = project_root.resolve(), engine_root.resolve()
+    simulation = _simulation_folders(project_root, engine_root)
     found = []
     for source in _sources(project_root, engine_root):
         try:
@@ -63,7 +78,11 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
         except OSError:
             continue
         recipe = source.is_relative_to(engine_root / "AgentDocs" / "Recipes" / "Code")
+        rules = any(source.is_relative_to(folder) for folder in simulation)
         for number, line in enumerate(lines, 1):
+            if rules and SIMULATION_FORBIDDEN.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: simulation code includes "{line.strip()}"; see Docs/Simulation.md')
             if recipe and PLATFORM_INCLUDE.match(line):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: recipe includes a platform-only header')

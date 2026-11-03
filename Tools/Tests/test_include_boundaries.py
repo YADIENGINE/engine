@@ -34,6 +34,21 @@ class BoundaryTests(unittest.TestCase):
         self.write("Game/Scene.cpp", '#include "Input/Input.h"\n#include "Tracking/Internals/State.h"\n')
         self.assertEqual(self.check(), [])
 
+    def test_simulation_stays_away_from_drawing_clocks_and_standard_random(self):
+        self.write("Game/Simulation/Rules.cpp", '#include "Simulation/Simulation.h"\n#include "Utilities/Rng.h"\n'
+                   '#include "Tuning/Tuning.h"\n#include "Simulation/Rules.h"\n#include <vector>\n')
+        self.assertEqual(self.check(), [])
+        for include in ('"Graphics/Paint/Painter.h"', '"Audio/AudioSystem.h"', '"Fx/TimeScale.h"', "<random>", "<chrono>",
+                        "<raylib.h>", '"Scene/Scene.h"'):
+            with self.subTest(include=include):
+                self.write("Game/Simulation/Rules.cpp", f"#include {include}\n")
+                found = self.check()
+                self.assertEqual(len(found), 1)
+                self.assertIn("simulation code", found[0])
+        self.write("Game/Simulation/Rules.cpp", "#pragma once\n")
+        self.write("Game/Views/PlayerView.cpp", '#include "Graphics/Paint/Painter.h"\n#include <random>\n')
+        self.assertEqual(self.check(), [])
+
     def test_game_may_not_use_engine_internals(self):
         self.write("Game/Scene.cpp", '#include "Input/Input.h"\n#include "Input/Internals/Reader.h"\n')
         self.write("tests/SaveTests.cpp", '  #  include "Modules/Saves/Internals/State.h"\n')

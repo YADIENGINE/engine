@@ -73,6 +73,43 @@ target_compile_features(EngineLocalization PUBLIC cxx_std_20)
 set_target_properties(EngineLocalization PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_warnings(EngineLocalization)
 
+# Tuning values are read live from files in development builds and are constexpr in Release configurations (Docs/Tuning.md).
+# Low-level so that a simulation can read them without reaching drawing or audio.
+add_library(EngineTuning STATIC
+    Tuning/Internals/TuningJson.cpp
+    Tuning/TuningFile.cpp
+    Tuning/TuningLive.cpp
+)
+target_include_directories(EngineTuning PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(EngineTuning PUBLIC cxx_std_20)
+target_compile_definitions(EngineTuning PUBLIC ENGINE_TUNING_LIVE=$<IF:$<CONFIG:Release,MinSizeRel,RelWithDebInfo>,0,1>)
+target_link_libraries(EngineTuning PRIVATE EngineStorage)
+set_target_properties(EngineTuning PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_warnings(EngineTuning)
+
+# Fixed-step simulation, tapes, hashes and scenarios (Docs/Simulation.md). It links nothing that draws or plays sound, so
+# simulation code that reaches them fails to build.
+add_library(EngineSimulation STATIC
+    Simulation/InputTape.cpp
+    Simulation/ReplayCheck.cpp
+    Simulation/Scenario.cpp
+    Simulation/ScenarioScript.cpp
+    Simulation/Simulation.cpp
+    Simulation/SimulationRegistry.cpp
+    Simulation/SimulationRunner.cpp
+    Simulation/SimulationSettings.cpp
+    Simulation/StateDump.cpp
+    Simulation/StateHash.cpp
+    Simulation/StateVisitor.cpp
+)
+target_include_directories(EngineSimulation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(EngineSimulation PUBLIC cxx_std_20)
+target_compile_definitions(EngineSimulation PRIVATE ENGINE_VERSION="${engineVersion}")
+target_link_libraries(EngineSimulation PUBLIC EngineJsonIO)
+set_target_properties(EngineSimulation PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_simulation_flags(EngineSimulation)
+engine_warnings(EngineSimulation)
+
 add_library(EngineHeadless STATIC
     Audio/Internals/AudioVolumePolicy.cpp
     Audio/Internals/Validation.cpp
@@ -125,6 +162,7 @@ add_library(EngineHeadless STATIC
     Graphics/Text/Internals/TextLayoutCache.cpp
     Input/Internals/CollectionPointer.cpp
     Input/Internals/DragPointer.cpp
+    Input/Internals/InputBindings.cpp
     Input/Internals/InputNavigation.cpp
     Input/Internals/InputNormalizer.cpp
     Input/Internals/InputSample.cpp
@@ -136,9 +174,6 @@ add_library(EngineHeadless STATIC
     Runtime/Internals/StartupTimer.cpp
     Scene/Internals/SceneManager.cpp
     Scene/Scene.cpp
-    Tuning/Internals/TuningJson.cpp
-    Tuning/TuningFile.cpp
-    Tuning/TuningLive.cpp
     Utilities/DevelopmentChecks.cpp
     Utilities/UiTransform.cpp
     Utilities/Utf8.cpp
@@ -146,10 +181,8 @@ add_library(EngineHeadless STATIC
 target_include_directories(EngineHeadless PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineHeadless PUBLIC cxx_std_20)
 set_target_properties(EngineHeadless PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
-# Tuning values are read live from files in development builds and are constexpr in Release configurations (Docs/Tuning.md).
-target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}"
-    ENGINE_TUNING_LIVE=$<IF:$<CONFIG:Release,MinSizeRel,RelWithDebInfo>,0,1>)
-target_link_libraries(EngineHeadless PUBLIC EnginePersistence PRIVATE EngineStorage)
+target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}")
+target_link_libraries(EngineHeadless PUBLIC EnginePersistence EngineSimulation EngineTuning PRIVATE EngineStorage)
 # Glyph rasterization compiles a private copy of stb_truetype from raylib's bundled headers (header only, no raylib).
 set_source_files_properties(Graphics/Text/Internals/FontData.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${ENGINE_THIRD_PARTY_DIR}/raylib/src/external")
@@ -219,6 +252,10 @@ endif()
 set_target_properties(EngineSteam PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_warnings(EngineSteam)
 
+# The engine's own small simulation: its tests, and `python . sim` in this repository.
+if(ENGINE_BUILD_TESTS OR ENGINE_BUILD_TOY_SIMULATION)
+    engine_add_simulation(EngineToySimulation SOURCES Tests/Simulation/ToySimulation.cpp)
+endif()
 if(ENGINE_BUILD_TESTS)
     add_subdirectory(Tests)
 endif()

@@ -23,6 +23,16 @@ Use these generated signatures to locate public declarations; open the header fo
 - `GraphicAsset`: `std::string usage` — The line "Copy usage" copies; `{item}` becomes the item's name.
 - `bool RegisterGraphicAsset(GraphicAsset(* make)(), std::source_location where = std::source_location::current())` — Stores the maker only; it runs when the worker builds its catalog.
 
+## `Editor/Api/HostedSimulation.h`
+
+- `template<class T> class HostedSimulation` — An editor scene's simulation and runner, known to the editor: keep one as a member, built from SceneServices::simulation.
+- `HostedSimulation`: `HostedSimulation(SimulationHost* host, const SimulationSettings& settings, SimulationStart fallback)`
+- `HostedSimulation`: `[[nodiscard]] T& Sim()`
+- `HostedSimulation`: `[[nodiscard]] const T& Sim() const`
+- `HostedSimulation`: `[[nodiscard]] SimulationRunner& Runner()`
+- `HostedSimulation`: `[[nodiscard]] const SimulationRunner& Runner() const`
+- `HostedSimulation`: `[[nodiscard]] const SimulationStart& Start() const`
+
 ## `Editor/Api/SceneAutoRegistration.h`
 
 - `bool RegisterEditorScene(SceneDefinition(* make)())` — Store metadata makers only; definitions are made when RunEditorWorker builds its catalog.
@@ -138,6 +148,14 @@ Use these generated signatures to locate public declarations; open the header fo
 - `SceneServices`: `const FontFace* font = nullptr` — The game's font (Painter::Font()); null when the game has none.
 - `SceneServices`: `std::function<std::string(const std::string&, const SceneParameters&)> applicationCommand`
 - `SceneServices`: `Profiler* profiler = nullptr`
+- `SceneServices`: `SimulationHost* simulation = nullptr` — Use it through HostedSimulation; null outside the editor
+
+## `Editor/Api/SimulationHost.h`
+
+- `class SimulationHost` — The editor's side of a scene that hosts a simulation: it keeps the tape across resets, so `ctl seek`, `ctl replay` and the toolbar work in exact steps.
+- `SimulationHost`: `[[nodiscard]] virtual SimulationStart StartFor(const SimulationSettings& settings, SimulationStart fallback) = 0` — What to start the scene's simulation from: a loaded replay's start, otherwise 'fallback'.
+- `SimulationHost`: `virtual void Attach(SimulationRunner& runner) = 0` — A runner borrowed until Detach.
+- `SimulationHost`: `virtual void Detach(SimulationRunner& runner) = 0`
 
 ## `Editor/Worker/WorkerHost.h`
 

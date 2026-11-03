@@ -59,12 +59,18 @@ def add_parser(commands) -> None:
     actions.add_parser("action", help="run an action of the open scene").add_argument("id")
     actions.add_parser("pause", help="pause playback")
     actions.add_parser("play", help="resume playback")
-    action = actions.add_parser("step", help="pause and advance 1/60 s per frame")
+    action = actions.add_parser("step", help="pause and advance 1/60 s per frame, or whole simulation steps with --sim")
     action.add_argument("frames", nargs="?", type=int, default=1)
+    action.add_argument("--sim", action="store_true", help="count simulation steps (scenes with a simulation)")
     actions.add_parser("speed", help="playback speed (0.1-4)").add_argument("speed", type=float)
     actions.add_parser("reset", help="restart the open scene with its parameters")
-    action = actions.add_parser("seek", help="pause at a playback time in seconds (replays from 0 to go back)")
-    action.add_argument("seconds", type=float)
+    action = actions.add_parser("seek", help="pause at a playback time in seconds, or at a simulation step with --step "
+                                "(replays from 0 to go back)")
+    action.add_argument("seconds", type=float, nargs="?")
+    action.add_argument("--step", type=int, metavar="N", help="the simulation step to pause at")
+    replay = actions.add_parser("replay", help="load or save the open simulation's replay")
+    replay.add_argument("replay_action", choices=("load", "save"), metavar="load|save")
+    replay.add_argument("file", metavar="FILE")
     action = actions.add_parser("screenshot", help="write the current frame as PNG and print its path")
     action.add_argument("--window", action="store_true", help="the whole editor window (crop in window pixels)")
     action.add_argument("--out", help="PNG path (default: the build folder's editor-captures/)")
@@ -73,6 +79,7 @@ def add_parser(commands) -> None:
     action = actions.add_parser("frames", help="one PNG grid of frames at evenly spaced playback times")
     action.add_argument("--from", dest="start", type=float, required=True, metavar="SECONDS")
     action.add_argument("--to", dest="end", type=float, required=True, metavar="SECONDS")
+    action.add_argument("--steps", action="store_true", help="--from and --to are simulation steps")
     action.add_argument("--count", type=int, default=9, help="frames (2-16, default 9)")
     action.add_argument("--columns", type=int, help="tiles per row (default: about square)")
     action.add_argument("--out", help="PNG path (default: the build folder's editor-captures/)")
@@ -277,12 +284,23 @@ def request_of(args: argparse.Namespace) -> dict:
             request["values"] = parse_values(args.values)
         case "step":
             request["frames"] = args.frames
+            if args.sim:
+                request["sim"] = True
         case "speed":
             request["speed"] = args.speed
         case "seek":
-            request["seconds"] = args.seconds
+            if (args.seconds is None) == (args.step is None):
+                raise ToolError("seek needs SECONDS or --step N")
+            if args.step is not None:
+                request["step"] = args.step
+            else:
+                request["seconds"] = args.seconds
+        case "replay":
+            request.update(action=args.replay_action, path=str(Path(args.file).resolve()))
         case "frames":
             request.update({"from": args.start, "to": args.end, "count": args.count})
+            if args.steps:
+                request["steps"] = True
             if args.columns is not None:
                 request["columns"] = args.columns
             if args.out:

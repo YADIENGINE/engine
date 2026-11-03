@@ -35,8 +35,9 @@ recipe. A setter returning a rejection explanation must not change current conte
 ## Clock, input, and real game flow
 
 Decorative time is `paint.Time()`; state advances with Update dt. Do not wire scene time into Views manually; the host
-applies Pause, Step, and speed. Arbitrary-time scrubbing is unsupported; use Reset + Step for stateful scenes. Product
-input arrives when the View area is focused; do not reread Inspector focus or OS input.
+applies Pause, Step, and speed. Product input arrives when the View area is focused; do not reread Inspector focus or OS
+input. A scene hosting a [simulation](../Simulation.md#in-the-editor) keeps it in a `HostedSimulation`, so seek and replay
+work in exact steps.
 
 RunEditorWorker can take a custom Game factory for a scene running the real game. `WorkerSession` carries control,
 lifecycle, and frame transfer; game scenes stay in the same Game::Run loop. Transient profiles, save isolation, and test
