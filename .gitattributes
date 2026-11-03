@@ -20,3 +20,4 @@
 /ThirdParty/Catch2/** -text
 /ThirdParty/NotoSans/** -text
 /ThirdParty/libvterm/** -text
+/ThirdParty/Box2D/** -text

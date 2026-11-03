@@ -60,6 +60,9 @@ set(JSON_Install OFF CACHE BOOL "" FORCE)
 set(JSON_SystemInclude ON CACHE BOOL "" FORCE)
 add_subdirectory(ThirdParty/nlohmann_json)
 
+# Box2D's library target. As a subproject it leaves its samples, tests and documentation out; nothing builds until linked.
+add_subdirectory(ThirdParty/Box2D EXCLUDE_FROM_ALL)
+
 if(ENGINE_BUILD_RUNTIME)
     set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(BUILD_GAMES OFF CACHE BOOL "" FORCE)

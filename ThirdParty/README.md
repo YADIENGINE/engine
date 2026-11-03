@@ -13,13 +13,14 @@ building (examples, documentation, tests) are omitted.
 | `rlImGui/` | 118221c | https://github.com/raylib-extras/rlImGui/archive/118221c8a532501a3c2c236b62950877cbefc2b4.tar.gz | Editor | No |
 | `Catch2/` | 3.16.0 | https://github.com/catchorg/Catch2/archive/refs/tags/v3.16.0.tar.gz | Tests (`engine_use_catch2()`) | No |
 | `libvterm/` | 0.3.3 | https://www.leonerd.org.uk/code/libvterm/libvterm-0.3.3.tar.gz | Tools console (`EngineTerminal`) | No |
+| `Box2D/` | 3.2.0 | https://github.com/erincatto/box2d/archive/refs/tags/v3.2.0.tar.gz | Nothing yet: planned physics API | Not until linked |
 | `NotoSans/` | 2.008 | https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSans | Painter starter game/worker font (OFL 1.1) | Starter only |
 | `IBMPlex/` | Sans 3.005, Mono 2.004 | https://github.com/IBM/plex/releases (`@ibm/plex-sans@1.1.0`, `@ibm/plex-mono@1.1.0`) | ToolUi fonts (OFL 1.1) | No |
 
 Included parts: raylib `CMakeLists.txt`, `CMakeOptions.txt`, `cmake/`, `src/`, `raylib.pc.in`, license; the full
 nlohmann_json release package; imgui root `.cpp` / `.h` and license; rlImGui root sources, `extras/`, and license;
 Catch2 `CMakeLists.txt`, `CMake/`, `src/`, `extras/`, and license; libvterm `include/`, `src/` (generated `.inc` tables
-come ready in the release package), and `LICENSE`.
+come ready in the release package), and `LICENSE`; the whole Box2D source tree, of which only `src/` and `include/` build.
 
 ## License notice
 
