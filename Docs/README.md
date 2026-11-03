@@ -33,6 +33,7 @@ it and [Editor automation](Editor/Automation.md) lists what it can do. Agent mat
 | Particles, cameras, transitions, and overlays | [Effects](Graphics/Effects.md) |
 | Values adjusted without building (`*.tuning.json`) | [Tuning](Tuning.md) |
 | Gameplay in fixed steps, replay, scenario tests without a window | [Simulation](Simulation.md) |
+| Overlaps, rays, fast bullets, finding what is in an area | [Collision](Collision.md) |
 | General JSON run archive | [RunTracking](Modules/RunTracking/README.md) |
 | Offline audio generation with Python | [Audio generation](AudioGeneration.md) |
 | Release package, license/credits notices | [Release](Release.md) |

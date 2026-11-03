@@ -10,6 +10,16 @@
       "license": "nlohmann_json/LICENSE.MIT"
     },
     {
+      "name": "Box2D",
+      "version": "3.2.0",
+      "text": "Notices/box2d.txt",
+      "pin": {
+        "file": "Box2D/CMakeLists.txt",
+        "contains": "VERSION {version}"
+      },
+      "license": "Box2D/LICENSE"
+    },
+    {
       "name": "Monocypher",
       "version": "4.0.3",
       "text": "Notices/monocypher.txt",

@@ -30,6 +30,7 @@ endfunction()
 engine_tests(EngineTests
     SOURCES
         AudioTests.cpp
+        ColliderDrawTests.cpp
         CollectionPointerTests.cpp
         DragPointerTests.cpp
         FrameworkTests.cpp
@@ -63,10 +64,20 @@ target_compile_definitions(EngineTests PRIVATE
     ENGINE_TUNING_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/Tests/TuningCases"
     ENGINE_TEST_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf")
 
+# Links only the physics target, so collision code that reaches drawing or audio fails to build here.
+engine_tests(EnginePhysicsTests
+    SOURCES
+        Physics/CollisionTests.cpp
+        Physics/CollisionWorldTests.cpp
+        Physics/ShapeTests.cpp
+    LINKS EnginePhysics
+)
+
 # Links only the simulation target, so a simulation that reaches drawing or audio fails to build here. The toy simulation
 # also goes through the console tool, end to end.
 engine_tests(EngineSimulationTests
     SOURCES
+        Simulation/CollisionReplayTests.cpp
         Simulation/ReplayCheckTests.cpp
         Simulation/RngTests.cpp
         Simulation/RunnerTests.cpp
@@ -78,7 +89,9 @@ target_compile_definitions(EngineSimulationTests PRIVATE ENGINE_VERSION_FOR_TEST
 add_dependencies(EngineTestSuite EngineToySimulationTool)
 add_test(NAME Engine.SimulationTool
     COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyScenario.json")
-set_tests_properties(Engine.SimulationTool PROPERTIES LABELS engine TIMEOUT 30)
+add_test(NAME Engine.SimulationToolCollision
+    COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyCollisionScenario.json")
+set_tests_properties(Engine.SimulationTool Engine.SimulationToolCollision PROPERTIES LABELS engine TIMEOUT 30)
 
 # Compile all consumer examples, including runtime-only factories. The static archive lets the headless smoke
 # executable exercise public logic/drawing without pulling the runtime factory or opening a platform window.
@@ -87,6 +100,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/AnimatedCharacter.cpp"
     "${recipeRoot}/CharacterObject.cpp"
     "${recipeRoot}/CharacterScene.cpp"
+    "${recipeRoot}/CollisionBullets.cpp"
     "${recipeRoot}/FxBurst.cpp"
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"

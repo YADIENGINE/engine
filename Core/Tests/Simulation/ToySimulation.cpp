@@ -83,4 +83,3 @@ SimulationDefinition ToyDefinition() {
     definition.create = [](const SimulationStart& start) { return std::make_unique<ToySimulation>(start); };
     return definition;
 }
-void RegisterSimulations(SimulationRegistry& registry) { registry.Add(ToyDefinition()); }

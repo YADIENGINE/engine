@@ -110,6 +110,22 @@ set_target_properties(EngineSimulation PROPERTIES POSITION_INDEPENDENT_CODE ON C
 engine_simulation_flags(EngineSimulation)
 engine_warnings(EngineSimulation)
 
+# Collision queries over Box2D (Docs/Collision.md). Box2D stays private: its names reach no public header. Built with
+# precise floats like simulation code, because simulations call it.
+add_library(EnginePhysics STATIC
+    Physics/Collision/Collision.cpp
+    Physics/Collision/CollisionWorld.cpp
+    Physics/Collision/Shape.cpp
+    Physics/Internals/Box2dBridge.cpp
+)
+target_include_directories(EnginePhysics PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(EnginePhysics PUBLIC cxx_std_20)
+target_link_libraries(EnginePhysics PUBLIC EngineSimulation PRIVATE box2d)
+set_target_properties(EnginePhysics PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_simulation_flags(EnginePhysics)
+engine_simulation_flags(box2d)
+engine_warnings(EnginePhysics)
+
 add_library(EngineHeadless STATIC
     Audio/Internals/AudioVolumePolicy.cpp
     Audio/Internals/Validation.cpp
@@ -166,6 +182,7 @@ add_library(EngineHeadless STATIC
     Input/Internals/InputNavigation.cpp
     Input/Internals/InputNormalizer.cpp
     Input/Internals/InputSample.cpp
+    Physics/Debug/ColliderDraw.cpp
     Input/Internals/PrimaryContact.cpp
     Menus/HeaderGridNavigation.cpp
     Menus/GridMenuSelection.cpp
@@ -182,7 +199,8 @@ target_include_directories(EngineHeadless PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineHeadless PUBLIC cxx_std_20)
 set_target_properties(EngineHeadless PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}")
-target_link_libraries(EngineHeadless PUBLIC EnginePersistence EngineSimulation EngineTuning PRIVATE EngineStorage)
+target_link_libraries(EngineHeadless PUBLIC EnginePersistence EnginePhysics EngineSimulation EngineTuning
+    PRIVATE EngineStorage)
 # Glyph rasterization compiles a private copy of stb_truetype from raylib's bundled headers (header only, no raylib).
 set_source_files_properties(Graphics/Text/Internals/FontData.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${ENGINE_THIRD_PARTY_DIR}/raylib/src/external")
@@ -254,7 +272,11 @@ engine_warnings(EngineSteam)
 
 # The engine's own small simulation: its tests, and `python . sim` in this repository.
 if(ENGINE_BUILD_TESTS OR ENGINE_BUILD_TOY_SIMULATION)
-    engine_add_simulation(EngineToySimulation SOURCES Tests/Simulation/ToySimulation.cpp)
+    engine_add_simulation(EngineToySimulation SOURCES
+        Tests/Simulation/ToyCollision.cpp
+        Tests/Simulation/ToyRegistry.cpp
+        Tests/Simulation/ToySimulation.cpp
+    )
 endif()
 if(ENGINE_BUILD_TESTS)
     add_subdirectory(Tests)

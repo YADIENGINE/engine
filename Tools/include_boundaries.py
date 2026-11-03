@@ -24,7 +24,7 @@ INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
 CONSUMER_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]')
 SIMULATION_FORBIDDEN = re.compile(
     r'''^\s*#\s*include\s*(?:"(?:Graphics|Audio|Fx|Scene|Runtime|GameObjects|Input|Menus|Options|Platform|Editor'''
-    r'''|Terminal|ToolUi)/[^"]*"'''
+    r'''|Terminal|ToolUi|Physics/Debug)/[^"]*"'''
     r'''|[<"](?:[^>"/]*/)*(?:raylib|raymath|rlgl)\.h[>"]|<(?:random|chrono|ctime|time\.h|thread|future|mutex)>)''')
 PROJECT_SIMULATION_FOLDER = "Game/Simulation"
 PLATFORM_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:[^>"/]*/)*(raylib|raymath|rlgl)\.h[>"]')

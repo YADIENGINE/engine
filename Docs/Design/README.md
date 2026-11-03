@@ -883,6 +883,53 @@ the prebuilt package, with the same hashes, and a tape saved by a running editor
 
 **Out of scope:** collision, tweens, 2.5D, the bullet kit, gamepad, online play, crash reports (D12).
 
+### D27. Collision
+Status: implemented (2026-11-04). Usage: [Collision](../Collision.md).
+
+**Decision:** collision detection, not a physics engine. `Core/Physics/Collision` is a small API in engine types over Box2D
+3.2.0, whose whole tree is vendored unmodified in `ThirdParty/Box2D` and compiled as a library; only the collision files reach
+a game, because the linker drops the rest. Box2D's names reach no public header. Dynamics can later sit beside it in
+`Core/Physics/Dynamics` without moving anything.
+
+**Parts:** `Shape` (circle, box, capsule, segment, convex polygon up to 8 corners) and `Pose` are plain values. `Collision.h`
+answers questions about two shapes. `CollisionWorld` indexes many colliders in Box2D's dynamic tree: `Overlapping`, `At`,
+`Raycast`, `Sweep`, `Pairs`. `MaskOf` makes layers from a game's enum. `DrawColliders` outlines colliders for a view.
+`EnginePhysics` sits below `EngineHeadless`, depends only on `EngineSimulation`, and is built with `/fp:precise`, Box2D
+included. `engine_add_simulation` links it, so a simulation only includes the headers. `Physics/Debug` compiles into
+`EngineHeadless`, so a simulation cannot reach it; `check` names the mistake earlier.
+
+**Decided (2026-11-04):**
+1. *The world is an index.* The game owns positions and calls `Move`. Rejected: positions living in the world, like a physics
+   engine's bodies, because that splits a game's state in two and hides it from `Simulation::State`. The world still appears
+   in `State`, so dumps show colliders beside the game's positions. A forgotten `Move` replays the same way every time, so
+   hashes cannot catch it; a dump or `DrawColliders` shows it.
+2. *`Pairs`, not events.* "Contact started" and "ended" would make the world keep state of its own between steps.
+3. *Results do not depend on the tree's shape.* Results come in id order, and equal cast distances go to the lower id. The
+   tree is rebuilt by replaying a tape from step 0 anyway, but game rules should not depend on its inner order.
+4. *Errors throw in every configuration.* A wrong id or a non-finite pose would otherwise reach Box2D, whose checks exist only
+   in its Debug build, and behaviour would differ between Debug and Release.
+
+**Measured (2026-11-04, MSVC 19.44, x64, one machine):** every query kind, 7200 steps of hashed results: Debug, Release and
+Release without SIMD gave the same hash, each run twice. A tape from a simulation whose rules use the world, recorded in
+Debug, verifies in Release. Costs through the public API in Release, per step:
+
+| Case | Cost |
+| --- | --- |
+| 1,000 / 5,000 / 20,000 moving objects, each asking what is near, evenly spread | 0.8 / 8 / 105 ms |
+| 1,000 / 5,000 of them packed so that nearly everything overlaps | 4 / 100 ms |
+| 500 / 2,000 / 5,000 bullets sweeping against 100 / 500 / 2,000 moving enemies | 0.1 / 0.6 / 2.8 ms |
+
+Against a simple grid of 48-unit cells, without exact shape tests on either side, the tree cost 4 ms and the grid 2.7 ms at
+5,000 objects; the tree won at 20,000. So the engine has no grid of its own for now.
+
+**Costs:** the engine copy grows by 5.7 MB, and every game's notices name Box2D, because notice scopes cannot follow what a
+game links. Polygons are convex with at most 8 corners. A swept shape does not turn while it moves. Box2D stops a cast a hair
+before the surface (0.005 units).
+
+**Deferred:** sliding along walls (`b2SolvePlanes`, which needs planes gathered without Box2D's world), contact events, tile
+grids, rigid-body dynamics, a fatter tree margin or a grid if measurements ask for one, and a collider overlay switch in the
+editor.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

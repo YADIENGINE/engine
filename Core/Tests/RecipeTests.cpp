@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "AgentDocs/Recipes/Code/AnimatedCharacter.h"
 #include "AgentDocs/Recipes/Code/CharacterScene.h"
+#include "AgentDocs/Recipes/Code/CollisionBullets.h"
 #include "AgentDocs/Recipes/Code/FxBurst.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
@@ -18,6 +19,7 @@
 #include "Modules/Persistence/Persistence.h"
 #include "Options/GameOptions.h"
 #include "Simulation/ReplayCheck.h"
+#include "Simulation/Scenario.h"
 #include "Simulation/StateHash.h"
 #include "Tests/PaintHarness.h"
 #include "Tests/Support/TempDirectory.h"
@@ -51,6 +53,33 @@ TEST_CASE("Engine.Recipes.SimulationPlaysInASceneAndWithoutOne", "[engine][recip
     const auto replay = VerifyTape(definition, scene.Runner().Tape());
     CHECK_FALSE(replay.mismatch);
     CHECK(replay.hash == HashState(scene.Sim()));
+}
+
+TEST_CASE("Engine.Recipes.CollisionBulletsReplayAndDraw", "[engine][recipes]") {
+    const auto definition = RecipeShooterDefinition();
+    Scenario scenario(definition, {.seed = 4, .players = 1});
+    int shots = 0;
+    const auto& simulation = dynamic_cast<const RecipeShooterSimulation&>(scenario.Sim());
+    for (int round = 0; round < 40 && simulation.Score() == 0; ++round) {
+        scenario.Tap("Fire");
+        ++shots;
+        scenario.Hold("Left");
+        scenario.Run(15);
+        scenario.Release("Left");
+        scenario.Tap("Fire");
+        scenario.Hold("Right");
+        scenario.Run(30);
+        scenario.Release("Right");
+    }
+    CHECK(shots > 0);
+    CHECK(simulation.Score() >= 1);
+    CHECK_FALSE(VerifyTape(definition, scenario.Tape()).mismatch);
+
+    PaintHarness harness;
+    harness.Begin();
+    DrawRecipeShooter(harness.paint, simulation, true);
+    harness.End();
+    CHECK_FALSE(harness.Draws().empty());
 }
 
 TEST_CASE("Engine.Recipes.SimulationSceneRunsOutsideTheEditor", "[engine][recipes]") {

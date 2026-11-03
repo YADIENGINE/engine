@@ -12,6 +12,7 @@
 | `Core/Fx/`, `Core/Menus/`, `Core/Gameplay/`, `Core/Progress/`, `Core/Utilities/` | Headless effects and reusable logic/value types |
 | `Core/Options/` | Engine/player options, backed by Persistence |
 | `Core/Tuning/` | Tuning format, live values (`ENGINE_TUNING_LIVE`), `Tuning<T>()` |
+| `Core/Physics/` | Collision over Box2D (`EnginePhysics`); Box2D stays behind `Internals/`. `Debug/` draws and belongs to `EngineHeadless` |
 | `Core/Modules/` | Opt-in systems; each module owns its facade, internals and tests |
 | `Core/Tests/` | Core tests and shared `Support/` (temporary directories, diagnostics, gzip inflater) |
 | `ToolUi/` | `EngineToolUi`: shared ImGui context, fonts, theme and widgets for tools; never shipped in games |
@@ -20,8 +21,9 @@
 | `ThirdParty/` | Unmodified vendored dependencies, notices and notice tests; see [Third-party rules](../../ThirdParty/README.md) |
 | `Tools/` | Standard-library Python CLI and project template (offline audio authoring has separate NumPy/SciPy dependencies) |
 
-`EngineHeadless` contains platform-free code; `Engine` adds the runtime platform layer. `EngineSimulation` and
-`EngineTuning` sit below `EngineHeadless` and reach neither drawing nor audio, so simulation code can link only them.
+`EngineHeadless` contains platform-free code; `Engine` adds the runtime platform layer. `EngineSimulation`,
+`EnginePhysics` and `EngineTuning` sit below `EngineHeadless` and reach neither drawing nor audio, so simulation code can
+link only them.
 Create consuming targets with `engine_add_game`, `engine_add_simulation` and `engine_add_editor_worker`.
 Add each new `.cpp` to its target. Module targets and testing rules live in
 [Module rules](ModuleRules.md#1-directory-structure) and [Testing](Testing.md#adding-tests).

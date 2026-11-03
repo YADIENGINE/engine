@@ -1,0 +1,19 @@
+{
+  "simulation": "engine.toy-collision",
+  "seed": 9,
+  "script": [
+    { "tap": "Fire" },
+    { "run": 10 },
+    { "expect": { "score": 1, "wallHits": 0 } },
+    { "tap": "Fire" },
+    { "run": 10 },
+    { "expect": { "score": 1, "wallHits": 1 } },
+    { "hold": "Right" },
+    { "run": 100 },
+    { "release": "Right" },
+    { "tap": "Fire" },
+    { "run": 10 },
+    { "expect": { "score": 2 } },
+    { "read": ["score", "wallHits", "playerX", "lastFraction", "enemy[9].angle"] }
+  ]
+}
