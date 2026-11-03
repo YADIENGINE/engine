@@ -107,9 +107,25 @@ if(ENGINE_BUILD_EDITOR)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)
     target_link_libraries(EngineEditorUi PUBLIC EngineToolUi EngineTerminalUi EngineEditorSupport)
     engine_warnings(EngineEditorUi)
+
+    # Icon drawn from code at configure time (Tools/app_icon.py; never committed). The resource name GLFW_ICON makes
+    # Windows show it for the executable and GLFW (raylib) use it for the window and taskbar.
+    find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+    set(editor_brand_dir "${CMAKE_CURRENT_BINARY_DIR}/Brand")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../Tools/app_icon.py")
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/../Tools/app_icon.py"
+                "${editor_brand_dir}/Icon.ico" --name "${engineName}"
+        RESULT_VARIABLE editorIconResult)
+    if(NOT editorIconResult EQUAL 0)
+        message(FATAL_ERROR "Tools/app_icon.py failed (${editorIconResult})")
+    endif()
+    file(CONFIGURE OUTPUT "${editor_brand_dir}/EngineEditor.rc" CONTENT "GLFW_ICON ICON \"${editor_brand_dir}/Icon.ico\"\n")
+
     add_executable(EngineEditor WIN32 Host/Main.cpp Host/AssetCommandRunner.cpp Host/AssetThumbnailStore.cpp Host/EditorApplication.cpp Host/FramePng.cpp Host/GitImages.cpp Host/ViewportDisplay.cpp
         Host/ProjectListLauncher.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp
-        Application/EditorControlService.cpp Application/WorkerBuild.cpp Application/WorkerProcess.cpp)
+        Application/EditorControlService.cpp Application/WorkerBuild.cpp Application/WorkerProcess.cpp
+        "${editor_brand_dir}/EngineEditor.rc")
     # Resolve raylib's CloseWindow/ShowCursor before the transitive user32 import library.
     target_link_libraries(EngineEditor PRIVATE Engine EngineEditorSupport EngineEditorUi raylib shell32)
     target_compile_definitions(EngineEditor PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)

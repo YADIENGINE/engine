@@ -119,6 +119,8 @@ Its clients are `python Engine refresh` and `python Engine ctl` ([ToolsContract]
 
 - Host owns Game / ImGui lifecycle, the GPU image bridge, and input routing; the ImGui context and image texture use
   RAII cleanup while the GL context is alive.
+- The application icon is drawn from code when the build is configured (`Tools/app_icon.py`, the same plate and letter
+  as the launcher's). The `GLFW_ICON` resource makes it the executable's, window's and taskbar's icon.
 - Theme, fonts, ImGui context / scale, and general widgets are the tools' shared layer: [ToolUi](../ToolUi.md)
   (`EngineToolUi`; also used by the launcher). The editor creates the context with docking enabled and keyboard
   navigation disabled (scene controls share the keyboard). Editor-specific parts are in `Ui/Style/EditorTheme` (state
