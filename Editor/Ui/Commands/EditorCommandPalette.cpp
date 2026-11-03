@@ -173,6 +173,22 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
         entries.push_back({"Layout", layout.title, "", "", enabled, enabled ? "" : "No custom layout has been saved",
                            [&result, id] { result.layout = id; }});
     }
+    if (snapshot.git && snapshot.git->availability == GitAvailability::Ready) {
+        const bool idle = snapshot.git->busy.empty();
+        const auto gitEntry = [&](const char* label, GitRequestKind kind) {
+            entries.push_back({"Git", label, "", "", idle, idle ? "" : "Git is busy", [&actions, kind] {
+                                   if (actions.git) actions.git(GitRequest{.kind = kind});
+                               }});
+        };
+        entries.push_back({"Git", "Changes", "", "Ctrl+Shift+G", true, {}, [&result] {
+                               result.git.toggle = GitDrawerTab::Changes;
+                           }});
+        entries.push_back({"Git", "Incoming commits", "", "", true, {}, [&result] {
+                               result.git.show = GitDrawerTab::Incoming;
+                           }});
+        gitEntry("Fetch", GitRequestKind::Fetch);
+        gitEntry("Update submodules", GitRequestKind::UpdateSubmodules);
+    }
     const auto attempt = snapshot.diagnostics.Attempt().result;
     const bool failed = attempt == EditorBuildResult::BuildFailed || attempt == EditorBuildResult::RefreshFailed;
     const auto agentEntry = [&](std::string label, bool enabled, const char* reason, EditorAgentRequest request) {

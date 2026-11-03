@@ -96,6 +96,10 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
         _workspace.SetAssetRoots(project->engineDirectory, project->assetsDirectory);
         const auto background = ImGui::ColorConvertFloat4ToU32(ToolPalette::Content);
         _assetCommands.Configure(project->python, project->engineDirectory, project->sourceDirectory);
+        if (!project->sourceDirectory.empty())
+            _git = std::make_unique<GitService>(
+                GitServiceOptions{project->sourceDirectory, project->buildDirectory / "git",
+                                  project->engineDirectory / "Tools" / "ProjectTemplate", project->name});
         _thumbnails.Configure(
             project->worker, project->buildDirectory / "asset-thumbnails",
             std::format("{:02x}{:02x}{:02x}", background & 0xFF, (background >> 8) & 0xFF, (background >> 16) & 0xFF));
@@ -200,6 +204,19 @@ void EditorApplication::Update(float realSeconds) {
         snapshot.building || snapshot.phase == EditorPhase::Building,
         std::ranges::any_of(snapshot.catalog, [](const SceneDefinition& entry) { return entry.asset.has_value(); }),
         [this](const std::string& problem) { _controller.Log(problem, EditorLogLevel::Warning); });
+    if (_git) {
+        _git->SetFocused(IsWindowFocused());
+        _git->SetBuildActive(snapshot.building || snapshot.phase == EditorPhase::Building);
+        for (const auto& line : _git->TakeLog())
+            _controller.Log(line);
+        _gitSnapshot = _git->Snapshot(); // Before asking whether it is busy: a new count implies it no longer is
+        _controller.SetSourcesBusy(_git->SourcesBusy());
+        // What a pull brought should run: the next Run shows the new version, and a broken one fails now.
+        if (_gitSnapshot->sourcesChanged != _gitSourcesChanged) {
+            _gitSourcesChanged = _gitSnapshot->sourcesChanged;
+            _controller.Execute(EditorCommand::Refresh);
+        }
+    }
     if (_control) {
         _control->SetAgentControl(_preferences.agent.control);
         std::map<std::string, ConsoleNote> notes;
@@ -315,6 +332,7 @@ void EditorApplication::Stop() {
     _workspace.CaptureLayout(_preferences);
     SavePreferences(true);
     SaveLastFrame();
+    _git.reset();
     _control.reset();
     _controller.Shutdown();
     _stopped = true;
@@ -373,9 +391,14 @@ void EditorApplication::DrawToolOverlay() const {
         [&](const std::vector<std::string>& arguments) { _assetCommands.Run(arguments); },
         [&](const std::string& file, int line) {
             commands.emplace_back([this, file, line] { _controller.OpenSource(file, line); });
-        }};
+        },
+        [&](const GitRequest& request) {
+            if (_git) _git->Request(request);
+        },
+        [&](const std::filesystem::path& file) { return _gitImages.Load(file); }};
     auto snapshot = _controller.Snapshot();
     snapshot.audio = _audio;
+    snapshot.git = _gitSnapshot.get();
     const auto result = _workspace.Draw(snapshot, actions, _display.Image(), _preferences, _fontSize);
     _quit = result.quit;
     if (result.interaction.mark) _mark = result.interaction.mark;

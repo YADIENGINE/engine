@@ -14,6 +14,8 @@ constexpr float MarkOverlayTint = 0.06f;  // Alpha of the tint over the editor w
 constexpr float MarkOutline = 2.0f;       // Pixels at 100% UI scale
 constexpr float AudioColumnRatio = 0.34f; // Of the bottom dock, right of Assets
 constexpr float AgentColumnRatio = 0.40f; // 60% Viewport / 40% Console + Inspector at desktop sizes.
+constexpr float GitDrawerWidth = 340.0f;
+constexpr float GitDrawerMaximumShare = 0.5f; // Of the workspace, in a narrow window
 constexpr float PanelMinWidthInFonts = 12.0f;
 constexpr float PanelMinHeightInLines = 6.0f;
 constexpr ImGuiWindowFlags HostFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
@@ -278,6 +280,7 @@ bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiAc
     const bool console = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_GraveAccent, route);
     const bool agent = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_A, route);
     const bool primary = ImGui::Shortcut(ImGuiKey_F5, route);
+    const bool git = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_G, route);
     const auto& io = ImGui::GetIO();
     const bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
     // The Console owns ordinary chords; global panel, palette and agent shortcuts remain available.
@@ -293,6 +296,10 @@ bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiAc
     }
     if (agent && !popup) {
         result.agent = EditorAgentRequest::Open;
+        consumed = true;
+    }
+    if (git && !popup && snapshot.git) {
+        result.git.toggle = GitDrawerTab::Changes;
         consumed = true;
     }
     if (quickOpen && !popup && !_consoleFocused) {
@@ -419,6 +426,62 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
     ImGui::End();
     ImGui::PopStyleVar(2);
 }
+void EditorWorkspace::GitOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions,
+                                 const EditorShellResult& menu, ImVec2 position, ImVec2 size,
+                                 EditorPreferences& preferences, EditorWorkspaceResult& result) {
+    if (!snapshot.git) return;
+    const auto& git = *snapshot.git;
+    if (menu.git.toggle) {
+        _gitDrawer.Toggle(*menu.git.toggle);
+        if (_gitDrawer.IsOpen()) result.cancelViewportInput = true;
+    }
+    if (menu.git.show) {
+        _gitDrawer.Show(*menu.git.show);
+        result.cancelViewportInput = true;
+    }
+    const auto& io = ImGui::GetIO();
+    const bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
+    // Escape backs out one step, unless it is the scene's or the Console's key right now.
+    if (_gitDrawer.IsOpen() && !popup && !io.WantTextInput && !_consoleFocused && !_viewportFocused &&
+        ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        if (git.diff && actions.git)
+            actions.git(GitRequest{.kind = GitRequestKind::CloseDiff});
+        else
+            _gitDrawer.Close();
+    }
+    if (!_gitDrawer.IsOpen()) {
+        if (git.diff && actions.git) actions.git(GitRequest{.kind = GitRequestKind::CloseDiff});
+        return;
+    }
+    const float width = std::min(GitDrawerWidth * ToolUiScale(), size.x * GitDrawerMaximumShare);
+    _gitDrawer.Draw(git, actions, position, {width, size.y}, snapshot.building);
+    if (const auto text = _gitDrawer.TakeAgentText(); !text.empty())
+        result.agentProblem = SendToAgent(text, true, preferences);
+    const auto bringForward = [&](const char* name) {
+        // Above whichever docked panel was clicked last, and below any popup or tooltip.
+        if (popup || _marking || _agentSetup.Active()) return;
+        if (auto* window = ImGui::FindWindowByName(name)) ImGui::BringWindowToDisplayFront(window);
+    };
+    bringForward("Source control###editor.git-drawer");
+    if (git.diff) {
+        // The scene's place when it has one on screen; otherwise everything right of the drawer.
+        ImVec2 from{position.x + width, position.y};
+        ImVec2 room{size.x - width, size.y};
+        if (const auto* scene = ImGui::FindWindowByName(EditorPanelInfo(EditorPanel::Viewport).window);
+            scene && !_maximized && preferences.Visible(EditorPanel::Viewport) && scene->Active) {
+            const float left = std::max(scene->Pos.x, from.x);
+            const float right = scene->Pos.x + scene->Size.x;
+            if (right - left > width) {
+                from = {left, scene->Pos.y};
+                room = {right - left, scene->Size.y};
+            }
+        }
+        _gitDiff.Draw(*git.diff, actions, from, room);
+        bringForward("Change###editor.git-diff");
+        result.cancelViewportInput = true;
+    }
+}
+
 EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                                             const ViewportImage& image, EditorPreferences& preferences, int& fontSize) {
     const bool opening = !_initialized;
@@ -466,7 +529,8 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         const bool busy = _maximized || _consoleFocused || ImGui::GetIO().WantTextInput;
         if (attempt.id != snapshot.controlAttempt && !busy) _showFailedOutput = true;
     }
-    auto menu = _shell.Menu(snapshot, actions, preferences, fontSize, _maximized, _offerProjectList, _projectName);
+    auto menu =
+        _shell.Menu(snapshot, actions, preferences, fontSize, _maximized, _offerProjectList, _projectName, _gitBar);
     result.cancelViewportInput |= Shortcuts(snapshot, actions, menu);
     if (std::exchange(_openQuickOpen, false)) menu.openQuick = true; // The toolbar's search box, last frame
     if (_palette.Draw(snapshot, actions, preferences, _maximized, menu)) {
@@ -631,7 +695,9 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             _pendingAgentSubmit = false;
         }
     }
+    GitOverlay(snapshot, actions, menu, workspacePosition, workspaceSize, preferences, result);
     if (_marking) MarkOverlay(snapshot, actions, menuHeight + toolbarHeight, result);
     if (result.cancelViewportInput) _viewport.ReleaseFocus();
+    _viewportFocused = result.interaction.focused;
     return result;
 }

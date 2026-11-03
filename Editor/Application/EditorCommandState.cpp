@@ -26,15 +26,19 @@ EditorCapabilities ResolveEditorCapabilities(const EditorCommandContext& context
     set(EditorCommand::Stop, context.workerActive || context.building, "No scene is running.");
     set(EditorCommand::Pause, canControl, sceneReason);
     set(EditorCommand::Reset, canControl, sceneReason);
-    set(EditorCommand::Refresh, context.hasProject && !context.building && !locked,
-        !context.hasProject ? "No project configured."
-        : context.building  ? "A build is already running."
-                            : operationReason);
-    set(EditorCommand::BuildAndPlay, context.hasProject && context.hasGame && !context.building && !locked,
-        !context.hasProject ? "No project configured."
-        : !context.hasGame  ? "No game configuration or project tools available."
-        : context.building  ? "A build is already running."
-                            : operationReason);
+    constexpr const char* SourcesReason = "Wait for Git to finish changing files.";
+    set(EditorCommand::Refresh, context.hasProject && !context.building && !locked && !context.sourcesBusy,
+        !context.hasProject   ? "No project configured."
+        : context.building    ? "A build is already running."
+        : context.sourcesBusy ? SourcesReason
+                              : operationReason);
+    set(EditorCommand::BuildAndPlay,
+        context.hasProject && context.hasGame && !context.building && !locked && !context.sourcesBusy,
+        !context.hasProject   ? "No project configured."
+        : !context.hasGame    ? "No game configuration or project tools available."
+        : context.building    ? "A build is already running."
+        : context.sourcesBusy ? SourcesReason
+                              : operationReason);
     const bool cancellable = context.profilerBusy || context.building || context.replacing || context.starting ||
                              (context.workerActive && context.phase == EditorPhase::ReadingCatalog);
     set(EditorCommand::Cancel, cancellable && !benchmarkCancelPending,

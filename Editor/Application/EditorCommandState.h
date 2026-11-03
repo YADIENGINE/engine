@@ -15,7 +15,8 @@ struct EditorCommandContext {
     bool profilerBusy = false;
     EditorPhase phase = EditorPhase::Stopped;
     bool benchmarkCancelPending = false;
-    bool hasGame = false; // Project tools and a game configuration are available
+    bool hasGame = false;      // Project tools and a game configuration are available
+    bool sourcesBusy = false;  // Source control is changing files (Pull and the like)
 };
 
 [[nodiscard]] EditorCapabilities ResolveEditorCapabilities(const EditorCommandContext& context);

@@ -106,7 +106,8 @@ void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorSh
 } // namespace
 EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                                     EditorPreferences& preferences, int& fontSize, bool maximized,
-                                    bool offerProjectList, const std::string& projectName) const {
+                                    bool offerProjectList, const std::string& projectName,
+                                    EditorGitBar& gitBar) const {
     EditorShellResult result;
     if (!ImGui::BeginMainMenuBar()) return result;
     ToolPixelText("Y", 2, ToolPalette::Accent, ImGui::GetFrameHeight());
@@ -164,9 +165,32 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
         result.openCommands = ImGui::MenuItem("Command palette", "Ctrl+Shift+P");
         ImGui::EndMenu();
     }
+    if (snapshot.git && snapshot.git->availability == GitAvailability::Ready && ImGui::BeginMenu("Git")) {
+        const auto* repository = snapshot.git->Active();
+        const bool idle = snapshot.git->busy.empty();
+        if (ImGui::MenuItem("Changes", "Ctrl+Shift+G")) result.git.toggle = GitDrawerTab::Changes;
+        if (ImGui::MenuItem("Incoming commits")) result.git.show = GitDrawerTab::Incoming;
+        ImGui::Separator();
+        const auto request = [&](GitRequestKind kind) {
+            if (actions.git) actions.git(GitRequest{.kind = kind});
+        };
+        if (ImGui::MenuItem("Fetch", nullptr, false, idle)) request(GitRequestKind::Fetch);
+        if (ImGui::MenuItem("Pull", nullptr, false,
+                            idle && !snapshot.building && repository && repository->branch.behind > 0 &&
+                                repository->branch.ahead == 0 && repository->incoming.overlapping.empty()))
+            request(GitRequestKind::Pull);
+        if (ImGui::MenuItem("Push", nullptr, false,
+                            idle && repository && repository->branch.ahead > 0 && repository->branch.behind == 0))
+            request(GitRequestKind::Push);
+        ImGui::EndMenu();
+    }
     AgentMenu(snapshot, preferences.agent, result);
-    if (const float width = ImGui::CalcTextSize(projectName.c_str()).x;
-        !projectName.empty() && width < ImGui::GetContentRegionAvail().x) {
+    if (snapshot.git) {
+        const auto bar = gitBar.Draw(*snapshot.git, actions, projectName, snapshot.building);
+        if (bar.toggle) result.git.toggle = bar.toggle;
+        if (bar.show) result.git.show = bar.show;
+    } else if (const float width = ImGui::CalcTextSize(projectName.c_str()).x;
+               !projectName.empty() && width < ImGui::GetContentRegionAvail().x) {
         ImGui::SameLine(ImGui::GetWindowWidth() - width - ImGui::GetStyle().WindowPadding.x * 2);
         ImGui::TextDisabled("%s", projectName.c_str());
     }

@@ -5,6 +5,8 @@
 #include "Editor/Ui/Panels/Audio/AudioPreviewPanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
+#include "Editor/Ui/Panels/Git/GitDiffView.h"
+#include "Editor/Ui/Panels/Git/GitDrawer.h"
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
 #include "Editor/Ui/Panels/Output/OutputPanel.h"
 #include "Editor/Ui/Panels/Viewport/ViewportPanel.h"
@@ -74,6 +76,9 @@ private:
     [[nodiscard]] bool Shortcuts(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                                  EditorShellResult& result) const;
     void DockHost(ImVec2 position, ImVec2 size, bool reset, const EditorPreferences& preferences);
+    // The Git drawer and the file open in it, above the panels: they never change the layout underneath.
+    void GitOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions, const EditorShellResult& menu,
+                    ImVec2 position, ImVec2 size, EditorPreferences& preferences, EditorWorkspaceResult& result);
     CatalogPanel _catalog;
     ViewportPanel _viewport;
     InspectorPanel _inspector;
@@ -84,6 +89,9 @@ private:
     AssetsPanel _assets;
     AudioPreviewPanel _audioPreview;
     EditorAgentActivity _agentActivity;
+    EditorGitBar _gitBar;
+    GitDrawer _gitDrawer;
+    GitDiffView _gitDiff;
     EditorShell _shell;
     EditorCommandPalette _palette;
     EditorAgentSetup _agentSetup;
@@ -99,7 +107,8 @@ private:
     bool _focusViewport = true;
     bool _marking = false; // The toolbar's Mark toggle
     std::optional<ImVec2> _overlayStart;
-    bool _consoleFocused = false; // önceki karede klavye konsoldaydı
+    bool _consoleFocused = false;  // önceki karede klavye konsoldaydı
+    bool _viewportFocused = false; // The scene had the keyboard last frame
     std::optional<EditorPanel> _focusBottom;
     std::uint64_t _failureAttempt = 0;
     bool _showFailedOutput = false;

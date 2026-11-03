@@ -5,7 +5,9 @@
 #include "Editor/Application/EditorController.h"
 #include "Editor/Host/AssetCommandRunner.h"
 #include "Editor/Host/AssetThumbnailStore.h"
+#include "Editor/Host/GitImages.h"
 #include "Editor/Host/ViewportDisplay.h"
+#include "Editor/Internals/Git/GitService.h"
 #include "Editor/Internals/Settings/EditorSettingsStore.h"
 #include "Editor/Internals/Viewport/ViewportInputRouter.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
@@ -48,6 +50,10 @@ private:
     mutable ViewportDisplay _display;
     mutable AssetThumbnailStore _thumbnails;
     mutable AssetCommandRunner _assetCommands;
+    mutable GitImages _gitImages;
+    std::unique_ptr<GitService> _git;                // Null without a project
+    std::uint64_t _gitSourcesChanged = 0;            // The count the last automatic build answered
+    std::shared_ptr<const GitSnapshot> _gitSnapshot; // Kept alive for the frame's drawing
     mutable EditorWorkspace _workspace;
     mutable EditorPreferences _preferences;
     std::optional<EditorSettingsStore> _settings;

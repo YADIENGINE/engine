@@ -8,6 +8,7 @@
 #include <string>
 #include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
+#include "Editor/Internals/Git/GitTypes.h"
 #include "Editor/Internals/Session/AudioUsage.h"
 #include "Editor/Internals/Session/AudioWaveformCache.h"
 #include "Editor/Internals/Session/ProfilerSession.h"
@@ -94,6 +95,7 @@ struct EditorSnapshot {
     std::size_t controlEventCount = 0;                             // All of this session's, kept or not
     std::uint64_t controlAttempt =
         0; // Build & Refresh attempt started through the control endpoint                  // Seconds since it was made
+    const GitSnapshot* git = nullptr; // Source control; null without a project
 };
 
 enum class AudioPreviewAction { Play, Pause, Resume, Stop, Seek, Volume, Loop };
@@ -103,6 +105,13 @@ struct AudioPreviewRequest {
     bool loop = false;
     float volume = 1.0f;
     float seconds = 0.0f; // Seek
+};
+
+// A picture loaded for the source control's before/after view.
+struct EditorGitImage {
+    std::uint64_t texture = 0; // 0: could not be loaded
+    int width = 0;
+    int height = 0;
 };
 
 // References/callbacks are borrowed for the current UI frame; panels never retain session data.
@@ -127,4 +136,6 @@ struct EditorUiActions {
     std::function<void(const std::vector<std::string>&)> assetCommand;
     // A file named in build output, at a line (0: none), in the developer's code editor.
     std::function<void(const std::string&, int)> openSource;
+    std::function<void(const GitRequest&)> git;
+    std::function<EditorGitImage(const std::filesystem::path&)> gitImage;
 };

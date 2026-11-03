@@ -26,6 +26,9 @@
 
 namespace {
 enum class SmokeView { Idle, Running, Paused, Building, Inspector, QuickOpen, Palette, BuildFailed, AgentStrip };
+// clang-format off
+enum class SmokeGit { Clean, Behind, Fetching, Setup, Missing, Changes, Problem, Conflict, TextDiff, ImageDiff, Incoming };
+// clang-format on
 struct SmokeStage {
     const char* name;
     SmokeView view;
@@ -33,6 +36,7 @@ struct SmokeStage {
     int height = 900;
     int scale = 100;
     std::optional<EditorPanel> panel = std::nullopt; // Brought to the front of its dock
+    SmokeGit git = SmokeGit::Clean;
 };
 constexpr std::array Stages{
     SmokeStage{"idle", SmokeView::Idle},
@@ -52,7 +56,115 @@ constexpr std::array Stages{
     SmokeStage{"quick-open", SmokeView::QuickOpen},
     SmokeStage{"palette", SmokeView::Palette},
     SmokeStage{"build-failed", SmokeView::BuildFailed},
+    SmokeStage{"git-behind", SmokeView::Running, 1600, 900, 100, std::nullopt, SmokeGit::Behind},
+    SmokeStage{"git-fetching", SmokeView::Running, 1600, 900, 100, std::nullopt, SmokeGit::Fetching},
+    SmokeStage{"git-narrow", SmokeView::Running, 1100, 680, 100, std::nullopt, SmokeGit::Behind},
+    SmokeStage{"git-narrow-150", SmokeView::Running, 1280, 760, 150, std::nullopt, SmokeGit::Behind},
+    SmokeStage{"git-setup", SmokeView::Running, 1600, 900, 100, std::nullopt, SmokeGit::Setup},
+    SmokeStage{"git-missing", SmokeView::Running, 1600, 900, 100, std::nullopt, SmokeGit::Missing},
+    // The drawer stays open from here on: the first of these opens it.
+    SmokeStage{"git-changes", SmokeView::Running, 1600, 900, 100, std::nullopt, SmokeGit::Changes},
+    SmokeStage{"git-problem", SmokeView::Running, 1600, 900, 100, std::nullopt, SmokeGit::Problem},
+    SmokeStage{"git-conflict", SmokeView::Running, 1600, 900, 100, std::nullopt, SmokeGit::Conflict},
+    SmokeStage{"git-diff-text", SmokeView::Running, 1600, 900, 100, std::nullopt, SmokeGit::TextDiff},
+    SmokeStage{"git-diff-image", SmokeView::Running, 1600, 900, 100, std::nullopt, SmokeGit::ImageDiff},
+    SmokeStage{"git-incoming", SmokeView::Running, 1600, 900, 100, std::nullopt, SmokeGit::Incoming},
 };
+GitSnapshot SampleGit(SmokeGit view) {
+    GitSnapshot git;
+    git.availability = view == SmokeGit::Setup     ? GitAvailability::NoRepository
+                       : view == SmokeGit::Missing ? GitAvailability::Missing
+                                                   : GitAvailability::Ready;
+    if (git.availability != GitAvailability::Ready) return git;
+    GitRepositoryState repository;
+    repository.name = "MyProject";
+    repository.branch = {"main", "abc1234", "origin/main"};
+    repository.remotes = {"origin"};
+    repository.localBranches = {"main", "new-boss"};
+    repository.remoteBranches = {"origin/main", "origin/teammate-art"};
+    repository.userName = "Developer";
+    repository.userEmail = "developer@example.com";
+    repository.fetchedAt = std::chrono::system_clock::now() - std::chrono::minutes(2);
+    GitRepositoryState submodule = repository;
+    submodule.name = "Engine";
+    submodule.isSubmodule = true;
+    submodule.branch.ahead = 2;
+    const auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    const std::vector<GitCommitSummary> incoming{{"a1f03c2", "Update Engine", "Teammate", now - 7200},
+                                                 {"77be210", "Tune card draft odds", "Teammate", now - 10800},
+                                                 {"0c9d4e1", "Add boss portrait", "Artist", now - 90000}};
+    const std::vector<GitChange> changes{
+        {"Game/Enemies/Enemy.cpp", "", '.', 'M', GitChangeKind::Modified},
+        {"Game/Enemies/Enemy.h", "", '.', 'M', GitChangeKind::Modified},
+        {"Game/Enemies/Spawner.cpp", "", '?', '?', GitChangeKind::Untracked},
+        {"Game/Assets/Graphics/hero.png", "", '.', 'M', GitChangeKind::Modified},
+        {"Game/Assets/Audio/SE/Hit.wav", "", '.', 'M', GitChangeKind::Modified},
+        {"Game/Assets/Audio/Music/", "", '?', '?', GitChangeKind::Untracked},
+        {"Docs/Notes.md", "", 'D', '.', GitChangeKind::Deleted},
+        {"Game/Scenes/Boss.cpp", "Game/Scenes/BossFight.cpp", 'R', '.', GitChangeKind::Renamed},
+        {"Tuning/Enemies.json", "", '.', 'M', GitChangeKind::Modified}};
+    git.fetching = view == SmokeGit::Fetching;
+    switch (view) {
+    case SmokeGit::Behind:
+    case SmokeGit::Fetching:
+        repository.branch.behind = 3;
+        repository.incoming.commits = incoming;
+        repository.incoming.submodules = {"Engine"};
+        repository.changes = changes;
+        break;
+    case SmokeGit::Changes:
+    case SmokeGit::TextDiff:
+    case SmokeGit::ImageDiff: repository.changes = changes; break;
+    case SmokeGit::Problem:
+        repository.changes = changes;
+        repository.branch.behind = 3;
+        repository.incoming.commits = incoming;
+        git.problem = {GitProblemKind::LocalChanges,
+                       "Your local changes overlap the incoming ones.",
+                       {},
+                       {"Game/Enemies/Enemy.cpp", "Tuning/Enemies.json"}};
+        break;
+    case SmokeGit::Conflict:
+        repository.sequence = GitSequence::Merge;
+        repository.changes = changes;
+        repository.changes.push_back({"Game/Boss/Boss.cpp", "", 'U', 'U', GitChangeKind::Conflicted});
+        repository.changes.push_back({"Game/Assets/Graphics/boss.png", "", 'U', 'U', GitChangeKind::Conflicted});
+        break;
+    case SmokeGit::Incoming:
+        repository.changes = changes;
+        repository.branch.behind = 3;
+        repository.incoming.commits = incoming;
+        repository.incoming.submodules = {"Engine"};
+        repository.incoming.overlapping = {"Tuning/Enemies.json"};
+        break;
+    case SmokeGit::Clean:
+    case SmokeGit::Setup:
+    case SmokeGit::Missing: break;
+    }
+    if (view == SmokeGit::TextDiff) {
+        auto diff = std::make_shared<GitDiff>();
+        diff->kind = GitDiffKind::Text;
+        diff->path = "Game/Enemies/Enemy.cpp";
+        diff->lines = {{GitDiffLineKind::Hunk, "@@ -84,7 +84,8 @@ void Enemy::Update(float delta) {"},
+                       {GitDiffLineKind::Context, "     _time += delta;"},
+                       {GitDiffLineKind::Removed, "-    if (_time > 2.0f) Fire();"},
+                       {GitDiffLineKind::Added, "+    if (_time > FireInterval) {"},
+                       {GitDiffLineKind::Added, "+        Fire();"},
+                       {GitDiffLineKind::Added, "+    }"},
+                       {GitDiffLineKind::Context, "     MoveTowards(_target, delta);"}};
+        git.diff = std::move(diff);
+    }
+    if (view == SmokeGit::ImageDiff) {
+        auto diff = std::make_shared<GitDiff>();
+        diff->kind = GitDiffKind::Image;
+        diff->path = "Game/Assets/Graphics/hero.png";
+        diff->before = "before.png";
+        diff->after = "after.png";
+        git.diff = std::move(diff);
+    }
+    git.repositories = {std::move(repository), std::move(submodule)};
+    return git;
+}
 constexpr int FramesPerStage = 8;
 
 void WriteFile(const std::filesystem::path& file, std::string_view text = "x") {
@@ -82,6 +194,7 @@ EditorUiActions QuietActions() {
     actions.openPath = [](const std::filesystem::path&) {};
     actions.assetThumbnail = [](const std::string&) { return std::uint64_t{0}; };
     actions.assetCommand = [](const std::vector<std::string>&) {};
+    actions.git = [](const GitRequest&) {};
     return actions;
 }
 
@@ -276,10 +389,25 @@ public:
         _preferences.Visible(EditorPanel::Console) = true;
         _preferences.recent = {"sample.fight", "sample.Boss intro", "sample.category.Visuals"};
         _workspace.SetAssetRoots(_project.EngineDirectory(), _project.AssetsDirectory());
+        _workspace.SetProjectName("MyProject");
         _tuning.Open(_project.BuildDirectory());
+        const auto picture = [](Color first, Color second) {
+            const Image image = GenImageChecked(64, 64, 8, 8, first, second);
+            const Texture2D texture = LoadTextureFromImage(image);
+            UnloadImage(image);
+            return texture;
+        };
+        _before = picture({95, 109, 87, 255}, {58, 69, 55, 255});
+        _after = picture({244, 175, 101, 255}, {92, 63, 34, 255});
+        _actions.gitImage = [this](const std::filesystem::path& file) {
+            const auto& texture = file == "before.png" ? _before : _after;
+            return EditorGitImage{texture.id, texture.width, texture.height};
+        };
     }
     ~EditorUiSmoke() override {
         if (_frame.id != 0) UnloadTexture(_frame);
+        UnloadTexture(_before);
+        UnloadTexture(_after);
     }
     [[nodiscard]] int Failures() const { return _failures; }
 
@@ -345,8 +473,23 @@ protected:
         // A failure reported through the control endpoint opens no popup; only the one stage wants it.
         snapshot.controlAttempt = stage.view == SmokeView::BuildFailed ? 0 : _diagnostics.Attempt().id;
         const ViewportImage image{_frame.id, _frame.width, _frame.height, 1, 1, 0.0};
+        const auto git = SampleGit(stage.git);
+        snapshot.git = &git;
         // Escape closes what the last stage opened, then the keys that open this stage's palette.
         auto& io = ImGui::GetIO();
+        if (stage.git == SmokeGit::Changes && _frameIndex <= 2) {
+            io.AddKeyEvent(ImGuiMod_Ctrl, _frameIndex == 1);
+            io.AddKeyEvent(ImGuiMod_Shift, _frameIndex == 1);
+            io.AddKeyEvent(ImGuiKey_G, _frameIndex == 1);
+        }
+        if (stage.git == SmokeGit::Incoming && _frameIndex >= 2 && _frameIndex <= 4) {
+            // The drawer's second tab, by where it sits.
+            if (const auto* drawer = ImGui::FindWindowByName("Source control###editor.git-drawer")) {
+                constexpr ImVec2 TabOffset{130, 24};
+                io.AddMousePosEvent(drawer->Pos.x + TabOffset.x, drawer->Pos.y + TabOffset.y);
+                if (_frameIndex > 2) io.AddMouseButtonEvent(ImGuiMouseButton_Left, _frameIndex == 3);
+            }
+        }
         const bool floating = stage.view == SmokeView::QuickOpen || stage.view == SmokeView::Palette ||
                               stage.view == SmokeView::BuildFailed;
         if (floating && _frameIndex <= 2) io.AddKeyEvent(ImGuiKey_Escape, _frameIndex == 1);
@@ -422,6 +565,8 @@ private:
     std::shared_ptr<const AudioWaveform> _waveform = std::make_shared<AudioWaveform>(SampleWaveform());
     std::deque<EditorControlEvent> _events = SampleEvents();
     Texture2D _frame{};
+    Texture2D _before{};
+    Texture2D _after{};
     mutable EditorPreferences _preferences;
     mutable EditorWorkspace _workspace;
     mutable std::array<EditorAgentActivity, 12> _agentStrips;

@@ -37,6 +37,12 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/QuickOpen.cpp
     Internals/Agent/AgentProfile.cpp
     Internals/Agent/SessionActivity.cpp
+    Internals/Git/GitAttention.cpp
+    Internals/Git/GitClient.cpp
+    Internals/Git/GitOperations.cpp
+    Internals/Git/GitParsing.cpp
+    Internals/Git/GitSchedule.cpp
+    Internals/Git/GitService.cpp
     Internals/Viewport/SceneViewport.cpp
     Internals/Viewport/ViewportInputRouter.cpp
     Internals/Diagnostics/BuildProblems.cpp
@@ -49,6 +55,8 @@ engine_warnings(EngineEditorSupport)
 if(WIN32)
     target_sources(EngineEditorSupport PRIVATE
         Internals/Platform/Windows/BuildLease.cpp
+        Internals/Platform/Windows/CapturedProcess.cpp
+        Internals/Platform/Windows/ProcessLaunch.cpp
         Internals/Platform/Windows/ChildProcess.cpp
         Internals/Platform/Windows/CommandLocator.cpp
         Internals/Platform/Windows/ControlChannel.cpp
@@ -83,6 +91,7 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Widgets/InspectorWidgets.cpp
         Ui/Widgets/EditorPlaybackControls.cpp
         Ui/Widgets/EditorAgentActivity.cpp
+        Ui/Widgets/EditorGitBar.cpp
         Ui/Shell/EditorShell.cpp
         Ui/Workspace/EditorWorkspace.cpp
         Ui/Panels/Assets/AssetsPanel.cpp
@@ -92,11 +101,13 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Panels/Inspector/InspectorPanel.cpp
         Ui/Panels/Tuning/TuningPanel.cpp
         Ui/Panels/Output/OutputPanel.cpp
-        Ui/Panels/Console/ConsolePanel.cpp)
+        Ui/Panels/Console/ConsolePanel.cpp
+        Ui/Panels/Git/GitDiffView.cpp
+        Ui/Panels/Git/GitDrawer.cpp)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)
     target_link_libraries(EngineEditorUi PUBLIC EngineToolUi EngineTerminalUi EngineEditorSupport)
     engine_warnings(EngineEditorUi)
-    add_executable(EngineEditor WIN32 Host/Main.cpp Host/AssetCommandRunner.cpp Host/AssetThumbnailStore.cpp Host/EditorApplication.cpp Host/FramePng.cpp Host/ViewportDisplay.cpp
+    add_executable(EngineEditor WIN32 Host/Main.cpp Host/AssetCommandRunner.cpp Host/AssetThumbnailStore.cpp Host/EditorApplication.cpp Host/FramePng.cpp Host/GitImages.cpp Host/ViewportDisplay.cpp
         Host/ProjectListLauncher.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp
         Application/EditorControlService.cpp Application/WorkerBuild.cpp Application/WorkerProcess.cpp)
     # Resolve raylib's CloseWindow/ShowCursor before the transitive user32 import library.

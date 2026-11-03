@@ -70,6 +70,8 @@ public:
     [[nodiscard]] const std::optional<EditorProject>& Project() const { return _project; }
     [[nodiscard]] std::optional<std::string> TakeOpenedScene();
     void Shutdown();
+    // Source control is changing files: builds wait.
+    void SetSourcesBusy(bool busy) { _sourcesBusy = busy; }
     [[nodiscard]] std::uint64_t Generation() const { return _generation; }
     // The frame not yet shown, once; LatestFrame keeps the last received one of the active generation.
     [[nodiscard]] std::shared_ptr<const ViewportPixels> TakeFrame();
@@ -151,6 +153,7 @@ private:
     std::map<std::uint64_t, std::string> _pendingParameters;
     std::map<std::string, std::uint64_t> _lastParameterRequest;
     std::string _selected;
+    bool _sourcesBusy = false;
     bool _gotCatalog = false;
     bool _ready = false;
     bool _paused = false;

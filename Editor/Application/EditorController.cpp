@@ -307,6 +307,7 @@ EditorSnapshot EditorController::Snapshot() const {
     context.profilerBusy = profilerBusy;
     context.phase = phase;
     context.benchmarkCancelPending = benchmarkCancelPending;
+    context.sourcesBusy = _sourcesBusy;
     EditorSnapshot snapshot{_catalog,
                             Selected(),
                             _displayed,

@@ -5,6 +5,7 @@
 #include "Editor/Application/EditorPresentation.h"
 #include "Editor/Internals/Agent/SessionActivity.h"
 #include "Editor/Internals/Settings/EditorPreferences.h"
+#include "Editor/Ui/Widgets/EditorGitBar.h"
 #include "Editor/Ui/Widgets/EditorPlaybackControls.h"
 
 // Agent menu / palette / toolbar requests (Docs/Editor/Usage.md → Agent workspace).
@@ -22,13 +23,15 @@ struct EditorShellResult {
     std::optional<EditorPanel> bottomPanel;
     std::optional<EditorWorkspaceLayout> layout;
     std::optional<EditorAgentRequest> agent;
+    EditorGitBarResult git;
 };
 
 class EditorShell {
 public:
     [[nodiscard]] EditorShellResult Menu(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                                          EditorPreferences& preferences, int& fontSize, bool maximized,
-                                         bool offerProjectList, const std::string& projectName) const;
+                                         bool offerProjectList, const std::string& projectName,
+                                         EditorGitBar& gitBar) const;
     [[nodiscard]] float Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
                                 float width, bool& marking, EditorToolbarSearch& search, const EditorAgentStatus& agent,
                                 EditorAgentActivity& activity) const;
