@@ -220,4 +220,6 @@ Test it without a window: `python Engine sim run scenario.json --out run.replay`
 
 Pitfalls: Everything that decides gameplay comes from SimulationStart or the steps. Name every deciding field in State, the Rng included. A paused scene neither feeds nor advances. The simulation asks for hitstop through state the scene reads; the scene calls TimeScale. An editor action that changes gameplay calls Runner().Command, so it is on the tape; one that only changes the view is a parameter.
 
+Hits and overlaps inside the rules: [Collision recipe](Collision.md).
+
 Concepts: Docs/Simulation.md.

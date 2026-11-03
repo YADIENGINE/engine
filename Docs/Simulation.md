@@ -23,6 +23,7 @@ Use a simulation for a game's rules. Menus, transitions and effects stay ordinar
 | `Simulation/Scenario.h` | Input, steps and state from a C++ test |
 | `Input/InputBindings.h` | Keys to per-player actions |
 | `Utilities/Rng.h`, `Utilities/WeightedPick.h` | Seeded random numbers, weighted choice |
+| `Physics/Collision/CollisionWorld.h` | Hits and overlaps inside the rules: [Collision](Collision.md) |
 | `Editor/Api/HostedSimulation.h` | A simulation an editor scene hosts |
 
 Worked example: [AgentDocs/Recipes/Simulation.md](../AgentDocs/Recipes/Simulation.md).

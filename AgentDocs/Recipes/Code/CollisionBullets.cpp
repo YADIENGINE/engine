@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <variant>
 #include "Graphics/Paint/PaintStyle.h"
 #include "Graphics/Paint/Painter.h"
 #include "Physics/Debug/ColliderDraw.h"
@@ -17,11 +18,21 @@ constexpr float PlayerSpeed = 240.0f;
 constexpr float BulletSpeed = 3000.0f; // 50 units per step: without a sweep it would jump over a thin enemy
 constexpr float BulletRadius = 4.0f;
 constexpr int EnemyCount = 8;
+constexpr float PlayerRadius = 12.0f;
 constexpr Color4 BulletColor{255, 230, 120, 255};
+constexpr Color4 PlayerColor{120, 220, 255, 255};
+
+InputBindings MakeBindings() {
+    InputBindings bindings(1);
+    bindings.Bind(0, RecipeShooterButton::Left, InputKey::A);
+    bindings.Bind(0, RecipeShooterButton::Right, InputKey::D);
+    bindings.Bind(0, RecipeShooterButton::Fire, InputKey::Space);
+    return bindings;
+}
 } // namespace
 
 RecipeShooterSimulation::RecipeShooterSimulation(const SimulationStart& start) {
-    _player = _collision.Add(Shape::Circle(12.0f), {{_playerX, PlayerY}}, MaskOf(RecipeLayer::Player));
+    _player = _collision.Add(Shape::Circle(PlayerRadius), {{_playerX, PlayerY}}, MaskOf(RecipeLayer::Player));
     Rng rng(start.seed);
     (void)_collision.Add(Shape::Segment({0.0f, 0.0f}, {FieldWidth, 0.0f}), {}, MaskOf(RecipeLayer::Wall), WallOwner);
     for (int i = 0; i < EnemyCount; ++i) {
@@ -69,8 +80,42 @@ SimulationDefinition RecipeShooterDefinition() {
 }
 
 void DrawRecipeShooter(Painter& paint, const RecipeShooterSimulation& simulation, bool showColliders) {
+    paint.Circle({simulation.PlayerX(), PlayerY}, PlayerRadius, Fill(PlayerColor));
     for (const Float2 bullet : simulation.Bullets())
         paint.Circle(bullet, BulletRadius, Fill(BulletColor));
     if (showColliders) DrawColliders(paint, simulation.Collision());
+}
+
+RecipeShooterEditorScene::RecipeShooterEditorScene(const SceneServices& services, std::uint64_t seed,
+                                                   bool showColliders)
+    : _hosted(services.simulation, RecipeShooterDefinition().settings, SimulationStart{.seed = seed, .players = 1})
+    , _bindings(MakeBindings())
+    , _showColliders(showColliders) {}
+void RecipeShooterEditorScene::HandleInput(const DeviceInput& input) {
+    if (input.cancelled)
+        _hosted.Runner().CancelInput();
+    else
+        _hosted.Runner().Feed(_bindings.Read(input));
+}
+std::string RecipeShooterEditorScene::ApplyParameter(const std::string& id, const SceneValue& value) {
+    if (id == "showColliders") _showColliders = std::get<bool>(value);
+    return {};
+}
+void RecipeShooterEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
+void RecipeShooterEditorScene::Draw(Painter& paint) const { DrawRecipeShooter(paint, _hosted.Sim(), _showColliders); }
+SceneDefinition RecipeShooterSceneDefinition() {
+    SceneDefinition definition;
+    definition.id = "myproject.shooter";
+    definition.name = "Shooter";
+    definition.category = "MyProject";
+    definition.parameters = {
+        {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{1}, 0.0, 1000000.0, SceneApplyMode::OnReset},
+        {"showColliders", "Show colliders", SceneParameterKind::Boolean, true}};
+    definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
+        return std::make_unique<RecipeShooterEditorScene>(
+            services, static_cast<std::uint64_t>(std::get<std::int64_t>(parameters.at("seed"))),
+            std::get<bool>(parameters.at("showColliders")));
+    };
+    return definition;
 }
 // [/recipe]

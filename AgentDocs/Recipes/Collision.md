@@ -9,7 +9,13 @@ Put the rules in Game/Simulation/: `engine_add_simulation` already links collisi
 <!-- recipe:CollisionBullets-header -->
 ```cpp
 #pragma once
+#include <cstdint>
+#include <string>
 #include <vector>
+#include "Editor/Api/EditorScene.h"
+#include "Editor/Api/HostedSimulation.h"
+#include "Editor/Api/SceneRegistry.h"
+#include "Input/InputBindings.h"
 #include "Physics/Collision/CollisionWorld.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationRegistry.h"
@@ -28,6 +34,7 @@ public:
 
     [[nodiscard]] int Score() const { return _score; }
     [[nodiscard]] int Touches() const { return _touches; }
+    [[nodiscard]] float PlayerX() const { return _playerX; }
     [[nodiscard]] const CollisionWorld& Collision() const { return _collision; }
     [[nodiscard]] const std::vector<Float2>& Bullets() const { return _bullets; }
 
@@ -43,6 +50,22 @@ private:
 [[nodiscard]] SimulationDefinition RecipeShooterDefinition();
 // The view, outside Game/Simulation. A debug switch shows what the rules see on top of what the player sees.
 void DrawRecipeShooter(Painter& paint, const RecipeShooterSimulation& simulation, bool showColliders);
+
+// An editor scene with the switch as a parameter: `ctl open ID --set showColliders=true --screenshot`.
+class RecipeShooterEditorScene final : public EditorScene {
+public:
+    RecipeShooterEditorScene(const SceneServices& services, std::uint64_t seed, bool showColliders);
+
+private:
+    void HandleInput(const DeviceInput& input) override;
+    [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
+    void Update(float seconds) override;
+    void Draw(Painter& paint) const override;
+    HostedSimulation<RecipeShooterSimulation> _hosted;
+    InputBindings _bindings;
+    bool _showColliders;
+};
+[[nodiscard]] SceneDefinition RecipeShooterSceneDefinition();
 ```
 <!-- /recipe -->
 
@@ -52,6 +75,7 @@ void DrawRecipeShooter(Painter& paint, const RecipeShooterSimulation& simulation
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <variant>
 #include "Graphics/Paint/PaintStyle.h"
 #include "Graphics/Paint/Painter.h"
 #include "Physics/Debug/ColliderDraw.h"
@@ -66,11 +90,21 @@ constexpr float PlayerSpeed = 240.0f;
 constexpr float BulletSpeed = 3000.0f; // 50 units per step: without a sweep it would jump over a thin enemy
 constexpr float BulletRadius = 4.0f;
 constexpr int EnemyCount = 8;
+constexpr float PlayerRadius = 12.0f;
 constexpr Color4 BulletColor{255, 230, 120, 255};
+constexpr Color4 PlayerColor{120, 220, 255, 255};
+
+InputBindings MakeBindings() {
+    InputBindings bindings(1);
+    bindings.Bind(0, RecipeShooterButton::Left, InputKey::A);
+    bindings.Bind(0, RecipeShooterButton::Right, InputKey::D);
+    bindings.Bind(0, RecipeShooterButton::Fire, InputKey::Space);
+    return bindings;
+}
 } // namespace
 
 RecipeShooterSimulation::RecipeShooterSimulation(const SimulationStart& start) {
-    _player = _collision.Add(Shape::Circle(12.0f), {{_playerX, PlayerY}}, MaskOf(RecipeLayer::Player));
+    _player = _collision.Add(Shape::Circle(PlayerRadius), {{_playerX, PlayerY}}, MaskOf(RecipeLayer::Player));
     Rng rng(start.seed);
     (void)_collision.Add(Shape::Segment({0.0f, 0.0f}, {FieldWidth, 0.0f}), {}, MaskOf(RecipeLayer::Wall), WallOwner);
     for (int i = 0; i < EnemyCount; ++i) {
@@ -118,12 +152,60 @@ SimulationDefinition RecipeShooterDefinition() {
 }
 
 void DrawRecipeShooter(Painter& paint, const RecipeShooterSimulation& simulation, bool showColliders) {
+    paint.Circle({simulation.PlayerX(), PlayerY}, PlayerRadius, Fill(PlayerColor));
     for (const Float2 bullet : simulation.Bullets())
         paint.Circle(bullet, BulletRadius, Fill(BulletColor));
     if (showColliders) DrawColliders(paint, simulation.Collision());
 }
+
+RecipeShooterEditorScene::RecipeShooterEditorScene(const SceneServices& services, std::uint64_t seed,
+                                                   bool showColliders)
+    : _hosted(services.simulation, RecipeShooterDefinition().settings, SimulationStart{.seed = seed, .players = 1})
+    , _bindings(MakeBindings())
+    , _showColliders(showColliders) {}
+void RecipeShooterEditorScene::HandleInput(const DeviceInput& input) {
+    if (input.cancelled)
+        _hosted.Runner().CancelInput();
+    else
+        _hosted.Runner().Feed(_bindings.Read(input));
+}
+std::string RecipeShooterEditorScene::ApplyParameter(const std::string& id, const SceneValue& value) {
+    if (id == "showColliders") _showColliders = std::get<bool>(value);
+    return {};
+}
+void RecipeShooterEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
+void RecipeShooterEditorScene::Draw(Painter& paint) const { DrawRecipeShooter(paint, _hosted.Sim(), _showColliders); }
+SceneDefinition RecipeShooterSceneDefinition() {
+    SceneDefinition definition;
+    definition.id = "myproject.shooter";
+    definition.name = "Shooter";
+    definition.category = "MyProject";
+    definition.parameters = {
+        {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{1}, 0.0, 1000000.0, SceneApplyMode::OnReset},
+        {"showColliders", "Show colliders", SceneParameterKind::Boolean, true}};
+    definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
+        return std::make_unique<RecipeShooterEditorScene>(
+            services, static_cast<std::uint64_t>(std::get<std::int64_t>(parameters.at("seed"))),
+            std::get<bool>(parameters.at("showColliders")));
+    };
+    return definition;
+}
 ```
 <!-- /recipe -->
+
+Test it without a window: `python Engine sim run scenario.json --out run.replay`, with the scenario below. Comparing the
+game's position with its collider's catches a forgotten `Move`, which hashes cannot.
+
+```json
+{ "simulation": "myproject.shooter", "seed": 4, "script": [
+  { "expect": { "collision.colliders": 10 } },
+  { "hold": "Right" }, { "run": 60 },
+  { "expect": { "playerX": { "min": 639, "max": 641 },
+                "collision.collider[0].position.x": { "min": 639, "max": 641 } } } ] }
+```
+
+See it: `python Engine ctl open myproject.shooter --set showColliders=true --screenshot --scale 0.5`. Debugging a hit that
+goes wrong has its own procedure: [collision skill](../Skills/collision/SKILL.md).
 
 Checks:
 

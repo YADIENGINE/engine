@@ -20,6 +20,8 @@
 #include "Options/GameOptions.h"
 #include "Simulation/ReplayCheck.h"
 #include "Simulation/Scenario.h"
+#include "Simulation/ScenarioScript.h"
+#include "Simulation/SimulationRegistry.h"
 #include "Simulation/StateHash.h"
 #include "Tests/PaintHarness.h"
 #include "Tests/Support/TempDirectory.h"
@@ -80,6 +82,37 @@ TEST_CASE("Engine.Recipes.CollisionBulletsReplayAndDraw", "[engine][recipes]") {
     DrawRecipeShooter(harness.paint, simulation, true);
     harness.End();
     CHECK_FALSE(harness.Draws().empty());
+}
+
+TEST_CASE("Engine.Recipes.CollisionScenarioInTheRecipePasses", "[engine][recipes]") {
+    SimulationRegistry registry;
+    registry.Add(RecipeShooterDefinition());
+    const auto script = JsonIO::Parse(R"json({ "simulation": "myproject.shooter", "seed": 4, "script": [
+  { "expect": { "collision.colliders": 10 } },
+  { "hold": "Right" }, { "run": 60 },
+  { "expect": { "playerX": { "min": 639, "max": 641 },
+                "collision.collider[0].position.x": { "min": 639, "max": 641 } } } ] })json");
+    const auto result = RunScenarioScript(registry, script);
+    CHECK(result.passed);
+}
+
+TEST_CASE("Engine.Recipes.CollisionSceneOffersTheSwitch", "[engine][recipes]") {
+    const auto definition = RecipeShooterSceneDefinition();
+    REQUIRE(definition.parameters.size() == 2);
+    CHECK(definition.parameters[1].id == "showColliders");
+    CHECK(std::get<bool>(definition.parameters[1].initial));
+    const RecipeShooterSimulation simulation(SimulationStart{.seed = 1, .players = 1});
+    const auto drawn = [&](bool showColliders) {
+        PaintHarness harness;
+        harness.Begin();
+        DrawRecipeShooter(harness.paint, simulation, showColliders);
+        harness.End();
+        std::size_t vertices = 0;
+        for (std::size_t i = 0; i < harness.Draws().size(); ++i)
+            vertices += harness.Drawn(i).size();
+        return vertices;
+    };
+    CHECK(drawn(true) > drawn(false));
 }
 
 TEST_CASE("Engine.Recipes.SimulationSceneRunsOutsideTheEditor", "[engine][recipes]") {
