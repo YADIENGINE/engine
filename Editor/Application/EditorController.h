@@ -58,6 +58,8 @@ public:
     // Opens a file from build output at a line: VS Code when it is on PATH, otherwise the file's default application.
     // A relative path counts from the project root.
     void OpenSource(const std::string& file, int line);
+    // Opens a local file or directory in its default Windows application.
+    void OpenPath(const std::filesystem::path& path);
     // The current Build & Refresh attempt was started through the control endpoint: its client gets the result, so a
     // failure does not open the blocking dialog.
     void MarkControlAttempt() { _controlAttempt = _output.Attempt().id; }

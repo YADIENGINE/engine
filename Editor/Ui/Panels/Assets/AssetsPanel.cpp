@@ -211,6 +211,11 @@ bool IsAssetName(const std::string& name) {
            std::ranges::all_of(name, [](unsigned char c) { return std::isalnum(c) != 0; });
 }
 
+std::string Utf8(const std::filesystem::path& path) {
+    const auto text = path.u8string();
+    return {reinterpret_cast<const char*>(text.data()), text.size()};
+}
+
 void AssetMenu(const AssetNode& node, const std::string& usage, const EditorUiActions& actions,
                const std::function<void()>& extraItems = {}) {
     if (!ImGui::BeginPopupContextItem("asset-menu")) return;
@@ -218,8 +223,8 @@ void AssetMenu(const AssetNode& node, const std::string& usage, const EditorUiAc
     if (!usage.empty() && ImGui::MenuItem(ICON_FA_COPY "  Copy usage")) ImGui::SetClipboardText(usage.c_str());
     if (ImGui::MenuItem(ICON_FA_COPY "  Copy path")) ImGui::SetClipboardText(node.path.generic_string().c_str());
     if ((node.kind == AssetKind::Graphic || node.kind == AssetKind::Code) &&
-        ImGui::MenuItem(ICON_FA_CODE "  Open code") && actions.openPath)
-        actions.openPath(node.path);
+        ImGui::MenuItem(ICON_FA_CODE "  Open code") && actions.openSource)
+        actions.openSource(Utf8(node.path), 0);
     if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN "  Show in Explorer") && actions.openPath)
         actions.openPath(node.kind == AssetKind::Folder ? node.path : node.path.parent_path());
     ImGui::EndPopup();
@@ -367,19 +372,27 @@ void AssetsPanel::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions&
         ImGui::SetKeyboardFocusHere();
         _focusSearch = false;
     }
+    const float controlBorder = std::max(1.0f, ToolUiScale());
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, controlBorder);
+    ImGui::PushStyleColor(ImGuiCol_Border, ToolPalette::Border);
     ImGui::InputTextWithHint("##asset-search", ICON_FA_MAGNIFYING_GLASS "  Search assets (Ctrl+F)", _search.data(),
                              _search.size());
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar();
     if (hasText) {
         ImGui::SameLine();
         if (ToolIconButton("clear-search", ICON_FA_XMARK, "Clear search")) _search.fill('\0');
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(sliderWidth);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, controlBorder);
+    ImGui::PushStyleColor(ImGuiCol_Border, ToolPalette::Border);
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ToolPalette::Panel);
     const auto tileFill = EditorTintSurface(ToolPalette::Control, ToolPalette::Accent, 0.38f);
     const auto tileHover = EditorTintSurface(ToolPalette::Hover, ToolPalette::AccentHover, 0.48f);
     (void)ToolSlider("##tile-size", _tileSize, MinTileSize, MaxTileSize, "", tileFill, tileHover);
-    ImGui::PopStyleColor();
+    ImGui::PopStyleColor(2);
+    ImGui::PopStyleVar();
     ToolTooltip("Tile size (Ctrl+wheel over the grid)");
 }
 

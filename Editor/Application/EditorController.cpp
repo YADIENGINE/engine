@@ -341,6 +341,15 @@ void EditorController::OpenSource(const std::string& file, int line) {
     if (opened <= 32)
         Log("Could not open " + file + " (Windows shell code " + std::to_string(opened) + ").", EditorLogLevel::Error);
 }
+void EditorController::OpenPath(const std::filesystem::path& path) {
+    auto native = path;
+    native.make_preferred();
+    const auto opened = reinterpret_cast<std::intptr_t>(
+        ShellExecuteW(nullptr, L"open", native.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+    if (opened <= 32)
+        Log("Could not open " + WorkerUtf8(native.wstring()) + " (Windows shell code " + std::to_string(opened) + ").",
+            EditorLogLevel::Error);
+}
 void EditorController::Input(const DeviceInput& input) {
     if (_profiler.Snapshot().busy || !_ready) return;
     try {

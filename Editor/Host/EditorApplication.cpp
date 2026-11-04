@@ -388,7 +388,11 @@ void EditorApplication::DrawToolOverlay() const {
         [&](const AudioPreviewRequest& request) { (void)QueueAudio(request); },
         [&](const std::filesystem::path& path) {
             const auto text = path.u8string();
-            OpenExternalUrl(std::string_view(reinterpret_cast<const char*>(text.data()), text.size()));
+            const std::string_view utf8(reinterpret_cast<const char*>(text.data()), text.size());
+            if (utf8.starts_with("http://") || utf8.starts_with("https://"))
+                OpenExternalUrl(utf8);
+            else
+                commands.emplace_back([this, path] { _controller.OpenPath(path); });
         },
         [&](const std::string& id) { return _thumbnails.Texture(id); },
         [&](const std::vector<std::string>& arguments) { _assetCommands.Run(arguments); },
