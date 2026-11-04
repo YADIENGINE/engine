@@ -17,6 +17,7 @@ bool AudioSystem::HasEffect(SoundId id) const { return _state->HasEffect(id); }
 void AudioSystem::PlayEffect(SoundId id, float pitch) { _state->PlayEffect(id, pitch, false); }
 void AudioSystem::PlayEffectIfIdle(SoundId id, float pitch) { _state->PlayEffect(id, pitch, true); }
 void AudioSystem::StopEffect(SoundId id) { _state->StopEffect(id); }
+bool AudioSystem::IsEffectPlaying(SoundId id) const { return _state->IsEffectPlaying(id); }
 void AudioSystem::SetEffectVolume(SoundId id, float volume) { _state->SetEffectVolume(id, volume); }
 
 void AudioSystem::LoadMusic(MusicId id, const std::filesystem::path& file, MusicVolumeGroup group) {

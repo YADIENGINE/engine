@@ -4,6 +4,7 @@
 #include "Graphics/Post/PostSettings.h"
 #include "Graphics/Render/WindowSettings.h"
 #include "Audio/AudioSystem.h"
+#include "Audio/SoundTables.h"
 #include "Modules/Persistence/Persistence.h"
 #include "Graphics/Style/PlainTheme.h"
 #include "Ui/Kernel/UiLooks.h"
@@ -23,6 +24,9 @@ struct GameSettings {
     std::filesystem::path font;
     std::vector<std::filesystem::path> assets;
     AudioCatalog audio;
+    // The game's typed sound tables, played through Game::Sounds(); see Docs/Audio.md. `audio` keeps music and any
+    // effect a game prefers to number itself.
+    SoundTables sounds;
     AudioVolumeSettings audioVolume;
     SaveSettings save;
     // Colours, backgrounds and effects; activated before the game's scenes and views are created (see Style/Theme.h).

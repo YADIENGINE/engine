@@ -5,7 +5,8 @@
 
 class WorkerScene : public Scene {
 public:
-    WorkerScene(Vec2 canvas, AudioSystem& audio, std::function<void(const std::string&)> log, const FontFace* font);
+    WorkerScene(Vec2 canvas, AudioSystem& audio, SoundPlayer& sounds, std::function<void(const std::string&)> log,
+                const FontFace* font);
     ~WorkerScene() override;
     void Open(const SceneDefinition& definition, const SceneParameters& parameters);
     void Reset();

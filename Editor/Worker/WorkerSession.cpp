@@ -30,7 +30,7 @@ struct CapturedImage {
 
 WorkerSession::WorkerSession(Game& game, const GameSettings& settings, const SceneRegistry& registry,
                              ControlChannel& channel, const std::string& session, const FontFace* font,
-                             AudioSystem& audio, WorkerSessionActions actions)
+                             AudioSystem& audio, SoundPlayer& sounds, WorkerSessionActions actions)
     : _game(game)
     , _registry(registry)
     , _channel(channel)
@@ -38,7 +38,7 @@ WorkerSession::WorkerSession(Game& game, const GameSettings& settings, const Sce
     , _frames(session, false)
     , _actions(std::move(actions))
     , _scene(
-          _canvas, audio, [this](const std::string& text) { SendLog(text); }, font)
+          _canvas, audio, sounds, [this](const std::string& text) { SendLog(text); }, font)
     , _profiler(game, _scene, channel, _canvas,
                 [this] {
                     _actions.reset();

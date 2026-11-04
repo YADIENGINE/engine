@@ -14,6 +14,7 @@ public:
     EffectVoices& operator=(EffectVoices&& other) noexcept;
     void Play(float pitch, bool onlyIfIdle = false);
     void Stop();
+    [[nodiscard]] bool IsPlaying() const;
     void SetVolume(float volume);
     void ApplyVolume(float effectsVolume) const;
 

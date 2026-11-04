@@ -3,6 +3,7 @@
 #include <optional>
 #include "Modules/Persistence/Persistence.h"
 #include "Audio/AudioSystem.h"
+#include "Audio/SoundPlayer.h"
 #include "Options/GameOptions.h"
 #include "Runtime/TimeScale.h"
 #include "Graphics/Render/RenderStats.h"
@@ -44,6 +45,8 @@ public:
     // setters below. Public so that a scene can show the screen with only a Game&.
     [[nodiscard]] UiOptionsValues UiOptions() const;
     void ApplyUiOptions(const UiOptionsValues& values);
+    // The game's sound tables (GameSettings::sounds). Public so that a scene can play with only a Game&.
+    [[nodiscard]] SoundPlayer& Sounds() { return _sounds; }
 
 protected:
     explicit Game(const GameSettings& settings);
@@ -135,6 +138,8 @@ private:
     std::filesystem::path _assetRoot;
     std::optional<FontFace> _font;
     AudioSystem _audio;
+    std::unique_ptr<SoundOutput> _soundOutput;
+    SoundPlayer _sounds;
     std::unique_ptr<InputNormalizer> _input;
     TimeScale _timeScale;
     std::filesystem::path _applicationId;

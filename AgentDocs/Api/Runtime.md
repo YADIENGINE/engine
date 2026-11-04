@@ -26,6 +26,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Game`: `[[nodiscard]] GraphicsSettings AppliedGraphics() const` — The graphics choices in effect, an override included.
 - `Game`: `[[nodiscard]] UiOptionsValues UiOptions() const` — The player's options for Ui/Kit/UiOptionsScreen.h, and applying what the screen changed.
 - `Game`: `void ApplyUiOptions(const UiOptionsValues& values)`
+- `Game`: `[[nodiscard]] SoundPlayer& Sounds()` — The game's sound tables (GameSettings::sounds).
 
 ## `Core/Runtime/GameSettings.h`
 
@@ -41,6 +42,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `GameSettings`: `std::filesystem::path font`
 - `GameSettings`: `std::vector<std::filesystem::path> assets`
 - `GameSettings`: `AudioCatalog audio`
+- `GameSettings`: `SoundTables sounds` — The game's typed sound tables, played through Game::Sounds(); see Docs/Audio.md.
 - `GameSettings`: `AudioVolumeSettings audioVolume`
 - `GameSettings`: `SaveSettings save`
 - `GameSettings`: `Theme theme = PlainTheme` — Colours, backgrounds and effects; activated before the game's scenes and views are created (see Style/Theme.h).

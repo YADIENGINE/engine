@@ -128,6 +128,12 @@ class BoundaryTests(unittest.TestCase):
         self.write("Engine/Core/Ui/Widgets/Button.cpp", '#include "Ui/Looks/Look.h"\n#include "Ui/Kernel/Ui.h"\n')
         self.assertEqual(self.check(), [])
 
+    def test_a_simulation_cannot_include_the_sound_player_or_keys(self):
+        for header in ("SoundPlayer.h", "SoundKey.h", "SoundRow.h", "SoundTables.h", "SoundOutput.h"):
+            with self.subTest(header=header):
+                self.write("Game/Simulation/Rules.cpp", f'#include "Audio/{header}"\n')
+                self.assertIn("simulation code", self.check()[0])
+
     def test_a_simulation_cannot_include_the_ui(self):
         self.write("Engine/Core/Simulation/Rules.cpp", '#include "Ui/Kernel/Ui.h"\n')
         self.assertIn("simulation code", self.check()[0])

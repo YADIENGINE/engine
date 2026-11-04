@@ -99,6 +99,11 @@ void AudioSystem::State::PlayEffect(SoundId id, float pitch, bool onlyIfIdle) {
     effect.Play(pitch, onlyIfIdle);
 }
 void AudioSystem::State::StopEffect(SoundId id) { GetEffect(id).Stop(); }
+bool AudioSystem::State::IsEffectPlaying(SoundId id) const {
+    if (_loadState != LoadState::Ready) return false;
+    const auto found = _effects.find(id);
+    return found != _effects.end() && found->second.IsPlaying();
+}
 void AudioSystem::State::SetEffectVolume(SoundId id, float volume) {
     EffectVoices& effect = GetEffect(id);
     ValidateAudioVolume(volume);

@@ -18,7 +18,7 @@ layout and project-local short registration helpers belong in the consumer's dev
 3. ObjectList manages Start/Update/Draw/Stop; content does not dispatch these hooks manually.
 4. Reset creates a new instance with the accepted recipe; old resources are cleaned up while the context is alive.
 
-`SceneServices` font/audio references outlive the instance. Views explicitly own textures; dependent effects are
+`SceneServices` font/audio/sounds references outlive the instance. Views explicitly own textures; dependent effects are
 cleaned up before the texture. Stop/destructors do not throw. Factory/hook exceptions may close the worker.
 
 ## Control design

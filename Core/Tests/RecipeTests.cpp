@@ -15,14 +15,17 @@
 #include "AgentDocs/Recipes/Code/SaveProgress.h"
 #include "AgentDocs/Recipes/Code/SceneTransition.h"
 #include "AgentDocs/Recipes/Code/SimulationPlay.h"
+#include "AgentDocs/Recipes/Code/SoundTable.h"
 #include "AgentDocs/Recipes/Code/SpriteLayer.h"
 #include "AgentDocs/Recipes/Code/TextLayout.h"
 #include "AgentDocs/Recipes/Code/TuningValue.h"
+#include "Audio/SoundPlayer.h"
 #include "Graphics/Surface/Surface.h"
 #include "Graphics/Text/FontFace.h"
 #include "Input/Input.h"
 #include "Modules/Persistence/Persistence.h"
 #include "Options/GameOptions.h"
+#include "Runtime/GameSettings.h"
 #include "Simulation/ReplayCheck.h"
 #include "Simulation/Scenario.h"
 #include "Simulation/ScenarioScript.h"
@@ -396,4 +399,23 @@ TEST_CASE("Engine.Recipes.PopupEffectsDrawWithThePublicApi", "[engine][recipes]"
     effects.Draw(harness.paint);
     harness.End();
     CHECK(harness.Draws().empty());
+}
+
+TEST_CASE("Engine.Recipes.SoundTablePlaysThroughAPlayer", "[engine][recipes]") {
+    struct Output final : SoundOutput {
+        [[nodiscard]] bool IsPlaying(SoundId) const override { return false; }
+        void Play(SoundId, float) override { ++plays; }
+        int plays = 0;
+    };
+    GameSettings settings;
+    AddRecipeSounds(settings);
+    CHECK(CatalogWithSounds(settings.audio, settings.sounds).effects.size() == 4);
+    Output output;
+    SoundPlayer sounds(settings.sounds, output);
+    CHECK(sounds.Has(RecipeSfx::UiMove));
+    CHECK(RecipeHit(sounds));
+    CHECK_FALSE(RecipeHit(sounds)); // Within the row's cooldown
+    sounds.Update(0.25f);
+    CHECK(RecipeHit(sounds));
+    CHECK(output.plays == 2);
 }

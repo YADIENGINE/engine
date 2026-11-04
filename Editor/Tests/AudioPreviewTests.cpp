@@ -1,5 +1,6 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -8,6 +9,7 @@
 #include <thread>
 #include <vector>
 #include "Editor/Internals/Protocol/WorkerProtocol.h"
+#include "Audio/SoundTables.h"
 #include "Editor/Internals/Session/AudioAnalysis.h"
 #include "Editor/Internals/Session/AudioPreview.h"
 #include "Editor/Internals/Session/AudioUsage.h"
@@ -117,6 +119,19 @@ TEST_CASE("Editor.AudioPreview.WaveformCacheReportsDecodeFailures", "[engine-edi
     CHECK_FALSE(failed.waveform);
     CHECK(cache.Request(file).state == WaveformState::Failed); // Not retried until the file changes
     CHECK(decodes == 1);
+}
+
+TEST_CASE("Editor.AudioPreview.ASoundTableShowsUnderItsLabels", "[engine-editor]") {
+    enum class Sfx { Hit, Coin, Count };
+    static constexpr std::array table{SoundRow{Sfx::Hit, {"Audio/Hit1.wav", "Audio/Hit2.wav"}, {.label = "Hit"}},
+                                      SoundRow{Sfx::Coin, {"Audio/Hit1.wav"}}};
+    const AudioCatalog own{.effects = {{SoundId{3}, "Audio/Own.wav"}}};
+    const AudioUsage usage{true, DecodeAudioCatalog(EncodeAudioCatalog(CatalogWithSounds(own, table)))};
+    REQUIRE(usage.uses.size() == 4);
+    CHECK(usage.uses[1].id == SoundTables::FirstGeneratedId); // Survives the JSON between worker and editor
+    CHECK(AudioUseLabels(AudioUsesOf(usage, "Audio/Hit2.wav")) == "Effect Hit (2/2)");
+    CHECK(AudioUseLabels(AudioUsesOf(usage, "Audio/Hit1.wav")).find("Effect Hit (1/2)") != std::string::npos);
+    CHECK(AudioUseLabels(AudioUsesOf(usage, "Audio/Hit1.wav")).find("[1]") != std::string::npos);
 }
 
 TEST_CASE("Editor.AudioPreview.WorkerReportsWhichFilesTheCatalogPlays", "[engine-editor]") {

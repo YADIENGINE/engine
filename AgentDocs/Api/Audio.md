@@ -51,6 +51,7 @@ For tools that work on source files, such as an editor previewing assets.
 - `AudioSystem`: `void PlayEffectIfIdle(SoundId id, float pitch = 1.0f)` — Skips the request if any copy of this effect is playing.
 - `AudioSystem`: `void StopEffect(SoundId id)`
 - `AudioSystem`: `void SetEffectVolume(SoundId id, float volume)`
+- `AudioSystem`: `[[nodiscard]] bool IsEffectPlaying(SoundId id) const` — Whether any copy is playing; false until ready, or when the ID is absent.
 - `AudioSystem`: `void LoadMusic(MusicId id, const std::filesystem::path& file, MusicVolumeGroup group = MusicVolumeGroup::Default)`
 - `AudioSystem`: `void UnloadMusic(MusicId id)`
 - `AudioSystem`: `[[nodiscard]] bool HasMusic(MusicId id) const`
@@ -79,3 +80,77 @@ For tools that work on source files, such as an editor previewing assets.
 - `AudioSystem`: `[[nodiscard]] float EffectVolume() const`
 - `AudioSystem`: `[[nodiscard]] float MusicVolume(MusicVolumeGroup group = MusicVolumeGroup::Default) const`
 - `AudioSystem`: `[[nodiscard]] bool IsMuted() const`
+
+## `Core/Audio/SoundKey.h`
+
+- `template<class Enum> concept SoundEnum = std::is_enum_v<Enum>&& requires { Enum::Count; }` — An enum a sound table can use: it ends with Count, as RowsInIdOrder needs.
+- `class SoundKey` — One sound of any game's table, for a system that must store it without knowing the game's enum.
+- `SoundKey`: `SoundKey() = default`
+- `SoundKey`: `template<SoundEnum Enum> SoundKey(Enum value)`
+- `SoundKey`: `[[nodiscard]] explicit operator bool() const`
+- `SoundKey`: `[[nodiscard]] const std::type_info* Type() const` — The enum's type; null for an empty key.
+- `SoundKey`: `[[nodiscard]] std::size_t Index() const`
+
+## `Core/Audio/SoundOutput.h`
+
+- `class SoundOutput` — What SoundPlayer needs from the audio device.
+- `SoundOutput`: `[[nodiscard]] virtual bool IsPlaying(SoundId id) const = 0`
+- `SoundOutput`: `virtual void Play(SoundId id, float pitch) = 0`
+
+## `Core/Audio/SoundPlayer.h`
+
+- `class SoundPlayer` — Plays the rows of the game's sound tables: `game.Sounds().Play(Sfx::Hit)`.
+- `SoundPlayer`: `static constexpr std::uint64_t DefaultSeed = 0x536F756E64` — Fixed: nobody can hear that two runs pick alike
+- `SoundPlayer`: `SoundPlayer(const SoundTables& tables, SoundOutput& output, std::uint64_t seed = DefaultSeed)`
+- `SoundPlayer`: `[[nodiscard]] bool Has(SoundKey key) const` — Whether the key names a row of a registered table.
+- `SoundPlayer`: `bool Play(SoundKey key, float pitch = 1.0f)` — Plays the row at its picked pitch times `pitch`.
+- `SoundPlayer`: `void Update(float realSeconds)` — Moves the cooldown clock.
+
+## `Core/Audio/SoundRow.h`
+
+- `inline constexpr std::size_t MaxSoundVariants = 8` — A row's files, relative to the asset root.
+- `using SoundFiles = std::array<std::string_view, MaxSoundVariants>`
+- `class SoundOverlap` — What a new play does while the row is already playing.
+- `SoundOverlap`: `[[nodiscard]] static constexpr SoundOverlap Copies(std::size_t copies)` — Up to this many copies of each file at once; one more restarts the next copy of that file.
+- `SoundOverlap`: `static const SoundOverlap Skip` — While any file of the row is playing, the new play is dropped and Play returns false.
+- `SoundOverlap`: `[[nodiscard]] constexpr bool IsSkip() const`
+- `SoundOverlap`: `[[nodiscard]] constexpr std::size_t Voices() const` — Voices each file needs.
+- `inline constexpr SoundOverlap SoundOverlap::Skip = SoundOverlap(0)`
+- `struct SoundPitch` — The range a play's pitch is picked from, uniformly.
+- `SoundPitch`: `float low = 1.0f`
+- `SoundPitch`: `float high = 1.0f`
+- `struct SoundOptions`
+- `SoundOptions`: `float volume = 1.0f`
+- `SoundOptions`: `SoundPitch pitch { }`
+- `SoundOptions`: `float cooldown = 0.0f` — Real seconds after a play during which Play returns false; hitstop and slow motion do not stretch it.
+- `SoundOptions`: `SoundOverlap whenPlaying = SoundOverlap::Copies(4)`
+- `SoundOptions`: `std::string_view label` — For tools; a row without one gets a generated label
+- `[[nodiscard]] constexpr bool SoundFileInsideAssets(std::string_view file)` — Relative, inside the asset root: the rules of AudioSystem::ValidateCatalog, which also runs at startup.
+- `constexpr void CheckSoundRow(const SoundFiles& files, const SoundOptions& options)` — Throws std::invalid_argument.
+- `template<SoundEnum Enum> struct SoundRow` — One sound of a game's table.
+- `SoundRow`: `constexpr SoundRow(Enum rowId, const SoundFiles& rowFiles, const SoundOptions& rowOptions = { })`
+- `SoundRow`: `Enum id`
+- `SoundRow`: `SoundFiles files`
+- `SoundRow`: `SoundOptions options`
+
+## `Core/Audio/SoundTables.h`
+
+- `struct SoundTableRow` — A row without its enum type: what the player and the catalog read.
+- `SoundTableRow`: `SoundId firstId { }` — The row's files have consecutive catalog IDs from here
+- `SoundTableRow`: `std::vector<std::string> files`
+- `SoundTableRow`: `float volume = 1.0f`
+- `SoundTableRow`: `SoundPitch pitch { }`
+- `SoundTableRow`: `float cooldown = 0.0f`
+- `SoundTableRow`: `SoundOverlap whenPlaying = SoundOverlap::Copies(4)`
+- `SoundTableRow`: `std::string label` — The row's own, or generated
+- `struct SoundTable`
+- `SoundTable`: `const std::type_info* type = nullptr`
+- `SoundTable`: `std::vector<SoundTableRow> rows`
+- `[[nodiscard]] std::string SoundEnumName(const std::type_info& type)` — An enum's name for messages and labels: "Sfx" for an enum Sfx.
+- `class SoundTables` — The game's sound tables, one per enum type: `settings.sounds = SfxTable;` or `settings.sounds = {SfxTable, Ui};`.
+- `SoundTables`: `static constexpr std::size_t FirstGeneratedId = std::size_t { 1 } <<32U` — Generated catalog IDs start here, so that a game's own low IDs in GameSettings::audio stay out of their way.
+- `SoundTables`: `SoundTables() = default`
+- `SoundTables`: `template<SoundEnum Enum, std::size_t Size> requires(Size == static_cast<std::size_t>(Enum::Count)) SoundTables(const std::array<SoundRow<Enum>, Size>& table)`
+- `SoundTables`: `SoundTables(std::initializer_list<SoundTables> tables)`
+- `SoundTables`: `[[nodiscard]] const std::vector<SoundTable>& Tables() const`
+- `[[nodiscard]] AudioCatalog CatalogWithSounds(const AudioCatalog& catalog, const SoundTables& tables)` — `catalog` with one effect for each file of each table.

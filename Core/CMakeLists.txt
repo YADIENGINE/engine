@@ -129,6 +129,8 @@ engine_warnings(EnginePhysics)
 add_library(EngineHeadless STATIC
     Audio/Internals/AudioVolumePolicy.cpp
     Audio/Internals/Validation.cpp
+    Audio/SoundPlayer.cpp
+    Audio/SoundTables.cpp
     Fx/Camera/CameraEffects.cpp
     Fx/Camera/CameraShot.cpp
     Fx/FxCue.cpp

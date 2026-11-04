@@ -31,7 +31,8 @@ Reading the numbers:
 - `leadingSilence` / `trailingSilence` are seconds quieter than `--silence-db` (default -60) at either end. A short
   effect with a long leading silence feels late; a long tail wastes a voice.
 - A `uses` label is `Effect <name>` / `Music <name>`, or `#<id>` when the catalog entry has no `name`. Names are optional
-  `EffectAsset::name` / `MusicAsset::name` labels ([Audio](Audio.md#tools-and-source-files)).
+  `EffectAsset::name` / `MusicAsset::name` labels ([Audio](Audio.md#tools-and-source-files)). A [sound table](Audio.md#sound-tables) row
+  shows as one entry per file, with its label, and IDs from 2^32 up.
 - In the waveform image, the bright core is RMS, the darker edge the peak, and faint vertical lines mark every
   `tickSeconds`; x maps linearly to time over `seconds`.
 

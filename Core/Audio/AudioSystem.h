@@ -67,6 +67,8 @@ public:
     void PlayEffectIfIdle(SoundId id, float pitch = 1.0f);
     void StopEffect(SoundId id);
     void SetEffectVolume(SoundId id, float volume);
+    // Whether any copy is playing; false until ready, or when the ID is absent.
+    [[nodiscard]] bool IsEffectPlaying(SoundId id) const;
 
     void LoadMusic(MusicId id, const std::filesystem::path& file, MusicVolumeGroup group = MusicVolumeGroup::Default);
     void UnloadMusic(MusicId id);

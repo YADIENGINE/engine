@@ -144,6 +144,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `struct SceneServices` — References outlive the scene.
 - `SceneServices`: `Vec2 canvas`
 - `SceneServices`: `AudioSystem& audio`
+- `SceneServices`: `SoundPlayer& sounds` — The game's sound tables: the same player as Game::Sounds()
 - `SceneServices`: `std::function<void(const std::string&)> log`
 - `SceneServices`: `const FontFace* font = nullptr` — The game's font (Painter::Font()); null when the game has none.
 - `SceneServices`: `std::function<std::string(const std::string&, const SceneParameters&)> applicationCommand`

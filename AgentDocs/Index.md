@@ -59,7 +59,8 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Use seeded random numbers | `Core/Utilities/Rng.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#writing-a-simulation` |
 | Read keys | `Core/Input/Input.h`<br>`Core/Input/InputNavigation.h` | - | `Docs/Input.md#physical-snapshot-and-semantic-queries` |
 | Handle pointer collections or dragging | `Core/Input/CollectionPointer.h`<br>`Core/Input/DragPointer.h` | - | `Docs/Input.md#collections-and-drag-and-drop` |
-| Load/play music and effects | `Core/Audio/AudioSystem.h` | - | `Docs/Audio.md#setting-up-a-catalog` |
+| Add a game's sound effects: variants, pitch range, cooldown, no overlap; a stored sound key | `Core/Audio/SoundRow.h`<br>`Core/Audio/SoundTables.h`<br>`Core/Audio/SoundPlayer.h`<br>`Core/Audio/SoundKey.h` | `Recipes/SoundTable.md` | `Docs/Audio.md#sound-tables` |
+| Load/play music; effects numbered by hand | `Core/Audio/AudioSystem.h` | - | `Docs/Audio.md#setting-up-a-catalog` |
 | Persist options or game progress | `Core/Options/GameOptions.h`<br>`Core/Modules/Persistence/Persistence.h` | `Recipes/SaveProgress.md` | `Docs/OptionsAndSaves.md#saves` |
 | Tune values without rebuilding | `Core/Tuning/Tuning.h`<br>`Core/Tuning/TuningFile.h`<br>`Core/Tuning/TuningLive.h` | `Recipes/TuningValue.md` | `Docs/Tuning.md#setup` |
 | Parse, write, gzip or encrypt JSON | `Core/Modules/JsonIO/JsonIO.h` | - | `Docs/Modules/JsonIO/README.md#public-api` |

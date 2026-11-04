@@ -89,7 +89,8 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
             else if (argument == "--catalog")
                 catalogOnly = true;
             else if (argument == "--audio-report" && i + 1 < argc) {
-                WriteAudioReport(argv[++i], settings.audio); // A tool's question; no window, device or editor
+                // A tool's question; no window, device or editor
+                WriteAudioReport(argv[++i], CatalogWithSounds(settings.audio, settings.sounds));
                 return 0;
             } else if (argument == "--thumbnails" && i + 2 < argc) {
                 thumbnails = argv[++i];
@@ -107,12 +108,13 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
             SetTraceLogLevel(LOG_WARNING);
             PrepareHiddenWindow(settings);
             settings.audio = {}; // Drawing only: no reason to load the game's sounds
+            settings.sounds = {};
             AssetThumbnailGame game(settings, *thumbnails);
             game.Run();
             return 0;
         }
         channel = std::make_unique<ControlChannel>(session, false);
-        channel->Send({{}, 0, 0, "audio", EncodeAudioCatalog(settings.audio)});
+        channel->Send({{}, 0, 0, "audio", EncodeAudioCatalog(CatalogWithSounds(settings.audio, settings.sounds))});
         channel->Send({{}, 0, 0, "catalog", EncodeSceneCatalog(registry.Entries())});
         if (catalogOnly) {
             const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);

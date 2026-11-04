@@ -22,7 +22,8 @@ struct WorkerSessionActions {
 class WorkerSession {
 public:
     WorkerSession(Game& game, const GameSettings& settings, const SceneRegistry& registry, ControlChannel& channel,
-                  const std::string& session, const FontFace* font, AudioSystem& audio, WorkerSessionActions actions);
+                  const std::string& session, const FontFace* font, AudioSystem& audio, SoundPlayer& sounds,
+                  WorkerSessionActions actions);
     ~WorkerSession();
     [[nodiscard]] WorkerScene& Scene() { return _scene; }
     [[nodiscard]] const WorkerScene& Scene() const { return _scene; }

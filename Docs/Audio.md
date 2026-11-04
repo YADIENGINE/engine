@@ -5,6 +5,70 @@ The engine owns the audio device and resources; the game decides what plays and 
 includes neither raylib nor the loading thread. `Audio/Internals/` is not supported API; games and editors use only the
 public header. Audio is an engine runtime service, not a separate opt-in module.
 
+A game's sound effects belong in [sound tables](#sound-tables); `AudioSystem` underneath plays them. Music, and any effect
+a game prefers to number by hand, goes in a [catalog](#setting-up-a-catalog).
+
+## Sound tables
+
+```cpp
+#include "Runtime/Game.h"
+
+enum class Sfx { Hit, Coin, UiMove, Count };
+inline constexpr std::array SfxTable{
+    SoundRow{Sfx::Hit, {"Audio/hit1.wav", "Audio/hit2.wav"}, {.pitch = {0.95f, 1.05f}, .cooldown = 0.03f, .label = "Hit"}},
+    SoundRow{Sfx::Coin, {"Audio/coin.wav"}},
+    SoundRow{Sfx::UiMove, {"Audio/move.wav"}, {.whenPlaying = SoundOverlap::Skip}},
+};
+static_assert(RowsInIdOrder(SfxTable));
+
+settings.sounds = SfxTable;     // In the game's settings
+game.Sounds().Play(Sfx::Hit);   // In a scene holding a Game&; in an editor scene, services.sounds.Play(Sfx::Hit)
+```
+
+A row is `SoundRow{id, files, options}`; `SoundRow<Sfx>{...}` means the same.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| files | - | One to `MaxSoundVariants` (8) paths relative to the asset root. One is picked at random for each play, never the same one twice in a row |
+| `volume` | 1 | 0 to 1, under the player's effect volume |
+| `pitch` | `{1, 1}` | A range; each play picks from it. Pitch also changes speed |
+| `cooldown` | 0 | Real seconds after a play during which the row refuses another; hitstop, slow motion and the editor's speed do not stretch it |
+| `whenPlaying` | `SoundOverlap::Copies(4)` | `Copies(n)`: up to n copies of each file, and one more restarts a copy. `SoundOverlap::Skip`: while any file of the row plays, a new play is dropped |
+| `label` | generated | The name tools show. Without one: `Sfx[0]`. A row with several files adds `(1/2)` to each |
+
+`Play(key, pitch = 1)` multiplies the picked pitch by `pitch`, and returns false when a cooldown or the skip rule stopped
+it. A play that was stopped uses up nothing: no cooldown starts and the last file stays the last file. The choices come
+from the player's own `Rng` with a fixed seed. Playing before audio has loaded throws `std::logic_error`, as `PlayEffect` does.
+
+**What fails, and when:**
+
+| Mistake | Fails |
+| --- | --- |
+| A misspelled sound; an enum value without a row; a ninth file | Compile (at the assignment to `settings.sounds` for the row count) |
+| Rows out of order | Compile with the `static_assert`; startup without it |
+| Bad volume, pitch, cooldown or copies; no file, a gap, or one file twice in a row; an absolute or `..` path | Compile in a `constexpr` table; throws `std::invalid_argument` when the row is made otherwise |
+| Two tables for one enum; a `settings.audio` effect ID in the reserved range | Startup, `std::invalid_argument` |
+| A sound file that is missing or unreadable | Loading, as for any catalog entry |
+| Playing an enum whose table was never registered | **That play**, `std::out_of_range` |
+
+The last one is the remaining hole: a key does not know at compile time which tables a game registered. `Has` lets a
+system check its keys at startup.
+
+**Several tables:** `settings.sounds = {SfxTable, UiTable};`, one per enum type.
+
+**A system that knows no game:** a `SoundKey` is made implicitly from any table enum, and is what such a system stores.
+`SoundKey{}` is empty: `if (key) sounds.Play(key);`. `Has(key)` asks the tables, not the device, so it works before audio
+has loaded. An enum without `Count`, such as `SoundId`, does not convert to a key.
+
+**Under it:** each file of each row becomes a catalog entry with an ID from `SoundTables::FirstGeneratedId` (2^32) up, so
+`audio catalog`, `audio usage` and the Audio Preview panel show them with their labels. A game's own low IDs in
+`settings.audio` cannot meet them; an ID at or above that is rejected at startup. `CatalogWithSounds` gives the whole
+catalog. `SoundPlayer` builds in `EngineHeadless` and reaches the device only through `SoundOutput`, so its decisions are
+tested with no device; `Game` connects it to `AudioSystem`. A simulation cannot include any of `Audio/`
+(`python Engine check`) or link it. To play a table's sound, go through the player: its IDs are not for use with `AudioSystem`.
+
+**Not here:** [D32](Design/README.md#d32-sound-tables) says what was left out and why.
+
 ## Setting up a catalog
 
 ```cpp
@@ -94,7 +158,7 @@ it loaded itself. Game closes the device before the window.
 
 ## Tools and source files
 
-Catalog paths stay relative to the asset root. `EffectAsset::name` and `MusicAsset::name` are optional labels for tools
+Sound table rows appear in tools as catalog entries with their labels. Catalog paths stay relative to the asset root. `EffectAsset::name` and `MusicAsset::name` are optional labels for tools
 such as the editor; playback ignores them. [AudioFiles.h](../Core/Audio/AudioFiles.h) is for tools that work on source
 files: `LoadMusicFile(audio, id, file)` is `LoadMusic` for an absolute path (a relative one throws
 `std::invalid_argument`), and `DecodeAudioFile(file)` returns interleaved samples without an audio device, on any

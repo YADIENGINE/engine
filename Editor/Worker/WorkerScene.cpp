@@ -4,10 +4,11 @@
 #include <utility>
 #include "Input/Input.h"
 
-WorkerScene::WorkerScene(Vec2 canvas, AudioSystem& audio, std::function<void(const std::string&)> log,
+WorkerScene::WorkerScene(Vec2 canvas, AudioSystem& audio, SoundPlayer& sounds,
+                         std::function<void(const std::string&)> log,
                          const FontFace* font)
     : Scene(TimeDomain::Game)
-    , _services{canvas, audio, std::move(log), font} {}
+    , _services{canvas, audio, sounds, std::move(log), font} {}
 WorkerScene::~WorkerScene() { ShutdownNoThrow(); }
 void WorkerScene::Open(const SceneDefinition& definition, const SceneParameters& parameters) {
     _definition = &definition;

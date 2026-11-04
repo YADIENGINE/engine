@@ -30,6 +30,7 @@ endfunction()
 engine_tests(EngineTests
     SOURCES
         AudioTests.cpp
+        SoundTableTests.cpp
         ColliderDrawTests.cpp
         CollectionPointerTests.cpp
         DragPointerTests.cpp
@@ -125,6 +126,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/SceneGame.cpp"
     "${recipeRoot}/SceneTransition.cpp"
     "${recipeRoot}/SimulationPlay.cpp"
+    "${recipeRoot}/SoundTable.cpp"
     "${recipeRoot}/TimelineBoss.cpp"
     "${recipeRoot}/SpriteLayer.cpp"
     "${recipeRoot}/TextLayout.cpp"

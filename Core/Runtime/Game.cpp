@@ -12,6 +12,7 @@
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Render/Internals/Renderer.h"
 #include "Scene/Internals/SceneManager.h"
+#include "Audio/Internals/AudioSoundOutput.h"
 #include "Scene/Scene.h"
 #include "Runtime/Internals/StartupTimer.h"
 #include "Input/Internals/InputNormalizer.h"
@@ -23,11 +24,11 @@
 
 namespace {
 std::vector<std::filesystem::path> AssetManifest(const GameSettings& settings) {
-    AudioSystem::ValidateCatalog(settings.audio);
+    const AudioCatalog audio = CatalogWithSounds(settings.audio, settings.sounds);
     auto assets = settings.assets;
-    for (const auto& effect : settings.audio.effects)
+    for (const auto& effect : audio.effects)
         assets.push_back(effect.file);
-    for (const auto& music : settings.audio.music)
+    for (const auto& music : audio.music)
         assets.push_back(music.file);
     return assets;
 }
@@ -62,6 +63,8 @@ Game::Game(const GameSettings& settings)
     , _assetRoot(PrepareAssets(AssetManifest(settings)))
     , _font(settings.font.empty() ? std::optional<FontFace>{} : FontFace::FromFile(_assetRoot / settings.font))
     , _audio(_assetRoot, settings.audioVolume)
+    , _soundOutput(std::make_unique<AudioSoundOutput>(_audio))
+    , _sounds(settings.sounds, *_soundOutput)
     , _input(std::make_unique<InputNormalizer>())
     , _applicationId(settings.applicationId)
     , _saveSettings(settings.save)
@@ -74,7 +77,7 @@ Game::Game(const GameSettings& settings)
     _renderer->SetFont(_font ? &*_font : nullptr); // _font, renderer'dan önce yıkılır; o sırada kare çizilmez
     SetTheme(settings.theme);            // Türeyen oyunun View ve Ui üyeleri kurulurken tema etkin olmalı
     SetActiveUiLooks(settings.uiLooks);
-    _audio.BeginLoading(settings.audio); // Run'daki yükleme ekranı bitişini bekler
+    _audio.BeginLoading(CatalogWithSounds(settings.audio, settings.sounds)); // Run'daki yükleme ekranı bitişini bekler
     const StartupTimer timer(_persistentOptions ? "Options (load + apply)" : "Transient settings");
     if (_persistentOptions) {
         _options.Load();
@@ -352,6 +355,7 @@ void Game::Run() {
             float realSeconds = Window::FrameSeconds();
             if (observer) observer->BeginRegion(FrameRegion::Audio);
             _audio.Update();
+            _sounds.Update(realSeconds); // Before a host may scale this time: cooldowns are real seconds
             if (observer) {
                 observer->EndRegion(FrameRegion::Audio);
                 observer->BeginRegion(FrameRegion::Application);

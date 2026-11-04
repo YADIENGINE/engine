@@ -33,7 +33,7 @@ Rules:
 - Registration adds only metadata / factories; it creates no window, assets, or instances. IDs are unique.
 - The factory is called on the engine thread when GL, text, and audio are ready; initial values are supplied as a
   complete map, without relying on `ApplyParameter` during setup.
-- `SceneServices` supplies canvas size, audio reference, game font (`font`; for measurement outside drawing, e.g. hit
+- `SceneServices` supplies canvas size, audio reference, the game's [sound tables](../Audio.md#sound-tables) (`sounds`), game font (`font`; for measurement outside drawing, e.g. hit
   testing; null if absent), and log/application-command callbacks. References outlive the instance; do not retain them
   after content stops.
 - `Update` receives scaled seconds. Visual time is `paint.Time()`: `WorkerScene::Seconds()` resets to 0 on every Reset

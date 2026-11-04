@@ -22,6 +22,7 @@ public:
     [[nodiscard]] bool HasEffect(SoundId id) const;
     void PlayEffect(SoundId id, float pitch, bool onlyIfIdle);
     void StopEffect(SoundId id);
+    [[nodiscard]] bool IsEffectPlaying(SoundId id) const;
     void SetEffectVolume(SoundId id, float volume);
 
     void LoadMusic(MusicId id, const std::filesystem::path& file, MusicVolumeGroup group);

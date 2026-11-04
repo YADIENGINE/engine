@@ -3,7 +3,7 @@
 WorkerGame::WorkerGame(const GameSettings& settings, const SceneRegistry& registry, ControlChannel& channel,
                        const std::string& session)
     : Game(settings)
-    , _session(*this, settings, registry, channel, session, HasFont() ? &Font() : nullptr, Audio(),
+    , _session(*this, settings, registry, channel, session, HasFont() ? &Font() : nullptr, Audio(), Sounds(),
                {[this] { RequestQuit(); },
                 [this] { Time().Clear(); },
                 [this](WorkerScene& scene) { SetScene(scene); },

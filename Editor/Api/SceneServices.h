@@ -7,6 +7,7 @@
 class AudioSystem;
 class FontFace;
 class Profiler;
+class SoundPlayer;
 class SimulationHost;
 
 // References outlive the scene. Never retain these services after Stop/destruction.
@@ -14,6 +15,7 @@ class SimulationHost;
 struct SceneServices {
     Vec2 canvas;
     AudioSystem& audio;
+    SoundPlayer& sounds; // The game's sound tables: the same player as Game::Sounds()
     std::function<void(const std::string&)> log;
     // The game's font (Painter::Font()); null when the game has none. For measuring text outside drawing (hit tests).
     const FontFace* font = nullptr;

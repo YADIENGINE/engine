@@ -44,8 +44,11 @@ void EffectVoices::Release() {
     _voices.clear();
     _nextVoice = 0;
 }
+bool EffectVoices::IsPlaying() const {
+    return std::ranges::any_of(_voices, [](Sound voice) { return IsSoundPlaying(voice); });
+}
 void EffectVoices::Play(float pitch, bool onlyIfIdle) {
-    if (onlyIfIdle && std::ranges::any_of(_voices, [](Sound voice) { return IsSoundPlaying(voice); })) return;
+    if (onlyIfIdle && IsPlaying()) return;
     for (std::size_t offset = 0; offset < _voices.size(); ++offset) {
         const std::size_t index = (_nextVoice + offset) % _voices.size();
         if (!IsSoundPlaying(_voices[index])) {
