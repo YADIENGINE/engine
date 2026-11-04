@@ -4,14 +4,10 @@
 #include <stdexcept>
 #include <utility>
 #include "Animation/Easing.h"
+#include "Fx/Internals/FxChecks.h"
 #include "Graphics/Paint/Painter.h"
 
 namespace {
-void ValidateTiming(float duration, float fade) {
-    if (!std::isfinite(duration) || duration <= 0.0f || !std::isfinite(fade) || fade < 0.0f) {
-        throw std::invalid_argument("Invalid announcement timing");
-    }
-}
 Float2 Position(const FloatRect& bounds, Float2 position, Float2 offset) {
     return {bounds.x + bounds.width * position.x + offset.x, bounds.y + bounds.height * position.y + offset.y};
 }
@@ -21,26 +17,30 @@ FxTextStyle BoundedText(FxTextStyle style, const FloatRect& bounds) {
 }
 } // namespace
 
+bool IsValid(const BannerStyle& style) {
+    return FxPositive(style.duration) && FxNotNegative(style.fadeSeconds) && FxNotNegative(style.curtainFadeSeconds) &&
+           IsValid(style.text);
+}
+bool IsValid(const ToastStyle& style) {
+    return FxPositive(style.duration) && FxPositive(style.queuedDuration) && FxNotNegative(style.fadeSeconds) &&
+           IsValid(style.text);
+}
+
 Announcements::Announcements(std::size_t toastCapacity)
     : _toastCapacity(toastCapacity) {}
 void Announcements::Banner(const std::string& text, const BannerStyle& style) {
-    ValidateTiming(style.duration, style.fadeSeconds);
-    if (!std::isfinite(style.curtainFadeSeconds) || style.curtainFadeSeconds < 0.0f || !(style.text.size > 0.0f)) {
-        throw std::invalid_argument("Invalid banner style");
-    }
+    if (!IsValid(style)) throw std::invalid_argument("Invalid banner style");
     BannerEntry entry{text, style, SecondsTween<float>{1.0f}, SecondsTween<float>{0.0f}};
     const float fade = std::min(style.fadeSeconds, style.duration);
     entry.alpha.Wait(style.duration - fade).Then(0.0f, fade);
-    if (style.curtainFadeSeconds > 0.0f) {
+    if (style.curtainFadeSeconds > 0.0f && _quality.flashes) {
         entry.curtain.Snap(1.0f);
         entry.curtain.To(0.0f, style.curtainFadeSeconds);
     }
     _banner = std::move(entry);
 }
 void Announcements::Toast(const std::string& text, Color4 color, const ToastStyle& style) {
-    ValidateTiming(style.duration, style.fadeSeconds);
-    ValidateTiming(style.queuedDuration, style.fadeSeconds);
-    if (!(style.text.size > 0.0f)) throw std::invalid_argument("Invalid toast font size");
+    if (!IsValid(style)) throw std::invalid_argument("Invalid toast style");
     ToastEntry entry{text, color, style, style.duration};
     if (!_toast) {
         ShowToast(std::move(entry));

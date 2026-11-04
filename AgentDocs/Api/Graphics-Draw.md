@@ -197,4 +197,5 @@ Use these generated signatures to locate public declarations; open the header fo
 - `SpeedLineStyle`: `float opacity = 1.0f`
 - `SpeedLineStyle`: `float whiten = 0.0f`
 - `SpeedLineStyle`: `float minIntensity = 0.0f`
+- `[[nodiscard]] bool IsValid(const SpeedLineStyle& style)`
 - `void DrawSpeedLines(Painter& paint, const FloatRect& bounds, float intensity, Color4 color, float timeSeconds, const SpeedLineStyle& style)` — Lines rushing in from the edges of 'bounds' (clipped to it).

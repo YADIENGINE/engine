@@ -15,6 +15,8 @@ struct RingStyle {
     Curve curve = Curve::Linear; // How the radius travels
 };
 
+[[nodiscard]] bool IsValid(const RingStyle& style);
+
 class Rings {
 public:
     // An invalid style throws invalid_argument.

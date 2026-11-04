@@ -12,11 +12,12 @@ Most games need one `FxStage` and a few [cues](#cues). The parts below it are th
 `ParticleSystem`, `FloatingTexts`, `Rings`, `Shockwaves`, `ScreenFlash`, `ScreenGlitch`, `Announcements`, `PulseOverlay`,
 `SlowMotionOverlay` and `CameraEffects` can be used independently. They share one shape:
 
-- `Update(dt)` with the chosen time domain, `Clear()` on scene/run reset, a const `Draw`.
+- `Update(dt)` with the chosen time domain, `Clear()` on scene/run reset, a const `Draw`. `Announcements` wants real time,
+  and `SlowMotionOverlay` takes both clocks.
 - An effect that happens at an event takes its style with the event, so two sizes of one effect can run together. A
   single continuous device, `CameraEffects` or `PulseOverlay`, takes its style at construction.
-- An invalid style or time throws `std::invalid_argument` before changing state, in every configuration. Nonpositive or
-  nonfinite update deltas do nothing. Zero-width optional decorations and zero fade/pop times disable those features.
+- An invalid style or time throws `std::invalid_argument` before changing state, in every configuration, and each style
+  has an `IsValid`. Nonpositive or nonfinite update deltas do nothing. Zero-width optional decorations and zero fade/pop times disable those features.
 - What the player chose comes through `SetQuality`, where it matters to that effect.
 
 Styles hold plain data and are copied into active effects, so changing a preset affects only later emissions. Where an
@@ -38,7 +39,7 @@ particles.Emit({500.0f, 200.0f}, 24, emission, appearance, [](Painter& paint, co
 particles.Draw(paint);
 ```
 
-Capacity is per particle-system instance; excess new particles are dropped, and the player's particle setting
+Capacity is per particle-system instance; when it is full, the oldest particles make room for new ones, and the player's particle setting
 (`FxQuality::particlePercent`, given with `SetQuality`) scales every emission. The generator is the system's own `Rng`. Its
 seed has a fixed default, so the same emissions look the same on every run: a frame comparison or a rewind sees the same
 picture. Give another seed for two systems that should differ. Shapes are geometry choices, not stylistic recipes. A custom
@@ -50,7 +51,8 @@ stay in one draw call. Sprite particles capture a `TextureRef` or `Surface` and 
 the resource.
 
 `CameraEffects::Apply(base, timeSeconds)` composes shake, kick, motion and punch with a `CameraView`, keeping its base
-transform and rotation. Punch focus is a world position; kick and motion directions use canvas axes. With no explicit
+transform and rotation. `Shake(amount)` adds to a shake of at most 1, and what shows is its square: 0.3 is a light hit, 0.6 a
+heavy one, and hits in a row build up. It offsets and turns the camera along smooth noise, and fades at `shakeDecay`. Punch focus is a world position; kick and motion directions use canvas axes. With no explicit
 focus, punch uses the base target. Punch and motion settle at the same speed at any frame rate; the kick is a
 `SpringPoint`, which clamps long frames. Draw through the result: `auto view = paint.Transform(camera.Transform())`.
 `MotionIntensity()` feeds the same smoothed intensity to independently drawn speed lines: `DrawSpeedLines(paint, bounds,
@@ -89,7 +91,14 @@ effect sits in a folder named for what it acts on:
 
 `Fx/FxStage` bundles every component above for one play area. Construct it with the play area, the view area for edge
 effects and an `FxStyle` (`Fx/FxStyle.h`), normally `CurrentTheme().fx`. Positions are canvas coordinates; the game adapts
-its own grid.
+its own grid. An invalid style throws here, naming the part, not when that effect first plays.
+
+`Update(gameSeconds, realSeconds)` takes both clocks, usually the scene's delta and `Game::RealSeconds()`. Effects in the
+world, cue delays and cooldowns run on game time, so a hitstop holds them. Banners and toasts run on real time, since reading
+does not slow down with the game, and so does how long slow motion's look lasts, so it ends when `TimeScale` does.
+
+A game whose camera follows or scrolls passes it as `fx.WorldCamera(paint, followCamera)`. Effect positions are then world
+positions, and a shot blends from that camera by its weight, without `keepInArena`.
 
 ```cpp
 FxStage fx(playArea, viewArea, CurrentTheme().fx);
@@ -106,7 +115,9 @@ fx.PopText(at, "x3", yellow, 40.0f);               // One effect
 fx.DrawOverlay(paint); // No camera: vignette, speed lines, flash / banner / toast, glitch
 ```
 
-`SetQuality` is one call for the whole stage, and every owner has to make it. `FxStage::SlowMotionLook` is only how slow
+`SetQuality` is one call for the whole stage, and every owner has to make it. With flashes off there are also no
+shockwaves and no banner curtain. Flashes start at most three times a second whatever the setting, and a new one takes over
+only if it is as bright as the one showing. `FxStage::SlowMotionLook` is only how slow
 motion looks, and `TimeScale::SlowMo` only slows time; `FxSlowMotion` in a cue does both.
 
 `Fx/Particles/ParticleRecipes` holds what the bursts are. `ParticleRecipe` names six (Soft, Spark, Sparkle, Debris,
@@ -124,17 +135,22 @@ colour, direction and text come from `FxPlay`, and its look from the stage's sty
 
 ```cpp
 fx.SetCues(DefaultFxCues().With({
-    {"player_hit", {FxBurst{ParticleRecipe::Debris, 24}, FxShake{0.2f}, FxHitstop{0.05f},
-                    {FxFlash{}, White},             // Its own colour
-                    {0.08f, FxShockwave{120.0f}}}}, // Later, on Update time
+    {"player_hit", {FxBurst{ParticleRecipe::Debris, 24}, FxShake{0.5f}, FxHitstop{0.05f},
+                    {FxFlash{}, White},           // Its own colour
+                    {0.08f, FxShockwave{120.0f}}}, // Later, on game time
+     0.1f},                                       // Cooldown: at most one every 0.1 seconds
 }));
-fx.SetTime(&Time());                                // Only for FxHitstop and FxSlowMotion
-fx.Play("player_hit", {.at = at, .color = red});
+fx.SetTime(&Time());                              // Only for FxHitstop and FxSlowMotion
+fx.Play("player_hit", {.at = at, .color = red, .intensity = damage / maxDamage});
 ```
 
 Bad values throw when the cue is made. An unknown name throws where it plays, and a cue that changes time throws without
 `SetTime`, before any of it plays. A stage starts with `DefaultFxCues()`: `hit`, `explosion`, `pickup`. Effects with
 parameters of their own stay methods (`fx.Shake(0.3f)`), so the compiler checks them: names are for cues only.
+
+`FxPlay::intensity` sizes one play of a cue: particle counts, shake, punch, kick, ring and reach sizes and a flash's opacity.
+Times, texts and colours stay. A cooldown, the third value of a set's entry, keeps a name from playing again for that many
+seconds of game time: `Play` returns false, and fifty hits in a frame look like one instead of fifty flashes.
 
 A clip's moment with the same name as a cue connects animation to effects, with no pointer or stored callback in either:
 

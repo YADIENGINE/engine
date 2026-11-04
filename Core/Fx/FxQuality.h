@@ -13,7 +13,8 @@ struct FxQuality {
     int particlePercent = 100;             // Share of emitted particles, 0..100
     EffectLevel shake = EffectLevel::Full; // Camera shake, punch and kick
     bool motion = true;  // Speed effects: camera lead and speed lines, slow motion's too (games: their own trails)
-    bool flashes = true; // Screen flashes, glitches, slow motion's tint and the pulse's beat
+    // Screen flashes, glitches, shockwaves, a banner's curtain, slow motion's tint and the pulse's beat.
+    bool flashes = true;
 
     // Shake amplitude multiplier (Full 1, Reduced milder, Off 0).
     [[nodiscard]] constexpr float ShakeScale() const {

@@ -2,15 +2,20 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include "Fx/Internals/FxChecks.h"
 #include "Graphics/Draw/BackgroundDraw.h"
 #include "Graphics/Paint/Painter.h"
 
+bool IsValid(const PulseOverlayStyle& style) {
+    return FxPositive(style.period) && FxPositive(style.fadeSpeed) && FxNotNegative(style.decay) &&
+           FxNotNegative(style.secondBeatAt) && FxNotNegative(style.secondBeatScale) &&
+           FxNotNegative(style.tintAlpha) && FxNotNegative(style.tintBeatAlpha) && FxNotNegative(style.vignetteSize) &&
+           FxNotNegative(style.vignetteAlpha) && FxNotNegative(style.vignetteBeatAlpha);
+}
+
 PulseOverlay::PulseOverlay(const PulseOverlayStyle& style)
     : _style(style) {
-    if (!std::isfinite(style.period) || style.period <= 0.0f || !std::isfinite(style.fadeSpeed) ||
-        style.fadeSpeed <= 0.0f || !std::isfinite(style.decay) || style.decay < 0.0f) {
-        throw std::invalid_argument("Invalid pulse style");
-    }
+    if (!IsValid(style)) throw std::invalid_argument("Invalid pulse style");
 }
 
 void PulseOverlay::SetActive(bool active, Color4 color) {

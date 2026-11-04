@@ -16,5 +16,7 @@ struct FxTextStyle {
     TextShadow shadow{};
 };
 
+[[nodiscard]] bool IsValid(const FxTextStyle& style);
+
 // Draws with the game's font (Painter::Font).
 void DrawFxText(Painter& paint, std::string_view text, Float2 position, Color4 color, const FxTextStyle& style);

@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include "Animation/Tween.h"
+#include "Fx/FxQuality.h"
 #include "Fx/FxText.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
@@ -31,12 +32,17 @@ struct ToastStyle {
     FxTextStyle text;
 };
 
+[[nodiscard]] bool IsValid(const BannerStyle& style);
+[[nodiscard]] bool IsValid(const ToastStyle& style);
+
 // Text for the player: one banner at a time, and toasts that wait their turn. A new toast shortens the one showing to
 // its queued duration; a full queue drops its oldest. Styles come with each call; an invalid one throws
-// invalid_argument.
+// invalid_argument. Update it with real time: a reader's time does not slow down with the game.
 class Announcements {
 public:
     explicit Announcements(std::size_t toastCapacity);
+    // Flashes off: a banner has no curtain.
+    void SetQuality(const FxQuality& quality) { _quality = quality; }
     void Banner(const std::string& text, const BannerStyle& style);
     void Toast(const std::string& text, Color4 color, const ToastStyle& style);
     void Update(float deltaSeconds);
@@ -61,6 +67,7 @@ private:
     };
     void ShowToast(ToastEntry entry);
     std::size_t _toastCapacity;
+    FxQuality _quality;
     std::optional<BannerEntry> _banner;
     std::optional<ToastEntry> _toast;
     std::deque<ToastEntry> _toastQueue;

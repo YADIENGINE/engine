@@ -2,16 +2,18 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include "Fx/Internals/FxChecks.h"
 #include "Graphics/Paint/Painter.h"
 
+bool IsValid(const ShockwaveStyle& style) {
+    return FxPositive(style.duration) && FxNotNegative(style.trailDelay) && FxNotNegative(style.width) &&
+           FxNotNegative(style.trailWidth) && FxNotNegative(style.opacity) && FxNotNegative(style.trailOpacity) &&
+           FxNotNegative(style.rimWidth);
+}
+
 void Shockwaves::Emit(Float2 center, Color4 color, const ShockwaveStyle& style, float reach) {
-    if (!std::isfinite(style.duration) || style.duration <= 0.0f) {
-        throw std::invalid_argument("Invalid shockwave style");
-    }
-    for (const float value :
-         {style.trailDelay, style.width, style.trailWidth, style.opacity, style.trailOpacity, style.rimWidth, reach}) {
-        if (!std::isfinite(value) || value < 0.0f) throw std::invalid_argument("Invalid shockwave style");
-    }
+    if (!IsValid(style) || !FxNotNegative(reach)) throw std::invalid_argument("Invalid shockwave style");
+    if (!_quality.flashes) return;
     _waves.push_back({center, color, reach, style});
 }
 void Shockwaves::Update(float deltaSeconds) {

@@ -5,17 +5,20 @@
 #include "Graphics/Paint/Painter.h"
 #include "Utilities/MathUtils.h"
 
-void DrawSpeedLines(Painter& paint, const FloatRect& bounds, float intensity, Color4 color, float timeSeconds,
-                    const SpeedLineStyle& style) {
-    if (style.count < 0 || !std::isfinite(style.rate) || style.rate < 0.0f || !std::isfinite(style.innerRadius.min) ||
+bool IsValid(const SpeedLineStyle& style) {
+    return !(style.count < 0 || !std::isfinite(style.rate) || style.rate < 0.0f ||
+        !std::isfinite(style.innerRadius.min) ||
         !std::isfinite(style.innerRadius.max) || style.innerRadius.min < 0.0f ||
         style.innerRadius.max < style.innerRadius.min || style.innerRadius.max > 1.0f ||
         !std::isfinite(style.width.min) || !std::isfinite(style.width.max) || style.width.min < 0.0f ||
         style.width.max < style.width.min || !std::isfinite(style.opacity) || style.opacity < 0.0f ||
         style.opacity > 1.0f || !std::isfinite(style.whiten) || style.whiten < 0.0f || style.whiten > 1.0f ||
-        !std::isfinite(style.minIntensity) || style.minIntensity < 0.0f) {
-        throw std::invalid_argument("Invalid speed line style");
-    }
+        !std::isfinite(style.minIntensity) || style.minIntensity < 0.0f);
+}
+
+void DrawSpeedLines(Painter& paint, const FloatRect& bounds, float intensity, Color4 color, float timeSeconds,
+                    const SpeedLineStyle& style) {
+    if (!IsValid(style)) throw std::invalid_argument("Invalid speed line style");
     intensity = Clamp01(intensity);
     if (bounds.Empty() || intensity <= 0.0f || intensity < style.minIntensity || style.count == 0 ||
         style.width.max <= 0.0f || !std::isfinite(timeSeconds))

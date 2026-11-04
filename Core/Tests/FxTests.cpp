@@ -27,9 +27,10 @@ const FontFace& TestFont() {
 constexpr ParticleEmission Emission{
     .speed = {50.0f, 100.0f}, .lifetime = {0.5f, 1.0f}, .size = {2.0f, 3.0f}, .acceleration = {0.0f, 100.0f}};
 
-constexpr CameraEffectsStyle Camera{.shakeAmplitude = 8.0f,
-                                       .shakeFrequency = {80.0f, 60.0f},
-                                       .shakeFadeSeconds = 0.2f,
+constexpr CameraEffectsStyle Camera{.shakeOffset = 8.0f,
+                                       .shakeAngle = 0.02f,
+                                       .shakeSpeed = 20.0f,
+                                       .shakeDecay = 2.0f,
                                        .punchDecay = 8.0f,
                                        .kickImpulse = 100.0f,
                                        .kickStiffness = 400.0f,
@@ -189,7 +190,7 @@ TEST_CASE("Engine.Fx.StageDrawsItsLayersAndHonoursFlashSetting", "[engine][fx]")
     stage.FloatText({100.0f, 100.0f}, "+10", Pink);
     stage.Toast("Combo", Pink);
     stage.Flash(Pink);
-    stage.Update(0.1f);
+    stage.Update(0.1f, 0.1f);
 
     for (const bool overlay : {false, true}) {
         PaintHarness h({400.0f, 200.0f});
@@ -207,7 +208,7 @@ TEST_CASE("Engine.Fx.StageDrawsItsLayersAndHonoursFlashSetting", "[engine][fx]")
     quiet.SetQuality({.flashes = false});
     quiet.Flash(Pink);
     quiet.Glitch(0.5f);
-    quiet.Update(0.05f);
+    quiet.Update(0.05f, 0.05f);
     PaintHarness q({400.0f, 200.0f});
     q.Begin();
     quiet.DrawOverlay(q.paint);

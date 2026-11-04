@@ -2,15 +2,16 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include "Fx/Internals/FxChecks.h"
 #include "Graphics/Paint/Painter.h"
 
+bool IsValid(const RingStyle& style) {
+    return FxPositive(style.duration) && FxNotNegative(style.startRadius) && FxNotNegative(style.endRadius) &&
+           FxNotNegative(style.thickness) && FxNotNegative(style.fadeSeconds);
+}
+
 void Rings::Emit(Float2 position, Color4 color, const RingStyle& style) {
-    if (!std::isfinite(style.duration) || style.duration <= 0.0f || !std::isfinite(style.startRadius) ||
-        style.startRadius < 0.0f || !std::isfinite(style.endRadius) || style.endRadius < 0.0f ||
-        !std::isfinite(style.thickness) || style.thickness < 0.0f || !std::isfinite(style.fadeSeconds) ||
-        style.fadeSeconds < 0.0f) {
-        throw std::invalid_argument("Invalid ring style");
-    }
+    if (!IsValid(style)) throw std::invalid_argument("Invalid ring style");
     _rings.push_back({position, color, style.duration, style});
 }
 

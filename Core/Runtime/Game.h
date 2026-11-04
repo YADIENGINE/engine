@@ -49,6 +49,8 @@ protected:
     // Application pause supplements the current scene's GameTimePaused request.
     void SetPaused(bool paused) { _paused = paused; }
     [[nodiscard]] TimeScale& Time() { return _timeScale; }
+    // This frame's real duration: what a hitstop, slow motion or a pause does not change.
+    [[nodiscard]] float RealSeconds() const { return _frameSeconds; }
     [[nodiscard]] AudioSystem& Audio() { return _audio; }
     [[nodiscard]] const AudioSystem& Audio() const { return _audio; }
     // The game's font (GameSettings::font) for Painter::Text; throws logic_error when the game has none.

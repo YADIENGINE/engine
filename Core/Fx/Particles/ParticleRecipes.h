@@ -45,6 +45,10 @@ struct ParticleRecipes {
     }
 };
 
+[[nodiscard]] bool IsValid(const ParticleBurst& burst);
+// Trail, dash and steam count only when their count is above 0.
+[[nodiscard]] bool IsValid(const ParticleRecipes& recipes);
+
 // The layer pointing away from 'direction', the way something moving leaves sparks behind it.
 [[nodiscard]] ParticleLayer AimedBehind(ParticleLayer layer, Float2 direction);
 

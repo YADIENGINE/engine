@@ -1031,6 +1031,24 @@ Status: implemented (2026-11-04). Usage: [Effects](../Graphics/Effects.md).
 
 **Fixed on the way:** with motion or flashes off, slow motion's trails and tint still drew; decays depended on the frame rate; a kick was a copy of `SpringPoint`; `Shockwaves` and `PulseOverlay` took invalid styles silently.
 
+### D30. Effects: two clocks, shake as an amount, cues with a size
+Status: implemented (2026-11-04). Usage: [Effects](../Graphics/Effects.md).
+
+**Decision:** `FxStage::Update` takes game and real time, a shake is an amount rather than a duration, and one play of a cue has a size and may be limited by name.
+
+**Decided:**
+1. *`Update(gameSeconds, realSeconds)`, with no one-clock form.* `TimeScale` counts real seconds while everything in the stage counted game seconds, so slow motion's look outlasted it: at a constant 0.1 for 2 seconds, it lasted about 3.8. Toasts froze in a hitstop as well. A second
+   method could be forgotten and leave them on the screen, and a clock read from `TimeScale` would be stale while paused. Passing both cannot be forgotten. `Game::RealSeconds()` is new for this. A flash, however, keeps game time: a hitstop holds it, which keeps a hit's parts together.
+2. *Trauma instead of seconds.* `Shake(seconds)` had one strength, so only length separated a tap from an explosion. An amount that adds up to 1 and shows squared separates them, and hits in a row build up without a special rule. Smooth noise replaces two sines, whose pattern was the same each time, and adds a small turn.
+   The old form is gone rather than kept beside it. The model is the one usually credited to Squirrel Eiserloh's GDC talk; this is from memory.
+3. *Styles are checked when a stage is made.* D29 refused name-based effects because a typo would wait for a boss's death, and a bad theme value did exactly that. Each style has `IsValid`, its effect uses it, and `FxStage` checks them all and names the part. `DrawSpeedLines` could throw halfway through a frame for the same reason.
+4. *`intensity` scales sizes, not times.* A small hit is smaller, not shorter, and a hitstop should not depend on it.
+5. *A cooldown belongs to a name in a set, not to a cue.* Only `Play` by name has an identity to remember, and the same cue under two names may want two limits. It runs on game time. `Play` returns whether it played.
+6. *`WorldCamera(paint, base)`.* A camera that scrolls could not use the stage's shake or punch at all. The pulse's tint moved to the overlay, since a rectangle in world positions would scroll away.
+7. *Full particles replace the oldest.* Dropping new ones let a steady trail hide an explosion.
+8. *Flashes are rationed always, not as a setting.* At most three starts a second, the usual limit for photosensitivity (WCAG 2.3.1, from memory). A stronger flash asked for too soon is lost too: delaying it would put it out of step with its event. With flashes off, shockwaves and a banner's curtain also go, as they light the screen in the same way. `ScreenGlitch` keeps its fast pattern behind that setting.
+9. *`std::visit` with an overload set.* A new `FxAction` without a case no longer compiles; the `if constexpr` chain did nothing, silently.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

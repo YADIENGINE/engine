@@ -5,9 +5,10 @@ Use these generated signatures to locate public declarations; open the header fo
 ## `Core/Fx/Camera/CameraEffects.h`
 
 - `struct CameraEffectsStyle`
-- `CameraEffectsStyle`: `float shakeAmplitude = 0.0f`
-- `CameraEffectsStyle`: `Float2 shakeFrequency { }` — radians/second
-- `CameraEffectsStyle`: `float shakeFadeSeconds = 0.0f`
+- `CameraEffectsStyle`: `float shakeOffset = 0.0f` — Canvas units at full shake
+- `CameraEffectsStyle`: `float shakeAngle = 0.0f` — Radians at full shake
+- `CameraEffectsStyle`: `float shakeSpeed = 0.0f` — How fast it jitters: new directions per second
+- `CameraEffectsStyle`: `float shakeDecay = 0.0f` — Shake amount lost per second; needed when there is a shake
 - `CameraEffectsStyle`: `float punchDecay = 0.0f`
 - `CameraEffectsStyle`: `float kickImpulse = 0.0f`
 - `CameraEffectsStyle`: `float kickStiffness = 0.0f`
@@ -17,10 +18,11 @@ Use these generated signatures to locate public declarations; open the header fo
 - `CameraEffectsStyle`: `float motionLeadSpeed = 0.0f`
 - `CameraEffectsStyle`: `float motionLeadDistance = 0.0f`
 - `CameraEffectsStyle`: `float motionZoomOut = 0.0f`
+- `[[nodiscard]] bool IsValid(const CameraEffectsStyle& style)`
 - `class CameraEffects`
 - `CameraEffects`: `explicit CameraEffects(const CameraEffectsStyle& settings)`
 - `CameraEffects`: `void SetQuality(const FxQuality& quality)` — Shake scales shake, punch and kick; motion off keeps the camera still at speed.
-- `CameraEffects`: `void Shake(float seconds)`
+- `CameraEffects`: `void Shake(float amount)` — Adds to the shake, up to 1: 0.3 a light hit, 0.6 a heavy one, 1 the most.
 - `CameraEffects`: `void Punch(float amount, std::optional<Float2> focus = std::nullopt)`
 - `CameraEffects`: `void Kick(Float2 direction)`
 - `CameraEffects`: `void SetMotion(float intensity, Float2 direction)`
@@ -28,6 +30,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `CameraEffects`: `void Clear()`
 - `CameraEffects`: `[[nodiscard]] CameraView Apply(const CameraView& base, float timeSeconds) const` — Focus is a world position; offsets/directions are in canvas units/axes.
 - `CameraEffects`: `[[nodiscard]] float MotionIntensity() const`
+- `CameraEffects`: `[[nodiscard]] float ShakeAmount() const`
 
 ## `Core/Fx/Camera/CameraShot.h`
 
@@ -72,8 +75,8 @@ Use these generated signatures to locate public declarations; open the header fo
 - `FxBanner`: `std::string text { }`
 - `struct FxToast`
 - `FxToast`: `std::string text { }`
-- `struct FxShake`
-- `FxShake`: `float seconds = 0.0f`
+- `struct FxShake` — Adds to the shake; see CameraEffects::Shake
+- `FxShake`: `float amount = 0.0f`
 - `struct FxPunch` — Zooms in on FxPlay::at
 - `FxPunch`: `float amount = 0.0f`
 - `struct FxKick` — Pushes the camera along FxPlay::facing
@@ -107,11 +110,13 @@ Use these generated signatures to locate public declarations; open the header fo
 - `struct FxCueSetEntry`
 - `FxCueSetEntry`: `std::string name`
 - `FxCueSetEntry`: `FxCue cue`
+- `FxCueSetEntry`: `float cooldown = 0.0f` — Seconds of game time before FxStage::Play plays this name again; 0 has no limit.
 - `class FxCueSet` — Named cues, the way a ClipSet names clips.
 - `FxCueSet`: `FxCueSet(std::initializer_list<FxCueSetEntry> entries)`
 - `FxCueSet`: `explicit FxCueSet(std::vector<FxCueSetEntry> entries)`
 - `FxCueSet`: `[[nodiscard]] bool Contains(std::string_view name) const`
 - `FxCueSet`: `[[nodiscard]] const FxCue& Get(std::string_view name) const` — Throws for an unknown name.
+- `FxCueSet`: `[[nodiscard]] float Cooldown(std::string_view name) const` — Throws for an unknown name.
 - `FxCueSet`: `[[nodiscard]] std::vector<std::string_view> Names() const`
 - `FxCueSet`: `[[nodiscard]] FxCueSet With(std::initializer_list<FxCueSetEntry> entries) const` — A new set with these added; one with a name already here replaces it.
 - `[[nodiscard]] const FxCueSet& DefaultFxCues()` — The cues every stage starts with: "hit", "explosion" and "pickup".
@@ -129,7 +134,7 @@ Public visual FX.
 - `FxQuality`: `int particlePercent = 100` — Share of emitted particles, 0..100
 - `FxQuality`: `EffectLevel shake = EffectLevel::Full` — Camera shake, punch and kick
 - `FxQuality`: `bool motion = true` — Speed effects: camera lead and speed lines, slow motion's too (games: their own trails)
-- `FxQuality`: `bool flashes = true` — Screen flashes, glitches, slow motion's tint and the pulse's beat
+- `FxQuality`: `bool flashes = true` — Screen flashes, glitches, shockwaves, a banner's curtain, slow motion's tint and the pulse's beat.
 - `FxQuality`: `[[nodiscard]] constexpr float ShakeScale() const` — Shake amplitude multiplier (Full 1, Reduced milder, Off 0).
 - `FxQuality`: `[[nodiscard]] constexpr int ParticleCount(int count) const` — 'count' scaled by particlePercent; a non-zero request makes at least one particle.
 
@@ -140,15 +145,16 @@ Public visual FX.
 - `FxPlay`: `Color4 color { 255, 255, 255, 255 }`
 - `FxPlay`: `Float2 facing { 1.0f, 0.0f }`
 - `FxPlay`: `std::string_view text { }`
+- `FxPlay`: `float intensity = 1.0f` — How big this one is: scales particle counts, shake, punch, kick, ring and reach sizes and a flash's opacity.
 - `class FxStage` — Ready-made effects stage for a game field: particles, flying text, rings, shockwaves, camera (shake, punch, kick, motion, cinematic shot), flash / banner / toast, pulse, glitch and the look of slow motion.
 - `FxStage`: `FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle& style)`
 - `FxStage`: `void SetQuality(const FxQuality& quality)` — The player's effect choice (Game::Effects()), for every effect here.
 - `FxStage`: `void SetCues(const FxCueSet& cues)` — The cues Play finds by name; DefaultFxCues() until set.
 - `FxStage`: `[[nodiscard]] const FxCueSet& Cues() const`
 - `FxStage`: `void SetTime(TimeScale* time)` — What cues with FxHitstop or FxSlowMotion change, usually Game::Time().
-- `FxStage`: `void Update(float deltaSeconds)`
-- `FxStage`: `void Clear()` — Also forgets cue actions still waiting.
-- `FxStage`: `void Play(std::string_view name, const FxPlay& play = { })` — Plays a cue from Cues(); an unknown name throws.
+- `FxStage`: `void Update(float gameSeconds, float realSeconds)` — Each frame, with both clocks: usually the scene's delta and Game::RealSeconds().
+- `FxStage`: `void Clear()` — Also forgets cue actions still waiting and cooldowns.
+- `FxStage`: `bool Play(std::string_view name, const FxPlay& play = { })` — Plays a cue from Cues(); false if its cooldown has not passed.
 - `FxStage`: `void Play(const FxCue& cue, const FxPlay& play = { })`
 - `FxStage`: `void Burst(Float2 at, Color4 color, int count, ParticleRecipe recipe = ParticleRecipe::Soft)`
 - `FxStage`: `void Burst(Float2 at, Color4 color, int count, const ParticleBurst& burst)` — A burst of the game's own.
@@ -161,7 +167,7 @@ Public visual FX.
 - `FxStage`: `void Toast(const std::string& text, Color4 color)`
 - `FxStage`: `void Flash(Color4 color)`
 - `FxStage`: `void Banner(const std::string& text)`
-- `FxStage`: `void Shake(float seconds)`
+- `FxStage`: `void Shake(float amount)` — Adds to the shake, up to 1; see CameraEffects::Shake.
 - `FxStage`: `void Punch(float amount, std::optional<Float2> focus = std::nullopt)`
 - `FxStage`: `void Kick(Float2 direction)`
 - `FxStage`: `void SetMotion(float intensity, Color4 color, Float2 facing)` — Each frame: motion intensity (0-1); camera shifts forward, speed lines flow in 'color'.
@@ -171,6 +177,7 @@ Public visual FX.
 - `FxStage`: `void SlowMotionLook(float seconds, Color4 color)` — Only how slow motion looks; TimeScale::SlowMo slows time, and FxSlowMotion in a cue does both.
 - `FxStage`: `void SetShot(const CameraShot& shot)` — Each frame: cinematic camera shot; weight 0 gives the normal camera.
 - `FxStage`: `[[nodiscard]] CameraView WorldCamera(const Painter& paint) const` — Field camera: shot + shake / punch / kick / motion; draw with paint.Transform(camera.Transform()).
+- `FxStage`: `[[nodiscard]] CameraView WorldCamera(const Painter& paint, const CameraView& base) const` — The same on a game's own camera, one that follows or scrolls: effect positions are then world positions.
 - `FxStage`: `void DrawWorldLayer(Painter& paint) const` — Inside the world camera, over the field's objects.
 - `FxStage`: `void DrawOverlay(Painter& paint) const` — Without the camera, over the viewport.
 
@@ -202,6 +209,7 @@ Public visual FX.
 - `FxTextStyle`: `Float2 anchor { 0.5f, 0.0f }`
 - `FxTextStyle`: `float maxWidth = 0.0f` — 0: unlimited
 - `FxTextStyle`: `TextShadow shadow { }`
+- `[[nodiscard]] bool IsValid(const FxTextStyle& style)`
 - `void DrawFxText(Painter& paint, std::string_view text, Float2 position, Color4 color, const FxTextStyle& style)` — Draws with the game's font (Painter::Font).
 
 ## `Core/Fx/Particles/ParticleRecipes.h`
@@ -228,6 +236,8 @@ Public visual FX.
 - `ParticleRecipes`: `float steamWhiten = 0.0f`
 - `ParticleRecipes`: `float steamOpacity = 1.0f`
 - `ParticleRecipes`: `[[nodiscard]] constexpr const ParticleBurst& Burst(ParticleRecipe recipe) const`
+- `[[nodiscard]] bool IsValid(const ParticleBurst& burst)`
+- `[[nodiscard]] bool IsValid(const ParticleRecipes& recipes)` — Trail, dash and steam count only when their count is above 0.
 - `[[nodiscard]] ParticleLayer AimedBehind(ParticleLayer layer, Float2 direction)` — The layer pointing away from 'direction', the way something moving leaves sparks behind it.
 - `void EmitLayer(ParticleSystem& particles, Float2 position, Color4 color, int count, const ParticleLayer& layer)` — Emits 'count' particles of the layer in 'color'.
 - `void EmitBurst(ParticleSystem& particles, Float2 position, Color4 color, int count, const ParticleBurst& burst)` — Distributes 'count' among the burst's layers according to their shares.
@@ -263,7 +273,7 @@ Public visual FX.
 - `ParticleSystem`: `explicit ParticleSystem(const ParticleSystemSettings& settings)`
 - `ParticleSystem`: `[[nodiscard]] static bool IsValid(const ParticleEmission& emission, const ParticleAppearance& appearance)` — What Emit accepts; Emit throws invalid_argument otherwise.
 - `ParticleSystem`: `void SetQuality(const FxQuality& quality)` — Emit makes particlePercent of the requested particles.
-- `ParticleSystem`: `void Emit(Float2 position, int count, const ParticleEmission& emission, const ParticleAppearance& appearance, const ParticleCustomDraw& draw = { })`
+- `ParticleSystem`: `void Emit(Float2 position, int count, const ParticleEmission& emission, const ParticleAppearance& appearance, const ParticleCustomDraw& draw = { })` — When full, the oldest particles make room: what just happened matters more than what is fading.
 - `ParticleSystem`: `void Update(float deltaSeconds)`
 - `ParticleSystem`: `void Clear()`
 - `ParticleSystem`: `void Draw(Painter& paint) const` — Alpha particles first, then additive ones on top.
@@ -287,8 +297,11 @@ Public visual FX.
 - `ToastStyle`: `Float2 position { 0.5f, 0.0f }`
 - `ToastStyle`: `Float2 offset { }`
 - `ToastStyle`: `FxTextStyle text`
+- `[[nodiscard]] bool IsValid(const BannerStyle& style)`
+- `[[nodiscard]] bool IsValid(const ToastStyle& style)`
 - `class Announcements` — Text for the player: one banner at a time, and toasts that wait their turn.
 - `Announcements`: `explicit Announcements(std::size_t toastCapacity)`
+- `Announcements`: `void SetQuality(const FxQuality& quality)` — Flashes off: a banner has no curtain.
 - `Announcements`: `void Banner(const std::string& text, const BannerStyle& style)`
 - `Announcements`: `void Toast(const std::string& text, Color4 color, const ToastStyle& style)`
 - `Announcements`: `void Update(float deltaSeconds)`
@@ -309,6 +322,7 @@ Public visual FX.
 - `PulseOverlayStyle`: `float vignetteSize = 0.0f`
 - `PulseOverlayStyle`: `float vignetteAlpha = 0.0f`
 - `PulseOverlayStyle`: `float vignetteBeatAlpha = 0.0f`
+- `[[nodiscard]] bool IsValid(const PulseOverlayStyle& style)`
 - `class PulseOverlay`
 - `PulseOverlay`: `explicit PulseOverlay(const PulseOverlayStyle& style)` — An invalid style throws invalid_argument.
 - `PulseOverlay`: `void SetQuality(const FxQuality& quality)` — Flashes off: a steady glow with no beat.
@@ -324,7 +338,9 @@ Public visual FX.
 - `FlashStyle`: `float duration = 1.0f`
 - `FlashStyle`: `float opacity = 1.0f`
 - `FlashStyle`: `Curve curve = Curve::Linear` — How it fades
+- `[[nodiscard]] bool IsValid(const FlashStyle& style)`
 - `class ScreenFlash` — A colour over the whole view that fades away.
+- `ScreenFlash`: `static constexpr float MinSecondsBetween = 1.0f / 3.0f`
 - `ScreenFlash`: `void SetQuality(const FxQuality& quality)` — Flashes off: Flash does nothing.
 - `ScreenFlash`: `void Flash(Color4 color, const FlashStyle& style)` — An invalid style throws invalid_argument.
 - `ScreenFlash`: `void Update(float deltaSeconds)`
@@ -351,6 +367,7 @@ Public visual FX.
 - `GlitchStyle`: `Color4 second { 0, 0, 0, 0 }`
 - `GlitchStyle`: `Color4 tear { 0, 0, 0, 0 }`
 - `GlitchStyle`: `Color4 highlight { 255, 255, 255, 255 }`
+- `[[nodiscard]] bool IsValid(const GlitchStyle& style)`
 - `class ScreenGlitch`
 - `ScreenGlitch`: `void SetQuality(const FxQuality& quality)` — Flashes off: Trigger does nothing.
 - `ScreenGlitch`: `void Trigger(float seconds, const GlitchStyle& style)` — The longer of 'seconds' and the time left wins.
@@ -367,10 +384,11 @@ Public visual FX.
 - `SlowMotionStyle`: `float vignetteAlpha = 0.0f`
 - `SlowMotionStyle`: `SpeedLineStyle lines`
 - `SlowMotionStyle`: `Curve fadeCurve = Curve::OutCubic`
+- `[[nodiscard]] bool IsValid(const SlowMotionStyle& style)`
 - `class SlowMotionOverlay` — Only the look: time itself is TimeScale's.
 - `SlowMotionOverlay`: `void SetQuality(const FxQuality& quality)` — Flashes off: no tint or dark edges.
 - `SlowMotionOverlay`: `void Trigger(float seconds, Color4 color, const SlowMotionStyle& style)` — Invalid times throw invalid_argument.
-- `SlowMotionOverlay`: `void Update(float deltaSeconds)`
+- `SlowMotionOverlay`: `void Update(float gameSeconds, float realSeconds)`
 - `SlowMotionOverlay`: `void Clear()`
 - `SlowMotionOverlay`: `void Draw(Painter& paint, const FloatRect& area, const FloatRect& viewArea) const`
 
@@ -383,6 +401,7 @@ Public visual FX.
 - `FloatingTextStyle`: `float popSeconds = 0.0f` — zero disables the entrance
 - `FloatingTextStyle`: `Curve popCurve = Curve::OutBack`
 - `FloatingTextStyle`: `FxTextStyle text`
+- `[[nodiscard]] bool IsValid(const FloatingTextStyle& style)`
 - `class FloatingTexts`
 - `FloatingTexts`: `void Emit(Float2 position, const std::string& text, Color4 color, const FloatingTextStyle& style)`
 - `FloatingTexts`: `void Update(float deltaSeconds)`
@@ -398,6 +417,7 @@ Public visual FX.
 - `RingStyle`: `float thickness = 0.0f`
 - `RingStyle`: `float fadeSeconds = 0.0f`
 - `RingStyle`: `Curve curve = Curve::Linear` — How the radius travels
+- `[[nodiscard]] bool IsValid(const RingStyle& style)`
 - `class Rings`
 - `Rings`: `void Emit(Float2 position, Color4 color, const RingStyle& style)` — An invalid style throws invalid_argument.
 - `Rings`: `void Update(float deltaSeconds)`
@@ -416,7 +436,9 @@ Public visual FX.
 - `ShockwaveStyle`: `float rimWidth = 0.0f`
 - `ShockwaveStyle`: `Color4 rim { 255, 255, 255, 255 }`
 - `ShockwaveStyle`: `Curve curve = Curve::OutCubic` — How the radius travels
+- `[[nodiscard]] bool IsValid(const ShockwaveStyle& style)`
 - `class Shockwaves`
+- `Shockwaves`: `void SetQuality(const FxQuality& quality)` — Flashes off: Emit does nothing, since a wave lights the screen as it crosses.
 - `Shockwaves`: `void Emit(Float2 center, Color4 color, const ShockwaveStyle& style, float reach = 0.0f)` — An invalid style or reach throws invalid_argument.
 - `Shockwaves`: `void Update(float deltaSeconds)`
 - `Shockwaves`: `void Clear()`

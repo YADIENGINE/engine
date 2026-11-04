@@ -40,8 +40,11 @@ void ParticleSystem::Emit(Float2 position, int count, const ParticleEmission& em
     if (!IsValid(emission, appearance)) throw std::invalid_argument("Invalid particle emission or appearance");
     count = _quality.ParticleCount(count);
     if (count <= 0) return;
-    const auto available = std::min(static_cast<std::size_t>(count), _capacity - _particles.size());
-    for (std::size_t i = 0; i < available; ++i) {
+    const auto wanted = std::min(static_cast<std::size_t>(count), _capacity);
+    const std::size_t room = _capacity - _particles.size();
+    if (wanted > room)
+        _particles.erase(_particles.begin(), _particles.begin() + static_cast<std::ptrdiff_t>(wanted - room));
+    for (std::size_t i = 0; i < wanted; ++i) {
         const float angle =
             Sample(_rng, {emission.direction - emission.spread / 2.0f, emission.direction + emission.spread / 2.0f});
         const float speed = Sample(_rng, emission.speed);

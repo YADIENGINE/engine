@@ -27,6 +27,8 @@ struct GlitchStyle {
     Color4 highlight{255, 255, 255, 255};
 };
 
+[[nodiscard]] bool IsValid(const GlitchStyle& style);
+
 class ScreenGlitch {
 public:
     // Flashes off: Trigger does nothing.

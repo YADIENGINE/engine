@@ -15,6 +15,8 @@ struct SpeedLineStyle {
     float minIntensity = 0.0f;
 };
 
+[[nodiscard]] bool IsValid(const SpeedLineStyle& style);
+
 // Lines rushing in from the edges of 'bounds' (clipped to it). Stateless; the caller chooses the clock.
 void DrawSpeedLines(Painter& paint, const FloatRect& bounds, float intensity, Color4 color, float timeSeconds,
                     const SpeedLineStyle& style);

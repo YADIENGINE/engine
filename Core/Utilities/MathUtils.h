@@ -30,6 +30,14 @@ constexpr float Random01(unsigned seed) { return static_cast<float>(Hash(seed) %
 inline float NoiseHash(int a, int b) {
     return Fract(std::sin(static_cast<float>(a) * 12.9898f + static_cast<float>(b) * 78.233f) * 43758.547f);
 }
+// Smooth noise in -1..1 along 'x', with a different path for each seed (a shaking camera). One new value per unit.
+inline float SmoothNoise(float x, unsigned seed) {
+    const float cell = std::floor(x);
+    const float t = x - cell;
+    const auto at = static_cast<unsigned>(static_cast<long long>(cell));
+    const auto value = [seed](unsigned point) { return Random01(point * 2654435761U + seed) * 2.0f - 1.0f; };
+    return Mix(value(at), value(at + 1U), t * t * (3.0f - 2.0f * t));
+}
 // Wraps 'value' into 0..count-1 (negative values wrap from the end); count > 0.
 constexpr int WrapIndex(int value, int count) { return (value % count + count) % count; }
 // Clamps 'value' to 0..count-1 and converts it to an array index (for level tables); count > 0.

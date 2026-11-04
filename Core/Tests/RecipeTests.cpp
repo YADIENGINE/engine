@@ -251,16 +251,16 @@ TEST_CASE("Engine.Recipes.CuesPlayFromRulesAndMoments", "[engine][recipes]") {
         harness.End();
         return !harness.Draws().empty();
     };
-    view.Update(0.1f, 0);
+    view.Update(0.1f, 0.1f, 0);
     CHECK(time.Advance(0.01f) == 0.01f);
-    view.Update(0.1f, 1); // The count went up: "player_hit" and its hitstop
+    view.Update(0.1f, 0.1f, 1); // The count went up: "player_hit" and its hitstop
     CHECK(time.Advance(0.01f) == 0.0f);
     CHECK(drawn());
 
     RecipeCueView swinging({0.0f, 0.0f, 400.0f, 200.0f}, time);
     swinging.Swing();
-    swinging.Update(0.1f, 0);
-    swinging.Update(0.15f, 0); // Crosses the moment "swing_land"
+    swinging.Update(0.1f, 0.1f, 0);
+    swinging.Update(0.15f, 0.15f, 0); // Crosses the moment "swing_land"
     PaintHarness harness;
     harness.Begin();
     swinging.Draw(harness.paint);
@@ -275,7 +275,7 @@ TEST_CASE("Engine.Recipes.ViewsRecordAndCachedLayerInvalidates", "[engine][recip
     Surface layer({320.0f, 240.0f});
     auto fx = MakeRecipeFx({0.0f, 0.0f, 400.0f, 200.0f});
     TriggerRecipeFx(fx, {160.0f, 100.0f});
-    fx.Update(0.01f);
+    fx.Update(0.01f, 0.01f);
     harness.Begin();
     CHECK(harness.paint.Stale(layer));
     DrawRecipeLayer(harness.paint, layer, harness.paint.Bounds(), 0.5f);

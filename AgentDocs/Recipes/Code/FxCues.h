@@ -17,7 +17,7 @@ public:
     void SetQuality(const FxQuality& quality) { _fx.SetQuality(quality); }
     void Swing() { _swing.Play("swing", {.restart = true}); }
     // 'hits' is what a game's rules counted so far, a simulation's for example: comparing a total cannot miss one.
-    void Update(float seconds, int hits);
+    void Update(float gameSeconds, float realSeconds, int hits);
     void Draw(Painter& paint) const;
 
 private:

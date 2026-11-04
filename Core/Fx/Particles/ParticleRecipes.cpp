@@ -1,5 +1,24 @@
 #include "Fx/Particles/ParticleRecipes.h"
+#include <algorithm>
 #include <cmath>
+#include "Fx/Internals/FxChecks.h"
+
+namespace {
+bool ValidLayer(const ParticleLayer& layer) { return ParticleSystem::IsValid(layer.emission, layer.appearance); }
+bool ValidUse(const ParticleLayer& layer, int count) { return count >= 0 && (count == 0 || ValidLayer(layer)); }
+} // namespace
+
+bool IsValid(const ParticleBurst& burst) {
+    return std::ranges::all_of(burst, [](const ParticleLayer& layer) {
+        return layer.share <= 0.0f || (std::isfinite(layer.share) && ValidLayer(layer));
+    });
+}
+bool IsValid(const ParticleRecipes& recipes) {
+    return IsValid(recipes.soft) && IsValid(recipes.spark) && IsValid(recipes.sparkle) && IsValid(recipes.debris) &&
+           IsValid(recipes.pixel) && IsValid(recipes.confetti) && ValidUse(recipes.trail, recipes.trailCount) &&
+           ValidUse(recipes.dash, recipes.dashCount) && ValidUse(recipes.steam, recipes.steamCount) &&
+           FxNotNegative(recipes.steamWhiten) && FxNotNegative(recipes.steamOpacity);
+}
 
 ParticleLayer AimedBehind(ParticleLayer layer, Float2 direction) {
     layer.emission.direction = std::atan2(-direction.y, -direction.x);

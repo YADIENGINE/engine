@@ -58,6 +58,7 @@ public:
     [[nodiscard]] static bool IsValid(const ParticleEmission& emission, const ParticleAppearance& appearance);
     // Emit makes particlePercent of the requested particles.
     void SetQuality(const FxQuality& quality) { _quality = quality; }
+    // When full, the oldest particles make room: what just happened matters more than what is fading.
     void Emit(Float2 position, int count, const ParticleEmission& emission, const ParticleAppearance& appearance,
               const ParticleCustomDraw& draw = {});
     void Update(float deltaSeconds);

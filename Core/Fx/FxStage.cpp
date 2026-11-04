@@ -1,18 +1,57 @@
 #include "Fx/FxStage.h"
 #include <algorithm>
 #include <cmath>
+#include <format>
+#include <iterator>
 #include <stdexcept>
-#include <type_traits>
 #include <variant>
+#include "Animation/Easing.h"
+#include "Fx/Internals/FxChecks.h"
 #include "Graphics/Draw/BackgroundDraw.h"
 #include "Graphics/Draw/SpeedLines.h"
 #include "Graphics/Paint/Painter.h"
 #include "Runtime/TimeScale.h"
+#include "Utilities/MathUtils.h"
+
+namespace {
+// A visit with these does not compile when an FxAction has no case.
+template <class... Cases> struct Overloaded : Cases... {
+    using Cases::operator()...;
+};
+template <class... Cases> Overloaded(Cases...) -> Overloaded<Cases...>;
+
+void Require(bool valid, const char* part) {
+    if (!valid) throw std::invalid_argument(std::format("Invalid effect style: {}", part));
+}
+// Here rather than at the first use: a mistake in a theme should not wait for a boss's death.
+const FxStyle& Checked(const FxStyle& style) {
+    Require(IsValid(style.particles), "particles");
+    Require(IsValid(style.camera), "camera");
+    Require(IsValid(style.text), "text");
+    Require(FxNotNegative(style.textPopSeconds), "textPopSeconds");
+    Require(IsValid(style.ring), "ring");
+    Require(IsValid(style.flash), "flash");
+    Require(IsValid(style.banner), "banner");
+    Require(IsValid(style.toast), "toast");
+    Require(IsValid(style.speedLines), "speedLines");
+    Require(IsValid(style.pulse), "pulse");
+    Require(IsValid(style.shockwave), "shockwave");
+    Require(IsValid(style.glitch), "glitch");
+    Require(IsValid(style.slowMotion), "slowMotion");
+    Require(FxNotNegative(style.vignetteSize), "vignetteSize");
+    return style;
+}
+// At least one of a request: 'intensity' is above 0.
+int Scaled(int count, float intensity) {
+    if (count <= 0) return count;
+    return std::max(1, static_cast<int>(std::lround(static_cast<float>(count) * intensity)));
+}
+} // namespace
 
 FxStage::FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle& style)
     : _area(area)
     , _viewArea(viewArea)
-    , _style(style)
+    , _style(Checked(style))
     , _cues(DefaultFxCues())
     , _particles({.capacity = style.particleCapacity})
     , _camera(style.camera)
@@ -24,30 +63,43 @@ void FxStage::SetQuality(const FxQuality& quality) {
     _particles.SetQuality(quality);
     _camera.SetQuality(quality);
     _flash.SetQuality(quality);
+    _announcements.SetQuality(quality);
     _pulse.SetQuality(quality);
+    _shockwaves.SetQuality(quality);
     _glitch.SetQuality(quality);
     _slowMotion.SetQuality(quality);
 }
-void FxStage::Update(float deltaSeconds) {
-    if (!(deltaSeconds > 0.0f) || !std::isfinite(deltaSeconds)) return;
-    for (Waiting& waiting : _waiting) {
-        waiting.seconds -= deltaSeconds;
-        if (waiting.seconds <= 0.0f) Run(waiting.action, {waiting.color, waiting.at, waiting.facing, waiting.text});
-    }
-    std::erase_if(_waiting, [](const Waiting& waiting) { return waiting.seconds <= 0.0f; });
-    _particles.Update(deltaSeconds);
-    _texts.Update(deltaSeconds);
-    _rings.Update(deltaSeconds);
-    _camera.Update(deltaSeconds);
-    _flash.Update(deltaSeconds);
-    _announcements.Update(deltaSeconds);
-    _pulse.Update(deltaSeconds);
-    _shockwaves.Update(deltaSeconds);
-    _glitch.Update(deltaSeconds);
-    _slowMotion.Update(deltaSeconds);
+void FxStage::SetCues(const FxCueSet& cues) {
+    _cues = cues;
+    _cooling.clear();
+}
+void FxStage::Update(float gameSeconds, float realSeconds) {
+    _announcements.Update(realSeconds);
+    _slowMotion.Update(gameSeconds, realSeconds);
+    if (!(gameSeconds > 0.0f) || !std::isfinite(gameSeconds)) return;
+    for (Cooling& cooling : _cooling)
+        cooling.seconds -= gameSeconds;
+    std::erase_if(_cooling, [](const Cooling& cooling) { return cooling.seconds <= 0.0f; });
+    for (Waiting& waiting : _waiting)
+        waiting.seconds -= gameSeconds;
+    // Out of the list first: one that throws must not throw again every frame.
+    const auto due = std::ranges::stable_partition(_waiting, [](const Waiting& w) { return w.seconds > 0.0f; });
+    const std::vector<Waiting> running(std::make_move_iterator(due.begin()), std::make_move_iterator(due.end()));
+    _waiting.erase(due.begin(), due.end());
+    for (const Waiting& waiting : running)
+        Run(waiting.action, {waiting.color, waiting.at, waiting.facing, waiting.text, waiting.intensity});
+    _particles.Update(gameSeconds);
+    _texts.Update(gameSeconds);
+    _rings.Update(gameSeconds);
+    _camera.Update(gameSeconds);
+    _flash.Update(gameSeconds);
+    _pulse.Update(gameSeconds);
+    _shockwaves.Update(gameSeconds);
+    _glitch.Update(gameSeconds);
 }
 void FxStage::Clear() {
     _waiting.clear();
+    _cooling.clear();
     _particles.Clear();
     _texts.Clear();
     _rings.Clear();
@@ -62,60 +114,66 @@ void FxStage::Clear() {
     _shot = {};
 }
 
-void FxStage::Play(std::string_view name, const FxPlay& play) { Play(_cues.Get(name), play); }
+bool FxStage::Play(std::string_view name, const FxPlay& play) {
+    const FxCue& cue = _cues.Get(name);
+    if (std::ranges::any_of(_cooling, [&](const Cooling& cooling) { return cooling.name == name; })) return false;
+    Play(cue, play);
+    const float cooldown = _cues.Cooldown(name);
+    if (cooldown > 0.0f && play.intensity > 0.0f) _cooling.push_back({std::string(name), cooldown});
+    return true;
+}
 void FxStage::Play(const FxCue& cue, const FxPlay& play) {
+    if (!FxNotNegative(play.intensity)) throw std::invalid_argument("A cue's intensity must be nonnegative");
     if (cue.UsesTime() && _time == nullptr) throw std::invalid_argument("This cue changes time: call FxStage::SetTime");
+    if (play.intensity == 0.0f) return;
     for (const FxCueEntry& entry : cue.Entries()) {
         const Color4 color = entry.color.value_or(play.color);
         if (entry.at > 0.0f)
-            _waiting.push_back({entry.at, entry.action, color, play.at, play.facing, std::string(play.text)});
+            _waiting.push_back(
+                {entry.at, entry.action, color, play.at, play.facing, std::string(play.text), play.intensity});
         else
-            Run(entry.action, {color, play.at, play.facing, play.text});
+            Run(entry.action, {color, play.at, play.facing, play.text, play.intensity});
     }
 }
 void FxStage::Run(const FxAction& action, const Target& target) {
     const auto textOf = [&](const std::string& own) { return own.empty() ? std::string(target.text) : own; };
+    const auto time = [this]() -> TimeScale& {
+        if (_time == nullptr) throw std::invalid_argument("This cue changes time: call FxStage::SetTime");
+        return *_time;
+    };
+    const float scale = target.intensity;
     std::visit(
-        [&](const auto& a) {
-            using A = std::decay_t<decltype(a)>;
-            if constexpr (std::same_as<A, FxBurst>)
-                Burst(target.at, target.color, a.count, a.recipe);
-            else if constexpr (std::same_as<A, FxParticles>)
-                Burst(target.at, target.color, a.count, a.burst);
-            else if constexpr (std::same_as<A, FxTrail>)
-                Trail(target.at, target.color);
-            else if constexpr (std::same_as<A, FxDash>)
-                Dash(target.at, target.facing, target.color);
-            else if constexpr (std::same_as<A, FxSteam>)
-                Steam(target.at, target.color);
-            else if constexpr (std::same_as<A, FxFloatText>)
-                FloatText(target.at, textOf(a.text), target.color);
-            else if constexpr (std::same_as<A, FxPopText>)
-                PopText(target.at, textOf(a.text), target.color, a.size);
-            else if constexpr (std::same_as<A, FxRing>)
-                Ring(target.at, target.color);
-            else if constexpr (std::same_as<A, FxShockwave>)
-                Shockwave(target.at, target.color, a.reach);
-            else if constexpr (std::same_as<A, FxFlash>)
-                Flash(target.color);
-            else if constexpr (std::same_as<A, FxBanner>)
-                Banner(textOf(a.text));
-            else if constexpr (std::same_as<A, FxToast>)
-                Toast(textOf(a.text), target.color);
-            else if constexpr (std::same_as<A, FxShake>)
-                Shake(a.seconds);
-            else if constexpr (std::same_as<A, FxPunch>)
-                Punch(a.amount, target.at);
-            else if constexpr (std::same_as<A, FxKick>)
-                Kick(target.facing * a.strength);
-            else if constexpr (std::same_as<A, FxGlitch>)
-                Glitch(a.seconds);
-            else if constexpr (std::same_as<A, FxHitstop>)
-                _time->Hitstop(a.seconds);
-            else if constexpr (std::same_as<A, FxSlowMotion>) {
-                _time->SlowMo(a.seconds, a.startScale, a.endScale);
+        Overloaded{
+            [&](const FxBurst& a) { Burst(target.at, target.color, Scaled(a.count, scale), a.recipe); },
+            [&](const FxParticles& a) { Burst(target.at, target.color, Scaled(a.count, scale), a.burst); },
+            [&](const FxTrail&) { Trail(target.at, target.color); },
+            [&](const FxDash&) { Dash(target.at, target.facing, target.color); },
+            [&](const FxSteam&) { Steam(target.at, target.color); },
+            [&](const FxFloatText& a) { FloatText(target.at, textOf(a.text), target.color); },
+            [&](const FxPopText& a) { PopText(target.at, textOf(a.text), target.color, a.size); },
+            [&](const FxRing&) {
+                RingStyle style = _style.ring;
+                style.startRadius *= scale;
+                style.endRadius *= scale;
+                _rings.Emit(target.at, target.color, style);
+            },
+            [&](const FxShockwave& a) { Shockwave(target.at, target.color, a.reach * scale); },
+            [&](const FxFlash&) {
+                FlashStyle style = _style.flash;
+                style.opacity *= std::min(scale, 1.0f);
+                _flash.Flash(target.color, style);
+            },
+            [&](const FxBanner& a) { Banner(textOf(a.text)); },
+            [&](const FxToast& a) { Toast(textOf(a.text), target.color); },
+            [&](const FxShake& a) { Shake(a.amount * scale); },
+            [&](const FxPunch& a) { Punch(a.amount * scale, target.at); },
+            [&](const FxKick& a) { Kick(target.facing * (a.strength * scale)); },
+            [&](const FxGlitch& a) { Glitch(a.seconds); },
+            [&](const FxHitstop& a) { time().Hitstop(a.seconds); },
+            [&](const FxSlowMotion& a) {
+                time().SlowMo(a.seconds, a.startScale, a.endScale);
                 SlowMotionLook(a.seconds, target.color);
-            }
+            },
         },
         action);
 }
@@ -162,8 +220,22 @@ void FxStage::SlowMotionLook(float seconds, Color4 color) { _slowMotion.Trigger(
 CameraView FxStage::WorldCamera(const Painter& paint) const {
     return _camera.Apply(ShotCamera(_shot, _area, _area), static_cast<float>(paint.Time()));
 }
+CameraView FxStage::WorldCamera(const Painter& paint, const CameraView& base) const {
+    CameraView camera = base;
+    const float weight = Clamp01(_shot.weight);
+    if (weight > 0.0f) {
+        CameraShot shot = _shot;
+        shot.weight = 1.0f;
+        shot.keepInArena = false;
+        const CameraView framed = ShotCamera(shot, _area, _area);
+        camera.offset = base.offset + (framed.offset - base.offset) * weight;
+        camera.target = base.target + (framed.target - base.target) * weight;
+        camera.rotation = Mix(base.rotation, framed.rotation, weight);
+        camera.zoom = Mix(base.zoom, framed.zoom, weight);
+    }
+    return _camera.Apply(camera, static_cast<float>(paint.Time()));
+}
 void FxStage::DrawWorldLayer(Painter& paint) const {
-    _pulse.DrawTint(paint, _area);
     _rings.Draw(paint);
     _particles.Draw(paint);
     _texts.Draw(paint);
@@ -171,6 +243,7 @@ void FxStage::DrawWorldLayer(Painter& paint) const {
 }
 void FxStage::DrawOverlay(Painter& paint) const {
     const auto time = static_cast<float>(paint.Time());
+    _pulse.DrawTint(paint, _area);
     _pulse.DrawVignette(paint, _viewArea);
     DrawVignette(paint, _viewArea, _style.vignetteSize, _style.vignetteColor);
     DrawSpeedLines(paint, _area, _camera.MotionIntensity(), _motionColor, time, _style.speedLines);

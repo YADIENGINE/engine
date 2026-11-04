@@ -2,13 +2,17 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include "Fx/Internals/FxChecks.h"
 #include "Graphics/Draw/BackgroundDraw.h"
 #include "Graphics/Paint/Painter.h"
 
+bool IsValid(const SlowMotionStyle& style) {
+    return std::isfinite(style.fadeStart) && FxNotNegative(style.tintAlpha) && FxNotNegative(style.vignetteSize) &&
+           FxNotNegative(style.vignetteAlpha) && IsValid(style.lines);
+}
+
 void SlowMotionOverlay::Trigger(float seconds, Color4 color, const SlowMotionStyle& style) {
-    if (!std::isfinite(seconds) || seconds <= 0.0f || !std::isfinite(style.fadeStart)) {
-        throw std::invalid_argument("Invalid slow motion");
-    }
+    if (!FxPositive(seconds) || !IsValid(style)) throw std::invalid_argument("Invalid slow motion");
     _style = style;
     _color = color;
     _age = 0.0f;
@@ -16,10 +20,9 @@ void SlowMotionOverlay::Trigger(float seconds, Color4 color, const SlowMotionSty
     _strength.Snap(1.0f);
     _strength.Wait(hold).Then(0.0f, seconds - hold, style.fadeCurve);
 }
-void SlowMotionOverlay::Update(float deltaSeconds) {
-    if (!(deltaSeconds > 0.0f) || !std::isfinite(deltaSeconds)) return;
-    _age += deltaSeconds;
-    _strength.Update(deltaSeconds);
+void SlowMotionOverlay::Update(float gameSeconds, float realSeconds) {
+    if (gameSeconds > 0.0f && std::isfinite(gameSeconds)) _age += gameSeconds;
+    if (realSeconds > 0.0f && std::isfinite(realSeconds)) _strength.Update(realSeconds);
 }
 void SlowMotionOverlay::Clear() {
     _age = 0.0f;

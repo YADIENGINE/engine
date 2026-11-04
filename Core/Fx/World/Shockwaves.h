@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "Animation/Curve.h"
+#include "Fx/FxQuality.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
 #include "Utilities/FloatRect.h"
@@ -21,8 +22,12 @@ struct ShockwaveStyle {
     Curve curve = Curve::OutCubic; // How the radius travels
 };
 
+[[nodiscard]] bool IsValid(const ShockwaveStyle& style);
+
 class Shockwaves {
 public:
+    // Flashes off: Emit does nothing, since a wave lights the screen as it crosses.
+    void SetQuality(const FxQuality& quality) { _quality = quality; }
     // An invalid style or reach throws invalid_argument.
     void Emit(Float2 center, Color4 color, const ShockwaveStyle& style, float reach = 0.0f);
     void Update(float deltaSeconds);
@@ -38,5 +43,6 @@ private:
         ShockwaveStyle style;
         float age = 0.0f;
     };
+    FxQuality _quality;
     std::vector<Wave> _waves;
 };

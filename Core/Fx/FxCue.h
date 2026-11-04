@@ -41,8 +41,8 @@ struct FxBanner {
 struct FxToast {
     std::string text{};
 };
-struct FxShake {
-    float seconds = 0.0f;
+struct FxShake { // Adds to the shake; see CameraEffects::Shake
+    float amount = 0.0f;
 };
 struct FxPunch { // Zooms in on FxPlay::at
     float amount = 0.0f;
@@ -93,7 +93,7 @@ struct FxCueEntry {
 // Several effects that belong together, as constant data: what an event looks like, not when it happens. Invalid data
 // throws in every configuration, when the cue is made rather than when it first plays.
 //
-//     FxCue hit{FxBurst{ParticleRecipe::Debris, 24}, FxShake{0.2f}, {FxFlash{}, White}, {0.08f, FxShockwave{}}};
+//     FxCue hit{FxBurst{ParticleRecipe::Debris, 24}, FxShake{0.5f}, {FxFlash{}, White}, {0.08f, FxShockwave{}}};
 class FxCue {
 public:
     FxCue(std::initializer_list<FxCueEntry> entries);

@@ -19,6 +19,8 @@ struct PulseOverlayStyle {
     float vignetteBeatAlpha = 0.0f;
 };
 
+[[nodiscard]] bool IsValid(const PulseOverlayStyle& style);
+
 class PulseOverlay {
 public:
     // An invalid style throws invalid_argument.

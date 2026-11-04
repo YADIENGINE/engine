@@ -24,7 +24,7 @@ public:
     void SetQuality(const FxQuality& quality) { _fx.SetQuality(quality); }
     void Swing() { _swing.Play("swing", {.restart = true}); }
     // 'hits' is what a game's rules counted so far, a simulation's for example: comparing a total cannot miss one.
-    void Update(float seconds, int hits);
+    void Update(float gameSeconds, float realSeconds, int hits);
     void Draw(Painter& paint) const;
 
 private:
@@ -53,8 +53,9 @@ constexpr Color4 FlashColor = Rgb(0xffffff);
 FxCueSet RecipeCues() {
     return DefaultFxCues().With({
         {"player_hit",
-         {FxBurst{ParticleRecipe::Debris, 24}, FxShake{0.2f}, FxHitstop{0.05f}, {FxFlash{}, FlashColor},
-          {0.08f, FxShockwave{120.0f}}}},
+         {FxBurst{ParticleRecipe::Debris, 24}, FxShake{0.5f}, FxHitstop{0.05f}, {FxFlash{}, FlashColor},
+          {0.08f, FxShockwave{120.0f}}},
+         0.1f}, // At most one every 0.1 seconds, however many land
         {"swing_land", {FxBurst{ParticleRecipe::Spark, 12}, FxRing{}, FxPunch{0.03f}}},
     });
 }
@@ -73,16 +74,16 @@ RecipeCueView::RecipeCueView(const FloatRect& area, TimeScale& time)
     _fx.SetCues(RecipeCues());
     _fx.SetTime(&time); // "player_hit" asks for a hitstop
 }
-void RecipeCueView::Update(float seconds, int hits) {
+void RecipeCueView::Update(float gameSeconds, float realSeconds, int hits) {
     if (hits != _hitsSeen) {
         _hitsSeen = hits;
         _fx.Play("player_hit", {.at = _at, .color = HitColor});
     }
     // A moment with a cue of the same name plays it, at the frame the animation reaches it.
-    _swing.Update(seconds, [&](std::string_view moment) {
+    _swing.Update(gameSeconds, [&](std::string_view moment) {
         if (_fx.Cues().Contains(moment)) _fx.Play(moment, {.at = _at, .color = SwingColor});
     });
-    _fx.Update(seconds);
+    _fx.Update(gameSeconds, realSeconds);
 }
 void RecipeCueView::Draw(Painter& paint) const {
     {
@@ -95,4 +96,4 @@ void RecipeCueView::Draw(Painter& paint) const {
 ```
 <!-- /recipe -->
 
-Pitfalls: A cue with FxHitstop or FxSlowMotion throws without SetTime. A misspelled name throws where it plays, so a scenario or test should reach each one. A simulation never calls Fx: it counts or lists events, and the view plays cues; comparing a total, as here, cannot play one twice. A cue's delays run on Update time, so a hitstop holds them. Pass Game::Effects() to SetQuality.
+Pitfalls: A cue with FxHitstop or FxSlowMotion throws without SetTime. A misspelled name throws where it plays, so a scenario or test should reach each one. A simulation never calls Fx: it counts or lists events, and the view plays cues; comparing a total, as here, cannot play one twice. A cue's delays and cooldown run on game time, so a hitstop holds them. FxPlay::intensity sizes one play. Update takes both clocks, the scene's delta and Game::RealSeconds(). Pass Game::Effects() to SetQuality.

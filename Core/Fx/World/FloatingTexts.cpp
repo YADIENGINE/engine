@@ -3,13 +3,15 @@
 #include <cmath>
 #include <stdexcept>
 #include "Animation/Easing.h"
+#include "Fx/Internals/FxChecks.h"
+
+bool IsValid(const FloatingTextStyle& style) {
+    return FxPositive(style.duration) && FxFinite(style.velocity) && FxNotNegative(style.fadeSeconds) &&
+           FxNotNegative(style.popSeconds) && IsValid(style.text);
+}
 
 void FloatingTexts::Emit(Float2 position, const std::string& text, Color4 color, const FloatingTextStyle& style) {
-    if (!std::isfinite(style.duration) || style.duration <= 0.0f || !std::isfinite(style.fadeSeconds) ||
-        style.fadeSeconds < 0.0f || !std::isfinite(style.popSeconds) || style.popSeconds < 0.0f ||
-        !(style.text.size > 0.0f) || !std::isfinite(style.velocity.x) || !std::isfinite(style.velocity.y)) {
-        throw std::invalid_argument("Invalid floating text style");
-    }
+    if (!IsValid(style)) throw std::invalid_argument("Invalid floating text style");
     _entries.push_back({position, text, color, style.duration, style});
 }
 

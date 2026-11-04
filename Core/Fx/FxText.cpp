@@ -1,7 +1,12 @@
 #include "Fx/FxText.h"
 #include <algorithm>
+#include "Fx/Internals/FxChecks.h"
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Text/FontFace.h"
+
+bool IsValid(const FxTextStyle& style) {
+    return FxPositive(style.size) && FxFinite(style.anchor) && FxNotNegative(style.maxWidth);
+}
 
 void DrawFxText(Painter& paint, std::string_view text, Float2 position, Color4 color, const FxTextStyle& style) {
     if (text.empty() || !(style.size > 0.0f) || color.a == 0) return;

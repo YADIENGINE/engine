@@ -13,17 +13,17 @@ Own MakeRecipeFx(area) in the View; trigger on an event, update with the chosen 
 namespace {
 constexpr Color4 BurstColor = Rgb(0xffa040);
 constexpr int BurstCount = 24;
-constexpr float ShakeSeconds = 0.2f;
+constexpr float ShakeAmount = 0.5f;
 constexpr Color4 FlashColor = Rgb(0xffffff);
 } // namespace
 
 FxStage MakeRecipeFx(const FloatRect& area) { return FxStage(area, area, CurrentTheme().fx); }
 void TriggerRecipeFx(FxStage& fx, Float2 at) {
     fx.Burst(at, BurstColor, BurstCount, ParticleRecipe::Debris);
-    fx.Shake(ShakeSeconds);
+    fx.Shake(ShakeAmount);
     fx.Flash(FlashColor);
 }
-// Owner calls fx.SetQuality(Effects()), fx.Update(chosenDelta), and fx.Clear() on reset.
+// Owner calls fx.SetQuality(Effects()), fx.Update(delta, RealSeconds()), and fx.Clear() on reset.
 void DrawRecipeFx(Painter& paint, const FxStage& fx, const FloatRect& viewArea) {
     {
         auto clip = paint.Clip(viewArea);

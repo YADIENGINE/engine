@@ -3,15 +3,19 @@
 #include <cmath>
 #include <stdexcept>
 #include "Animation/Easing.h"
+#include "Fx/Internals/FxChecks.h"
 #include "Graphics/Paint/Painter.h"
 #include "Utilities/MathUtils.h"
 
+bool IsValid(const GlitchStyle& style) {
+    return FxPositive(style.fps) && style.bands >= 0 && style.tears >= 0 && style.noise >= 0 && style.noiseSize > 0 &&
+           style.minHeight <= style.maxHeight && style.tearMinHeight <= style.tearMaxHeight &&
+           FxNotNegative(style.shift) && FxNotNegative(style.bandAlpha) && FxNotNegative(style.tearAlpha) &&
+           FxNotNegative(style.noiseAlpha);
+}
+
 void ScreenGlitch::Trigger(float seconds, const GlitchStyle& style) {
-    if (!std::isfinite(seconds) || seconds <= 0.0f || !std::isfinite(style.fps) || style.fps <= 0.0f ||
-        style.bands < 0 || style.tears < 0 || style.noise < 0 || style.noiseSize <= 0 ||
-        style.minHeight > style.maxHeight || style.tearMinHeight > style.tearMaxHeight) {
-        throw std::invalid_argument("Invalid glitch");
-    }
+    if (!FxPositive(seconds) || !IsValid(style)) throw std::invalid_argument("Invalid glitch");
     if (!_quality.flashes) return;
     _style = style;
     _duration = std::max(seconds, _life);

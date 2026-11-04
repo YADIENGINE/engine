@@ -19,14 +19,17 @@ struct SlowMotionStyle {
     Curve fadeCurve = Curve::OutCubic;
 };
 
-// Only the look: time itself is TimeScale's. Its trails run on Update time, so they crawl while time is slowed.
+[[nodiscard]] bool IsValid(const SlowMotionStyle& style);
+
+// Only the look: time itself is TimeScale's. How long it lasts is in real seconds, as TimeScale::SlowMo's are, so the
+// two end together. Its trails run on game time, so they crawl while time is slowed.
 class SlowMotionOverlay {
 public:
     // Flashes off: no tint or dark edges. Motion off: no trails.
     void SetQuality(const FxQuality& quality) { _quality = quality; }
     // Invalid times throw invalid_argument.
     void Trigger(float seconds, Color4 color, const SlowMotionStyle& style);
-    void Update(float deltaSeconds);
+    void Update(float gameSeconds, float realSeconds);
     void Clear();
     void Draw(Painter& paint, const FloatRect& area, const FloatRect& viewArea) const;
 

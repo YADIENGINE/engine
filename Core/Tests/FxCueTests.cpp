@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
@@ -17,11 +18,15 @@
 #include "Fx/FxCueSet.h"
 #include "Fx/FxStage.h"
 #include "Fx/Particles/ParticleSystem.h"
+#include "Fx/Screen/Announcements.h"
+#include "Fx/Screen/ScreenFlash.h"
+#include "Fx/World/FloatingTexts.h"
 #include "Graphics/Style/NeonArcadeTheme.h"
 #include "Graphics/Text/FontFace.h"
 #include "Runtime/TimeScale.h"
 #include "Scene/TransitionClock.h"
 #include "Tests/PaintHarness.h"
+#include "Utilities/MathUtils.h"
 
 using Catch::Approx;
 
@@ -107,17 +112,17 @@ TEST_CASE("Engine.FxStage.PlaysNamedCuesWithTheirDelays", "[engine][fx]") {
 
     stage.Play("late", {.at = {100.0f, 100.0f}, .color = Pink});
     CHECK(WorldVertices(stage) == 0);
-    stage.Update(0.25f);
+    stage.Update(0.25f, 0.25f);
     CHECK(WorldVertices(stage) == 0); // The burst is still waiting
-    stage.Update(0.0f);               // Frozen time, as in a hitstop, moves nothing
+    stage.Update(0.0f, 0.0f);               // Frozen time, as in a hitstop, moves nothing
     CHECK(WorldVertices(stage) == 0);
-    stage.Update(0.25f);
+    stage.Update(0.25f, 0.25f);
     CHECK(WorldVertices(stage) > 0);
 
     stage.Clear();
     stage.Play("late", {.at = {100.0f, 100.0f}, .color = Pink});
     stage.Clear(); // Forgets what was waiting too
-    stage.Update(1.0f);
+    stage.Update(1.0f, 1.0f);
     CHECK(WorldVertices(stage) == 0);
 }
 
@@ -126,7 +131,7 @@ TEST_CASE("Engine.FxStage.DefaultCuesWorkWithAnyStageAndTheTheme", "[engine][fx]
         CHECK_FALSE(DefaultFxCues().Get(name).UsesTime());
         FxStage stage = MakeStage();
         stage.Play(name, {.at = {100.0f, 100.0f}, .color = Pink});
-        stage.Update(0.1f);
+        stage.Update(0.1f, 0.1f);
         CHECK(WorldVertices(stage) > 0);
     }
 }
@@ -139,7 +144,7 @@ TEST_CASE("Engine.FxStage.TextAndColoursComeFromTheCueOrThePlay", "[engine][fx]"
                            {"given", {FxPopText{20.0f}}},
                            {"white", {{FxFlash{}, Color4{255, 255, 255, 255}}}}});
     stage.Play("given", {.at = {50.0f, 50.0f}, .color = Pink, .text = "+10"});
-    stage.Update(0.1f); // A popping text starts at size 0
+    stage.Update(0.1f, 0.1f); // A popping text starts at size 0
     CHECK(WorldVertices(stage) > 0);
     stage.Clear();
     stage.Play("own", {.at = {50.0f, 50.0f}, .color = Pink});
@@ -169,7 +174,7 @@ TEST_CASE("Engine.FxStage.CuesThatChangeTimeNeedATimeScale", "[engine][fx]") {
 
     stage.Play("slow", {.color = Pink});
     CHECK(time.Advance(0.1f) == Approx(0.05f)); // Time slows ...
-    stage.Update(0.05f);
+    stage.Update(0.05f, 0.05f);
     CHECK(OverlayVertices(stage) > 0); // ... and it shows
 }
 
@@ -180,7 +185,7 @@ TEST_CASE("Engine.FxStage.HonoursThePlayersChoiceOnSlowMotion", "[engine][fx]") 
         FxStage stage(Area, Area, fx);
         stage.SetQuality(quality);
         stage.SlowMotionLook(1.0f, Pink);
-        stage.Update(0.1f);
+        stage.Update(0.1f, 0.1f);
         return OverlayVertices(stage);
     };
     const std::size_t all = drawn({});
@@ -200,11 +205,11 @@ TEST_CASE("Engine.FxStage.PulseKeepsItsGlowButNotItsBeatWithoutFlashes", "[engin
         stage.SetQuality(quality);
         stage.SetPulse(true, Pink);
         for (int i = 0; i < 200; ++i)
-            stage.Update(0.01f); // Full intensity
-        stage.Update(seconds);
+            stage.Update(0.01f, 0.01f); // Full intensity
+        stage.Update(seconds, seconds);
         PaintHarness h({400.0f, 200.0f});
         h.Begin();
-        stage.DrawWorldLayer(h.paint);
+        stage.DrawOverlay(h.paint);
         h.End();
         return Strongest(h).color.r; // Additive: premultiplied colour, alpha 0
     };
@@ -225,6 +230,322 @@ TEST_CASE("Engine.Fx.EventEffectsRefuseInvalidStyles", "[engine][fx]") {
     TimeScale time;
     CHECK_THROWS_AS(time.Hitstop(-1.0f), std::invalid_argument);
     CHECK_THROWS_AS(time.SlowMo(1.0f, -0.5f), std::invalid_argument);
+}
+
+TEST_CASE("Engine.FxStage.RefusesAnInvalidStyleWhenMade", "[engine][fx]") {
+    CHECK_NOTHROW(FxStage(Area, Area, NeonArcadeFx));
+    CHECK_NOTHROW(FxStage(Area, Area, FxStyle{}));
+    const auto refuses = [](FxStyle fx, std::string_view part) {
+        try {
+            FxStage stage(Area, Area, fx);
+        } catch (const std::invalid_argument& error) {
+            return std::string_view(error.what()).find(part) != std::string_view::npos;
+        }
+        return false;
+    };
+    FxStyle fx = NeonArcadeFx;
+    fx.ring.duration = 0.0f;
+    CHECK(refuses(fx, "ring")); // Names the part, before any ring is asked for
+    fx = NeonArcadeFx;
+    fx.toast.queuedDuration = -1.0f;
+    CHECK(refuses(fx, "toast"));
+    fx = NeonArcadeFx;
+    fx.particles.debris[0].emission.lifetime = {0.0f, 1.0f};
+    CHECK(refuses(fx, "particles"));
+    fx = NeonArcadeFx;
+    fx.speedLines.count = -1;
+    CHECK(refuses(fx, "speedLines"));
+    fx = NeonArcadeFx;
+    fx.camera.shakeDecay = 0.0f; // It would never settle
+    CHECK(refuses(fx, "camera"));
+}
+
+TEST_CASE("Engine.FxStage.SlowMotionsLookEndsWithSlowMotion", "[engine][fx]") {
+    FxStyle fx = NeonArcadeFx;
+    fx.vignetteSize = 0.0f;
+    FxStage stage(Area, Area, fx);
+    TimeScale time;
+    stage.SetTime(&time);
+    stage.SetCues(FxCueSet{{"slow", {FxSlowMotion{2.0f, 0.1f, 0.1f}}}});
+    stage.Play("slow", {.color = Pink});
+    const auto step = [&](int frames) {
+        for (int i = 0; i < frames; ++i) {
+            const float real = 0.05f;
+            stage.Update(time.Advance(real), real);
+        }
+    };
+    step(30); // 1.5 of 2 real seconds
+    CHECK(OverlayVertices(stage) > 0);
+    step(11);
+    CHECK(time.Advance(0.05f) == 0.05f);
+    CHECK(OverlayVertices(stage) == 0); // Over when time is back to normal, though little game time has passed
+}
+
+TEST_CASE("Engine.FxStage.AnnouncementsKeepRealTime", "[engine][fx]") {
+    FxStyle fx = NeonArcadeFx;
+    fx.vignetteSize = 0.0f;
+    FxStage stage(Area, Area, fx);
+    stage.Toast("Combo", Pink);
+    stage.Banner("Round 2");
+    CHECK(OverlayVertices(stage) > 0);
+    stage.Update(0.0f, 0.5f); // A hitstop: nothing else moves
+    CHECK(OverlayVertices(stage) > 0);
+    stage.Update(0.0f, 2.0f);
+    CHECK(OverlayVertices(stage) == 0);
+}
+
+TEST_CASE("Engine.Fx.ToastsWaitTheirTurn", "[engine][fx]") {
+    const ToastStyle style{.duration = 1.0f, .queuedDuration = 0.25f, .text = {.size = 20.0f}};
+    const auto seen = [](const Announcements& announcements) {
+        PaintHarness h({400.0f, 200.0f});
+        h.context.font = &TestFont();
+        h.Begin();
+        announcements.Draw(h.paint, Area);
+        h.End();
+        return Vertices(h);
+    };
+    Announcements toasts(1);
+    toasts.Toast("a", Pink, style);
+    const std::size_t one = seen(toasts);
+    CHECK(one > 0);
+    toasts.Toast("bb", Pink, style);  // Shortens the first and waits
+    toasts.Toast("ccc", Pink, style); // A full queue drops its oldest: "bb"
+    CHECK(seen(toasts) == one);
+    toasts.Update(0.3f);
+    CHECK(seen(toasts) > one); // "ccc", with nothing behind it, stays its full duration
+    toasts.Update(0.9f);
+    CHECK(seen(toasts) > 0);
+    toasts.Update(0.2f);
+    CHECK(seen(toasts) == 0);
+
+    CHECK_THROWS_AS(toasts.Toast("x", Pink, {.duration = 0.0f}), std::invalid_argument);
+    CHECK_THROWS_AS(toasts.Banner("x", {.fadeSeconds = -1.0f}), std::invalid_argument);
+}
+
+TEST_CASE("Engine.Fx.FloatingTextsMoveAndEnd", "[engine][fx]") {
+    FloatingTexts texts;
+    texts.Emit({100.0f, 100.0f}, "+1", Pink,
+               {.duration = 1.0f, .velocity = {0.0f, -50.0f}, .text = {.size = 20.0f, .anchor = {0.0f, 0.0f}}});
+    const auto top = [&] {
+        PaintHarness h({400.0f, 200.0f});
+        h.context.font = &TestFont();
+        h.Begin();
+        texts.Draw(h.paint);
+        h.End();
+        return Vertices(h);
+    };
+    CHECK(top() > 0);
+    texts.Update(0.5f);
+    CHECK(top() > 0);
+    texts.Update(0.6f);
+    CHECK(top() == 0);
+    CHECK_THROWS_AS(texts.Emit({}, "x", Pink, {.duration = -1.0f}), std::invalid_argument);
+    CHECK_THROWS_AS(texts.Emit({}, "x", Pink, {.text = {.size = 0.0f}}), std::invalid_argument);
+}
+
+TEST_CASE("Engine.FxStage.AWaitingActionThatThrowsThrowsOnce", "[engine][fx]") {
+    FxStage stage = MakeStage();
+    TimeScale time;
+    stage.SetTime(&time);
+    stage.SetCues(FxCueSet{{"late", {{0.1f, FxHitstop{0.1f}}}}});
+    stage.Play("late");
+    stage.SetTime(nullptr);
+    CHECK_THROWS_AS(stage.Update(0.2f, 0.2f), std::invalid_argument);
+    CHECK_NOTHROW(stage.Update(0.2f, 0.2f));
+}
+
+TEST_CASE("Engine.Fx.FullParticlesMakeRoomForNewOnes", "[engine][fx]") {
+    ParticleSystem particles({.capacity = 10});
+    const ParticleEmission still{.lifetime = {5.0f, 5.0f}, .size = {1.0f, 1.0f}};
+    particles.Emit({1.0f, 0.0f}, 10, still, {});
+    particles.Emit({2.0f, 0.0f}, 4, still, {});
+    CHECK(particles.ActiveCount() == 10);
+    int fresh = 0;
+    particles.Emit({3.0f, 0.0f}, 2, still, {}, [&](Painter&, const ParticleDrawData&) { ++fresh; });
+    PaintHarness h;
+    h.Begin();
+    particles.Draw(h.paint);
+    h.End();
+    CHECK(fresh == 2);
+    CHECK(particles.ActiveCount() == 10);
+}
+
+TEST_CASE("Engine.Fx.ABrighterFlashWinsAndFlashesAreRationed", "[engine][fx]") {
+    const auto strength = [](const ScreenFlash& flash) {
+        PaintHarness h({400.0f, 200.0f});
+        h.Begin();
+        flash.Draw(h.paint, Area);
+        h.End();
+        return h.Draws().empty() ? 0 : static_cast<int>(Strongest(h).color.a);
+    };
+    ScreenFlash flash;
+    const FlashStyle strong{.duration = 2.0f, .opacity = 1.0f};
+    const FlashStyle weak{.duration = 2.0f, .opacity = 0.2f};
+    flash.Flash(Pink, strong);
+    const int bright = strength(flash);
+    flash.Update(ScreenFlash::MinSecondsBetween + 0.01f);
+    flash.Flash(Pink, weak); // The first is still brighter
+    CHECK(strength(flash) > 100);
+
+    ScreenFlash rationed;
+    rationed.Flash(Pink, weak);
+    const int dim = strength(rationed);
+    rationed.Flash(Pink, strong); // Too soon, however bright
+    CHECK(strength(rationed) == dim);
+    rationed.Update(ScreenFlash::MinSecondsBetween + 0.01f);
+    rationed.Flash(Pink, strong);
+    CHECK(strength(rationed) == bright);
+}
+
+TEST_CASE("Engine.FxStage.FlashesOffAlsoCoversWavesAndCurtains", "[engine][fx]") {
+    FxStyle fx = NeonArcadeFx;
+    fx.vignetteSize = 0.0f;
+    FxStage stage(Area, Area, fx);
+    stage.SetQuality({.flashes = false});
+    stage.Shockwave({100.0f, 100.0f}, Pink);
+    stage.Update(0.1f, 0.1f);
+    CHECK(WorldVertices(stage) == 0);
+
+    Announcements plain(1);
+    plain.SetQuality({.flashes = false});
+    Announcements full(1);
+    const BannerStyle banner{
+        .curtainFadeSeconds = 1.0f, .curtain = {0, 0, 0, 255}, .text = {.size = 20.0f}};
+    plain.Banner("Round 2", banner);
+    full.Banner("Round 2", banner);
+    const auto vertices = [](const Announcements& announcements) {
+        PaintHarness h({400.0f, 200.0f});
+        h.context.font = &TestFont();
+        h.Begin();
+        announcements.Draw(h.paint, Area);
+        h.End();
+        return Vertices(h);
+    };
+    CHECK(vertices(plain) > 0);
+    CHECK(vertices(plain) < vertices(full));
+}
+
+TEST_CASE("Engine.Fx.ShakeBuildsWithItsAmountAndSettles", "[engine][fx]") {
+    const CameraEffectsStyle style{
+        .shakeOffset = 10.0f, .shakeAngle = 0.1f, .shakeSpeed = 20.0f, .shakeDecay = 2.0f, .maxStep = 1.0f};
+    const CameraView base{.offset = {200.0f, 100.0f}, .target = {200.0f, 100.0f}};
+    const auto widest = [&](const CameraEffects& camera) {
+        float offset = 0.0f;
+        float turn = 0.0f;
+        for (int i = 0; i < 200; ++i) {
+            const CameraView view = camera.Apply(base, static_cast<float>(i) * 0.013f);
+            offset = std::max(offset, std::abs(view.offset.x - base.offset.x));
+            turn = std::max(turn, std::abs(view.rotation));
+        }
+        return std::pair{offset, turn};
+    };
+    CameraEffects small(style);
+    small.Shake(0.3f);
+    CameraEffects large(style);
+    large.Shake(0.9f);
+    CHECK(widest(large).first > widest(small).first * 4.0f); // The square of the amount
+    CHECK(widest(large).first <= 10.0f);
+    CHECK(widest(large).second > 0.0f);
+
+    small.Shake(0.3f);
+    CHECK(small.ShakeAmount() == Approx(0.6f)); // Hits in a row build up ...
+    small.Shake(5.0f);
+    CHECK(small.ShakeAmount() == 1.0f); // ... to a limit
+
+    const auto after = [&](int frames) {
+        CameraEffects camera(style);
+        camera.Shake(1.0f);
+        for (int i = 0; i < frames; ++i)
+            camera.Update(0.25f / static_cast<float>(frames));
+        return camera.ShakeAmount();
+    };
+    CHECK(after(5) == Approx(after(60)));
+    large.Update(1.0f);
+    CHECK(large.ShakeAmount() == 0.0f);
+    CHECK(large.Apply(base, 1.0f).offset == base.offset);
+    CHECK(large.Apply(base, 1.0f).rotation == 0.0f);
+
+    CameraEffects calm(style);
+    calm.SetQuality({.shake = EffectLevel::Off});
+    calm.Shake(1.0f);
+    CHECK(calm.Apply(base, 0.3f).rotation == 0.0f);
+
+    CHECK_THROWS_AS(calm.Shake(-1.0f), std::invalid_argument);
+    CHECK_THROWS_AS(calm.Kick({std::nanf(""), 0.0f}), std::invalid_argument);
+    CHECK_THROWS_AS(calm.SetMotion(std::nanf(""), {}), std::invalid_argument);
+    CHECK(SmoothNoise(1.25f, 3U) == SmoothNoise(1.25f, 3U));
+    CHECK(SmoothNoise(1.25f, 3U) != SmoothNoise(1.25f, 4U));
+    CHECK(SmoothNoise(2.0f, 3U) == Approx(SmoothNoise(1.9999f, 3U)).margin(0.001f)); // No jumps
+}
+
+TEST_CASE("Engine.FxStage.WorldCameraWorksOnAGamesOwnCamera", "[engine][fx]") {
+    FxStage stage = MakeStage();
+    PaintHarness h({400.0f, 200.0f});
+    h.Begin();
+    // A camera that has scrolled far from the stage's area.
+    const CameraView follow{.offset = {200.0f, 100.0f}, .target = {3000.0f, 900.0f}, .zoom = 2.0f};
+    const CameraView still = stage.WorldCamera(h.paint, follow);
+    CHECK(still.target == follow.target);
+    CHECK(still.offset == follow.offset);
+    CHECK(still.zoom == follow.zoom);
+
+    stage.Kick({1.0f, 0.0f});
+    stage.Update(1.0f / 60.0f, 1.0f / 60.0f);
+    CHECK(stage.WorldCamera(h.paint, follow).offset.x > follow.offset.x);
+    CHECK(stage.WorldCamera(h.paint, follow).target == follow.target);
+    stage.Clear();
+
+    stage.SetShot({.focus = {3100.0f, 900.0f}, .zoom = 4.0f, .weight = 0.5f});
+    const CameraView blended = stage.WorldCamera(h.paint, follow);
+    CHECK(blended.target.x == Approx(3050.0f)); // Halfway, not held inside the stage's area
+    CHECK(blended.zoom == Approx(3.0f));
+    h.End();
+}
+
+TEST_CASE("Engine.FxStage.IntensitySizesOnePlay", "[engine][fx]") {
+    const auto particles = [](float intensity) {
+        FxStage stage(Area, Area, NeonArcadeFx);
+        stage.SetCues(FxCueSet{{"burst", {FxBurst{ParticleRecipe::Spark, 40}}}});
+        stage.Play("burst", {.at = {100.0f, 100.0f}, .color = Pink, .intensity = intensity});
+        return WorldVertices(stage);
+    };
+    CHECK(particles(0.25f) < particles(1.0f));
+    CHECK(particles(1.0f) < particles(2.0f));
+    CHECK(particles(0.01f) > 0); // At least one
+    CHECK(particles(0.0f) == 0);
+
+    FxStage stage = MakeStage();
+    CHECK_THROWS_AS(stage.Play("hit", {.intensity = -1.0f}), std::invalid_argument);
+    CHECK_THROWS_AS(stage.Play("explosion", {.intensity = std::nanf("")}), std::invalid_argument);
+
+    const auto delayed = [](float intensity) {
+        FxStage late(Area, Area, NeonArcadeFx);
+        late.SetCues(FxCueSet{{"late", {{0.1f, FxBurst{ParticleRecipe::Spark, 40}}}}});
+        late.Play("late", {.at = {100.0f, 100.0f}, .color = Pink, .intensity = intensity});
+        late.Update(0.11f, 0.11f);
+        return WorldVertices(late);
+    };
+    CHECK(delayed(0.25f) < delayed(1.0f)); // Waiting keeps it
+}
+
+TEST_CASE("Engine.FxStage.CooldownLimitsACueByName", "[engine][fx]") {
+    FxStage stage = MakeStage();
+    stage.SetCues(FxCueSet{{"hit", {FxBurst{ParticleRecipe::Spark, 4}}, 0.1f}, {"free", {FxRing{}}}});
+    const FxPlay play{.at = {100.0f, 100.0f}, .color = Pink};
+    CHECK(stage.Play("hit", play));
+    CHECK_FALSE(stage.Play("hit", play));
+    CHECK(stage.Play("free", play)); // Another name, and no cooldown
+    CHECK(stage.Play("free", play));
+    stage.Update(0.0f, 1.0f); // A hitstop holds it
+    CHECK_FALSE(stage.Play("hit", play));
+    stage.Update(0.11f, 0.11f);
+    CHECK(stage.Play("hit", play));
+    stage.Clear();
+    CHECK(stage.Play("hit", play));
+    CHECK_THROWS_AS(stage.Play("missing"), std::invalid_argument);
+    CHECK_THROWS_AS((FxCueSet{{"bad", {FxRing{}}, -1.0f}}), std::invalid_argument);
+    CHECK(DefaultFxCues().Cooldown("hit") > 0.0f);
+    CHECK(DefaultFxCues().Cooldown("explosion") == 0.0f);
 }
 
 TEST_CASE("Engine.Fx.ParticlesRepeatForTheSameSeedAndDefaultSeed", "[engine][fx]") {

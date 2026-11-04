@@ -17,6 +17,8 @@ struct FloatingTextStyle {
     FxTextStyle text;
 };
 
+[[nodiscard]] bool IsValid(const FloatingTextStyle& style);
+
 class FloatingTexts {
 public:
     void Emit(Float2 position, const std::string& text, Color4 color, const FloatingTextStyle& style);

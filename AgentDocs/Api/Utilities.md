@@ -142,6 +142,7 @@ Selectable value lists for settings screens (scheme, FPS limit, language ...): r
 - `constexpr unsigned Hash(unsigned value)` — Stable pseudorandom number from a seed: the same seed gives the same result each frame (for steady decorations).
 - `constexpr float Random01(unsigned seed)` — Stable number in 0..1 (a thousand steps) from a seed.
 - `inline float NoiseHash(int a, int b)` — Stable noise in 0..1 from two integers (sine-based; for cell / particle decorations).
+- `inline float SmoothNoise(float x, unsigned seed)` — Smooth noise in -1..1 along 'x', with a different path for each seed (a shaking camera).
 - `constexpr int WrapIndex(int value, int count)` — Wraps 'value' into 0..count-1 (negative values wrap from the end); count > 0.
 - `constexpr std::size_t ClampIndex(int value, int count)` — Clamps 'value' to 0..count-1 and converts it to an array index (for level tables); count > 0.
 

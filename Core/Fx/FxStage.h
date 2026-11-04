@@ -22,34 +22,40 @@ struct FxPlay {
     Color4 color{255, 255, 255, 255};
     Float2 facing{1.0f, 0.0f};
     std::string_view text{};
+    // How big this one is: scales particle counts, shake, punch, kick, ring and reach sizes and a flash's opacity.
+    // Times, texts and colours stay. 0 plays nothing.
+    float intensity = 1.0f;
 };
 
 // Ready-made effects stage for a game field: particles, flying text, rings, shockwaves, camera (shake, punch, kick,
 // motion, cinematic shot), flash / banner / toast, pulse, glitch and the look of slow motion. Positions use canvas
-// coordinates; styles are supplied at setup (usually CurrentTheme().fx). 'area' is where effects play; 'viewArea' is
-// the viewport covered by edge effects (vignette, flash).
+// coordinates; styles are supplied at setup (usually CurrentTheme().fx), and an invalid one throws there. 'area' is
+// where effects play; 'viewArea' is the viewport covered by edge effects (vignette, flash).
 //
 // Two ways to ask: Play a named cue for what an event looks like, or call one effect by its method.
 //
-// Lifetimes, and cue delays, advance with Update time, so a hitstop holds them. Shake, speed lines and glitch patterns
-// derive from the drawing clock (Painter::Time).
+// Lifetimes and cue delays run on game time, so a hitstop holds them. Banners, toasts and how long slow motion's look
+// lasts run on real time. Shake, speed lines and glitch patterns derive from the drawing clock (Painter::Time).
 class FxStage {
 public:
     FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle& style);
     // The player's effect choice (Game::Effects()), for every effect here.
     void SetQuality(const FxQuality& quality);
     // The cues Play finds by name; DefaultFxCues() until set.
-    void SetCues(const FxCueSet& cues) { _cues = cues; }
+    void SetCues(const FxCueSet& cues);
     [[nodiscard]] const FxCueSet& Cues() const { return _cues; }
     // What cues with FxHitstop or FxSlowMotion change, usually Game::Time(). It must outlive the stage; nullptr unsets
     // it.
     void SetTime(TimeScale* time) { _time = time; }
-    void Update(float deltaSeconds);
-    // Also forgets cue actions still waiting.
+    // Each frame, with both clocks: usually the scene's delta and Game::RealSeconds(). A view with no TimeScale passes
+    // the same value twice.
+    void Update(float gameSeconds, float realSeconds);
+    // Also forgets cue actions still waiting and cooldowns.
     void Clear();
 
-    // Plays a cue from Cues(); an unknown name throws. A cue that changes time throws without SetTime.
-    void Play(std::string_view name, const FxPlay& play = {});
+    // Plays a cue from Cues(); false if its cooldown has not passed. An unknown name throws. A cue that changes time
+    // throws without SetTime, also later if its time comes after SetTime(nullptr).
+    bool Play(std::string_view name, const FxPlay& play = {});
     void Play(const FxCue& cue, const FxPlay& play = {});
 
     void Burst(Float2 at, Color4 color, int count, ParticleRecipe recipe = ParticleRecipe::Soft);
@@ -66,7 +72,8 @@ public:
     void Toast(const std::string& text, Color4 color);
     void Flash(Color4 color);
     void Banner(const std::string& text);
-    void Shake(float seconds);
+    // Adds to the shake, up to 1; see CameraEffects::Shake.
+    void Shake(float amount);
     void Punch(float amount, std::optional<Float2> focus = std::nullopt);
     void Kick(Float2 direction);
     // Each frame: motion intensity (0-1); camera shifts forward, speed lines flow in 'color'.
@@ -82,6 +89,9 @@ public:
     void SetShot(const CameraShot& shot) { _shot = shot; }
     // Field camera: shot + shake / punch / kick / motion; draw with paint.Transform(camera.Transform()).
     [[nodiscard]] CameraView WorldCamera(const Painter& paint) const;
+    // The same on a game's own camera, one that follows or scrolls: effect positions are then world positions. A shot
+    // blends from it by its weight, in world positions too, without keepInArena: the stage does not know the world.
+    [[nodiscard]] CameraView WorldCamera(const Painter& paint, const CameraView& base) const;
     // Inside the world camera, over the field's objects.
     void DrawWorldLayer(Painter& paint) const;
     // Without the camera, over the viewport.
@@ -93,6 +103,7 @@ private:
         Float2 at;
         Float2 facing;
         std::string_view text;
+        float intensity;
     };
     struct Waiting {
         float seconds;
@@ -101,6 +112,11 @@ private:
         Float2 at;
         Float2 facing;
         std::string text;
+        float intensity;
+    };
+    struct Cooling {
+        std::string name;
+        float seconds;
     };
     void Run(const FxAction& action, const Target& target);
 
@@ -110,6 +126,7 @@ private:
     FxCueSet _cues;
     TimeScale* _time = nullptr;
     std::vector<Waiting> _waiting;
+    std::vector<Cooling> _cooling;
     ParticleSystem _particles;
     FloatingTexts _texts;
     Rings _rings;
