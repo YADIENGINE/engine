@@ -1027,6 +1027,7 @@ Status: implemented (2026-11-04). Usage: [Effects](../Graphics/Effects.md).
 9. *What is not an effect left.* `TimeScale` to `Runtime/`, and `TransitionClock` to `Scene/`, because `check` keeps simulations from both; `Animation/` would have opened the rule that simulations do not call `TimeScale`. `CollectFlights` to `Progress/`, `ShatterPattern` to `Utilities/`,
    `DrawIrisTransition` and `DrawSpeedLines` to `Graphics/Draw/`. `FxImport.h` stays: it is the documented umbrella header.
 10. *A fixed default seed, on `Rng`.* Particles were seeded from `std::random_device` when none was given, which made `ctl frames` differ between runs. Nobody can see that two runs of a burst are alike. `NumberPopup` keeps its `std::mt19937`; this was not needed for its optional seed.
+11. *Folders by what an effect acts on.* `Particles/`, `Camera/`, `World/` and `Screen/`, with what ties them together (`FxStage`, cues, `FxStyle`, `FxQuality`, `FxText`) at the top of `Fx/`. 35 flat files read as one list.
 
 **Fixed on the way:** with motion or flashes off, slow motion's trails and tint still drew; decays depended on the frame rate; a kick was a copy of `SpringPoint`; `Shockwaves` and `PulseOverlay` took invalid styles silently.
 

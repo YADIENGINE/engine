@@ -9,7 +9,7 @@
 #include <type_traits>
 #include <variant>
 #include "Fx/FxQuality.h"
-#include "Fx/ParticleSystem.h"
+#include "Fx/Particles/ParticleSystem.h"
 #include "Graphics/Text/TextStyle.h"
 #include "Modules/Popup/Popup.h"
 #include "Utilities/DevelopmentChecks.h"

@@ -1,4 +1,4 @@
-#include "Fx/CameraShot.h"
+#include "Fx/Camera/CameraShot.h"
 #include <algorithm>
 #include "Animation/Easing.h"
 #include "Utilities/MathUtils.h"

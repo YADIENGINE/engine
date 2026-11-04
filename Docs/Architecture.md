@@ -40,8 +40,8 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | `Graphics/Style` | `Theme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
 | `Graphics/Ui` | Themed widgets (`DrawUi*`, `UiButton`, `Backdrop`) | `Style`, `Draw` |
 
-Particle shape drawing is shared by `Fx/ParticleSystem` and static editor scenes through `Graphics/Draw/ParticleDraw`; it
-accepts explicit pose/style and never reads a theme.
+Particle shape drawing is shared by `Fx/Particles/ParticleSystem` and static editor scenes through
+`Graphics/Draw/ParticleDraw`; it accepts explicit pose/style and never reads a theme.
 
 The render migration is complete (`Docs/Design/Rendering.md` → R13). All public headers use the `.h` extension.
 `Fx/` is Painter-only and headless. Raylib is limited to platform and native tool integration.

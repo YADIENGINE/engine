@@ -1,6 +1,6 @@
 #pragma once
 #include <array>
-#include "Fx/ParticleSystem.h"
+#include "Fx/Particles/ParticleSystem.h"
 
 // Ready-made particle bursts. Soft: soft circle + spark; Spark: spark; Sparkle: rising star; Debris: falling square
 // + spark; Pixel: falling pixel; Confetti: drifting square.

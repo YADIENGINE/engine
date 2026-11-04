@@ -129,22 +129,22 @@ engine_warnings(EnginePhysics)
 add_library(EngineHeadless STATIC
     Audio/Internals/AudioVolumePolicy.cpp
     Audio/Internals/Validation.cpp
-    Fx/Announcements.cpp
-    Fx/CameraEffects.cpp
-    Fx/CameraShot.cpp
-    Fx/FloatingTexts.cpp
+    Fx/Camera/CameraEffects.cpp
+    Fx/Camera/CameraShot.cpp
     Fx/FxCue.cpp
     Fx/FxCueSet.cpp
     Fx/FxStage.cpp
     Fx/FxText.cpp
-    Fx/ParticleRecipes.cpp
-    Fx/ParticleSystem.cpp
-    Fx/PulseOverlay.cpp
-    Fx/Rings.cpp
-    Fx/ScreenFlash.cpp
-    Fx/ScreenGlitch.cpp
-    Fx/Shockwaves.cpp
-    Fx/SlowMotionOverlay.cpp
+    Fx/Particles/ParticleRecipes.cpp
+    Fx/Particles/ParticleSystem.cpp
+    Fx/Screen/Announcements.cpp
+    Fx/Screen/PulseOverlay.cpp
+    Fx/Screen/ScreenFlash.cpp
+    Fx/Screen/ScreenGlitch.cpp
+    Fx/Screen/SlowMotionOverlay.cpp
+    Fx/World/FloatingTexts.cpp
+    Fx/World/Rings.cpp
+    Fx/World/Shockwaves.cpp
     GameObjects/GameObject.cpp
     GameObjects/ObjectList.cpp
     Graphics/Draw/BackgroundDraw.cpp

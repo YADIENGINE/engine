@@ -3,12 +3,12 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include "Fx/CameraEffects.h"
-#include "Fx/CameraShot.h"
+#include "Fx/Camera/CameraEffects.h"
+#include "Fx/Camera/CameraShot.h"
 #include "Fx/FxQuality.h"
 #include "Fx/FxStage.h"
 #include "Graphics/Draw/IrisTransition.h"
-#include "Fx/ParticleSystem.h"
+#include "Fx/Particles/ParticleSystem.h"
 #include "Graphics/Text/FontFace.h"
 #include "Tests/PaintHarness.h"
 #include "Utilities/MathUtils.h"

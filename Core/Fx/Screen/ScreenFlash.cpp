@@ -1,4 +1,4 @@
-#include "Fx/ScreenFlash.h"
+#include "Fx/Screen/ScreenFlash.h"
 #include <cmath>
 #include <stdexcept>
 #include "Graphics/Paint/Painter.h"

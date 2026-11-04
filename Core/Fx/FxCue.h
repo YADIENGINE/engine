@@ -7,7 +7,7 @@
 #include <utility>
 #include <variant>
 #include <vector>
-#include "Fx/ParticleRecipes.h"
+#include "Fx/Particles/ParticleRecipes.h"
 #include "Utilities/Color4.h"
 
 // What a cue can do. Each is one FxStage call, as plain data: where it happens, its colour and its direction come from

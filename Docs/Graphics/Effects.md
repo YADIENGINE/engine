@@ -77,6 +77,16 @@ Capacity zero disables waiting.
 
 ### Effect stage and particle recipes
 
+`Core/Fx` keeps what ties effects together at its top: `FxStage`, cues, `FxStyle`, `FxQuality` and `FxText`. Each
+effect sits in a folder named for what it acts on:
+
+| Folder | Effects |
+| --- | --- |
+| `Fx/Particles` | `ParticleSystem`, `ParticleRecipes` |
+| `Fx/Camera` | `CameraEffects`, `CameraShot` |
+| `Fx/World` | `Rings`, `Shockwaves`, `FloatingTexts`: at a point in the field |
+| `Fx/Screen` | `ScreenFlash`, `ScreenGlitch`, `PulseOverlay`, `SlowMotionOverlay`, `Announcements`: over the view |
+
 `Fx/FxStage` bundles every component above for one play area. Construct it with the play area, the view area for edge
 effects and an `FxStyle` (`Fx/FxStyle.h`), normally `CurrentTheme().fx`. Positions are canvas coordinates; the game adapts
 its own grid.
@@ -99,8 +109,8 @@ fx.DrawOverlay(paint); // No camera: vignette, speed lines, flash / banner / toa
 `SetQuality` is one call for the whole stage, and every owner has to make it. `FxStage::SlowMotionLook` is only how slow
 motion looks, and `TimeScale::SlowMo` only slows time; `FxSlowMotion` in a cue does both.
 
-`Fx/ParticleRecipes` holds what the bursts are. `ParticleRecipe` names six (Soft, Spark, Sparkle, Debris, Pixel, Confetti),
-and `ParticleRecipes`, in `Theme::fx.particles`, says what each looks like, plus trail, dash and steam layers. A burst is
+`Fx/Particles/ParticleRecipes` holds what the bursts are. `ParticleRecipe` names six (Soft, Spark, Sparkle, Debris,
+Pixel, Confetti), and `ParticleRecipes`, in `Theme::fx.particles`, says what each looks like, plus trail, dash and steam layers. A burst is
 plain data, two `ParticleLayer`s, so a game's own needs no change here: `fx.Burst(at, color, 24, myBurst)`. `EmitBurst`
 spreads a count over a burst's layers; views that own a bare `ParticleSystem` use it with
 `CurrentTheme().fx.particles.Burst(recipe)`. `Fx` never reads the theme.
@@ -139,8 +149,8 @@ see `AgentDocs/Recipes/FxCues.md`. In the editor a seek runs the same frames, so
 
 ## Cinematic camera and configurable overlays
 
-`Fx/CameraShot.h` defines `CameraShot`, `FrameCameraShot` and `ShotCamera`. A shot is an animation pose: `Mix` blends two,
-`SecondsTween<CameraShot>` moves between them, and a `SecondsClip<CameraShot>` in an animator is an authored camera move
+`Fx/Camera/CameraShot.h` defines `CameraShot`, `FrameCameraShot` and `ShotCamera`. A shot is an animation pose: `Mix`
+blends two, `SecondsTween<CameraShot>` moves between them, and a `SecondsClip<CameraShot>` in an animator is an authored camera move
 with named moments. Hand the result to `FxStage::SetShot` each frame.
 
 `CameraFraming` takes explicit viewport, safe area, padding, and positive ordered zoom limits. Empty bounds produce a neutral

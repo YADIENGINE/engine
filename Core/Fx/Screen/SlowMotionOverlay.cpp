@@ -1,4 +1,4 @@
-#include "Fx/SlowMotionOverlay.h"
+#include "Fx/Screen/SlowMotionOverlay.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>

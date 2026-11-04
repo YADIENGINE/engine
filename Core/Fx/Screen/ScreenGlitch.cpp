@@ -1,4 +1,4 @@
-#include "Fx/ScreenGlitch.h"
+#include "Fx/Screen/ScreenGlitch.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>

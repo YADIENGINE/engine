@@ -1,4 +1,4 @@
-#include "Fx/CameraEffects.h"
+#include "Fx/Camera/CameraEffects.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>

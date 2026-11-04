@@ -3,7 +3,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "Fx/CameraShot.h"
+#include "Fx/Camera/CameraShot.h"
 #include "Fx/FxCue.h"
 #include "Fx/FxCueSet.h"
 #include "Fx/FxQuality.h"
