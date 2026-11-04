@@ -3,19 +3,8 @@
 #include "Graphics/Style/Theme.h"
 #include "Utilities/MathUtils.h"
 
-// Ready-made neon arcade theme: notched dark panels, glowing borders, 3D buttons that depress on press. Start a
-// new theme by copying this and changing its fields.
-inline constexpr NeonFrameStyle NeonArcadeFrame{.outerWidth = 4.5f,
-                                                .innerWidth = 2.2f,
-                                                .outerAlpha = 0.12f,
-                                                .innerAlpha = 0.28f,
-                                                .coreWidth = 0.4f,
-                                                .coreMinWidth = 1.0f,
-                                                .coreWhiten = 0.6f};
-inline constexpr NeonTextStyle NeonArcadeText{.haloRadius = 5.0f, .haloAlpha = 0.45f, .coreWhiten = 0.2f};
-inline constexpr Color4 NeonArcadeButtonBody{24, 19, 50, 255};
-inline constexpr Color4 NeonArcadeButtonShadow{5, 3, 14, 255};
-
+// Ready-made neon arcade theme: dark purple colours, a scrolling grid, fast and bright effects. Its widgets are in
+// Ui/Looks/Neon/NeonLooks.h. Start a new theme by copying this and changing its fields.
 inline constexpr TextShadow NeonArcadeTextShadow{.offset = {2.0f, 2.0f}, .color = {0, 0, 0, 153}};
 inline constexpr float NeonArcadeVignetteSize = 102.0f;
 inline constexpr Color4 NeonArcadeWhite{255, 255, 255, 255};
@@ -190,86 +179,5 @@ inline constexpr BackdropTheme NeonArcadeBackdrop{
 
 inline constexpr Theme NeonArcadeTheme{
     .palette = NeonArcadePalette,
-    .ui = {.frame = NeonArcadeFrame,
-           .text = NeonArcadeText,
-           .panel = {.body = {14, 11, 34, 220},
-                     .shine = {255, 255, 255, 18},
-                     .notch = 10.0f,
-                     .frameWidth = 2.0f,
-                     .glow = 0.5f,
-                     .shineOffset = 4.0f,
-                     .shineHeight = 3.0f,
-                     .frame = NeonArcadeFrame},
-           .chip = {.text = {12, 8, 24, 255},
-                    .paddingX = 10.0f,
-                    .paddingY = 4.0f,
-                    .notch = 5.0f,
-                    .glowRadiusScale = 0.7f,
-                    .glowAlpha = 0.35f},
-           .button = {.body = NeonArcadeButtonBody,
-                      .shadow = NeonArcadeButtonShadow,
-                      .frameColor = {95, 85, 150, 255},
-                      .label = {205, 200, 235, 255},
-                      .shine = {255, 255, 255, 30},
-                      .pressColor = {255, 255, 255, 255},
-                      .depth = 8.0f,
-                      .notch = 12.0f,
-                      .grow = 0.07f,
-                      .squash = 0.05f,
-                      .frameWidth = 2.5f,
-                      .appearDrop = 70.0f,
-                      .appearAlphaScale = 3.0f,
-                      .shakeAmount = 12.0f,
-                      .shakeSpeed = 45.0f,
-                      .pulseSpeed = 4.0f,
-                      .pulseAmount = 0.25f,
-                      .pressFlash = 0.45f,
-                      .darkAccent = 0.35f,
-                      .shadowAccent = 0.4f,
-                      .labelWhiten = 0.35f,
-                      .shineOffset = 4.0f,
-                      .shineHeight = 3.0f,
-                      .shineHighlight = 2.0f,
-                      .padding = 28.0f,
-                      .frame = NeonArcadeFrame,
-                      .text = NeonArcadeText},
-           .roundButton = {.body = NeonArcadeButtonBody,
-                           .shadow = NeonArcadeButtonShadow,
-                           .shadowOffset = 4.0f,
-                           .frameWidth = 3.0f,
-                           .glowInnerWidth = 6.0f,
-                           .glowOuterWidth = 3.0f,
-                           .glowAlpha = 0.28f,
-                           .labelWhiten = 0.4f,
-                           .textGlow = 0.6f,
-                           .padding = 28.0f,
-                           .text = NeonArcadeText},
-           // Body in the surface color, border and letter in the secondary text color (translucent).
-           .keyCap = {.body = {18, 14, 40, 229},
-                      .frame = {190, 186, 220, 178},
-                      .label = {190, 186, 220, 255},
-                      .roundness = 0.3f,
-                      .frameWidth = 1.5f},
-           // Dark slot, glowing block fill, purple neon border.
-           .progressBar = {.track = {12, 9, 28, 255},
-                           .ghost = {255, 255, 255, 90},
-                           .previewAlpha = 0.3f,
-                           .shine = {255, 255, 255, 60},
-                           .shineHeight = 1.0f / 3.0f,
-                           .glowAlpha = 0.3f,
-                           .glowSpread = 6.0f,
-                           .segment = 20.0f,
-                           .segmentGap = 3.0f,
-                           .flash = {255, 255, 255, 120},
-                           .frame = {160, 90, 255, 255},
-                           .frameOutset = 4.0f,
-                           .frameWidth = 2.0f,
-                           .frameGlow = 0.5f,
-                           .frameStyle = NeonArcadeFrame},
-           .buttonAnimation = {.highlightStiffness = 320.0f,
-                               .highlightDamping = 16.0f,
-                               .maxStep = 1.0f / 30.0f,
-                               .pressSeconds = 0.3f,
-                               .denySeconds = 0.35f}},
     .fx = NeonArcadeFx,
     .backdrop = NeonArcadeBackdrop};

@@ -23,10 +23,19 @@ SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".inl"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
 CONSUMER_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]')
 SIMULATION_FORBIDDEN = re.compile(
-    r'''^\s*#\s*include\s*(?:"(?:Graphics|Audio|Fx|Scene|Runtime|GameObjects|Input|Menus|Options|Platform|Editor'''
+    r'''^\s*#\s*include\s*(?:"(?:Graphics|Audio|Fx|Scene|Runtime|GameObjects|Input|Menus|Ui|Options|Platform|Editor'''
     r'''|Terminal|ToolUi|Physics/Debug)/[^"]*"'''
     r'''|[<"](?:[^>"/]*/)*(?:raylib|raymath|rlgl)\.h[>"]|<(?:random|chrono|ctime|time\.h|thread|future|mutex)>)''')
 PROJECT_SIMULATION_FOLDER = "Game/Simulation"
+# The UI's layers, lowest first (Docs/Ui.md): what each folder under Core/Ui must not include. The kernel knows no
+# widget, so that a game's widget is as good as the engine's; widgets do not draw, looks do not read input.
+UI_LAYER_RULES = (
+    ("Layout", re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Ui/Layout/)[^"]*"'''), "only Utilities"),
+    ("Kernel", re.compile(r'''^\s*#\s*include\s*"Ui/(?:Looks|Widgets|Kit)/[^"]*"'''), "no widgets or looks"),
+    ("Looks", re.compile(r'''^\s*#\s*include\s*"(?:Ui/(?:Widgets|Kit)|Input)/[^"]*"'''), "no widgets or input"),
+    ("Widgets", re.compile(r'''^\s*#\s*include\s*"(?:Ui/Kit|Graphics/(?:Paint|Draw|Style|Surface))/[^"]*"'''),
+     "no drawing: that is the look's"),
+)
 PLATFORM_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:[^>"/]*/)*(raylib|raymath|rlgl)\.h[>"]')
 
 
@@ -79,7 +88,12 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
             continue
         recipe = source.is_relative_to(engine_root / "AgentDocs" / "Recipes" / "Code")
         rules = any(source.is_relative_to(folder) for folder in simulation)
+        ui_layer = next((rule for rule in UI_LAYER_RULES
+                         if source.is_relative_to(engine_root / CORE / "Ui" / rule[0])), None)
         for number, line in enumerate(lines, 1):
+            if ui_layer and ui_layer[1].match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: Core/Ui/{ui_layer[0]} includes "{line.strip()}"; {ui_layer[2]}')
             if rules and SIMULATION_FORBIDDEN.match(line):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: simulation code includes "{line.strip()}"; see Docs/Simulation.md')

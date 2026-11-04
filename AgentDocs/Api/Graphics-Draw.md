@@ -57,7 +57,7 @@ Use these generated signatures to locate public declarations; open the header fo
 
 ## `Core/Graphics/Draw/Neon.h`
 
-- `struct NeonFrameStyle` — Neon widgets with explicit styles (the theme's are in CurrentTheme().ui; Graphics/Ui/UiDraw.h draws with them).
+- `struct NeonFrameStyle` — Neon shapes with explicit styles.
 - `NeonFrameStyle`: `float outerWidth = 1.0f`
 - `NeonFrameStyle`: `float innerWidth = 1.0f`
 - `NeonFrameStyle`: `float outerAlpha = 0.0f`
@@ -156,7 +156,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `ProgressBarLook`: `float overlay = 0.0f` — 0..1; a second fill drawn from the left over the fill in its own colour (time running out over a full bar)
 - `ProgressBarLook`: `Color4 overlayColor { 0, 0, 0, 0 }`
 - `ProgressBarLook`: `float alpha = 1.0f`
-- `struct ButtonLook` — A button's look this frame: its animation (UiButton), entrance (0..1), offset and accent colour.
+- `struct ButtonLook` — A button's look this frame: its animation, entrance (0..1), offset and accent colour.
 - `ButtonLook`: `ButtonAnimState animation`
 - `ButtonLook`: `float appear = 1.0f`
 - `ButtonLook`: `Float2 offset { }`

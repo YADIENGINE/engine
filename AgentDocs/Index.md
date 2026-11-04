@@ -29,9 +29,12 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Convert coordinates or use math helpers | `Core/Utilities/MathUtils.h`<br>`Core/Utilities/UiTransform.h`<br>`Core/Utilities/Vec2.h`<br>`Core/Utilities/Rect.h` | - | `Docs/Graphics/Rendering.md#geometry-and-timing` |
 | Draw a new character, enemy, item or prop and list it in the Assets panel | `Editor/Api/GraphicAsset.h` | `Recipes/GraphicAsset.md` | `Docs/Editor/Api.md#graphic-assets` |
 | Draw a shared icon or add a new shape | `Core/Graphics/Icons/Icons.h` | `Recipes/IconShape.md` | `Docs/Graphics/Painter.md#helpers-and-theme` |
-| Choose a theme or make a themed button | `Core/Graphics/Style/Theme.h`<br>`Core/Graphics/Style/ThemePalette.h`<br>`Core/Graphics/Style/NeonArcadeTheme.h`<br>`Core/Graphics/Ui/UiDraw.h`<br>`Core/Graphics/Ui/UiButton.h` | `Recipes/ThemedMenu.md` | `Docs/Graphics/ThemesAndUi.md#themes-and-ui-widgets` |
-| Draw explicit-style neon shapes and UI | `Core/Graphics/Draw/DrawUtils.h`<br>`Core/Graphics/Draw/Neon.h` | - | `Docs/Graphics/Painter.md#helpers-and-theme` |
-| Add menu/play backdrops or a grid | `Core/Graphics/Ui/Backdrop.h`<br>`Core/Graphics/Draw/BackgroundDraw.h` | - | `Docs/Graphics/ThemesAndUi.md#themes-and-ui-widgets` |
+| Write a menu, a dialog, a pause screen or a HUD; buttons, labels, panels; a two-player menu | `Core/Ui/Kernel/Ui.h`<br>`Core/Ui/Widgets/UiButton.h`<br>`Core/Ui/Widgets/UiLabel.h`<br>`Core/Ui/Widgets/UiPanel.h`<br>`Core/Ui/Widgets/UiLayer.h` | `Recipes/UiMenu.md` | `Docs/Ui.md#writing-a-screen` |
+| Write a widget of the game's own | `Core/Ui/Kernel/UiElement.h`<br>`Core/Ui/Kernel/UiTypes.h` | `Recipes/UiMenu.md` | `Docs/Ui.md#widgets-of-your-own` |
+| Change how widgets look | `Core/Ui/Kernel/UiLooks.h`<br>`Core/Ui/Looks/UiButtonLook.h`<br>`Core/Ui/Looks/Neon/NeonLooks.h` | - | `Docs/Ui.md#looks` |
+| Choose a theme: colours, backgrounds, effects | `Core/Graphics/Style/Theme.h`<br>`Core/Graphics/Style/ThemePalette.h`<br>`Core/Graphics/Style/PlainTheme.h`<br>`Core/Graphics/Style/NeonArcadeTheme.h` | - | `Docs/Graphics/ThemesAndUi.md#themes` |
+| Draw explicit-style neon shapes | `Core/Graphics/Draw/DrawUtils.h`<br>`Core/Graphics/Draw/Neon.h` | - | `Docs/Graphics/Painter.md#helpers-and-theme` |
+| Add menu/play backdrops or a grid | `Core/Graphics/Style/Backdrop.h`<br>`Core/Graphics/Draw/BackgroundDraw.h` | - | `Docs/Graphics/ThemesAndUi.md#backgrounds` |
 | Name what an event looks like and play it (`fx.Play("player_hit")`), also from an animation's moment | `Core/Fx/FxCue.h`<br>`Core/Fx/FxCueSet.h`<br>`Core/Fx/FxStage.h` | `Recipes/FxCues.md` | `Docs/Graphics/Effects.md#cues` |
 | Emit a particle burst, shake and flash | `Core/Fx/FxStage.h`<br>`Core/Fx/FxStyle.h`<br>`Core/Fx/FxQuality.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#effect-stage-and-particle-recipes` |
 | Customize particles or trails | `Core/Fx/Particles/ParticleSystem.h`<br>`Core/Fx/Particles/ParticleRecipes.h`<br>`Core/Graphics/Draw/ParticleDraw.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#graphics-and-fx` |
@@ -51,7 +54,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Time a boss attack, a wave plan or a sequence with named moments | `Core/Animation/Timeline.h`<br>`Core/Simulation/TimelineMoments.h` | `Recipes/Timeline.md` | `Docs/Animation.md#timelines` |
 | Show colliders on screen | `Core/Physics/Debug/ColliderDraw.h` | `Recipes/Collision.md` | `Docs/Collision.md#seeing-colliders` |
 | Use seeded random numbers | `Core/Utilities/Rng.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#writing-a-simulation` |
-| Read keys and navigate a menu | `Core/Input/Input.h`<br>`Core/Input/InputNavigation.h`<br>`Core/Menus/MenuSelection.h`<br>`Core/Menus/MenuInput.h` | `Recipes/ThemedMenu.md` | `Docs/Input.md#physical-snapshot-and-semantic-queries` |
+| Read keys | `Core/Input/Input.h`<br>`Core/Input/InputNavigation.h` | - | `Docs/Input.md#physical-snapshot-and-semantic-queries` |
 | Handle pointer collections or dragging | `Core/Input/CollectionPointer.h`<br>`Core/Input/DragPointer.h` | - | `Docs/Input.md#collections-and-drag-and-drop` |
 | Navigate a grid, headers or a scrolling viewport | `Core/Menus/GridMenuSelection.h`<br>`Core/Menus/HeaderGridNavigation.h`<br>`Core/Menus/GridViewport.h` | - | `Docs/Input.md#menu-selection-and-viewport` |
 | Load/play music and effects | `Core/Audio/AudioSystem.h` | - | `Docs/Audio.md#setting-up-a-catalog` |

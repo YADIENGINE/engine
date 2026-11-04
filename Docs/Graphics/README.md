@@ -10,9 +10,10 @@ renderer frame. The game's scenes/Views own actual production drawing.
 | **Drawing API: shapes, text, surfaces, scopes, post-process** | [Painter](Painter.md) |
 | Canvas, surfaces, cameras, and clipping | [Rendering](Rendering.md) |
 | Fonts, measurement, and text layout | [Text](Text.md) |
-| Themes, widgets, and backgrounds | [Themes and UI](ThemesAndUi.md) |
+| Themes and backgrounds | [Themes](ThemesAndUi.md) |
+| Menus and widgets | [UI](../Ui.md) |
 | Particles, cameras, overlays, and presentation clock | [Effects](Effects.md) |
 
-Lower layers take style and time as parameters; themed widgets are in `Graphics/Ui/`. Icons use the shared, shape-named
+Lower layers take style and time as parameters; widgets are in `Ui/`, outside `Graphics/`. Icons use the shared, shape-named
 `Icon` and `DrawIcon` API in `Graphics/Icons/Icons.h`. The View maps an icon's game meaning, rather than the model.
 New shapes draw proportionally to `size`.

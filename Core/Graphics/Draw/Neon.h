@@ -8,7 +8,7 @@
 class Painter;
 struct TextStyle;
 
-// Neon widgets with explicit styles (the theme's are in CurrentTheme().ui; Graphics/Ui/UiDraw.h draws with them).
+// Neon shapes with explicit styles. Ui/Looks/Neon/NeonLooks.h draws widgets with them and has ready-made styles.
 // Glow follows Painter::Quality(): bands and halos weaken or disappear with the player's glow setting.
 
 // A glowing line: two translucent bands added around it (outer only at full glow quality), the line itself and an
@@ -128,7 +128,7 @@ struct ProgressBarLook {
     Color4 overlayColor{0, 0, 0, 0};
     float alpha = 1.0f;
 };
-// A button's look this frame: its animation (UiButton), entrance (0..1), offset and accent colour.
+// A button's look this frame: its animation, entrance (0..1), offset and accent colour.
 struct ButtonLook {
     ButtonAnimState animation;
     float appear = 1.0f;

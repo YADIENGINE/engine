@@ -155,10 +155,8 @@ add_library(EngineHeadless STATIC
     Graphics/Draw/ParticleDraw.cpp
     Graphics/Draw/SpeedLines.cpp
     Graphics/Icons/Icons.cpp
+    Graphics/Style/Backdrop.cpp
     Graphics/Style/Theme.cpp
-    Graphics/Ui/Backdrop.cpp
-    Graphics/Ui/UiButton.cpp
-    Graphics/Ui/UiDraw.cpp
     Graphics/Gpu/Internals/NullDevice.cpp
     Graphics/Paint/Internals/DrawList.cpp
     Graphics/Paint/Internals/Tessellator.cpp
@@ -192,6 +190,23 @@ add_library(EngineHeadless STATIC
     Scene/Internals/SceneManager.cpp
     Scene/Scene.cpp
     Scene/TransitionClock.cpp
+    Ui/Kernel/Internals/UiFocusSearch.cpp
+    Ui/Kernel/Internals/UiKernel.cpp
+    Ui/Kernel/Ui.cpp
+    Ui/Kernel/UiElement.cpp
+    Ui/Kernel/UiKeys.cpp
+    Ui/Kernel/UiLayerScope.cpp
+    Ui/Kernel/UiLooks.cpp
+    Ui/Layout/Internals/UiLayoutSolver.cpp
+    Ui/Looks/Neon/NeonLooks.cpp
+    Ui/Looks/UiButtonLook.cpp
+    Ui/Looks/UiLabelLook.cpp
+    Ui/Looks/UiLayerLook.cpp
+    Ui/Looks/UiPanelLook.cpp
+    Ui/Widgets/UiButton.cpp
+    Ui/Widgets/UiLabel.cpp
+    Ui/Widgets/UiLayer.cpp
+    Ui/Widgets/UiPanel.cpp
     Utilities/DevelopmentChecks.cpp
     Utilities/ShatterPattern.cpp
     Utilities/UiTransform.cpp

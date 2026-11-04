@@ -5,7 +5,8 @@
 #include "Graphics/Render/WindowSettings.h"
 #include "Audio/AudioSystem.h"
 #include "Modules/Persistence/Persistence.h"
-#include "Graphics/Style/NeonArcadeTheme.h"
+#include "Graphics/Style/PlainTheme.h"
+#include "Ui/Kernel/UiLooks.h"
 #include "Utilities/Color4.h"
 
 struct GameSettings {
@@ -24,8 +25,10 @@ struct GameSettings {
     AudioCatalog audio;
     AudioVolumeSettings audioVolume;
     SaveSettings save;
-    // Visual identity; activated before the game's scenes and views are created (see Style/Theme.h).
-    Theme theme = NeonArcadeTheme;
+    // Colours, backgrounds and effects; activated before the game's scenes and views are created (see Style/Theme.h).
+    Theme theme = PlainTheme;
+    // How widgets look; what a new Ui starts with. Empty: each widget's plain look. See Ui/Kernel/UiLooks.h.
+    UiLooks uiLooks;
     // Transient tools/offscreen runs can use their supplied settings without reading or writing preferences.
     bool persistentOptions = true;
     // Embedded/remote application hosts own the OS window and frame transport dimensions.

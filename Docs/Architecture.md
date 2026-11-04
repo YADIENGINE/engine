@@ -35,10 +35,11 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | `Graphics/Render` | `RenderStats`; `Internals/`: `Window`, `Renderer`, `RenderPipeline`, `FrameExecutor`, `RenderResources` | `Utilities` |
 | `Graphics/Paint`, `Text`, `Surface`, `Post`, `Gpu` | Drawing API, fonts, images, finishing and GPU backends | `Utilities`, private renderer services |
 | `Graphics/Draw` | Painter helpers (`DrawUtils.h`, `Neon.h`, `BackgroundDraw.h`, `ParticleDraw.h`) | `Paint`, `Animation` |
-| `Menus` | Menu/grid selection, scrolling and tile layout (`GridViewport`, float bounds and tile areas; integer pointer input) | `Utilities`, `Input` |
 | `Graphics/Icons` | Shared icon library: shape-named `Icon` + `DrawIcon` | `Draw` |
-| `Graphics/Style` | `Theme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
-| `Graphics/Ui` | Themed widgets (`DrawUi*`, `UiButton`, `Backdrop`) | `Style`, `Draw` |
+| `Graphics/Style` | `Theme`, `PlainTheme`, `NeonArcadeTheme`, `Backdrop` | `Draw`, `Fx` (style types) |
+
+Game UI is outside `Graphics/`, in `Ui/` ([UI](Ui.md)). `Menus/` holds grid selection and scrolling until `Ui/` has its
+lists and grids.
 
 Particle shape drawing is shared by `Fx/Particles/ParticleSystem` and static editor scenes through
 `Graphics/Draw/ParticleDraw`; it accepts explicit pose/style and never reads a theme.
@@ -46,9 +47,8 @@ Particle shape drawing is shared by `Fx/Particles/ParticleSystem` and static edi
 The render migration is complete (`Docs/Design/Rendering.md` → R13). All public headers use the `.h` extension.
 `Fx/` is Painter-only and headless. Raylib is limited to platform and native tool integration.
 
-Only `Ui` reads the theme. Shared shapes take explicit colors/styles and `Painter&` as their first parameter:
-`DrawDiamond`, `RowSlot` (centre of item `i` in a row), `DrawLightning`, `DrawNeonRing`, and `DrawProgressBar` (themed:
-`DrawUiProgressBar`). When a game needs a shape another game could use, it is added here (shape-named, style-parametric)
+Only `Style/Backdrop` and `Ui/Looks` read the theme. Shared shapes take explicit colors/styles and `Painter&` as their first parameter:
+`DrawDiamond`, `RowSlot` (centre of item `i` in a row), `DrawLightning`, `DrawNeonRing`, and `DrawProgressBar`. When a game needs a shape another game could use, it is added here (shape-named, style-parametric)
 rather than in the game.
 
 
@@ -64,8 +64,8 @@ rather than in the game.
 - `Animation` (tweens, clips, animators, timelines, curves) computes values over time and `Graphics` draws. It stands outside `Graphics` so that a simulation can use it, and
   depends only on `Utilities` ([Animation](Animation.md)).
 - `Animation`, basic geometry, and gameplay helpers are available headlessly.
-- `Graphics/Draw` → Render/Animation; Icons → Draw; Fx → Draw/Paint/Animation (headless); Style → Draw/Fx style types; Ui →
-  Style/Draw. Only high-level Ui reads the theme.
+- `Graphics/Draw` → Render/Animation; Icons → Draw; Fx → Draw/Paint/Animation (headless); Style → Draw/Fx style types.
+- `Ui/Layout` → Utilities; `Ui/Kernel` → Layout/Input/Paint; `Ui/Looks` → Kernel/Style/Draw; `Ui/Widgets` → Looks/Kernel.
 - Engine → Game, module → another module's Internals, and circular module dependencies are forbidden.
 - GL resource owners are created after the window is set up and destroyed before it closes. A resource-owning member is
   declared before members that use it.

@@ -29,7 +29,8 @@ it and [Editor automation](Editor/Automation.md) lists what it can do. Agent mat
 | --- | --- |
 | Window, canvas, layers, and clipping | [Rendering](Graphics/Rendering.md) |
 | Fonts, Unicode, measurement, and line layout | [Text](Graphics/Text.md) |
-| Themes, widgets, and backgrounds | [Themes and UI](Graphics/ThemesAndUi.md) |
+| Menus, dialogs, panels, HUD; widgets of your own | [UI](Ui.md) |
+| Themes and backgrounds | [Themes](Graphics/ThemesAndUi.md) |
 | Particles, cameras, transitions, and overlays | [Effects](Graphics/Effects.md) |
 | Values adjusted without building (`*.tuning.json`) | [Tuning](Tuning.md) |
 | Gameplay in fixed steps, replay, scenario tests without a window | [Simulation](Simulation.md) |

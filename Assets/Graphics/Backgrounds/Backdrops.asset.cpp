@@ -1,7 +1,7 @@
 #include "Editor/Api/GraphicAsset.h"
 #include "Graphics/Paint/Painter.h"
+#include "Graphics/Style/Backdrop.h"
 #include "Graphics/Style/Theme.h"
-#include "Graphics/Ui/Backdrop.h"
 
 namespace {
 GraphicAsset MakeBackdrops() {

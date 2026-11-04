@@ -101,7 +101,7 @@ identified rows and `RowsInIdOrder`.
 
 ## Menu selection and viewport
 
-`Graphics/Draw/GridViewport.h` complements grid selection with reusable scrolling and tile geometry. Each View owns a
+`Menus/GridViewport.h` complements grid selection with reusable scrolling and tile geometry. Each View owns a
 value member initialized with `GridViewportSettings`: canvas `bounds`, `columns`, `visibleRows`,
 `tileWidth`/`tileHeight`, independent `gapX`/`gapY`, and `scrollSpeed`. Bounds, dimensions, columns and visible rows
 must be positive; gaps and finite speed must be nonnegative. Zero speed snaps immediately. The component draws nothing

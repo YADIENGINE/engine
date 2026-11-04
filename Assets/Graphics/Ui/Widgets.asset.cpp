@@ -1,45 +1,59 @@
 #include "Editor/Api/GraphicAsset.h"
-#include "Graphics/Style/Theme.h"
-#include "Graphics/Ui/UiDraw.h"
+#include "Graphics/Paint/Painter.h"
+#include "Ui/Kernel/UiLooks.h"
+#include "Ui/Looks/UiButtonLook.h"
+#include "Ui/Looks/UiLabelLook.h"
+#include "Ui/Looks/UiPanelLook.h"
 
 namespace {
 constexpr float WideShare = 0.32f;  // A wide widget's height, of the box
 constexpr float LabelShare = 0.11f; // Label size, of the box
-constexpr float NotchShare = 0.06f;
-constexpr float LineShare = 0.012f;
-constexpr float BarShare = 0.08f;
-constexpr float BarFill = 0.65f;
-enum class Widget { Panel, Frame, Button, RoundButton, Chip, KeyCap, ProgressBar };
+enum class Widget { Panel, Label, Button, ButtonWithCursor, DisabledButton };
 
+UiDrawState StateOf(const Painter& paint, const FloatRect& rect) {
+    return {.rect = rect, .font = paint.HasFont() ? &paint.Font() : nullptr};
+}
 FloatRect Wide(const FloatRect& box) {
     return FloatRect::FromCenter(box.Center(), {box.width, box.height * WideShare});
+}
+void DrawButton(Painter& paint, const FloatRect& box, const UiDrawState& state, float highlight) {
+    const UiButtonLook& look = ActiveUiLooks().Get<UiButtonLook>();
+    look.draw(paint, {.state = state,
+                      .label = "Button",
+                      .textSize = box.height * LabelShare,
+                      .animation = {.highlight = highlight}});
 }
 
 GraphicAsset MakeWidgets() {
     GraphicAsset asset;
-    asset.items = {{"Panel", "ui"},      {"Frame", "ui"},  {"Button", "ui"},     {"RoundButton", "ui"},
-                   {"Chip", "ui label"}, {"KeyCap", "ui"}, {"ProgressBar", "ui"}};
-    asset.usage = "DrawUi{item}(paint, ...);";
+    // In Widget's order.
+    asset.items = {{"Panel", "ui"},
+                   {"Label", "ui label"},
+                   {"Button", "ui"},
+                   {"Button with cursor", "ui"},
+                   {"Disabled button", "ui"}};
+    asset.usage = "See AgentDocs/Recipes/UiMenu.md; widgets draw with the Ui's looks.";
     asset.draw = [](Painter& paint, const FloatRect& box, std::size_t item, float) {
-        const Color4 accent = CurrentTheme().palette.accent;
-        const float label = box.height * LabelShare;
         switch (static_cast<Widget>(item)) {
-        case Widget::Panel : DrawUiPanel(paint, box, accent); break;
-        case Widget::Frame : DrawUiFrame(paint, box, box.width * NotchShare, box.width * LineShare, accent); break;
-        case Widget::Button: {
-            ButtonLook look;
-            look.accent = accent;
-            DrawUiButton(paint, Wide(box), "Button", label, look);
+        case Widget::Panel: ActiveUiLooks().Get<UiPanelLook>().draw(paint, {.state = StateOf(paint, box)}); break;
+        case Widget::Label:
+            ActiveUiLooks().Get<UiLabelLook>().draw(paint, {.state = StateOf(paint, Wide(box)),
+                                                            .text = "Label",
+                                                            .size = box.height * LabelShare,
+                                                            .align = TextAlign::Center});
+            break;
+        case Widget::Button: DrawButton(paint, box, StateOf(paint, Wide(box)), 0.0f); break;
+        case Widget::ButtonWithCursor: {
+            UiDrawState state = StateOf(paint, Wide(box));
+            state.focused = true;
+            state.focusUsers = 1;
+            DrawButton(paint, box, state, 1.0f);
             break;
         }
-        case Widget::RoundButton: DrawUiRoundButton(paint, Wide(box), "Round", label, accent); break;
-        case Widget::Chip       : DrawUiChip(paint, "Chip", box.Center(), label, accent); break;
-        case Widget::KeyCap     : DrawUiKeyCap(paint, Wide(box), "E", label); break;
-        case Widget::ProgressBar: {
-            ProgressBarLook look;
-            look.fill = BarFill;
-            look.color = accent;
-            DrawUiProgressBar(paint, FloatRect::FromCenter(box.Center(), {box.width, box.height * BarShare}), look);
+        case Widget::DisabledButton: {
+            UiDrawState state = StateOf(paint, Wide(box));
+            state.enabled = false;
+            DrawButton(paint, box, state, 0.0f);
             break;
         }
         }

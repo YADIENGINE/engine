@@ -71,7 +71,8 @@ Game::Game(const GameSettings& settings)
     , _sceneManager(std::make_unique<SceneManager>()) {
     _frameExecution.fpsLimit = settings.window.targetFps;
     _renderer->SetFont(_font ? &*_font : nullptr); // _font, renderer'dan önce yıkılır; o sırada kare çizilmez
-    SetTheme(settings.theme);            // Türeyen oyunun View üyeleri (UiButton) kurulurken tema etkin olmalı
+    SetTheme(settings.theme);            // Türeyen oyunun View ve Ui üyeleri kurulurken tema etkin olmalı
+    SetActiveUiLooks(settings.uiLooks);
     _audio.BeginLoading(settings.audio); // Run'daki yükleme ekranı bitişini bekler
     const StartupTimer timer(_persistentOptions ? "Options (load + apply)" : "Transient settings");
     if (_persistentOptions) {

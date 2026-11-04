@@ -1,9 +1,9 @@
 #include "Graphics/Style/Theme.h"
-#include "Graphics/Style/NeonArcadeTheme.h"
+#include "Graphics/Style/PlainTheme.h"
 
 namespace {
 Theme& Active() {
-    static Theme theme = NeonArcadeTheme;
+    static Theme theme = PlainTheme;
     return theme;
 }
 } // namespace

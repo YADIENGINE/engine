@@ -109,6 +109,29 @@ class BoundaryTests(unittest.TestCase):
         self.write("Launcher/Engines/Engine0.1/Core/Runtime/Game.cpp", '#include "Input/Internals/Reader.h"\n')
         self.assertEqual([entry.split(":")[0] for entry in self.check()], ["Engine/Core/Runtime/Game.cpp"])
 
+    def test_the_ui_layers_look_only_downwards(self):
+        for path, include in (("Core/Ui/Layout/Solver.cpp", "Graphics/Paint/Painter.h"),
+                              ("Core/Ui/Kernel/Ui.cpp", "Ui/Widgets/UiButton.h"),
+                              ("Core/Ui/Kernel/Ui.h", "Ui/Looks/UiButtonLook.h"),
+                              ("Core/Ui/Looks/UiButtonLook.h", "Ui/Widgets/UiButton.h"),
+                              ("Core/Ui/Looks/UiButtonLook.cpp", "Input/Input.h"),
+                              ("Core/Ui/Widgets/UiButton.cpp", "Graphics/Paint/Painter.h")):
+            with self.subTest(path=path, include=include):
+                self.write(f"Engine/{path}", f'#include "{include}"\n')
+                self.assertEqual(len(self.check()), 1, self.check())
+                (self.engine / path).unlink()
+
+    def test_the_ui_layers_may_use_what_is_below(self):
+        self.write("Engine/Core/Ui/Layout/Solver.cpp", '#include "Ui/Layout/UiLayout.h"\n#include "Utilities/Rect.h"\n')
+        self.write("Engine/Core/Ui/Kernel/Ui.cpp", '#include "Ui/Layout/UiLayout.h"\n#include "Graphics/Paint/Painter.h"\n')
+        self.write("Engine/Core/Ui/Looks/Look.cpp", '#include "Ui/Kernel/Ui.h"\n#include "Graphics/Paint/Painter.h"\n')
+        self.write("Engine/Core/Ui/Widgets/Button.cpp", '#include "Ui/Looks/Look.h"\n#include "Ui/Kernel/Ui.h"\n')
+        self.assertEqual(self.check(), [])
+
+    def test_a_simulation_cannot_include_the_ui(self):
+        self.write("Engine/Core/Simulation/Rules.cpp", '#include "Ui/Kernel/Ui.h"\n')
+        self.assertIn("simulation code", self.check()[0])
+
 
 if __name__ == "__main__":
     unittest.main()

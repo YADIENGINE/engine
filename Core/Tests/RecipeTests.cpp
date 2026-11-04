@@ -5,6 +5,7 @@
 #include "AgentDocs/Recipes/Code/CollisionBullets.h"
 #include "AgentDocs/Recipes/Code/TimelineBoss.h"
 #include "AgentDocs/Recipes/Code/TweenMenu.h"
+#include "AgentDocs/Recipes/Code/UiMenu.h"
 #include "AgentDocs/Recipes/Code/FxBurst.h"
 #include "AgentDocs/Recipes/Code/FxCues.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
@@ -15,7 +16,6 @@
 #include "AgentDocs/Recipes/Code/SimulationPlay.h"
 #include "AgentDocs/Recipes/Code/SpriteLayer.h"
 #include "AgentDocs/Recipes/Code/TextLayout.h"
-#include "AgentDocs/Recipes/Code/ThemedMenu.h"
 #include "AgentDocs/Recipes/Code/TuningValue.h"
 #include "Graphics/Surface/Surface.h"
 #include "Graphics/Text/FontFace.h"
@@ -30,16 +30,29 @@
 #include "Tests/PaintHarness.h"
 #include "Tests/Support/TempDirectory.h"
 
-TEST_CASE("Engine.Recipes.MenuNavigatesAndConfirms", "[engine][recipes]") {
-    RecipeMenu menu;
-    DeviceInput down;
-    down.keysPressed[static_cast<std::size_t>(InputKey::Down)] = true;
-    CHECK_FALSE(menu.Navigate(down));
-    CHECK(menu.Selected() == RecipeMenuItem::Quit);
-    DeviceInput confirm;
-    confirm.keysPressed[static_cast<std::size_t>(InputKey::Enter)] = true;
-    CHECK(menu.Navigate(confirm));
-    menu.Update(0.1f);
+TEST_CASE("Engine.Recipes.MenuPressesAndAsksInADialog", "[engine][recipes]") {
+    const FontFace font = FontFace::FromFile(ENGINE_RECIPE_FONT);
+    RecipeMenu menu(&font);
+    const auto press = [&menu](InputKey key) {
+        DeviceInput input;
+        input.keysPressed[static_cast<std::size_t>(key)] = true;
+        menu.Input(input);
+        menu.Update(0.05f);
+    };
+    menu.Update(0.05f);
+    press(InputKey::Enter);
+    CHECK(menu.Plays() == 1);
+    press(InputKey::Down);
+    press(InputKey::Enter);
+    CHECK(menu.TilePresses() == 1); // The game's own widget takes the cursor like any other
+    press(InputKey::Down);
+    press(InputKey::Enter);
+    CHECK(menu.AskingToQuit());
+    menu.Update(0.05f);
+    press(InputKey::Escape);
+    CHECK_FALSE(menu.AskingToQuit());
+    CHECK_FALSE(menu.Quit());
+    PaintFrame([&menu](Painter& paint) { menu.Draw(paint); });
 }
 
 TEST_CASE("Engine.Recipes.SimulationPlaysInASceneAndWithoutOne", "[engine][recipes]") {

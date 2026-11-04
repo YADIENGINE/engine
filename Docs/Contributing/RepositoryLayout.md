@@ -7,7 +7,8 @@
 | `Core/` | Shipping engine code and include root (`Runtime/Game.h`); targets in `Core/CMakeLists.txt` |
 | `Core/Runtime/` | Game, settings, loop and services; `Core/Main.cpp` calls the project's `CreateGame()` |
 | `Core/GameObjects/`, `Core/Scene/` | Headless object/scene lifecycle and optional object ownership |
-| `Core/Graphics/` | Paint, Text, Surface, Post; GPU/render implementation; Draw, Icons, Ui, Style helpers |
+| `Core/Graphics/` | Paint, Text, Surface, Post; GPU/render implementation; Draw, Icons, Style helpers |
+| `Core/Ui/` | Game UI: Layout, Kernel, Looks, Widgets ([UI](../Ui.md)) |
 | `Core/Input/`, `Core/Audio/`, `Core/Platform/` | Public services and private platform backends |
 | `Core/Fx/`, `Core/Menus/`, `Core/Gameplay/`, `Core/Progress/`, `Core/Utilities/` | Headless effects and reusable logic/value types |
 | `Core/Options/` | Engine/player options, backed by Persistence |

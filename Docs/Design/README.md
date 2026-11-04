@@ -1049,6 +1049,31 @@ Status: implemented (2026-11-04). Usage: [Effects](../Graphics/Effects.md).
 8. *Flashes are rationed always, not as a setting.* At most three starts a second, the usual limit for photosensitivity (WCAG 2.3.1, from memory). A stronger flash asked for too soon is lost too: delaying it would put it out of step with its event. With flashes off, shockwaves and a banner's curtain also go, as they light the screen in the same way. `ScreenGlitch` keeps its fast pattern behind that setting.
 9. *`std::visit` with an overload set.* A new `FxAction` without a case no longer compiles; the `if constexpr` chain did nothing, silently.
 
+### D31. Game UI
+Status: first part implemented (2026-11-04). Usage: [UI](../Ui.md).
+
+**Decision:** a small kernel that knows no widget, and everything else built on its public API. A screen is code that says what is on screen each frame; a tree is built from it, laid out, and drawn, and the next frame's input is judged against what was drawn. Behaviour and looks are separate, and `check` keeps them apart.
+
+**Decided:**
+1. *Described every frame, not a tree of kept objects.* Kept objects are a second copy of the game's state, which is kept in step by hand: a forgotten refresh shows wrong data with no error, a button can be deleted by its own callback, and a replay that seeks backwards would need every object refreshed. Here there is nothing to keep in step. It also obeys what D28 already said: no pointer to a value it does not own, no stored callback. The drawing lambda lives one frame. The whole screen is redrawn each frame anyway, so kept objects save little.
+2. *A real layout pass, not a pure immediate mode.* Sizes come from content, which an immediate mode cannot know while drawing. It is why answers come from the last frame's rectangles: a click lands on what the player saw, and that one frame of delay is not visible. Nodes are a flat list with parents first, so the passes are plain loops, widths before heights because a wrapped text's height depends on its width.
+3. *Direction keys find what lies that way on screen.* No element lists its neighbours, so a grid beside a footer needs no focus code. Sideways distance counts three times, which keeps a list a list.
+4. *The kernel knows no widget.* `UiButton` is a function over public API, and so is a game's. This is what makes the system grow: new widgets and looks are additions. If one needs a change in the kernel, the kernel is missing a general idea, and that is decided here.
+5. *Each widget's look is a type, found by type.* A closed interface with `DrawButton`, `DrawSlider` and so on would have to grow with every widget, and a game could not add to it. A look's default values draw it plainly, so a widget always works and a look set holds only what differs.
+6. *Plain by default, neon as a choice (the user's).* Neon widgets used to be what the theme could only tune: `UiStyle` was made of neon types and `DrawUiButton` always drew neon, so a game could not be other than neon. `Theme` no longer holds widgets. The default palette and backgrounds are quiet too, since neon colours on plain widgets look wrong; `FxStyle` stayed as it was, because effects are not UI.
+7. *A cursor per player from the start.* Same-screen play is in the engine's direction, and adding it later would have changed how focus is stored. A game with one player never sees it. The mouse acts as the first player, and does not reach an area a player owns when several are playing (the user's choice).
+8. *Keyboard and mouse only, for now (the user's).* Gamepad and touch are not read. Moves are read through `UiKeys`, so a gamepad would be one more source of them.
+9. *Layers carry input, focus and closing.* A closing layer keeps being described without taking input, which answers the usual problem of this model, content that animates out. An item leaving a list stays in the game's data until it is done; that is the honest limit.
+10. *Sounds are events.* `AudioSystem` is above `EngineHeadless`, and a widget playing sounds would tie behaviour to audio. `Events()` also serves effects with no new mechanism.
+11. *No new CMake target.* `GameSettings` holds looks and looks need the Painter, so a separate target adds a cycle or a wall where the linker already drops what is unused. `check` enforces the layers instead.
+12. *No visual editor now, with the door open (the user's).* A text file could produce the same tree later. It would be more work than on kept objects; that cost is accepted. If an editor becomes a near goal, reopen decision 1.
+
+**Measured:** a screen of 302 elements with 240 buttons, a cursor moving every frame: 0.18 ms to build and lay out and 0.15 ms to record its drawing per frame, on one machine in Release (`[.ui-perf]` in `UiTests.cpp`), about 2% of a 60 Hz frame. A null GPU device was used, so what the GPU itself costs is not in that.
+
+**Why these names:** `Fill` is already a Painter style, and a global `Button` would hide a game's own `enum class Button`, so all UI names start with `Ui`.
+
+**Order of work.** Done: kernel, layout, `UiLabel`, `UiButton`, `UiPanel`, `UiRow`, `UiColumn`, `UiSpacer`, `UiLayer`, plain and neon looks. Next: `UiToggle`, `UiSlider`, `UiStepper`, a scrolling list and grid, tabs, a tooltip, and then `Core/Menus` goes. Then `Ui/Kit`: ready screens, options first, then confirm and pause; sounds through events; a widget gallery in the editor; `ctl ui`, which lists what is on screen and presses it by name for agents. Later, when a game asks: tables, large lists, rich text, dragging, a second look beyond neon, text entry (`DeviceInput` has no character input yet).
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

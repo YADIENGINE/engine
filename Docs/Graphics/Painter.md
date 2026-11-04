@@ -152,21 +152,16 @@ draw text with the game's font:
 | Header | Contents |
 | --- | --- |
 | `Graphics/Draw/DrawUtils.h` | `DrawStar`, `DrawDiamond`, `DrawRegularPolygon`, `DrawRotatedRect`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
-| `Graphics/Draw/Neon.h` | Explicit-style neon widgets and styles: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
-| `Graphics/Ui/UiDraw.h` | Themed widgets (`CurrentTheme().ui`): `DrawUiFrame`, `DrawUiText`, `DrawUiPanel`, `DrawUiChip`, `DrawUiButton(Body)`, `DrawUiRoundButton`, `DrawUiKeyCap`, `DrawUiProgressBar` |
+| `Graphics/Draw/Neon.h` | Explicit-style neon shapes and styles: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
 | `Graphics/Draw/BackgroundDraw.h` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `DrawBackdrop*` with `BackdropStyle` |
-| `Graphics/Ui/Backdrop.h` | Theme background roles: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
+| `Graphics/Style/Backdrop.h` | Theme background roles: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
 | `Graphics/Icons/Icons.h` | Shared icon set: `DrawIcon(paint, Icon::Star, center, size, {.color = gold})` |
 | `Fx/*` | Effects (particles, floating text, rings, shockwaves, overlays, cameras, `FxStage`): [Effects](Effects.md) |
 
 The camera is `Utilities/CameraView.h` (`offset`, `target`, `rotation` in radians, `zoom`; `Transform()`, `ToScreen`,
 `ToWorld`); draw the world within `auto view = paint.Transform(camera.Transform())`.
 
-```cpp
-DrawUiPanel(paint, _area, accent);
-DrawUiButton(paint, _play, "PLAY", 30.0f, _playButton.Look(accent)); // UiButton: value member of the View
-DrawUiText(paint, "SETTINGS", {_area.Center().x, 40.0f}, {.size = 36.0f, .color = text, .align = TextAlign::Center});
-```
+Menus and widgets are not drawn by hand: see [UI](../Ui.md).
 
 One-off variant: copy `CurrentTheme().ui.X`, modify it, and pass it to the explicit-style function. Drawing that
 advances its own clock (e.g. a card in an editor scene) also calls the explicit-style function with `time`.
