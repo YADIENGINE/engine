@@ -62,6 +62,7 @@ function(engine_add_editor_worker target)
         list(APPEND assetSources ${projectAssetSources})
         engine_copy_assets(${target} "${assetsDirectory}")
     endif()
+    engine_copy_engine_audio(${target})
     if(assetSources OR WORKER_GRAPHIC_SOURCES)
         engine_add_worker_objects(${target} "${target}Assets" "${WORKER_LIBRARIES}"
             ${assetSources} ${WORKER_GRAPHIC_SOURCES})

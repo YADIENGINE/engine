@@ -27,6 +27,7 @@ GraphicAsset Drawable() {
 TEST_CASE("Editor.AssetLibrary.GroupsFilesByNameAndKind", "[engine-editor]") {
     TempDirectory temp;
     const auto assets = temp.Path() / "Game" / "Assets";
+    Touch(temp.Path() / "Engine" / "Assets" / "Audio" / "Ui" / "Click.wav");
     Touch(assets / "Graphics" / "Enemies" / "Goblin.h");
     Touch(assets / "Graphics" / "Enemies" / "Goblin.cpp");
     Touch(assets / "Graphics" / "Enemies" / "Goblin.asset.cpp");
@@ -41,6 +42,8 @@ TEST_CASE("Editor.AssetLibrary.GroupsFilesByNameAndKind", "[engine-editor]") {
     REQUIRE(roots.size() == 2);
     CHECK(roots[0].readOnly);
     CHECK(Child(roots[0], "Graphics").children.empty()); // Missing on disk: an empty, read-only folder
+    CHECK(Child(Child(Child(roots[0], "Audio"), "Ui"), "Click").kind == AssetKind::Audio);
+    CHECK(Child(Child(Child(roots[0], "Audio"), "Ui"), "Click").readOnly);
     const auto& game = roots[1];
     CHECK_FALSE(game.readOnly);
     CHECK(std::ranges::find(game.children, "Prefabs", &AssetNode::name) == game.children.end());
@@ -54,6 +57,16 @@ TEST_CASE("Editor.AssetLibrary.GroupsFilesByNameAndKind", "[engine-editor]") {
     CHECK(Child(Child(game, "Audio"), "Hit").kind == AssetKind::Audio);
     CHECK(Child(Child(game, "Fonts"), "Main").kind == AssetKind::Font);
     CHECK(Child(game, "Graphics").children.size() == 1); // Dot files stay hidden
+}
+
+TEST_CASE("Editor.AssetLibrary.SoundsHaveTheirGamePath", "[engine-editor]") {
+    const std::filesystem::path engine = "C:/Project/Engine";
+    const std::filesystem::path assets = "C:/Project/Game/Assets";
+    CHECK(AssetPathOf(assets / "Audio/Hit.wav", engine, assets) == "Audio/Hit.wav");
+    CHECK(AssetPathOf(engine / "Assets/Audio/Ui/Back.wav", engine, assets) == "Engine/Audio/Ui/Back.wav");
+    CHECK(AssetPathOf("C:/Elsewhere/Hit.wav", engine, assets).empty());
+    CHECK(AssetPathOf(engine / "Tools/Hit.wav", engine, assets).empty());
+    CHECK(AssetPathOf(engine / "Assets/Audio/Back.wav", {}, assets).empty());
 }
 
 TEST_CASE("Editor.AssetLibrary.GraphicsFolderShowsBeforeItExists", "[engine-editor]") {

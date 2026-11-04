@@ -1285,6 +1285,28 @@ that games already followed.
 8. *Folders stay free.* A graphic may sit directly under `Graphics/`, as `DefaultIcons` does, have its own folder, or
    share one such as `Enemies/`.
 
+### D37. Unused sounds stay out of the package
+Status: implemented (2026-11-05). Usage: [Release](../Release.md#only-the-sounds-a-game-uses),
+[Audio](../Audio.md#ready-made-sounds).
+
+**Decision:** `release` packages only the sounds a built game names. A project can keep any number of candidates, and the
+engine can offer ready-made sounds that no game pays for unless it plays them.
+
+**Why:** files were packaged by location, so an unused sound shipped silently, and an engine sound had to be copied into
+each game to stay out of the others.
+
+**Decided:**
+1. *The game answers.* Settings are C++ values and may be computed, so reading source would guess. The built game prints
+   its asset manifest when `ENGINE_ASSET_REPORT` is set, before opening a window.
+2. *Release only.* Development builds copy everything, so a new sound works after one new line.
+3. *Sounds only.* A game may read its other files by itself, and nothing lists them. Fonts stay too: `settings.font` need
+   not be in the manifest.
+4. *`keepAssets` for the gap.* A sound loaded by code after startup is invisible to the report. This is the remaining
+   risk: it works in development and fails in the package, so the summary names every sound left out.
+5. *A hook wins.* `package_assets` already selects every asset, and `keepAssets` beside it is an error.
+6. *Engine sounds by path.* `Engine/Audio/...` is copied beside every game and `Engine` is reserved under `Game/Assets`, so
+   the path means one thing. The editor and `audio` tools read such a path from `Engine/Assets`.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

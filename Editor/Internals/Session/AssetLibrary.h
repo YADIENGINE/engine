@@ -16,9 +16,14 @@ struct AssetNode {
     std::vector<AssetNode> children; // Folders first, then by name
 };
 
-// Scans the disk, so the tree survives a broken build. Roots: "Engine" (its Assets/Graphics, read-only) and "Game"
+// Scans the disk, so the tree survives a broken build. Roots: "Engine" (its Assets/Audio and Assets/Graphics, read-only) and "Game"
 // (the project's asset folder). An empty path leaves that root out; missing folders scan as empty.
 [[nodiscard]] std::vector<AssetNode> ScanAssetLibrary(const std::filesystem::path& engineDirectory,
                                                       const std::filesystem::path& assetsDirectory);
+// The path a sound table or catalog names a file by: relative to the project's asset folder, or under "Engine/" for the
+// engine's own assets. Empty for any other file.
+[[nodiscard]] std::filesystem::path AssetPathOf(const std::filesystem::path& file,
+                                                const std::filesystem::path& engineDirectory,
+                                                const std::filesystem::path& assetsDirectory);
 // By extension, as the library lists sounds.
 [[nodiscard]] bool IsAudioFile(const std::filesystem::path& file);

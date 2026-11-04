@@ -164,7 +164,7 @@ settings.sounds = SfxTable;
 settings.uiSounds = {.move = Sfx::UiMove, .confirm = Sfx::UiConfirm, .back = Sfx::UiBack, .deny = Sfx::UiDeny};
 ```
 
-Every field is optional, and an empty one is silent. The engine ships no sound files, so a game that gives none has silent menus.
+Every field is optional, and an empty one is silent, so a game that gives none has silent menus. The engine has [ready-made menu sounds](Audio.md#ready-made-sounds) that a game's rows can name.
 
 | What happens | Plays | |
 | --- | --- | --- |

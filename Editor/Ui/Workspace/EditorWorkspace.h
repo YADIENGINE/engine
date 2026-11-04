@@ -38,7 +38,7 @@ public:
     void SetConsoleDirectory(const std::filesystem::path& directory) { _console.SetDirectory(directory); }
     void SetAssetRoots(const std::filesystem::path& engineDirectory, const std::filesystem::path& assetsDirectory) {
         _assets.SetRoots(engineDirectory, assetsDirectory);
-        _audioPreview.SetAssetsDirectory(assetsDirectory);
+        _audioPreview.SetRoots(engineDirectory, assetsDirectory);
         _palette.SetAssetRoots(engineDirectory, assetsDirectory);
     }
     // Shows the Console and pastes `text` (no Enter) into the agent session when there is one, else the selected

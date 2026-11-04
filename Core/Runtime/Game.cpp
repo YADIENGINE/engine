@@ -2,9 +2,12 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <exception>
+#include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Animation/Easing.h"
@@ -32,6 +35,17 @@ std::vector<std::filesystem::path> AssetManifest(const GameSettings& settings) {
         assets.push_back(music.file);
     return assets;
 }
+// `python Engine release` asks the built game which files it uses, because only the running code knows its settings.
+// With this variable set, the game prints the list and exits before opening a window. Keep in step with release.py.
+void ReportAssetsWhenAsked(const GameSettings& settings) {
+    if (!AssetReportAsked()) return;
+    for (const auto& file : AssetManifest(settings)) {
+        const auto path = file.generic_u8string();
+        std::cout << "asset: " << std::string_view(reinterpret_cast<const char*>(path.data()), path.size()) << '\n';
+    }
+    std::cout.flush();
+    std::exit(EXIT_SUCCESS);
+}
 constexpr const char* OptionsFile = "settings.json";
 constexpr std::int64_t MaxWindowSide = 1 << 15;
 
@@ -52,6 +66,11 @@ RenderPipelineSettings PipelineSettings(const GameSettings& settings) {
             settings.post};
 }
 
+std::unique_ptr<Renderer> OpenRenderer(const GameSettings& settings) {
+    ReportAssetsWhenAsked(settings);
+    return std::make_unique<Renderer>(settings.window, PipelineSettings(settings));
+}
+
 // A stored level enum value up to 'last'; anything else (an edited or old file) falls back to 'fallback'.
 template <class Level> Level StoredLevel(std::int64_t stored, Level last, Level fallback) {
     return stored >= 0 && stored <= static_cast<std::int64_t>(last) ? static_cast<Level>(stored) : fallback;
@@ -59,7 +78,7 @@ template <class Level> Level StoredLevel(std::int64_t stored, Level last, Level 
 } // namespace
 
 Game::Game(const GameSettings& settings)
-    : _renderer(std::make_unique<Renderer>(settings.window, PipelineSettings(settings)))
+    : _renderer(OpenRenderer(settings))
     , _assetRoot(PrepareAssets(AssetManifest(settings)))
     , _font(settings.font.empty() ? std::optional<FontFace>{} : FontFace::FromFile(_assetRoot / settings.font))
     , _audio(_assetRoot, settings.audioVolume)

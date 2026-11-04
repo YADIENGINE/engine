@@ -71,6 +71,21 @@ tested with no device; `Game` connects it to `AudioSystem`. A simulation cannot 
 
 **Not here:** [D32](Design/README.md#d32-sound-tables) says what was left out and why.
 
+## Ready-made sounds
+
+The engine ships menu sounds in `Assets/Audio/Ui`. A game names them under `Engine/`, with no file to copy:
+
+```cpp
+SoundRow{Sfx::UiMove, {"Engine/Audio/Ui/UiMove_Pop.wav"}},
+SoundRow{Sfx::UiConfirm, {"Engine/Audio/Ui/UiConfirm.wav"}},
+SoundRow{Sfx::UiBack, {"Engine/Audio/Ui/UiBack.wav"}},
+```
+
+The others are `UiMove_Blip.wav` and `UiMove_Wood.wav`. Every build copies them beside the game, and `release` packages
+only those the game uses ([Release](Release.md#only-the-sounds-a-game-uses)). The Assets panel lists them under
+Engine/Audio. The confirm and back sounds come from
+[`ui_confirm_back_sounds.py`](../Tools/AudioGeneration/Examples/ui_confirm_back_sounds.py).
+
 ## Setting up a catalog
 
 ```cpp

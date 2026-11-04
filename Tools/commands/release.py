@@ -5,7 +5,9 @@ oyun kısmı projenin `release.notices` dosyasından gelir. Bir şey eksikse ya 
 paketleme mevcut paketi silmeden durur. Sistem büyürse (imza, mağaza depot'u) bu modül alt pakete dönüşür.
 """
 
+import os
 import shutil
+import subprocess
 from pathlib import Path
 
 from ThirdParty.notices import check_components, compose_notices, engine_notice, load_components, scoped_components
@@ -13,7 +15,12 @@ from ThirdParty.notices import check_components, compose_notices, engine_notice,
 from ..errors import EXIT_FAILED, ToolError
 from ..manifest import ENGINE_ROOT, load_manifest
 from ..project import Project
+from .audio import comparable, sound_files
 
+ENGINE_SOUNDS = Path("Engine")  # The engine's own assets in a built Assets folder
+ASSET_REPORT_VARIABLE = "ENGINE_ASSET_REPORT"  # Keep in step with Core/Runtime/Game.cpp
+ASSET_REPORT_PREFIX = "asset: "
+ASSET_REPORT_TIMEOUT = 60  # Seconds; the game prints its list before opening a window
 NOTICES_FILE = "ThirdPartyNotices.txt"  # Paketin kökünde üretilen bildirim
 ENGINE_LICENSE = ENGINE_ROOT / "LICENSE"  # Engine'in kendi lisansı; bildirimin Part 1'inin başına girer
 
@@ -26,9 +33,63 @@ def copy_entry(source: Path, destination: Path) -> None:
         shutil.copy2(source, destination)
 
 
+def asset_report(exe: Path) -> list[str]:
+    """The files the built game uses: its asset manifest, relative to Assets. Only the running code knows them."""
+    try:
+        result = subprocess.run([str(exe)], cwd=exe.parent, env=os.environ | {ASSET_REPORT_VARIABLE: "1"},
+                                capture_output=True, encoding="utf-8", errors="replace",
+                                timeout=ASSET_REPORT_TIMEOUT, check=False)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ToolError(f"Release stopped: could not ask {exe.name} which assets it uses: {error}",
+                        EXIT_FAILED) from error
+    if result.returncode != 0:
+        detail = (result.stderr.strip().splitlines() or [f"exit {result.returncode}"])[-1]
+        raise ToolError(f"Release stopped: could not ask {exe.name} which assets it uses: {detail}", EXIT_FAILED)
+    return [line.removeprefix(ASSET_REPORT_PREFIX) for line in result.stdout.splitlines()
+            if line.startswith(ASSET_REPORT_PREFIX)]
+
+
+def kept_by(entry: str, keep: list[str]) -> bool:
+    """Whether release.keepAssets names this file or a folder above it."""
+    key = comparable(entry)
+    return any(key == comparable(item) or key.startswith(comparable(item) + "/") for item in keep)
+
+
+def select_sounds(exe: Path, built_assets: Path, keep: list[str]) -> tuple[list[Path], list[str]]:
+    """The built sound files the package leaves out, and the problems found on the way."""
+    errors = [f"Missing package file: {built_assets / entry} (release.keepAssets)" for entry in keep
+              if not (built_assets / entry).exists()]
+    sounds = sound_files(built_assets)
+    if not sounds:
+        return [], errors
+    report = asset_report(exe)
+    errors += [f"Missing package file: {built_assets / entry} (the game uses it)" for entry in report
+               if not (built_assets / entry).is_file()]
+    used = {comparable(entry) for entry in report}
+    left_out = []
+    for sound in sounds:
+        entry = sound.relative_to(built_assets).as_posix()
+        if comparable(entry) not in used and not kept_by(entry, keep):
+            left_out.append(sound)
+    return left_out, errors
+
+
+def print_left_out(left_out: list[Path], built_assets: Path) -> None:
+    """Each of the game's sounds by name, since one loaded by code must be named in release.keepAssets."""
+    game = [sound for sound in left_out if not sound.relative_to(built_assets).is_relative_to(ENGINE_SOUNDS)]
+    if game:
+        megabytes = sum(sound.stat().st_size for sound in game) / (1024 * 1024)
+        print(f"> {len(game)} unused sound(s) left out ({megabytes:.1f} MB); "
+              "one that code loads by itself goes in release.keepAssets:", flush=True)
+        for sound in game:
+            print(f"    {sound.relative_to(built_assets).as_posix()}", flush=True)
+    if len(left_out) > len(game):
+        print(f"> {len(left_out) - len(game)} unused engine sound(s) left out", flush=True)
+
+
 def package(project: Project, exe: Path) -> Path:
     """Paket klasörünü kurar, yanına ZIP alır ve paketteki exe'yi döndürür. Assets'ten ne gireceğini projenin
-    `package_assets(root)` hook'u seçer; hook yoksa Assets'in tamamı girer."""
+    `package_assets(root)` hook'u seçer; hook yoksa Assets'in tamamı girer, oyunun kullanmadığı sesler hariç."""
     settings = project.section("release")
     name = settings.get("name", project.name)
     built_assets = exe.parent / "Assets"
@@ -50,6 +111,13 @@ def package(project: Project, exe: Path) -> Path:
                for extra in extras if extra.name == NOTICES_FILE]
     errors += [f"Missing package file: {built_assets / entry}" for entry in assets
                if not (built_assets / entry).exists()]
+    keep = settings.get("keepAssets", [])
+    left_out = []
+    if select is not None and keep:
+        errors.append("release.keepAssets has no effect with a package_assets hook; the hook selects every asset")
+    elif select is None and built_assets.is_dir():
+        left_out, sound_errors = select_sounds(exe, built_assets, keep)
+        errors += sound_errors
     if errors:
         raise ToolError("Release stopped:\n  " + "\n  ".join(errors), EXIT_FAILED)
 
@@ -71,7 +139,11 @@ def package(project: Project, exe: Path) -> Path:
         for entry in assets:
             copy_entry(built_assets / entry, target / "Assets" / entry)
     elif built_assets.is_dir():
-        shutil.copytree(built_assets, target / "Assets")
+        skipped = set(left_out)
+        for file in built_assets.rglob("*"):
+            if file.is_file() and file not in skipped:
+                copy_entry(file, target / "Assets" / file.relative_to(built_assets))
+        print_left_out(left_out, built_assets)
 
     archive = shutil.make_archive(str(target), "zip", target.parent, target.name)
     print(f"> {archive}", flush=True)

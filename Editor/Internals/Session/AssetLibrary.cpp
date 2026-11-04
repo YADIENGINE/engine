@@ -79,7 +79,10 @@ std::vector<AssetNode> ScanAssetLibrary(const std::filesystem::path& engineDirec
         const auto assets = engineDirectory / "Assets";
         const auto graphics = assets / "Graphics";
         AssetNode graphicsNode{"Graphics", graphics, AssetKind::Folder, true, {}, ScanFolder(graphics, true)};
-        roots.push_back({"Engine", assets, AssetKind::Folder, true, {}, {std::move(graphicsNode)}});
+        const auto audio = assets / "Audio";
+        AssetNode audioNode{"Audio", audio, AssetKind::Folder, true, {}, ScanFolder(audio, true)};
+        roots.push_back(
+            {"Engine", assets, AssetKind::Folder, true, {}, {std::move(audioNode), std::move(graphicsNode)}});
     }
     if (!assetsDirectory.empty()) {
         auto children = ScanFolder(assetsDirectory, false);
@@ -92,6 +95,19 @@ std::vector<AssetNode> ScanAssetLibrary(const std::filesystem::path& engineDirec
         roots.push_back({"Game", assetsDirectory, AssetKind::Folder, false, {}, std::move(children)});
     }
     return roots;
+}
+
+std::filesystem::path AssetPathOf(const std::filesystem::path& file, const std::filesystem::path& engineDirectory,
+                                  const std::filesystem::path& assetsDirectory) {
+    const auto inside = [&file](const std::filesystem::path& root) {
+        if (root.empty()) return std::filesystem::path();
+        auto relative = file.lexically_relative(root);
+        return relative.empty() || *relative.begin() == ".." ? std::filesystem::path() : relative;
+    };
+    if (auto asset = inside(assetsDirectory); !asset.empty()) return asset;
+    if (auto asset = inside(engineDirectory.empty() ? engineDirectory : engineDirectory / "Assets"); !asset.empty())
+        return std::filesystem::path("Engine") / asset;
+    return {};
 }
 
 bool IsAudioFile(const std::filesystem::path& file) { return Has(AudioExtensions, Lowered(file.extension().string())); }

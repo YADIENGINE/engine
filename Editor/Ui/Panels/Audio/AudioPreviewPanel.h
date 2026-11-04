@@ -8,7 +8,10 @@
 // from the source file and leaves the viewport and running scene alone.
 class AudioPreviewPanel {
 public:
-    void SetAssetsDirectory(const std::filesystem::path& assetsDirectory) { _assetsDirectory = assetsDirectory; }
+    void SetRoots(const std::filesystem::path& engineDirectory, const std::filesystem::path& assetsDirectory) {
+        _engineDirectory = engineDirectory;
+        _assetsDirectory = assetsDirectory;
+    }
     void Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions);
 
 private:
@@ -17,6 +20,7 @@ private:
     void Transport(const AudioPreviewState& audio, const EditorUiActions& actions);
     void Refresh(const std::filesystem::path& file);
 
+    std::filesystem::path _engineDirectory;
     std::filesystem::path _assetsDirectory;
     // Disk facts about the shown file, read again when it changes or after a while.
     std::filesystem::path _file;

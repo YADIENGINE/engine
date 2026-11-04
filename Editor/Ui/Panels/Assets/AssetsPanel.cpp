@@ -491,12 +491,12 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
     const bool previewed = sound && !snapshot.audio.file.empty() &&
                            snapshot.audio.file == std::filesystem::absolute(node.path); // In Audio Preview
     const bool playing = previewed && snapshot.audio.playing;
-    // What the project's audio catalog plays the sound as; a sound it does not list is dimmed.
+    // What the project's audio catalog plays the sound as; a project sound it does not list is dimmed. The engine's own
+    // sounds are a shelf to choose from, so not using one says nothing.
     const bool catalogKnown = sound && snapshot.audioUsage && snapshot.audioUsage->reported;
-    const auto uses =
-        catalogKnown ? AudioUseLabels(AudioUsesOf(*snapshot.audioUsage, node.path.lexically_relative(_assetsDirectory)))
-                     : std::string();
-    const bool unused = catalogKnown && uses.empty();
+    const auto asset = catalogKnown ? AssetPathOf(node.path, _engineDirectory, _assetsDirectory) : std::filesystem::path();
+    const auto uses = catalogKnown ? AudioUseLabels(AudioUsesOf(*snapshot.audioUsage, asset)) : std::string();
+    const bool unused = catalogKnown && uses.empty() && !node.readOnly;
     const char* icon = count > 1 ? ICON_FA_LAYER_GROUP : playing ? ICON_FA_VOLUME_HIGH : KindIcon(node.kind);
     const bool pressed =
         DrawTile({key.c_str(), node.name.c_str(), icon, KindColor(node.kind), previewed,
@@ -514,7 +514,8 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
         std::string files;
         for (const auto& file : node.files)
             files += (files.empty() ? "" : "\n") + file;
-        if (catalogKnown) files += "\n" + (unused ? std::string("Unused: not in the audio catalog") : uses);
+        if (unused) files += "\nUnused: not in the audio catalog";
+        if (!uses.empty()) files += "\n" + uses;
         ToolTooltip(files.c_str());
     }
     if (pressed) {

@@ -9,6 +9,7 @@
 | `Core/GameObjects/`, `Core/Scene/` | Headless object/scene lifecycle and optional object ownership |
 | `Core/Graphics/` | Paint, Text, Surface, Post; GPU/render implementation; Draw and Style helpers |
 | `Assets/Graphics/` | `EngineAssets`: ready-made graphics with their own look, plus their editor registrations; include root `Assets/` |
+| `Assets/Audio/` | Ready-made sounds as files, copied beside every game as `Assets/Engine/Audio`; `release` packages those a game uses |
 | `Core/Ui/` | Game UI: Layout, Kernel, Looks, Widgets, Kit, Sound ([UI](../Ui.md)) |
 | `Core/Input/`, `Core/Audio/`, `Core/Platform/` | Public services and private platform backends |
 | `Core/Fx/`, `Core/Gameplay/`, `Core/Progress/` | Headless effects and reusable gameplay/view logic |

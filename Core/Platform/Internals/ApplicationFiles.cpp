@@ -1,5 +1,7 @@
 #include "Platform/Internals/ApplicationFiles.h"
 #include <raylib.h>
+#include <cstddef>
+#include <cstdlib>
 #include <stdexcept>
 #include "Platform/Internals/UserData.h"
 #include "Runtime/Internals/StartupTimer.h"
@@ -19,6 +21,17 @@ std::filesystem::path PrepareAssets(std::span<const std::filesystem::path> files
         }
     }
     return directory;
+}
+
+bool AssetReportAsked() {
+#ifdef _WIN32
+    std::size_t length = 0;
+    getenv_s(&length, nullptr, 0, "ENGINE_ASSET_REPORT");
+    return length > 0;
+#else
+    const char* value = std::getenv("ENGINE_ASSET_REPORT");
+    return value && *value;
+#endif
 }
 
 std::filesystem::path SaveFilePath(const std::filesystem::path& applicationId, const std::filesystem::path& filename) {

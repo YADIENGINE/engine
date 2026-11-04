@@ -5,6 +5,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 from ThirdParty.notices import load_components, scoped_components
 from Tools.commands.release import ENGINE_LICENSE, NOTICES_FILE, package
@@ -58,6 +59,65 @@ class PackageTests(unittest.TestCase):
         self.assertTrue((target / "Assets" / "Fonts" / "OFL.txt").is_file())
         with zipfile.ZipFile(self.root / "Release" / "MyGame.zip") as archive:
             self.assertIn(f"MyGame/{NOTICES_FILE}", archive.namelist())
+
+    def sounds(self, *names: str) -> None:
+        for name in names:
+            path = self.exe.parent / "Assets" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"sound")
+
+    def packaged(self) -> set[str]:
+        assets = self.root / "Release" / "MyGame" / "Assets"
+        return {path.relative_to(assets).as_posix() for path in assets.rglob("*") if path.is_file()}
+
+    def test_only_the_sounds_a_game_uses_are_packaged(self):
+        self.sounds("Audio/Hit.wav", "Audio/Unused.wav", "Audio/Music/Late.ogg", "Audio/Music/Later.ogg",
+                    "Audio/Solo.wav", "Engine/Audio/Ui/UiBack.wav", "Engine/Audio/Ui/UiConfirm.wav")
+        (self.exe.parent / "Assets/Audio/notes.json").write_text("{}", encoding="utf-8")
+        used = ["AUDIO/hit.wav", "Engine/Audio/Ui/UiBack.wav"]  # Case does not matter on Windows
+        with mock.patch("Tools.commands.release.asset_report", return_value=used):
+            package(self.project(keepAssets=["Audio/Music", "Audio/Solo.wav"]), self.exe)
+        self.assertEqual(self.packaged(), {
+            "Audio/Hit.wav", "Audio/Music/Late.ogg", "Audio/Music/Later.ogg", "Audio/Solo.wav", "Audio/notes.json",
+            "Engine/Audio/Ui/UiBack.wav", "Fonts/OFL.txt"})
+
+    def test_a_game_with_no_used_sound_leaves_no_empty_sound_folder(self):
+        self.sounds("Engine/Audio/Ui/UiBack.wav")
+        with mock.patch("Tools.commands.release.asset_report", return_value=[]):
+            package(self.project(), self.exe)
+        self.assertFalse((self.root / "Release/MyGame/Assets/Engine").exists())
+
+    def test_a_game_without_sounds_is_not_asked(self):
+        with mock.patch("Tools.commands.release.asset_report") as report:
+            package(self.project(), self.exe)
+        report.assert_not_called()
+
+    def test_a_used_or_kept_file_that_is_missing_stops_the_release(self):
+        self.sounds("Audio/Hit.wav")
+        previous = self.root / "Release" / "MyGame" / "old.txt"
+        previous.parent.mkdir(parents=True)
+        previous.write_text("old", encoding="utf-8")
+        with mock.patch("Tools.commands.release.asset_report", return_value=["Audio/Gone.wav"]):
+            with self.assertRaisesRegex(ToolError, r"(?s)Audio.Gone\.wav.*the game uses it"):
+                package(self.project(), self.exe)
+            with self.assertRaisesRegex(ToolError, r"(?s)Audio.Nope\.wav.*keepAssets"):
+                package(self.project(keepAssets=["Audio/Nope.wav"]), self.exe)
+        self.assertTrue(previous.is_file())
+
+    def test_a_game_that_cannot_answer_stops_the_release(self):
+        self.sounds("Audio/Hit.wav")
+        with self.assertRaisesRegex(ToolError, "could not ask"):  # The test's exe is not a program
+            package(self.project(), self.exe)
+
+    def test_a_hook_selects_every_asset(self):
+        self.sounds("Audio/Hit.wav", "Audio/Other.wav")
+        hooks = "def package_assets(root):\n    return ['Audio/Other.wav']\n"
+        with mock.patch("Tools.commands.release.asset_report") as report:
+            package(self.project(hooks), self.exe)
+            report.assert_not_called()
+            self.assertEqual(self.packaged(), {"Audio/Other.wav"})
+            with self.assertRaisesRegex(ToolError, "keepAssets has no effect"):
+                package(self.project(hooks, keepAssets=["Audio/Hit.wav"]), self.exe)
 
     def test_without_game_notices_only_the_engine_part_is_written(self):
         package(self.project(notices=None), self.exe)

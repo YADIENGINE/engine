@@ -296,7 +296,7 @@ AudioGeneration/
         comparison.py      reference landmarks, stages and differences
         review*.py         review clips, plots and A/B session export (+ review_page.*)
     Tests/                 unittest suites + review_player.test.cjs (Node, in-memory DOM)
-    Examples/              reference_review.py
+    Examples/              reference_review.py, ui_confirm_back_sounds.py
 ```
 
 New operations go on `SoundGenerator` with the implementation in the matching internal module (or a new one);

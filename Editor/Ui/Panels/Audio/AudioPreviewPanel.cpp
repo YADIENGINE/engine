@@ -6,6 +6,7 @@
 #include <format>
 #include <string>
 #include <system_error>
+#include "Editor/Internals/Session/AssetLibrary.h"
 #include "Editor/Internals/Session/AudioPreview.h"
 #include "Editor/Internals/Session/AudioUsage.h"
 #include "ToolUi/ToolTheme.h"
@@ -116,12 +117,14 @@ void AudioPreviewPanel::Header(const AudioPreviewState& audio, const AudioUsage*
         details += std::format("  ·  {} Hz  ·  {}", audio.waveform.waveform->sampleRate,
                                ChannelName(audio.waveform.waveform->channels));
     ImGui::TextColored(ToolPalette::Secondary, "%s", details.c_str());
-    if (usage && usage->reported && !_assetsDirectory.empty()) {
-        const auto labels = AudioUseLabels(AudioUsesOf(*usage, audio.file.lexically_relative(_assetsDirectory)));
-        if (labels.empty())
+    const auto asset = AssetPathOf(audio.file, _engineDirectory, _assetsDirectory);
+    if (usage && usage->reported && !asset.empty()) {
+        const auto labels = AudioUseLabels(AudioUsesOf(*usage, asset));
+        const bool engineSound = audio.file.lexically_relative(_assetsDirectory) != asset;
+        if (labels.empty() && !engineSound)
             ImGui::TextColored(ToolToneColor(ToolTone::Warning),
                                ICON_FA_CIRCLE_MINUS "  Unused: not in the audio catalog");
-        else
+        else if (!labels.empty())
             ImGui::TextColored(ToolToneColor(ToolTone::Success), ICON_FA_CIRCLE_CHECK "  %s", labels.c_str());
     }
     if (!audio.error.empty())

@@ -9,8 +9,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from Tools import cli
-from Tools.commands.audio import (catalog_uses, editor_recipe, resolve_sound, rounded, run_report, usage_answer,
-                                  use_label, uses_of)
+from Tools.commands.audio import (ENGINE_ASSETS, catalog_uses, editor_recipe, resolve_sound, rounded, run_report,
+                                  source_file, usage_answer, use_label, uses_of, with_assets)
 from Tools.commands.ctl import audio_request, request_of
 from Tools.errors import ToolError
 
@@ -97,6 +97,18 @@ class AudioCommandTests(unittest.TestCase):
                          self.assets / "Audio/Hit.wav")
         with self.assertRaises(ToolError):
             resolve_sound("Audio/Nope.wav", self.project, self.assets)
+
+    def test_engine_sounds_go_by_their_game_path(self):
+        confirm = ENGINE_ASSETS / "Audio/Ui/UiConfirm.wav"
+        self.assertEqual(source_file(self.assets, "Engine/Audio/Ui/UiConfirm.wav"), confirm)
+        self.assertEqual(source_file(self.assets, "Audio/Hit.wav"), self.assets / "Audio/Hit.wav")
+        self.assertEqual(resolve_sound("Engine/Audio/Ui/UiConfirm.wav", self.project, self.assets), confirm.resolve())
+        catalog = {"effects": [{"id": 0, "name": "Ok", "file": "Engine/Audio/Ui/UiConfirm.wav"},
+                               {"id": 1, "name": "", "file": "Engine/Audio/Ui/Nope.wav"}], "music": []}
+        self.assertEqual([use["label"] for use in usage_answer(catalog, self.assets, self.assets)["missing"]],
+                         ["Effect #1"])
+        entry = with_assets({"file": str(confirm)}, catalog_uses(catalog), self.assets)
+        self.assertEqual((entry["asset"], entry["uses"]), ("Engine/Audio/Ui/UiConfirm.wav", ["Effect Ok"]))
 
     def test_worker_round_trip(self):
         with self.assertRaises(ToolError):  # Nothing built yet

@@ -29,7 +29,7 @@ use the same Python. Project root: `--project` if supplied; otherwise the engine
 | --- | --- | --- |
 | `build` | `--release`, `--clean` | Builds the game (Debug; Release with `--release`). `--clean` removes the build folder first |
 | `run` | `--release` | Builds and runs the game; returns when the game closes |
-| `release` | | Builds Release and creates the `Release/<name>/` package folder and ZIP ([Release](Release.md)) |
+| `release` | | Builds Release and creates the `Release/<name>/` package folder and ZIP, without the sounds the game does not use ([Release](Release.md#only-the-sounds-a-game-uses)) |
 | `test` | `--filter RE`, `--label RE`, `--list`, `--clean` | Builds and runs headless tests; report `<tests.buildDirectory>/reports/<run-id>/results.json` |
 | `editor` | `--release`, `--build-only`, `--clean` | Builds the editor and project worker process, opens the editor |
 | `refresh` | | Build & Refresh in the project's open editor (joins an existing refresh); streams output and exits with its result. The editor scene stays open during the build. Returns 2 if the editor is not open ([control gateway](Editor/Architecture.md#control-gateway)) |
@@ -97,6 +97,7 @@ commit, file hashes); tools read only its `files`, to tell whether a prebuilt en
 | --- | --- | --- |
 | `ENGINE_LAUNCHER` | editor | Full path to the windowed executable of the launcher that started the editor. If present, "Back to project list" appears in File: the editor starts that executable and closes. The launcher sets it for every engine command; tools forward it unchanged to the editor |
 | `ENGINE_PREBUILT` | `build`, `run`, `release`, `editor` | Folder of the compiled engine for the project's version ([Prebuilt engine](Prebuilt.md)). The launcher sets it when it has one; tools remember it for commands run without the launcher |
+| `ENGINE_ASSET_REPORT` | a built game | When set, the game prints its asset list as `asset: <path>` lines and exits before opening a window. `release` sets it |
 | `ENGINE_EDITOR_CONTROL` | `refresh`, `ctl` | The control pipe of the editor whose Console started the command; used instead of the build directory's announcement. The editor sets it for its Console's shell |
 
 ## Project status files

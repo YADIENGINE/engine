@@ -4,7 +4,9 @@
 
 On desktop, runtime uses the `Assets/` folder beside the executable; do not rely on the working directory.
 `engine_add_game(... ASSETS ".../Game/Assets")` copies this folder after building. `Graphics` and `Prefabs` inside it
-are reserved for source code and are not copied ([Asset library](Design/AssetLibrary.md)).
+are reserved for source code and are not copied ([Asset library](Design/AssetLibrary.md)). `Engine` is reserved for the
+engine's own files, copied to `Assets/Engine` beside every game ([ready-made sounds](Audio.md#ready-made-sounds)); a
+folder of that name under `Game/Assets` stops the configure.
 
 `GameSettings::assets` is the relative path list of files in use. Audio catalog paths are added automatically; list a
 custom font path explicitly. Images are not loaded from files: visuals are produced by code ([D1](Design/README.md#d1-asset-kuralı)),

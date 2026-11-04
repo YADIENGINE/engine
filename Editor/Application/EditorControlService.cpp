@@ -10,6 +10,7 @@
 #include <string>
 #include <system_error>
 #include "Editor/Internals/Protocol/WorkerProtocol.h"
+#include "Editor/Internals/Session/AssetLibrary.h"
 #include "Editor/Internals/Session/FrameCapture.h"
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
 #include "Platform/Internals/FileStorage.h"
@@ -501,8 +502,8 @@ nlohmann::json EditorControlService::AudioStatus(const EditorController& control
     if (!audio.error.empty()) status["error"] = audio.error;
     const auto& project = controller.Project();
     if (!project) return status;
-    const auto asset = audio.file.lexically_relative(project->assetsDirectory);
-    if (asset.empty() || *asset.begin() == "..") return status;
+    const auto asset = AssetPathOf(audio.file, project->engineDirectory, project->assetsDirectory);
+    if (asset.empty()) return status;
     status["asset"] = WorkerUtf8(asset.generic_wstring());
     if (!usage || !usage->reported) return status;
     auto uses = nlohmann::json::array();

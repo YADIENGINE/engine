@@ -7,7 +7,7 @@ work; settings are in the `Project.json` `release` section. Every project produc
 Release/                     (not tracked by git; in the template's .gitignore)
   MyGame/
     MyGame.exe
-    Assets/                  selected by the package_assets hook (Assets/ as-is if no hook)
+    Assets/                  every built asset but unused sounds, or what the package_assets hook selects
     ThirdPartyNotices.txt    GENERATED: Part 1 Engine + Part 2 game
     <release.files>          additional game texts (e.g. Credits.txt)
   MyGame.zip                 same folder, file delivered to the store/player
@@ -30,8 +30,27 @@ Release/                     (not tracked by git; in the template's .gitignore)
 | `name` | project `name` | name of the package folder and ZIP |
 | `notices` | none | game section of the notice (Part 2); if absent, the file contains only Part 1 |
 | `files` | `[]` | additional files copied as-is to the package root |
+| `keepAssets` | `[]` | sound files or folders, relative to `Assets/`, packaged though the game's settings do not name them |
 
 A file named `ThirdPartyNotices.txt` cannot be listed in `files`; that name belongs to the generated notice.
+
+## Only the sounds a game uses
+
+A project can keep as many sounds as it likes under `Game/Assets/Audio`, and a development build copies them all.
+The package takes only those the game's sound tables, catalog and `GameSettings::assets` name, and the printed summary
+lists the rest. To find out, `release` starts the built game with `ENGINE_ASSET_REPORT` set, and the game prints its list
+and exits before opening a window. Only sound files are filtered; every other file is packaged. The engine's own sounds
+under `Engine/Audio` follow the same rule ([Audio](Audio.md#ready-made-sounds)).
+
+A sound that code loads after startup, with `AudioSystem::LoadMusic` for example, is not on that list. It plays in a
+development build and fails in the package unless it is named in `keepAssets`, so read the summary before shipping:
+
+```json
+"release": {"keepAssets": ["Audio/Music/Bonus.ogg", "Audio/Voices"]}
+```
+
+A project with a `package_assets` hook selects every asset itself: nothing is filtered, and `keepAssets` beside a hook is
+an error.
 
 ## The notice has two parts
 
@@ -99,8 +118,9 @@ File paths in credits entries are relative to the packaged `Assets/`.
 
 If packaging finds a problem, it stops before deleting the existing `Release/<name>/` folder and lists all problems:
 
-- A `release.notices` or `release.files` file, or an asset selected by `package_assets`, is missing from the built
-  `Assets/` (a new asset was added but Release was not built).
+- A `release.notices` or `release.files` file, an asset selected by `package_assets` or named in `keepAssets`, or a file
+  the game uses is missing from the built `Assets/` (a new asset was added but Release was not built).
+- The built game could not say which assets it uses. A game that cannot do this can select its assets with a hook.
 - An engine component's version in `Notices.json` is absent from its source pin (the dependency was upgraded without
   updating the notice), or the text file's first line does not mention that version.
 - The recorded text does not contain the component's main license file in `ThirdParty/` verbatim.

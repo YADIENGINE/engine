@@ -104,18 +104,35 @@ function(engine_copy_starter_font target)
         VERBATIM)
 endfunction()
 
-# Copies a project's asset folder beside the target. Graphics and Prefabs hold source code and stay out.
-# Only changed files, so a build beside a running game does not fail on its open (streamed) assets.
-function(engine_copy_assets target assets)
-    set(copyDirectory copy_directory)
+# Only changed files where CMake can, so a build beside a running game does not fail on its open (streamed) assets.
+function(_engine_copy_directory_command result)
+    set(${result} copy_directory PARENT_SCOPE)
     if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.26)
-        set(copyDirectory copy_directory_if_different)
+        set(${result} copy_directory_if_different PARENT_SCOPE)
     endif()
+endfunction()
+
+# The engine's ready-made sounds, as Assets/Engine/Audio beside the target. `release` packages only those a game plays.
+function(engine_copy_engine_audio target)
+    _engine_copy_directory_command(copyDirectory)
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E ${copyDirectory} "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../Assets/Audio"
+            "$<TARGET_FILE_DIR:${target}>/Assets/Engine/Audio"
+        VERBATIM)
+endfunction()
+
+# Copies a project's asset folder beside the target. Graphics and Prefabs hold source code and stay out.
+# Engine is the name of the engine's own assets there.
+function(engine_copy_assets target assets)
+    _engine_copy_directory_command(copyDirectory)
     set(destination "$<TARGET_FILE_DIR:${target}>/Assets")
     add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory "${destination}" VERBATIM)
     file(GLOB entries CONFIGURE_DEPENDS "${assets}/*")
     foreach(entry IN LISTS entries)
         get_filename_component(name "${entry}" NAME)
+        if(name STREQUAL "Engine")
+            message(FATAL_ERROR "${entry}: the name Engine is reserved for the engine's assets; rename this folder")
+        endif()
         if(name STREQUAL "Graphics" OR name STREQUAL "Prefabs")
             continue()
         endif()
@@ -173,6 +190,7 @@ function(engine_add_game target)
     if(GAME_ASSETS)
         engine_copy_assets(${target} "${GAME_ASSETS}")
     endif()
+    engine_copy_engine_audio(${target})
     if(useStarter)
         engine_copy_starter_font(${target})
     endif()

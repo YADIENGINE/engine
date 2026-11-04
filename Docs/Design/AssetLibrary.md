@@ -38,6 +38,7 @@ drawing or explain why it remains unregistered, without migrating unrelated code
 | Folder | Contents | Editor |
 | --- | --- | --- |
 | `Engine/Assets/Graphics` | Ready-to-use graphics shipped with the engine, drawing code included (`EngineAssets`); include root `Assets/`, so `Graphics/DefaultIcons.h` | Read-only |
+| `Engine/Assets/Audio` | Ready-made sounds shipped with the engine; a game names them as `Engine/Audio/...` | Read-only; browse and preview |
 | `Game/Assets/Graphics` | The project's graphics | Free foldering |
 | `Game/Assets/Audio`, `Game/Assets/Fonts` | Runtime files, as today | Browse and preview; no moving in v1 |
 

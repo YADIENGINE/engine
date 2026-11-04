@@ -16,10 +16,13 @@ import subprocess
 from pathlib import Path
 
 from ..errors import EXIT_FAILED, EXIT_OK, ToolError
+from ..manifest import ENGINE_ROOT
 from ..project import Project
 from .editor import PROJECT_RECIPE, editor_build_dir
 
 AUDIO_EXTENSIONS = {".ogg", ".wav", ".mp3", ".flac"}  # As the editor's asset library lists sounds
+ENGINE_ASSETS = ENGINE_ROOT / "Assets"
+ENGINE_PREFIX = "Engine"  # A game names the engine's assets by this folder: Engine/Audio/Ui/UiConfirm.wav
 REPORT_FOLDER = "audio-report"
 REPORT_TIMEOUT = 300  # Seconds; decoding long music files is the slow part
 CONFIGS = ("Debug", "Release")
@@ -88,6 +91,14 @@ def sound_files(folder: Path) -> list[Path]:
                   key=lambda path: path.as_posix().casefold())
 
 
+def source_file(assets: Path, file: str) -> Path:
+    """Where a path relative to the built asset folder lives in the source: the project's folder or the engine's."""
+    parts = Path(file).parts
+    if parts and parts[0].casefold() == ENGINE_PREFIX.casefold():
+        return ENGINE_ASSETS.joinpath(*parts[1:])
+    return assets / file
+
+
 def usage_answer(catalog: dict, assets: Path, folder: Path, unused: bool = False, missing: bool = False) -> dict:
     """Sound files under `folder` with the catalog entries that play them, plus entries whose file is gone."""
     uses = catalog_uses(catalog)
@@ -95,7 +106,7 @@ def usage_answer(catalog: dict, assets: Path, folder: Path, unused: bool = False
     for path in sound_files(folder):
         asset = path.relative_to(assets).as_posix()
         sounds.append({"asset": asset, "uses": [use["label"] for use in uses_of(uses, asset)]})
-    gone = [use for use in uses if not (assets / use["file"]).is_file()]
+    gone = [use for use in uses if not source_file(assets, use["file"]).is_file()]
     if missing:
         return {"missing": gone}
     if unused:
@@ -123,7 +134,8 @@ def editor_recipe(project: Project) -> dict:
 def resolve_sound(text: str, project: Project, assets: Path) -> Path:
     """A sound file named absolutely or relative to the current folder, the project root or the asset folder."""
     path = Path(text)
-    candidates = [path] if path.is_absolute() else [Path.cwd() / path, project.root / path, assets / path]
+    candidates = ([path] if path.is_absolute()
+                  else [Path.cwd() / path, project.root / path, source_file(assets, text)])
     for candidate in candidates:
         if candidate.is_file():
             return candidate.resolve()
@@ -161,11 +173,13 @@ def run_report(project: Project, recipe: dict, files: list[Path], silence_db: fl
 
 def with_assets(entry: dict, uses: list[dict], assets: Path) -> dict:
     """A file entry with its path in the asset folder and the catalog entries that play it."""
-    path = Path(entry["file"])
-    try:
-        asset = path.resolve().relative_to(assets).as_posix()
-    except ValueError:
-        return entry | {"asset": None, "uses": []}  # Outside the asset folder: the game cannot load it
+    path = Path(entry["file"]).resolve()
+    if path.is_relative_to(assets):
+        asset = path.relative_to(assets).as_posix()
+    elif path.is_relative_to(ENGINE_ASSETS.resolve()):
+        asset = f"{ENGINE_PREFIX}/{path.relative_to(ENGINE_ASSETS.resolve()).as_posix()}"
+    else:
+        return entry | {"asset": None, "uses": []}  # Outside the asset folders: the game cannot load it
     return entry | {"asset": asset, "uses": [use["label"] for use in uses_of(uses, asset)]}
 
 
