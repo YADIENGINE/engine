@@ -27,12 +27,12 @@ struct GlitchStyle {
     Color4 highlight{255, 255, 255, 255};
 };
 
-class GlitchEffects2D {
+class ScreenGlitch {
 public:
-    explicit GlitchEffects2D(const GlitchStyle& style);
     // Flashes off: Trigger does nothing.
     void SetQuality(const FxQuality& quality) { _quality = quality; }
-    void Trigger(float seconds);
+    // The longer of 'seconds' and the time left wins. Invalid values throw invalid_argument.
+    void Trigger(float seconds, const GlitchStyle& style);
     void Update(float deltaSeconds);
     void Clear();
     // Clipped to 'area'; 'timeSeconds' picks the pattern.

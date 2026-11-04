@@ -3,18 +3,13 @@
 #include <deque>
 #include <optional>
 #include <string>
-#include "Fx/FxQuality.h"
+#include "Animation/Tween.h"
 #include "Fx/FxText.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
 #include "Utilities/FloatRect.h"
 
 class Painter;
-
-struct FlashStyle {
-    float duration = 1.0f;
-    float opacity = 1.0f;
-};
 
 struct BannerStyle {
     float duration = 1.0f;
@@ -36,31 +31,27 @@ struct ToastStyle {
     FxTextStyle text;
 };
 
-class OverlayEffects2D {
+// Text for the player: one banner at a time, and toasts that wait their turn. A new toast shortens the one showing to
+// its queued duration; a full queue drops its oldest. Styles come with each call; an invalid one throws
+// invalid_argument.
+class Announcements {
 public:
-    explicit OverlayEffects2D(std::size_t toastCapacity);
-    // Flashes off: Flash does nothing (banners and toasts stay).
-    void SetQuality(const FxQuality& quality) { _quality = quality; }
-    void Flash(Color4 color, const FlashStyle& style);
+    explicit Announcements(std::size_t toastCapacity);
     void Banner(const std::string& text, const BannerStyle& style);
     void Toast(const std::string& text, Color4 color, const ToastStyle& style);
     void Update(float deltaSeconds);
     void Clear();
-    // Flash, then banner, then toast. Text is placed in 'bounds'; the flash and the banner curtain cover
-    // 'fillBounds'. Opens no clip or transform of its own.
+    // Banner, then toast. Text is placed in 'bounds'; the banner curtain covers 'fillBounds'. Opens no clip or
+    // transform of its own.
     void Draw(Painter& paint, const FloatRect& bounds, const FloatRect& fillBounds) const;
     void Draw(Painter& paint, const FloatRect& bounds) const { Draw(paint, bounds, bounds); }
 
 private:
-    struct FlashEntry {
-        Color4 color;
-        FlashStyle style;
-        float life;
-    };
     struct BannerEntry {
         std::string text;
         BannerStyle style;
-        float life;
+        SecondsTween<float> alpha;
+        SecondsTween<float> curtain;
     };
     struct ToastEntry {
         std::string text;
@@ -70,8 +61,6 @@ private:
     };
     void ShowToast(ToastEntry entry);
     std::size_t _toastCapacity;
-    FxQuality _quality;
-    std::optional<FlashEntry> _flash;
     std::optional<BannerEntry> _banner;
     std::optional<ToastEntry> _toast;
     std::deque<ToastEntry> _toastQueue;

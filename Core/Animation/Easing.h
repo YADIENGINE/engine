@@ -169,6 +169,10 @@ constexpr bool Crossed(float before, float after, float moment) { return before 
 // Decreases 'value' by 'amount', stopping at 0. For fading counters: x = CountDown(x, dt / Seconds).
 constexpr float CountDown(float value, float amount) { return value > amount ? value - amount : 0.0f; }
 
+// What remains of a value decaying at 'rate' per second after 'seconds'. Split a time in two and the result is the
+// same, so unlike x -= x * rate * dt it does not depend on the frame rate.
+inline float DecayFactor(float rate, float seconds) { return std::exp(-rate * seconds); }
+
 // Blinks every 'period' during the last 'threshold' seconds of a duration; true in the dim half.
 inline bool BlinkOff(float remaining, float threshold, float period) {
     return remaining <= threshold && std::fmod(remaining, period) < period / 2.0f;

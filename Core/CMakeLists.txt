@@ -129,30 +129,31 @@ engine_warnings(EnginePhysics)
 add_library(EngineHeadless STATIC
     Audio/Internals/AudioVolumePolicy.cpp
     Audio/Internals/Validation.cpp
-    Fx/CameraEffects2D.cpp
+    Fx/Announcements.cpp
+    Fx/CameraEffects.cpp
     Fx/CameraShot.cpp
-    Fx/FloatingText2D.cpp
+    Fx/FloatingTexts.cpp
+    Fx/FxCue.cpp
+    Fx/FxCueSet.cpp
     Fx/FxStage.cpp
     Fx/FxText.cpp
-    Fx/GlitchEffects2D.cpp
-    Fx/IrisTransition.cpp
-    Fx/OverlayEffects2D.cpp
     Fx/ParticleRecipes.cpp
-    Fx/ParticleSystem2D.cpp
-    Fx/PulseOverlay2D.cpp
-    Fx/RingEffects2D.cpp
-    Fx/ShatterPattern.cpp
-    Fx/ShockwaveEffects2D.cpp
-    Fx/SpeedLines.cpp
-    Fx/TimeScale.cpp
-    Fx/TransitionClock.cpp
+    Fx/ParticleSystem.cpp
+    Fx/PulseOverlay.cpp
+    Fx/Rings.cpp
+    Fx/ScreenFlash.cpp
+    Fx/ScreenGlitch.cpp
+    Fx/Shockwaves.cpp
+    Fx/SlowMotionOverlay.cpp
     GameObjects/GameObject.cpp
     GameObjects/ObjectList.cpp
     Graphics/Draw/BackgroundDraw.cpp
     Graphics/Draw/DrawUtils.cpp
+    Graphics/Draw/IrisTransition.cpp
     Menus/GridViewport.cpp
     Graphics/Draw/Neon.cpp
     Graphics/Draw/ParticleDraw.cpp
+    Graphics/Draw/SpeedLines.cpp
     Graphics/Icons/Icons.cpp
     Graphics/Style/Theme.cpp
     Graphics/Ui/Backdrop.cpp
@@ -186,10 +187,13 @@ add_library(EngineHeadless STATIC
     Menus/GridMenuSelection.cpp
     Options/GameOptions.cpp
     Platform/Internals/UserData.cpp
+    Runtime/TimeScale.cpp
     Runtime/Internals/StartupTimer.cpp
     Scene/Internals/SceneManager.cpp
     Scene/Scene.cpp
+    Scene/TransitionClock.cpp
     Utilities/DevelopmentChecks.cpp
+    Utilities/ShatterPattern.cpp
     Utilities/UiTransform.cpp
     Utilities/Utf8.cpp
 )

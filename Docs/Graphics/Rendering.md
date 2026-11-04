@@ -42,7 +42,7 @@ DrawWidget(paint);
 
 Integer UiTransform results round with `std::lround`; design rectangle centers use integer division.
 Invalid source or target sizes throw `std::invalid_argument`.
-`Fx/ShatterPattern` provides headless convex Voronoi fragments and timed crack propagation.
+`Utilities/ShatterPattern` provides headless convex Voronoi fragments and timed crack propagation.
 
 ## Instrumentation
 

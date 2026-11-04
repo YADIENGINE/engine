@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstddef>
 #include <vector>
-#include "Fx/ShatterPattern.h"
+#include "Utilities/ShatterPattern.h"
 
 namespace {
 constexpr Rect Bounds{10, 20, 300, 200};

@@ -15,7 +15,8 @@ bool Finite(Float2 value) { return std::isfinite(value.x) && std::isfinite(value
 
 NumberPopup::State::State(const NumberPopupSettings& settings)
     : popups({.capacity = settings.capacity, .overflow = settings.overflow, .strict = settings.strict})
-    , particles({.capacity = settings.particleCapacity, .seed = settings.seed})
+    , particles({.capacity = settings.particleCapacity,
+                 .seed = settings.seed ? *settings.seed : std::random_device{}()})
     , rng(settings.seed ? *settings.seed : std::random_device{}())
     , strict(settings.strict) {
     entries.reserve(settings.capacity);
@@ -54,7 +55,7 @@ bool NumberPopup::State::ValidStyle(const NumberPopupStyle& style) {
     return Popup::IsValid(style.popup) && ValidFormat(style.format) && std::isfinite(style.text.size) &&
            style.text.size > 0.0f && Nonnegative(juice.scatterVelocity.x) && Nonnegative(juice.scatterVelocity.y) &&
            Nonnegative(juice.rotationSpread) && Nonnegative(juice.flashSeconds) && juice.particleCount >= 0 &&
-           ParticleSystem2D::IsValid(juice.particles, juice.particleLook) && std::isfinite(juice.pulse.seconds) &&
+           ParticleSystem::IsValid(juice.particles, juice.particleLook) && std::isfinite(juice.pulse.seconds) &&
            juice.pulse.seconds > 0.0f && Finite(juice.pulse.scale) && std::isfinite(juice.pulse.rotation) &&
            Nonnegative(merge.windowSeconds) && Nonnegative(merge.extendSeconds) &&
            std::isfinite(merge.maxLifetimeSeconds) && merge.maxLifetimeSeconds > 0.0f;

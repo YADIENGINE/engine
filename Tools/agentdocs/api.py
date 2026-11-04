@@ -8,8 +8,7 @@ from pathlib import Path
 TOKEN = re.compile(r'//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|'
                    r'[A-Za-z_]\w*|\d+(?:\.\d+)?[\w]*|::|&&|->|\.\.\.|==|!=|<=|>=|\+=|-=|\*=|/=|\|\||[^\s]')
 # Keep generated material English without editing legacy header comments. Remove an entry when translated upstream.
-UNTRANSLATED = {('Core/Fx/TimeScale.h', 'TimeScale', 'void Hitstop(float seconds)'),
-                ('Core/Tuning/TuningLive.h', 'TuningReport', 'std::string source')}
+UNTRANSLATED = {('Core/Tuning/TuningLive.h', 'TuningReport', 'std::string source')}
 
 
 @dataclass

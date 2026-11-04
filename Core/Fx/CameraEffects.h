@@ -1,10 +1,11 @@
 #pragma once
 #include <optional>
+#include "Animation/SpringPoint.h"
 #include "Fx/FxQuality.h"
 #include "Utilities/CameraView.h"
 #include "Utilities/Float2.h"
 
-struct CameraEffectsSettings {
+struct CameraEffectsStyle {
     float shakeAmplitude = 0.0f;
     Float2 shakeFrequency{}; // radians/second
     float shakeFadeSeconds = 0.0f;
@@ -19,9 +20,9 @@ struct CameraEffectsSettings {
     float motionZoomOut = 0.0f;
 };
 
-class CameraEffects2D {
+class CameraEffects {
 public:
-    explicit CameraEffects2D(const CameraEffectsSettings& settings);
+    explicit CameraEffects(const CameraEffectsStyle& settings);
     // Shake scales shake, punch and kick; motion off keeps the camera still at speed.
     void SetQuality(const FxQuality& quality) { _quality = quality; }
     void Shake(float seconds);
@@ -35,13 +36,12 @@ public:
     [[nodiscard]] float MotionIntensity() const { return _motion; }
 
 private:
-    CameraEffectsSettings _settings;
+    CameraEffectsStyle _settings;
     FxQuality _quality;
     float _shakeLife = 0.0f;
     float _punch = 0.0f;
     std::optional<Float2> _punchFocus;
-    Float2 _kickOffset{};
-    Float2 _kickVelocity{};
+    SpringPoint _kick;
     float _motion = 0.0f;
     float _motionTarget = 0.0f;
     Float2 _motionLead{};

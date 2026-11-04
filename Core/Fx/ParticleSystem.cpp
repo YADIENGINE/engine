@@ -1,7 +1,8 @@
-#include "Fx/ParticleSystem2D.h"
+#include "Fx/ParticleSystem.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include "Animation/Easing.h"
 #include "Graphics/Paint/Painter.h"
 
 namespace {
@@ -9,19 +10,17 @@ bool ValidRange(FloatRange range) {
     return std::isfinite(range.min) && std::isfinite(range.max) && range.min <= range.max;
 }
 
-float Sample(std::mt19937& rng, FloatRange range) {
-    return std::uniform_real_distribution<float>(range.min, range.max)(rng);
-}
+float Sample(Rng& rng, FloatRange range) { return rng.Float(range.min, range.max); }
 
 } // namespace
 
-ParticleSystem2D::ParticleSystem2D(const ParticleSystemSettings& settings)
+ParticleSystem::ParticleSystem(const ParticleSystemSettings& settings)
     : _capacity(settings.capacity)
-    , _rng(settings.seed ? *settings.seed : std::random_device{}()) {
+    , _rng(settings.seed) {
     _particles.reserve(_capacity);
 }
 
-bool ParticleSystem2D::IsValid(const ParticleEmission& emission, const ParticleAppearance& appearance) {
+bool ParticleSystem::IsValid(const ParticleEmission& emission, const ParticleAppearance& appearance) {
     return ValidRange(emission.speed) && ValidRange(emission.lifetime) && emission.lifetime.min > 0.0f &&
            ValidRange(emission.size) && emission.size.min >= 0.0f && ValidRange(emission.rotation) &&
            ValidRange(emission.spin) && std::isfinite(emission.direction) && std::isfinite(emission.spread) &&
@@ -36,8 +35,8 @@ bool ParticleSystem2D::IsValid(const ParticleEmission& emission, const ParticleA
            appearance.sparkMinThickness >= 0.0f;
 }
 
-void ParticleSystem2D::Emit(Float2 position, int count, const ParticleEmission& emission,
-                            const ParticleAppearance& appearance) {
+void ParticleSystem::Emit(Float2 position, int count, const ParticleEmission& emission,
+                          const ParticleAppearance& appearance, const ParticleCustomDraw& draw) {
     if (!IsValid(emission, appearance)) throw std::invalid_argument("Invalid particle emission or appearance");
     count = _quality.ParticleCount(count);
     if (count <= 0) return;
@@ -56,18 +55,19 @@ void ParticleSystem2D::Emit(Float2 position, int count, const ParticleEmission& 
                               Sample(_rng, emission.spin),
                               emission.acceleration,
                               emission.drag,
-                              appearance});
+                              appearance,
+                              draw});
     }
 }
 
-void ParticleSystem2D::Update(float deltaSeconds) {
+void ParticleSystem::Update(float deltaSeconds) {
     if (!(deltaSeconds > 0.0f) || !std::isfinite(deltaSeconds)) return;
     for (Particle& particle : _particles) {
         particle.velocity.x += particle.acceleration.x * deltaSeconds;
         particle.velocity.y += particle.acceleration.y * deltaSeconds;
         particle.position.x += particle.velocity.x * deltaSeconds;
         particle.position.y += particle.velocity.y * deltaSeconds;
-        const float drag = std::max(0.0f, 1.0f - particle.drag * deltaSeconds);
+        const float drag = DecayFactor(particle.drag, deltaSeconds);
         particle.velocity.x *= drag;
         particle.velocity.y *= drag;
         particle.rotation += particle.spin * deltaSeconds;
@@ -76,9 +76,9 @@ void ParticleSystem2D::Update(float deltaSeconds) {
     std::erase_if(_particles, [](const Particle& particle) { return particle.life <= 0.0f; });
 }
 
-void ParticleSystem2D::Clear() { _particles.clear(); }
+void ParticleSystem::Clear() { _particles.clear(); }
 
-void ParticleSystem2D::DrawPass(Painter& paint, ParticleBlend blend) const {
+void ParticleSystem::DrawPass(Painter& paint, ParticleBlend blend) const {
     for (const Particle& particle : _particles) {
         const ParticleAppearance& appearance = particle.appearance;
         if (appearance.blend != blend) continue;
@@ -92,8 +92,8 @@ void ParticleSystem2D::DrawPass(Painter& paint, ParticleBlend blend) const {
                                     .size = size,
                                     .rotation = particle.rotation,
                                     .normalizedAge = 1.0f - remaining};
-        if (appearance.draw) {
-            appearance.draw(paint, data);
+        if (particle.draw) {
+            particle.draw(paint, data);
             continue;
         }
         DrawParticleShape(paint, appearance.shape, data,
@@ -102,7 +102,7 @@ void ParticleSystem2D::DrawPass(Painter& paint, ParticleBlend blend) const {
     }
 }
 
-void ParticleSystem2D::Draw(Painter& paint) const {
+void ParticleSystem::Draw(Painter& paint) const {
     DrawPass(paint, ParticleBlend::Alpha);
     auto light = paint.Blending(Blend::Add);
     DrawPass(paint, ParticleBlend::Additive);

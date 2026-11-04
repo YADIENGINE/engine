@@ -1,4 +1,5 @@
 #pragma once
+#include "Fx/FxQuality.h"
 #include "Utilities/Color4.h"
 #include "Utilities/FloatRect.h"
 
@@ -18,9 +19,12 @@ struct PulseOverlayStyle {
     float vignetteBeatAlpha = 0.0f;
 };
 
-class PulseOverlay2D {
+class PulseOverlay {
 public:
-    explicit PulseOverlay2D(const PulseOverlayStyle& style);
+    // An invalid style throws invalid_argument.
+    explicit PulseOverlay(const PulseOverlayStyle& style);
+    // Flashes off: a steady glow with no beat.
+    void SetQuality(const FxQuality& quality) { _quality = quality; }
     void SetActive(bool active, Color4 color);
     void Update(float deltaSeconds);
     void Clear();
@@ -30,6 +34,7 @@ public:
 private:
     [[nodiscard]] float Heartbeat() const;
     PulseOverlayStyle _style;
+    FxQuality _quality;
     bool _active = false;
     Color4 _color{};
     float _intensity = 0.0f;

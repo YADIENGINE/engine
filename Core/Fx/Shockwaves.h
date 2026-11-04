@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include "Animation/Curve.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
 #include "Utilities/FloatRect.h"
@@ -17,12 +18,13 @@ struct ShockwaveStyle {
     float trailOpacity = 1.0f;
     float rimWidth = 0.0f;
     Color4 rim{255, 255, 255, 255};
+    Curve curve = Curve::OutCubic; // How the radius travels
 };
 
-class ShockwaveEffects2D {
+class Shockwaves {
 public:
-    explicit ShockwaveEffects2D(const ShockwaveStyle& style);
-    void Emit(Float2 center, Color4 color, float reach = 0.0f);
+    // An invalid style or reach throws invalid_argument.
+    void Emit(Float2 center, Color4 color, const ShockwaveStyle& style, float reach = 0.0f);
     void Update(float deltaSeconds);
     void Clear();
     // 'bounds' gives the full reach (its diagonal) of waves emitted without one.
@@ -33,8 +35,8 @@ private:
         Float2 center;
         Color4 color;
         float reach;
+        ShockwaveStyle style;
         float age = 0.0f;
     };
-    ShockwaveStyle _style;
     std::vector<Wave> _waves;
 };

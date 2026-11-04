@@ -6,8 +6,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "Fx/TimeScale.h"
-#include "Fx/TransitionClock.h"
+#include "Runtime/TimeScale.h"
+#include "Scene/TransitionClock.h"
 #include "GameObjects/ObjectList.h"
 #include "Scene/Scene.h"
 #include "Tests/PaintHarness.h"
@@ -212,9 +212,8 @@ TEST_CASE("Engine.Transition.MidpointIsEmittedOnceAndZeroTimeDoesNotAdvance", "[
     CHECK_FALSE(transition.Update(0.4f));
     CHECK(transition.Update(0.15f));
     CHECK_FALSE(transition.Update(0.1f));
-    bool opening = false;
-    CHECK(transition.Cover(opening) < 1.0f);
-    CHECK(opening);
+    CHECK(transition.Cover() < 1.0f);
+    CHECK(transition.Opening());
     CHECK_FALSE(transition.Update(1.0f));
     CHECK_FALSE(transition.Active());
 }

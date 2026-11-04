@@ -6,6 +6,7 @@
 #include "AgentDocs/Recipes/Code/TimelineBoss.h"
 #include "AgentDocs/Recipes/Code/TweenMenu.h"
 #include "AgentDocs/Recipes/Code/FxBurst.h"
+#include "AgentDocs/Recipes/Code/FxCues.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
 #include "AgentDocs/Recipes/Code/PopupEffects.h"
@@ -238,6 +239,33 @@ TEST_CASE("Engine.Recipes.SavedProgressSurvivesReopening", "[engine][recipes]") 
     GameOptions options(directory.Path() / "settings.json");
     REQUIRE(options.Load() == OptionsLoadResult::Loaded);
     CHECK(options.GetInt("myproject.hints") == 1);
+}
+
+TEST_CASE("Engine.Recipes.CuesPlayFromRulesAndMoments", "[engine][recipes]") {
+    TimeScale time;
+    RecipeCueView view({0.0f, 0.0f, 400.0f, 200.0f}, time);
+    const auto drawn = [&] {
+        PaintHarness harness;
+        harness.Begin();
+        view.Draw(harness.paint);
+        harness.End();
+        return !harness.Draws().empty();
+    };
+    view.Update(0.1f, 0);
+    CHECK(time.Advance(0.01f) == 0.01f);
+    view.Update(0.1f, 1); // The count went up: "player_hit" and its hitstop
+    CHECK(time.Advance(0.01f) == 0.0f);
+    CHECK(drawn());
+
+    RecipeCueView swinging({0.0f, 0.0f, 400.0f, 200.0f}, time);
+    swinging.Swing();
+    swinging.Update(0.1f, 0);
+    swinging.Update(0.15f, 0); // Crosses the moment "swing_land"
+    PaintHarness harness;
+    harness.Begin();
+    swinging.Draw(harness.paint);
+    harness.End();
+    CHECK_FALSE(harness.Draws().empty());
 }
 
 TEST_CASE("Engine.Recipes.ViewsRecordAndCachedLayerInvalidates", "[engine][recipes]") {

@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include "Animation/Curve.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
 
@@ -11,10 +12,12 @@ struct RingStyle {
     float endRadius = 0.0f;
     float thickness = 0.0f;
     float fadeSeconds = 0.0f;
+    Curve curve = Curve::Linear; // How the radius travels
 };
 
-class RingEffects2D {
+class Rings {
 public:
+    // An invalid style throws invalid_argument.
     void Emit(Float2 position, Color4 color, const RingStyle& style);
     void Update(float deltaSeconds);
     void Clear();

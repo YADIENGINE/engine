@@ -1,4 +1,4 @@
-#include "Fx/SpeedLines.h"
+#include "Graphics/Draw/SpeedLines.h"
 #include <cmath>
 #include <stdexcept>
 #include "Animation/Easing.h"

@@ -33,9 +33,7 @@ void RecipeGame::Update(float realSeconds) {
     if (_transition.Update(realSeconds)) SetScene(_second);
 }
 void RecipeGame::Draw(Painter& paint) const {
-    bool opening = false;
-    const float cover = _transition.Cover(opening);
-    paint.Rect(paint.Bounds(), Fill(WithAlpha(CurtainColor, cover)));
+    paint.Rect(paint.Bounds(), Fill(WithAlpha(CurtainColor, _transition.Cover())));
 }
 std::unique_ptr<Game> CreateGame() {
     GameSettings settings;

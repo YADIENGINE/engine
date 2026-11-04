@@ -4,7 +4,7 @@
 #include "Editor/Api/EditorScene.h"
 #include "Editor/Api/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
-#include "Fx/TimeScale.h"
+#include "Runtime/TimeScale.h"
 #include "Input/InputBindings.h"
 #include "Scene/Scene.h"
 #include "Simulation/Simulation.h"

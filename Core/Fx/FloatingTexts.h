@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "Animation/Curve.h"
 #include "Fx/FxText.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
@@ -11,11 +12,12 @@ struct FloatingTextStyle {
     float duration = 1.0f;
     Float2 velocity{};
     float fadeSeconds = 0.0f;
-    float popSeconds = 0.0f; // zero disables the EaseOutBack entrance
+    float popSeconds = 0.0f; // zero disables the entrance
+    Curve popCurve = Curve::OutBack;
     FxTextStyle text;
 };
 
-class FloatingText2D {
+class FloatingTexts {
 public:
     void Emit(Float2 position, const std::string& text, Color4 color, const FloatingTextStyle& style);
     void Update(float deltaSeconds);

@@ -34,6 +34,7 @@ engine_tests(EngineTests
         CollectionPointerTests.cpp
         DragPointerTests.cpp
         FrameworkTests.cpp
+        FxCueTests.cpp
         FxTests.cpp
         GameOptionsTests.cpp
         GridMenuTests.cpp
@@ -115,6 +116,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/CharacterScene.cpp"
     "${recipeRoot}/CollisionBullets.cpp"
     "${recipeRoot}/FxBurst.cpp"
+    "${recipeRoot}/FxCues.cpp"
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"
     "${recipeRoot}/PopupEffects.cpp"

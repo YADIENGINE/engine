@@ -58,3 +58,11 @@ Use these generated signatures to locate public declarations; open the header fo
 
 Full runtime setup.
 
+
+## `Core/Runtime/TimeScale.h`
+
+- `class TimeScale` — Game time flow: hitstop (brief freeze) and slow motion.
+- `TimeScale`: `void Hitstop(float seconds)` — Time stands still for 'seconds'; the longer of two requests wins.
+- `TimeScale`: `void SlowMo(float seconds, float startScale, float endScale = 1.0f, Curve curve = Curve::Linear)` — Moves from startScale to endScale over 'seconds' real seconds, then returns to normal.
+- `TimeScale`: `void Clear()`
+- `TimeScale`: `[[nodiscard]] float Advance(float realSeconds)` — Converts real duration to game duration; 0 during hitstop.

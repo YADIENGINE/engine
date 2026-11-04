@@ -3,12 +3,12 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include "Fx/CameraEffects2D.h"
+#include "Fx/CameraEffects.h"
 #include "Fx/CameraShot.h"
 #include "Fx/FxQuality.h"
 #include "Fx/FxStage.h"
-#include "Fx/IrisTransition.h"
-#include "Fx/ParticleSystem2D.h"
+#include "Graphics/Draw/IrisTransition.h"
+#include "Fx/ParticleSystem.h"
 #include "Graphics/Text/FontFace.h"
 #include "Tests/PaintHarness.h"
 #include "Utilities/MathUtils.h"
@@ -27,7 +27,7 @@ const FontFace& TestFont() {
 constexpr ParticleEmission Emission{
     .speed = {50.0f, 100.0f}, .lifetime = {0.5f, 1.0f}, .size = {2.0f, 3.0f}, .acceleration = {0.0f, 100.0f}};
 
-constexpr CameraEffectsSettings Camera{.shakeAmplitude = 8.0f,
+constexpr CameraEffectsStyle Camera{.shakeAmplitude = 8.0f,
                                        .shakeFrequency = {80.0f, 60.0f},
                                        .shakeFadeSeconds = 0.2f,
                                        .punchDecay = 8.0f,
@@ -39,7 +39,7 @@ FxStyle TestFx() {
     FxStyle style;
     style.particleCapacity = 50;
     style.toastCapacity = 2;
-    style.particles.emission = Emission;
+    style.particles.soft = {ParticleLayer{.share = 1.0f, .emission = Emission}, ParticleLayer{}};
     style.camera = Camera;
     style.ring = {.duration = 0.5f, .endRadius = 40.0f, .thickness = 3.0f};
     style.flash = {.duration = 0.3f, .opacity = 0.5f};
@@ -51,7 +51,7 @@ FxStyle TestFx() {
 } // namespace
 
 TEST_CASE("Engine.Fx.ParticlesRespectCapacityQualityAndLifetime", "[engine][fx]") {
-    ParticleSystem2D particles({.capacity = 10, .seed = 7U});
+    ParticleSystem particles({.capacity = 10, .seed = 7U});
     particles.Emit({10.0f, 10.0f}, 25, Emission, {.color = Pink});
     CHECK(particles.ActiveCount() == 10);
     particles.Update(1.1f); // Longer than the longest lifetime
@@ -69,7 +69,7 @@ TEST_CASE("Engine.Fx.ParticlesRespectCapacityQualityAndLifetime", "[engine][fx]"
 }
 
 TEST_CASE("Engine.Fx.ParticlesOfBothBlendsDrawInOneBatch", "[engine][fx]") {
-    ParticleSystem2D particles({.capacity = 20, .seed = 3U});
+    ParticleSystem particles({.capacity = 20, .seed = 3U});
     particles.Emit({50.0f, 50.0f}, 5, Emission, {.color = Pink, .shape = ParticleShape::Square});
     particles.Emit(
         {50.0f, 50.0f}, 5, Emission,
@@ -85,7 +85,7 @@ TEST_CASE("Engine.Fx.ParticlesOfBothBlendsDrawInOneBatch", "[engine][fx]") {
 
 TEST_CASE("Engine.Fx.CameraEffectsMoveTheViewAndSettle", "[engine][fx]") {
     const CameraView base{.offset = {200.0f, 100.0f}, .target = {200.0f, 100.0f}};
-    CameraEffects2D camera(Camera);
+    CameraEffects camera(Camera);
     const CameraView still = camera.Apply(base, 1.0f);
     CHECK(still.offset == base.offset);
     CHECK(still.zoom == 1.0f);
@@ -105,12 +105,12 @@ TEST_CASE("Engine.Fx.CameraEffectsMoveTheViewAndSettle", "[engine][fx]") {
     CHECK(punched.ToScreen(focus).x == Approx(base.ToScreen(focus).x).margin(0.05f));
     CHECK(punched.ToScreen(focus).y == Approx(base.ToScreen(focus).y).margin(0.05f));
 
-    CameraEffects2D calm(Camera);
+    CameraEffects calm(Camera);
     calm.SetQuality({.shake = EffectLevel::Off});
     calm.Shake(0.5f);
     CHECK(calm.Apply(base, 0.3f).offset == base.offset);
 
-    CameraEffects2D steady(Camera);
+    CameraEffects steady(Camera);
     steady.SetQuality({.motion = false});
     steady.SetMotion(1.0f, {1.0f, 0.0f});
     steady.Update(0.5f);
@@ -118,17 +118,17 @@ TEST_CASE("Engine.Fx.CameraEffectsMoveTheViewAndSettle", "[engine][fx]") {
 }
 
 TEST_CASE("Engine.Fx.ParticleRotationAndSpinUseClockwiseRadians", "[engine][fx]") {
-    ParticleSystem2D particles({.capacity = 1, .seed = 7U});
+    ParticleSystem particles({.capacity = 1, .seed = 7U});
     float rotation = -1.0f;
     particles.Emit({50.0f, 50.0f}, 1,
                    {.lifetime = {2.0f, 2.0f},
                     .size = {2.0f, 2.0f},
                     .rotation = {Radians(15.0f), Radians(15.0f)},
                     .spin = {Radians(30.0f), Radians(30.0f)}},
-                   {.color = Pink, .draw = [&](Painter& paint, const ParticleDrawData& data) {
-                        rotation = data.rotation;
-                        DrawParticleShape(paint, ParticleShape::Square, data);
-                    }});
+                   {.color = Pink}, [&](Painter& paint, const ParticleDrawData& data) {
+                       rotation = data.rotation;
+                       DrawParticleShape(paint, ParticleShape::Square, data);
+                   });
     particles.Update(0.5f);
     PaintHarness h({400.0f, 200.0f}, 1.0f);
     h.Begin();
@@ -154,7 +154,7 @@ TEST_CASE("Engine.Fx.CameraShotRotationUsesClockwiseRadiansAndWeight", "[engine]
     CHECK(right.x == Approx(Area.Center().x));
     CHECK(right.y == Approx(Area.Center().y + 10.0f));
     CHECK(ShotCamera({.rotation = Radians(90.0f)}, Area, Area).rotation == 0.0f);
-    CHECK(BlendShots({}, shot, 0.5f).rotation == Approx(Pi / 2.0f));
+    CHECK(Mix(CameraShot{}, shot, 0.5f).rotation == Approx(Pi / 2.0f));
 }
 
 TEST_CASE("Engine.Fx.CameraShotsFrameTheirBoundsInsideTheSafeArea", "[engine][fx]") {

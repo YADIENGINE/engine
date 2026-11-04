@@ -19,3 +19,13 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Scene`: `void ShutdownNoThrow() noexcept` — Concrete scene and host destructors use this while their members are still alive.
 - `Scene`: `[[nodiscard]] bool IsShutdown() const`
 - `Scene`: `[[nodiscard]] virtual bool GameTimePaused() const` — Evaluated after UpdateReal; application-level pause can independently freeze game time.
+
+## `Core/Scene/TransitionClock.h`
+
+- `class TransitionClock` — Timing of a scene transition: a curtain closes, holds, then opens.
+- `TransitionClock`: `TransitionClock(float closeSeconds, float holdSeconds, float openSeconds)`
+- `TransitionClock`: `void Start()`
+- `TransitionClock`: `[[nodiscard]] bool Update(float deltaSeconds)` — True once per transition, in the call that reaches the fully closed curtain.
+- `TransitionClock`: `[[nodiscard]] bool Active() const`
+- `TransitionClock`: `[[nodiscard]] float Cover() const` — 0: open, 1: closed.
+- `TransitionClock`: `[[nodiscard]] bool Opening() const` — The curtain is on its way back.

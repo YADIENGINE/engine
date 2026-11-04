@@ -14,7 +14,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | --- | --- | --- | --- |
 | Create a game, factory and GameSettings | `Core/Runtime/Game.h`<br>`Core/Runtime/EntryPoint.h`<br>`Core/Runtime/GameSettings.h` | `Recipes/SceneTransition.md` | `Docs/ProjectSetup.md#new-project` |
 | Configure canvas, window and assets | `Core/Runtime/GameSettings.h`<br>`Core/Graphics/Render/WindowSettings.h` | - | `Docs/AssetsAndPlatforms.md#gamesettings-reference` |
-| Add a scene or fade between scenes | `Core/Scene/Scene.h`<br>`Core/Fx/TransitionClock.h` | `Recipes/SceneTransition.md` | `Docs/Runtime.md#input-and-time-selection` |
+| Add a scene or fade between scenes | `Core/Scene/Scene.h`<br>`Core/Scene/TransitionClock.h` | `Recipes/SceneTransition.md` | `Docs/Runtime.md#input-and-time-selection` |
 | Add, disable or remove a GameObject | `Core/GameObjects/GameObject.h`<br>`Core/GameObjects/ObjectList.h` | `Recipes/SceneObjects.md` | `Docs/Runtime.md#lifecycle` |
 | Draw an animated character or rotating shape | `Core/Graphics/Paint/Painter.h`<br>`Core/Animation/SpringPoint.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Painter.md#shapes` |
 | Draw a curved outline or polygon | `Core/Graphics/Paint/Path.h`<br>`Core/Graphics/Paint/PaintStyle.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Painter.md#shapes` |
@@ -32,14 +32,15 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Choose a theme or make a themed button | `Core/Graphics/Style/Theme.h`<br>`Core/Graphics/Style/ThemePalette.h`<br>`Core/Graphics/Style/NeonArcadeTheme.h`<br>`Core/Graphics/Ui/UiDraw.h`<br>`Core/Graphics/Ui/UiButton.h` | `Recipes/ThemedMenu.md` | `Docs/Graphics/ThemesAndUi.md#themes-and-ui-widgets` |
 | Draw explicit-style neon shapes and UI | `Core/Graphics/Draw/DrawUtils.h`<br>`Core/Graphics/Draw/Neon.h` | - | `Docs/Graphics/Painter.md#helpers-and-theme` |
 | Add menu/play backdrops or a grid | `Core/Graphics/Ui/Backdrop.h`<br>`Core/Graphics/Draw/BackgroundDraw.h` | - | `Docs/Graphics/ThemesAndUi.md#themes-and-ui-widgets` |
+| Name what an event looks like and play it (`fx.Play("player_hit")`), also from an animation's moment | `Core/Fx/FxCue.h`<br>`Core/Fx/FxCueSet.h`<br>`Core/Fx/FxStage.h` | `Recipes/FxCues.md` | `Docs/Graphics/Effects.md#cues` |
 | Emit a particle burst, shake and flash | `Core/Fx/FxStage.h`<br>`Core/Fx/FxStyle.h`<br>`Core/Fx/FxQuality.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#effect-stage-and-particle-recipes` |
-| Customize particles or trails | `Core/Fx/ParticleSystem2D.h`<br>`Core/Fx/ParticleRecipes.h`<br>`Core/Graphics/Draw/ParticleDraw.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#graphics-and-fx` |
-| Frame a cinematic camera or transform world drawing | `Core/Utilities/CameraView.h`<br>`Core/Fx/CameraShot.h`<br>`Core/Fx/CameraEffects2D.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
-| Add pop text, toast, banner or speed lines | `Core/Fx/FloatingText2D.h`<br>`Core/Fx/FxText.h`<br>`Core/Fx/OverlayEffects2D.h`<br>`Core/Fx/SpeedLines.h` | - | `Docs/Graphics/Effects.md#graphics-and-fx` |
+| Customize particles or trails | `Core/Fx/ParticleSystem.h`<br>`Core/Fx/ParticleRecipes.h`<br>`Core/Graphics/Draw/ParticleDraw.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#graphics-and-fx` |
+| Frame a cinematic camera or transform world drawing | `Core/Utilities/CameraView.h`<br>`Core/Fx/CameraShot.h`<br>`Core/Fx/CameraEffects.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
+| Add pop text, toast, banner or speed lines | `Core/Fx/FloatingTexts.h`<br>`Core/Fx/FxText.h`<br>`Core/Fx/Announcements.h`<br>`Core/Graphics/Draw/SpeedLines.h` | - | `Docs/Graphics/Effects.md#graphics-and-fx` |
 | Animate arbitrary popup drawing or emit numeric feedback | `Core/Modules/Popup/Popup.h`<br>`Core/Modules/NumberPopup/NumberPopup.h` | `Recipes/PopupEffects.md` | `Docs/Modules/Popup/README.md`<br>`Docs/Modules/NumberPopup/README.md` |
-| Add rings, shockwaves, glitch or a pulse | `Core/Fx/RingEffects2D.h`<br>`Core/Fx/ShockwaveEffects2D.h`<br>`Core/Fx/GlitchEffects2D.h`<br>`Core/Fx/PulseOverlay2D.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
-| Draw an iris transition or shatter geometry | `Core/Fx/IrisTransition.h`<br>`Core/Fx/ShatterPattern.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
-| Pause gameplay, add hitstop or slow motion | `Core/Fx/TimeScale.h`<br>`Core/Scene/Scene.h` | - | `Docs/Runtime.md#input-and-time-selection` |
+| Add rings, shockwaves, a flash, glitch or a pulse | `Core/Fx/ScreenFlash.h`<br>`Core/Fx/Rings.h`<br>`Core/Fx/Shockwaves.h`<br>`Core/Fx/ScreenGlitch.h`<br>`Core/Fx/PulseOverlay.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
+| Draw an iris transition or shatter geometry | `Core/Graphics/Draw/IrisTransition.h`<br>`Core/Utilities/ShatterPattern.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
+| Pause gameplay, add hitstop or slow motion | `Core/Runtime/TimeScale.h`<br>`Core/Scene/Scene.h` | - | `Docs/Runtime.md#input-and-time-selection` |
 | Write gameplay in fixed steps with replay | `Core/Simulation/Simulation.h`<br>`Core/Simulation/SimulationRunner.h`<br>`Core/Simulation/StepSmoothed.h`<br>`Core/Simulation/SimulationRegistry.h`<br>`Editor/Api/HostedSimulation.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#writing-a-simulation` |
 | Bind keys to per-player actions | `Core/Input/InputBindings.h`<br>`Core/Simulation/PlayerInput.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#input-and-tapes` |
 | Test gameplay without a window (`sim run`), or check a replay (`sim verify`, `sim diverge`) | `Tools/commands/sim.py`<br>`Core/Simulation/Scenario.h`<br>`Core/Simulation/ReplayCheck.h`<br>`Core/Simulation/InputTape.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#scenarios` |
@@ -65,7 +66,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Archive run JSON or attach runtime context | `Core/Modules/RunTracking/RunTracking.h` | - | `Docs/Modules/RunTracking/README.md#public-api` |
 | Record performance counters and reports | `Core/Modules/Profiler/Profiler.h`<br>`Core/Utilities/FrameObserver.h`<br>`Core/Runtime/FrameExecutionSettings.h`<br>`Core/Graphics/Render/RenderStats.h` | - | `Docs/Modules/Profiler/README.md#recording` |
 | Apply stat modifiers and timed effects | `Core/Gameplay/StatSheet.h`<br>`Core/Gameplay/TimedEffectSet.h` | - | `Docs/GameplayHelpers.md#modifier-and-timed-effect-example` |
-| Track tiered goals or delayed pickup credit | `Core/Progress/TieredProgress.h`<br>`Core/Fx/CollectFlights.h` | - | `Docs/GameplayHelpers.md#gameplay-frameworks` |
+| Track tiered goals or delayed pickup credit | `Core/Progress/TieredProgress.h`<br>`Core/Progress/CollectFlights.h` | - | `Docs/GameplayHelpers.md#gameplay-frameworks` |
 | Pick weighted values or step settings choices | `Core/Utilities/WeightedPick.h`<br>`Core/Utilities/ChoiceList.h`<br>`Core/Utilities/EnumTable.h` | - | `Docs/GameplayHelpers.md#gameplay-frameworks` |
 | Iterate UTF-8 characters | `Core/Utilities/Utf8.h` | - | `Docs/Graphics/Painter.md#text` |
 | Open a URL or copy text to clipboard | `Core/Platform/Shell.h` | - | `Docs/AssetsAndPlatforms.md#platform-responsibilities` |

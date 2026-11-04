@@ -1,6 +1,6 @@
 Set up a game factory and queue a scene change behind a fade.
 
-APIs: Core/Runtime/Game.h, Core/Runtime/EntryPoint.h, Core/Fx/TransitionClock.h; scene: AgentDocs/Recipes/Code/SceneTransition.h.
+APIs: Core/Runtime/Game.h, Core/Runtime/EntryPoint.h, Core/Scene/TransitionClock.h; scene: AgentDocs/Recipes/Code/SceneTransition.h.
 
 Use `Recipes/SceneObjects.md` for RecipeScene; compile this factory once in the game target created by engine_add_game.
 
@@ -8,7 +8,7 @@ Use `Recipes/SceneObjects.md` for RecipeScene; compile this factory once in the 
 ```cpp
 #pragma once
 #include "AgentDocs/Recipes/Code/SceneTransition.h"
-#include "Fx/TransitionClock.h"
+#include "Scene/TransitionClock.h"
 #include "Runtime/Game.h"
 
 class RecipeGame final : public Game {
@@ -62,9 +62,7 @@ void RecipeGame::Update(float realSeconds) {
     if (_transition.Update(realSeconds)) SetScene(_second);
 }
 void RecipeGame::Draw(Painter& paint) const {
-    bool opening = false;
-    const float cover = _transition.Cover(opening);
-    paint.Rect(paint.Bounds(), Fill(WithAlpha(CurtainColor, cover)));
+    paint.Rect(paint.Bounds(), Fill(WithAlpha(CurtainColor, _transition.Cover())));
 }
 std::unique_ptr<Game> CreateGame() {
     GameSettings settings;

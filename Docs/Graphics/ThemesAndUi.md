@@ -30,9 +30,10 @@ so existing games keep compiling.
 `GraphicsSettings` holds the player's choices, set by `Game::SetGraphics` (persisted as engine options) and split in
 two. `render` (`RenderQuality`) is applied by the Painter: reduced glow weakens halos and Off disables them,
 `DrawScanlines` is skipped when background effects are off. `fx` (`Fx/FxQuality.h`) is the current
-`Game::Effects()`; scenes hand it to their Fx with `SetQuality` (`FxStage` forwards it): `ParticleSystem2D::Emit`
-scales counts; `CameraEffects2D` scales shake, kick and punch and ignores `SetMotion` when motion effects are off;
-`OverlayEffects2D` flashes and `GlitchEffects2D` are skipped when flashes are off. There is no global quality state. `GraphicsSettings::renderHeight` caps the upscaled
+`Game::Effects()`; scenes hand it to their Fx with `SetQuality` (`FxStage` forwards it): `ParticleSystem::Emit`
+scales counts; `CameraEffects` scales shake, kick and punch and ignores `SetMotion` when motion effects are off;
+`ScreenFlash` and `ScreenGlitch` are skipped when flashes are off, and then `PulseOverlay` does not beat and
+`SlowMotionOverlay` shows no tint; with motion effects off it shows no trails. There is no global quality state. `GraphicsSettings::renderHeight` caps the upscaled
 canvas texture (render resolution).
 
 `Graphics/Draw/BackgroundDraw.h` provides `DrawGrid2D`, `DrawScanlines`, `DrawVignette` and `BackdropStyle` (scrolling

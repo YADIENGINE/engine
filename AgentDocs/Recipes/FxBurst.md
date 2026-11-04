@@ -27,7 +27,7 @@ void TriggerRecipeFx(FxStage& fx, Float2 at) {
 void DrawRecipeFx(Painter& paint, const FxStage& fx, const FloatRect& viewArea) {
     {
         auto clip = paint.Clip(viewArea);
-        auto camera = paint.Transform(fx.WorldCamera(static_cast<float>(paint.Time())).Transform());
+        auto camera = paint.Transform(fx.WorldCamera(paint).Transform());
         // Draw production world objects here, before the world effects.
         fx.DrawWorldLayer(paint);
     }

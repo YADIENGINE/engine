@@ -2,8 +2,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <optional>
-#include <random>
 #include <vector>
 #include "Fx/FxQuality.h"
 #include "Graphics/Draw/ParticleDraw.h"
@@ -11,6 +9,7 @@
 #include "Utilities/Float2.h"
 #include "Utilities/FloatRange.h"
 #include "Utilities/MathUtils.h"
+#include "Utilities/Rng.h"
 
 class Painter;
 
@@ -25,9 +24,10 @@ struct ParticleEmission {
     float direction = 0.0f; // radians, clockwise
     float spread = 2.0f * Pi;
     Float2 acceleration{}; // canvas units/second squared
-    float drag = 0.0f;
+    float drag = 0.0f;     // Share of velocity lost per second, whatever the frame rate
 };
 
+// Plain constant data, so a theme can hold it.
 struct ParticleAppearance {
     Color4 color{255, 255, 255, 255};
     ParticleShape shape = ParticleShape::Circle;
@@ -38,24 +38,28 @@ struct ParticleAppearance {
     float sparkTrailSeconds = 0.0f;
     float sparkThickness = 1.0f; // fraction of initial particle size
     float sparkMinThickness = 0.0f;
-    // Custom drawing instead of 'shape' (the blend is already set). Draw only: do not change this system.
-    // Captured texture handles/references must outlive the emitted particles.
-    std::function<void(Painter&, const ParticleDrawData&)> draw{};
 };
+
+// Custom drawing instead of the appearance's shape (the blend is already set). Draw only: do not change the system.
+// Captured texture handles/references must outlive the emitted particles.
+using ParticleCustomDraw = std::function<void(Painter&, const ParticleDrawData&)>;
 
 struct ParticleSystemSettings {
     std::size_t capacity;
-    std::optional<std::uint32_t> seed{};
+    // A fixed default: the same emissions look the same on every run, which frame checks rely on.
+    std::uint64_t seed = 1;
 };
 
-class ParticleSystem2D {
+// Its generator is its own, so visual randomness cannot move a simulation's sequence.
+class ParticleSystem {
 public:
-    explicit ParticleSystem2D(const ParticleSystemSettings& settings);
+    explicit ParticleSystem(const ParticleSystemSettings& settings);
     // What Emit accepts; Emit throws invalid_argument otherwise.
     [[nodiscard]] static bool IsValid(const ParticleEmission& emission, const ParticleAppearance& appearance);
     // Emit makes particlePercent of the requested particles.
     void SetQuality(const FxQuality& quality) { _quality = quality; }
-    void Emit(Float2 position, int count, const ParticleEmission& emission, const ParticleAppearance& appearance);
+    void Emit(Float2 position, int count, const ParticleEmission& emission, const ParticleAppearance& appearance,
+              const ParticleCustomDraw& draw = {});
     void Update(float deltaSeconds);
     void Clear();
     // Alpha particles first, then additive ones on top.
@@ -74,10 +78,11 @@ private:
         Float2 acceleration;
         float drag;
         ParticleAppearance appearance;
+        ParticleCustomDraw draw;
     };
     void DrawPass(Painter& paint, ParticleBlend blend) const;
     std::size_t _capacity;
     FxQuality _quality;
     std::vector<Particle> _particles;
-    std::mt19937 _rng;
+    Rng _rng;
 };

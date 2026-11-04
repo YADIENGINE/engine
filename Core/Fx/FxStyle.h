@@ -1,33 +1,25 @@
 #pragma once
 #include <cstddef>
-#include "Fx/CameraEffects2D.h"
-#include "Fx/FloatingText2D.h"
-#include "Fx/GlitchEffects2D.h"
-#include "Fx/OverlayEffects2D.h"
+#include "Fx/Announcements.h"
+#include "Fx/CameraEffects.h"
+#include "Fx/FloatingTexts.h"
 #include "Fx/ParticleRecipes.h"
-#include "Fx/PulseOverlay2D.h"
-#include "Fx/RingEffects2D.h"
-#include "Fx/ShockwaveEffects2D.h"
-#include "Fx/SpeedLines.h"
+#include "Fx/PulseOverlay.h"
+#include "Fx/Rings.h"
+#include "Fx/ScreenFlash.h"
+#include "Fx/ScreenGlitch.h"
+#include "Fx/Shockwaves.h"
+#include "Fx/SlowMotionOverlay.h"
+#include "Graphics/Draw/SpeedLines.h"
 #include "Utilities/Color4.h"
-
-// Slow motion: tints the area, darkens the edges and streams slow light trails; fades after 'fadeStart' of its
-// duration.
-struct SlowMotionStyle {
-    float fadeStart = 1.0f;
-    float tintAlpha = 0.0f;
-    float vignetteSize = 0.0f;
-    float vignetteAlpha = 0.0f;
-    SpeedLineStyle lines;
-};
 
 // All FxStage effect styles, supplied by the theme (Theme::fx) or game. Scenes using individual systems directly
 // (editor scenes, showcases) read the same styles here.
 struct FxStyle {
     std::size_t particleCapacity = 0;
     std::size_t toastCapacity = 0;
-    ParticleRecipeTuning particles;
-    CameraEffectsSettings camera;
+    ParticleRecipes particles;
+    CameraEffectsStyle camera;
     FloatingTextStyle text;      // FxStage fills maxWidth with its area width
     float textPopSeconds = 0.0f; // PopText entrance
     RingStyle ring;

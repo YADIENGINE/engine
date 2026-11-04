@@ -143,6 +143,7 @@ What can be animated, and how a position is checked.
 - `constexpr float Staggered(float t, float delay, float index, float step, float seconds)` — Staggered items: item 'index' starts at 'delay + index × step' and rises from 0 to 1 over 'seconds'.
 - `constexpr bool Crossed(float before, float after, float moment)` — Whether advancing from 'before' to 'after' crossed 'moment' (inclusive, once).
 - `constexpr float CountDown(float value, float amount)` — Decreases 'value' by 'amount', stopping at 0.
+- `inline float DecayFactor(float rate, float seconds)` — What remains of a value decaying at 'rate' per second after 'seconds'.
 - `inline bool BlinkOff(float remaining, float threshold, float period)` — Blinks every 'period' during the last 'threshold' seconds of a duration; true in the dim half.
 
 ## `Core/Animation/PoseFields.h`

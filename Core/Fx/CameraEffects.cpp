@@ -1,10 +1,10 @@
-#include "Fx/CameraEffects2D.h"
+#include "Fx/CameraEffects.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include "Animation/Easing.h"
 
-CameraEffects2D::CameraEffects2D(const CameraEffectsSettings& settings)
+CameraEffects::CameraEffects(const CameraEffectsStyle& settings)
     : _settings(settings) {
     for (float value :
          {settings.shakeAmplitude, settings.shakeFrequency.x, settings.shakeFrequency.y, settings.shakeFadeSeconds,
@@ -17,59 +17,54 @@ CameraEffects2D::CameraEffects2D(const CameraEffectsSettings& settings)
     }
 }
 
-void CameraEffects2D::Shake(float seconds) {
+void CameraEffects::Shake(float seconds) {
     if (!std::isfinite(seconds) || seconds <= 0.0f) throw std::invalid_argument("Shake duration must be positive");
     _shakeLife = std::max(_shakeLife, seconds);
 }
 
-void CameraEffects2D::Punch(float amount, std::optional<Float2> focus) {
+void CameraEffects::Punch(float amount, std::optional<Float2> focus) {
     if (!std::isfinite(amount) || amount < 0.0f) throw std::invalid_argument("Punch amount must be nonnegative");
     _punch = std::max(_punch, amount);
     _punchFocus = focus;
 }
 
-void CameraEffects2D::Kick(Float2 direction) {
-    _kickVelocity.x += direction.x * _settings.kickImpulse;
-    _kickVelocity.y += direction.y * _settings.kickImpulse;
+void CameraEffects::Kick(Float2 direction) {
+    _kick.velocity.x += direction.x * _settings.kickImpulse;
+    _kick.velocity.y += direction.y * _settings.kickImpulse;
 }
 
-void CameraEffects2D::SetMotion(float intensity, Float2 direction) {
+void CameraEffects::SetMotion(float intensity, Float2 direction) {
     // With motion effects off the camera stays still at speed (and the speed lines that follow it fade).
     _motionTarget = _quality.motion ? Clamp01(intensity) : 0.0f;
     _motionLeadTarget = {direction.x * _motionTarget, direction.y * _motionTarget};
 }
 
-void CameraEffects2D::Update(float deltaSeconds) {
+void CameraEffects::Update(float deltaSeconds) {
     if (!(deltaSeconds > 0.0f) || !std::isfinite(deltaSeconds)) return;
     _shakeLife = CountDown(_shakeLife, deltaSeconds);
-    const float step = std::min(deltaSeconds, _settings.maxStep);
-    _punch -= _punch * std::min(1.0f, _settings.punchDecay * step);
-    _kickVelocity.x += (-_settings.kickStiffness * _kickOffset.x - _settings.kickDamping * _kickVelocity.x) * step;
-    _kickVelocity.y += (-_settings.kickStiffness * _kickOffset.y - _settings.kickDamping * _kickVelocity.y) * step;
-    _kickOffset.x += _kickVelocity.x * step;
-    _kickOffset.y += _kickVelocity.y * step;
+    _punch *= DecayFactor(_settings.punchDecay, deltaSeconds);
+    _kick.Follow({}, deltaSeconds, _settings.kickStiffness, _settings.kickDamping, _settings.maxStep);
     const float blend =
-        _settings.motionBlendSpeed > 0.0f ? std::min(1.0f, _settings.motionBlendSpeed * deltaSeconds) : 1.0f;
+        _settings.motionBlendSpeed > 0.0f ? 1.0f - DecayFactor(_settings.motionBlendSpeed, deltaSeconds) : 1.0f;
     _motion += (_motionTarget - _motion) * blend;
     const float lead =
-        _settings.motionLeadSpeed > 0.0f ? std::min(1.0f, _settings.motionLeadSpeed * deltaSeconds) : 1.0f;
+        _settings.motionLeadSpeed > 0.0f ? 1.0f - DecayFactor(_settings.motionLeadSpeed, deltaSeconds) : 1.0f;
     _motionLead.x += (_motionLeadTarget.x * _settings.motionLeadDistance - _motionLead.x) * lead;
     _motionLead.y += (_motionLeadTarget.y * _settings.motionLeadDistance - _motionLead.y) * lead;
 }
 
-void CameraEffects2D::Clear() {
+void CameraEffects::Clear() {
     _shakeLife = 0.0f;
     _punch = 0.0f;
     _punchFocus.reset();
-    _kickOffset = {};
-    _kickVelocity = {};
+    _kick = {};
     _motion = 0.0f;
     _motionTarget = 0.0f;
     _motionLead = {};
     _motionLeadTarget = {};
 }
 
-CameraView CameraEffects2D::Apply(const CameraView& base, float timeSeconds) const {
+CameraView CameraEffects::Apply(const CameraView& base, float timeSeconds) const {
     CameraView camera = base;
     if (_punchFocus) {
         camera.offset = base.ToScreen(*_punchFocus);
@@ -85,8 +80,8 @@ CameraView CameraEffects2D::Apply(const CameraView& base, float timeSeconds) con
         shake = {amplitude * std::sin(timeSeconds * _settings.shakeFrequency.x),
                  amplitude * std::cos(timeSeconds * _settings.shakeFrequency.y)};
     }
-    camera.offset.x += (shake.x + _kickOffset.x) * scale - _motionLead.x;
-    camera.offset.y += (shake.y + _kickOffset.y) * scale - _motionLead.y;
+    camera.offset.x += (shake.x + _kick.position.x) * scale - _motionLead.x;
+    camera.offset.y += (shake.y + _kick.position.y) * scale - _motionLead.y;
     camera.zoom *= 1.0f + _punch * scale - _settings.motionZoomOut * _motion;
     return camera;
 }

@@ -39,7 +39,7 @@ class BoundaryTests(unittest.TestCase):
                    '#include "Tuning/Tuning.h"\n#include "Simulation/Rules.h"\n#include "Animation/Timeline.h"\n'
                    '#include "Animation/Easing.h"\n#include <vector>\n')
         self.assertEqual(self.check(), [])
-        for include in ('"Physics/Debug/ColliderDraw.h"', '"Graphics/Paint/Painter.h"', '"Audio/AudioSystem.h"', '"Fx/TimeScale.h"', "<random>", "<chrono>",
+        for include in ('"Physics/Debug/ColliderDraw.h"', '"Graphics/Paint/Painter.h"', '"Audio/AudioSystem.h"', '"Runtime/TimeScale.h"', "<random>", "<chrono>",
                         "<raylib.h>", '"Scene/Scene.h"'):
             with self.subTest(include=include):
                 self.write("Game/Simulation/Rules.cpp", f"#include {include}\n")

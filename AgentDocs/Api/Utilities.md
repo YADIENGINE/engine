@@ -176,6 +176,33 @@ Selectable value lists for settings screens (scheme, FPS limit, language ...): r
 - `Rng`: `[[nodiscard]] constexpr std::uint64_t State() const` — The whole generator state, for state hashing and dumps.
 - `Rng`: `[[nodiscard]] constexpr std::uint64_t Increment() const`
 
+## `Core/Utilities/ShatterPattern.h`
+
+- `struct ShatterShard` — Fracture pattern of a rectangle (glass, screen): each seed's shard contains the rectangle's points nearest to it (Voronoi).
+- `ShatterShard`: `std::vector<Float2> outline` — Convex, corners in order; empty for a seed outside the rectangle or a duplicate
+- `ShatterShard`: `Float2 seed`
+- `ShatterShard`: `Float2 center` — Centroid
+- `ShatterShard`: `float area = 0.0f`
+- `ShatterShard`: `float crackedAt = 0.0f` — When its first boundary crack starts opening (Spread)
+- `ShatterShard`: `float freedAt = 0.0f` — When all its cracks are open: the shard is free (Spread)
+- `struct ShatterCrack`
+- `ShatterCrack`: `Float2 from` — After Spread: the end where the crack starts opening
+- `ShatterCrack`: `Float2 to`
+- `ShatterCrack`: `float length = 0.0f`
+- `ShatterCrack`: `int left = 0` — Indices of the two shards it separates
+- `ShatterCrack`: `int right = 0`
+- `ShatterCrack`: `float start = 0.0f` — When opening starts at 'from' (Spread)
+- `ShatterCrack`: `float end = 0.0f` — When it reaches 'to'
+- `struct CrackSource` — Source of a crack wave: starts from 'point' at 'time'.
+- `CrackSource`: `Float2 point`
+- `CrackSource`: `float time = 0.0f`
+- `class ShatterPattern`
+- `ShatterPattern`: `ShatterPattern(const Rect& bounds, std::span<const Float2> seeds)` — Shard indices match seed indices.
+- `ShatterPattern`: `void Spread(std::span<const CrackSource> sources, float speed)` — Wave spreading from sources at 'speed' (units/s, > 0): each crack starts opening at the end reached first, then advances to its other end at the same speed.
+- `ShatterPattern`: `[[nodiscard]] const std::vector<ShatterShard>& Shards() const`
+- `ShatterPattern`: `[[nodiscard]] const std::vector<ShatterCrack>& Cracks() const`
+- `ShatterPattern`: `[[nodiscard]] int ShardAt(Float2 point) const` — Shard containing 'point' (the nearest seed's); -1 if there are no shards.
+
 ## `Core/Utilities/UiTransform.h`
 
 - `class UiTransform` — Centered, aspect-preserving source-to-target mapping.

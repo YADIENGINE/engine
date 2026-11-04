@@ -40,7 +40,7 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | `Graphics/Style` | `Theme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
 | `Graphics/Ui` | Themed widgets (`DrawUi*`, `UiButton`, `Backdrop`) | `Style`, `Draw` |
 
-Particle shape drawing is shared by `Fx/ParticleSystem2D` and static editor scenes through `Graphics/Draw/ParticleDraw`; it
+Particle shape drawing is shared by `Fx/ParticleSystem` and static editor scenes through `Graphics/Draw/ParticleDraw`; it
 accepts explicit pose/style and never reads a theme.
 
 The render migration is complete (`Docs/Design/Rendering.md` → R13). All public headers use the `.h` extension.
@@ -80,7 +80,7 @@ Game code that uses several components can include a focused umbrella header:
 
 | Header | Public components |
 | --- | --- |
-| `Fx/FxImport.h` | FX stage, particle recipes, particles, floating text, rings, camera effects, overlays, speed lines, iris drawing |
+| `Fx/FxImport.h` | FX stage, cues, particle recipes, particles, floating text, rings, shockwaves, flash, glitch, pulse, announcements, camera effects, speed lines, iris drawing |
 | `Runtime/RuntimeImport.h` | Game, GameSettings, GameObject, Scene |
 
 These are explicit include lists, not effect registration or object creation. Add a new public component's header to the
@@ -92,7 +92,7 @@ Include `Utilities/Float2.h` for vector operations (`Length`, `Distance`, `Dot`,
 `Perpendicular`, `Float2::FromAngle`) and the focused `.h` drawing header for each helper.
 
 Specific headers remain supported and should be used inside Engine and by headless consumers. In particular, include
-`Fx/TimeScale.h`, `Fx/TransitionClock.h`, `Scene/Scene.h`, or `GameObjects/GameObject.h` directly when using only those
+`Runtime/TimeScale.h`, `Scene/TransitionClock.h`, `Scene/Scene.h`, or `GameObjects/GameObject.h` directly when using only those
 components without raylib. Input has explicit headless public headers (`Input.h`, `InputNavigation.h`,
 `DragPointer.h`, `CollectionPointer.h`); device sampling and gesture implementation stay private in
 `Input/Internals/`. See [Input](Input.md). There is no global EngineImport header.

@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <utility>
-#include "Fx/TimeScale.h"
+#include "Runtime/TimeScale.h"
 #include "Input/InputBindings.h"
 #include "Scene/Scene.h"
 #include "Simulation/Simulation.h"

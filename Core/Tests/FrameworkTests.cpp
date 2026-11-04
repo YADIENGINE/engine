@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include "Tests/Support/TempDirectory.h"
-#include "Fx/CollectFlights.h"
+#include "Progress/CollectFlights.h"
 #include "Gameplay/StatSheet.h"
 #include "Gameplay/TimedEffectSet.h"
 #include "Modules/Persistence/Persistence.h"

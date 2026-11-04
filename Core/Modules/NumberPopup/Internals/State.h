@@ -45,7 +45,7 @@ public:
     static void DrawEntry(Painter& paint, const PopupFrame& frame, const Entry& entry);
 
     Popup popups;
-    ParticleSystem2D particles;
+    ParticleSystem particles;
     std::mt19937 rng;
     FxQuality quality;
     std::vector<std::shared_ptr<Entry>> entries;

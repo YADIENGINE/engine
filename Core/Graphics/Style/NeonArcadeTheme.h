@@ -21,48 +21,71 @@ inline constexpr float NeonArcadeVignetteSize = 102.0f;
 inline constexpr Color4 NeonArcadeWhite{255, 255, 255, 255};
 
 // Effects: fast, bright, short-lived particles; strong but quickly fading camera punches.
+inline constexpr ParticleEmission NeonArcadeEmission{.speed = {60.0f, 220.0f},
+                                                     .lifetime = {0.35f, 0.7f},
+                                                     .size = {2.0f, 4.5f},
+                                                     .rotation = {0.0f, Radians(360.0f)},
+                                                     .spin = {Radians(-540.0f), Radians(540.0f)},
+                                                     .drag = 3.0f};
+
+// One burst layer: the shared emission at a speed, under a gravity (negative: rising).
+[[nodiscard]] constexpr ParticleLayer NeonArcadeLayer(float share, ParticleShape shape, float speedScale, float gravity,
+                                                      ParticleBlend blend) {
+    ParticleLayer layer{.share = share, .emission = NeonArcadeEmission};
+    layer.emission.speed = {NeonArcadeEmission.speed.min * speedScale, NeonArcadeEmission.speed.max * speedScale};
+    layer.emission.acceleration = {0.0f, gravity};
+    layer.appearance = {.shape = shape,
+                        .blend = blend,
+                        .endSizeScale = 0.5f,
+                        .sizeScale = shape == ParticleShape::Star ? 1.8f : shape == ParticleShape::Pixel ? 1.4f : 1.0f,
+                        .sparkTrailSeconds = 0.045f,
+                        .sparkThickness = 0.7f,
+                        .sparkMinThickness = 1.0f};
+    return layer;
+}
+[[nodiscard]] constexpr ParticleLayer NeonArcadeDash() {
+    ParticleLayer layer = NeonArcadeLayer(1.0f, ParticleShape::Spark, 1.4f, 0.0f, ParticleBlend::Additive);
+    layer.emission.spread = 0.7f;
+    return layer;
+}
+
+inline constexpr float NeonArcadeSparkSpeed = 1.7f;
+inline constexpr float NeonArcadeSparkShare = 0.35f;
+
+inline constexpr ParticleRecipes NeonArcadeParticles{
+    .soft = {NeonArcadeLayer(1.0f, ParticleShape::Circle, 1.0f, 0.0f, ParticleBlend::Alpha),
+             NeonArcadeLayer(NeonArcadeSparkShare, ParticleShape::Spark, NeonArcadeSparkSpeed, 0.0f,
+                             ParticleBlend::Additive)},
+    .spark = {NeonArcadeLayer(1.0f, ParticleShape::Spark, NeonArcadeSparkSpeed, 0.0f, ParticleBlend::Additive),
+              ParticleLayer{}},
+    .sparkle = {NeonArcadeLayer(1.0f, ParticleShape::Star, 0.6f, -50.0f, ParticleBlend::Additive),
+                NeonArcadeLayer(0.5f, ParticleShape::Circle, 1.0f, 0.0f, ParticleBlend::Alpha)},
+    .debris = {NeonArcadeLayer(1.0f, ParticleShape::Square, 1.3f, 650.0f, ParticleBlend::Alpha),
+               NeonArcadeLayer(NeonArcadeSparkShare, ParticleShape::Spark, NeonArcadeSparkSpeed, 0.0f,
+                               ParticleBlend::Additive)},
+    .pixel = {NeonArcadeLayer(1.0f, ParticleShape::Pixel, 1.0f, 450.0f, ParticleBlend::Alpha), ParticleLayer{}},
+    .confetti = {NeonArcadeLayer(1.0f, ParticleShape::Square, 0.8f, 140.0f, ParticleBlend::Alpha), ParticleLayer{}},
+    .trail = NeonArcadeLayer(1.0f, ParticleShape::Circle, 0.15f, 0.0f, ParticleBlend::Additive),
+    .trailCount = 3,
+    .dash = NeonArcadeDash(),
+    .dashCount = 3,
+    .steam = {.share = 1.0f,
+              .emission = {.speed = {12.0f, 42.0f},
+                           .lifetime = {0.35f, 0.65f},
+                           .size = {1.5f, 3.0f},
+                           .direction = -Pi * 0.5f,
+                           .spread = Pi * 0.65f,
+                           .acceleration = {0.0f, -18.0f},
+                           .drag = 1.5f},
+              .appearance = {.blend = ParticleBlend::Additive, .endSizeScale = 2.5f}},
+    .steamCount = 2,
+    .steamWhiten = 0.65f,
+    .steamOpacity = 0.6f};
+
 inline constexpr FxStyle NeonArcadeFx{
     .particleCapacity = 600,
     .toastCapacity = 3,
-    .particles = {.emission = {.speed = {60.0f, 220.0f},
-                               .lifetime = {0.35f, 0.7f},
-                               .size = {2.0f, 4.5f},
-                               .rotation = {0.0f, Radians(360.0f)},
-                               .spin = {Radians(-540.0f), Radians(540.0f)},
-                               .drag = 3.0f},
-                  .endSizeScale = 0.5f,
-                  .sparkTrailSeconds = 0.045f,
-                  .sparkThickness = 0.7f,
-                  .sparkMinThickness = 1.0f,
-                  .starScale = 1.8f,
-                  .pixelScale = 1.4f,
-                  .sparkSpeed = 1.7f,
-                  .softSparkRatio = 0.35f,
-                  .sparkleSpeed = 0.6f,
-                  .sparkleGravity = -50.0f,
-                  .sparkleSoftRatio = 0.5f,
-                  .debrisSpeed = 1.3f,
-                  .debrisGravity = 650.0f,
-                  .debrisSparkRatio = 0.35f,
-                  .pixelGravity = 450.0f,
-                  .confettiSpeed = 0.8f,
-                  .confettiGravity = 140.0f,
-                  .trailCount = 3,
-                  .trailSpeed = 0.15f,
-                  .dashCount = 3,
-                  .dashSpeed = 1.4f,
-                  .dashSpread = 0.7f,
-                  .steamCount = 2,
-                  .steam = {.speed = {12.0f, 42.0f},
-                            .lifetime = {0.35f, 0.65f},
-                            .size = {1.5f, 3.0f},
-                            .direction = -Pi * 0.5f,
-                            .spread = Pi * 0.65f,
-                            .acceleration = {0.0f, -18.0f},
-                            .drag = 1.5f},
-                  .steamEndSizeScale = 2.5f,
-                  .steamWhiten = 0.65f,
-                  .steamOpacity = 0.6f},
+    .particles = NeonArcadeParticles,
     .camera = {.shakeAmplitude = 7.0f,
                .shakeFrequency = {83.0f, 67.0f},
                .shakeFadeSeconds = 0.25f,

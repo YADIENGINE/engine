@@ -1,27 +1,31 @@
-#include "Fx/GlitchEffects2D.h"
+#include "Fx/ScreenGlitch.h"
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 #include "Animation/Easing.h"
 #include "Graphics/Paint/Painter.h"
 #include "Utilities/MathUtils.h"
 
-GlitchEffects2D::GlitchEffects2D(const GlitchStyle& style)
-    : _style(style) {}
-
-void GlitchEffects2D::Trigger(float seconds) {
-    if (!std::isfinite(seconds) || !_quality.flashes) return;
+void ScreenGlitch::Trigger(float seconds, const GlitchStyle& style) {
+    if (!std::isfinite(seconds) || seconds <= 0.0f || !std::isfinite(style.fps) || style.fps <= 0.0f ||
+        style.bands < 0 || style.tears < 0 || style.noise < 0 || style.noiseSize <= 0 ||
+        style.minHeight > style.maxHeight || style.tearMinHeight > style.tearMaxHeight) {
+        throw std::invalid_argument("Invalid glitch");
+    }
+    if (!_quality.flashes) return;
+    _style = style;
     _duration = std::max(seconds, _life);
     _life = _duration;
 }
-void GlitchEffects2D::Update(float deltaSeconds) {
+void ScreenGlitch::Update(float deltaSeconds) {
     if (deltaSeconds > 0.0f && std::isfinite(deltaSeconds)) _life = CountDown(_life, deltaSeconds);
 }
-void GlitchEffects2D::Clear() {
+void ScreenGlitch::Clear() {
     _life = 0.0f;
     _duration = 0.0f;
 }
 
-void GlitchEffects2D::Draw(Painter& paint, const FloatRect& area, double timeSeconds) const {
+void ScreenGlitch::Draw(Painter& paint, const FloatRect& area, double timeSeconds) const {
     if (_life <= 0.0f || _duration <= 0.0f || area.Empty()) return;
     const float strength = _life / _duration;
     const auto frame = static_cast<unsigned>(timeSeconds * _style.fps);

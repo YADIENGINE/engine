@@ -201,6 +201,10 @@ another `Play` keeps a frozen pose, because no clip could give that pose again. 
 **Not here.** There is no state graph: the game's rules decide, and they already live in the simulation. There are no layers: two animators can each
 give part of a pose, and the game combines them. There is no playback speed on steps.
 
+A pose can be more than a character: `CameraShot` is one, so a clip of it is an authored camera move, and a tween moves between
+two shots ([Effects](Graphics/Effects.md#cinematic-camera-and-configurable-overlays)). A moment named like an effect cue can
+play it ([Effects](Graphics/Effects.md#cues)).
+
 ## Curves
 
 Each takes 0..1 and returns exactly 0 at 0 and exactly 1 at 1; a value outside 0..1 is clamped. Some leave the range on the way, on purpose. Each exists as a value,

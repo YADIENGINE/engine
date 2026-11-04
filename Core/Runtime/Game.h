@@ -4,7 +4,7 @@
 #include "Modules/Persistence/Persistence.h"
 #include "Audio/AudioSystem.h"
 #include "Options/GameOptions.h"
-#include "Fx/TimeScale.h"
+#include "Runtime/TimeScale.h"
 #include "Graphics/Render/RenderStats.h"
 #include "Graphics/Text/FontFace.h"
 #include "Input/Input.h"

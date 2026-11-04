@@ -1004,6 +1004,32 @@ copy of one; `StepSmoothed` already has this limit, and it was reasoned, not mea
 **Deferred:** a state graph; layers and additive blending; playback speed on steps; custom Bezier curves; loading clips from text; a clip's moments in
 `Simulation::Moments`; a scenario operation that runs to a moment; listing a repeating timeline's later cycles; anything in the editor.
 
+### D29. Effects: cues, one shape, and what Animation is for here
+Status: implemented (2026-11-04). Usage: [Effects](../Graphics/Effects.md).
+
+**Decision:** names are for cues, not effects. An `FxCue` is constant data, a list of typed actions with times; an `FxCueSet` names them the way a `ClipSet` names clips, and
+`FxStage::Play` plays one. Single effects stay typed methods. Effects use Animation's vocabulary everywhere and its tweens only where one thing moves at a time.
+
+**Decided:**
+1. *No `fx.Play("shake", ...)`.* Each effect has different parameters, so a single name-based door needs an untyped bag of them, and a typo surfaces only when that effect first runs, perhaps at a boss's death.
+   What games repeat is the combination: burst, shake, flash and a late shockwave. So the names go there, as data the compiler still checks.
+2. *Actions are a closed `std::variant`, not callbacks.* A cue stays plain data that can be listed, validated when made and later loaded from text. A sound is not an action: Fx would depend on Audio, and a game can
+   play a sound of the same name. A game's own effect is a call beside `Play`.
+3. *A cue's waiting actions are copied into the stage.* Nothing points at a cue, so nothing can dangle. Delays run on `Update` time, so a hitstop holds them; that keeps a hit's parts together.
+4. *`FxStage` gets a `TimeScale*`.* Hitstop and slow motion belong in a cue, and they were a trap: `SlowMotion` on the stage only looked slow, and `TimeScale::SlowMo` only was. It is now `SlowMotionLook`, and `FxSlowMotion` does both.
+   A cue that changes time throws without `SetTime`, rather than quietly losing its freeze.
+5. *Tweens only for single things.* `ScreenFlash`, banners, `SlowMotionOverlay` and `TimeScale` are one value moving, so they became tweens; `TransitionClock` became a track. Rings, shockwaves and text can be many, and all they hold is an age, so
+   they gain a `Curve` in their style instead of up to 90 bytes each. Particles are physics. Shake, punch, pulse and motion react to their own state, retrigger by "the larger wins", and do not fit `To`, which replaces. So do glitch and the toast queue.
+6. *`CameraShot` is a pose.* It was the largest gain for the smallest change: `BlendShots` was already a `Mix`, and `Fields()` gives tweens and clips of a camera.
+7. *`ParticleRecipes` is data.* `debrisSpeed` and its neighbours are gone: a theme holds bursts, so a game's own burst is the same kind of thing and `FxStage` accepts it. `ParticleAppearance::draw` moved to an `Emit` argument, because a `std::function`
+   could not be in a `constexpr` theme.
+8. *One rule for styles.* Event effects take a style with each event, so two sizes can run together; `CameraEffects` and `PulseOverlay` are one continuous device and take it at construction. All invalid values throw.
+9. *What is not an effect left.* `TimeScale` to `Runtime/`, and `TransitionClock` to `Scene/`, because `check` keeps simulations from both; `Animation/` would have opened the rule that simulations do not call `TimeScale`. `CollectFlights` to `Progress/`, `ShatterPattern` to `Utilities/`,
+   `DrawIrisTransition` and `DrawSpeedLines` to `Graphics/Draw/`. `FxImport.h` stays: it is the documented umbrella header.
+10. *A fixed default seed, on `Rng`.* Particles were seeded from `std::random_device` when none was given, which made `ctl frames` differ between runs. Nobody can see that two runs of a burst are alike. `NumberPopup` keeps its `std::mt19937`; this was not needed for its optional seed.
+
+**Fixed on the way:** with motion or flashes off, slow motion's trails and tint still drew; decays depended on the frame rate; a kick was a copy of `SpringPoint`; `Shockwaves` and `PulseOverlay` took invalid styles silently.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

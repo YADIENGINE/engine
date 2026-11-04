@@ -1,7 +1,7 @@
 // [recipe:SceneGame-header]
 #pragma once
 #include "AgentDocs/Recipes/Code/SceneTransition.h"
-#include "Fx/TransitionClock.h"
+#include "Scene/TransitionClock.h"
 #include "Runtime/Game.h"
 
 class RecipeGame final : public Game {

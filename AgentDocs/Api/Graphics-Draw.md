@@ -44,6 +44,17 @@ Use these generated signatures to locate public declarations; open the header fo
 - `void DrawTabOutline(Painter& paint, const FloatRect& tab, float thickness, Color4 color)` — Tab border: the top and both sides; the bottom stays open where the tab joins its panel.
 - `void DrawTabbedPanelOutline(Painter& paint, const FloatRect& panel, const FloatRect& activeTab, float thickness, Color4 color)` — Panel border whose top edge stays open under the active tab.
 
+## `Core/Graphics/Draw/IrisTransition.h`
+
+- `struct IrisStyle`
+- `IrisStyle`: `Color4 curtain { }`
+- `IrisStyle`: `Color4 innerRim { }`
+- `IrisStyle`: `Color4 outerRim { }`
+- `IrisStyle`: `Color4 glow { }` — Its alpha is the glow's strength
+- `IrisStyle`: `float rimWidth = 0.0f`
+- `IrisStyle`: `float glowWidth = 0.0f`
+- `void DrawIrisTransition(Painter& paint, const FloatRect& bounds, Float2 focus, float cover, const IrisStyle& style)` — A closing circle around 'focus'; 'cover' 0: open, 1: closed.
+
 ## `Core/Graphics/Draw/Neon.h`
 
 - `struct NeonFrameStyle` — Neon widgets with explicit styles (the theme's are in CurrentTheme().ui; Graphics/Ui/UiDraw.h draws with them).
@@ -175,3 +186,15 @@ Use these generated signatures to locate public declarations; open the header fo
 - `ParticleShapeStyle`: `float sparkTrailSeconds = 0.0f`
 - `ParticleShapeStyle`: `float sparkThickness = 1.0f` — Line width, drawing units
 - `void DrawParticleShape(Painter& paint, ParticleShape shape, const ParticleDrawData& data, const ParticleShapeStyle& style = { })` — The particle simulation and static thumbnails draw the same shapes; no theme or simulation dependency.
+
+## `Core/Graphics/Draw/SpeedLines.h`
+
+- `struct SpeedLineStyle`
+- `SpeedLineStyle`: `int count = 0`
+- `SpeedLineStyle`: `float rate = 0.0f`
+- `SpeedLineStyle`: `FloatRange innerRadius` — fraction of half-diagonal
+- `SpeedLineStyle`: `FloatRange width` — canvas units
+- `SpeedLineStyle`: `float opacity = 1.0f`
+- `SpeedLineStyle`: `float whiten = 0.0f`
+- `SpeedLineStyle`: `float minIntensity = 0.0f`
+- `void DrawSpeedLines(Painter& paint, const FloatRect& bounds, float intensity, Color4 color, float timeSeconds, const SpeedLineStyle& style)` — Lines rushing in from the edges of 'bounds' (clipped to it).
