@@ -37,6 +37,11 @@ UiElement UiColumn(Ui& ui, UiBox box, const UiTraits& traits) {
     box.direction = UiDirection::Column;
     return ui.Element(box, traits);
 }
+UiElement UiGrid(Ui& ui, int columns, UiBox box, const UiTraits& traits) {
+    box.direction = UiDirection::Grid;
+    box.columns = columns;
+    return ui.Element(box, traits);
+}
 void UiSpacer(Ui& ui, float weight) {
     const UiElement spacer = ui.Element({.width = UiFill(weight), .height = UiFill(weight)});
 }

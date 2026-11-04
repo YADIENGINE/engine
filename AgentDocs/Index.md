@@ -30,6 +30,9 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Draw a new character, enemy, item or prop and list it in the Assets panel | `Editor/Api/GraphicAsset.h` | `Recipes/GraphicAsset.md` | `Docs/Editor/Api.md#graphic-assets` |
 | Draw a shared icon or add a new shape | `Core/Graphics/Icons/Icons.h` | `Recipes/IconShape.md` | `Docs/Graphics/Painter.md#helpers-and-theme` |
 | Write a menu, a dialog, a pause screen or a HUD; buttons, labels, panels; a two-player menu | `Core/Ui/Kernel/Ui.h`<br>`Core/Ui/Widgets/UiButton.h`<br>`Core/Ui/Widgets/UiLabel.h`<br>`Core/Ui/Widgets/UiPanel.h`<br>`Core/Ui/Widgets/UiLayer.h` | `Recipes/UiMenu.md` | `Docs/Ui.md#writing-a-screen` |
+| Add a toggle, a slider or a stepper; settings rows | `Core/Ui/Widgets/UiToggle.h`<br>`Core/Ui/Widgets/UiSlider.h`<br>`Core/Ui/Widgets/UiStepper.h` | `Recipes/UiOptions.md` | `Docs/Ui.md#controls` |
+| Add tabs, a tooltip, or a scrolling list or grid | `Core/Ui/Widgets/UiTabs.h`<br>`Core/Ui/Widgets/UiTooltip.h`<br>`Core/Ui/Widgets/UiScroll.h`<br>`Core/Ui/Widgets/UiPanel.h` | `Recipes/UiOptions.md` | `Docs/Ui.md#lists-and-grids` |
+| Add a ready options screen: volume, display, effects | `Core/Ui/Kit/UiOptionsScreen.h`<br>`Core/Runtime/Game.h` | `Recipes/UiOptions.md` | `Docs/Ui.md#ready-screens` |
 | Write a widget of the game's own | `Core/Ui/Kernel/UiElement.h`<br>`Core/Ui/Kernel/UiTypes.h` | `Recipes/UiMenu.md` | `Docs/Ui.md#widgets-of-your-own` |
 | Change how widgets look | `Core/Ui/Kernel/UiLooks.h`<br>`Core/Ui/Looks/UiButtonLook.h`<br>`Core/Ui/Looks/Neon/NeonLooks.h` | - | `Docs/Ui.md#looks` |
 | Choose a theme: colours, backgrounds, effects | `Core/Graphics/Style/Theme.h`<br>`Core/Graphics/Style/ThemePalette.h`<br>`Core/Graphics/Style/PlainTheme.h`<br>`Core/Graphics/Style/NeonArcadeTheme.h` | - | `Docs/Graphics/ThemesAndUi.md#themes` |
@@ -56,7 +59,6 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Use seeded random numbers | `Core/Utilities/Rng.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#writing-a-simulation` |
 | Read keys | `Core/Input/Input.h`<br>`Core/Input/InputNavigation.h` | - | `Docs/Input.md#physical-snapshot-and-semantic-queries` |
 | Handle pointer collections or dragging | `Core/Input/CollectionPointer.h`<br>`Core/Input/DragPointer.h` | - | `Docs/Input.md#collections-and-drag-and-drop` |
-| Navigate a grid, headers or a scrolling viewport | `Core/Menus/GridMenuSelection.h`<br>`Core/Menus/HeaderGridNavigation.h`<br>`Core/Menus/GridViewport.h` | - | `Docs/Input.md#menu-selection-and-viewport` |
 | Load/play music and effects | `Core/Audio/AudioSystem.h` | - | `Docs/Audio.md#setting-up-a-catalog` |
 | Persist options or game progress | `Core/Options/GameOptions.h`<br>`Core/Modules/Persistence/Persistence.h` | `Recipes/SaveProgress.md` | `Docs/OptionsAndSaves.md#saves` |
 | Tune values without rebuilding | `Core/Tuning/Tuning.h`<br>`Core/Tuning/TuningFile.h`<br>`Core/Tuning/TuningLive.h` | `Recipes/TuningValue.md` | `Docs/Tuning.md#setup` |

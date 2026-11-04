@@ -59,7 +59,7 @@ released and the neutral frame is consumed. An external host must provide the sa
 
 ## Collections and drag-and-drop
 
-`CollectionPointer` and `HeaderGridNavigation` live in EngineHeadless. They contain no rendering or content policy.
+`CollectionPointer` lives in EngineHeadless and contains no rendering or content policy.
 Create a pointer helper with the grid bounds and row-drag threshold, then call `Update(DeviceInput)` once per input
 frame. Its result contains a release `tap`, eligible `hover`, and signed `rows` (positive moves down the collection).
 Touch movement emits rows while held. Crossing the movement threshold latches drag detection until release, including
@@ -67,14 +67,6 @@ when the contact returns to its origin. The first touch ID owns the gesture; lat
 also suppresses synthetic mouse events until all contacts and mouse buttons are quiet. Mouse taps activate on release;
 wheel input applies only over the grid. Call `Cancel()` for a local gesture cancellation, then continue supplying input
 frames on return so the cancelled contact can drain. Keyboard bindings, audio and confirmation remain in Game.
-
-`HeaderGridNavigation(count, {headerRowSize, ...})` owns `GridMenuSelection` plus focus across header rows, grid,
-empty-state action and footer. `Move(dx, dy, columns)` reports a focus/selection change. During filtering, use
-`SetItemCount` followed by `SelectIndex` to retain header focus; preserve stable content identity in the caller. `Focus`
-and `HeaderIndex` support hover/click adapters without coupling Engine to category enums. `ResetHeaders` returns every
-header cursor to its first item without moving focus. Every header row must have at least one item (asserted).
-
-
 
 `Input/DragPointer.h` provides `DragPointer(threshold)` for free dragging. The `Update(input)` result contains
 `pressed`, `position`, `origin`, `released`, `hover`, `dragging`, `tap`, and `cancelled`. Positions use canvas
@@ -99,41 +91,6 @@ merges snapshots; it is not an ordered log of all physical events. When the prot
 increment the version and rebuild editor and worker together. The backend key table is checked against the enum with
 identified rows and `RowsInIdOrder`.
 
-## Menu selection and viewport
+## Menus
 
-`Menus/GridViewport.h` complements grid selection with reusable scrolling and tile geometry. Each View owns a
-value member initialized with `GridViewportSettings`: canvas `bounds`, `columns`, `visibleRows`,
-`tileWidth`/`tileHeight`, independent `gapX`/`gapY`, and `scrollSpeed`. Bounds, dimensions, columns and visible rows
-must be positive; gaps and finite speed must be nonnegative. Zero speed snaps immediately. The component draws nothing
-and does not manage selection, focus, item IDs or input.
-
-```cpp
-GridViewport viewport({.bounds = gridBounds, .columns = 4, .visibleRows = 3,
-                       .tileWidth = 120, .tileHeight = 100, .gapX = 12, .gapY = 16,
-                       .scrollSpeed = 10.0f});
-viewport.Reset(itemCount, selectedIndex); // scene entry or a content/filter reset
-viewport.Update(itemCount, selectedIndex, deltaSeconds);
-const Rect tile = viewport.TileArea(index);
-const auto hit = viewport.TileAt(pointer, itemCount);
-```
-
-`Reset` bottom-aligns the selected row where possible. `Update` retains scroll while selection is visible and otherwise
-interpolates toward its visible range, using `min(1, dt * scrollSpeed)`. Invalid update deltas skip animation; count
-shrinkage still clamps scroll and an empty count resets it to zero. Negative counts are empty and selection is clamped
-for calculations without changing the caller's selection. `TileArea` rounds animated vertical positions with
-`std::lround`; negative indices return an empty rectangle. `TileAt` rejects points outside bounds, gaps and missing
-items. It uses the supplied current count, even when input changed content before the next View update.
-`RowCount(count)` and `ScrollRows()` allow Game to draw its own scrollbar and entrance animations. Keep drawing order,
-expanded scissor margins, colors, and filter/category reset decisions in the View.
-
-`Menus/GridMenuSelection.h` owns a grid's selected index and `Grid`/`Footer` focus. Construct it with an item count and
-call `Move(dx, dy, columns)`. Horizontal movement follows the linear item order; vertical movement clamps incomplete
-rows. `GridMenuMove::ExitAbove` lets the game focus controls above the grid. Down from the last row focuses the footer;
-up restores the selected item. `SetItemCount` clamps selection when results change. An empty grid selects `-1` and only
-allows footer focus. Invalid column counts produce no movement. Item IDs, filtering, ordering, and additional focus
-regions belong to the game.
-
-
-
-`MenuSelection` and `MenuInput` are smaller options for one-dimensional menus. Input changes selection; the View owns
-scrolling/hover/animation. Use the same viewport geometry for hit testing as for drawing.
+Menus, lists and grids are in [UI](Ui.md), which reads this input itself.

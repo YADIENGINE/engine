@@ -37,8 +37,6 @@ engine_tests(EngineTests
         FxCueTests.cpp
         FxTests.cpp
         GameOptionsTests.cpp
-        GridMenuTests.cpp
-        GridViewportTests.cpp
         InputTests.cpp
         LifecycleTests.cpp
         MathTests.cpp
@@ -53,6 +51,7 @@ engine_tests(EngineTests
         SceneSafetyTests.cpp
         UiLayoutTests.cpp
         UiTests.cpp
+        UiWidgetTests.cpp
         SceneTimeTests.cpp
         ShatterTests.cpp
         SimulationSceneTests.cpp
@@ -132,6 +131,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/TuningValue.cpp"
     "${recipeRoot}/TweenMenu.cpp"
     "${recipeRoot}/UiMenu.cpp"
+    "${recipeRoot}/UiOptions.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/EditorScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneParameter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneRegistry.cpp"

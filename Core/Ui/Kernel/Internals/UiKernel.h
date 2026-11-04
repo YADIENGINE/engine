@@ -35,15 +35,24 @@ public:
                                  int& savedCursor, int& savedLayer);
     void CloseLayer(int savedCursor, int savedLayer) noexcept;
     [[nodiscard]] UiAction Back() const;
+    [[nodiscard]] int PageStep() const;
+    [[nodiscard]] std::optional<Float2> Pointer() const { return _pointer; }
+    [[nodiscard]] float Wheel() const { return _wheel; }
+    [[nodiscard]] bool CursorMovedByKeys() const { return _keysMovedFrame != 0 && _keysMovedFrame + 1 == _frame; }
 
     [[nodiscard]] UiId IdOf(int node) const { return Node(node).id; }
     [[nodiscard]] bool Hovered(int node) const;
     [[nodiscard]] bool Pressed(int node) const;
+    [[nodiscard]] bool Held(int node) const;
+    [[nodiscard]] bool PointerInside(int node) const;
     [[nodiscard]] bool Focused(int node, int user) const;
     [[nodiscard]] bool Enabled(int node) const { return Node(node).enabled; }
     [[nodiscard]] UiAction Activated(int node) const;
+    [[nodiscard]] UiStep Step(int node) const;
     [[nodiscard]] bool Denied(int node) const;
     [[nodiscard]] FloatRect LastRect(int node) const;
+    [[nodiscard]] Float2 LastSize(int node) const;
+    [[nodiscard]] std::optional<FloatRect> FocusInside(int node) const;
     [[nodiscard]] float Age(int node) const;
     void TakeFocus(int node, int user);
     void SetDraw(int node, UiDrawFunction draw) { Node(node).draw = std::move(draw); }
@@ -70,7 +79,10 @@ private:
     struct UiEntry {
         std::uint64_t lastFrame = 0;
         float age = 0.0f;
-        FloatRect visible{};
+        FloatRect visible{}; // On the canvas, after clips and visuals
+        FloatRect full{};    // The same without clips: where a cursor can still go
+        Float2 size{};
+        std::optional<FloatRect> focusInside;
         std::vector<StateSlot> states;
     };
     // One element of the frame being built.
@@ -80,6 +92,7 @@ private:
         int layer = 0;
         int owner = UiAnyUser;
         UiInteract interact = UiInteract::None;
+        UiCapture capture = UiCapture::None;
         bool enabled = true;
         bool clip = false;
         UiVisual visual{};
@@ -108,9 +121,11 @@ private:
     struct UiHit {
         UiId id{};
         FloatRect visible{};
+        FloatRect full{};
         int layer = 0;
         int owner = UiAnyUser;
         UiInteract interact = UiInteract::None;
+        UiCapture capture = UiCapture::None;
         bool enabled = true;
     };
     struct UiUserInput {
@@ -145,7 +160,9 @@ private:
     void UpdateScopes();
     void MoveFocus(const UiHit& hit, int user, bool announce);
     void MoveFocusBy(int user, UiMove move);
-    void Activate(const UiHit& hit, int user);
+    void Activate(const UiHit& hit, int user, bool byPointer);
+    [[nodiscard]] const UiHit* FocusedHit(int user) const;
+    [[nodiscard]] bool DescribingTopLayer() const;
     void Emit(UiEventKind kind, UiId id, int user, const FloatRect& rect);
     [[nodiscard]] UiLayerMemory& MemoryOf(UiId layer);
     void SizeMemory(UiLayerMemory& memory) const;
@@ -171,6 +188,7 @@ private:
     std::vector<UiLayerRecord> _lastLayers;
     std::optional<UiId> _hot;
     std::optional<UiId> _pressed;
+    std::optional<Float2> _pointer;
 
     // This frame.
     std::vector<UiNode> _nodes;
@@ -180,13 +198,22 @@ private:
     struct Outcome {
         UiId id{};
         int user = 0;
+        bool byPointer = false;
+    };
+    struct StepOutcome {
+        UiId id{};
+        UiStep step{};
     };
     std::vector<Outcome> _activated;
+    std::vector<StepOutcome> _steps;
     std::vector<UiId> _denied;
     std::vector<int> _backUsers;
     UiTextArena _text;
     std::uint64_t _frame = 0;
     float _delta = 0.0f;
+    float _wheel = 0.0f;
+    int _pageStep = 0;
+    std::uint64_t _keysMovedFrame = 0;
     int _cursor = -1;
     int _cursorLayer = 0;
     int _seen = 0;

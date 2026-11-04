@@ -13,6 +13,7 @@ struct UiButtonOptions {
     std::optional<UiAnchor> anchor{};
     Float2 offset{};
     const UiButtonLook* look = nullptr; // Borrowed until drawn; empty: the Ui's current look
+    std::string_view tooltip{};
 };
 
 // A button that the mouse and every player's keys can press. 'id' stays the same when the label is translated.

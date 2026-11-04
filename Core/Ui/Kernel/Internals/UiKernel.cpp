@@ -21,6 +21,20 @@ using KeyStates = std::array<bool, static_cast<std::size_t>(InputKey::Count)>;
 }
 [[nodiscard]] Float2 ToFloat(Vec2 point) { return {static_cast<float>(point.x), static_cast<float>(point.y)}; }
 [[nodiscard]] bool Same(const std::optional<UiId>& left, UiId right) { return left && *left == right; }
+[[nodiscard]] bool Captures(UiCapture capture, UiMove move) {
+    const bool sideways = move == UiMove::Left || move == UiMove::Right;
+    return capture == UiCapture::Both || (capture == UiCapture::Horizontal && sideways) ||
+           (capture == UiCapture::Vertical && !sideways);
+}
+[[nodiscard]] UiStep StepOf(UiMove move, int user) {
+    switch (move) {
+    case UiMove::Up   : return {0, -1, user};
+    case UiMove::Down : return {0, 1, user};
+    case UiMove::Left : return {-1, 0, user};
+    case UiMove::Right: return {1, 0, user};
+    }
+    return {};
+}
 } // namespace
 
 UiKernel::UiKernel(const UiSettings& given)
@@ -75,7 +89,10 @@ void UiKernel::Begin(float seconds) {
     _layers.clear();
     _events.clear();
     _activated.clear();
+    _steps.clear();
     _denied.clear();
+    _wheel = 0.0f;
+    _pageStep = 0;
     _backUsers.clear();
     _text.Reset();
     _seen = 0;
@@ -174,6 +191,7 @@ int UiKernel::OpenElement(std::optional<UiId> given, const UiBox& box, const UiT
     node.layer = _cursorLayer;
     node.owner = traits.owner != UiAnyUser || parent < 0 ? traits.owner : Node(parent).owner;
     node.interact = traits.interact;
+    node.capture = traits.capture;
     node.enabled = traits.enabled;
     node.clip = traits.clip;
     node.visual = traits.visual;
@@ -213,9 +231,9 @@ bool UiKernel::OpenLayer(UiId given, bool open, const UiLayerSpec& spec, float& 
     if (open && !memory.wasOpen) {
         // A new opening starts its cursors over.
         memory.hasFocus.assign(_users.size(), false);
-        Emit(UiEventKind::LayerOpened, id, 0, {});
+        if (spec.modal) Emit(UiEventKind::LayerOpened, id, 0, {});
     }
-    if (!open && memory.wasOpen) Emit(UiEventKind::LayerClosed, id, 0, {});
+    if (!open && memory.wasOpen && spec.modal) Emit(UiEventKind::LayerClosed, id, 0, {});
     memory.wasOpen = open;
     const float target = open ? 1.0f : 0.0f;
     const float seconds = spec.seconds.value_or(DefaultLayerSeconds);
@@ -261,10 +279,16 @@ void UiKernel::CloseLayer(int savedCursor, int savedLayer) noexcept {
 
 UiAction UiKernel::Back() const {
     CheckBuilding("Ui::Back");
-    if (_backUsers.empty() || _lastLayers.empty()) return {};
-    const UiId current = _layers[static_cast<std::size_t>(_cursorLayer)].id;
-    if (_lastLayers[FirstInteractiveLayer()].id != current) return {};
+    if (_backUsers.empty() || !DescribingTopLayer()) return {};
     return {true, _backUsers.front()};
+}
+int UiKernel::PageStep() const {
+    CheckBuilding("Ui::PageStep");
+    return DescribingTopLayer() ? _pageStep : 0;
+}
+bool UiKernel::DescribingTopLayer() const {
+    if (_lastLayers.empty()) return false;
+    return _lastLayers[FirstInteractiveLayer()].id == _layers[static_cast<std::size_t>(_cursorLayer)].id;
 }
 
 // --- Answers ------------------------------------------------------------------------------------------------------
@@ -279,6 +303,19 @@ bool UiKernel::Pressed(int index) const {
     if (Same(_pressed, node.id) && Same(_hot, node.id)) return true;
     for (int user = 0; user < UserCount(); ++user) {
         if (_userInput[static_cast<std::size_t>(user)].confirmDown && Focused(index, user)) return true;
+    }
+    return false;
+}
+bool UiKernel::Held(int index) const {
+    const UiNode& node = Node(index);
+    return !ClosingLayer(node.layer) && Same(_pressed, node.id);
+}
+bool UiKernel::PointerInside(int index) const {
+    const UiNode& node = Node(index);
+    if (ClosingLayer(node.layer) || !_pointer || !node.entry->visible.Contains(*_pointer)) return false;
+    const UiId layer = _layers[static_cast<std::size_t>(node.layer)].id;
+    for (std::size_t last = FirstInteractiveLayer(); last < _lastLayers.size(); ++last) {
+        if (_lastLayers[last].id == layer) return !_lastLayers[last].closing;
     }
     return false;
 }
@@ -303,7 +340,16 @@ UiAction UiKernel::Activated(int index) const {
     const UiNode& node = Node(index);
     if (!ClosingLayer(node.layer)) {
         for (const Outcome& outcome : _activated) {
-            if (outcome.id == node.id) return {true, outcome.user};
+            if (outcome.id == node.id) return {true, outcome.user, outcome.byPointer};
+        }
+    }
+    return {};
+}
+UiStep UiKernel::Step(int index) const {
+    const UiNode& node = Node(index);
+    if (!ClosingLayer(node.layer)) {
+        for (const StepOutcome& outcome : _steps) {
+            if (outcome.id == node.id) return outcome.step;
         }
     }
     return {};
@@ -313,14 +359,17 @@ bool UiKernel::Denied(int index) const {
     return !ClosingLayer(node.layer) && std::ranges::find(_denied, node.id) != _denied.end();
 }
 FloatRect UiKernel::LastRect(int index) const { return Node(index).entry->visible; }
+Float2 UiKernel::LastSize(int index) const { return Node(index).entry->size; }
+std::optional<FloatRect> UiKernel::FocusInside(int index) const { return Node(index).entry->focusInside; }
 float UiKernel::Age(int index) const { return Node(index).entry->age; }
 void UiKernel::TakeFocus(int index, int user) {
     const UiNode& node = Node(index);
     UiLayerMemory& memory = MemoryOf(_layers[static_cast<std::size_t>(node.layer)].id);
     const auto slot = static_cast<std::size_t>(user);
     memory.focus.at(slot) = node.id;
-    memory.focusRect[slot] = node.entry->visible;
+    memory.focusRect[slot] = node.entry->full;
     memory.hasFocus[slot] = true;
+    _keysMovedFrame = _frame;
 }
 void* UiKernel::FindState(int index, std::type_index type) const {
     for (const StateSlot& slot : Node(index).entry->states) {
@@ -342,6 +391,7 @@ void UiKernel::ResolveInput() {
         }
         return;
     }
+    _wheel = _input->wheel;
     ResolvePointer(*_input);
     ResolveKeys(*_input);
 }
@@ -369,6 +419,7 @@ const UiKernel::UiHit* UiKernel::HitAt(Float2 point) const {
 
 void UiKernel::ResolvePointer(const DeviceInput& input) {
     _hot.reset();
+    if (input.mousePosition) _pointer = ToFloat(*input.mousePosition);
     if (input.mousePosition) {
         if (const UiHit* hit = HitAt(ToFloat(*input.mousePosition))) _hot = hit->id;
     }
@@ -381,7 +432,7 @@ void UiKernel::ResolvePointer(const DeviceInput& input) {
     }
     if (input.mouseReleased && _pressed) {
         const UiHit* hit = input.mousePosition ? HitAt(ToFloat(*input.mousePosition)) : nullptr;
-        if (hit && hit->id == *_pressed) Activate(*hit, 0);
+        if (hit && hit->id == *_pressed) Activate(*hit, 0, true);
         _pressed.reset();
     } else if (!input.mouseDown && !input.mousePress) {
         _pressed.reset();
@@ -427,20 +478,42 @@ void UiKernel::ResolveKeys(const DeviceInput& input) {
         const auto slot = static_cast<std::size_t>(user);
         const UiKeys& keys = _users[slot];
         UiUserInput& state = _userInput[slot];
-        if (const std::optional<UiMove> move = PressedMove(keys, input, state)) MoveFocusBy(user, *move);
+        if (const std::optional<UiMove> move = PressedMove(keys, input, state)) {
+            const UiHit* focused = FocusedHit(user);
+            if (focused && Captures(focused->capture, *move)) {
+                if (focused->enabled) {
+                    _steps.push_back({focused->id, StepOf(*move, user)});
+                    Emit(UiEventKind::Stepped, focused->id, user, focused->full);
+                } else {
+                    _denied.push_back(focused->id);
+                    Emit(UiEventKind::Denied, focused->id, user, focused->full);
+                }
+            } else {
+                MoveFocusBy(user, *move);
+            }
+        }
+        if (Any(keys.previous, input.keysPressed)) _pageStep = -1;
+        if (Any(keys.next, input.keysPressed)) _pageStep = 1;
         state.confirmDown = Any(keys.confirm, input.keysDown);
         if (Any(keys.back, input.keysPressed)) {
             _backUsers.push_back(user);
             Emit(UiEventKind::Back, {}, user, {});
         }
-        if (!Any(keys.confirm, input.keysPressed) || !state.scopeLayer) continue;
-        const UiLayerMemory& memory = MemoryOf(*state.scopeLayer);
-        if (!memory.hasFocus[slot]) continue;
-        const auto hit = std::ranges::find_if(_hits, [&](const UiHit& item) {
-            return item.id == memory.focus[slot] && UserMayFocus(item, user);
-        });
-        if (hit != _hits.end()) Activate(*hit, user);
+        if (!Any(keys.confirm, input.keysPressed)) continue;
+        if (const UiHit* focused = FocusedHit(user)) Activate(*focused, user, false);
     }
+}
+
+const UiKernel::UiHit* UiKernel::FocusedHit(int user) const {
+    const auto slot = static_cast<std::size_t>(user);
+    const std::optional<UiId>& scope = _userInput[slot].scopeLayer;
+    if (!scope) return nullptr;
+    const auto memory = _layerMemory.find(*scope);
+    if (memory == _layerMemory.end() || !memory->second.hasFocus[slot]) return nullptr;
+    const UiId current = memory->second.focus[slot];
+    const auto hit =
+        std::ranges::find_if(_hits, [&](const UiHit& item) { return item.id == current && UserMayFocus(item, user); });
+    return hit == _hits.end() ? nullptr : &*hit;
 }
 
 std::optional<std::size_t> UiKernel::ScopeLayerOf(int user) const {
@@ -466,9 +539,9 @@ void UiKernel::MoveFocus(const UiHit& hit, int user, bool announce) {
     const auto slot = static_cast<std::size_t>(user);
     const bool changed = !memory.hasFocus[slot] || memory.focus[slot] != hit.id;
     memory.focus[slot] = hit.id;
-    memory.focusRect[slot] = hit.visible;
+    memory.focusRect[slot] = hit.full;
     memory.hasFocus[slot] = true;
-    if (changed && announce) Emit(UiEventKind::FocusMoved, hit.id, user, hit.visible);
+    if (changed && announce) Emit(UiEventKind::FocusMoved, hit.id, user, hit.full);
 }
 
 void UiKernel::MoveFocusBy(int user, UiMove move) {
@@ -485,25 +558,27 @@ void UiKernel::MoveFocusBy(int user, UiMove move) {
         const bool inScope = _lastLayers[static_cast<std::size_t>(hit.layer)].id == *scope;
         if (!inScope || !UserMayFocus(hit, user) || (hasCurrent && hit.id == current)) continue;
         items.push_back(&hit);
-        rects.push_back(hit.visible);
+        rects.push_back(hit.full);
     }
     if (items.empty()) return;
     if (!hasCurrent) {
         MoveFocus(*items.front(), user, true);
+        _keysMovedFrame = _frame;
         return;
     }
     if (const auto target = FindUiFocusTarget(rects, from, move, settings.wrapFocus)) {
         MoveFocus(*items[*target], user, true);
+        _keysMovedFrame = _frame;
     }
 }
 
-void UiKernel::Activate(const UiHit& hit, int user) {
+void UiKernel::Activate(const UiHit& hit, int user, bool byPointer) {
     if (hit.enabled) {
-        _activated.push_back({hit.id, user});
-        Emit(UiEventKind::Activated, hit.id, user, hit.visible);
+        _activated.push_back({hit.id, user, byPointer});
+        Emit(UiEventKind::Activated, hit.id, user, hit.full);
     } else {
         _denied.push_back(hit.id);
-        Emit(UiEventKind::Denied, hit.id, user, hit.visible);
+        Emit(UiEventKind::Denied, hit.id, user, hit.full);
     }
 }
 void UiKernel::Emit(UiEventKind kind, UiId id, int user, const FloatRect& rect) {
@@ -551,6 +626,9 @@ void UiKernel::ComputeVisibleRects() {
         }
         mappings[index] = mapping;
         node.entry->visible = visible;
+        node.entry->full = mapped;
+        node.entry->size = placed.rect.Size();
+        node.entry->focusInside.reset();
         node.state.rect = placed.rect;
         node.state.font = settings.font;
         node.state.enabled = node.enabled;
@@ -561,8 +639,9 @@ void UiKernel::ComputeVisibleRects() {
 void UiKernel::CollectHits() {
     _hits.clear();
     for (const UiNode& node : _nodes) {
-        if (node.interact == UiInteract::None || node.entry->visible.Empty()) continue;
-        _hits.push_back({node.id, node.entry->visible, node.layer, node.owner, node.interact, node.enabled});
+        if (node.interact == UiInteract::None || node.entry->full.Empty()) continue;
+        _hits.push_back({node.id, node.entry->visible, node.entry->full, node.layer, node.owner, node.interact,
+                         node.capture, node.enabled});
     }
     std::ranges::stable_sort(_hits, {}, &UiHit::layer);
 }
@@ -579,13 +658,13 @@ void UiKernel::RepairFocus() {
         for (const UiHit& hit : _hits) {
             if (_lastLayers[static_cast<std::size_t>(hit.layer)].id != *scope || !UserMayFocus(hit, user)) continue;
             items.push_back(&hit);
-            rects.push_back(hit.visible);
+            rects.push_back(hit.full);
         }
         if (memory.hasFocus[slot]) {
             const UiId current = memory.focus[slot];
             const auto still = std::ranges::find_if(items, [&](const UiHit* hit) { return hit->id == current; });
             if (still != items.end()) {
-                memory.focusRect[slot] = (*still)->visible;
+                memory.focusRect[slot] = (*still)->full;
                 continue;
             }
             if (const auto nearest = FindNearestUiFocus(rects, memory.focusRect[slot])) {
@@ -616,6 +695,13 @@ void UiKernel::SnapshotDrawStates() {
             node.state.focusUsers |= std::uint32_t{1} << user;
         }
         node.state.focused = node.state.focusUsers != 0;
+        if (node.state.focused) {
+            // Every parent learns where it is, for a scrolling area to follow.
+            const FloatRect where = node.entry->full;
+            for (int up = index; up >= 0; up = LayoutNode(up).parent) {
+                if (!Node(up).entry->focusInside) Node(up).entry->focusInside = where;
+            }
+        }
     }
 }
 

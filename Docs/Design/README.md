@@ -1070,9 +1070,16 @@ Status: first part implemented (2026-11-04). Usage: [UI](../Ui.md).
 
 **Measured:** a screen of 302 elements with 240 buttons, a cursor moving every frame: 0.18 ms to build and lay out and 0.15 ms to record its drawing per frame, on one machine in Release (`[.ui-perf]` in `UiTests.cpp`), about 2% of a 60 Hz frame. A null GPU device was used, so what the GPU itself costs is not in that.
 
+**Added with the controls:**
+13. *An element can take the direction keys.* A slider's left and right were the first thing that needed the kernel to change, and the change is general: `UiTraits::capture` and `Step()`. Everything else, a slider's drag and a stepper's arrows, is one element with its area worked out in the look's header, which input and drawing share.
+14. *Tabs are one stop for the cursor.* Were each tab a stop, going up from the right of a page would land on another tab and switch it. The row takes the cursor and left and right; each tab is mouse-only.
+15. *A cursor can go where it cannot be seen.* Elements keep two rectangles: where they would be, for the cursor, and what is left after clips, for the mouse. Otherwise a keyboard could never reach a row out of view.
+16. *A list follows the keys, not everything.* Bringing a cursor into view only when keys moved it stops a mouse-hovered row from scrolling away under the mouse, and a list scrolled by the wheel from jumping back.
+17. *Kit over plain values.* `AudioSystem` and `Game` are above `EngineHeadless`, so `UiOptionsScreen` works on `UiOptionsValues` and can be tested without a window. `Game::UiOptions` and `Game::ApplyUiOptions` connect them: public, because a scene holds a `Game&`, and the setters they use are protected. Sound stays out: it is the game's, through events.
+
 **Why these names:** `Fill` is already a Painter style, and a global `Button` would hide a game's own `enum class Button`, so all UI names start with `Ui`.
 
-**Order of work.** Done: kernel, layout, `UiLabel`, `UiButton`, `UiPanel`, `UiRow`, `UiColumn`, `UiSpacer`, `UiLayer`, plain and neon looks. Next: `UiToggle`, `UiSlider`, `UiStepper`, a scrolling list and grid, tabs, a tooltip, and then `Core/Menus` goes. Then `Ui/Kit`: ready screens, options first, then confirm and pause; sounds through events; a widget gallery in the editor; `ctl ui`, which lists what is on screen and presses it by name for agents. Later, when a game asks: tables, large lists, rich text, dragging, a second look beyond neon, text entry (`DeviceInput` has no character input yet).
+**Order of work.** Done: kernel, layout, `UiLabel`, `UiButton`, `UiPanel`, `UiRow`, `UiColumn`, `UiGrid`, `UiSpacer`, `UiLayer`, `UiToggle`, `UiSlider`, `UiStepper`, `UiTabs`, `UiScroll`, `UiTooltip`, plain and neon looks; `Core/Menus` is gone; `UiOptionsScreen`. Next: more of `Ui/Kit`, confirm and pause; sounds through events; a widget gallery in the editor; `ctl ui`, which lists what is on screen and presses it by name for agents. Later, when a game asks: tables, large lists, rich text, dragging, a second look beyond neon, text entry (`DeviceInput` has no character input yet).
 
 ## v1'de kalan işler
 

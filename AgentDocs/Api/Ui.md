@@ -7,6 +7,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `class Ui` — A screen described in code, every frame.
 - `Ui`: `explicit Ui(const UiSettings& settings = { })`
 - `Ui`: `void SetCanvas(const FloatRect& canvas)`
+- `Ui`: `[[nodiscard]] const FloatRect& Canvas() const`
 - `Ui`: `void SetFont(const FontFace* font)`
 - `Ui`: `void SetUsers(std::vector<UiKeys> users)` — One entry per player at this screen, each with a cursor of their own.
 - `Ui`: `[[nodiscard]] int UserCount() const`
@@ -21,6 +22,10 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Ui`: `[[nodiscard]] UiElement Element(const UiBox& box = { }, const UiTraits& traits = { })` — An element nobody needs to find again: a text, a row.
 - `Ui`: `[[nodiscard]] UiLayerScope Layer(UiId id, bool open, const UiLayerSpec& spec = { })` — A sheet over the canvas with its own focus.
 - `Ui`: `[[nodiscard]] UiAction Back() const` — A back key was pressed, and the layer being described is the one on top.
+- `Ui`: `[[nodiscard]] int PageStep() const` — The same for the previous and next page keys: -1, 0 or 1.
+- `Ui`: `[[nodiscard]] std::optional<Float2> Pointer() const` — The mouse's last position on the canvas, and this frame's wheel (positive: up).
+- `Ui`: `[[nodiscard]] float Wheel() const`
+- `Ui`: `[[nodiscard]] bool CursorMovedByKeys() const` — A key or TakeFocus moved a cursor in the last frame, so a scrolling area should bring it into view.
 - `Ui`: `[[nodiscard]] std::string_view Text(std::string_view text)` — A copy that stays valid until the next Begin, for capturing text in a drawing.
 - `Ui`: `[[nodiscard]] const FontFace& Font() const` — The font; logic_error when there is none.
 - `Ui`: `[[nodiscard]] float Delta() const`
@@ -35,11 +40,16 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiElement`: `[[nodiscard]] UiId Id() const`
 - `UiElement`: `[[nodiscard]] bool Hovered() const`
 - `UiElement`: `[[nodiscard]] bool Pressed() const` — Held by the mouse or by a confirm key.
+- `UiElement`: `[[nodiscard]] bool Held() const` — A mouse press that began on it still lasts, wherever the mouse is now: dragging.
+- `UiElement`: `[[nodiscard]] bool PointerInside() const` — The mouse is over it, in a layer that takes input, whatever else lies between.
 - `UiElement`: `[[nodiscard]] bool Focused(int user = UiAnyUser) const` — A cursor is on it: 'user''s, or by default anyone's.
 - `UiElement`: `[[nodiscard]] UiAction Activated() const`
+- `UiElement`: `[[nodiscard]] UiStep Step() const` — A direction key it captures (UiTraits::capture).
 - `UiElement`: `[[nodiscard]] bool Denied() const` — Activating it was refused, because it is disabled.
 - `UiElement`: `void TakeFocus(int user = 0)`
 - `UiElement`: `[[nodiscard]] FloatRect LastRect() const` — Where it was last frame, in canvas coordinates after clips and UiVisual.
+- `UiElement`: `[[nodiscard]] Float2 Size() const` — Its laid-out size last frame, before clips and UiVisual.
+- `UiElement`: `[[nodiscard]] std::optional<FloatRect> FocusInside() const` — Where a cursor on it or on something inside it was last frame, even if clipped out of sight.
 - `UiElement`: `[[nodiscard]] float Age() const` — Seconds since it first appeared.
 - `UiElement`: `void Draw(UiDrawFunction draw)` — Called while drawing, under this element's children.
 - `UiElement`: `void SetVisual(const UiVisual& visual)`
@@ -66,9 +76,11 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiKeys`: `std::vector<InputKey> right`
 - `UiKeys`: `std::vector<InputKey> confirm`
 - `UiKeys`: `std::vector<InputKey> back`
+- `UiKeys`: `std::vector<InputKey> previous` — Page or tab, wherever the cursor is
+- `UiKeys`: `std::vector<InputKey> next`
 - `UiKeys`: `Color4 color { 0, 0, 0, 0 }`
-- `UiKeys`: `[[nodiscard]] static UiKeys All()` — Arrows and WASD, Enter and Space, Escape: one player on the whole keyboard.
-- `UiKeys`: `[[nodiscard]] static UiKeys Wasd(Color4 color = { 0, 0, 0, 0 })` — Two players side by side: WASD with Space, arrows with Enter.
+- `UiKeys`: `[[nodiscard]] static UiKeys All()` — Arrows and WASD, Enter and Space, Escape, Q and E: one player on the whole keyboard.
+- `UiKeys`: `[[nodiscard]] static UiKeys Wasd(Color4 color = { 0, 0, 0, 0 })` — Two players side by side: WASD with Space, Q and E; arrows with Enter, Page Up and Page Down.
 - `UiKeys`: `[[nodiscard]] static UiKeys Arrows(Color4 color = { 0, 0, 0, 0 })`
 
 ## `Core/Ui/Kernel/UiLayerScope.h`
@@ -100,6 +112,7 @@ Use these generated signatures to locate public declarations; open the header fo
 ## `Core/Ui/Kernel/UiTypes.h`
 
 - `enum class UiInteract { None, Pointer, Focus }` — None: only drawn.
+- `enum class UiCapture { None, Horizontal, Vertical, Both }` — Direction keys along these axes go to a focused element instead of moving the cursor: a slider's left and right.
 - `inline constexpr int UiAnyUser = - 1`
 - `struct UiVisual` — A change to how an element and everything inside it appear, around the element's centre.
 - `UiVisual`: `Float2 offset { }`
@@ -107,6 +120,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiVisual`: `float opacity = 1.0f`
 - `struct UiTraits` — What an element does, apart from its place.
 - `UiTraits`: `UiInteract interact = UiInteract::None`
+- `UiTraits`: `UiCapture capture = UiCapture::None` — Read with UiElement::Step
 - `UiTraits`: `bool enabled = true` — A disabled element can still be focused, so the player sees why it does not work; activating it reports Denied.
 - `UiTraits`: `int owner = UiAnyUser` — Only this player's keys reach it.
 - `UiTraits`: `bool clip = false` — Children are cut at its edges, and cannot be clicked outside them
@@ -115,7 +129,13 @@ Use these generated signatures to locate public declarations; open the header fo
 - `struct UiAction` — A pressed button: true when it happened, with the player who did it.
 - `UiAction`: `bool happened = false`
 - `UiAction`: `int user = 0`
+- `UiAction`: `bool byPointer = false` — The mouse did it, so Ui::Pointer says where
 - `UiAction`: `[[nodiscard]] explicit operator bool() const`
+- `struct UiStep` — A direction key given to an element that captures it: -1, 0 or 1 on each axis.
+- `UiStep`: `int x = 0`
+- `UiStep`: `int y = 0`
+- `UiStep`: `int user = 0`
+- `UiStep`: `[[nodiscard]] explicit operator bool() const`
 - `struct UiDrawState` — What an element's drawing knows this frame.
 - `UiDrawState`: `FloatRect rect { }`
 - `UiDrawState`: `const FontFace* font = nullptr`
@@ -128,7 +148,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiDrawState`: `Color4 secondCursorColor { 0, 0, 0, 0 }`
 - `UiDrawState`: `float age = 0.0f` — Seconds since it first appeared
 - `using UiDrawFunction = std::function<void(Painter&, const UiDrawState&)>`
-- `enum class UiEventKind { FocusMoved, Activated, Denied, Back, LayerOpened, LayerClosed }`
+- `enum class UiEventKind { FocusMoved, Activated, Stepped, Denied, Back, LayerOpened, LayerClosed }` — Layer events are for modal layers; a notice or a tooltip coming and going says nothing.
 - `struct UiEvent` — What happened this frame, for sounds and effects.
 - `UiEvent`: `UiEventKind kind = UiEventKind::FocusMoved`
 - `UiEvent`: `UiId id { }`
@@ -147,6 +167,53 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiStats`: `int stateEntries = 0`
 - `UiStats`: `int errors = 0` — Programmer errors skipped when development checks are off
 
+## `Core/Ui/Kit/UiOptionsScreen.h`
+
+- `struct UiOptionsTexts` — Every word on the screen, in English until a game gives its own.
+- `UiOptionsTexts`: `std::string_view title = "Options"`
+- `UiOptionsTexts`: `std::string_view audio = "Audio"`
+- `UiOptionsTexts`: `std::string_view display = "Display"`
+- `UiOptionsTexts`: `std::string_view effects = "Effects"`
+- `UiOptionsTexts`: `std::string_view back = "Back"`
+- `UiOptionsTexts`: `std::string_view music = "Music"`
+- `UiOptionsTexts`: `std::string_view soundEffects = "Sound effects"`
+- `UiOptionsTexts`: `std::string_view fullscreen = "Fullscreen"`
+- `UiOptionsTexts`: `std::string_view fpsLimit = "Frame rate limit"`
+- `UiOptionsTexts`: `std::string_view vsync = "VSync"`
+- `UiOptionsTexts`: `std::string_view showFps = "Show frame rate"`
+- `UiOptionsTexts`: `std::string_view glow = "Glow"`
+- `UiOptionsTexts`: `std::string_view particles = "Particles"`
+- `UiOptionsTexts`: `std::string_view shake = "Screen shake"`
+- `UiOptionsTexts`: `std::string_view motion = "Motion effects"`
+- `UiOptionsTexts`: `std::string_view flashes = "Screen flashes"`
+- `UiOptionsTexts`: `std::string_view background = "Background effects"`
+- `UiOptionsTexts`: `std::string_view full = "Full"`
+- `UiOptionsTexts`: `std::string_view reduced = "Reduced"`
+- `UiOptionsTexts`: `std::string_view off = "Off"`
+- `UiOptionsTexts`: `std::string_view unlimited = "Unlimited"`
+- `struct UiOptionsConfig`
+- `UiOptionsConfig`: `UiOptionsTexts texts { }`
+- `UiOptionsConfig`: `bool audio = true`
+- `UiOptionsConfig`: `bool display = true`
+- `UiOptionsConfig`: `bool effects = true`
+- `UiOptionsConfig`: `float width = 640.0f`
+- `UiOptionsConfig`: `float height = 500.0f`
+- `UiOptionsConfig`: `std::string_view extraTab { }` — One more tab with the game's own rows, described by this function while the tab is open: controls, language.
+- `UiOptionsConfig`: `std::function<void(Ui&)> extraRows`
+- `struct UiOptionsResult`
+- `UiOptionsResult`: `bool changed = false` — A value changed this frame
+- `UiOptionsResult`: `bool closed = false` — The back button or a back key: time to leave the screen
+- `[[nodiscard]] UiOptionsResult UiOptionsScreen(Ui& ui, UiId id, UiOptionsValues& values, const UiOptionsConfig& config = { })` — A ready options screen in tabs, centred on the canvas: audio, display and effects.
+
+## `Core/Ui/Kit/UiOptionsValues.h`
+
+- `struct UiOptionsValues` — What the options screen shows and changes.
+- `UiOptionsValues`: `int musicPercent = 100`
+- `UiOptionsValues`: `int effectsPercent = 100`
+- `UiOptionsValues`: `bool fullscreen = false`
+- `UiOptionsValues`: `int fpsLimit = 60` — 0: unlimited
+- `UiOptionsValues`: `GraphicsSettings graphics { }`
+
 ## `Core/Ui/Layout/UiLayout.h`
 
 - `inline constexpr float UiUnlimited = std::numeric_limits<float>::infinity()`
@@ -159,7 +226,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `[[nodiscard]] constexpr UiSize UiFit(float min = 0.0f, float max = UiUnlimited)`
 - `[[nodiscard]] constexpr UiSize UiFixed(float units)`
 - `[[nodiscard]] constexpr UiSize UiFill(float weight = 1.0f, float min = 0.0f, float max = UiUnlimited)`
-- `enum class UiDirection { Column, Row, Overlay }` — How children follow each other.
+- `enum class UiDirection { Column, Row, Overlay, Grid }` — How children follow each other.
 - `enum class UiAlign { Start, Center, End }`
 - `enum class UiAnchor { TopLeft, Top, TopRight, Left, Center, Right, BottomLeft, Bottom, BottomRight }` — Where an anchored child sits in its parent, out of the flow of its siblings.
 - `struct UiInsets`
@@ -174,6 +241,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiBox`: `UiSize width { }`
 - `UiBox`: `UiSize height { }`
 - `UiBox`: `UiDirection direction = UiDirection::Column`
+- `UiBox`: `int columns = 1` — For Grid
 - `UiBox`: `float gap = 0.0f`
 - `UiBox`: `UiInsets padding { }`
 - `UiBox`: `UiAlign alignX = UiAlign::Start`
@@ -213,6 +281,26 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiButtonLook`: `ButtonAnimSettings animation {.highlightStiffness = 400.0f,.highlightDamping = 32.0f,.pressSeconds = 0.14f,.denySeconds = 0.25f }` — A light spring on the cursor, a short press and refusal.
 - `UiButtonLook`: `std::function<void(Painter&, const UiButtonView&)> draw = DrawPlainButton`
 
+## `Core/Ui/Looks/UiControlLook.h`
+
+- `struct UiControlMetrics` — A row with a label on the left and a control on the right: what a toggle, a slider and a stepper have in common.
+- `UiControlMetrics`: `float textSize = 22.0f`
+- `UiControlMetrics`: `float minHeight = 44.0f`
+- `UiControlMetrics`: `float minWidth = 320.0f` — For a row that fits its content; UiFill and UiFixed take what they are given
+- `UiControlMetrics`: `UiInsets padding = UiInsets::Symmetric(14.0f, 6.0f)`
+- `UiControlMetrics`: `float controlWidth = 220.0f`
+- `UiControlMetrics`: `float labelGap = 16.0f`
+- `UiControlMetrics`: `ButtonAnimSettings animation {.highlightStiffness = 400.0f,.highlightDamping = 32.0f,.pressSeconds = 0.14f,.denySeconds = 0.25f }`
+- `[[nodiscard]] FloatRect UiControlArea(const FloatRect& row, const UiControlMetrics& metrics)` — Where the control sits in a row.
+- `struct UiControlView` — What every control's drawing gets.
+- `UiControlView`: `const UiDrawState& state`
+- `UiControlView`: `std::string_view label`
+- `UiControlView`: `float textSize = 0.0f`
+- `UiControlView`: `ButtonAnimState animation`
+- `UiControlView`: `std::optional<Color4> accent` — Empty: the theme's accent
+- `UiControlView`: `FloatRect area { }` — UiControlArea
+- `void DrawPlainControlRow(Painter& paint, const UiControlView& view)` — The row's body, frame, cursor and label from the theme's palette.
+
 ## `Core/Ui/Looks/UiLabelLook.h`
 
 - `struct UiLabelView` — What a label's drawing gets.
@@ -249,6 +337,88 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiPanelLook`: `float gap = 8.0f` — Between children, when the box asks for none
 - `UiPanelLook`: `std::function<void(Painter&, const UiPanelView&)> draw = DrawPlainPanel`
 
+## `Core/Ui/Looks/UiScrollLook.h`
+
+- `struct UiScrollView` — What a scroll bar's drawing gets.
+- `UiScrollView`: `const UiDrawState& state` — state.rect is the track
+- `UiScrollView`: `FloatRect thumb { }`
+- `UiScrollView`: `bool dragging = false`
+- `void DrawPlainScrollBar(Painter& paint, const UiScrollView& view)`
+- `struct UiScrollLook`
+- `UiScrollLook`: `float barWidth = 8.0f`
+- `UiScrollLook`: `float barGap = 6.0f` — Between the content and the bar
+- `UiScrollLook`: `float minThumb = 24.0f`
+- `UiScrollLook`: `float wheelStep = 60.0f` — Units per wheel notch
+- `UiScrollLook`: `float margin = 8.0f` — Kept around a cursor brought into view
+- `UiScrollLook`: `float speed = 18.0f` — How quickly it reaches where it is going
+- `UiScrollLook`: `std::function<void(Painter&, const UiScrollView&)> draw = DrawPlainScrollBar`
+
+## `Core/Ui/Looks/UiSliderLook.h`
+
+- `struct UiSliderView`
+- `UiSliderView`: `UiControlView control`
+- `UiSliderView`: `float fraction = 0.0f` — 0..1
+- `UiSliderView`: `std::string_view valueText`
+- `UiSliderView`: `FloatRect track { }` — UiSliderTrack
+- `void DrawPlainSlider(Painter& paint, const UiSliderView& view)`
+- `struct UiSliderLook`
+- `UiSliderLook`: `UiControlMetrics metrics {.controlWidth = 240.0f }`
+- `UiSliderLook`: `float valueWidth = 52.0f` — The room at the right of the control for the number
+- `UiSliderLook`: `std::function<void(Painter&, const UiSliderView&)> draw = DrawPlainSlider`
+- `[[nodiscard]] FloatRect UiSliderTrack(const FloatRect& row, const UiSliderLook& look)` — The part of a row that the mouse drags on, as wide as what is drawn.
+
+## `Core/Ui/Looks/UiStepperLook.h`
+
+- `struct UiStepperView`
+- `UiStepperView`: `UiControlView control`
+- `UiStepperView`: `std::string_view valueText`
+- `void DrawPlainStepper(Painter& paint, const UiStepperView& view)`
+- `struct UiStepperLook`
+- `UiStepperLook`: `UiControlMetrics metrics {.controlWidth = 220.0f }`
+- `UiStepperLook`: `std::function<void(Painter&, const UiStepperView&)> draw = DrawPlainStepper`
+
+## `Core/Ui/Looks/UiTabLook.h`
+
+- `struct UiTabView` — What one tab's drawing gets.
+- `UiTabView`: `const UiDrawState& state`
+- `UiTabView`: `std::string_view label`
+- `UiTabView`: `float textSize = 0.0f`
+- `UiTabView`: `bool selected = false`
+- `UiTabView`: `bool cursor = false` — The tab row has a player's cursor, and this is its selected tab
+- `UiTabView`: `ButtonAnimState animation`
+- `UiTabView`: `std::optional<Color4> accent` — Empty: the theme's accent
+- `void DrawPlainTab(Painter& paint, const UiTabView& view)`
+- `struct UiTabLook`
+- `UiTabLook`: `float textSize = 22.0f`
+- `UiTabLook`: `float minWidth = 72.0f`
+- `UiTabLook`: `float minHeight = 40.0f`
+- `UiTabLook`: `UiInsets padding = UiInsets::Symmetric(16.0f, 6.0f)`
+- `UiTabLook`: `float gap = 4.0f`
+- `UiTabLook`: `ButtonAnimSettings animation {.highlightStiffness = 400.0f,.highlightDamping = 32.0f,.pressSeconds = 0.14f }`
+- `UiTabLook`: `std::function<void(Painter&, const UiTabView&)> draw = DrawPlainTab`
+
+## `Core/Ui/Looks/UiToggleLook.h`
+
+- `struct UiToggleView`
+- `UiToggleView`: `UiControlView control`
+- `UiToggleView`: `float on = 0.0f` — 0: off; 1: on; between while it moves
+- `void DrawPlainToggle(Painter& paint, const UiToggleView& view)`
+- `struct UiToggleLook`
+- `UiToggleLook`: `UiControlMetrics metrics {.controlWidth = 64.0f }`
+- `UiToggleLook`: `std::function<void(Painter&, const UiToggleView&)> draw = DrawPlainToggle`
+
+## `Core/Ui/Looks/UiTooltipLook.h`
+
+- `void DrawPlainTooltip(Painter& paint, const UiDrawState& state)`
+- `struct UiTooltipLook`
+- `UiTooltipLook`: `float delay = 0.5f`
+- `UiTooltipLook`: `float maxWidth = 360.0f`
+- `UiTooltipLook`: `float textSize = 18.0f`
+- `UiTooltipLook`: `UiInsets padding = UiInsets::Symmetric(10.0f, 6.0f)`
+- `UiTooltipLook`: `float distance = 8.0f` — From the element it explains
+- `UiTooltipLook`: `float fadeSeconds = 0.12f`
+- `UiTooltipLook`: `std::function<void(Painter&, const UiDrawState&)> draw = DrawPlainTooltip`
+
 ## `Core/Ui/Widgets/UiButton.h`
 
 - `struct UiButtonOptions`
@@ -260,7 +430,18 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiButtonOptions`: `std::optional<UiAnchor> anchor { }`
 - `UiButtonOptions`: `Float2 offset { }`
 - `UiButtonOptions`: `const UiButtonLook* look = nullptr` — Borrowed until drawn; empty: the Ui's current look
+- `UiButtonOptions`: `std::string_view tooltip { }`
 - `[[nodiscard]] UiAction UiButton(Ui& ui, UiId id, std::string_view label, const UiButtonOptions& options = { })` — A button that the mouse and every player's keys can press.
+
+## `Core/Ui/Widgets/UiControlOptions.h`
+
+- `struct UiControlOptions` — What a toggle, a slider and a stepper have in common.
+- `UiControlOptions`: `bool enabled = true`
+- `UiControlOptions`: `std::optional<Color4> accent { }`
+- `UiControlOptions`: `float textSize = 0.0f` — 0: the look's
+- `UiControlOptions`: `UiSize width = UiFill()`
+- `UiControlOptions`: `UiSize height { }`
+- `UiControlOptions`: `std::string_view tooltip { }`
 
 ## `Core/Ui/Widgets/UiLabel.h`
 
@@ -285,4 +466,44 @@ Use these generated signatures to locate public declarations; open the header fo
 - `[[nodiscard]] UiElement UiPanel(Ui& ui, const UiBox& box = { }, const UiTraits& traits = { }, std::optional<Color4> accent = { })`
 - `[[nodiscard]] UiElement UiRow(Ui& ui, UiBox box = { }, const UiTraits& traits = { })` — Groups that draw nothing: children follow each other from left to right, or from top to bottom.
 - `[[nodiscard]] UiElement UiColumn(Ui& ui, UiBox box = { }, const UiTraits& traits = { })`
+- `[[nodiscard]] UiElement UiGrid(Ui& ui, int columns, UiBox box = { }, const UiTraits& traits = { })`
 - `void UiSpacer(Ui& ui, float weight = 1.0f)` — Takes the room left in a row or a column, pushing what follows to the far end.
+
+## `Core/Ui/Widgets/UiScroll.h`
+
+- `struct UiScrollOptions`
+- `UiScrollOptions`: `UiSize width = UiFill()`
+- `UiScrollOptions`: `UiSize height = UiFill()`
+- `class [[nodiscard]] UiScroll` — An area that scrolls up and down when its content is taller than it.
+- `UiScroll`: `UiScroll(Ui& ui, UiId id, UiBox content = { }, const UiScrollOptions& options = { })`
+- `UiScroll`: `void Close()` — Ends it here, as the end of its scope would.
+- `UiScroll`: `[[nodiscard]] float Offset() const`
+
+## `Core/Ui/Widgets/UiSlider.h`
+
+- `[[nodiscard]] bool UiSlider(Ui& ui, UiId id, std::string_view label, float& value, float min, float max, float step = 0.0f, const UiControlOptions& options = { })` — A row with a label and a slider between 'min' and 'max'.
+- `[[nodiscard]] bool UiSlider(Ui& ui, UiId id, std::string_view label, int& value, int min, int max, int step = 0, const UiControlOptions& options = { })`
+
+## `Core/Ui/Widgets/UiStepper.h`
+
+- `[[nodiscard]] int UiStepper(Ui& ui, UiId id, std::string_view label, std::string_view value, const UiControlOptions& options = { })` — A row with a label and "< value >".
+- `[[nodiscard]] bool UiStepper(Ui& ui, UiId id, std::string_view label, int& selected, std::span<const std::string_view> choices, const UiControlOptions& options = { })` — The same over a list: moves 'selected', wrapping at both ends.
+
+## `Core/Ui/Widgets/UiTabs.h`
+
+- `struct UiTabsOptions`
+- `UiTabsOptions`: `std::optional<Color4> accent { }`
+- `UiTabsOptions`: `float textSize = 0.0f` — 0: the look's
+- `UiTabsOptions`: `bool fill = false` — Tabs share the width of the row instead of fitting their text
+- `UiTabsOptions`: `bool pageKeys = true` — The previous and next page keys (Q and E) switch tabs wherever the cursor is
+- `[[nodiscard]] bool UiTabs(Ui& ui, UiId id, std::span<const std::string_view> labels, int& selected, const UiTabsOptions& options = { })` — A row of tabs: one stop for the cursor, where left and right switch.
+
+## `Core/Ui/Widgets/UiToggle.h`
+
+- `[[nodiscard]] bool UiToggle(Ui& ui, UiId id, std::string_view label, bool& value, const UiControlOptions& options = { })` — A row with a label and a switch.
+
+## `Core/Ui/Widgets/UiTooltip.h`
+
+- `struct UiTooltipOptions`
+- `UiTooltipOptions`: `bool onFocus = true` — Also for a keyboard cursor resting on it, or keyboard players would never see it
+- `void UiTooltip(Ui& ui, UiElement& anchor, std::string_view text, const UiTooltipOptions& options = { })` — A short explanation that floats by 'anchor' when the mouse or a cursor has rested on it.

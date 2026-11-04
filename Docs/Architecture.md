@@ -7,7 +7,7 @@ scene routing; the engine owns the main loop and services.
 
 | Module | Responsibility |
 | --- | --- |
-| `EngineHeadless` | Object lifecycle, scenes, scaled time, transition timing, grid selection/viewport, text layout, pointer gestures, player options (`GameOptions`) and run JSON storage, geometry, shatter patterns, UI transforms and [gameplay helpers](GameplayHelpers.md) |
+| `EngineHeadless` | Object lifecycle, scenes, scaled time, transition timing, game UI, text layout, pointer gestures, player options (`GameOptions`) and run JSON storage, geometry, shatter patterns, UI transforms and [gameplay helpers](GameplayHelpers.md) |
 | `Engine` | Window/canvas, drawing, fonts, input sampling, audio, effects and iris drawing, asset preparation, application loop |
 | `EngineLocalization` | Standalone [Localization module](Modules/Localization/README.md): authored languages, native names, translation fallback, placeholders and number formatting |
 | `EngineScoreBoard` | Standalone [ScoreBoard module](Modules/ScoreBoard/README.md): game-defined validation, durable score history, top-N and per-player ranking |
@@ -38,8 +38,7 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | `Graphics/Icons` | Shared icon library: shape-named `Icon` + `DrawIcon` | `Draw` |
 | `Graphics/Style` | `Theme`, `PlainTheme`, `NeonArcadeTheme`, `Backdrop` | `Draw`, `Fx` (style types) |
 
-Game UI is outside `Graphics/`, in `Ui/` ([UI](Ui.md)). `Menus/` holds grid selection and scrolling until `Ui/` has its
-lists and grids.
+Game UI is outside `Graphics/`, in `Ui/` ([UI](Ui.md)).
 
 Particle shape drawing is shared by `Fx/Particles/ParticleSystem` and static editor scenes through
 `Graphics/Draw/ParticleDraw`; it accepts explicit pose/style and never reads a theme.
@@ -65,7 +64,8 @@ rather than in the game.
   depends only on `Utilities` ([Animation](Animation.md)).
 - `Animation`, basic geometry, and gameplay helpers are available headlessly.
 - `Graphics/Draw` → Render/Animation; Icons → Draw; Fx → Draw/Paint/Animation (headless); Style → Draw/Fx style types.
-- `Ui/Layout` → Utilities; `Ui/Kernel` → Layout/Input/Paint; `Ui/Looks` → Kernel/Style/Draw; `Ui/Widgets` → Looks/Kernel.
+- `Ui/Layout` → Utilities; `Ui/Kernel` → Layout/Input/Paint; `Ui/Looks` → Kernel/Style/Draw; `Ui/Widgets` → Looks/Kernel;
+  `Ui/Kit` → Widgets.
 - Engine → Game, module → another module's Internals, and circular module dependencies are forbidden.
 - GL resource owners are created after the window is set up and destroyed before it closes. A resource-owning member is
   declared before members that use it.

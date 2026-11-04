@@ -7,6 +7,7 @@ Ui::Ui(const UiSettings& settings)
 Ui::~Ui() = default;
 
 void Ui::SetCanvas(const FloatRect& canvas) { _kernel->settings.canvas = canvas; }
+const FloatRect& Ui::Canvas() const { return _kernel->settings.canvas; }
 void Ui::SetFont(const FontFace* font) { _kernel->settings.font = font; }
 void Ui::SetUsers(std::vector<UiKeys> users) { _kernel->SetUsers(std::move(users)); }
 int Ui::UserCount() const { return _kernel->UserCount(); }
@@ -27,6 +28,10 @@ UiLayerScope Ui::Layer(UiId id, bool open, const UiLayerSpec& spec) {
     return UiLayerScope(*_kernel, id, open, spec);
 }
 UiAction Ui::Back() const { return _kernel->Back(); }
+int Ui::PageStep() const { return _kernel->PageStep(); }
+std::optional<Float2> Ui::Pointer() const { return _kernel->Pointer(); }
+float Ui::Wheel() const { return _kernel->Wheel(); }
+bool Ui::CursorMovedByKeys() const { return _kernel->CursorMovedByKeys(); }
 std::string_view Ui::Text(std::string_view text) { return _kernel->CopyText(text); }
 const FontFace& Ui::Font() const { return _kernel->Font(); }
 float Ui::Delta() const { return _kernel->Delta(); }

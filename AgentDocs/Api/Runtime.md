@@ -24,6 +24,8 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Game`: `[[nodiscard]] const RenderStats& RenderStatistics() const` — What the last presented frame cost the renderer (draw calls, uploads, glyphs ...).
 - `Game`: `void OverrideRenderQuality(const RenderQuality& quality)` — Development hosts (profiler) may change the render quality for this session; options are not written.
 - `Game`: `[[nodiscard]] GraphicsSettings AppliedGraphics() const` — The graphics choices in effect, an override included.
+- `Game`: `[[nodiscard]] UiOptionsValues UiOptions() const` — The player's options for Ui/Kit/UiOptionsScreen.h, and applying what the screen changed.
+- `Game`: `void ApplyUiOptions(const UiOptionsValues& values)`
 
 ## `Core/Runtime/GameSettings.h`
 

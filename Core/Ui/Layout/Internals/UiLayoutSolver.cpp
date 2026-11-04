@@ -73,8 +73,54 @@ private:
                 sum += ContentOf(child);
                 largest = std::max(largest, ContentOf(child));
             }
-            wanted = std::max(wanted, Flows(node.box, axis) ? sum + Gaps(node.box, flowing) : largest);
+            if (node.box.direction == UiDirection::Grid) {
+                wanted = std::max(wanted, GridContent(node, axis, flowing, largest));
+            } else {
+                wanted = std::max(wanted, Flows(node.box, axis) ? sum + Gaps(node.box, flowing) : largest);
+            }
             ContentOf(index) = Clamped(wanted + PaddingAlong(node.box, axis), size);
+        }
+    }
+
+    // Across: as many of the widest child as there are columns. Down: the rows' heights.
+    [[nodiscard]] float GridContent(UiLayoutNode& node, Axis axis, int flowing, float largest) {
+        const int columns = ColumnsOf(node.box);
+        if (axis == Axis::X) {
+            const int used = std::min(flowing, columns);
+            return largest * static_cast<float>(used) + Gaps(node.box, used);
+        }
+        float total = 0.0f;
+        float row = 0.0f;
+        int place = 0;
+        for (int child = node.firstChild; child >= 0; child = Node(child).nextSibling) {
+            if (Node(child).box.anchor) continue;
+            row = std::max(row, ContentOf(child));
+            if (++place % columns == 0) {
+                total += row;
+                row = 0.0f;
+            }
+        }
+        total += row;
+        const int rows = (flowing + columns - 1) / columns;
+        return total + Gaps(node.box, rows);
+    }
+    [[nodiscard]] static int ColumnsOf(const UiBox& box) { return std::max(box.columns, 1); }
+    [[nodiscard]] static float CellWidth(const UiBox& box, float room) {
+        const int columns = ColumnsOf(box);
+        return std::max((room - Gaps(box, columns)) / static_cast<float>(columns), 0.0f);
+    }
+    void AssignGrid(UiLayoutNode& node, Axis axis, float room) {
+        const float cell = CellWidth(node.box, room);
+        for (int child = node.firstChild; child >= 0; child = Node(child).nextSibling) {
+            const UiLayoutNode& item = Node(child);
+            if (item.box.anchor) {
+                SizeAt(child) = Across(item, axis, child, room);
+            } else if (axis == Axis::X) {
+                SizeAt(child) = Across(item, axis, child, cell);
+            } else {
+                // A row has no height of its own to fill.
+                SizeAt(child) = ContentOf(child);
+            }
         }
     }
 
@@ -84,7 +130,9 @@ private:
             UiLayoutNode& node = Node(index);
             if (node.parent < 0) SizeAt(index) = axis == Axis::X ? _canvas.width : _canvas.height;
             const float room = std::max(SizeAt(index) - PaddingAlong(node.box, axis), 0.0f);
-            if (Flows(node.box, axis)) {
+            if (node.box.direction == UiDirection::Grid) {
+                AssignGrid(node, axis, room);
+            } else if (Flows(node.box, axis)) {
                 AssignAlong(node, axis, room);
             } else {
                 AssignAcross(node, axis, room);
@@ -152,6 +200,10 @@ private:
         const FloatRect inner{node.rect.x + node.box.padding.left, node.rect.y + node.box.padding.top,
                               std::max(node.rect.width - PaddingAlong(node.box, Axis::X), 0.0f),
                               std::max(node.rect.height - PaddingAlong(node.box, Axis::Y), 0.0f)};
+        if (node.box.direction == UiDirection::Grid) {
+            PlaceGrid(node, inner);
+            return;
+        }
         const Axis main = node.box.direction == UiDirection::Row ? Axis::X : Axis::Y;
         const UiAlign mainAlign = main == Axis::X ? node.box.alignX : node.box.alignY;
         const UiAlign crossAlign = main == Axis::X ? node.box.alignY : node.box.alignX;
@@ -183,6 +235,30 @@ private:
             item.rect.x = main == Axis::X ? along : across;
             item.rect.y = main == Axis::X ? across : along;
             if (!stacked) cursor += mainSize + node.box.gap;
+        }
+    }
+    void PlaceGrid(UiLayoutNode& node, const FloatRect& inner) {
+        const int columns = ColumnsOf(node.box);
+        const float cell = CellWidth(node.box, inner.width);
+        float top = inner.y;
+        float rowHeight = 0.0f;
+        int place = 0;
+        for (int child = node.firstChild; child >= 0; child = Node(child).nextSibling) {
+            UiLayoutNode& item = Node(child);
+            if (item.box.anchor) {
+                PlaceAnchored(item, inner);
+                continue;
+            }
+            const int column = place % columns;
+            if (column == 0 && place > 0) {
+                top += rowHeight + node.box.gap;
+                rowHeight = 0.0f;
+            }
+            item.rect.x = inner.x + static_cast<float>(column) * (cell + node.box.gap) +
+                          AlignedOffset(node.box.alignX, cell, item.rect.width);
+            item.rect.y = top;
+            rowHeight = std::max(rowHeight, item.rect.height);
+            ++place;
         }
     }
     [[nodiscard]] static float AlignedOffset(UiAlign align, float room, float size) {

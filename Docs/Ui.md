@@ -58,11 +58,15 @@ Each element has a `UiBox`: `width` and `height`, `direction`, `gap`, `padding`,
 
 Positions are not written anywhere, so nothing has to be kept apart by hand and a longer translation still fits. Coordinates are logical canvas units; `UiSettings::canvas` says how large the canvas is.
 
+`direction` can also be `Grid`, with `columns`: equal columns from left to right, each row as high as its tallest child. `UiGrid(ui, 4, {.gap = 8.0f})` is the short form.
+
 ## Focus and keys
 
 Each player has one cursor, moved by direction keys to whatever lies that way on screen. There is no list of what is next to what: a grid, a sidebar and a footer work with no code. A screen starts with a cursor on its first focusable element (`UiSettings::autoFocus`), going past the last continues from the first (`wrapFocus`), and a held direction repeats (`repeatDelay`, `repeatSeconds`). When the focused element goes away the cursor moves to the nearest one left.
 
 Moving the mouse moves the cursor; a resting mouse does not, so the keyboard keeps working under it. A click is a press and a release on the same element. Default keys are arrows and WASD, Enter and Space, Escape. `_ui.Back()` is true when a back key was pressed and the layer being described is the top one. `UiTraits::enabled = false` lets the cursor land, so the player can see why it does not work, and reports `Denied()` instead.
+
+An element that sets `UiTraits::capture` takes the direction keys along that axis while it has the cursor, and reads them with `Step()`: this is how a slider has left and right. They repeat when held. `_ui.PageStep()` gives the previous and next page keys (Q and E), for the top layer.
 
 Gamepad and touch are not read. Everything above sits on `UiKeys`, so a gamepad would be one more source of the same moves.
 
@@ -95,6 +99,62 @@ A layer is a sheet over the canvas with its own cursor. While `open` is false it
 
 An element that disappears at once takes its state along. An item that should animate out of a list stays in the game's data until it is done.
 
+## Controls
+
+Rows with a label on the left and a control on the right. Up and down leave them; left and right change them. All take `UiControlOptions`: `enabled`, `accent`, `textSize`, `width`, `height`, `tooltip`.
+
+```cpp
+if (UiToggle(ui, "vsync", "VSync", _vsync)) Apply();                  // Confirm or a click flips; left off, right on
+if (UiSlider(ui, "music", "Music", _music, 0, 100, 5)) SetMusic(_music); // Left, right and dragging; int or float
+const std::array<std::string_view, 3> names{"Easy", "Normal", "Hard"};
+if (UiStepper(ui, "level", "Difficulty", _level, names)) Restart();   // "< Normal >"; wraps
+if (const int step = UiStepper(ui, "size", "Size", SizeText())) Resize(step); // -1, 0 or 1, for anything else
+```
+
+All return true when the value changed, and take the game's own variable.
+
+## Tabs
+
+```cpp
+const std::array<std::string_view, 2> names{"Weapons", "Armour"};
+static_cast<void>(UiTabs(ui, "shop", names, _page));
+if (_page == 0) WeaponList(ui);
+```
+
+The row is one stop for the cursor, where left and right switch; going down and back up keeps the choice. Q and E switch from anywhere. Each tab's content is the caller's: only the open one is described.
+
+## Lists and grids
+
+```cpp
+UiScroll list(ui, "items", {.gap = 4.0f});
+for (const Item& item : _items) {
+    if (UiButton(ui, item.key, item.name, {.width = UiFill()})) Buy(item);
+}
+```
+
+The area scrolls when its content is taller than it. It follows a keyboard cursor, including to a row out of sight, and takes the wheel and a drag on its bar. A list that scrolls under a resting cursor does not jump back to it. For a grid: `UiScroll grid(ui, "tiles", {.direction = UiDirection::Grid, .columns = 4, .gap = 8.0f});`. Rows out of sight cannot be clicked. `options.height` defaults to `UiFill()`, the room left in the parent, so its parent needs a height of its own.
+
+Every item is described every frame. For very long lists, describe only those near the view: `Offset()` says where it is.
+
+## Tooltips
+
+`{.tooltip = "Saves to slot one"}` on a button or a control. It appears after the mouse or a cursor has rested for `delay` seconds, stays inside the canvas, and leaves focus and input alone. In a widget of your own, call `UiTooltip(ui, element, text)` while the element is open. `{.onFocus = false}` keeps it to the mouse, for when a keyboard cursor rests on it all the time.
+
+## Ready screens
+
+`Ui/Kit` holds whole screens, written only with what is above, so a game can copy one and change it.
+
+```cpp
+void Build() {
+    UiOptionsValues values = _game.UiOptions();
+    const UiOptionsResult result = UiOptionsScreen(_ui, "options", values);
+    if (result.changed) _game.ApplyUiOptions(values);
+    if (result.closed) GoBack();
+}
+```
+
+`UiOptionsScreen` has tabs for audio, display and effects, over plain `UiOptionsValues`; `Game::UiOptions` and `Game::ApplyUiOptions` give and take them, and they persist with the game's other options. `UiOptionsConfig` turns tabs off, sets the size, gives `UiOptionsTexts` for another language, and adds a tab of the game's own rows (`extraTab`, `extraRows`). It adds no sound, since a game's sounds are its own; see `ui.Events()` below. Window size and render resolution are not on it yet: they need the monitor's list.
+
 ## Widgets of your own
 
 A widget is a function over the same API the engine's widgets use, so a game's widget can do all they can.
@@ -115,7 +175,8 @@ bool SpellSlot(Ui& ui, UiId id, Icon icon) {
 - `Draw` runs after the function has returned: capture by value, and pass text through `ui.Text(...)`.
 - `SetVisual` moves, scales or fades an element and its children without moving its siblings, and clicks follow it. This is how entrance animations are written, with `Age()` or a remembered tween.
 - `UiTraits::measure` gives a leaf a size of its own, and `clip` cuts children at the edges.
-- `ui.Events()` lists what happened this frame (`FocusMoved`, `Activated`, `Denied`, `Back`, `LayerOpened`, `LayerClosed`). Play sounds and effects from it; a cursor placed by the screen itself is not an event, so opening a menu makes no sound.
+- `Held()` and `ui.Pointer()` are for dragging, `Step()` for keys it captures, `Size()` and `FocusInside()` for what a scrolling area needs, and `PointerInside()` with `ui.Wheel()` for the wheel.
+- `ui.Events()` lists what happened this frame (`FocusMoved`, `Activated`, `Stepped`, `Denied`, `Back`, `LayerOpened`, `LayerClosed`). Play sounds and effects from it; a cursor placed by the screen itself is not an event, so opening a menu makes no sound, and layer events are for modal layers only.
 
 ## Looks
 
@@ -146,7 +207,8 @@ Change looks between frames. A built frame keeps pointing at the looks it was bu
 | `Ui/Layout` | The box model; private solver | `Utilities` only |
 | `Ui/Kernel` | `Ui`, `UiElement`, layers, focus, ids, keys, events, the look registry | `Layout`, `Input`, `Painter`; no widget and no look |
 | `Ui/Looks` | One look type per widget, with its plain drawing; `Neon/` | `Kernel`, `Graphics`; no widget and no input |
-| `Ui/Widgets` | Behaviour only: `UiLabel`, `UiButton`, `UiPanel`, `UiRow`, `UiColumn`, `UiSpacer`, `UiLayer` | `Looks`, `Kernel`, text measuring; no drawing |
+| `Ui/Widgets` | Behaviour only: `UiLabel`, `UiButton`, `UiPanel`, `UiRow`, `UiColumn`, `UiGrid`, `UiSpacer`, `UiLayer`, `UiToggle`, `UiSlider`, `UiStepper`, `UiTabs`, `UiScroll`, `UiTooltip` | `Looks`, `Kernel`, text measuring; no drawing |
+| `Ui/Kit` | Whole screens: `UiOptionsScreen` | `Widgets` and whatever a screen needs |
 
 `python Engine check` enforces this, and keeps simulations away from all of it. UI is view code: a choice that changes a simulation goes in as a command or input, so a replay holds it.
 

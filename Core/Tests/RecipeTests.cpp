@@ -6,6 +6,7 @@
 #include "AgentDocs/Recipes/Code/TimelineBoss.h"
 #include "AgentDocs/Recipes/Code/TweenMenu.h"
 #include "AgentDocs/Recipes/Code/UiMenu.h"
+#include "AgentDocs/Recipes/Code/UiOptions.h"
 #include "AgentDocs/Recipes/Code/FxBurst.h"
 #include "AgentDocs/Recipes/Code/FxCues.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
@@ -53,6 +54,52 @@ TEST_CASE("Engine.Recipes.MenuPressesAndAsksInADialog", "[engine][recipes]") {
     CHECK_FALSE(menu.AskingToQuit());
     CHECK_FALSE(menu.Quit());
     PaintFrame([&menu](Painter& paint) { menu.Draw(paint); });
+}
+
+TEST_CASE("Engine.Recipes.OptionsScreenTakesTheGamesRows", "[engine][recipes]") {
+    const FontFace font = FontFace::FromFile(ENGINE_RECIPE_FONT);
+    RecipeOptions options(&font);
+    const auto press = [&options](InputKey key) {
+        DeviceInput input;
+        input.keysPressed[static_cast<std::size_t>(key)] = true;
+        options.Input(input);
+        options.Update(0.02f);
+        options.Update(0.02f);
+    };
+    options.Update(0.02f);
+    options.Update(0.02f);
+    press(InputKey::Q); // Back from the first tab to the last: the game's own
+    press(InputKey::Down);
+    press(InputKey::Enter);
+    CHECK_FALSE(options.ShowHints());
+    press(InputKey::Down);
+    press(InputKey::Right);
+    CHECK(options.Difficulty() == 2);
+    press(InputKey::Escape);
+    CHECK(options.Closed());
+    PaintFrame([&options](Painter& paint) { options.Draw(paint); });
+}
+
+TEST_CASE("Engine.Recipes.LevelsScrollUnderTabs", "[engine][recipes]") {
+    const FontFace font = FontFace::FromFile(ENGINE_RECIPE_FONT);
+    RecipeLevels levels(&font);
+    const auto press = [&levels](InputKey key) {
+        DeviceInput input;
+        input.keysPressed[static_cast<std::size_t>(key)] = true;
+        levels.Input(input);
+        levels.Update(0.02f);
+        levels.Update(0.02f);
+    };
+    levels.Update(0.02f);
+    levels.Update(0.02f);
+    press(InputKey::E);
+    CHECK(levels.World() == 1);
+    press(InputKey::Down); // From the tabs into the grid
+    press(InputKey::Down); // A row down
+    press(InputKey::Right);
+    press(InputKey::Enter);
+    CHECK(levels.Chosen() == 6);
+    PaintFrame([&levels](Painter& paint) { levels.Draw(paint); });
 }
 
 TEST_CASE("Engine.Recipes.SimulationPlaysInASceneAndWithoutOne", "[engine][recipes]") {

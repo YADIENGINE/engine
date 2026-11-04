@@ -22,6 +22,8 @@ class InputNormalizer;
 struct Texture;
 using Texture2D = Texture;
 
+struct UiOptionsValues;
+
 // Runtime owns the loop and services. A project's derived game supplies content and scenes.
 class Game {
 public:
@@ -38,6 +40,10 @@ public:
     void OverrideRenderQuality(const RenderQuality& quality);
     // The graphics choices in effect, an override included.
     [[nodiscard]] GraphicsSettings AppliedGraphics() const;
+    // The player's options for Ui/Kit/UiOptionsScreen.h, and applying what the screen changed. They persist like the
+    // setters below. Public so that a scene can show the screen with only a Game&.
+    [[nodiscard]] UiOptionsValues UiOptions() const;
+    void ApplyUiOptions(const UiOptionsValues& values);
 
 protected:
     explicit Game(const GameSettings& settings);

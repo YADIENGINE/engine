@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "Animation/ButtonAnim.h"
 #include "Graphics/Text/FontFace.h"
+#include "Ui/Widgets/UiTooltip.h"
 
 UiAction UiButton(Ui& ui, UiId id, std::string_view label, const UiButtonOptions& options) {
     const UiButtonLook& look = options.look ? *options.look : ui.Looks().Get<UiButtonLook>();
@@ -31,5 +32,6 @@ UiAction UiButton(Ui& ui, UiId id, std::string_view label, const UiButtonOptions
                   accent = options.accent](Painter& paint, const UiDrawState& drawn) {
         look->draw(paint, {.state = drawn, .label = text, .textSize = textSize, .animation = state, .accent = accent});
     });
+    if (!options.tooltip.empty()) UiTooltip(ui, element, options.tooltip);
     return action;
 }

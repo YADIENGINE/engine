@@ -11,6 +11,8 @@ class Painter;
 
 // None: only drawn. Pointer: reacts to the mouse. Focus: also takes keyboard focus.
 enum class UiInteract { None, Pointer, Focus };
+// Direction keys along these axes go to a focused element instead of moving the cursor: a slider's left and right.
+enum class UiCapture { None, Horizontal, Vertical, Both };
 
 inline constexpr int UiAnyUser = -1;
 
@@ -25,6 +27,7 @@ struct UiVisual {
 // What an element does, apart from its place.
 struct UiTraits {
     UiInteract interact = UiInteract::None;
+    UiCapture capture = UiCapture::None; // Read with UiElement::Step
     // A disabled element can still be focused, so the player sees why it does not work; activating it reports Denied.
     bool enabled = true;
     int owner = UiAnyUser; // Only this player's keys reach it. Inherited by children.
@@ -37,7 +40,16 @@ struct UiTraits {
 struct UiAction {
     bool happened = false;
     int user = 0;
+    bool byPointer = false; // The mouse did it, so Ui::Pointer says where
     [[nodiscard]] explicit operator bool() const { return happened; }
+};
+
+// A direction key given to an element that captures it: -1, 0 or 1 on each axis. Repeats while held.
+struct UiStep {
+    int x = 0;
+    int y = 0;
+    int user = 0;
+    [[nodiscard]] explicit operator bool() const { return x != 0 || y != 0; }
 };
 
 // What an element's drawing knows this frame.
@@ -56,7 +68,8 @@ struct UiDrawState {
 };
 using UiDrawFunction = std::function<void(Painter&, const UiDrawState&)>;
 
-enum class UiEventKind { FocusMoved, Activated, Denied, Back, LayerOpened, LayerClosed };
+// Layer events are for modal layers; a notice or a tooltip coming and going says nothing.
+enum class UiEventKind { FocusMoved, Activated, Stepped, Denied, Back, LayerOpened, LayerClosed };
 // What happened this frame, for sounds and effects. Valid until the next Begin.
 struct UiEvent {
     UiEventKind kind = UiEventKind::FocusMoved;

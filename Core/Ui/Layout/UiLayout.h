@@ -23,8 +23,9 @@ struct UiSize {
     return {UiSizeKind::Fill, weight, min, max};
 }
 
-// How children follow each other. Overlay: on top of each other, each aligned on its own.
-enum class UiDirection { Column, Row, Overlay };
+// How children follow each other. Overlay: on top of each other, each aligned on its own. Grid: left to right in
+// 'columns' equal columns, each row as high as its tallest child.
+enum class UiDirection { Column, Row, Overlay, Grid };
 enum class UiAlign { Start, Center, End };
 // Where an anchored child sits in its parent, out of the flow of its siblings.
 enum class UiAnchor { TopLeft, Top, TopRight, Left, Center, Right, BottomLeft, Bottom, BottomRight };
@@ -50,6 +51,7 @@ struct UiBox {
     UiSize width{};
     UiSize height{};
     UiDirection direction = UiDirection::Column;
+    int columns = 1; // For Grid
     float gap = 0.0f;
     UiInsets padding{};
     UiAlign alignX = UiAlign::Start;

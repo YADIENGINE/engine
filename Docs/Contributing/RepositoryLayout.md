@@ -8,9 +8,9 @@
 | `Core/Runtime/` | Game, settings, loop and services; `Core/Main.cpp` calls the project's `CreateGame()` |
 | `Core/GameObjects/`, `Core/Scene/` | Headless object/scene lifecycle and optional object ownership |
 | `Core/Graphics/` | Paint, Text, Surface, Post; GPU/render implementation; Draw, Icons, Style helpers |
-| `Core/Ui/` | Game UI: Layout, Kernel, Looks, Widgets ([UI](../Ui.md)) |
+| `Core/Ui/` | Game UI: Layout, Kernel, Looks, Widgets, Kit ([UI](../Ui.md)) |
 | `Core/Input/`, `Core/Audio/`, `Core/Platform/` | Public services and private platform backends |
-| `Core/Fx/`, `Core/Menus/`, `Core/Gameplay/`, `Core/Progress/`, `Core/Utilities/` | Headless effects and reusable logic/value types |
+| `Core/Fx/`, `Core/Gameplay/`, `Core/Progress/`, `Core/Utilities/` | Headless effects and reusable logic/value types |
 | `Core/Options/` | Engine/player options, backed by Persistence |
 | `Core/Tuning/` | Tuning format, live values (`ENGINE_TUNING_LIVE`), `Tuning<T>()` |
 | `Core/Animation/` | Values over time: tweens, clips, animators, timelines and curves for simulations and views, small helpers for views. Headers only, with no target of their own; nothing here draws |

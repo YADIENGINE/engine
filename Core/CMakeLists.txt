@@ -150,7 +150,6 @@ add_library(EngineHeadless STATIC
     Graphics/Draw/BackgroundDraw.cpp
     Graphics/Draw/DrawUtils.cpp
     Graphics/Draw/IrisTransition.cpp
-    Menus/GridViewport.cpp
     Graphics/Draw/Neon.cpp
     Graphics/Draw/ParticleDraw.cpp
     Graphics/Draw/SpeedLines.cpp
@@ -181,8 +180,6 @@ add_library(EngineHeadless STATIC
     Input/Internals/InputSample.cpp
     Physics/Debug/ColliderDraw.cpp
     Input/Internals/PrimaryContact.cpp
-    Menus/HeaderGridNavigation.cpp
-    Menus/GridMenuSelection.cpp
     Options/GameOptions.cpp
     Platform/Internals/UserData.cpp
     Runtime/TimeScale.cpp
@@ -199,14 +196,29 @@ add_library(EngineHeadless STATIC
     Ui/Kernel/UiLooks.cpp
     Ui/Layout/Internals/UiLayoutSolver.cpp
     Ui/Looks/Neon/NeonLooks.cpp
+    Ui/Kit/UiOptionsScreen.cpp
     Ui/Looks/UiButtonLook.cpp
+    Ui/Looks/UiControlLook.cpp
     Ui/Looks/UiLabelLook.cpp
     Ui/Looks/UiLayerLook.cpp
     Ui/Looks/UiPanelLook.cpp
+    Ui/Looks/UiScrollLook.cpp
+    Ui/Looks/UiSliderLook.cpp
+    Ui/Looks/UiStepperLook.cpp
+    Ui/Looks/UiTabLook.cpp
+    Ui/Looks/UiToggleLook.cpp
+    Ui/Looks/UiTooltipLook.cpp
+    Ui/Widgets/Internals/UiControlRow.cpp
     Ui/Widgets/UiButton.cpp
     Ui/Widgets/UiLabel.cpp
     Ui/Widgets/UiLayer.cpp
     Ui/Widgets/UiPanel.cpp
+    Ui/Widgets/UiScroll.cpp
+    Ui/Widgets/UiSlider.cpp
+    Ui/Widgets/UiStepper.cpp
+    Ui/Widgets/UiTabs.cpp
+    Ui/Widgets/UiToggle.cpp
+    Ui/Widgets/UiTooltip.cpp
     Utilities/DevelopmentChecks.cpp
     Utilities/ShatterPattern.cpp
     Utilities/UiTransform.cpp

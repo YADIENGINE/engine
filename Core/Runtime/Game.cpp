@@ -18,6 +18,7 @@
 #include "Input/Internals/InputReader.h"
 #include "Graphics/Text/TextStyle.h"
 #include "Graphics/Style/Theme.h"
+#include "Ui/Kit/UiOptionsValues.h"
 #include "Tuning/TuningLive.h"
 
 namespace {
@@ -106,6 +107,25 @@ const RenderStats& Game::RenderStatistics() const { return _renderer->LastFrame(
 void Game::OverrideRenderQuality(const RenderQuality& quality) {
     _renderOverride = quality;
     _renderer->SetQuality(quality);
+}
+UiOptionsValues Game::UiOptions() const {
+    return {.musicPercent = _audio.MusicVolumePercent(),
+            .effectsPercent = _audio.EffectVolumePercent(),
+            .fullscreen = BorderlessFullscreen(),
+            .fpsLimit = FpsLimit(),
+            .graphics = Graphics()};
+}
+void Game::ApplyUiOptions(const UiOptionsValues& values) {
+    constexpr float FullPercent = 100.0f;
+    if (values.musicPercent != _audio.MusicVolumePercent()) {
+        _audio.SetMusicVolume(static_cast<float>(values.musicPercent) / FullPercent);
+    }
+    if (values.effectsPercent != _audio.EffectVolumePercent()) {
+        _audio.SetEffectVolume(static_cast<float>(values.effectsPercent) / FullPercent);
+    }
+    if (values.fullscreen != BorderlessFullscreen()) SetBorderlessFullscreen(values.fullscreen);
+    if (values.fpsLimit != FpsLimit()) SetFpsLimit(values.fpsLimit);
+    SetGraphics(values.graphics);
 }
 GraphicsSettings Game::AppliedGraphics() const {
     GraphicsSettings graphics = Graphics();

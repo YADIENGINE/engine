@@ -11,5 +11,6 @@
 // Groups that draw nothing: children follow each other from left to right, or from top to bottom.
 [[nodiscard]] UiElement UiRow(Ui& ui, UiBox box = {}, const UiTraits& traits = {});
 [[nodiscard]] UiElement UiColumn(Ui& ui, UiBox box = {}, const UiTraits& traits = {});
+[[nodiscard]] UiElement UiGrid(Ui& ui, int columns, UiBox box = {}, const UiTraits& traits = {});
 // Takes the room left in a row or a column, pushing what follows to the far end.
 void UiSpacer(Ui& ui, float weight = 1.0f);

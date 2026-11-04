@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -35,6 +36,7 @@ public:
     ~Ui();
 
     void SetCanvas(const FloatRect& canvas);
+    [[nodiscard]] const FloatRect& Canvas() const;
     void SetFont(const FontFace* font);
     // One entry per player at this screen, each with a cursor of their own. Default: one player on the whole keyboard.
     // With two or more players the mouse does not reach elements owned by a player.
@@ -63,6 +65,13 @@ public:
 
     // A back key was pressed, and the layer being described is the one on top.
     [[nodiscard]] UiAction Back() const;
+    // The same for the previous and next page keys: -1, 0 or 1.
+    [[nodiscard]] int PageStep() const;
+    // The mouse's last position on the canvas, and this frame's wheel (positive: up).
+    [[nodiscard]] std::optional<Float2> Pointer() const;
+    [[nodiscard]] float Wheel() const;
+    // A key or TakeFocus moved a cursor in the last frame, so a scrolling area should bring it into view.
+    [[nodiscard]] bool CursorMovedByKeys() const;
     // A copy that stays valid until the next Begin, for capturing text in a drawing.
     [[nodiscard]] std::string_view Text(std::string_view text);
     // The font; logic_error when there is none.

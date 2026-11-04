@@ -6,7 +6,9 @@ UiKeys UiKeys::All() {
             .left = {InputKey::Left, InputKey::A},
             .right = {InputKey::Right, InputKey::D},
             .confirm = {InputKey::Enter, InputKey::Space},
-            .back = {InputKey::Escape}};
+            .back = {InputKey::Escape},
+            .previous = {InputKey::Q},
+            .next = {InputKey::E}};
 }
 UiKeys UiKeys::Wasd(Color4 color) {
     return {.up = {InputKey::W},
@@ -15,6 +17,8 @@ UiKeys UiKeys::Wasd(Color4 color) {
             .right = {InputKey::D},
             .confirm = {InputKey::Space},
             .back = {InputKey::Escape},
+            .previous = {InputKey::Q},
+            .next = {InputKey::E},
             .color = color};
 }
 UiKeys UiKeys::Arrows(Color4 color) {
@@ -24,5 +28,7 @@ UiKeys UiKeys::Arrows(Color4 color) {
             .right = {InputKey::Right},
             .confirm = {InputKey::Enter},
             .back = {InputKey::Escape},
+            .previous = {InputKey::PageUp},
+            .next = {InputKey::PageDown},
             .color = color};
 }
