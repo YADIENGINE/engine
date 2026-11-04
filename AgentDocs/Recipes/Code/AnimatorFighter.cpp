@@ -5,7 +5,7 @@
 #include "Graphics/Paint/PaintStyle.h"
 #include "Graphics/Paint/Painter.h"
 #include "Simulation/StateVisitor.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 namespace {
 using FighterPose = RecipeFighterPose;

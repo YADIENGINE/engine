@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <span>
 #include <vector>
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 // Flights of collected items (score, currency, eggs ...) from their collection point to the HUD counter. In-flight
 // amounts are not reflected yet: the counter shows 'actual value - Pending(kind)' (with AnimatedCounter). The game

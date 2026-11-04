@@ -23,10 +23,10 @@ positions with antialiasing; submission waits until frame end, but call order is
 
 ## Basic types
 
-Under `Utilities/`, headless: `Float2` (operations, `Length`, `Normalized`, `Rotated`, `Float2::FromAngle` ...),
-`FloatRect` (`FromCenter`, `Center`, `Inset`, `Intersect`, `Union` ...), `Affine2` (`Translate`, `Rotate`, `Scale`,
-`Camera`, `*`, `Inverse`), `Color4` (straight alpha; `Rgb(0xRRGGBB)`, `Hsv(hue, s, v)`, `WithAlpha`, `ScaleAlpha`,
-`Mix`).
+Under `Utilities/Geometry/`, headless: `Float2` (operations, `Length`, `Normalized`, `Rotated`,
+`Float2::FromAngle` ...), `FloatRect` (`FromCenter`, `Center`, `Inset`, `Intersect`, `Union` ...), and `Affine2`
+(`Translate`, `Rotate`, `Scale`, `Camera`, `*`, `Inverse`). `Utilities/Color4.h` provides straight-alpha color with
+`Rgb(0xRRGGBB)`, `Hsv(hue, s, v)`, `WithAlpha`, `ScaleAlpha` and `Mix`.
 
 ## Shapes
 
@@ -57,7 +57,7 @@ of order) throw in Debug builds: `invalid_argument` at the call, `logic_error` f
 builds never throw for them: the call draws nothing (a rotated clip uses its bounding box), the frame goes on,
 `RenderStats::paintErrors` counts it and the first message is written to stderr. Drawing helpers report their own
 invalid arguments the same way with `paint.Reject("...")`. The game's own build decides, not the engine libraries'
-(`Utilities/DevelopmentChecks.h`).
+(`Diagnostics/DevelopmentChecks.h`).
 
 ## Images and surfaces
 
@@ -158,7 +158,7 @@ draw text with the game's font:
 | `Graphics/Icons/Icons.h` | Shared icon set: `DrawIcon(paint, Icon::Star, center, size, {.color = gold})` |
 | `Fx/*` | Effects (particles, floating text, rings, shockwaves, overlays, cameras, `FxStage`): [Effects](Effects.md) |
 
-The camera is `Utilities/CameraView.h` (`offset`, `target`, `rotation` in radians, `zoom`; `Transform()`, `ToScreen`,
+The camera is `Graphics/Camera/CameraView.h` (`offset`, `target`, `rotation` in radians, `zoom`; `Transform()`, `ToScreen`,
 `ToWorld`); draw the world within `auto view = paint.Transform(camera.Transform())`.
 
 Menus and widgets are not drawn by hand: see [UI](../Ui.md).

@@ -3,7 +3,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <string>
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 // Closed form of dv/dt = acceleration - drag * v, so update subdivision never changes the path.

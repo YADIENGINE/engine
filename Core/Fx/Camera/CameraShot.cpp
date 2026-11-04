@@ -1,7 +1,7 @@
 #include "Fx/Camera/CameraShot.h"
 #include <algorithm>
 #include "Animation/Easing.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 CameraShot FrameCameraShot(const FloatRect& bounds, const CameraFraming& framing) {
     if (bounds.Empty()) return {};

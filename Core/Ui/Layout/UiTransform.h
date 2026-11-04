@@ -1,7 +1,7 @@
 #pragma once
-#include "Utilities/Affine2.h"
-#include "Utilities/Float2.h"
-#include "Utilities/Rect.h"
+#include "Utilities/Geometry/Affine2.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Geometry/Rect.h"
 
 // Centered, aspect-preserving source-to-target mapping. Integer results round to the nearest pixel.
 class UiTransform {

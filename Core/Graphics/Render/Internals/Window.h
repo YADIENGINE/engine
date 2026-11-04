@@ -1,6 +1,6 @@
 #pragma once
 #include "Graphics/Render/WindowSettings.h"
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/Vec2.h"
 
 // İşletim sistemi penceresi ve OpenGL context'inin sahibidir (RAII).
 // GL kaynağı kullanan her nesneden önce kurulmalı, sonra yok edilmelidir.

@@ -8,8 +8,8 @@
 #include <string>
 #include "Graphics/Paint/Painter.h"
 #include "Ui/Kernel/UiLayerScope.h"
-#include "Utilities/Affine2.h"
-#include "Utilities/DevelopmentChecks.h"
+#include "Utilities/Geometry/Affine2.h"
+#include "Diagnostics/DevelopmentChecks.h"
 
 namespace {
 constexpr UiId BaseLayer{"UiBaseLayer"};

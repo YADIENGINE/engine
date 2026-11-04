@@ -10,10 +10,10 @@
 #include "Graphics/Gpu/Internals/GpuTypes.h"
 #include "Graphics/Gpu/Internals/PaintVertex.h"
 #include "Graphics/Paint/PaintStyle.h"
-#include "Utilities/Affine2.h"
+#include "Utilities/Geometry/Affine2.h"
 #include "Utilities/Color4.h"
-#include "Utilities/DevelopmentChecks.h"
-#include "Utilities/FloatRect.h"
+#include "Diagnostics/DevelopmentChecks.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 // A render target as recorded drawing sees it.
 struct PaintTarget {

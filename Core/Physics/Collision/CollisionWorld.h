@@ -9,7 +9,7 @@
 #include "Physics/Collision/CollisionMask.h"
 #include "Physics/Collision/Pose.h"
 #include "Physics/Collision/Shape.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 class StateVisitor;
 

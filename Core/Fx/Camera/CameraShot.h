@@ -1,8 +1,8 @@
 #pragma once
 #include "Animation/PoseFields.h"
-#include "Utilities/CameraView.h"
-#include "Utilities/Float2.h"
-#include "Utilities/FloatRect.h"
+#include "Graphics/Camera/CameraView.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 // Cinematic camera shot: the field moves to 'focus' (a canvas point), zooms by 'zoom', and rotates by 'rotation'
 // radians. 'weight' 0..1 blends from the normal camera to this shot; at 0 the shot has no effect. It is an animation

@@ -8,10 +8,10 @@
 #include "Graphics/Post/PostSettings.h"
 #include "Graphics/Post/RenderQuality.h"
 #include "Graphics/Surface/TextureRef.h"
-#include "Utilities/Affine2.h"
+#include "Utilities/Geometry/Affine2.h"
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class FontFace;
 class Painter;

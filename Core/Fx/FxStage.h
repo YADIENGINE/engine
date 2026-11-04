@@ -8,10 +8,10 @@
 #include "Fx/FxCueSet.h"
 #include "Fx/FxQuality.h"
 #include "Fx/FxStyle.h"
-#include "Utilities/CameraView.h"
+#include "Graphics/Camera/CameraView.h"
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
 class TimeScale;

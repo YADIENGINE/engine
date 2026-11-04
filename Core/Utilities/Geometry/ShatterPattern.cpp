@@ -1,4 +1,4 @@
-#include "Utilities/ShatterPattern.h"
+#include "Utilities/Geometry/ShatterPattern.h"
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -93,35 +93,6 @@ ShatterPattern::ShatterPattern(const Rect& bounds, std::span<const Float2> seeds
         }
         Measure(shard);
     }
-}
-
-void ShatterPattern::Spread(std::span<const CrackSource> sources, float speed) {
-    const float pace = speed > 0.0f ? 1.0f / speed : 0.0f;
-    const auto arrival = [&](Float2 point) {
-        float best = sources.empty() ? 0.0f : std::numeric_limits<float>::max();
-        for (const CrackSource& source : sources)
-            best = std::min(best, source.time + Distance(point, source.point) * pace);
-        return best;
-    };
-    for (ShatterShard& shard : _shards) {
-        shard.crackedAt = std::numeric_limits<float>::max();
-        shard.freedAt = 0.0f;
-    }
-    for (ShatterCrack& crack : _cracks) {
-        const float from = arrival(crack.from);
-        const float to = arrival(crack.to);
-        if (to < from) std::swap(crack.from, crack.to);
-        crack.start = std::min(from, to);
-        crack.end = crack.start + crack.length * pace;
-        for (const int index : {crack.left, crack.right}) {
-            ShatterShard& shard = _shards[static_cast<std::size_t>(index)];
-            shard.crackedAt = std::min(shard.crackedAt, crack.start);
-            shard.freedAt = std::max(shard.freedAt, crack.end);
-        }
-    }
-    // Çatlaksız kırık (tek kırıklı desen) baştan serbesttir.
-    for (ShatterShard& shard : _shards)
-        if (shard.crackedAt == std::numeric_limits<float>::max()) shard.crackedAt = 0.0f;
 }
 
 int ShatterPattern::ShardAt(Float2 point) const {

@@ -4,7 +4,7 @@
 #include <source_location>
 #include <string>
 #include <vector>
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
 

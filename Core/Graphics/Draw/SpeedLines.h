@@ -1,7 +1,7 @@
 #pragma once
 #include "Utilities/Color4.h"
-#include "Utilities/FloatRange.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Math/FloatRange.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
 

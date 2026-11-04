@@ -1,7 +1,7 @@
 #pragma once
 #include <optional>
-#include "Utilities/Float2.h"
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Geometry/Vec2.h"
 
 struct SceneViewport {
     Float2 position;

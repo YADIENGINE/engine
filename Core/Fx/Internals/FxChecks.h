@@ -1,6 +1,6 @@
 #pragma once
 #include <cmath>
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 // What effect styles and calls ask of their numbers.
 [[nodiscard]] inline bool FxPositive(float value) { return std::isfinite(value) && value > 0.0f; }

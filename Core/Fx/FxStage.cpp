@@ -11,7 +11,7 @@
 #include "Graphics/Draw/SpeedLines.h"
 #include "Graphics/Paint/Painter.h"
 #include "Runtime/TimeScale.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 // A visit with these does not compile when an FxAction has no case.

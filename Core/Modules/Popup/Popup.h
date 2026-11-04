@@ -7,8 +7,8 @@
 #include <string>
 #include "Animation/Easing.h"
 #include "Graphics/Text/TextStyle.h"
-#include "Utilities/DevelopmentChecks.h"
-#include "Utilities/Float2.h"
+#include "Diagnostics/DevelopmentChecks.h"
+#include "Utilities/Geometry/Float2.h"
 
 class FontFace;
 class Painter;

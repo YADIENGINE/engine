@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <optional>
-#include "Utilities/Rect.h"
+#include "Utilities/Geometry/Rect.h"
 
 struct DeviceInput;
 struct CollectionPointerResult {

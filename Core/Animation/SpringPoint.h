@@ -1,5 +1,5 @@
 #pragma once
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 // 2D point approaching its target with a spring (e.g. menu cursors). For views, on seconds. Header-only.
 struct SpringPoint {

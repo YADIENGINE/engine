@@ -4,7 +4,7 @@
 #include <string>
 #include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Viewport/SceneViewport.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 // Marking a region of the scene for the Console: the developer drags over (or clicks on) the image, the editor saves
 // the region's pixels and pastes one context line for the agent running there (Docs/Editor/Automation.md → Marking).

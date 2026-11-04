@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
-#include "Utilities/Rng.h"
-#include "Utilities/WeightedPick.h"
+#include "Utilities/Random/Rng.h"
+#include "Utilities/Random/WeightedPick.h"
 
 TEST_CASE("Engine.Rng.FollowsThePublishedPcg32Sequence", "[engine][simulation]") {
     Rng rng(42, 54); // The reference values of the PCG32 demo program

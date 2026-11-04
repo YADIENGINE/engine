@@ -22,7 +22,7 @@ Use a simulation for a game's rules. Menus, transitions and effects stay ordinar
 | `Simulation/ReplayCheck.h` | `VerifyTape`, `FindDivergence`, `StateAt` |
 | `Simulation/Scenario.h` | Input, steps and state from a C++ test |
 | `Input/InputBindings.h` | Keys to per-player actions |
-| `Utilities/Rng.h`, `Utilities/WeightedPick.h` | Seeded random numbers, weighted choice |
+| `Utilities/Random/Rng.h`, `Utilities/Random/WeightedPick.h` | Seeded random numbers, weighted choice |
 | `Physics/Collision/CollisionWorld.h` | Hits and overlaps inside the rules: [Collision](Collision.md) |
 | `Animation/Animator.h`, `Animation/Tween.h`, `Animation/Timeline.h` | Character clips, moving values, boss and wave timing: [Animation](Animation.md) |
 | `Editor/Api/HostedSimulation.h` | A simulation an editor scene hosts |

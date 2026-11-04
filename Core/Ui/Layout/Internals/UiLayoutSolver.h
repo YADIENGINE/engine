@@ -1,7 +1,7 @@
 #pragma once
 #include <span>
 #include "Ui/Layout/UiLayout.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 // One element. Parents come before their children, in the order they were added.
 struct UiLayoutNode {

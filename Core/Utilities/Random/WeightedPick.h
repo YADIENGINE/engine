@@ -1,6 +1,6 @@
 #pragma once
 #include <cstddef>
-#include "Utilities/Rng.h"
+#include "Utilities/Random/Rng.h"
 
 // Weighted random choice: returns an index in proportion to 'weights' (zero and negative weights never occur; at least
 // one must be > 0). The same generator state gives the same index in every build. Header-only.

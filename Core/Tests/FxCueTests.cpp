@@ -26,7 +26,7 @@
 #include "Runtime/TimeScale.h"
 #include "Scene/TransitionClock.h"
 #include "Tests/PaintHarness.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Noise.h"
 
 using Catch::Approx;
 

@@ -4,7 +4,7 @@
 #include "Ui/Looks/UiStepperLook.h"
 #include "Ui/Widgets/Internals/UiControlRow.h"
 #include "Ui/Widgets/UiTooltip.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Index.h"
 
 namespace {
 // 'canChange': a list of one choice steps nowhere, so that stays silent.

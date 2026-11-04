@@ -5,7 +5,7 @@
 #include "Animation/Easing.h"
 #include "Fx/Internals/FxChecks.h"
 #include "Graphics/Paint/Painter.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Noise.h"
 
 bool IsValid(const GlitchStyle& style) {
     return FxPositive(style.fps) && style.bands >= 0 && style.tears >= 0 && style.noise >= 0 && style.noiseSize > 0 &&

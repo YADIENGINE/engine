@@ -1,8 +1,8 @@
 #pragma once
 #include "Graphics/Paint/PaintStyle.h"
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
 

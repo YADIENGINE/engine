@@ -2,6 +2,7 @@
 #include <optional>
 #include <span>
 #include "Input/Input.h"
+#include "Utilities/Geometry/CardinalDirection.h"
 
 // Borrowed navigation view. The snapshot must outlive the view; do not retain it across input callbacks.
 // Player bindings and gameplay actions belong to the consuming game.

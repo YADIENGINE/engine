@@ -190,6 +190,10 @@ rim/glow widths in canvas units. Glow alpha sets its additive strength, and nonp
 helper clips to the supplied rectangle; empty bounds draw nothing. Timing is `Scene/TransitionClock.h`: `Cover()` goes to it,
 and `Update` tells when the curtain is closed. Focus changes and destinations remain in the consuming game.
 
+`Utilities/Geometry/ShatterPattern.h` builds the convex Voronoi shards and shared crack edges. Pass that immutable geometry
+to `Fx/World/ShatterSpread.h` to calculate when each crack opens and each shard becomes free. With no sources the pattern is
+open at time zero; speed must always be positive.
+
 ## General usage rules
 
 The View keeps its effects as value members; it calls Update with the chosen delta and Clear on reset. The game decides

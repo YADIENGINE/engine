@@ -1,6 +1,6 @@
 #pragma once
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 class Painter;
 

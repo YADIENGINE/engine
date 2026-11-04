@@ -7,7 +7,7 @@
 #include "Graphics/Paint/Internals/DrawList.h"
 #include "Graphics/Paint/PaintStyle.h"
 #include "Graphics/Post/RenderQuality.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 // Small rules shared by the Painter's drawing files.
 inline constexpr float ReducedGlowRadius = 0.7f; // GlowQuality::Reduced

@@ -11,7 +11,7 @@
 #include "Graphics/Surface/Internals/SurfaceState.h"
 #include "Graphics/Surface/Internals/TextureRefAccess.h"
 #include "Graphics/Surface/Surface.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 constexpr float AntiAliasPixels = 1.5f; // Quad margin beyond a shape's coverage, device pixels

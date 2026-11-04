@@ -35,7 +35,7 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(self.check(), [])
 
     def test_simulation_stays_away_from_drawing_clocks_and_standard_random(self):
-        self.write("Game/Simulation/Rules.cpp", '#include "Simulation/Simulation.h"\n#include "Utilities/Rng.h"\n'
+        self.write("Game/Simulation/Rules.cpp", '#include "Simulation/Simulation.h"\n#include "Utilities/Random/Rng.h"\n'
                    '#include "Tuning/Tuning.h"\n#include "Simulation/Rules.h"\n#include "Animation/Timeline.h"\n'
                    '#include "Animation/Easing.h"\n#include <vector>\n')
         self.assertEqual(self.check(), [])
@@ -128,7 +128,7 @@ class BoundaryTests(unittest.TestCase):
                 (self.engine / path).unlink()
 
     def test_the_ui_layers_may_use_what_is_below(self):
-        self.write("Engine/Core/Ui/Layout/Solver.cpp", '#include "Ui/Layout/UiLayout.h"\n#include "Utilities/Rect.h"\n')
+        self.write("Engine/Core/Ui/Layout/Solver.cpp", '#include "Ui/Layout/UiLayout.h"\n#include "Utilities/Geometry/Rect.h"\n')
         self.write("Engine/Core/Ui/Kernel/Ui.cpp", '#include "Ui/Layout/UiLayout.h"\n#include "Graphics/Paint/Painter.h"\n')
         self.write("Engine/Core/Ui/Looks/Look.cpp", '#include "Ui/Kernel/Ui.h"\n#include "Graphics/Paint/Painter.h"\n')
         self.write("Engine/Core/Ui/Widgets/Button.cpp", '#include "Ui/Looks/Look.h"\n#include "Ui/Kernel/Ui.h"\n')

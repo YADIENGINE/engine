@@ -3,7 +3,7 @@
 #include "Animation/Tween.h"
 #include "Fx/FxQuality.h"
 #include "Utilities/Color4.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
 

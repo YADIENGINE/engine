@@ -11,7 +11,7 @@
 #include "Graphics/Text/FontFace.h"
 #include "Graphics/Text/TextStyle.h"
 #include "Tests/PaintHarness.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 using Catch::Approx;
 

@@ -10,9 +10,9 @@
 #include "Gameplay/TimedEffectSet.h"
 #include "Modules/Persistence/Persistence.h"
 #include "Progress/TieredProgress.h"
-#include "Utilities/ChoiceList.h"
+#include "Options/ChoiceList.h"
 #include "Utilities/EnumTable.h"
-#include "Utilities/WeightedPick.h"
+#include "Utilities/Random/WeightedPick.h"
 
 using Catch::Approx;
 

@@ -1,7 +1,7 @@
 #pragma once
 #include "Graphics/Style/NeonArcadePalette.h"
 #include "Graphics/Style/Theme.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 // Ready-made neon arcade theme: dark purple colours, a scrolling grid, fast and bright effects. Its widgets are in
 // Ui/Looks/Neon/NeonLooks.h. Start a new theme by copying this and changing its fields.

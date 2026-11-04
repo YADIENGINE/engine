@@ -1,8 +1,9 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include "Animation/Easing.h"
-#include "Utilities/MathUtils.h"
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/CardinalDirection.h"
+#include "Utilities/Math/Noise.h"
+#include "Utilities/Geometry/Vec2.h"
 
 using Catch::Approx;
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/Vec2.h"
 
 struct FloatRect;
 
@@ -21,6 +21,6 @@ struct Rect {
         const int dy = point.y - CenterY();
         return dx * dx + dy * dy <= radius * radius;
     }
-    // Lossless widening to continuous coordinates (Painter takes FloatRect); defined in Utilities/FloatRect.h.
+    // Lossless widening to continuous coordinates (Painter takes FloatRect); defined in Utilities/Geometry/FloatRect.h.
     constexpr operator FloatRect() const;
 };

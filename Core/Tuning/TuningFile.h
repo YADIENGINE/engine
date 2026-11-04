@@ -7,8 +7,8 @@
 #include <variant>
 #include <vector>
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
-#include "Utilities/FloatRange.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Math/FloatRange.h"
 
 // Tuning file format (Docs/Tuning.md): reading, validation, value patching and list / table resizing. Used by the live
 // runtime and editor. The build-time generator applies the same rules in Python (Tools/tuning/document.py); shared

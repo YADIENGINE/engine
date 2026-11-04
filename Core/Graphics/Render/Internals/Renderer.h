@@ -6,7 +6,7 @@
 #include "Graphics/Gpu/Internals/GpuTypes.h"
 #include "Graphics/Render/Internals/RenderPipeline.h"
 #include "Graphics/Render/Internals/Window.h"
-#include "Utilities/FrameObserver.h"
+#include "Diagnostics/FrameObserver.h"
 
 class GlDevice;
 class Painter;

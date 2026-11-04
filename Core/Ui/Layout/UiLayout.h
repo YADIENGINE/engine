@@ -2,7 +2,7 @@
 #include <functional>
 #include <limits>
 #include <optional>
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 inline constexpr float UiUnlimited = std::numeric_limits<float>::infinity();
 

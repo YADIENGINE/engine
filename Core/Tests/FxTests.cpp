@@ -11,7 +11,7 @@
 #include "Fx/Particles/ParticleSystem.h"
 #include "Graphics/Text/FontFace.h"
 #include "Tests/PaintHarness.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 using Catch::Approx;
 

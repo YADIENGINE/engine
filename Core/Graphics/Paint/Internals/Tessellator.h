@@ -4,8 +4,8 @@
 #include <vector>
 #include "Graphics/Gpu/Internals/PaintVertex.h"
 #include "Graphics/Paint/PaintStyle.h"
-#include "Utilities/Affine2.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Affine2.h"
+#include "Utilities/Geometry/Float2.h"
 
 class Path;
 

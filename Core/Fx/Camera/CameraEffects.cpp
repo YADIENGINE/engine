@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include "Animation/Easing.h"
 #include "Fx/Internals/FxChecks.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Noise.h"
 
 bool IsValid(const CameraEffectsStyle& style) {
     for (const float value :

@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <optional>
 #include <vector>
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/Vec2.h"
 
 // clang-format off
 enum class InputKey {

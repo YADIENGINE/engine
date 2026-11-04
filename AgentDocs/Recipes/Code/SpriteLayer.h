@@ -1,5 +1,5 @@
 #pragma once
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
 class Surface;

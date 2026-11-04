@@ -2,7 +2,7 @@
 #include <array>
 #include <vector>
 #include "Input/Input.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 struct InputSampleTouch {
     int id = 0;

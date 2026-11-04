@@ -5,7 +5,7 @@
 #include <vector>
 #include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/Vec2.h"
 
 // Context lines the editor sends to the Console's agent session (Docs/Editor/Usage.md → Agent workspace). Each starts
 // with "[editor]" like a Mark line, so an agent recognises editor context, and ends ready for the developer's words.

@@ -6,7 +6,7 @@
 #include <utility>
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Text/FontFace.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 bool Nonnegative(float value) { return std::isfinite(value) && value >= 0.0f; }

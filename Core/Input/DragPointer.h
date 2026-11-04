@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <optional>
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/Vec2.h"
 
 struct DeviceInput;
 // State of one primary contact (touch or left mouse button) during a frame.

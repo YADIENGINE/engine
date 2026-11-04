@@ -70,7 +70,7 @@ private:
 #include "Graphics/Paint/Painter.h"
 #include "Simulation/StateVisitor.h"
 #include "Simulation/TimelineMoments.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 constexpr Float2 BossPosition{400.0f, 200.0f};

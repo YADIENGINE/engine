@@ -18,8 +18,8 @@ Put the rules in Game/Simulation/ (the project's CMake builds them into a librar
 #include "Simulation/SimulationRegistry.h"
 #include "Simulation/SimulationRunner.h"
 #include "Simulation/StepSmoothed.h"
-#include "Utilities/Float2.h"
-#include "Utilities/Rng.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Random/Rng.h"
 
 enum class RecipeButton { Left, Right, Fire };
 

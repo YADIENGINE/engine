@@ -35,7 +35,7 @@ libraries:
 | Programmer errors throw ([Painter](Graphics/Painter.md)) | On | On |
 
 The last two follow the executable, not the libraries: `ENGINE_TUNING_LIVE` is read where `Tuning<T>()` is compiled, and
-each game and worker sets `Utilities/DevelopmentChecks.h` with its own flags.
+each game and worker sets `Diagnostics/DevelopmentChecks.h` with its own flags.
 
 ## Choosing the source build
 

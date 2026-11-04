@@ -9,8 +9,8 @@
 #include "Editor/Api/SceneParameter.h"
 #include "Tuning/TuningFile.h"
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
-#include "Utilities/FloatRange.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Math/FloatRange.h"
 
 // One editable value in the Inspector, whatever owns it: a scene parameter (the session's, never saved) or a tuning
 // field (saved in its file). Both convert to this model, so one set of widgets edits both (PropertyWidgets.h).

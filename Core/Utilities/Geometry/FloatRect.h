@@ -1,7 +1,7 @@
 #pragma once
 #include <algorithm>
-#include "Utilities/Float2.h"
-#include "Utilities/Rect.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Geometry/Rect.h"
 
 // Axis-aligned rectangle in continuous coordinates; x/y is the top-left corner (y grows downwards). Header-only.
 struct FloatRect {

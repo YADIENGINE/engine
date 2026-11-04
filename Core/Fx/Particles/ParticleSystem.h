@@ -6,10 +6,10 @@
 #include "Fx/FxQuality.h"
 #include "Graphics/Draw/ParticleDraw.h"
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
-#include "Utilities/FloatRange.h"
-#include "Utilities/MathUtils.h"
-#include "Utilities/Rng.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Math/FloatRange.h"
+#include "Utilities/Math/Scalar.h"
+#include "Utilities/Random/Rng.h"
 
 class Painter;
 

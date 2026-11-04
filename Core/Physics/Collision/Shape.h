@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 enum class ShapeKind { Circle, Box, Capsule, Segment, Polygon };
 

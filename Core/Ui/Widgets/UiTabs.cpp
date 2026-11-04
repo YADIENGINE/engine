@@ -4,7 +4,7 @@
 #include "Animation/ButtonAnim.h"
 #include "Graphics/Text/FontFace.h"
 #include "Ui/Looks/UiTabLook.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Index.h"
 
 namespace {
 // A click on a later tab decides after the earlier ones were described, so tabs read the choice when they are drawn.

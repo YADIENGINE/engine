@@ -4,10 +4,10 @@
 #include <vector>
 #include "Graphics/Paint/Internals/Tessellator.h"
 #include "Graphics/Paint/Path.h"
-#include "Utilities/Affine2.h"
+#include "Utilities/Geometry/Affine2.h"
 #include "Utilities/Color4.h"
-#include "Utilities/FloatRect.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Geometry/FloatRect.h"
+#include "Utilities/Math/Scalar.h"
 
 using Catch::Approx;
 

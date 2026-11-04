@@ -8,7 +8,7 @@
 #include "Graphics/Text/FontFace.h"
 #include "Graphics/Text/TextBlock.h"
 #include "Modules/Popup/Internals/State.h"
-#include "Utilities/Affine2.h"
+#include "Utilities/Geometry/Affine2.h"
 
 namespace {
 bool Finite(Float2 value) { return std::isfinite(value.x) && std::isfinite(value.y); }

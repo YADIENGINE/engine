@@ -7,8 +7,8 @@
 #include <utility>
 #include "Graphics/Draw/DrawUtils.h"
 #include "Graphics/Paint/Painter.h"
-#include "Utilities/FloatRect.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Geometry/FloatRect.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 constexpr float FillAlpha = 0.3f; // Inner fill of line icons

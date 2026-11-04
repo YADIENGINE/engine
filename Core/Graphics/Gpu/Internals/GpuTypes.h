@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <optional>
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 // GPU resources are addressed by generational handles: a slot index plus the generation the slot had when the
 // resource was created. A destroyed resource's handle never matches a later resource in the same slot.

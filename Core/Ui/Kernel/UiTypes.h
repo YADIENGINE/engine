@@ -4,7 +4,7 @@
 #include "Ui/Kernel/UiId.h"
 #include "Ui/Layout/UiLayout.h"
 #include "Utilities/Color4.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class FontFace;
 class Painter;

@@ -1,7 +1,7 @@
 #pragma once
 #include <functional>
 #include <string>
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/Vec2.h"
 #include "Editor/Api/SceneParameter.h"
 
 class AudioSystem;

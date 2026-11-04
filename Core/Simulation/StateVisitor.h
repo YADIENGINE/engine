@@ -6,9 +6,9 @@
 #include <type_traits>
 #include <variant>
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
-#include "Utilities/Rng.h"
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Random/Rng.h"
+#include "Utilities/Geometry/Vec2.h"
 
 using StateValue = std::variant<bool, std::int64_t, std::uint64_t, float, double, std::string_view>;
 

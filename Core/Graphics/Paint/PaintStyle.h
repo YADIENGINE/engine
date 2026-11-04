@@ -1,7 +1,7 @@
 #pragma once
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 // How a stroke sits on a shape's edge: centred on it, entirely inside, or entirely outside.
 enum class StrokeAlign { Center, Inside, Outside };

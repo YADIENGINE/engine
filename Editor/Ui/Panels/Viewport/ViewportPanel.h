@@ -5,7 +5,7 @@
 #include <vector>
 #include "Editor/Application/EditorPresentation.h"
 #include "Editor/Internals/Viewport/SceneViewport.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 struct ViewportImage {
     std::uint64_t texture = 0;

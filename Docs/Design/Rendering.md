@@ -73,7 +73,10 @@ raylib'li `Engine` hedefindedir.
 ### Klasörler
 
 ```
-Core/Utilities/        Float2 (+ işlemler), FloatRect, Affine2, Color4 (+ Mix, WithAlpha, Rgb) — headless matematik
+Core/Utilities/        Color4 (+ Mix, WithAlpha, Rgb), EnumTable, Utf8 — headless temel değerler
+  Geometry/            Float2 (+ işlemler), FloatRect, Rect, Affine2, ShatterPattern
+  Math/                Scalar, Noise, Index, FloatRange
+  Random/              Rng, WeightedPick
 Core/Graphics/
   Paint/               Painter.h (facade), ShapeStyle, LineStyle, Gradient, Path, PaintScopes
     Internals/         DrawList, Batcher, Tessellator, Vertex, StateStack

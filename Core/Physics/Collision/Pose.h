@@ -1,5 +1,5 @@
 #pragma once
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 // Where a shape stands: its origin and its angle in radians, clockwise on screen. `{position}` means no rotation.
 struct Pose {

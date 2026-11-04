@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <array>
 #include "Physics/Collision/Collision.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 using Catch::Approx;
 

@@ -2,8 +2,10 @@
 #include "Tests/Support/Diagnostics.h"
 #include <cmath>
 #include <cstddef>
+#include <stdexcept>
 #include <vector>
-#include "Utilities/ShatterPattern.h"
+#include "Fx/World/ShatterSpread.h"
+#include "Utilities/Geometry/ShatterPattern.h"
 
 namespace {
 constexpr Rect Bounds{10, 20, 300, 200};
@@ -74,32 +76,46 @@ TEST_CASE("Engine.Shatter.IgnoresOutsideAndRepeatedSeeds", "[engine][fx]") {
 
 TEST_CASE("Engine.Shatter.SpreadOpensCracksFromTheNearEnd", "[engine][fx]") {
     const std::vector<Float2> seeds{{85.0f, 120.0f}, {235.0f, 120.0f}};
-    ShatterPattern pattern(Bounds, seeds);
+    const ShatterPattern pattern(Bounds, seeds);
     const std::vector<CrackSource> sources{{.point = {160.0f, 20.0f}, .time = 1.0f}};
-    pattern.Spread(sources, 100.0f);
-    const ShatterCrack& crack = pattern.Cracks().front();
+    const ShatterSpread spread(pattern, sources, 100.0f);
+    const ShatterCrackTiming& crack = spread.Cracks().front();
     CHECK(crack.from.y == Catch::Approx(20.0f));
     CHECK(crack.to.y == Catch::Approx(220.0f));
     CHECK(crack.start == Catch::Approx(1.0f));
     CHECK(crack.end == Catch::Approx(3.0f));
-    for (const ShatterShard& shard : pattern.Shards()) {
+    for (const ShatterShardTiming& shard : spread.Shards()) {
         CHECK(shard.crackedAt == Catch::Approx(1.0f));
         CHECK(shard.freedAt == Catch::Approx(3.0f));
     }
 }
 
 TEST_CASE("Engine.Shatter.SpreadReachesNearShardsFirst", "[engine][fx]") {
-    ShatterPattern pattern(Bounds, ScatteredSeeds());
+    const ShatterPattern pattern(Bounds, ScatteredSeeds());
     const Float2 origin{20.0f, 30.0f};
-    pattern.Spread(std::vector<CrackSource>{{.point = origin}}, 200.0f);
+    const ShatterSpread spread(pattern, std::vector<CrackSource>{{.point = origin}}, 200.0f);
     const int near = pattern.ShardAt(origin);
     const int far = pattern.ShardAt({300.0f, 210.0f});
     REQUIRE(near >= 0);
     REQUIRE(far >= 0);
-    const auto& shards = pattern.Shards();
+    const auto& shards = spread.Shards();
     CHECK(shards[static_cast<std::size_t>(near)].crackedAt < shards[static_cast<std::size_t>(far)].crackedAt);
-    for (const ShatterShard& shard : shards)
+    for (const ShatterShardTiming& shard : shards)
         CHECK(shard.crackedAt <= shard.freedAt);
-    for (const ShatterCrack& crack : pattern.Cracks())
+    for (const ShatterCrackTiming& crack : spread.Cracks())
         CHECK(crack.start <= crack.end);
+}
+
+TEST_CASE("Engine.Shatter.SpreadWithoutSourcesIsOpenAndRejectsInvalidSpeed", "[engine][fx]") {
+    const ShatterPattern pattern(Bounds, std::vector<Float2>{{85.0f, 120.0f}, {235.0f, 120.0f}});
+    const ShatterSpread spread(pattern, {}, 100.0f);
+    for (const ShatterCrackTiming& crack : spread.Cracks()) {
+        CHECK(crack.start == 0.0f);
+        CHECK(crack.end == 0.0f);
+    }
+    for (const ShatterShardTiming& shard : spread.Shards()) {
+        CHECK(shard.crackedAt == 0.0f);
+        CHECK(shard.freedAt == 0.0f);
+    }
+    CHECK_THROWS_AS(ShatterSpread(pattern, {}, 0.0f), std::invalid_argument);
 }

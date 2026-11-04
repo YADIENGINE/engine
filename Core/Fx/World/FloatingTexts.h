@@ -4,7 +4,7 @@
 #include "Animation/Curve.h"
 #include "Fx/FxText.h"
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 class Painter;
 

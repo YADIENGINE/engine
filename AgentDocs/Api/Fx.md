@@ -424,6 +424,24 @@ Public visual FX.
 - `Rings`: `void Clear()`
 - `Rings`: `void Draw(Painter& paint) const`
 
+## `Core/Fx/World/ShatterSpread.h`
+
+- `struct CrackSource` — Source of a crack wave: starts from 'point' at 'time'.
+- `CrackSource`: `Float2 point`
+- `CrackSource`: `float time = 0.0f`
+- `struct ShatterShardTiming`
+- `ShatterShardTiming`: `float crackedAt = 0.0f` — When its first boundary crack starts opening
+- `ShatterShardTiming`: `float freedAt = 0.0f` — When all its boundary cracks are open
+- `struct ShatterCrackTiming`
+- `ShatterCrackTiming`: `Float2 from` — End reached first by the nearest source
+- `ShatterCrackTiming`: `Float2 to`
+- `ShatterCrackTiming`: `float start = 0.0f`
+- `ShatterCrackTiming`: `float end = 0.0f`
+- `class ShatterSpread` — Timed propagation over a ShatterPattern.
+- `ShatterSpread`: `ShatterSpread(const ShatterPattern& pattern, std::span<const CrackSource> sources, float speed)`
+- `ShatterSpread`: `[[nodiscard]] const std::vector<ShatterShardTiming>& Shards() const`
+- `ShatterSpread`: `[[nodiscard]] const std::vector<ShatterCrackTiming>& Cracks() const`
+
 ## `Core/Fx/World/Shockwaves.h`
 
 - `struct ShockwaveStyle` — Shockwave: a ring expanding to the given reach (0: area diagonal), followed by a second, thin ring after 'trailDelay'.

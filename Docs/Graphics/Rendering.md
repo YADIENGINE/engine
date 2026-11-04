@@ -27,10 +27,12 @@ order. `paint.Clip(area)` intersects the current clip; rotated clips are rejecte
 
 | Header | Purpose |
 | --- | --- |
-| `Utilities/Float2.h`, `FloatRect.h`, `Affine2.h`, `Color4.h` | Continuous geometry, transformations and colors |
+| `Utilities/Geometry/Float2.h`, `Utilities/Geometry/FloatRect.h`, `Utilities/Geometry/Affine2.h`, `Utilities/Color4.h` | Continuous geometry, transformations and colors |
 | `Animation/Easing.h` | Curves, `Progress01`, `Since`, `Staggered`, `Crossed`, `CountDown` ([Animation](../Animation.md)) |
-| `Utilities/MathUtils.h` | Constants, hashes, scalar interpolation and index helpers |
-| `Utilities/UiTransform.h` | Centered aspect-preserving design-to-panel mapping and inverse input mapping |
+| `Utilities/Math/Scalar.h` | Constants, angle conversion, fractional parts and scalar interpolation |
+| `Utilities/Math/Noise.h` | Stable visual hashes and smooth noise |
+| `Utilities/Math/Index.h` | Wrapped indices |
+| `Ui/Layout/UiTransform.h` | Centered aspect-preserving design-to-panel mapping and inverse input mapping |
 
 ```cpp
 const UiTransform mapping(designArea, panelArea);
@@ -42,7 +44,8 @@ DrawWidget(paint);
 
 Integer UiTransform results round with `std::lround`; design rectangle centers use integer division.
 Invalid source or target sizes throw `std::invalid_argument`.
-`Utilities/ShatterPattern` provides headless convex Voronoi fragments and timed crack propagation.
+`Utilities/Geometry/ShatterPattern.h` provides headless convex Voronoi fragments. `Fx/World/ShatterSpread.h` adds
+timed visual crack propagation without putting effect state into geometry.
 
 ## Instrumentation
 

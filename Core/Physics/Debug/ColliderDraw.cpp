@@ -7,7 +7,7 @@
 #include "Graphics/Paint/PaintStyle.h"
 #include "Graphics/Paint/Painter.h"
 #include "Physics/Collision/CollisionWorld.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 constexpr std::array<Color4, 6> LayerColors{Color4{90, 220, 255, 255},  Color4{255, 120, 150, 255},

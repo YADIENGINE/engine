@@ -1,7 +1,7 @@
 #pragma once
 #include "Graphics/Paint/PaintStyle.h"
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 // Where the drawing position sits on each line: its left end, its centre or its right end.
 enum class TextAlign { Left, Center, Right };

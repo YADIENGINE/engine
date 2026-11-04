@@ -88,7 +88,7 @@ relevant umbrella and its `.cpp` to `Engine/CMakeLists.txt` when needed. Keep ga
 umbrellas. Window/canvas/renderer setup, background drawing, and pointer gestures retain separate includes to keep these
 groups focused.
 
-Include `Utilities/Float2.h` for vector operations (`Length`, `Distance`, `Dot`, `Normalized`, `Rotated`,
+Include `Utilities/Geometry/Float2.h` for vector operations (`Length`, `Distance`, `Dot`, `Normalized`, `Rotated`,
 `Perpendicular`, `Float2::FromAngle`) and the focused `.h` drawing header for each helper.
 
 Specific headers remain supported and should be used inside Engine and by headless consumers. In particular, include

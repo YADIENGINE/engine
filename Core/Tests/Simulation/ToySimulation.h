@@ -5,7 +5,7 @@
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationRegistry.h"
 #include "Simulation/StepSmoothed.h"
-#include "Utilities/Rng.h"
+#include "Utilities/Random/Rng.h"
 
 enum class ToyButton { Left, Right, Fire };
 enum class ToyAxis { Aim };

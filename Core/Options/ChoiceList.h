@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Index.h"
 
 // Selectable value lists for settings screens (scheme, FPS limit, language ...): reading saved values and stepping.
 // Header-only.

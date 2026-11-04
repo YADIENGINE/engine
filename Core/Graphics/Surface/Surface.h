@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include "Graphics/Surface/TextureRef.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 struct SurfaceOptions {
     bool emission = false; // Keeps what is drawn into it as a bloom source too (composited with it)

@@ -6,7 +6,7 @@
 #include <thread>
 #include <stdexcept>
 #include "Runtime/Game.h"
-#include "Utilities/DevelopmentChecks.h"
+#include "Diagnostics/DevelopmentChecks.h"
 #ifdef _WIN32
 #define NOGDI
 #define NOUSER

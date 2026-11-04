@@ -14,7 +14,7 @@
 #include "Graphics/Text/Internals/GlyphCache.h"
 #include "Graphics/Text/Internals/TextLayoutCache.h"
 #include "Utilities/Color4.h"
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/Vec2.h"
 
 struct RenderPipelineSettings {
     Float2 canvasSize{1280.0f, 720.0f}; // Logical canvas (drawing coordinates)

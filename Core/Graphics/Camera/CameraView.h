@@ -1,6 +1,6 @@
 #pragma once
-#include "Utilities/Affine2.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Affine2.h"
+#include "Utilities/Geometry/Float2.h"
 
 // 2D camera: the world point 'target' appears at the screen point 'offset', scaled by 'zoom' and turned by
 // 'rotation' (radians, clockwise) around it. Draw through it with paint.Transform(camera.Transform()). Header-only.

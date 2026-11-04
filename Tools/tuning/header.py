@@ -14,7 +14,7 @@ SUFFIX = ".tuning.json"
 STRUCT_STEM = re.compile(r"[A-Z][A-Za-z0-9]*\Z")
 CPP_TYPES = {"float": "float", "int": "int", "bool": "bool", "color": "Color4", "vec2": "Float2",
              "range": "FloatRange"}
-TYPE_HEADERS = {"color": "Utilities/Color4.h", "vec2": "Utilities/Float2.h", "range": "Utilities/FloatRange.h"}
+TYPE_HEADERS = {"color": "Utilities/Color4.h", "vec2": "Utilities/Geometry/Float2.h", "range": "Utilities/Math/FloatRange.h"}
 
 
 def struct_name(source: Path) -> str:

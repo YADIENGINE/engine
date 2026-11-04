@@ -6,8 +6,8 @@
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationRegistry.h"
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
-#include "Utilities/Rng.h"
+#include "Utilities/Geometry/Float2.h"
+#include "Utilities/Random/Rng.h"
 
 struct ToyPose {
     float arm = 0.0f;

@@ -8,7 +8,7 @@
 #include "Audio/SoundKey.h"
 #include "Audio/SoundOutput.h"
 #include "Audio/SoundTables.h"
-#include "Utilities/Rng.h"
+#include "Utilities/Random/Rng.h"
 
 // Plays the rows of the game's sound tables: `game.Sounds().Play(Sfx::Hit)`. It picks the file and the pitch and keeps
 // the cooldowns; only the last step reaches the device. Use it from the thread that owns the audio. Not for a

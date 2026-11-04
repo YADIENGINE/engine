@@ -12,8 +12,8 @@
 #include "Fx/Particles/ParticleSystem.h"
 #include "Graphics/Text/TextStyle.h"
 #include "Modules/Popup/Popup.h"
-#include "Utilities/DevelopmentChecks.h"
-#include "Utilities/MathUtils.h"
+#include "Diagnostics/DevelopmentChecks.h"
+#include "Utilities/Math/Scalar.h"
 
 class Painter;
 

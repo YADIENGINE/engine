@@ -1,7 +1,7 @@
 #include "Graphics/Paint/Path.h"
 #include <algorithm>
 #include <cmath>
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 constexpr float MaxArcStep = Pi / 2.0f; // One cubic per quarter circle

@@ -8,8 +8,8 @@
 #include "Graphics/Paint/Path.h"
 #include "Graphics/Surface/Surface.h"
 #include "Tests/PaintHarness.h"
-#include "Utilities/DevelopmentChecks.h"
-#include "Utilities/MathUtils.h"
+#include "Diagnostics/DevelopmentChecks.h"
+#include "Utilities/Math/Scalar.h"
 
 using Catch::Approx;
 

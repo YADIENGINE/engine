@@ -2,7 +2,7 @@
 #include <array>
 #include "Modules/Profiler/Internals/RuntimeState.h"
 #include "Modules/Profiler/Internals/GpuTimer.h"
-#include "Utilities/FrameObserver.h"
+#include "Diagnostics/FrameObserver.h"
 
 class ProfilerRuntimeBinding final : public Profiler::Runtime, public FrameObserver {
 public:

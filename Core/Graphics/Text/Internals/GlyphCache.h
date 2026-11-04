@@ -4,7 +4,7 @@
 #include <vector>
 #include "Graphics/Gpu/Internals/GpuDevice.h"
 #include "Graphics/Text/Internals/AtlasPacker.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class FontData;
 struct GlyphRaster;

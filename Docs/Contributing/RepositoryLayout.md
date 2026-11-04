@@ -7,10 +7,12 @@
 | `Core/` | Shipping engine code and include root (`Runtime/Game.h`); targets in `Core/CMakeLists.txt` |
 | `Core/Runtime/` | Game, settings, loop and services; `Core/Main.cpp` calls the project's `CreateGame()` |
 | `Core/GameObjects/`, `Core/Scene/` | Headless object/scene lifecycle and optional object ownership |
-| `Core/Graphics/` | Paint, Text, Surface, Post; GPU/render implementation; Draw, Icons, Style helpers |
+| `Core/Graphics/` | Camera, Paint, Text, Surface, Post; GPU/render implementation; Draw, Icons, Style helpers |
 | `Core/Ui/` | Game UI: Layout, Kernel, Looks, Widgets, Kit, Sound ([UI](../Ui.md)) |
 | `Core/Input/`, `Core/Audio/`, `Core/Platform/` | Public services and private platform backends |
-| `Core/Fx/`, `Core/Gameplay/`, `Core/Progress/`, `Core/Utilities/` | Headless effects and reusable logic/value types |
+| `Core/Fx/`, `Core/Gameplay/`, `Core/Progress/` | Headless effects and reusable gameplay/view logic |
+| `Core/Utilities/` | Foundation types and helpers, grouped under `Geometry/`, `Math/` and `Random/` |
+| `Core/Diagnostics/` | Cross-cutting development checks and frame instrumentation contracts |
 | `Core/Options/` | Engine/player options, backed by Persistence |
 | `Core/Tuning/` | Tuning format, live values (`ENGINE_TUNING_LIVE`), `Tuning<T>()` |
 | `Core/Animation/` | Values over time: tweens, clips, animators, timelines and curves for simulations and views, small helpers for views. Headers only, with no target of their own; nothing here draws |
@@ -26,6 +28,11 @@
 `EngineHeadless` contains platform-free code; `Engine` adds the runtime platform layer. `EngineSimulation`,
 `EnginePhysics` and `EngineTuning` sit below `EngineHeadless` and reach neither drawing nor audio, so simulation code can
 link only them.
+
+`Core/Utilities/` accepts only headless foundation APIs with no clearer domain owner. Geometry, scalar/noise/index math
+and seeded random helpers use their named subfolders; UI, camera, options and diagnostics types stay with those owners.
+Do not add `Common`, `Misc` or another catch-all layer beneath it.
+
 Create consuming targets with `engine_add_game`, `engine_add_simulation` and `engine_add_editor_worker`.
 Add each new `.cpp` to its target. Module targets and testing rules live in
 [Module rules](ModuleRules.md#1-directory-structure) and [Testing](Testing.md#adding-tests).

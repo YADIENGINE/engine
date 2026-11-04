@@ -260,6 +260,18 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiBox`: `std::optional<UiAnchor> anchor { }`
 - `UiBox`: `Float2 offset { }` — Added to an anchored element's place; a look's movement belongs in UiVisual
 
+## `Core/Ui/Layout/UiTransform.h`
+
+- `class UiTransform` — Centered, aspect-preserving source-to-target mapping.
+- `UiTransform`: `UiTransform(Rect source, Rect target)`
+- `UiTransform`: `[[nodiscard]] Float2 Map(Float2 point) const`
+- `UiTransform`: `[[nodiscard]] Float2 Unmap(Float2 point) const`
+- `UiTransform`: `[[nodiscard]] Vec2 Map(Vec2 point) const`
+- `UiTransform`: `[[nodiscard]] Vec2 Unmap(Vec2 point) const`
+- `UiTransform`: `[[nodiscard]] float Scale() const`
+- `UiTransform`: `[[nodiscard]] Float2 Offset() const`
+- `UiTransform`: `[[nodiscard]] Affine2 Affine() const` — The same mapping for drawing: auto region = paint.Transform(transform.Affine());
+
 ## `Core/Ui/Looks/Neon/NeonLooks.h`
 
 - `[[nodiscard]] UiLooks NeonLooks()` — Notched dark panels, glowing borders and 3D buttons that depress: goes with NeonArcadeTheme.

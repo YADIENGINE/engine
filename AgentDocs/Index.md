@@ -18,15 +18,15 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Add, disable or remove a GameObject | `Core/GameObjects/GameObject.h`<br>`Core/GameObjects/ObjectList.h` | `Recipes/SceneObjects.md` | `Docs/Runtime.md#lifecycle` |
 | Draw an animated character or rotating shape | `Core/Graphics/Paint/Painter.h`<br>`Core/Animation/SpringPoint.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Painter.md#shapes` |
 | Draw a curved outline or polygon | `Core/Graphics/Paint/Path.h`<br>`Core/Graphics/Paint/PaintStyle.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Painter.md#shapes` |
-| Clip, transform, fade or blend drawing | `Core/Graphics/Paint/Painter.h`<br>`Core/Utilities/Affine2.h` | `Recipes/SpriteLayer.md` | `Docs/Graphics/Painter.md#scopes` |
+| Clip, transform, fade or blend drawing | `Core/Graphics/Paint/Painter.h`<br>`Core/Utilities/Geometry/Affine2.h` | `Recipes/SpriteLayer.md` | `Docs/Graphics/Painter.md#scopes` |
 | Fade a multi-shape sprite as one | `Core/Graphics/Paint/Painter.h` | `Recipes/SpriteLayer.md` | `Docs/Graphics/Painter.md#scopes` |
 | Cache an offscreen layer | `Core/Graphics/Surface/Surface.h`<br>`Core/Graphics/Paint/Painter.h` | `Recipes/SpriteLayer.md` | `Docs/Graphics/Painter.md#images-and-surfaces` |
 | Draw an image, nine-slice or warped surface | `Core/Graphics/Surface/TextureRef.h`<br>`Core/Graphics/Paint/Painter.h` | - | `Docs/Graphics/Painter.md#images-and-surfaces` |
 | Add bloom or choose rendering quality | `Core/Graphics/Post/PostSettings.h`<br>`Core/Graphics/Post/RenderQuality.h`<br>`Core/Runtime/GraphicsSettings.h` | - | `Docs/Graphics/Painter.md#post-process-and-quality` |
 | Load fonts, measure, wrap or align text | `Core/Graphics/Text/FontFace.h`<br>`Core/Graphics/Text/TextStyle.h`<br>`Core/Graphics/Text/TextBlock.h` | `Recipes/TextLayout.md` | `Docs/Graphics/Text.md#drawing-and-layout` |
-| Choose colors or work with floating geometry | `Core/Utilities/Color4.h`<br>`Core/Utilities/Float2.h`<br>`Core/Utilities/FloatRect.h`<br>`Core/Utilities/FloatRange.h` | - | `Docs/Graphics/Painter.md#basic-types` |
+| Choose colors or work with floating geometry | `Core/Utilities/Color4.h`<br>`Core/Utilities/Geometry/Float2.h`<br>`Core/Utilities/Geometry/FloatRect.h`<br>`Core/Utilities/Math/FloatRange.h` | - | `Docs/Graphics/Painter.md#basic-types` |
 | Ease a pose or animate a counter | `Core/Animation/Easing.h`<br>`Core/Animation/SpringPoint.h`<br>`Core/Animation/AnimatedCounter.h`<br>`Core/Animation/ButtonAnim.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Rendering.md#geometry-and-timing` |
-| Convert coordinates or use math helpers | `Core/Utilities/MathUtils.h`<br>`Core/Utilities/UiTransform.h`<br>`Core/Utilities/Vec2.h`<br>`Core/Utilities/Rect.h` | - | `Docs/Graphics/Rendering.md#geometry-and-timing` |
+| Convert coordinates or use math helpers | `Core/Utilities/Math/Scalar.h`<br>`Core/Utilities/Math/Noise.h`<br>`Core/Utilities/Math/Index.h`<br>`Core/Ui/Layout/UiTransform.h`<br>`Core/Utilities/Geometry/CardinalDirection.h`<br>`Core/Utilities/Geometry/Vec2.h`<br>`Core/Utilities/Geometry/Rect.h` | - | `Docs/Graphics/Rendering.md#geometry-and-timing` |
 | Draw a new character, enemy, item or prop and list it in the Assets panel | `Editor/Api/GraphicAsset.h` | `Recipes/GraphicAsset.md` | `Docs/Editor/Api.md#graphic-assets` |
 | Draw a shared icon or add a new shape | `Core/Graphics/Icons/Icons.h` | `Recipes/IconShape.md` | `Docs/Graphics/Painter.md#helpers-and-theme` |
 | Write a menu, a dialog, a pause screen or a HUD; buttons, labels, panels; a two-player menu | `Core/Ui/Kernel/Ui.h`<br>`Core/Ui/Widgets/UiButton.h`<br>`Core/Ui/Widgets/UiLabel.h`<br>`Core/Ui/Widgets/UiPanel.h`<br>`Core/Ui/Widgets/UiLayer.h` | `Recipes/UiMenu.md` | `Docs/Ui.md#writing-a-screen` |
@@ -42,11 +42,11 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Name what an event looks like and play it (`fx.Play("player_hit")`), also from an animation's moment | `Core/Fx/FxCue.h`<br>`Core/Fx/FxCueSet.h`<br>`Core/Fx/FxStage.h` | `Recipes/FxCues.md` | `Docs/Graphics/Effects.md#cues` |
 | Emit a particle burst, shake and flash | `Core/Fx/FxStage.h`<br>`Core/Fx/FxStyle.h`<br>`Core/Fx/FxQuality.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#effect-stage-and-particle-recipes` |
 | Customize particles or trails | `Core/Fx/Particles/ParticleSystem.h`<br>`Core/Fx/Particles/ParticleRecipes.h`<br>`Core/Graphics/Draw/ParticleDraw.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#graphics-and-fx` |
-| Frame a cinematic camera or transform world drawing | `Core/Utilities/CameraView.h`<br>`Core/Fx/Camera/CameraShot.h`<br>`Core/Fx/Camera/CameraEffects.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
+| Frame a cinematic camera or transform world drawing | `Core/Graphics/Camera/CameraView.h`<br>`Core/Fx/Camera/CameraShot.h`<br>`Core/Fx/Camera/CameraEffects.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
 | Add pop text, toast, banner or speed lines | `Core/Fx/World/FloatingTexts.h`<br>`Core/Fx/FxText.h`<br>`Core/Fx/Screen/Announcements.h`<br>`Core/Graphics/Draw/SpeedLines.h` | - | `Docs/Graphics/Effects.md#graphics-and-fx` |
 | Animate arbitrary popup drawing or emit numeric feedback | `Core/Modules/Popup/Popup.h`<br>`Core/Modules/NumberPopup/NumberPopup.h` | `Recipes/PopupEffects.md` | `Docs/Modules/Popup/README.md`<br>`Docs/Modules/NumberPopup/README.md` |
 | Add rings, shockwaves, a flash, glitch or a pulse | `Core/Fx/Screen/ScreenFlash.h`<br>`Core/Fx/World/Rings.h`<br>`Core/Fx/World/Shockwaves.h`<br>`Core/Fx/Screen/ScreenGlitch.h`<br>`Core/Fx/Screen/PulseOverlay.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
-| Draw an iris transition or shatter geometry | `Core/Graphics/Draw/IrisTransition.h`<br>`Core/Utilities/ShatterPattern.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
+| Draw an iris transition or shatter geometry | `Core/Graphics/Draw/IrisTransition.h`<br>`Core/Utilities/Geometry/ShatterPattern.h`<br>`Core/Fx/World/ShatterSpread.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |
 | Pause gameplay, add hitstop or slow motion | `Core/Runtime/TimeScale.h`<br>`Core/Scene/Scene.h` | - | `Docs/Runtime.md#input-and-time-selection` |
 | Write gameplay in fixed steps with replay | `Core/Simulation/Simulation.h`<br>`Core/Simulation/SimulationRunner.h`<br>`Core/Simulation/StepSmoothed.h`<br>`Core/Simulation/SimulationRegistry.h`<br>`Editor/Api/HostedSimulation.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#writing-a-simulation` |
 | Bind keys to per-player actions | `Core/Input/InputBindings.h`<br>`Core/Simulation/PlayerInput.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#input-and-tapes` |
@@ -57,7 +57,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Move one value through several fixed points | `Core/Animation/Track.h` | - | `Docs/Animation.md#tracks` |
 | Time a boss attack, a wave plan or a sequence with named moments | `Core/Animation/Timeline.h`<br>`Core/Simulation/TimelineMoments.h` | `Recipes/Timeline.md` | `Docs/Animation.md#timelines` |
 | Show colliders on screen | `Core/Physics/Debug/ColliderDraw.h` | `Recipes/Collision.md` | `Docs/Collision.md#seeing-colliders` |
-| Use seeded random numbers | `Core/Utilities/Rng.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#writing-a-simulation` |
+| Use seeded random numbers | `Core/Utilities/Random/Rng.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#writing-a-simulation` |
 | Read keys | `Core/Input/Input.h`<br>`Core/Input/InputNavigation.h` | - | `Docs/Input.md#physical-snapshot-and-semantic-queries` |
 | Handle pointer collections or dragging | `Core/Input/CollectionPointer.h`<br>`Core/Input/DragPointer.h` | - | `Docs/Input.md#collections-and-drag-and-drop` |
 | Add a game's sound effects: variants, pitch range, cooldown, no overlap; a stored sound key | `Core/Audio/SoundRow.h`<br>`Core/Audio/SoundTables.h`<br>`Core/Audio/SoundPlayer.h`<br>`Core/Audio/SoundKey.h` | `Recipes/SoundTable.md` | `Docs/Audio.md#sound-tables` |
@@ -71,10 +71,10 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Use Steam achievements or stats | `Core/Modules/Steam/Steam.h` | - | `Docs/Modules/Steam/README.md#public-api` |
 | Rank scores and store player history | `Core/Modules/ScoreBoard/ScoreBoard.h` | - | `Docs/Modules/ScoreBoard/README.md#public-api` |
 | Archive run JSON or attach runtime context | `Core/Modules/RunTracking/RunTracking.h` | - | `Docs/Modules/RunTracking/README.md#public-api` |
-| Record performance counters and reports | `Core/Modules/Profiler/Profiler.h`<br>`Core/Utilities/FrameObserver.h`<br>`Core/Runtime/FrameExecutionSettings.h`<br>`Core/Graphics/Render/RenderStats.h` | - | `Docs/Modules/Profiler/README.md#recording` |
+| Record performance counters and reports | `Core/Modules/Profiler/Profiler.h`<br>`Core/Diagnostics/FrameObserver.h`<br>`Core/Runtime/FrameExecutionSettings.h`<br>`Core/Graphics/Render/RenderStats.h` | - | `Docs/Modules/Profiler/README.md#recording` |
 | Apply stat modifiers and timed effects | `Core/Gameplay/StatSheet.h`<br>`Core/Gameplay/TimedEffectSet.h` | - | `Docs/GameplayHelpers.md#modifier-and-timed-effect-example` |
 | Track tiered goals or delayed pickup credit | `Core/Progress/TieredProgress.h`<br>`Core/Progress/CollectFlights.h` | - | `Docs/GameplayHelpers.md#gameplay-frameworks` |
-| Pick weighted values or step settings choices | `Core/Utilities/WeightedPick.h`<br>`Core/Utilities/ChoiceList.h`<br>`Core/Utilities/EnumTable.h` | - | `Docs/GameplayHelpers.md#gameplay-frameworks` |
+| Pick weighted values or step settings choices | `Core/Utilities/Random/WeightedPick.h`<br>`Core/Options/ChoiceList.h`<br>`Core/Utilities/EnumTable.h` | - | `Docs/GameplayHelpers.md#gameplay-frameworks` |
 | Iterate UTF-8 characters | `Core/Utilities/Utf8.h` | - | `Docs/Graphics/Painter.md#text` |
 | Open a URL or copy text to clipboard | `Core/Platform/Shell.h` | - | `Docs/AssetsAndPlatforms.md#platform-responsibilities` |
 | Display a production View in an editor scene | `Editor/Api/EditorScene.h`<br>`Editor/Api/SceneRegistry.h`<br>`Editor/Api/SceneServices.h`<br>`Editor/Worker/WorkerHost.h` | `Recipes/CharacterScene.md` | `Docs/Editor/GettingStarted.md#cmake-target` |

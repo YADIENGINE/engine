@@ -13,8 +13,8 @@
 #include "Runtime/GameSettings.h"
 #include "Runtime/GraphicsSettings.h"
 #include "Runtime/FrameExecutionSettings.h"
-#include "Utilities/FrameObserver.h"
-#include "Utilities/Vec2.h"
+#include "Diagnostics/FrameObserver.h"
+#include "Utilities/Geometry/Vec2.h"
 
 class Painter;
 class Scene;

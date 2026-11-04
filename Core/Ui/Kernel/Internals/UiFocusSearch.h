@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <optional>
 #include <span>
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 enum class UiMove { Up, Down, Left, Right };
 

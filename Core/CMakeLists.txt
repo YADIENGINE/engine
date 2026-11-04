@@ -131,6 +131,7 @@ add_library(EngineHeadless STATIC
     Audio/Internals/Validation.cpp
     Audio/SoundPlayer.cpp
     Audio/SoundTables.cpp
+    Diagnostics/DevelopmentChecks.cpp
     Fx/Camera/CameraEffects.cpp
     Fx/Camera/CameraShot.cpp
     Fx/FxCue.cpp
@@ -146,6 +147,7 @@ add_library(EngineHeadless STATIC
     Fx/Screen/SlowMotionOverlay.cpp
     Fx/World/FloatingTexts.cpp
     Fx/World/Rings.cpp
+    Fx/World/ShatterSpread.cpp
     Fx/World/Shockwaves.cpp
     GameObjects/GameObject.cpp
     GameObjects/ObjectList.cpp
@@ -198,6 +200,7 @@ add_library(EngineHeadless STATIC
     Ui/Kernel/UiListener.cpp
     Ui/Kernel/UiLooks.cpp
     Ui/Layout/Internals/UiLayoutSolver.cpp
+    Ui/Layout/UiTransform.cpp
     Ui/Looks/Neon/NeonLooks.cpp
     Ui/Kit/UiOptionsScreen.cpp
     Ui/Looks/UiButtonLook.cpp
@@ -224,9 +227,7 @@ add_library(EngineHeadless STATIC
     Ui/Widgets/UiTabs.cpp
     Ui/Widgets/UiToggle.cpp
     Ui/Widgets/UiTooltip.cpp
-    Utilities/DevelopmentChecks.cpp
-    Utilities/ShatterPattern.cpp
-    Utilities/UiTransform.cpp
+    Utilities/Geometry/ShatterPattern.cpp
     Utilities/Utf8.cpp
 )
 target_include_directories(EngineHeadless PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")

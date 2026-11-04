@@ -1,5 +1,5 @@
-// Compiled into each game and editor worker with the executable's own flags (Utilities/DevelopmentChecks.h).
-#include "Utilities/DevelopmentChecks.h"
+// Compiled into each game and editor worker with the executable's own flags (Diagnostics/DevelopmentChecks.h).
+#include "Diagnostics/DevelopmentChecks.h"
 
 namespace {
 #ifdef NDEBUG

@@ -8,7 +8,7 @@
 #include <string>
 #include <string_view>
 #include "EngineShaders.h" // Generated from Shaders/*.glsl (Core/CMakeLists.txt)
-#include "Utilities/DevelopmentChecks.h"
+#include "Diagnostics/DevelopmentChecks.h"
 
 namespace {
 constexpr std::size_t InitialVertexBytes = std::size_t{4} << 20;

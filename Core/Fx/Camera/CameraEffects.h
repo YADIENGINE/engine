@@ -2,8 +2,8 @@
 #include <optional>
 #include "Animation/SpringPoint.h"
 #include "Fx/FxQuality.h"
-#include "Utilities/CameraView.h"
-#include "Utilities/Float2.h"
+#include "Graphics/Camera/CameraView.h"
+#include "Utilities/Geometry/Float2.h"
 
 struct CameraEffectsStyle {
     float shakeOffset = 0.0f; // Canvas units at full shake

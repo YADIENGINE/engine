@@ -7,7 +7,7 @@
 #include "Graphics/Paint/Path.h"
 #include "Graphics/Surface/Surface.h"
 #include "Graphics/Text/TextStyle.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 constexpr int Columns = 4;

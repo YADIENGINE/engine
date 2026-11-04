@@ -12,7 +12,7 @@
 #include "Ui/Widgets/UiStepper.h"
 #include "Ui/Widgets/UiTabs.h"
 #include "Ui/Widgets/UiToggle.h"
-#include "Utilities/ChoiceList.h"
+#include "Options/ChoiceList.h"
 
 namespace {
 constexpr float TitleSize = 36.0f;

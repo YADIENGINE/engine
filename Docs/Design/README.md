@@ -757,7 +757,7 @@ libraries it covered were only 4% of the build.
 
 **Cost:** No stepping into engine code in a prebuilt project, and no standard library debug checks; the source build
 restores both. Live tuning and the Painter's programmer-error checks are decided per executable
-(`ENGINE_TUNING_LIVE`, `Utilities/DevelopmentChecks.h`), so both builds keep them. Status: implemented (2026-11-02), window
+(`ENGINE_TUNING_LIVE`, `Diagnostics/DevelopmentChecks.h`), so both builds keep them. Status: implemented (2026-11-02), window
 and debugger checks pending.
 
 ### D25. Source control
@@ -1024,7 +1024,7 @@ Status: implemented (2026-11-04). Usage: [Effects](../Graphics/Effects.md).
 7. *`ParticleRecipes` is data.* `debrisSpeed` and its neighbours are gone: a theme holds bursts, so a game's own burst is the same kind of thing and `FxStage` accepts it. `ParticleAppearance::draw` moved to an `Emit` argument, because a `std::function`
    could not be in a `constexpr` theme.
 8. *One rule for styles.* Event effects take a style with each event, so two sizes can run together; `CameraEffects` and `PulseOverlay` are one continuous device and take it at construction. All invalid values throw.
-9. *What is not an effect left.* `TimeScale` to `Runtime/`, and `TransitionClock` to `Scene/`, because `check` keeps simulations from both; `Animation/` would have opened the rule that simulations do not call `TimeScale`. `CollectFlights` to `Progress/`, `ShatterPattern` to `Utilities/`,
+9. *What is not an effect left.* `TimeScale` to `Runtime/`, and `TransitionClock` to `Scene/`, because `check` keeps simulations from both; `Animation/` would have opened the rule that simulations do not call `TimeScale`. `CollectFlights` to `Progress/`, `ShatterPattern` to `Utilities/Geometry/`,
    `DrawIrisTransition` and `DrawSpeedLines` to `Graphics/Draw/`. `FxImport.h` stays: it is the documented umbrella header.
 10. *A fixed default seed, on `Rng`.* Particles were seeded from `std::random_device` when none was given, which made `ctl frames` differ between runs. Nobody can see that two runs of a burst are alike. `NumberPopup` keeps its `std::mt19937`; this was not needed for its optional seed.
 11. *Folders by what an effect acts on.* `Particles/`, `Camera/`, `World/` and `Screen/`, with what ties them together (`FxStage`, cues, `FxStyle`, `FxQuality`, `FxText`) at the top of `Fx/`. 35 flat files read as one list.

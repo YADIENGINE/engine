@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 #include "Editor/Internals/Platform/Windows/SharedFrames.h"
-#include "Utilities/FloatRect.h"
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/FloatRect.h"
+#include "Utilities/Geometry/Vec2.h"
 
 // What a screenshot keeps of a viewport frame: an optional crop in logical canvas units, then a uniform scale.
 struct FrameCaptureOptions {

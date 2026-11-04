@@ -27,7 +27,7 @@ DRAW_SCOPE = re.compile(r'\bnamespace(?:\s+[A-Za-z_]\w*(?:::\w+)*)?\s*\{|[{}]|'
                         r'\bvoid\s+(?P<function>Draw\w+)\s*\(\s*Painter\s*&(?!&)')
 
 HEADER = """#pragma once
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
 

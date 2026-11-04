@@ -17,7 +17,7 @@ motion, inside `box`; it reads no model or global clock.
 <!-- recipe:GraphicAsset-header -->
 ```cpp
 #pragma once
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
 

@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_tostring.hpp>
 #include <string>
-#include "Utilities/Vec2.h"
+#include "Utilities/Geometry/Vec2.h"
 
 template <> struct Catch::StringMaker<Vec2> {
     static std::string convert(Vec2 value) {

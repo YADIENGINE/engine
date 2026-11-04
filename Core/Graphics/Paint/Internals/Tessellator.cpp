@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include "Graphics/Paint/Internals/PathAccess.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 constexpr float SamePoint = 1e-4f;

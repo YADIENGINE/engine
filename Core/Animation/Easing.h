@@ -1,6 +1,6 @@
 #pragma once
 #include <cmath>
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 // Animation curves and time helpers. Curves take t in 0..1 and return 0 at 0 and 1 at 1; t outside that is clamped.
 // Header-only. Simulations may use all of them: the Sine, Expo and Elastic curves call the standard library's math,

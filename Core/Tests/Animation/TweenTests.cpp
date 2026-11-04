@@ -7,7 +7,7 @@
 #include <vector>
 #include "Animation/TweenSet.h"
 #include "Utilities/Color4.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 using Catch::Approx;
 

@@ -1,7 +1,7 @@
 #pragma once
 #include <span>
 #include <vector>
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 // A vector outline built from lines and curves, drawn with Painter::FillPath / StrokePath. Curves are flattened at
 // draw time for the pixel size they cover, so one Path stays smooth at any scale. Fill supports simple

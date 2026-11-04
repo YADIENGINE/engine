@@ -2,8 +2,8 @@
 #include <cmath>
 #include "Graphics/Draw/DrawUtils.h"
 #include "Graphics/Paint/Painter.h"
-#include "Utilities/Affine2.h"
-#include "Utilities/FloatRect.h"
+#include "Utilities/Geometry/Affine2.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 void DrawParticleShape(Painter& paint, ParticleShape shape, const ParticleDrawData& data,
                        const ParticleShapeStyle& style) {

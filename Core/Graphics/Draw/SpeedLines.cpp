@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include "Animation/Easing.h"
 #include "Graphics/Paint/Painter.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Noise.h"
 
 bool IsValid(const SpeedLineStyle& style) {
     return !(style.count < 0 || !std::isfinite(style.rate) || style.rate < 0.0f ||

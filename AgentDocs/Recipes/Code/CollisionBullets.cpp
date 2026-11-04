@@ -8,7 +8,7 @@
 #include "Graphics/Paint/Painter.h"
 #include "Physics/Debug/ColliderDraw.h"
 #include "Simulation/StateVisitor.h"
-#include "Utilities/Rng.h"
+#include "Utilities/Random/Rng.h"
 
 namespace {
 constexpr std::uint64_t WallOwner = std::numeric_limits<std::uint64_t>::max();

@@ -2,7 +2,7 @@
 #include <optional>
 #include "Physics/Collision/Pose.h"
 #include "Physics/Collision/Shape.h"
-#include "Utilities/Float2.h"
+#include "Utilities/Geometry/Float2.h"
 
 // Questions about two shapes, with nothing to set up. For many objects use CollisionWorld. Touching counts as
 // overlapping. Results are the same in every run of one build; Docs/Collision.md has the guarantee.

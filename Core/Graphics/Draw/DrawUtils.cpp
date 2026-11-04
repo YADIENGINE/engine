@@ -5,7 +5,7 @@
 #include <vector>
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Paint/Path.h"
-#include "Utilities/MathUtils.h"
+#include "Utilities/Math/Scalar.h"
 
 namespace {
 constexpr float StarInnerRatio = 0.45f;

@@ -33,7 +33,7 @@ raylib belongs only in platform implementation: window/renderer, input, audio, p
 Public headers and headless code never include raylib. Expose platform actions through raylib-free facades.
 Only `Graphics/Render/Internals/Window` opens/closes the window. Drawing uses `Painter`.
 Dependency directions: Animation/Render → Utilities; Simulation → Animation; Draw → Render/Animation; Icons → Draw;
-Fx → Draw/Paint/Animation, and Runtime/TimeScale for cues; Style → Draw/Fx style types. Graphics draws; Animation computes values over time.
+Fx → Graphics/Camera, Draw/Paint/Animation, and Runtime/TimeScale for cues; Style → Draw/Fx style types. Graphics draws; Animation computes values over time.
 Ui/Layout → Utilities; Ui/Kernel → Layout/Input/Paint; Ui/Looks → Kernel/Style/Draw; Ui/Widgets → Looks/Kernel, no drawing or audio; Ui/Kit → Widgets; Ui/Sound → Kernel/Audio, and Runtime connects it. `check` enforces these.
 Draw, Render and Fx take styles and time as parameters; they never read the theme. A widget added to `Ui/Widgets` uses only public kernel API.
 Detailed ownership and target layout: [Repository layout](Docs/Contributing/RepositoryLayout.md#source-and-targets).
