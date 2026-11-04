@@ -4,7 +4,7 @@ Use these generated signatures to locate public declarations; open the header fo
 
 ## `Assets/Graphics/DefaultIcons.h`
 
-- `enum class Icon { Star, Egg, Hourglass, Plus, Minus, UpArrow, Chevrons, Apple, Magnet, Ghost, Brick, Rain, Clock, Book, Shield, HornedEye, Sun, Gem, Bolt, Rune, Mountain, Lock, Coin, Dice, Cards, LoopArrow, Cloud, StormCloud, Tornado, CrownedStar, Compass, Comet, Gear, Heart, Power, Lotus, Goblet, Stopwatch, Sack, Wings, Flag, Feather, Chest, Pickaxe, Anchor, Swords, Coil, Clover, Swirl, TurnArrow, Copy, Cat, Couch, Pedal, Mask, Hen, Tire, Bubble, Scroll, Flame, Count }` — The shared icon set: buffs, reward cards, wildcards and the HUD use the same shapes.
+- `enum class Icon { Star, Egg, Hourglass, Plus, Minus, UpArrow, Chevrons, Apple, Magnet, Ghost, Brick, Rain, Clock, Book, Shield, HornedEye, Sun, Gem, Bolt, Rune, Mountain, Lock, Coin, Dice, Cards, LoopArrow, Cloud, StormCloud, Tornado, CrownedStar, Compass, Comet, Gear, Heart, Power, Lotus, Goblet, Stopwatch, Sack, Wings, Flag, Feather, Chest, Pickaxe, Anchor, Swords, Coil, Clover, Swirl, TurnArrow, Copy, Cat, Couch, Pedal, Mask, Hen, Tire, Bubble, Scroll, Flame, Play, Pause, Restart, Check, Cross, Home, Info, Warning, SoundOn, SoundOff, Music, Save, Trash, Sword, Bow, Potion, Bomb, Skull, Key, Crown, Trophy, Moon, Droplet, Snowflake, Leaf, Eye, Target, Count }` — The shared icon set: buffs, reward cards, wildcards and the HUD use the same shapes.
 - `inline constexpr std::size_t IconCount = static_cast<std::size_t>(Icon::Count)`
 - `struct IconLook` — What a caller changes; every field left empty keeps the icon's own value.
 - `IconLook`: `std::optional<Color4> color` — The shape's colour

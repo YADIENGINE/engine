@@ -7,6 +7,7 @@
 #include "Graphics/Draw/DrawUtils.h"
 #include "Graphics/Draw/Neon.h"
 #include "Graphics/DefaultIcons.h"
+#include "Graphics/Input/KeyPrompts.h"
 #include "Graphics/Paint/Path.h"
 #include "Graphics/Text/FontFace.h"
 #include "Graphics/Text/TextStyle.h"
@@ -412,6 +413,52 @@ TEST_CASE("Engine.Widgets.EveryIconDrawsInItsOwnLookWithoutOne", "[engine][paint
         CHECK(std::ranges::any_of(vertices, [](const PaintVertex& vertex) { return vertex.color.a > 0; }));
         CHECK(Inside(vertices, FloatRect::FromCenter(Center, Float2{Size, Size} * 2.5f)));
     }
+}
+
+TEST_CASE("Engine.Widgets.InterfaceAndItemIconsStayWithinTheirSize", "[engine][paint]") {
+    constexpr Float2 Center{200.0f, 200.0f};
+    constexpr float Size = 100.0f;
+    constexpr float Reach = 1.05f; // Anti-aliasing, and the quad around an arc reaches past the arc itself
+    for (auto i = static_cast<std::size_t>(Icon::Play); i < IconCount; ++i) {
+        CAPTURE(i);
+        PaintHarness h;
+        h.Begin();
+        DrawIcon(h.paint, static_cast<Icon>(i), Center, Size);
+        h.End();
+        REQUIRE(h.Draws().size() == 1);
+        CHECK(Inside(h.Drawn(), FloatRect::FromCenter(Center, Float2{Size, Size} * 2.0f * Reach)));
+    }
+}
+
+TEST_CASE("Engine.Widgets.EveryKeyPromptDrawsInsideAnyBoxInOneBatch", "[engine][paint]") {
+    constexpr float Fringe = 2.0f; // Anti-aliasing
+    const std::array boxes{FloatRect{10.0f, 20.0f, 100.0f, 100.0f}, FloatRect{0.0f, 0.0f, 300.0f, 40.0f},
+                           FloatRect{0.0f, 0.0f, 30.0f, 200.0f}, FloatRect{5.0f, 5.0f, 16.0f, 16.0f}};
+    for (std::size_t i = 0; i < KeyPromptCount; ++i)
+        for (const FloatRect& box : boxes)
+            for (const float pressed : {0.0f, 1.0f}) {
+                CAPTURE(i, box.width, pressed);
+                PaintHarness h;
+                h.Begin();
+                DrawKeyPrompt(h.paint, box, static_cast<KeyPrompt>(i), pressed);
+                h.End();
+                REQUIRE(h.Draws().size() == 1);
+                const auto vertices = h.Drawn();
+                CHECK_FALSE(vertices.empty());
+                CHECK(Inside(vertices, box.Inset(-Fringe)));
+            }
+}
+
+TEST_CASE("Engine.Widgets.AKeyPromptKeepsItsAspectAndSkipsAnEmptyBox", "[engine][paint]") {
+    CHECK(KeyPromptAspect(KeyPrompt::A) == 1.0f);
+    CHECK(KeyPromptAspect(KeyPrompt::Space) > KeyPromptAspect(KeyPrompt::Enter));
+    CHECK(KeyPromptAspect(KeyPrompt::Mouse) < 1.0f);
+    PaintHarness h;
+    h.Begin();
+    DrawKeyPrompt(h.paint, {0.0f, 0.0f, 0.0f, 50.0f}, KeyPrompt::Space);
+    DrawKeyPrompt(h.paint, {0.0f, 0.0f, 50.0f, 50.0f}, KeyPrompt::Count);
+    h.End();
+    CHECK(h.Draws().empty());
 }
 
 TEST_CASE("Engine.Widgets.AnIconLookChangesOnlyWhatItNames", "[engine][paint]") {
