@@ -36,6 +36,7 @@ it and [Editor automation](Editor/Automation.md) lists what it can do. Agent mat
 | Gameplay in fixed steps, replay, scenario tests without a window | [Simulation](Simulation.md) |
 | Overlaps, rays, fast bullets, finding what is in an area | [Collision](Collision.md) |
 | Tweens, character clips and fades, curves, boss and wave timing | [Animation](Animation.md) |
+| A camera that follows, frames several players, stays in the level, split screen | [Camera](Camera.md) |
 | General JSON run archive | [RunTracking](Modules/RunTracking/README.md) |
 | Offline audio generation with Python | [Audio generation](AudioGeneration.md) |
 | Release package, license/credits notices | [Release](Release.md) |

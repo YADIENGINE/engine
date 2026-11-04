@@ -12,9 +12,10 @@ Commands run from the project root. Reference: `Docs/Simulation.md`. Example: `A
 2. **Read the state's names:** they are what the simulation's `State` writes. `python Engine sim state TAPE` lists them
    when you have a tape; otherwise read `State` in `Game/Simulation`.
 3. **Write a scenario** (a JSON file under `Game/Simulation/Scenarios/`, for instance) that holds, taps and runs, then
-   checks with `expect`. Prefer `until` with a `limit` to guessing step counts.
+   checks with `expect`. Prefer `until` with a `limit` to guessing step counts. What happened (a hit, a death) is checked
+   with `expectEvent` and waited for with `untilEvent`, when the simulation emits events.
 4. **Run it:** `python Engine sim run FILE --out run.replay`. Exit 1 lists `failures` with step, field, expected and actual.
-   Add `read` operations to see values along the way.
+   Add `read` operations to see values along the way; `--events` lists every event with its step and fields.
 5. **Fix and repeat.** Report the scenario that now passes and what it checks. A passing scenario says nothing about how
    the game looks: for that use `AgentDocs/Skills/visual-change/SKILL.md`.
 
@@ -31,7 +32,8 @@ Changed rules or tuning also make a tape differ, and then the mismatch is expect
 
 Everything that decides gameplay comes from `SimulationStart` or the steps. No drawing, audio, clocks or `<random>`; own an
 `Rng` from `start.seed`; name every deciding field in `State`, the `Rng` included. `python Engine check` reports forbidden
-includes. Add new state to `State` in the same change. Collision inside the rules: `AgentDocs/Skills/collision/SKILL.md`. Timing and animation inside the rules:
+includes. Add new state to `State` in the same change. Sounds, effects and hitstop are the view's: emit an event
+(`Docs/Simulation.md#events`) and read it in the scene. Collision inside the rules: `AgentDocs/Skills/collision/SKILL.md`. Timing and animation inside the rules:
 `AgentDocs/Skills/animation/SKILL.md`.
 
 ## In the editor

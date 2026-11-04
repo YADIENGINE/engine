@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include "Simulation/SimulationEventLog.h"
 #include "Simulation/StateDump.h"
 #include "Simulation/StateHash.h"
 
@@ -59,12 +60,23 @@ void Scenario::Run(std::uint64_t steps) {
     for (std::uint64_t i = 0; i < steps; ++i) {
         _runner.Feed(_input);
         (void)_runner.RunStep();
+        CollectEvents(); // Every step, so none is dropped before it is seen
         for (std::size_t player = 0; player < _input.size(); ++player) {
             _input[player].pressed = 0U;
             _input[player].held &= ~_tapped[player];
             _tapped[player] = 0U;
         }
     }
+}
+void Scenario::CollectEvents() {
+    const auto* log = _simulation->EventLog();
+    if (!log) return;
+    for (auto sequence = std::max(_nextEvent, log->FirstKept()); sequence < log->End(); ++sequence) {
+        StateDump fields;
+        log->FieldsOf(sequence, fields);
+        _events.push_back({log->StepOf(sequence), std::string(log->NameOf(sequence)), fields.Result()});
+    }
+    _nextEvent = log->End();
 }
 std::uint64_t Scenario::Hash() const { return HashState(*_simulation); }
 JsonIO::Document Scenario::State() const { return DumpState(*_simulation); }

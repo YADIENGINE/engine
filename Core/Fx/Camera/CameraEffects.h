@@ -2,7 +2,7 @@
 #include <optional>
 #include "Animation/SpringPoint.h"
 #include "Fx/FxQuality.h"
-#include "Graphics/Camera/CameraView.h"
+#include "Camera/CameraView.h"
 #include "Utilities/Geometry/Float2.h"
 
 struct CameraEffectsStyle {

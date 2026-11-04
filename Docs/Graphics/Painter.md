@@ -158,8 +158,9 @@ draw text with the game's font:
 | `Graphics/Icons/Icons.h` | Shared icon set: `DrawIcon(paint, Icon::Star, center, size, {.color = gold})` |
 | `Fx/*` | Effects (particles, floating text, rings, shockwaves, overlays, cameras, `FxStage`): [Effects](Effects.md) |
 
-The camera is `Graphics/Camera/CameraView.h` (`offset`, `target`, `rotation` in radians, `zoom`; `Transform()`, `ToScreen`,
-`ToWorld`); draw the world within `auto view = paint.Transform(camera.Transform())`.
+A camera's view is `Camera/CameraView.h` (`offset`, `target`, `rotation` in radians, `zoom`, `viewport`; `Transform()`,
+`ToScreen`, `ToWorld`, `VisibleArea`); draw the world within `auto world = paint.Camera(view)`, which also clips to the
+view's viewport. A game camera that follows makes the view: [Camera](../Camera.md).
 
 Menus and widgets are not drawn by hand: see [UI](../Ui.md).
 

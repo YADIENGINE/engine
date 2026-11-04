@@ -96,4 +96,4 @@ void RecipeCueView::Draw(Painter& paint) const {
 ```
 <!-- /recipe -->
 
-Pitfalls: A cue with FxHitstop or FxSlowMotion throws without SetTime. A misspelled name throws where it plays, so a scenario or test should reach each one. A simulation never calls Fx: it counts or lists events, and the view plays cues; comparing a total, as here, cannot play one twice. A cue's delays and cooldown run on game time, so a hitstop holds them. FxPlay::intensity sizes one play. Update takes both clocks, the scene's delta and Game::RealSeconds(). Pass Game::Effects() to SetQuality.
+Pitfalls: A cue with FxHitstop or FxSlowMotion throws without SetTime. A misspelled name throws where it plays, so a scenario or test should reach each one. A simulation never calls Fx: it emits events (Simulation recipe) and the view plays cues for them. Without a simulation, comparing a total, as here, cannot play one twice. A cue's delays and cooldown run on game time, so a hitstop holds them. FxPlay::intensity sizes one play. Update takes both clocks, the scene's delta and Game::RealSeconds(). Pass Game::Effects() to SetQuality.

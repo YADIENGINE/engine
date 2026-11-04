@@ -1,6 +1,6 @@
 #pragma once
 #include "Animation/PoseFields.h"
-#include "Graphics/Camera/CameraView.h"
+#include "Camera/CameraView.h"
 #include "Utilities/Geometry/Float2.h"
 #include "Utilities/Geometry/FloatRect.h"
 

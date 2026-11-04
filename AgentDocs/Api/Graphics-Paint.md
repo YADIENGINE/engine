@@ -38,6 +38,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Painter`: `[[nodiscard]] bool HasFont() const`
 - `Painter`: `PaintScope Transform(const Affine2& transform)` — Following drawing goes through 'transform' (applied before the current one).
 - `Painter`: `PaintScope Clip(const FloatRect& rect)` — Following drawing is clipped to 'rect' (current coordinates) intersected with the current clip.
+- `Painter`: `PaintScope Camera(const CameraView& view)` — Following drawing is in world coordinates seen through 'view' (Camera2D::View), clipped to its viewport when it has one: one scope for a camera, however many views a frame draws.
 - `Painter`: `PaintScope Opacity(float opacity)` — Multiplies the alpha of following drawing.
 - `Painter`: `PaintScope Blending(Blend blend)`
 - `Painter`: `PaintScope Group(const GroupStyle& style = { })`

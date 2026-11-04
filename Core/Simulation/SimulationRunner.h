@@ -52,8 +52,13 @@ public:
     void DropRemainder() { _accumulator = 0.0; }
     // Runs exactly one step; false when a Stop tape has ended.
     bool RunStep();
-    // Runs steps until StepIndex() reaches 'step' or a Stop tape ends; never goes back.
+    // Runs steps until StepIndex() reaches 'step' or a Stop tape ends; never goes back. This is catching up: the
+    // events of these steps are silenced (SilenceEventsUntil).
     void RunTo(std::uint64_t step);
+    // Steps before 'step' are catching up, not played for the player: SimulationEventReader::Read skips their events,
+    // so a seek does not play the sounds of every step it passes. The editor sets it while it seeks.
+    void SilenceEventsUntil(std::uint64_t step) { _silencedUntil = step; }
+    [[nodiscard]] std::uint64_t EventsSilencedUntil() const { return _silencedUntil; }
 
     // How far the frame is between the last step and the next, 0..1, for drawing.
     [[nodiscard]] float Alpha() const;
@@ -78,6 +83,7 @@ private:
     float _fixedSeconds;
     double _accumulator = 0.0;
     std::uint64_t _step = 0;
+    std::uint64_t _silencedUntil = 0;
     std::size_t _nextChange = 0, _nextCommand = 0;
     bool _opened = false;
     std::vector<PlayerInput> _latched; // Latest frame's input, with presses gathered since the last step

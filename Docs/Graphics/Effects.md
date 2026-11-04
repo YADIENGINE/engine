@@ -97,8 +97,9 @@ its own grid. An invalid style throws here, naming the part, not when that effec
 world, cue delays and cooldowns run on game time, so a hitstop holds them. Banners and toasts run on real time, since reading
 does not slow down with the game, and so does how long slow motion's look lasts, so it ends when `TimeScale` does.
 
-A game whose camera follows or scrolls passes it as `fx.WorldCamera(paint, followCamera)`. Effect positions are then world
-positions, and a shot blends from that camera by its weight, without `keepInArena`.
+A game whose camera follows or scrolls passes its view as `fx.WorldCamera(paint, camera.View(), camera.Settings().limits)`
+([Camera](../Camera.md#effects-over-a-game-camera)). Effect positions are then world positions; a shot blends from that view
+by its weight and stays at the view's place on the canvas, and with `keepInArena` it stays inside the limits.
 
 ```cpp
 FxStage fx(playArea, viewArea, CurrentTheme().fx);

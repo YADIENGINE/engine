@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include "AgentDocs/Recipes/Code/AnimatedCharacter.h"
 #include "AgentDocs/Recipes/Code/CharacterScene.h"
@@ -9,6 +10,7 @@
 #include "AgentDocs/Recipes/Code/UiOptions.h"
 #include "AgentDocs/Recipes/Code/FxBurst.h"
 #include "AgentDocs/Recipes/Code/FxCues.h"
+#include "AgentDocs/Recipes/Code/GameCamera.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
 #include "AgentDocs/Recipes/Code/PopupEffects.h"
@@ -125,6 +127,104 @@ TEST_CASE("Engine.Recipes.SimulationPlaysInASceneAndWithoutOne", "[engine][recip
     const auto replay = VerifyTape(definition, scene.Runner().Tape());
     CHECK_FALSE(replay.mismatch);
     CHECK(replay.hash == HashState(scene.Sim()));
+}
+
+TEST_CASE("Engine.Recipes.SimulationEventsReachTheScene", "[engine][recipes]") {
+    // Headless: firing under the rock emits a Hit, which tools can see.
+    Scenario scenario(RecipePlayDefinition(), {.seed = 1, .players = 1});
+    const auto& rules = dynamic_cast<const RecipePlaySimulation&>(scenario.Sim());
+    const float rock = rules.RockX();
+    scenario.Hold("Right");
+    while (rules.ShipX(1.0f) < rock - 10.0f)
+        scenario.Run();
+    scenario.Release("Right");
+    scenario.Tap("Fire");
+    scenario.Run();
+    REQUIRE_FALSE(scenario.Events().empty());
+    CHECK(scenario.Events().back().name == "Hit");
+    CHECK(rules.Score() == 1);
+
+    // In the scene, the same Hit starts a hitstop: the next frame owes no game time.
+    TimeScale time;
+    RecipePlayScene scene(time, 1);
+    scene.Activate();
+    DeviceInput right;
+    right.keysDown[static_cast<std::size_t>(InputKey::D)] = true;
+    while (scene.Sim().ShipX(1.0f) < rock - 10.0f) {
+        scene.ReadInput(right);
+        scene.Tick(time.Advance(1.0f / 60.0f));
+    }
+    DeviceInput fire;
+    fire.keysPressed[static_cast<std::size_t>(InputKey::Space)] = true;
+    fire.keysDown[static_cast<std::size_t>(InputKey::Space)] = true;
+    scene.ReadInput(fire);
+    scene.Tick(time.Advance(1.0f / 60.0f));
+    CHECK(scene.Sim().Score() == 1);
+    CHECK(time.Advance(1.0f / 60.0f) == 0.0f);
+}
+
+TEST_CASE("Engine.Recipes.GameCameraFramesTwoPlayersOrSplits", "[engine][recipes]") {
+    const FloatRect canvas{0.0f, 0.0f, 1280.0f, 720.0f};
+    RecipeCameraView view(canvas);
+    for (int frame = 0; frame < 120; ++frame) // The players run apart
+        view.Update(1.0f / 60.0f, {Float2{-1.0f, 0.0f}, Float2{1.0f, 0.3f}}, std::nullopt, false);
+    const Camera2D& main = view.Views().Main();
+    CHECK(main.Pose().zoom < 1.0f); // Zoomed out to keep both
+    CHECK(main.Shows(view.Player(0)));
+    CHECK(main.Shows(view.Player(1)));
+
+    view.SetSplit(true);
+    for (int frame = 0; frame < 120; ++frame)
+        view.Update(1.0f / 60.0f, {Float2{-1.0f, 0.0f}, Float2{1.0f, 0.0f}}, Float2{900.0f, 300.0f}, frame == 0);
+    REQUIRE(view.Views().Count() == 2);
+    // Each at the field's edge, where its camera stops: the player's circle is in view.
+    CHECK(view.Views()[0].Shows(view.Player(0), 22.0f));
+    CHECK(view.Views()[1].Shows(view.Player(1), 22.0f));
+    const Float2 aim = view.Views()[1].ToWorld({900.0f, 300.0f}); // The mouse is over the right view
+    CHECK(view.Aim().x == Catch::Approx(aim.x));
+
+    view.SetGuides(true);
+    PaintHarness harness({1280.0f, 720.0f}, 1.0f);
+    harness.Begin();
+    view.Draw(harness.paint);
+    harness.End();
+    CHECK(harness.Draws().size() > 2);
+    CHECK(harness.list.Rejected() == 0);
+}
+
+TEST_CASE("Engine.Recipes.CameraInTheRulesReplays", "[engine][recipes]") {
+    const auto definition = RecipeScrollerDefinition();
+    Scenario scenario(definition, {.players = 1});
+    const auto& rules = dynamic_cast<const RecipeScrollerSimulation&>(scenario.Sim());
+    CHECK_FALSE(rules.Awake(0));
+    scenario.Hold("Right");
+    scenario.Run(240);
+    scenario.Release("Right");
+    scenario.Run(120); // Let the camera settle
+    CHECK(rules.Awake(0)); // Reached
+    CHECK_FALSE(rules.Awake(RecipeScrollerSimulation::EnemyCount - 1));
+    const float scrolled = rules.ScrolledTo();
+    CHECK(scrolled > 0.0f);
+    scenario.Hold("Left");
+    scenario.Run(240);
+    CHECK(rules.ScrolledTo() == scrolled);                          // Never back
+    CHECK(rules.ShipX(1.0f) >= rules.Camera().VisibleArea().x);   // Held on screen
+    CHECK(rules.Camera().VisibleArea().x >= scrolled - 0.01f);
+    CHECK(scenario.State().Members().contains("camera.center.x"));
+    const auto replay = VerifyTape(definition, scenario.Tape());
+    CHECK_FALSE(replay.mismatch);
+    CHECK(replay.hash == scenario.Hash());
+
+    PaintHarness harness({1280.0f, 720.0f}, 1.0f);
+    harness.Begin();
+    DrawRecipeScroller(harness.paint, rules, 0.5f, true);
+    harness.End();
+    CHECK(harness.list.Rejected() == 0);
+}
+
+TEST_CASE("Engine.Recipes.CameraScenesAreDefined", "[engine][recipes]") {
+    CHECK(RecipeCameraSceneDefinition().parameters.front().id == "split");
+    CHECK(RecipeScrollerSceneDefinition().parameters.front().id == "guides");
 }
 
 TEST_CASE("Engine.Recipes.CollisionBulletsReplayAndDraw", "[engine][recipes]") {

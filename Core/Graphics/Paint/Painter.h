@@ -15,6 +15,7 @@
 
 class FontFace;
 class Painter;
+struct CameraView;
 class Path;
 class Surface;
 class TextBlock;
@@ -128,6 +129,10 @@ public:
     // Following drawing is clipped to 'rect' (current coordinates) intersected with the current clip. The transform
     // must not rotate (90-degree multiples included); otherwise invalid_argument.
     PaintScope Clip(const FloatRect& rect);
+    // Following drawing is in world coordinates seen through 'view' (Camera2D::View), clipped to its viewport when it
+    // has one: one scope for a camera, however many views a frame draws. The current transform must not rotate, as for
+    // Clip.
+    PaintScope Camera(const CameraView& view);
     // Multiplies the alpha of following drawing. Overlapping parts show through each other; see Group.
     PaintScope Opacity(float opacity);
     PaintScope Blending(Blend blend);

@@ -8,7 +8,7 @@
 #include "Fx/FxCueSet.h"
 #include "Fx/FxQuality.h"
 #include "Fx/FxStyle.h"
-#include "Graphics/Camera/CameraView.h"
+#include "Camera/CameraView.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Geometry/Float2.h"
 #include "Utilities/Geometry/FloatRect.h"
@@ -87,11 +87,14 @@ public:
     void SlowMotionLook(float seconds, Color4 color);
     // Each frame: cinematic camera shot; weight 0 gives the normal camera. CameraShot can be tweened or put in a clip.
     void SetShot(const CameraShot& shot) { _shot = shot; }
-    // Field camera: shot + shake / punch / kick / motion; draw with paint.Transform(camera.Transform()).
+    // Field camera: shot + shake / punch / kick / motion; draw with paint.Camera(view).
     [[nodiscard]] CameraView WorldCamera(const Painter& paint) const;
-    // The same on a game's own camera, one that follows or scrolls: effect positions are then world positions. A shot
-    // blends from it by its weight, in world positions too, without keepInArena: the stage does not know the world.
-    [[nodiscard]] CameraView WorldCamera(const Painter& paint, const CameraView& base) const;
+    // The same over a game camera (Camera2D::View), one that follows or scrolls: effect positions are then world
+    // positions. A shot blends from it by its weight, in world positions too, and stays at the view's place on the
+    // canvas, so each view of a split screen keeps its own. With keepInArena the shot stays inside 'limits', usually the
+    // camera's (Camera2D::Settings().limits).
+    [[nodiscard]] CameraView WorldCamera(const Painter& paint, const CameraView& base,
+                                         const std::optional<FloatRect>& limits = std::nullopt) const;
     // Inside the world camera, over the field's objects.
     void DrawWorldLayer(Painter& paint) const;
     // Without the camera, over the viewport.

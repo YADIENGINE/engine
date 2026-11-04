@@ -7,7 +7,6 @@
 #include "Simulation/StateHash.h"
 
 namespace {
-constexpr double MaxOwedSeconds = 0.25;
 // Frame durations arrive as floats; a sum this close to a whole number of steps is that whole number.
 constexpr double WholeStepTolerance = 1e-4;
 
@@ -75,7 +74,7 @@ int SimulationRunner::Advance(double seconds) {
     const bool exact = std::fabs(owed - whole) < WholeStepTolerance;
     if (exact) owed = whole;
     auto count = static_cast<std::int64_t>(std::floor(owed));
-    const auto limit = static_cast<std::int64_t>(std::ceil(MaxOwedSeconds * _settings.stepsPerSecond));
+    const auto limit = static_cast<std::int64_t>(std::ceil(SimulationMaxFrameSeconds * _settings.stepsPerSecond));
     if (count > limit) {
         count = limit;
         _accumulator = 0.0;
@@ -143,6 +142,7 @@ bool SimulationRunner::RunStep() {
     return true;
 }
 void SimulationRunner::RunTo(std::uint64_t step) {
+    _silencedUntil = std::max(_silencedUntil, step);
     while (_step < step && RunStep()) {
     }
 }

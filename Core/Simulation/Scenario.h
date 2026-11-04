@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 #include "Modules/JsonIO/JsonIO.h"
@@ -8,6 +9,13 @@
 #include "Simulation/PlayerInput.h"
 #include "Simulation/SimulationRegistry.h"
 #include "Simulation/SimulationRunner.h"
+
+// An event the simulation emitted (Simulation::EventLog), as tools see it.
+struct ScenarioEvent {
+    std::uint64_t step = 0;
+    std::string name;
+    JsonIO::Document fields; // Flat, named by the event's State: {"at.x": 12, "enemy": 2}
+};
 
 // Plays a simulation without a window: give input, run steps, read state. C++ tests use this class directly; `<engine>
 // sim run` drives it from a JSON script. Actions are named as the simulation declares them. Throws
@@ -32,8 +40,11 @@ public:
     [[nodiscard]] JsonIO::Document State() const;
     [[nodiscard]] const Simulation& Sim() const { return *_simulation; }
     [[nodiscard]] const InputTape& Tape() const { return _runner.Tape(); }
+    // Every event emitted so far, oldest first; none for a simulation without an EventLog.
+    [[nodiscard]] const std::vector<ScenarioEvent>& Events() const { return _events; }
 
 private:
+    void CollectEvents();
     [[nodiscard]] std::size_t ButtonIndex(std::string_view name) const;
     [[nodiscard]] PlayerInput& Player(int player);
     SimulationStart _start;
@@ -41,4 +52,6 @@ private:
     SimulationRunner _runner;
     std::vector<PlayerInput> _input;
     std::vector<std::uint32_t> _tapped;
+    std::vector<ScenarioEvent> _events;
+    std::uint64_t _nextEvent = 0;
 };

@@ -157,6 +157,11 @@ What can be animated, and how a position is checked.
 - `template<AnimationPose P> [[nodiscard]] P MixPose(const P& a, const P& b, float t)` — Every listed field from a to b by t.
 - `template<AnimationPose P, class Visitor> void VisitPose(Visitor& state, const P& pose)` — Every listed field, for a simulation's State.
 
+## `Core/Animation/SmoothDamp.h`
+
+- `[[nodiscard]] constexpr float SmoothDamp(float current, float target, float& velocity, float smoothTime, float seconds)` — Moves 'current' towards 'target' like a critically damped spring: fast at first, slowing down, never overshooting.
+- `[[nodiscard]] constexpr Float2 SmoothDamp(Float2 current, Float2 target, Float2& velocity, float smoothTime, float seconds)`
+
 ## `Core/Animation/SpringPoint.h`
 
 - `struct SpringPoint` — 2D point approaching its target with a spring (e.g. menu cursors).

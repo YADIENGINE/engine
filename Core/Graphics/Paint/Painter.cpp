@@ -3,6 +3,8 @@
 #include <array>
 #include <cmath>
 #include <stdexcept>
+#include <string>
+#include "Camera/CameraView.h"
 #include "Graphics/Paint/Internals/PaintContext.h"
 #include "Graphics/Paint/Internals/PaintShared.h"
 #include "Graphics/Paint/Path.h"
@@ -557,19 +559,38 @@ PaintScope Painter::Transform(const Affine2& transform) {
     return {*this, depth};
 }
 
-PaintScope Painter::Clip(const FloatRect& rect) {
-    DrawList& list = _context.list;
+namespace {
+// 'rect' in the current coordinates, as a clip in target coordinates, within the current clip.
+FloatRect ClipFor(DrawList& list, const FloatRect& rect, std::string_view caller) {
     const Affine2& transform = list.State().transform;
     // A rotated clip is an error; without strict checks the rectangle's bounding box clips instead.
-    if (transform.b != 0.0f || transform.c != 0.0f) list.Reject("Painter::Clip: the current transform rotates");
+    if (transform.b != 0.0f || transform.c != 0.0f) list.Reject(std::string(caller) + ": the current transform rotates");
     const FloatRect mapped =
         FloatRect::FromCorners(transform.Apply(rect.Position()), transform.Apply({rect.Right(), rect.Bottom()}))
             .Union(FloatRect::FromCorners(transform.Apply({rect.Right(), rect.y}),
                                           transform.Apply({rect.x, rect.Bottom()})));
     const FloatRect bounds{0.0f, 0.0f, list.CurrentTarget().size.x, list.CurrentTarget().size.y};
     const FloatRect current = list.State().clip.value_or(bounds);
+    return current.Intersect(Drawable(rect) ? mapped : FloatRect{});
+}
+} // namespace
+
+PaintScope Painter::Clip(const FloatRect& rect) {
+    DrawList& list = _context.list;
+    const FloatRect clip = ClipFor(list, rect, "Painter::Clip");
     const std::uint32_t depth = list.PushScope(ScopeKind::Clip);
-    list.MutableState().clip = current.Intersect(Drawable(rect) ? mapped : FloatRect{});
+    list.MutableState().clip = clip;
+    return {*this, depth};
+}
+
+PaintScope Painter::Camera(const CameraView& view) {
+    DrawList& list = _context.list;
+    std::optional<FloatRect> clip;
+    if (!view.viewport.Empty()) clip = ClipFor(list, view.viewport, "Painter::Camera");
+    const std::uint32_t depth = list.PushScope(ScopeKind::Clip);
+    PaintState& state = list.MutableState();
+    if (clip) state.clip = *clip;
+    state.transform = state.transform * view.Transform();
     return {*this, depth};
 }
 

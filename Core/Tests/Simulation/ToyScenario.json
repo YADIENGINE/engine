@@ -12,6 +12,8 @@
     { "command": "bonus", "value": 5 },
     { "run": 1 },
     { "expect": { "steps": 62, "player[0].x": { "min": 119, "max": 121 }, "player[1].shots": 1, "score": { "min": 105 } } },
+    { "expectEvent": "Bonus" },
+    { "expectEvent": "Shot", "count": 0 },
     { "read": ["score", "player[0].x"] }
   ]
 }

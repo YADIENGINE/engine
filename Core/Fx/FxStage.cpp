@@ -220,18 +220,15 @@ void FxStage::SlowMotionLook(float seconds, Color4 color) { _slowMotion.Trigger(
 CameraView FxStage::WorldCamera(const Painter& paint) const {
     return _camera.Apply(ShotCamera(_shot, _area, _area), static_cast<float>(paint.Time()));
 }
-CameraView FxStage::WorldCamera(const Painter& paint, const CameraView& base) const {
+CameraView FxStage::WorldCamera(const Painter& paint, const CameraView& base,
+                                const std::optional<FloatRect>& limits) const {
     CameraView camera = base;
     const float weight = Clamp01(_shot.weight);
     if (weight > 0.0f) {
-        CameraShot shot = _shot;
-        shot.weight = 1.0f;
-        shot.keepInArena = false;
-        const CameraView framed = ShotCamera(shot, _area, _area);
-        camera.offset = base.offset + (framed.offset - base.offset) * weight;
-        camera.target = base.target + (framed.target - base.target) * weight;
-        camera.rotation = Mix(base.rotation, framed.rotation, weight);
-        camera.zoom = Mix(base.zoom, framed.zoom, weight);
+        camera.target = base.target + (_shot.focus - base.target) * weight;
+        camera.rotation = Mix(base.rotation, _shot.rotation, weight);
+        camera.zoom = Mix(base.zoom, _shot.zoom, weight);
+        if (_shot.keepInArena && limits) camera = camera.ConfinedTo(*limits);
     }
     return _camera.Apply(camera, static_cast<float>(paint.Time()));
 }

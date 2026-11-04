@@ -4,6 +4,7 @@
 #include <vector>
 #include "Simulation/SimulationStep.h"
 
+class SimulationEventLog;
 class StateVisitor;
 
 // A named point of a run, for tools: `ctl seek --moment NAME`.
@@ -25,6 +26,9 @@ public:
     // The named points known at this step, for tools to jump to; never read by the rules. A moment whose start depends
     // on how the run goes appears once it is decided. AppendMoments (Simulation/TimelineMoments.h) lists a timeline.
     [[nodiscard]] virtual std::vector<SimulationMoment> Moments() const;
+    // The events this simulation emits (SimulationEvents), for tools: `sim run --events` and scenario checks. Null when
+    // it emits none. Views read the typed list through a SimulationEventReader instead.
+    [[nodiscard]] virtual const SimulationEventLog* EventLog() const;
 
 protected:
     Simulation() = default;

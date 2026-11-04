@@ -176,8 +176,8 @@ Public visual FX.
 - `FxStage`: `void Glitch(float seconds)`
 - `FxStage`: `void SlowMotionLook(float seconds, Color4 color)` — Only how slow motion looks; TimeScale::SlowMo slows time, and FxSlowMotion in a cue does both.
 - `FxStage`: `void SetShot(const CameraShot& shot)` — Each frame: cinematic camera shot; weight 0 gives the normal camera.
-- `FxStage`: `[[nodiscard]] CameraView WorldCamera(const Painter& paint) const` — Field camera: shot + shake / punch / kick / motion; draw with paint.Transform(camera.Transform()).
-- `FxStage`: `[[nodiscard]] CameraView WorldCamera(const Painter& paint, const CameraView& base) const` — The same on a game's own camera, one that follows or scrolls: effect positions are then world positions.
+- `FxStage`: `[[nodiscard]] CameraView WorldCamera(const Painter& paint) const` — Field camera: shot + shake / punch / kick / motion; draw with paint.Camera(view).
+- `FxStage`: `[[nodiscard]] CameraView WorldCamera(const Painter& paint, const CameraView& base, const std::optional<FloatRect>& limits = std::nullopt) const` — The same over a game camera (Camera2D::View), one that follows or scrolls: effect positions are then world positions.
 - `FxStage`: `void DrawWorldLayer(Painter& paint) const` — Inside the world camera, over the field's objects.
 - `FxStage`: `void DrawOverlay(Painter& paint) const` — Without the camera, over the viewport.
 

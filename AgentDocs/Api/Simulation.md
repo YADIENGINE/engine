@@ -79,6 +79,10 @@ Use these generated signatures to locate public declarations; open the header fo
 
 ## `Core/Simulation/Scenario.h`
 
+- `struct ScenarioEvent` — An event the simulation emitted (Simulation::EventLog), as tools see it.
+- `ScenarioEvent`: `std::uint64_t step = 0`
+- `ScenarioEvent`: `std::string name`
+- `ScenarioEvent`: `JsonIO::Document fields` — Flat, named by the event's State: {"at.x": 12, "enemy": 2}
 - `class Scenario` — Plays a simulation without a window: give input, run steps, read state.
 - `Scenario`: `Scenario(const SimulationDefinition& definition, SimulationStart start)`
 - `Scenario`: `void Hold(std::string_view button, int player = 0)` — Down from the next step until Release, pressed on the first of them.
@@ -92,14 +96,17 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Scenario`: `[[nodiscard]] JsonIO::Document State() const` — The flat state dump; the same names as Simulation::State.
 - `Scenario`: `[[nodiscard]] const Simulation& Sim() const`
 - `Scenario`: `[[nodiscard]] const InputTape& Tape() const`
+- `Scenario`: `[[nodiscard]] const std::vector<ScenarioEvent>& Events() const` — Every event emitted so far, oldest first; none for a simulation without an EventLog.
 
 ## `Core/Simulation/ScenarioScript.h`
 
-- `struct ScenarioResult` — A JSON scenario, run without a window (format: Docs/Simulation.md): {"simulation": "my.play", "seed": 42, "players": 2, "start": {"difficulty": 2}, "script": [{"hold": "Right"}, {"run": 30}, {"tap": "Fire", "player": 1}, {"run": 1}, {"expect": {"score": 10, "player[0].lives": {"min": 1}}}, {"read": ["score"]}]}
+- `struct ScenarioResult` — A JSON scenario, run without a window (format: Docs/Simulation.md): {"simulation": "my.play", "seed": 42, "players": 2, "start": {"difficulty": 2}, "script": [{"hold": "Right"}, {"run": 30}, {"tap": "Fire", "player": 1}, {"run": 1}, {"expect": {"score": 10, "player[0].lives": {"min": 1}}}, {"read": ["score"]}, {"untilEvent": "Hit", "limit": 300}, {"run": 60}, {"expectEvent": "Hit", "fields": {"enemy": 2}, "count": {"max": 0}}]}
 - `ScenarioResult`: `bool passed = true`
-- `ScenarioResult`: `JsonIO::Document report` — What `<engine> sim run` prints: passed, steps, hash, failures, reads.
+- `ScenarioResult`: `JsonIO::Document report` — What `<engine> sim run` prints: passed, steps, hash, failures, reads, events (a count per name) and, when asked, eventList.
 - `ScenarioResult`: `InputTape tape`
-- `[[nodiscard]] ScenarioResult RunScenarioScript(const SimulationRegistry& registry, const JsonIO::Document& script)` — Throws std::invalid_argument for a script that cannot run: unknown simulation, name, player or operation.
+- `struct ScenarioScriptOptions`
+- `ScenarioScriptOptions`: `bool listEvents = false` — The report's eventList: every event with its step and fields
+- `[[nodiscard]] ScenarioResult RunScenarioScript(const SimulationRegistry& registry, const JsonIO::Document& script, const ScenarioScriptOptions& options = { })` — Throws std::invalid_argument for a script that cannot run: unknown simulation, name, player or operation.
 
 ## `Core/Simulation/Simulation.h`
 
@@ -110,6 +117,44 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Simulation`: `virtual void Step(const SimulationStep& step) = 0`
 - `Simulation`: `virtual void State(StateVisitor& state) const = 0` — Names every field that decides later steps, a Rng included.
 - `Simulation`: `[[nodiscard]] virtual std::vector<SimulationMoment> Moments() const` — The named points known at this step, for tools to jump to; never read by the rules.
+- `Simulation`: `[[nodiscard]] virtual const SimulationEventLog* EventLog() const` — The events this simulation emits (SimulationEvents), for tools: `sim run --events` and scenario checks.
+
+## `Core/Simulation/SimulationEventLog.h`
+
+- `class SimulationEventLog` — A simulation's events as tools see them, whatever their type: `sim run`, scenario checks and the editor.
+- `SimulationEventLog`: `[[nodiscard]] virtual std::uint64_t End() const = 0` — The number the next event will get.
+- `SimulationEventLog`: `[[nodiscard]] virtual std::uint64_t FirstKept() const = 0`
+- `SimulationEventLog`: `[[nodiscard]] virtual std::uint64_t StepOf(std::uint64_t sequence) const = 0` — A kept event's step, name and fields (the event's own State); 'sequence' must be in [FirstKept(), End()).
+- `SimulationEventLog`: `[[nodiscard]] virtual std::string_view NameOf(std::uint64_t sequence) const = 0`
+- `SimulationEventLog`: `virtual void FieldsOf(std::uint64_t sequence, StateVisitor& fields) const = 0`
+
+## `Core/Simulation/SimulationEventReader.h`
+
+- `template<SimulationEventSet E> class SimulationEventReader` — One view's place in a simulation's events: each Read returns those it has not seen yet.
+- `SimulationEventReader`: `[[nodiscard]] std::span<const StepEvent<E>> Read(const SimulationEvents<E>& events, const SimulationRunner& runner)` — Events not read yet, oldest first, without those of steps the runner was catching up on (an editor seek, RunTo): 600 skipped steps must not play 600 sounds.
+- `SimulationEventReader`: `[[nodiscard]] std::span<const StepEvent<E>> ReadAll(const SimulationEvents<E>& events)` — Every event not read yet, those of skipped steps included: for what must reach its final value whatever was skipped, such as a score counter.
+- `SimulationEventReader`: `void Skip(const SimulationEvents<E>& events)` — Forgets what is waiting: the next Read starts with the next event emitted.
+- `SimulationEventReader`: `[[nodiscard]] std::uint64_t Missed() const` — Events dropped before this reader saw them: it was not read for longer than one frame's worth of steps.
+
+## `Core/Simulation/SimulationEvents.h`
+
+- `template<class T> concept SimulationEventType = std::copy_constructible<T>&& requires { { T::Name }->std::convertible_to<std::string_view>; }` — An event type: a plain value naming itself.
+- `template<class T> inline constexpr bool IsSimulationEventSet = SimulationEventType<T>`
+- `template<class...T> inline constexpr bool IsSimulationEventSet<std::variant<T...>> =(SimulationEventType<T>&&...)`
+- `template<class T> concept SimulationEventSet = IsSimulationEventSet<T>` — What SimulationEvents holds: one event type, or a game's std::variant of them (one list keeps their order).
+- `template<class E> struct StepEvent` — One event, as the simulation emitted it.
+- `StepEvent`: `std::uint64_t step = 0` — The step that emitted it
+- `StepEvent`: `std::uint64_t sequence = 0` — Its number in the run, from 0, in the order of emission
+- `StepEvent`: `E event`
+- `template<SimulationEventSet E> class SimulationEvents final : public SimulationEventLog` — What a simulation tells its view happened during a step: a hit, a death, a pickup.
+- `SimulationEvents`: `void Emit(const SimulationStep& step, E event)`
+- `SimulationEvents`: `[[nodiscard]] std::span<const StepEvent<E>> Kept() const` — Every kept event, oldest first.
+- `SimulationEvents`: `[[nodiscard]] std::span<const StepEvent<E>> Since(std::uint64_t sequence) const` — Kept events numbered 'sequence' or later.
+- `SimulationEvents`: `[[nodiscard]] std::uint64_t End() const override`
+- `SimulationEvents`: `[[nodiscard]] std::uint64_t FirstKept() const override`
+- `SimulationEvents`: `[[nodiscard]] std::uint64_t StepOf(std::uint64_t sequence) const override`
+- `SimulationEvents`: `[[nodiscard]] std::string_view NameOf(std::uint64_t sequence) const override`
+- `SimulationEvents`: `void FieldsOf(std::uint64_t sequence, StateVisitor& fields) const override`
 
 ## `Core/Simulation/SimulationRegistry.h`
 
@@ -139,6 +184,8 @@ Use these generated signatures to locate public declarations; open the header fo
 - `SimulationRunner`: `void DropRemainder()` — Forgets time owed towards the next step: fixed stepping lands on whole steps, whatever real time came before.
 - `SimulationRunner`: `bool RunStep()` — Runs exactly one step; false when a Stop tape has ended.
 - `SimulationRunner`: `void RunTo(std::uint64_t step)` — Runs steps until StepIndex() reaches 'step' or a Stop tape ends; never goes back.
+- `SimulationRunner`: `void SilenceEventsUntil(std::uint64_t step)` — Steps before 'step' are catching up, not played for the player: SimulationEventReader::Read skips their events, so a seek does not play the sounds of every step it passes.
+- `SimulationRunner`: `[[nodiscard]] std::uint64_t EventsSilencedUntil() const`
 - `SimulationRunner`: `[[nodiscard]] float Alpha() const` — How far the frame is between the last step and the next, 0..1, for drawing.
 - `SimulationRunner`: `[[nodiscard]] std::uint64_t StepIndex() const` — Steps run so far; also the index of the next step.
 - `SimulationRunner`: `[[nodiscard]] const SimulationSettings& Settings() const`
@@ -158,6 +205,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `SimulationSettings`: `int maxPlayers = 1`
 - `SimulationSettings`: `std::vector<std::string> buttons` — At most MaxPlayerButtons; a button's position is its index
 - `SimulationSettings`: `std::vector<std::string> axes` — At most MaxPlayerAxes
+- `inline constexpr double SimulationMaxFrameSeconds = 0.25` — The most game time one frame can owe a runner: time beyond it is dropped (SimulationRunner::Advance).
 - `struct SimulationStart` — What a run starts from: the only inputs besides the per-step ones.
 - `SimulationStart`: `std::uint64_t seed = 0`
 - `SimulationStart`: `int players = 1`

@@ -5,6 +5,7 @@
 #include "Graphics/Paint/Painter.h"
 #include "Input/Input.h"
 #include "Simulation/StateVisitor.h"
+#include "Utilities/Overloaded.h"
 
 namespace {
 constexpr float ShipSpeed = 240.0f;
@@ -38,10 +39,14 @@ void RecipePlaySimulation::Step(const SimulationStep& step) {
     if (input.Held(RecipeButton::Left)) direction -= 1.0f;
     if (input.Held(RecipeButton::Right)) direction += 1.0f;
     _shipX.Set(_shipX.Current() + direction * ShipSpeed * step.seconds);
-    if (input.Pressed(RecipeButton::Fire) && std::fabs(_shipX.Current() - _rockX) < HitRange) {
-        ++_score;
-        ++_hits;
-        _rockX = _rng.Float(0.0f, FieldWidth);
+    if (input.Pressed(RecipeButton::Fire)) {
+        if (std::fabs(_shipX.Current() - _rockX) < HitRange) {
+            ++_score;
+            _events.Emit(step, RecipeHit{_rockX});
+            _rockX = _rng.Float(0.0f, FieldWidth);
+        } else {
+            _events.Emit(step, RecipeMiss{});
+        }
     }
     for (const auto& command : step.commands)
         if (command.id == "add_score") _score += static_cast<int>(command.value);
@@ -51,7 +56,6 @@ void RecipePlaySimulation::State(StateVisitor& state) const {
     state.Field("shipX", _shipX.Current());
     state.Field("rockX", _rockX);
     state.Field("score", _score);
-    state.Field("hits", _hits);
 }
 const SimulationSettings& RecipePlaySettings() {
     static const SimulationSettings settings = [] {
@@ -79,10 +83,11 @@ void RecipePlayScene::HandleInput(const DeviceInput& input) { _runner.Feed(_bind
 void RecipePlayScene::InputCancelled() { _runner.CancelInput(); }
 void RecipePlayScene::Update(float seconds) {
     (void)_runner.Advance(seconds); // TimeScale already applied: hitstop and slow motion only change steps per second
-    if (_simulation.HitCount() != _hitsSeen) {
-        _hitsSeen = _simulation.HitCount();
-        _time.Hitstop(HitstopSeconds);
-    }
+    // Every event of the steps this frame ran, in order; none of the steps a seek or RunTo skipped.
+    for (const auto& happened : _events.Read(_simulation.Events(), _runner))
+        std::visit(Overloaded{[&](const RecipeHit&) { _time.Hitstop(HitstopSeconds); },
+                              [](const RecipeMiss&) {}}, // A miss sound would play here
+                   happened.event);
 }
 void RecipePlayScene::Draw(Painter& paint) const {
     DrawField(paint, _simulation.ShipX(_runner.Alpha()), _simulation.RockX());

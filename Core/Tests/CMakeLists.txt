@@ -30,6 +30,7 @@ endfunction()
 engine_tests(EngineTests
     SOURCES
         AudioTests.cpp
+        CameraDrawTests.cpp
         SoundTableTests.cpp
         ColliderDrawTests.cpp
         CollectionPointerTests.cpp
@@ -76,6 +77,13 @@ engine_tests(EnginePhysicsTests
     LINKS EnginePhysics
 )
 
+# Links only the camera target, so camera code that reaches drawing fails to build here: a simulation may keep a camera.
+engine_tests(EngineCameraTests
+    SOURCES
+        Camera/CameraTests.cpp
+    LINKS EngineCamera
+)
+
 # Links only the simulation target, so a simulation that reaches drawing or audio fails to build here. The toy simulation
 # also goes through the console tool, end to end.
 engine_tests(EngineSimulationTests
@@ -84,10 +92,12 @@ engine_tests(EngineSimulationTests
         Animation/AnimationReplayTests.cpp
         Animation/AnimatorTests.cpp
         Animation/EasingTests.cpp
+        Animation/SmoothDampTests.cpp
         Animation/TimelineTests.cpp
         Animation/TrackAndClipTests.cpp
         Animation/TweenTests.cpp
         Simulation/CollisionReplayTests.cpp
+        Simulation/EventTests.cpp
         Simulation/ReplayCheckTests.cpp
         Simulation/RngTests.cpp
         Simulation/RunnerTests.cpp
@@ -120,6 +130,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/CollisionBullets.cpp"
     "${recipeRoot}/FxBurst.cpp"
     "${recipeRoot}/FxCues.cpp"
+    "${recipeRoot}/GameCamera.cpp"
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"
     "${recipeRoot}/PopupEffects.cpp"

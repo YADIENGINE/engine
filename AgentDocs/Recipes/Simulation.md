@@ -1,6 +1,6 @@
 Write gameplay rules as a deterministic simulation, host them in a scene and in the editor, and test them without a window.
 
-APIs: Core/Simulation/Simulation.h, Core/Simulation/SimulationRunner.h, Core/Simulation/SimulationRegistry.h, Core/Input/InputBindings.h, Editor/Api/HostedSimulation.h.
+APIs: Core/Simulation/Simulation.h, Core/Simulation/SimulationRunner.h, Core/Simulation/SimulationEvents.h, Core/Simulation/SimulationEventReader.h, Core/Simulation/SimulationRegistry.h, Core/Input/InputBindings.h, Editor/Api/HostedSimulation.h.
 
 Put the rules in Game/Simulation/ (the project's CMake builds them into a library for the game, worker and `python Engine sim`) and implement `void RegisterSimulations(SimulationRegistry& registry) { registry.Add(RecipePlayDefinition()); }` there. Views and scenes stay outside that folder. This example keeps them in one file only to read in one place.
 
@@ -8,6 +8,8 @@ Put the rules in Game/Simulation/ (the project's CMake builds them into a librar
 ```cpp
 #pragma once
 #include <cstdint>
+#include <string_view>
+#include <variant>
 #include "Editor/Api/EditorScene.h"
 #include "Editor/Api/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
@@ -15,13 +17,27 @@ Put the rules in Game/Simulation/ (the project's CMake builds them into a librar
 #include "Input/InputBindings.h"
 #include "Scene/Scene.h"
 #include "Simulation/Simulation.h"
+#include "Simulation/SimulationEventReader.h"
+#include "Simulation/SimulationEvents.h"
 #include "Simulation/SimulationRegistry.h"
 #include "Simulation/SimulationRunner.h"
+#include "Simulation/StateVisitor.h"
 #include "Simulation/StepSmoothed.h"
 #include "Utilities/Geometry/Float2.h"
 #include "Utilities/Random/Rng.h"
 
 enum class RecipeButton { Left, Right, Fire };
+
+// What the rules tell the view happened: plain values. The view plays sounds and effects for them.
+struct RecipeHit {
+    static constexpr std::string_view Name = "Hit"; // How tools name it: sim run --events, expectEvent
+    float x = 0.0f;
+    void State(StateVisitor& state) const { state.Field("x", x); }
+};
+struct RecipeMiss {
+    static constexpr std::string_view Name = "Miss";
+};
+using RecipeEvent = std::variant<RecipeHit, RecipeMiss>;
 
 // The rules: plain state, in Game/Simulation. No drawing, audio or clock.
 class RecipePlaySimulation final : public Simulation {
@@ -33,15 +49,16 @@ public:
     [[nodiscard]] float ShipX(float alpha) const { return _shipX.At(alpha); }
     [[nodiscard]] float RockX() const { return _rockX; }
     [[nodiscard]] int Score() const { return _score; }
-    // A view or scene reads this to start hitstop; the simulation does not touch TimeScale.
-    [[nodiscard]] std::uint64_t HitCount() const { return _hits; }
+    // The view reads these to start hitstop; the simulation does not touch TimeScale.
+    [[nodiscard]] const SimulationEvents<RecipeEvent>& Events() const { return _events; }
+    [[nodiscard]] const SimulationEventLog* EventLog() const override { return &_events; }
 
 private:
     Rng _rng;
     StepSmoothed<float> _shipX;
     float _rockX = 0.0f;
     int _score = 0;
-    std::uint64_t _hits = 0;
+    SimulationEvents<RecipeEvent> _events; // Output, not state: not in State
 };
 [[nodiscard]] const SimulationSettings& RecipePlaySettings();
 [[nodiscard]] SimulationDefinition RecipePlayDefinition();
@@ -66,7 +83,7 @@ private:
     RecipePlaySimulation _simulation;
     SimulationRunner _runner;
     InputBindings _bindings;
-    std::uint64_t _hitsSeen = 0;
+    SimulationEventReader<RecipeEvent> _events;
 };
 
 // The same rules in the editor: services.simulation gives the worker the tape, so seek, replay and Step work in steps.
@@ -94,6 +111,7 @@ private:
 #include "Graphics/Paint/Painter.h"
 #include "Input/Input.h"
 #include "Simulation/StateVisitor.h"
+#include "Utilities/Overloaded.h"
 
 namespace {
 constexpr float ShipSpeed = 240.0f;
@@ -127,10 +145,14 @@ void RecipePlaySimulation::Step(const SimulationStep& step) {
     if (input.Held(RecipeButton::Left)) direction -= 1.0f;
     if (input.Held(RecipeButton::Right)) direction += 1.0f;
     _shipX.Set(_shipX.Current() + direction * ShipSpeed * step.seconds);
-    if (input.Pressed(RecipeButton::Fire) && std::fabs(_shipX.Current() - _rockX) < HitRange) {
-        ++_score;
-        ++_hits;
-        _rockX = _rng.Float(0.0f, FieldWidth);
+    if (input.Pressed(RecipeButton::Fire)) {
+        if (std::fabs(_shipX.Current() - _rockX) < HitRange) {
+            ++_score;
+            _events.Emit(step, RecipeHit{_rockX});
+            _rockX = _rng.Float(0.0f, FieldWidth);
+        } else {
+            _events.Emit(step, RecipeMiss{});
+        }
     }
     for (const auto& command : step.commands)
         if (command.id == "add_score") _score += static_cast<int>(command.value);
@@ -140,7 +162,6 @@ void RecipePlaySimulation::State(StateVisitor& state) const {
     state.Field("shipX", _shipX.Current());
     state.Field("rockX", _rockX);
     state.Field("score", _score);
-    state.Field("hits", _hits);
 }
 const SimulationSettings& RecipePlaySettings() {
     static const SimulationSettings settings = [] {
@@ -168,10 +189,11 @@ void RecipePlayScene::HandleInput(const DeviceInput& input) { _runner.Feed(_bind
 void RecipePlayScene::InputCancelled() { _runner.CancelInput(); }
 void RecipePlayScene::Update(float seconds) {
     (void)_runner.Advance(seconds); // TimeScale already applied: hitstop and slow motion only change steps per second
-    if (_simulation.HitCount() != _hitsSeen) {
-        _hitsSeen = _simulation.HitCount();
-        _time.Hitstop(HitstopSeconds);
-    }
+    // Every event of the steps this frame ran, in order; none of the steps a seek or RunTo skipped.
+    for (const auto& happened : _events.Read(_simulation.Events(), _runner))
+        std::visit(Overloaded{[&](const RecipeHit&) { _time.Hitstop(HitstopSeconds); },
+                              [](const RecipeMiss&) {}}, // A miss sound would play here
+                   happened.event);
 }
 void RecipePlayScene::Draw(Painter& paint) const {
     DrawField(paint, _simulation.ShipX(_runner.Alpha()), _simulation.RockX());
@@ -211,14 +233,15 @@ SceneDefinition RecipePlaySceneDefinition() {
 ```
 <!-- /recipe -->
 
-Test it without a window: `python Engine sim run scenario.json --out run.replay`, with
+Test it without a window: `python Engine sim run scenario.json --out run.replay --events`, with
 
 ```json
 { "simulation": "myproject.play", "seed": 1, "script": [ { "hold": "Right" }, { "run": 60 },
-  { "expect": { "shipX": { "min": 239, "max": 241 } } } ] }
+  { "expect": { "shipX": { "min": 239, "max": 241 } } }, { "tap": "Fire" }, { "run": 1 },
+  { "expectEvent": "Hit", "count": { "max": 1 } } ] }
 ```
 
-Pitfalls: Everything that decides gameplay comes from SimulationStart or the steps. Name every deciding field in State, the Rng included. A paused scene neither feeds nor advances. The simulation asks for hitstop through state the scene reads; the scene calls TimeScale. An editor action that changes gameplay calls Runner().Command, so it is on the tape; one that only changes the view is a parameter.
+Pitfalls: Everything that decides gameplay comes from SimulationStart or the steps. Name every deciding field in State, the Rng included. A paused scene neither feeds nor advances. The simulation asks for hitstop with an event; the scene reads it after Advance and calls TimeScale. Leave events out of State. Read events every frame, with Read, so a seek stays silent. An editor action that changes gameplay calls Runner().Command, so it is on the tape; one that only changes the view is a parameter.
 
 Hits and overlaps inside the rules: [Collision recipe](Collision.md).
 

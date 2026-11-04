@@ -46,14 +46,19 @@ void ToySimulation::Step(const SimulationStep& step) {
         player.aim = input.AxisValue(ToyAxis::Aim);
         if (input.Pressed(ToyButton::Fire)) {
             ++player.shots;
+            _events.Emit(step, ToyShot{static_cast<int>(i)});
             if (std::fabs(player.x.Current() + player.aim - _enemyX) < HitRange) {
+                _events.Emit(step, ToyHit{static_cast<int>(i), _enemyX});
                 _score += HitScore;
                 _enemyX = _rng.Float(0.0f, FieldWidth);
             }
         }
     }
     for (const auto& command : step.commands)
-        if (command.id == "bonus") _score += static_cast<int>(command.value);
+        if (command.id == "bonus") {
+            _score += static_cast<int>(command.value);
+            _events.Emit(step, ToyBonus{});
+        }
     _wave += std::sin(static_cast<float>(step.index) * 0.1f) * step.seconds;
     if (_flaky && step.index == FlakyStep) _score += NextFlakyValue();
     ++_steps;

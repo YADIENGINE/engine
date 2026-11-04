@@ -17,6 +17,7 @@ Use a simulation for a game's rules. Menus, transitions and effects stay ordinar
 | `Simulation/SimulationSettings.h` | `SimulationSettings`: id, step rate, players, action names. `SimulationStart`: seed, players, parameters |
 | `Simulation/SimulationRunner.h` | Bridges frames and steps; records and replays |
 | `Simulation/StepSmoothed.h` | A value drawn between steps |
+| `Simulation/SimulationEvents.h`, `Simulation/SimulationEventReader.h` | What happened in a step, for the view: [Events](#events) |
 | `Simulation/SimulationRegistry.h` | `RegisterSimulations`: what tools and tests can run |
 | `Simulation/InputTape.h` | A recorded run, as a file |
 | `Simulation/ReplayCheck.h` | `VerifyTape`, `FindDivergence`, `StateAt` |
@@ -25,6 +26,7 @@ Use a simulation for a game's rules. Menus, transitions and effects stay ordinar
 | `Utilities/Random/Rng.h`, `Utilities/Random/WeightedPick.h` | Seeded random numbers, weighted choice |
 | `Physics/Collision/CollisionWorld.h` | Hits and overlaps inside the rules: [Collision](Collision.md) |
 | `Animation/Animator.h`, `Animation/Tween.h`, `Animation/Timeline.h` | Character clips, moving values, boss and wave timing: [Animation](Animation.md) |
+| `Camera/Camera2D.h` | A camera that decides gameplay (enemies wake as it shows them, no scrolling back): [Camera](Camera.md#a-camera-in-the-rules) |
 | `Editor/Api/HostedSimulation.h` | A simulation an editor scene hosts |
 
 Worked example: [AgentDocs/Recipes/Simulation.md](../AgentDocs/Recipes/Simulation.md).
@@ -48,8 +50,8 @@ Rules that keep a run reproducible:
   uninitialized. `sim diverge` finds these.
 - **No threads, no clock.**
 - **State goes field by field.** Never hash raw struct bytes: measured, padding differs between two runs of one program.
-- **Effects are requests.** To get hitstop or a sound, change state or keep an event list the scene reads; the
-  simulation does not call `TimeScale`, `Audio` or `Fx`.
+- **Effects are requests.** To get hitstop or a sound, emit an [event](#events) the scene reads; the simulation does not
+  call `TimeScale`, `Audio` or `Fx`.
 
 Simulation code is always built with `/fp:precise`. Measured: `/fp:fast` changes results between Debug and Release,
 because Release switches to vector math.
@@ -78,6 +80,45 @@ Playback seconds are therefore not proportional to steps. Steps are the exact po
 
 Values that move each step use `StepSmoothed<T>`: `Set` in the step, `At(runner.Alpha())` when drawing. Drawing lags the
 state by up to one step, which is what makes it smooth. `Snap` teleports without drawing a line across the jump.
+
+## Events
+
+A simulation tells its view what happened (a hit, a death, a pickup) by emitting events. The view plays sounds, effects
+and hitstop for them. An event is a plain value that names itself, and its fields are optional:
+
+```cpp
+struct Hit {
+    static constexpr std::string_view Name = "Hit"; // How tools name it
+    Float2 at;
+    int enemy = 0;
+    void State(StateVisitor& state) const { state.Field("at", at); state.Field("enemy", enemy); }
+};
+using GameEvent = std::variant<Hit, Death, Pickup>; // One list keeps their order
+```
+
+The simulation keeps a `SimulationEvents<GameEvent>` member, calls `Emit(step, Hit{...})` during `Step`, exposes it to
+the view and returns it from `EventLog()` for tools. The scene keeps a `SimulationEventReader<GameEvent>` and reads after
+advancing:
+
+```cpp
+_runner.Advance(seconds);
+for (const auto& happened : _reader.Read(_simulation.Events(), _runner))
+    std::visit(Overloaded{[&](const Hit& hit) { _fx.Play("hit", {.at = hit.at}); },
+                          [&](const Death&) { _sounds.Play(Sfx::Death); }, [](const Pickup&) {}},
+               happened.event);
+```
+
+| Question | Answer |
+| --- | --- |
+| A frame ran several steps | Every event of every step arrives, in order, each with its `step` and `sequence` |
+| Several things react | Each keeps its own reader; reading does not consume for the others |
+| State and hash | Events are output: leave them out of `State`. A replay emits the same ones because it runs the same steps |
+| How long they last | The steps of one frame's longest catch-up (`SimulationMaxFrameSeconds`) and one more; read every frame. `Missed()` counts what a reader lost |
+| Seeking, `RunTo` | Catching up is silent: the runner's `EventsSilencedUntil` makes `Read` skip those steps, so a seek does not play 600 sounds. `ReadAll` includes them, for what must reach a final value; a total belongs in the state anyway |
+| Feeding back into the rules | Never: an event the rules need next step is state. Keep it in a member and in `State` |
+
+`Utilities/Overloaded.h` builds the visitor; a missing alternative does not compile, so a new event type shows every place
+that must handle it. Events are named in [scenarios](#scenarios) and by `sim run --events`.
 
 ## Input and tapes
 
@@ -127,7 +168,7 @@ object on stdout; build output goes to stderr. All take `--release`.
 | Command | Answer | Exit 1 |
 | --- | --- | --- |
 | `sim list` | `simulations`: id, version, step rate, players, buttons, axes | |
-| `sim run SCENARIO [--out TAPE]` | `passed`, `steps`, `hash`, `failures`, `reads` | An expectation failed |
+| `sim run SCENARIO [--out TAPE] [--events]` | `passed`, `steps`, `hash`, `failures`, `reads`, `events` (a count per name); with `--events`, `eventList`: each event's `step`, `name` and `fields` | An expectation failed |
 | `sim verify TAPE` | `match`, `hashes`, `steps`, `hash`, `hashEvery`, `sameVersions`, `recorded`; `mismatch` with `lastMatch`, `firstMismatch`; `reason` when the tape holds no hashes; `tuningChanged` when tuning values differ from the recording | The hashes differ, or there are none to compare |
 | `sim diverge TAPE` | `deterministic`; `step` and `fields` (`field`, `first`, `second`) when two runs differ | Two runs differ |
 | `sim state TAPE [--step N]` | `step`, `hash`, `state` (the flat dump) | |
@@ -155,6 +196,9 @@ A scenario gives input, runs steps and checks state, without a window:
     { "command": "pick_upgrade", "value": 3 },
     { "until": { "wave": 2 }, "limit": 600 },
     { "expect": { "score": 10, "player[0].lives": { "min": 1 } } },
+    { "untilEvent": "Hit", "fields": { "enemy": 2 }, "limit": 300 },
+    { "run": 60 },
+    { "expectEvent": "Death", "count": 0 },
     { "read": ["score", "player[0].x"] }
   ]
 }
@@ -170,6 +214,8 @@ A scenario gives input, runs steps and checks state, without a window:
 | `until`, `limit` | Run until the fields match; failing after `limit` steps (default 3600) |
 | `expect` | Check fields now. A number, a string, a bool, or `{ "min": a, "max": b }`; floats compare within a small tolerance |
 | `read` | Add these fields to `reads`, with the step and hash |
+| `expectEvent`, `fields`, `count` | Count the [events](#events) of that name, and with those fields, emitted since the last event check. `count` is a number or `{ "min", "max" }`; default at least one |
+| `untilEvent`, `fields`, `limit` | Run until such an event is emitted after the last event check; failing after `limit` steps (default 3600) |
 
 Field names are the ones `State` writes: `score`, `player[0].lives`, `boss.position.x`. An unknown field or action is an
 error (exit 2), not a failed check. C++ tests use `Scenario`, the same driver, with the simulation's own getters.

@@ -2,7 +2,9 @@
 #include <raylib.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
+#include <limits>
 #include <span>
 #include <utility>
 #include <stdexcept>
@@ -165,6 +167,8 @@ void WorkerSession::BeginSeek(const WorkerMessage& message, double target, std::
     _inputState = {};
     _inputState.cancelled = true;
     _seek = Seek{target, step, message.request, planned * SeekStepAllowance + SeekExtraSteps, _game.FrameExecution()};
+    // Steps passed on the way are not played: their events stay silent until the seek arrives
+    if (auto* runner = _simulation.Runner()) runner->SilenceEventsUntil(std::numeric_limits<std::uint64_t>::max());
     auto unthrottled = _seek->execution;
     unthrottled.fpsLimit = 0;
     unthrottled.vsync = false;
@@ -201,6 +205,7 @@ void WorkerSession::ReplayDue() {
     if (replayed && _scene.CaptureParameters()) SendParameters();
 }
 void WorkerSession::FinishSeek() {
+    if (auto* runner = _simulation.Runner()) runner->SilenceEventsUntil(runner->StepIndex());
     _game.ConfigureFrameExecution(_seek->execution);
     _channel.Send({{}, _generation, _seek->request, "state", PlaybackState()});
     _seek.reset();

@@ -49,6 +49,22 @@ const JsonIO::Document& FieldOf(const JsonIO::Document& state, const std::string
     if (!found) throw std::invalid_argument("The state has no field named " + path);
     return *found;
 }
+bool EventMatches(const ScenarioEvent& event, const std::string& name, const JsonIO::Document* fields) {
+    if (event.name != name) return false;
+    if (!fields) return true;
+    for (const auto& [path, value] : fields->Members()) {
+        const auto* actual = Find(event.fields, path);
+        if (!actual || !Matches(*actual, value)) return false;
+    }
+    return true;
+}
+JsonIO::Document EventEntry(const ScenarioEvent& event) {
+    auto entry = JsonIO::Document::MakeObject();
+    entry["step"] = event.step;
+    entry["name"] = event.name;
+    entry["fields"] = event.fields;
+    return entry;
+}
 int PlayerOf(const JsonIO::Document& operation) {
     const auto* player = Find(operation, "player");
     return player ? static_cast<int>(player->AsInt64()) : 0;
@@ -74,6 +90,12 @@ public:
         } else if (const auto* command = Find(operation, "command")) {
             const auto* value = Find(operation, "value");
             _scenario.Command(command->AsString(), value ? value->AsInt64() : 0);
+        } else if (const auto* event = Find(operation, "expectEvent")) {
+            ExpectEvent(event->AsString(), operation);
+        } else if (const auto* untilEvent = Find(operation, "untilEvent")) {
+            const auto* limit = Find(operation, "limit");
+            UntilEvent(untilEvent->AsString(), Find(operation, "fields"),
+                       limit ? limit->AsUInt64() : DefaultUntilLimit);
         } else if (const auto* expect = Find(operation, "expect")) {
             Expect(*expect);
         } else if (const auto* until = Find(operation, "until")) {
@@ -85,7 +107,7 @@ public:
             throw std::invalid_argument("Unknown scenario operation: " + JsonIO::Serialize(operation));
         }
     }
-    [[nodiscard]] ScenarioResult Finish() {
+    [[nodiscard]] ScenarioResult Finish(const ScenarioScriptOptions& options) {
         ScenarioResult result;
         result.passed = _failures.Elements().empty();
         auto report = JsonIO::Document::MakeObject();
@@ -94,12 +116,65 @@ public:
         report["hash"] = FormatStateHash(_scenario.Hash());
         report["failures"] = std::move(_failures);
         report["reads"] = std::move(_reads);
+        auto counts = JsonIO::Document::MakeObject();
+        for (const auto& event : _scenario.Events()) {
+            auto& count = counts[event.name];
+            count = (count.IsNull() ? std::uint64_t{0} : count.AsUInt64()) + 1U;
+        }
+        report["events"] = std::move(counts);
+        if (options.listEvents) {
+            auto list = JsonIO::Document::MakeArray();
+            for (const auto& event : _scenario.Events())
+                list.Append(EventEntry(event));
+            report["eventList"] = std::move(list);
+        }
         result.report = std::move(report);
         result.tape = _scenario.Tape();
         return result;
     }
 
 private:
+    // Counts matching events since the last event check; at least one is expected unless "count" says otherwise.
+    void ExpectEvent(const std::string& name, const JsonIO::Document& operation) {
+        const auto* fields = Find(operation, "fields");
+        const auto& events = _scenario.Events();
+        std::uint64_t matched = 0;
+        for (std::size_t i = _eventsChecked; i < events.size(); ++i)
+            if (EventMatches(events[i], name, fields)) ++matched;
+        _eventsChecked = events.size();
+        auto expected = JsonIO::Document::MakeObject();
+        expected["min"] = 1;
+        if (const auto* count = Find(operation, "count")) expected = *count;
+        if (Matches(JsonIO::Document(matched), expected)) return;
+        auto failure = JsonIO::Document::MakeObject();
+        failure["step"] = _scenario.Step();
+        failure["event"] = name;
+        if (fields) failure["fields"] = *fields;
+        failure["expected"] = std::move(expected);
+        failure["actual"] = matched;
+        _failures.Append(std::move(failure));
+    }
+    // Runs until a matching event appears after the last event check; that event is checked off with it.
+    void UntilEvent(const std::string& name, const JsonIO::Document* fields, std::uint64_t limit) {
+        for (std::uint64_t ran = 0;; ++ran) {
+            const auto& events = _scenario.Events();
+            for (; _eventsChecked < events.size(); ++_eventsChecked) {
+                if (!EventMatches(events[_eventsChecked], name, fields)) continue;
+                ++_eventsChecked;
+                return;
+            }
+            if (ran == limit) {
+                auto failure = JsonIO::Document::MakeObject();
+                failure["step"] = _scenario.Step();
+                failure["untilEvent"] = name;
+                if (fields) failure["fields"] = *fields;
+                failure["limit"] = limit;
+                _failures.Append(std::move(failure));
+                return;
+            }
+            _scenario.Run();
+        }
+    }
     void Expect(const JsonIO::Document& expected) {
         const auto state = _scenario.State();
         for (const auto& [path, value] : expected.Members()) {
@@ -145,10 +220,12 @@ private:
     Scenario _scenario;
     JsonIO::Document _failures;
     JsonIO::Document _reads;
+    std::size_t _eventsChecked = 0;
 };
 } // namespace
 
-ScenarioResult RunScenarioScript(const SimulationRegistry& registry, const JsonIO::Document& script) {
+ScenarioResult RunScenarioScript(const SimulationRegistry& registry, const JsonIO::Document& script,
+                                 const ScenarioScriptOptions& options) {
     const auto& id = script.At("simulation").AsString();
     const auto* definition = registry.Find(id);
     if (!definition) throw std::invalid_argument("Unknown simulation: " + id);
@@ -159,5 +236,5 @@ ScenarioResult RunScenarioScript(const SimulationRegistry& registry, const JsonI
     ScriptRun run(*definition, std::move(start));
     for (const auto& operation : script.At("script").Elements())
         run.Execute(operation);
-    return run.Finish();
+    return run.Finish(options);
 }

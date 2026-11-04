@@ -95,6 +95,7 @@ add_library(EngineSimulation STATIC
     Simulation/Scenario.cpp
     Simulation/ScenarioScript.cpp
     Simulation/Simulation.cpp
+    Simulation/SimulationEventLog.cpp
     Simulation/SimulationRegistry.cpp
     Simulation/SimulationRunner.cpp
     Simulation/SimulationSettings.cpp
@@ -126,11 +127,27 @@ engine_simulation_flags(EnginePhysics)
 engine_simulation_flags(box2d)
 engine_warnings(EnginePhysics)
 
+# Game cameras (Docs/Camera.md): follow, framing, limits, split screen. Built with precise floats like simulation code,
+# because a simulation may keep a camera that decides gameplay. It draws nothing; its debug guides are in
+# EngineHeadless.
+add_library(EngineCamera STATIC
+    Camera/Camera2D.cpp
+    Camera/Cameras.cpp
+    Camera/CameraSettings.cpp
+    Camera/Internals/CameraSolver.cpp
+)
+target_include_directories(EngineCamera PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(EngineCamera PUBLIC cxx_std_20)
+set_target_properties(EngineCamera PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_simulation_flags(EngineCamera)
+engine_warnings(EngineCamera)
+
 add_library(EngineHeadless STATIC
     Audio/Internals/AudioVolumePolicy.cpp
     Audio/Internals/Validation.cpp
     Audio/SoundPlayer.cpp
     Audio/SoundTables.cpp
+    Camera/Debug/CameraGuides.cpp
     Diagnostics/DevelopmentChecks.cpp
     Fx/Camera/CameraEffects.cpp
     Fx/Camera/CameraShot.cpp
@@ -234,7 +251,7 @@ target_include_directories(EngineHeadless PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineHeadless PUBLIC cxx_std_20)
 set_target_properties(EngineHeadless PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}")
-target_link_libraries(EngineHeadless PUBLIC EnginePersistence EnginePhysics EngineSimulation EngineTuning
+target_link_libraries(EngineHeadless PUBLIC EngineCamera EnginePersistence EnginePhysics EngineSimulation EngineTuning
     PRIVATE EngineStorage)
 # Glyph rasterization compiles a private copy of stb_truetype from raylib's bundled headers (header only, no raylib).
 set_source_files_properties(Graphics/Text/Internals/FontData.cpp PROPERTIES

@@ -1169,6 +1169,92 @@ says what it is.
 scene controls (they last a session and reset in one click). A preview of a file the scene does not read (nothing would
 show it). Tuning files outside an `engine_add_tuning` root (no build could read them).
 
+### D34. Simulation events
+Status: implemented (2026-11-04). Usage: [Simulation](../Simulation.md#events).
+
+**Decision:** a simulation tells its view what happened by emitting typed events into a list it owns
+(`SimulationEvents<E>`); each view reads them through its own cursor (`SimulationEventReader<E>`). Events are output,
+not state.
+
+**Why:** a simulation may not play sound, start effects or call `TimeScale`, so the view must learn that a hit
+happened. The recipe compared a counter (`HitCount` against `_hitsSeen`): a frame that runs several steps loses how many
+events there were, in which step and where, and every game rebuilt that bridge by hand. Bevy's `Events<T>` with per-reader
+cursors and Photon Quantum's frame events (deterministic simulation, events kept out of the state, no replay of events
+during re-simulation) were the models.
+
+**Decided:**
+1. *One list per game, a `std::variant` of plain structs.* One declaration, and the order between types is kept (a Hit
+   before the Death it caused). A single struct works too. Each type names itself (`static constexpr Name`) so tools can
+   show it; its fields go through an optional `State(StateVisitor&)`, the same visitor the state uses.
+2. *The game owns the list; the base class does not learn its type.* `Simulation` gained only `EventLog()`, a type-free
+   view for tools, null by default. No pointer into the simulation is stored, so a copy (N7 snapshots) stays valid.
+3. *`Emit(step, event)` stamps the step.* The simulation already holds the step, so no hidden hook tells the list where
+   a step starts.
+4. *Readers keep cursors; the list keeps a time window.* Events are numbered; a reader returns what it has not seen, so a
+   sound player and a popup do not consume each other's events. The list keeps the steps one frame can run
+   (`SimulationMaxFrameSeconds`, shared with the runner) and one more, trimmed when the next event is emitted, so a
+   headless run of a million steps stays bounded. A reader that falls further behind counts `Missed()`.
+5. *Catching up is silent by default.* The runner holds `EventsSilencedUntil`; `RunTo` sets it to its target and the
+   editor's seek sets it until it arrives. `Read` skips those steps; `ReadAll` does not, for a view that wants them.
+   Without this a seek would play the sounds of every step it passed, because it runs the normal frame loop.
+6. *Tools see events.* `Scenario` collects them every step; scripts gain `expectEvent` and `untilEvent`; `sim run`
+   reports a count per name and, with `--events`, the list. Additions only: `toolsContract` stays.
+7. *`Utilities/Overloaded.h`* builds the visitor. A missing alternative fails to compile, which shows every place a new
+   event type must reach.
+
+**Left out, and why:** a mapping from event types to cues and sounds as data (five lines of `std::visit` today; add it
+when games repeat the same mapping, and it would need a home that knows both Fx and Audio). Queues per type (a visitor
+is one line with `Overloaded`, and order between types would be lost). Listeners or subscriptions inside the simulation,
+and events that feed back into the rules: those are state. Events in the hash (they follow from the steps). A `ctl`
+command listing the editor's events (`sim run --events` covers agents for now).
+
+### D35. Game camera
+Status: implemented (2026-11-04). Usage: [Camera](../Camera.md).
+
+**Decision:** a `Core/Camera` module with `Camera2D` as the entry point and `Cameras` as the scene's set (`Main()`, split
+screen). It computes and draws nothing, builds with precise floats, and links below `EngineHeadless` (`EngineCamera`), so
+the same camera serves a view on seconds and, when the camera decides gameplay, a simulation on steps.
+
+**Why:** almost every game with a world larger than the screen needs a camera that follows, and same-screen multiplayer
+needs one that frames several players. The engine had the pieces around one (`CameraView`, a cinematic `CameraShot`,
+shake in `CameraEffects`, `SpringPoint`) and `FxStage::WorldCamera(paint, base)` waiting for a "normal camera" that no
+game had. Godot's `Camera2D` (drag margins, limits, smoothing, a physics or idle update), Cinemachine (dead zone,
+look-ahead, damping, confiner, target groups with weight and radius, group framing, `Camera.main`) and Itay Keren's
+"Scroll Back" (GDC 2015) were the models.
+
+**Decided:**
+1. *One class a user meets first.* `Camera2D`: `Follow`, `Update`, `Snap`, `SetPose`, `View`, `ToWorld`, `Shows`. The
+   rules behind it (gathering targets, dead zone, fitting, limits, snapping) are pure functions in
+   `Camera/Internals/CameraSolver`, tested one by one; settings are plain structs with designated initializers.
+2. *A camera may be part of the rules.* Platformers and scrollers wake enemies as the view reaches them and never scroll
+   back; then the visible area is gameplay. So the module may be included by a simulation (`check` holds `Core/Camera`
+   to Utilities and Animation; its `Debug/` draws and is forbidden to simulations). One class serves both, as Godot's
+   `process_callback` does: `Update(step.seconds)` and `State` in a simulation, `View(alpha)` to draw between steps.
+   This replaces NEWSYSTEMS' "never inside a Simulation", which would have forced a second, shared pure function.
+3. *`CameraView` moved to `Core/Camera`.* It is plain math, and the simulation side needs it. It gained `viewport`, so one
+   view says where on the canvas it draws, and `VisibleArea` and `ConfinedTo`.
+4. *`Painter::Camera(view)`.* One scope that clips to the view's viewport and transforms, so split screen is a loop and
+   leaves no clip behind. Graphics depends on the camera's view, not the other way.
+5. *Critically damped smoothing.* `Animation/SmoothDamp.h` (Game Programming Gems 4, Unity's `SmoothDamp`): no overshoot,
+   about the same course at any frame rate, deterministic on fixed steps. `SpringPoint` stays for UI.
+6. *Sizes as fractions of the view.* Dead zone and look-ahead limit hold at any zoom, as in Godot and Cinemachine. The
+   look-ahead is seconds of the targets' measured motion, eased by its own smoothing, per axis.
+7. *Several targets.* Weight moves the middle; with `zoom.fit` the zoom fits every target's circle plus padding between
+   `min` and `max`, and the camera is then moved the least to keep them all in view, so weights never cost a player the
+   frame. Too far apart at `min`: centred, and the game decides whether a player may leave (clamped by its rules).
+8. *`Cameras` and split screen now.* `Painter::Clip` made it cheap. `Split(1..4, layout, gap)`; new cameras copy the
+   main one, so opening a split does not jump; `At(point)` finds the camera under the mouse.
+9. *Effects over the game camera.* `FxStage::WorldCamera(paint, view, limits)`: a shot blends from the view in world
+   positions and keeps the view's place on the canvas (it used to move to the stage's area, wrong in a split); with
+   `keepInArena` it stays inside the camera's limits.
+10. *No camera stack, no priorities.* A scene holds as many cameras as views; the shot and the effects are the layers
+    above. Cinemachine's brain and blends between virtual cameras can come when a game needs authored camera switches;
+    a tween of `CameraPose` through `SetPose` covers a cutscene today.
+
+**Left out, and why:** effects per view of a split screen (one `FxStage` shakes all views; a game with separate shakes
+keeps one stage per view). A dynamic (Voronoi) split. Soft zones, platform snapping and cue focus (Keren's terms) wait for
+the platformer kit. Rotation-aware limits and fitting. A camera panel in the editor.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

@@ -16,6 +16,10 @@ struct SimulationSettings {
     std::vector<std::string> axes;    // At most MaxPlayerAxes
 };
 
+// The most game time one frame can owe a runner: time beyond it is dropped (SimulationRunner::Advance). Events are
+// kept at least this long, so a view that reads them every frame misses none (SimulationEvents).
+inline constexpr double SimulationMaxFrameSeconds = 0.25;
+
 // What a run starts from: the only inputs besides the per-step ones. Anything else that changes gameplay (options,
 // saved progress, menu choices) must arrive here or through a command, or a replay cannot reproduce it.
 struct SimulationStart {

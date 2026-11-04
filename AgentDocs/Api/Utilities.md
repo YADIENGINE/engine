@@ -173,6 +173,12 @@ Use these generated signatures to locate public declarations; open the header fo
 - `constexpr float Mix(float a, float b, float t)` — Linear interpolation from a to b by 't' (not clamped).
 - `inline float Fract(float value)` — Fractional part (0..1).
 
+## `Core/Utilities/Overloaded.h`
+
+- `template<class...Functions> struct Overloaded : Functions...` — One visitor made of several lambdas, for std::visit over a variant such as a simulation's events: std::visit(Overloaded{[&](const Hit& hit) { ...
+- `Overloaded`: `using Functions::operator()...`
+- `template<class...Functions> Overloaded(Functions...)->Overloaded<Functions...>`
+
 ## `Core/Utilities/Random/Rng.h`
 
 - `class Rng` — The engine's seeded random generator (PCG32): the same seed and stream give the same sequence in every build, because no standard library distribution is involved.

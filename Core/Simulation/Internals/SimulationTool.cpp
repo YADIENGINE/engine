@@ -1,5 +1,6 @@
 // The console tool behind `<engine> sim`: no window, no drawing. Each command prints one JSON object on stdout. Exit
 // codes follow Docs/ToolsContract.md: 0 success, 1 a failed check, 2 usage or a tape that cannot play.
+#include <algorithm>
 #include <charconv>
 #include <cstdint>
 #include <cstdio>
@@ -23,7 +24,7 @@ namespace {
 constexpr int ExitOk = 0, ExitFailed = 1, ExitUsage = 2;
 constexpr JsonIO::Limits OutputLimits{.maxBytes = std::size_t{1} << 28U, .maxDepth = 16};
 constexpr const char* Usage =
-    "usage: list | run SCENARIO [--out TAPE] | verify TAPE | diverge TAPE | state TAPE --step N";
+    "usage: list | run SCENARIO [--out TAPE] [--events] | verify TAPE | diverge TAPE | state TAPE --step N";
 
 void Print(const JsonIO::Document& answer) {
     std::cout << JsonIO::Serialize(answer,
@@ -64,7 +65,9 @@ int List(const SimulationRegistry& registry) {
     return ExitOk;
 }
 int Run(const SimulationRegistry& registry, const std::vector<std::string_view>& arguments) {
-    auto result = RunScenarioScript(registry, JsonIO::Read(std::filesystem::path(arguments.at(0))));
+    const bool listEvents = std::ranges::find(arguments, std::string_view("--events")) != arguments.end();
+    auto result = RunScenarioScript(registry, JsonIO::Read(std::filesystem::path(arguments.at(0))),
+                                    ScenarioScriptOptions{.listEvents = listEvents});
     if (const auto out = OptionValue(arguments, "--out")) result.tape.Save(std::filesystem::path(*out));
     Print(result.report);
     return result.passed ? ExitOk : ExitFailed;

@@ -35,6 +35,7 @@ def add_parser(commands) -> None:
     parser = action("run", "play a JSON scenario; exit 1 when an expectation fails")
     parser.add_argument("scenario", metavar="SCENARIO")
     parser.add_argument("--out", metavar="TAPE", help="write the played run as a tape")
+    parser.add_argument("--events", action="store_true", help="list every event the simulation emitted")
     action("verify", "replay a tape and compare its hashes; exit 1 at the first difference").add_argument(
         "tape", metavar="TAPE")
     action("diverge", "replay a tape twice and name the first differing step and fields").add_argument(
@@ -74,7 +75,8 @@ def tool_arguments(args) -> list[str]:
         case "list":
             return ["list"]
         case "run":
-            return ["run", args.scenario] + (["--out", args.out] if args.out else [])
+            return (["run", args.scenario] + (["--out", args.out] if args.out else [])
+                    + (["--events"] if args.events else []))
         case "state":
             return ["state", args.tape] + (["--step", str(args.step)] if args.step is not None else [])
         case _:

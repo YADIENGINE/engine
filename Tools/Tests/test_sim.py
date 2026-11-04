@@ -20,6 +20,7 @@ class ArgumentTests(unittest.TestCase):
         self.assertEqual(tool_arguments(parsed("run", "a.json")), ["run", "a.json"])
         self.assertEqual(tool_arguments(parsed("run", "a.json", "--out", "b.replay")),
                          ["run", "a.json", "--out", "b.replay"])
+        self.assertEqual(tool_arguments(parsed("run", "a.json", "--events")), ["run", "a.json", "--events"])
         self.assertEqual(tool_arguments(parsed("verify", "b.replay")), ["verify", "b.replay"])
         self.assertEqual(tool_arguments(parsed("diverge", "b.replay")), ["diverge", "b.replay"])
         self.assertEqual(tool_arguments(parsed("state", "b.replay")), ["state", "b.replay"])

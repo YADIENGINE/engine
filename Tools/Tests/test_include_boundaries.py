@@ -141,6 +141,20 @@ class BoundaryTests(unittest.TestCase):
                 self.write("Game/Simulation/Rules.cpp", f'#include "Audio/{header}"\n')
                 self.assertIn("simulation code", self.check()[0])
 
+    def test_the_camera_includes_only_what_a_simulation_may(self):
+        self.write("Engine/Core/Camera/Camera2D.cpp", '#include "Camera/CameraView.h"\n#include "Animation/SmoothDamp.h"\n'
+                   '#include "Utilities/Geometry/Float2.h"\n')
+        self.write("Engine/Core/Camera/Debug/Guides.cpp", '#include "Graphics/Paint/Painter.h"\n')
+        self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Camera/Camera2D.cpp", '#include "Graphics/Paint/Painter.h"\n')
+        self.assertIn("Core/Camera includes", self.check()[0])
+
+    def test_a_simulation_may_keep_a_camera_but_not_draw_its_guides(self):
+        self.write("Game/Simulation/Rules.cpp", '#include "Camera/Camera2D.h"\n')
+        self.assertEqual(self.check(), [])
+        self.write("Game/Simulation/Rules.cpp", '#include "Camera/Debug/CameraGuides.h"\n')
+        self.assertIn("simulation code", self.check()[0])
+
     def test_a_simulation_cannot_include_the_ui(self):
         self.write("Engine/Core/Simulation/Rules.cpp", '#include "Ui/Kernel/Ui.h"\n')
         self.assertIn("simulation code", self.check()[0])
