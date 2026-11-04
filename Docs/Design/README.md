@@ -930,12 +930,16 @@ before the surface (0.005 units).
 grids, rigid-body dynamics, a fatter tree margin or a grid if measurements ask for one, and a collider overlay switch in the
 editor.
 
-### D28. Animation: curves and timelines
+### D28. Animation
 Status: implemented (2026-11-04). Usage: [Animation](../Animation.md).
 
-**Decision:** own code, in `Core/Animation`, with no third-party library. `Timeline.h` holds named moments as constant data, and
-`Easing.h` moved here from `Graphics/Anim` with wider curves. Neither has a clock: the caller owns the time. A tween is not an
-object: it is a position, a curve and `Mix`. `Graphics/Anim` is gone: `Graphics` draws, `Animation` computes values over time.
+**Decision:** own code, in `Core/Animation`, with no third-party library, in three layers over one set of curves. Constant data with no
+clock: `Track`, `Clip`, `ClipSet`, `Timeline`. Something that plays them: `Animator`. A value that moves by itself: `Tween`, with `UpdateAll`
+and `TweenSet` for convenience. Each comes on steps and on seconds. `Graphics/Anim` is gone: `Graphics` draws, `Animation` computes values
+over time.
+
+The first version had only curves and timelines, on the argument that a tween is a position, a curve and `Mix`. That is true and was not enough:
+it left the caller to write what people come to an animation system for, so the layers above were added on top of it the same day.
 
 **Library survey (2026-11-04):** Tweeny 4 (MIT, header-only, rewritten in August 2026) is the only serious candidate and came
 closer than expected, because its durations are whole frames and `peek(frame)` is const. It was still rejected: no named moments, so
@@ -952,8 +956,8 @@ few short, well-known formulas.
 2. *Positions in steps inside a simulation.* `StepTimeline` has `int` positions, compared exactly. `SecondsTimeline` is for views, on
    ordinary time. Both are one template, and a simulation cannot mistake one for the other by writing `1.5`. `StepsIn` lets an author
    think in seconds, rounding once.
-3. *Tweens in both places.* A pure function has no home to choose: the rules may read a curve to decide, and a view reads the same
-   timeline between steps. Only the clock is state, and it belongs to whoever owns it.
+3. *Everything in both places.* Rules may need a value that animates, and a view reads the same data between steps. The two forms are one
+   template, so there is one thing to learn.
 4. *`before <= at < after`.* With a clock from 0, one call per step meets every moment once, including a moment at 0, with no -1
    start. The older `Crossed` counts `before < moment <= after`; it was left alone because views use it on single moments.
 5. *Names, not ids.* Agents read and write names, and tools need them. Unknown names throw in every configuration. A misspelled
@@ -962,26 +966,43 @@ few short, well-known formulas.
    `ButtonAnim` could not go to `Graphics/Ui`, because `Draw/Neon.h` reads its state and `Ui` depends on `Draw`. Their two `.cpp` files
    became headers: left in `EngineHeadless`, a simulation could include them and then fail to link. They stay for views, because they
    keep private state that `State` cannot reach.
-7. *`Simulation::Moments`, for tools only.* The answer can depend on the run, so `ctl seek --moment` resolves the name in the
+7. *The animator is driven by code, not by a state graph.* A graph earns its place with a visual editor, which is out of scope, and it would put a
+   second copy of the rules beside the simulation's. A graph could later sit on top of `Play`; the reverse would not work. Godot's AnimationPlayer is
+   the model. Calling `Play` with the current clip does nothing, so rules can state what should show on every step.
+8. *A tween is the value, not a pointer to one.* DOTween-style `tweens.To(enemy.scale, ...)` was weighed and rejected. A list of pointers goes wrong when the
+   value moves or dies. DOTween and Godot manage that with safe mode, links and automatic kills, which need a runtime that can notice a dead object; C++ cannot, and a
+   vector that grows moves every element. Pointers and stored callbacks could not go in `State` either, so simulations would need a second tween type.
+   To keep the short form's comfort: tweens read like the plain value, `UpdateAll` makes one line, `TweenSet` owns values by key, and a callback passed to `Update` runs
+   and is forgotten. The cost is `.Value()` where C++ cannot work out the conversion, a silent stop if `Update` is forgotten, and `auto` copying the tween.
+9. *A pose is a typed struct that lists its fields once.* Named float channels were rejected: a typo would appear only at run time, and `Float2` and `Color4` would need
+   more. The compiler checks a track's type against its field. `Fields` carries names, so a text loader stays possible. Its cost is a few lines per pose, and a field
+   left off the list compiles and silently does not blend.
+10. *An animator's state is clips and clocks.* The pose is worked out from them, so normal play adds no floats to the hash. A fade interrupted by another `Play` is the
+    exception: no clip could give that pose again, so it is frozen and written through `Fields`. Clips are shared behind a constant clip set rather than pointed at, so nothing dangles.
+11. *A tween's chain is four parts, inline.* It keeps tweens trivially copyable and free of allocation, which matters in a vector of enemies. Clips are for longer sequences. A curve
+    is a `Curve` value because a function pointer cannot be hashed.
+12. *`Simulation::Moments`, for tools only.* The answer can depend on the run, so `ctl seek --moment` resolves the name in the
    editor from the current status and then seeks by step, with no new worker message. The field is added to the status without
    raising the worker protocol or `toolsContract`, as with the other status additions.
 
 **Measured (2026-11-04, MSVC 19.44, x64, one machine):** a simulation feeding all 22 curves, sampled over their whole range for 700
-steps, into its hash: a tape recorded in Debug verifies in Release at every step, and two runs agree. Through a new project from the
-template, the recipe's rules passed a scenario and a Debug tape verified in Release. Cost in Release of `Wrap`, `ForEachCrossed` and
-an eased `Progress` together, asking for the last name:
+steps, into its hash: a tape recorded in Debug verifies in Release at every step, and two runs agree. A second one with six units on animators
+changing clips at random, tweens and a tween set, 2,000 steps with 259 interrupted fades and every curve used: the same in Debug and Release, at every
+step and in its final state. Cost in Release:
 
-| Moments | Each | 5,000 per step |
+| Doing | Each | 5,000 per step |
 | --- | --- | --- |
-| 4 | 18 ns | 0.09 ms |
-| 8 | 30 ns | 0.16 ms |
-| 32 | 76 ns | 0.38 ms |
+| `Wrap`, `ForEachCrossed` and eased `Progress`, asking for the last name: 4 / 8 / 32 moments | 18 / 30 / 76 ns | 0.09 / 0.16 / 0.38 ms |
+| `StepTween`, running on an elastic curve | 10 ns | 0.05 ms |
+| `StepTweenSet`: step, and read each by key | 6-36 ns, growing with size | 0.18 ms |
+| `StepAnimator`, five tracks: `Play` of the current clip, `Step`, `Pose(alpha)` | 57 ns | 0.28 ms |
+| The same, always fading between clips | 80 ns | 0.39 ms |
 
-**Costs:** the include paths of `Easing.h` and the three helpers changed. Curves are inline, so a game built with `/fp:fast` could lend a simulation another
+**Costs:** the include paths of `Easing.h` and the three helpers changed, and `StateVisitor` gained a `Color4` field. Curves are inline, so a game built with `/fp:fast` could lend a simulation another
 copy of one; `StepSmoothed` already has this limit, and it was reasoned, not measured.
 
-**Deferred:** multi-point value tracks (several values over several moments), a curve enum for text data, a scenario operation
-that runs to a moment, and listing a repeating timeline's later cycles.
+**Deferred:** a state graph; layers and additive blending; playback speed on steps; custom Bezier curves; loading clips from text; a clip's moments in
+`Simulation::Moments`; a scenario operation that runs to a moment; listing a repeating timeline's later cycles; anything in the editor.
 
 ## v1'de kalan işler
 

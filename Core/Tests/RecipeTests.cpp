@@ -1,8 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include "AgentDocs/Recipes/Code/AnimatedCharacter.h"
 #include "AgentDocs/Recipes/Code/CharacterScene.h"
+#include "AgentDocs/Recipes/Code/AnimatorFighter.h"
 #include "AgentDocs/Recipes/Code/CollisionBullets.h"
 #include "AgentDocs/Recipes/Code/TimelineBoss.h"
+#include "AgentDocs/Recipes/Code/TweenMenu.h"
 #include "AgentDocs/Recipes/Code/FxBurst.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
@@ -83,6 +85,75 @@ TEST_CASE("Engine.Recipes.CollisionBulletsReplayAndDraw", "[engine][recipes]") {
     DrawRecipeShooter(harness.paint, simulation, true);
     harness.End();
     CHECK_FALSE(harness.Draws().empty());
+}
+
+TEST_CASE("Engine.Recipes.AnimatorFighterPlaysReplaysAndDraws", "[engine][recipes]") {
+    const auto definition = RecipeFighterDefinition();
+    Scenario scenario(definition, {.seed = 1, .players = 1});
+    const auto& simulation = dynamic_cast<const RecipeFighterSimulation&>(scenario.Sim());
+    scenario.Hold("Walk");
+    scenario.Run(30);
+    scenario.Release("Walk");
+    CHECK(simulation.Pose(1.0f).frame >= 0);
+    scenario.Tap("Attack");
+    scenario.Run(20);
+    CHECK(simulation.Hits() == 1);
+    CHECK(simulation.Recoil(1.0f) > 0.0f);
+    scenario.Tap("Attack"); // Starts over before the last one ended
+    scenario.Run(60);
+    CHECK(simulation.Hits() == 2);
+    const auto replay = VerifyTape(definition, scenario.Tape());
+    CHECK_FALSE(replay.mismatch);
+    CHECK_FALSE(FindDivergence(definition, scenario.Tape()));
+
+    PaintHarness harness;
+    harness.Begin();
+    DrawRecipeFighter(harness.paint, simulation, 0.5f);
+    harness.End();
+    CHECK(harness.Draws().size() >= 1);
+}
+
+TEST_CASE("Engine.Recipes.AnimatorScenarioInTheRecipePasses", "[engine][recipes]") {
+    SimulationRegistry registry;
+    registry.Add(RecipeFighterDefinition());
+    const auto script = JsonIO::Parse(R"json({ "simulation": "myproject.fighter", "seed": 1, "script": [
+  { "expect": { "animator.clip": "idle", "hits": 0 } },
+  { "tap": "Attack" }, { "run": 1 }, { "expect": { "animator.clip": "attack" } },
+  { "run": 18 }, { "expect": { "hits": 1 } },
+  { "run": 11 }, { "expect": { "animator.clip": "idle" } } ] })json");
+    const auto result = RunScenarioScript(registry, script);
+    CHECK(result.passed);
+}
+
+TEST_CASE("Engine.Recipes.AnimatorSceneBuilds", "[engine][recipes]") {
+    const auto definition = RecipeFighterSceneDefinition();
+    CHECK(definition.id == "myproject.fighter");
+    CHECK(definition.create);
+}
+
+TEST_CASE("Engine.Recipes.TweenMenuMovesAndDraws", "[engine][recipes]") {
+    RecipeTweenMenu menu;
+    menu.Open();
+    CHECK(menu.TitleScale() == 0.0f);
+    menu.AddCoin({10.0f, 10.0f});
+    menu.AddCoin({20.0f, 10.0f});
+    menu.MoveCursor({100.0f, 100.0f});
+    for (int frame = 0; frame < 15; ++frame)
+        menu.Update(1.0f / 60.0f);
+    CHECK(menu.TitleScale() > 1.0f); // Overshooting
+    CHECK(menu.TitleBeats() == 0);
+    menu.CollectCoin(0);
+    for (int frame = 0; frame < 30; ++frame)
+        menu.Update(1.0f / 60.0f);
+    CHECK(menu.TitleScale() == 1.0f);
+    CHECK(menu.TitleBeats() == 1);
+    CHECK(menu.Coins() == 1); // Collected and gone
+
+    PaintHarness harness;
+    harness.Begin();
+    menu.Draw(harness.paint);
+    harness.End();
+    CHECK(harness.Draws().size() >= 1);
 }
 
 TEST_CASE("Engine.Recipes.TimelineBossReplaysAndDraws", "[engine][recipes]") {

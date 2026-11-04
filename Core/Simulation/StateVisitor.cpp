@@ -14,6 +14,14 @@ void StateVisitor::Field(std::string_view name, Vec2 value) {
         Value("y", static_cast<std::int64_t>(value.y));
     });
 }
+void StateVisitor::Field(std::string_view name, Color4 value) {
+    Group(name, [&] {
+        Value("r", static_cast<std::int64_t>(value.r));
+        Value("g", static_cast<std::int64_t>(value.g));
+        Value("b", static_cast<std::int64_t>(value.b));
+        Value("a", static_cast<std::int64_t>(value.a));
+    });
+}
 void StateVisitor::Field(std::string_view name, const Rng& value) {
     Group(name, [&] {
         Value("state", value.State());

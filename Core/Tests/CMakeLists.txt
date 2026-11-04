@@ -77,8 +77,12 @@ engine_tests(EnginePhysicsTests
 engine_tests(EngineSimulationTests
     SOURCES
         Animation/AnimationHelpersTests.cpp
+        Animation/AnimationReplayTests.cpp
+        Animation/AnimatorTests.cpp
         Animation/EasingTests.cpp
         Animation/TimelineTests.cpp
+        Animation/TrackAndClipTests.cpp
+        Animation/TweenTests.cpp
         Simulation/CollisionReplayTests.cpp
         Simulation/ReplayCheckTests.cpp
         Simulation/RngTests.cpp
@@ -95,7 +99,10 @@ add_test(NAME Engine.SimulationToolCollision
     COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyCollisionScenario.json")
 add_test(NAME Engine.SimulationToolTimeline
     COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyTimelineScenario.json")
+add_test(NAME Engine.SimulationToolAnimation
+    COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyAnimationScenario.json")
 set_tests_properties(Engine.SimulationTool Engine.SimulationToolCollision Engine.SimulationToolTimeline
+    Engine.SimulationToolAnimation
     PROPERTIES LABELS engine TIMEOUT 30)
 
 # Compile all consumer examples, including runtime-only factories. The static archive lets the headless smoke
@@ -103,6 +110,7 @@ set_tests_properties(Engine.SimulationTool Engine.SimulationToolCollision Engine
 set(recipeRoot "${CMAKE_CURRENT_SOURCE_DIR}/../../AgentDocs/Recipes/Code")
 add_library(EngineRecipes STATIC
     "${recipeRoot}/AnimatedCharacter.cpp"
+    "${recipeRoot}/AnimatorFighter.cpp"
     "${recipeRoot}/CharacterObject.cpp"
     "${recipeRoot}/CharacterScene.cpp"
     "${recipeRoot}/CollisionBullets.cpp"
@@ -119,6 +127,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/TextLayout.cpp"
     "${recipeRoot}/ThemedMenu.cpp"
     "${recipeRoot}/TuningValue.cpp"
+    "${recipeRoot}/TweenMenu.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/EditorScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneParameter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneRegistry.cpp"

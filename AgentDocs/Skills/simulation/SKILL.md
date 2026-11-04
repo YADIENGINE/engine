@@ -31,8 +31,8 @@ Changed rules or tuning also make a tape differ, and then the mismatch is expect
 
 Everything that decides gameplay comes from `SimulationStart` or the steps. No drawing, audio, clocks or `<random>`; own an
 `Rng` from `start.seed`; name every deciding field in `State`, the `Rng` included. `python Engine check` reports forbidden
-includes. Add new state to `State` in the same change. Collision inside the rules: `AgentDocs/Skills/collision/SKILL.md`. Timing inside the rules:
-`AgentDocs/Skills/timeline/SKILL.md`.
+includes. Add new state to `State` in the same change. Collision inside the rules: `AgentDocs/Skills/collision/SKILL.md`. Timing and animation inside the rules:
+`AgentDocs/Skills/animation/SKILL.md`.
 
 ## In the editor
 

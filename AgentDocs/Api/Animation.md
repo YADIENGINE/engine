@@ -16,6 +16,43 @@ Use these generated signatures to locate public declarations; open the header fo
 - `AnimatedCounter`: `[[nodiscard]] int Target() const`
 - `AnimatedCounter`: `[[nodiscard]] float Punch() const`
 
+## `Core/Animation/AnimationValue.h`
+
+What can be animated, and how a position is checked.
+
+- `template<class T> concept HeldValue = std::integral<T> || std::is_enum_v<T>` — Values with no "between": whole numbers, flags and enums, such as a sprite frame.
+- `template<class T> [[nodiscard]] T MixValue(const T& a, const T& b, float t)` — A value between a and b.
+- `template<class Position> [[nodiscard]] constexpr bool ValidAnimationPosition(Position at)` — Not negative and not infinite.
+- `template<class Position> [[nodiscard]] Position WrapAnimationPosition(Position position, Position length)` — A position mapped into one cycle, 0 <= result < length.
+
+## `Core/Animation/Animator.h`
+
+- `template<class Position> struct AnimatorPlay` — How Play starts a clip.
+- `AnimatorPlay`: `Position blend { }` — How long to fade from what was showing; 0 cuts
+- `AnimatorPlay`: `Curve blendCurve = Curve::Linear` — Shapes the fade, and the fade into 'then'
+- `AnimatorPlay`: `std::string_view then { }` — What plays when this clip ends; a looping clip never ends
+- `AnimatorPlay`: `Position thenBlend { }` — How long to fade into 'then'
+- `AnimatorPlay`: `bool restart = false` — Play the clip from 0 even if it is already the current one
+- `template<AnimationPose PoseType, class Position> class BasicAnimator` — Plays one clip of a clip set at a time, and fades between them.
+- `BasicAnimator`: `using Clips = BasicClipSet<PoseType, Position>`
+- `BasicAnimator`: `using Options = AnimatorPlay<Position>`
+- `BasicAnimator`: `BasicAnimator(Clips clips, std::string_view first)`
+- `BasicAnimator`: `void Play(std::string_view clip, const Options& options = { })`
+- `BasicAnimator`: `bool Step() requires std::integral<Position>` — One simulation step.
+- `BasicAnimator`: `template<class Fn> bool Step(Fn&& onMoment) requires std::integral<Position>`
+- `BasicAnimator`: `bool Update(Position seconds) requires std::floating_point<Position>` — The same on ordinary time.
+- `BasicAnimator`: `template<class Fn> bool Update(Position seconds, Fn&& onMoment) requires std::floating_point<Position>`
+- `BasicAnimator`: `[[nodiscard]] PoseType Pose() const`
+- `BasicAnimator`: `[[nodiscard]] PoseType Pose(float alpha) const requires std::integral<Position>` — The same for a view drawing between steps, with 'alpha' from SimulationRunner::Alpha.
+- `BasicAnimator`: `[[nodiscard]] std::string_view Clip() const`
+- `BasicAnimator`: `[[nodiscard]] Position Clock() const`
+- `BasicAnimator`: `[[nodiscard]] bool Finished() const` — The current clip reached its end and stays on its last pose.
+- `BasicAnimator`: `[[nodiscard]] bool JustFinished() const` — A clip ended in the last Step or Update.
+- `BasicAnimator`: `[[nodiscard]] bool Blending() const`
+- `BasicAnimator`: `template<class Visitor> void State(Visitor& state) const` — Everything that decides later steps, for a simulation's State.
+- `template<class PoseType> using StepAnimator = BasicAnimator<PoseType, int>` — Positions in whole simulation steps: what a simulation uses.
+- `template<class PoseType> using SecondsAnimator = BasicAnimator<PoseType, float>` — Positions in seconds: for a view or a menu on ordinary time.
+
 ## `Core/Animation/ButtonAnim.h`
 
 - `struct ButtonAnimSettings`
@@ -35,6 +72,45 @@ Use these generated signatures to locate public declarations; open the header fo
 - `ButtonAnim`: `void Deny()`
 - `ButtonAnim`: `void Clear()`
 - `ButtonAnim`: `[[nodiscard]] ButtonAnimState State() const`
+
+## `Core/Animation/Clip.h`
+
+- `template<class PoseType, class Position> class BasicClip` — One animation of a pose, as constant data: tracks for its fields, and named moments.
+- `BasicClip`: `template<class T> BasicClip& Track(T PoseType::* member, std::type_identity_t<BasicTrack<T, Position>> track)`
+- `BasicClip`: `BasicClip& Moment(std::string name, Position at)` — A named point: an Animator meets it once per pass.
+- `BasicClip`: `BasicClip& Looping(bool looping = true)` — Starts again from 0 at the end instead of stopping there.
+- `BasicClip`: `BasicClip& Length(Position length)` — By default the last key or moment marks the end; this holds the last values for longer.
+- `BasicClip`: `[[nodiscard]] Position Length() const`
+- `BasicClip`: `[[nodiscard]] bool IsLooping() const`
+- `BasicClip`: `[[nodiscard]] std::span<const TimelineMoment<Position>> Moments() const`
+- `BasicClip`: `[[nodiscard]] PoseType Sample(Position position) const`
+- `BasicClip`: `[[nodiscard]] PoseType Sample(Position position, float alpha) const requires std::integral<Position>` — The same for a view drawing between steps, with 'alpha' from SimulationRunner::Alpha.
+- `BasicClip`: `[[nodiscard]] PoseType SampleAt(double position) const` — The pose at any position; fields with no track keep their default value.
+- `BasicClip`: `template<class Fn> void ForEachCrossed(Position before, Position after, Fn&& fn, bool includeAfter = false) const` — Calls fn(name) for each moment in before <= at < after, in order, and at == after too if asked.
+- `template<class PoseType> using StepClip = BasicClip<PoseType, int>` — Positions in whole simulation steps: what a simulation uses.
+- `template<class PoseType> using SecondsClip = BasicClip<PoseType, float>` — Positions in seconds: for a view or a menu on ordinary time.
+
+## `Core/Animation/ClipSet.h`
+
+- `template<class PoseType, class Position> struct ClipSetEntry`
+- `ClipSetEntry`: `std::string name`
+- `ClipSetEntry`: `BasicClip<PoseType, Position> clip`
+- `template<class PoseType, class Position> class BasicClipSet` — Named clips that many animators share: one per boss type, not one per boss.
+- `BasicClipSet`: `using Entry = ClipSetEntry<PoseType, Position>`
+- `BasicClipSet`: `BasicClipSet(std::initializer_list<Entry> entries)`
+- `BasicClipSet`: `explicit BasicClipSet(std::vector<Entry> entries)`
+- `BasicClipSet`: `[[nodiscard]] int Count() const`
+- `BasicClipSet`: `[[nodiscard]] bool Contains(std::string_view name) const`
+- `BasicClipSet`: `[[nodiscard]] int Find(std::string_view name) const` — Throws for an unknown name.
+- `BasicClipSet`: `[[nodiscard]] std::string_view Name(int index) const`
+- `BasicClipSet`: `[[nodiscard]] const BasicClip<PoseType, Position>& Get(int index) const`
+- `template<class PoseType> using StepClipSet = BasicClipSet<PoseType, int>`
+- `template<class PoseType> using SecondsClipSet = BasicClipSet<PoseType, float>`
+
+## `Core/Animation/Curve.h`
+
+- `enum class Curve { Linear, InQuad, OutQuad, InOutQuad, InCubic, OutCubic, InOutCubic, InQuart, OutQuart, InOutQuart, InSine, OutSine, InOutSine, InExpo, OutExpo, InBack, OutBack, InOutBack, InElastic, OutElastic, InBounce, OutBounce, Hold }` — The curves of Easing.h as a value, for what has to store one: a key, a tween, data.
+- `[[nodiscard]] inline float Ease(Curve curve, float t)`
 
 ## `Core/Animation/Easing.h`
 
@@ -69,6 +145,17 @@ Use these generated signatures to locate public declarations; open the header fo
 - `constexpr float CountDown(float value, float amount)` — Decreases 'value' by 'amount', stopping at 0.
 - `inline bool BlinkOff(float remaining, float threshold, float period)` — Blinks every 'period' during the last 'threshold' seconds of a duration; true in the dim half.
 
+## `Core/Animation/PoseFields.h`
+
+- `template<class PoseType, class T> struct PoseFieldEntry` — A pose is a game's own plain struct of what animates: an arm's angle, a scale, a tint, a sprite frame.
+- `PoseFieldEntry`: `std::string_view name`
+- `PoseFieldEntry`: `T PoseType::* member`
+- `template<class PoseType, class T> [[nodiscard]] constexpr PoseFieldEntry<PoseType, T> PoseField(std::string_view name, T PoseType::* member)`
+- `template<class...Entries> [[nodiscard]] constexpr auto PoseFields(Entries...entries)`
+- `template<class P> concept AnimationPose = std::copyable<P>&& std::default_initializable<P>&& requires { P::Fields(); }`
+- `template<AnimationPose P> [[nodiscard]] P MixPose(const P& a, const P& b, float t)` — Every listed field from a to b by t.
+- `template<AnimationPose P, class Visitor> void VisitPose(Visitor& state, const P& pose)` — Every listed field, for a simulation's State.
+
 ## `Core/Animation/SpringPoint.h`
 
 - `struct SpringPoint` — 2D point approaching its target with a spring (e.g. menu cursors).
@@ -99,3 +186,72 @@ Use these generated signatures to locate public declarations; open the header fo
 - `using StepTimeline = BasicTimeline<int>` — Positions in whole simulation steps: what a simulation uses, because a run's positions are steps.
 - `using SecondsTimeline = BasicTimeline<float>` — Positions in seconds: for a view or a menu on ordinary time.
 - `[[nodiscard]] constexpr int StepsIn(double seconds, int stepsPerSecond)` — Seconds as whole steps at a step rate, rounded to the nearest, for authors who think in seconds: {"fire", StepsIn(1.5, 60)}.
+
+## `Core/Animation/Track.h`
+
+- `template<class T, class Position> struct TrackKey` — One value at one position.
+- `TrackKey`: `Position at { }`
+- `TrackKey`: `T value { }`
+- `TrackKey`: `Curve curve = Curve::Linear`
+- `template<class T, class Position> class BasicTrack` — One value through several keys, as constant data: it holds no clock, and the caller asks at a position.
+- `BasicTrack`: `using Key = TrackKey<T, Position>`
+- `BasicTrack`: `BasicTrack(std::initializer_list<Key> keys)`
+- `BasicTrack`: `explicit BasicTrack(std::vector<Key> keys)`
+- `BasicTrack`: `[[nodiscard]] std::span<const Key> Keys() const`
+- `BasicTrack`: `[[nodiscard]] Position Length() const`
+- `BasicTrack`: `[[nodiscard]] T At(Position position) const`
+- `BasicTrack`: `[[nodiscard]] T At(Position position, float alpha) const requires std::integral<Position>` — The same for a view drawing between steps, with 'alpha' from SimulationRunner::Alpha: from the previous step at alpha 0 to the current one at alpha 1, like StepSmoothed.
+- `BasicTrack`: `[[nodiscard]] T Sample(double position) const` — The value at any position, for code that already works one out.
+- `template<class T> using StepTrack = BasicTrack<T, int>` — Positions in whole simulation steps: what a simulation uses.
+- `template<class T> using SecondsTrack = BasicTrack<T, float>` — Positions in seconds: for a view or a menu on ordinary time.
+
+## `Core/Animation/Tween.h`
+
+- `template<class T, class Position> class BasicTween` — A value that moves by itself once told where to go.
+- `BasicTween`: `static constexpr int MaxSegments = 4`
+- `BasicTween`: `BasicTween() = default`
+- `BasicTween`: `explicit BasicTween(const T& value)`
+- `BasicTween`: `BasicTween& To(const T& target, Position duration, Curve curve = Curve::Linear)` — Replaces whatever was running and goes from the current value to 'target'.
+- `BasicTween`: `BasicTween& Then(const T& target, Position duration, Curve curve = Curve::Linear)` — Then goes on to 'target'.
+- `BasicTween`: `BasicTween& Wait(Position duration)` — Then holds the value for a while.
+- `BasicTween`: `BasicTween& Loop()` — Repeats the whole chain, each round from where the last one ended.
+- `BasicTween`: `void Stop()` — Stays where it is, and forgets the rest of the chain.
+- `BasicTween`: `void Snap(const T& value)` — Jumps to 'value' with no movement in between, and forgets the chain.
+- `BasicTween`: `bool Update(Position amount)` — Advances; true when the chain ended in this call.
+- `BasicTween`: `bool Step() requires std::integral<Position>`
+- `BasicTween`: `[[nodiscard]] const T& Value() const`
+- `BasicTween`: `[[nodiscard]] operator const T&() const`
+- `BasicTween`: `[[nodiscard]] T Value(float alpha) const requires std::integral<Position>` — The same for a view drawing between steps, with 'alpha' from SimulationRunner::Alpha.
+- `BasicTween`: `[[nodiscard]] bool Active() const` — A chain is running.
+- `BasicTween`: `[[nodiscard]] bool JustFinished() const` — The chain ended in the last Update.
+- `BasicTween`: `template<class Visitor> void State(Visitor& state) const` — Everything that decides later steps, for a simulation's State.
+- `template<class T> using StepTween = BasicTween<T, int>` — Positions in whole simulation steps: what a simulation uses.
+- `template<class T> using SecondsTween = BasicTween<T, float>` — Positions in seconds: for a view or a menu on ordinary time.
+- `template<class T> inline constexpr bool IsAnimationTween = false`
+- `template<class T, class Position> inline constexpr bool IsAnimationTween<BasicTween<T, Position>> = true`
+- `template<class Amount, class...Tweens> requires(IsAnimationTween<Tweens>&&...) void UpdateAll(Amount amount, Tweens&...tweens)` — Advances several tweens in one line: UpdateAll(deltaSeconds, scale, alpha, offset).
+- `template<class Amount, std::ranges::range Items, class...Members> requires(sizeof...(Members)> 0&&(std::is_member_object_pointer_v<Members>&&...)) void UpdateAll(Amount amount, Items&& items, Members...members)` — Advances tweens that are fields of each item of a list: UpdateAll(deltaSeconds, enemies, &Enemy::scale, &Enemy::alpha).
+
+## `Core/Animation/TweenSet.h`
+
+- `template<class Key, class T, class Position> class BasicTweenSet` — Tweens that need no field of their own, found by a key: an enum, or an object's id.
+- `BasicTweenSet`: `using Tween = BasicTween<T, Position>`
+- `BasicTweenSet`: `BasicTweenSet() = default`
+- `BasicTweenSet`: `explicit BasicTweenSet(const T& fallback)`
+- `BasicTweenSet`: `Tween& To(const Key& key, const T& target, Position duration, Curve curve = Curve::Linear)` — Replaces what the key was doing.
+- `BasicTweenSet`: `void Set(const Key& key, const T& value)` — Jumps to 'value' with no movement in between, and forgets the chain.
+- `BasicTweenSet`: `void Remove(const Key& key)`
+- `BasicTweenSet`: `void Clear()`
+- `BasicTweenSet`: `void Update(Position amount)` — Advances all of them.
+- `BasicTweenSet`: `template<class Fn> void Update(Position amount, Fn&& onFinished)`
+- `BasicTweenSet`: `void Step() requires std::integral<Position>`
+- `BasicTweenSet`: `template<class Fn> void Step(Fn&& onFinished) requires std::integral<Position>`
+- `BasicTweenSet`: `[[nodiscard]] T Value(const Key& key) const`
+- `BasicTweenSet`: `[[nodiscard]] T operator [](const Key& key) const`
+- `BasicTweenSet`: `[[nodiscard]] T Value(const Key& key, float alpha) const requires std::integral<Position>` — The same for a view drawing between steps, with 'alpha' from SimulationRunner::Alpha.
+- `BasicTweenSet`: `[[nodiscard]] bool Contains(const Key& key) const`
+- `BasicTweenSet`: `[[nodiscard]] bool Active(const Key& key) const`
+- `BasicTweenSet`: `[[nodiscard]] std::size_t Count() const`
+- `BasicTweenSet`: `template<class Visitor> void State(Visitor& state) const` — Everything that decides later steps, for a simulation's State.
+- `template<class Key, class T = float> using StepTweenSet = BasicTweenSet<Key, T, int>` — Positions in whole simulation steps: what a simulation uses.
+- `template<class Key, class T = float> using SecondsTweenSet = BasicTweenSet<Key, T, float>` — Positions in seconds: for a view or a menu on ordinary time.

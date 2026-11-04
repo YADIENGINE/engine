@@ -26,7 +26,7 @@ Read the matching skill before acting. Each one is a short procedure; follow its
 | check, compare, clean up or play a sound; find unused or missing sounds | `AgentDocs/Skills/audio/SKILL.md` |
 | test gameplay without a window, reproduce a replay, write gameplay rules as a simulation | `AgentDocs/Skills/simulation/SKILL.md` |
 | add or debug hits, overlaps, hit boxes, walls, lasers, fast bullets; "goes through", "did not hit" | `AgentDocs/Skills/collision/SKILL.md` |
-| add or debug timing and tweens: boss patterns, wave plans, phases, easing; "fires late", "fires twice" | `AgentDocs/Skills/timeline/SKILL.md` |
+| add or debug animation and timing: tweens, easing, character clips and fades, boss patterns, wave plans; "does not move", "fires late", "fires twice" | `AgentDocs/Skills/animation/SKILL.md` |
 
 ## Hard invariants
 

@@ -24,7 +24,7 @@ Use a simulation for a game's rules. Menus, transitions and effects stay ordinar
 | `Input/InputBindings.h` | Keys to per-player actions |
 | `Utilities/Rng.h`, `Utilities/WeightedPick.h` | Seeded random numbers, weighted choice |
 | `Physics/Collision/CollisionWorld.h` | Hits and overlaps inside the rules: [Collision](Collision.md) |
-| `Animation/Timeline.h`, `Animation/Easing.h` | Boss and wave timing, curves: [Animation](Animation.md) |
+| `Animation/Animator.h`, `Animation/Tween.h`, `Animation/Timeline.h` | Character clips, moving values, boss and wave timing: [Animation](Animation.md) |
 | `Editor/Api/HostedSimulation.h` | A simulation an editor scene hosts |
 
 Worked example: [AgentDocs/Recipes/Simulation.md](../AgentDocs/Recipes/Simulation.md).

@@ -61,7 +61,7 @@ rather than in the game.
 - `GameObjects/`: GameObject and ObjectList; ordered lifecycle with reference registration or dynamic object ownership.
 - Dependency direction is Runtime → Scene → GameObjects; SceneManager, Scene, GameObject, and ObjectList are in
   EngineHeadless, while Game is in the raylib-based Engine target.
-- `Animation` computes values over time and `Graphics` draws. It stands outside `Graphics` so that a simulation can use it, and
+- `Animation` (tweens, clips, animators, timelines, curves) computes values over time and `Graphics` draws. It stands outside `Graphics` so that a simulation can use it, and
   depends only on `Utilities` ([Animation](Animation.md)).
 - `Animation`, basic geometry, and gameplay helpers are available headlessly.
 - `Graphics/Draw` → Render/Animation; Icons → Draw; Fx → Draw/Paint/Animation (headless); Style → Draw/Fx style types; Ui →

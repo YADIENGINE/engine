@@ -202,6 +202,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `StateVisitor`: `template<class T> requires std::is_enum_v<T> void Field(std::string_view name, T value)`
 - `StateVisitor`: `void Field(std::string_view name, Float2 value)`
 - `StateVisitor`: `void Field(std::string_view name, Vec2 value)`
+- `StateVisitor`: `void Field(std::string_view name, Color4 value)`
 - `StateVisitor`: `void Field(std::string_view name, const Rng& value)`
 - `StateVisitor`: `template<class Body> void Group(std::string_view name, Body&& body)` — A named part of the state; its fields appear as name.field in dumps.
 - `StateVisitor`: `template<class Body> void Group(std::string_view name, std::size_t index, Body&& body)` — One item of a list; its fields appear as name[index].field in dumps.

@@ -271,6 +271,7 @@ engine_warnings(EngineSteam)
 # The engine's own small simulation: its tests, and `python . sim` in this repository.
 if(ENGINE_BUILD_TESTS OR ENGINE_BUILD_TOY_SIMULATION)
     engine_add_simulation(EngineToySimulation SOURCES
+        Tests/Simulation/ToyAnimation.cpp
         Tests/Simulation/ToyCollision.cpp
         Tests/Simulation/ToyRegistry.cpp
         Tests/Simulation/ToySimulation.cpp

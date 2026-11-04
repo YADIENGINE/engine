@@ -5,6 +5,7 @@
 #include <string_view>
 #include <type_traits>
 #include <variant>
+#include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
 #include "Utilities/Rng.h"
 #include "Utilities/Vec2.h"
@@ -38,6 +39,7 @@ public:
     }
     void Field(std::string_view name, Float2 value);
     void Field(std::string_view name, Vec2 value);
+    void Field(std::string_view name, Color4 value);
     void Field(std::string_view name, const Rng& value);
 
     // A named part of the state; its fields appear as name.field in dumps.

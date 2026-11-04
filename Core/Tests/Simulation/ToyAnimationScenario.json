@@ -1,0 +1,8 @@
+{
+  "simulation": "engine.toy-animation",
+  "seed": 3,
+  "script": [
+    { "run": 2000 },
+    { "read": ["age", "shots", "finished", "interrupted", "shown", "unit[0].animator.clip", "marks.count"] }
+  ]
+}

@@ -1,16 +1,15 @@
 #pragma once
-#include <cmath>
 #include <concepts>
 #include <cstddef>
 #include <format>
 #include <initializer_list>
-#include <limits>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "Animation/AnimationValue.h"
 
 // One named point of a timeline.
 template <class Position> struct TimelineMoment {
@@ -34,8 +33,7 @@ public:
         for (std::size_t i = 0; i < _moments.size(); ++i) {
             const auto& moment = _moments[i];
             if (moment.name.empty()) throw std::invalid_argument("A timeline moment needs a name");
-            // Written this way round so that a NaN position fails too.
-            if (!(moment.at >= Position{} && moment.at <= std::numeric_limits<Position>::max()))
+            if (!ValidAnimationPosition(moment.at))
                 throw std::invalid_argument(std::format("Timeline moment \"{}\" has an invalid position", moment.name));
             if (moment.at < previous)
                 throw std::invalid_argument(std::format("Timeline moment \"{}\" goes back in time", moment.name));
@@ -88,16 +86,7 @@ public:
     }
     // Maps an ever-growing clock into one cycle, 0 <= result < Length(), for a timeline that repeats. The last moment
     // is then the same instant as position 0: it is never met, so put what happens there at 0.
-    [[nodiscard]] Position Wrap(Position position) const {
-        const Position length = Length();
-        if (length <= Position{}) return Position{};
-        Position wrapped{};
-        if constexpr (std::integral<Position>)
-            wrapped = position % length;
-        else
-            wrapped = std::fmod(position, length);
-        return wrapped < Position{} ? wrapped + length : wrapped;
-    }
+    [[nodiscard]] Position Wrap(Position position) const { return WrapAnimationPosition(position, Length()); }
 
 private:
     [[nodiscard]] float Between(std::string_view from, std::string_view to, double position) const {
