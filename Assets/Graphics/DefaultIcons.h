@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <optional>
 #include "Utilities/Color4.h"
 #include "Utilities/Geometry/Float2.h"
 
@@ -78,11 +79,13 @@ enum class Icon {
 };
 inline constexpr std::size_t IconCount = static_cast<std::size_t>(Icon::Count);
 
-struct IconStyle {
-    Color4 color;              // The shape's colour
-    Color4 detail{0, 0, 0, 0}; // A detail inside it: ghost eyes, brick crack, egg shine
-    float line = 2.0f;         // Stroke width of line icons
+// What a caller changes; every field left empty keeps the icon's own value. To fade an icon and keep its colours, use
+// Painter::Opacity. A colour's alpha also fades the icon's own detail.
+struct IconLook {
+    std::optional<Color4> color;  // The shape's colour
+    std::optional<Color4> detail; // A detail inside it: ghost eyes, brick crack, egg shine
+    std::optional<float> line;    // Stroke width of line icons; on its own it follows 'size'
 };
 
 // 'size' is half the width: the icon reaches about this far from its centre in every direction.
-void DrawIcon(Painter& paint, Icon icon, Float2 center, float size, const IconStyle& style);
+void DrawIcon(Painter& paint, Icon icon, Float2 center, float size, const IconLook& look = {});

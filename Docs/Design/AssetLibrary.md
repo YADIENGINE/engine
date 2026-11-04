@@ -21,6 +21,10 @@ skeleton with `python Engine asset new X --folder <Folder>`. Keep a model-readin
 drawing part into Graphics and call it from the View. Variants (color, kind) are `items` in one set, not separate assets.
 Existing code need not move. The project's own agent file takes precedence if it specifies another location.
 
+A drawing also carries its own look: colors and other values have defaults in the drawing's code, so `DrawX(paint, box, time)` draws it as intended.
+The `.asset.cpp` file passes no colors; a game overrides only what it needs. See [D36](README.md#d36-graphics-own-their-look).
+A folder per graphic is optional: `Enemies/` may hold several.
+
 Follow the [graphic-asset skill](../../AgentDocs/Skills/graphic-asset/SKILL.md) and
 [compiled recipe](../../AgentDocs/Recipes/GraphicAsset.md). The asset is its own viewport preview; a separate work scene
 is needed only for a model, scene or interaction. Before finishing, `python Engine asset unlisted <files>` lists free
@@ -33,7 +37,7 @@ drawing or explain why it remains unregistered, without migrating unrelated code
 
 | Folder | Contents | Editor |
 | --- | --- | --- |
-| `Engine/Assets/Graphics` | Ready-to-use graphics shipped with the engine | Read-only |
+| `Engine/Assets/Graphics` | Ready-to-use graphics shipped with the engine, drawing code included (`EngineAssets`); include root `Assets/`, so `Graphics/DefaultIcons.h` | Read-only |
 | `Game/Assets/Graphics` | The project's graphics | Free foldering |
 | `Game/Assets/Audio`, `Game/Assets/Fonts` | Runtime files, as today | Browse and preview; no moving in v1 |
 
@@ -46,16 +50,16 @@ There is one graphic model: **every graphic is a set**. A single drawing is a se
 real sets (for example all icons, drawn by one function from an enum).
 
 ```cpp
-// Icons.asset.cpp: compiled into the editor worker only
-const GraphicAsset Icons{
+// DefaultIcons.asset.cpp: compiled into the editor worker only
+const GraphicAsset DefaultIcons{
     .items = IconItems, // id, display name, tags
     .draw = [](Painter& paint, const FloatRect& box, int item, float time) { /* draw item fitted to box */ },
-    .usage = "DrawIcon(paint, Icon::{item}, center, size, style);",
+    .usage = "DrawIcon(paint, Icon::{item}, center, size);",
 };
 ```
 
 - A set of one appears as a plain tile. A larger set shows a count badge and opens like a folder.
-- Search looks inside sets, so "Star" finds `Icons › Star`.
+- Search looks inside sets, so "Star" finds `DefaultIcons › Star`.
 - "Copy usage" fills `usage` with the item's name.
 - Drawing into a box means thumbnails and the viewport share the same code.
 - C++20 cannot list enum names, so the item table is written by hand, like other enum-ordered tables.

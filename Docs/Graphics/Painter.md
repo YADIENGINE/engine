@@ -154,8 +154,8 @@ draw text with the game's font:
 | `Graphics/Draw/DrawUtils.h` | `DrawStar`, `DrawDiamond`, `DrawRegularPolygon`, `DrawRotatedRect`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
 | `Graphics/Draw/Neon.h` | Explicit-style neon shapes and styles: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
 | `Graphics/Draw/BackgroundDraw.h` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `DrawBackdrop*` with `BackdropStyle` |
-| `Graphics/Style/Backdrop.h` | Theme background roles: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
-| `Graphics/Icons/Icons.h` | Shared icon set: `DrawIcon(paint, Icon::Star, center, size, {.color = gold})` |
+| `Graphics/Backgrounds/Backdrops.h` | Theme background roles: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
+| `Graphics/DefaultIcons.h` | Shared icon set in its own colors: `DrawIcon(paint, Icon::Star, center, size)`; override with `{.color = gold}` |
 | `Fx/*` | Effects (particles, floating text, rings, shockwaves, overlays, cameras, `FxStage`): [Effects](Effects.md) |
 
 A camera's view is `Camera/CameraView.h` (`offset`, `target`, `rotation` in radians, `zoom`, `viewport`; `Transform()`,

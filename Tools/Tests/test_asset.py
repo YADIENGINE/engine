@@ -39,6 +39,11 @@ class AssetCommandTests(unittest.TestCase):
         self.assertIn('#include "Assets/Graphics/Enemies/Goblin.h"', registration)
         self.assertIn("RegisterGraphicAsset(&MakeGoblin)", registration)
         self.assertIn("void DrawGoblin(", (self.root / GRAPHICS / "Enemies/Goblin.cpp").read_text(encoding="utf-8"))
+        header = (self.root / GRAPHICS / "Enemies/Goblin.h").read_text(encoding="utf-8")
+        self.assertIn("struct GoblinLook", header)
+        self.assertIn("const GoblinLook& look = {}", header)
+        self.assertIn("Fill(look.color)", (self.root / GRAPHICS / "Enemies/Goblin.cpp").read_text(encoding="utf-8"))
+        self.assertIn("DrawGoblin(paint, box, time);", registration)
 
     def test_new_rejects_bad_names_paths_and_existing_assets(self):
         for name, folder in (("goblin", ""), ("Gob lin", ""), ("Goblin", "../Outside"), ("Goblin", "C:/x")):

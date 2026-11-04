@@ -60,7 +60,7 @@ engine_tests(EngineTests
         SimulationSceneTests.cpp
         TuningTests.cpp
         UiTransformTests.cpp
-    LINKS EngineHeadless EngineStorage
+    LINKS EngineAssets EngineHeadless EngineStorage
 )
 engine_add_tuning(EngineTests ROOT Tuning)
 target_compile_definitions(EngineTests PRIVATE
@@ -154,7 +154,7 @@ add_library(EngineRecipes STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SimulationHost.cpp"
 )
 target_include_directories(EngineRecipes PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../..")
-target_link_libraries(EngineRecipes PUBLIC EngineHeadless EnginePersistence EngineNumberPopup)
+target_link_libraries(EngineRecipes PUBLIC EngineAssets EngineHeadless EnginePersistence EngineNumberPopup)
 engine_warnings(EngineRecipes)
 engine_add_tuning(EngineRecipes ROOT "${recipeRoot}")
 # Registration-only examples must reach the executable directly, not through a static archive.

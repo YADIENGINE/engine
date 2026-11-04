@@ -15,7 +15,7 @@ from pathlib import Path
 
 MARKDOWN_LINK = re.compile(r'(?<!!)\[[^\]\n]*\]\(([^)\s]+)\)')
 BACKTICK = re.compile(r'`([^`\s]+)`')
-ENGINE_FOLDERS = ('Docs/', 'AgentDocs/', 'Core/', 'Tools/')
+ENGINE_FOLDERS = ('Docs/', 'AgentDocs/', 'Assets/', 'Core/', 'Tools/')
 AGENTDOCS_FOLDERS = ('Recipes/', 'Skills/')
 HEADING = re.compile(r'^#{1,6}\s+(.*?)\s*#*\s*$')
 FENCE = re.compile(r'^\s*(```|~~~)')

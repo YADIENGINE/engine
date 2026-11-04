@@ -1,15 +1,16 @@
 Draw a shared Icon and a new proportional project-local shape.
 
-APIs: Core/Graphics/Icons/Icons.h, Core/Graphics/Paint/Painter.h.
+APIs: Assets/Graphics/DefaultIcons.h, Core/Graphics/Paint/Painter.h.
 
 Call with a positive size in logical canvas units.
 
-For a shared engine icon, add a shape-named Icon and its DrawIcon switch case.
+For a shared engine icon, add a shape-named Icon, its DrawIcon switch case and its row in OwnColors.
+Without a look, an icon draws in its own colors; `{.color = color}` overrides only that color.
 
 <!-- recipe:IconShape -->
 ```cpp
 #include "AgentDocs/Recipes/Code/IconShape.h"
-#include "Graphics/Icons/Icons.h"
+#include "Graphics/DefaultIcons.h"
 #include "Graphics/Paint/Painter.h"
 
 namespace {

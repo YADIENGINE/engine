@@ -12,18 +12,27 @@ Existing code need not move. The project's own agent file takes precedence if it
 For example, run `python Engine asset new Goblin --folder Enemies`. Replace the generated header and drawing with
 the following code, using `#include "Assets/Graphics/Enemies/Goblin.h"` as the implementation's own header include.
 The recipe's include below points to its compiled test copy. The drawing fits both variants, including the bobbing
-motion, inside `box`; it reads no model or global clock.
+motion, inside `box`; it reads no model or global clock. Its colors live in the drawing: the Assets panel shows them, and
+a game overrides only what it needs, as in `DrawGoblin(paint, box, kind, time, {.skin = poisoned})`.
 
 <!-- recipe:GraphicAsset-header -->
 ```cpp
 #pragma once
+#include <optional>
+#include "Utilities/Color4.h"
 #include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
 
 enum class GoblinKind { Forest, Ice };
 
-void DrawGoblin(Painter& paint, const FloatRect& box, GoblinKind kind, float time);
+// How the drawing looks on its own; a game changes only what it needs. The kind decides the skin unless a game names one.
+struct GoblinLook {
+    std::optional<Color4> skin;
+    Color4 eye{16, 32, 48, 255};
+};
+
+void DrawGoblin(Painter& paint, const FloatRect& box, GoblinKind kind, float time, const GoblinLook& look = {});
 ```
 <!-- /recipe -->
 
@@ -34,11 +43,11 @@ void DrawGoblin(Painter& paint, const FloatRect& box, GoblinKind kind, float tim
 #include <cmath>
 #include "Graphics/Paint/Painter.h"
 
-void DrawGoblin(Painter& paint, const FloatRect& box, GoblinKind kind, float time) {
+void DrawGoblin(Painter& paint, const FloatRect& box, GoblinKind kind, float time, const GoblinLook& look) {
     const float size = std::min(box.width, box.height);
     if (size <= 0.0f) return;
     const Float2 center = box.Center() + Float2{0.0f, std::sin(time * 2.0f) * size * 0.03f};
-    const Color4 skin = kind == GoblinKind::Forest ? Rgb(0x70c060) : Rgb(0x80c8f0);
+    const Color4 skin = look.skin.value_or(kind == GoblinKind::Forest ? Rgb(0x70c060) : Rgb(0x80c8f0));
     paint.Triangle(center + Float2{-size * 0.38f, -size * 0.24f},
                    center + Float2{-size * 0.12f, -size * 0.16f},
                    center + Float2{-size * 0.16f, size * 0.08f}, Fill(skin));
@@ -46,8 +55,8 @@ void DrawGoblin(Painter& paint, const FloatRect& box, GoblinKind kind, float tim
                    center + Float2{size * 0.16f, size * 0.08f},
                    center + Float2{size * 0.12f, -size * 0.16f}, Fill(skin));
     paint.Ellipse(center, {size * 0.24f, size * 0.30f}, Fill(skin));
-    paint.Circle(center + Float2{-size * 0.09f, -size * 0.06f}, size * 0.025f, Fill(Rgb(0x102030)));
-    paint.Circle(center + Float2{size * 0.09f, -size * 0.06f}, size * 0.025f, Fill(Rgb(0x102030)));
+    paint.Circle(center + Float2{-size * 0.09f, -size * 0.06f}, size * 0.025f, Fill(look.eye));
+    paint.Circle(center + Float2{size * 0.09f, -size * 0.06f}, size * 0.025f, Fill(look.eye));
 }
 ```
 <!-- /recipe -->

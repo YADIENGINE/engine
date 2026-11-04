@@ -7,7 +7,8 @@
 | `Core/` | Shipping engine code and include root (`Runtime/Game.h`); targets in `Core/CMakeLists.txt` |
 | `Core/Runtime/` | Game, settings, loop and services; `Core/Main.cpp` calls the project's `CreateGame()` |
 | `Core/GameObjects/`, `Core/Scene/` | Headless object/scene lifecycle and optional object ownership |
-| `Core/Graphics/` | Paint, Text, Surface, Post; GPU/render implementation; Draw, Icons, Style helpers |
+| `Core/Graphics/` | Paint, Text, Surface, Post; GPU/render implementation; Draw and Style helpers |
+| `Assets/Graphics/` | `EngineAssets`: ready-made graphics with their own look, plus their editor registrations; include root `Assets/` |
 | `Core/Ui/` | Game UI: Layout, Kernel, Looks, Widgets, Kit, Sound ([UI](../Ui.md)) |
 | `Core/Input/`, `Core/Audio/`, `Core/Platform/` | Public services and private platform backends |
 | `Core/Fx/`, `Core/Gameplay/`, `Core/Progress/` | Headless effects and reusable gameplay/view logic |
@@ -28,7 +29,8 @@
 
 `EngineHeadless` contains platform-free code; `Engine` adds the runtime platform layer. `EngineSimulation`,
 `EnginePhysics`, `EngineCamera` and `EngineTuning` sit below `EngineHeadless` and reach neither drawing nor audio, so
-simulation code can link only them.
+simulation code can link only them. `EngineAssets` sits above `EngineHeadless`; games, workers and tests link it, and
+nothing in Core does.
 
 `Core/Utilities/` accepts only headless foundation APIs with no clearer domain owner. Geometry, scalar/noise/index math
 and seeded random helpers use their named subfolders; UI, camera, options and diagnostics types stay with those owners.

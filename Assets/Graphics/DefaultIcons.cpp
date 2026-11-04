@@ -1,4 +1,4 @@
-#include "Graphics/Icons/Icons.h"
+#include "Graphics/DefaultIcons.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -12,9 +12,110 @@
 
 namespace {
 constexpr float FillAlpha = 0.3f; // Inner fill of line icons
+constexpr float LineShare = 0.08f; // An icon's own stroke width, of its size
+constexpr float MinLine = 1.5f;    // Below this a small icon's strokes break up
 constexpr Color4 Black{0, 0, 0, 255};
 constexpr Color4 White{255, 255, 255, 255};
 constexpr std::size_t HalfDiscPoints = 25;
+
+// A look with every value decided.
+struct IconStyle {
+    Color4 color;
+    Color4 detail;
+    float line;
+};
+
+struct IconColors {
+    Color4 color;
+    Color4 detail{0, 0, 0, 0}; // Fully transparent: the shape's own fallback, usually a dark detail
+};
+
+constexpr Color4 Yellow{255, 220, 60, 255};
+constexpr Color4 Gold{255, 205, 87, 255};
+constexpr Color4 Sand{222, 184, 110, 255};
+constexpr Color4 Cyan{40, 230, 255, 255};
+constexpr Color4 Sky{100, 210, 255, 255};
+constexpr Color4 Teal{60, 230, 220, 255};
+constexpr Color4 Purple{160, 90, 255, 255};
+constexpr Color4 Pink{255, 60, 180, 255};
+constexpr Color4 Rose{255, 70, 90, 255};
+constexpr Color4 Orange{255, 150, 60, 255};
+constexpr Color4 Mint{80, 240, 150, 255};
+constexpr Color4 Green{60, 255, 120, 255};
+constexpr Color4 Moss{190, 215, 120, 255};
+constexpr Color4 Ink{11, 9, 26, 255};
+
+// One row per icon, in Icon's order.
+constexpr auto OwnColors = std::to_array<IconColors>({
+    {Yellow},                                         // Star
+    {{255, 240, 200, 255}, {255, 255, 255, 200}},     // Egg
+    {{90, 150, 255, 255}},                            // Hourglass
+    {{200, 195, 230, 255}},                           // Plus
+    {{255, 120, 170, 255}},                           // Minus
+    {Teal},                                           // UpArrow
+    {{255, 80, 80, 255}},                             // Chevrons
+    {{230, 45, 55, 255}},                             // Apple
+    {{235, 70, 110, 255}},                            // Magnet
+    {{200, 225, 245, 255}, Ink},                      // Ghost
+    {{190, 160, 130, 255}, {70, 50, 35, 255}},        // Brick
+    {{80, 210, 255, 255}},                            // Rain
+    {Sand},                                           // Clock
+    {Cyan},                                           // Book
+    {Sand},                                           // Shield
+    {Rose},                                           // HornedEye
+    {Gold},                                           // Sun
+    {Mint},                                           // Gem
+    {Yellow},                                         // Bolt
+    {Teal},                                           // Rune
+    {Moss},                                           // Mountain
+    {{190, 186, 220, 255}},                           // Lock
+    {{255, 200, 45, 255}},                            // Coin
+    {{170, 135, 255, 255}},                           // Dice
+    {Orange},                                         // Cards
+    {{90, 255, 140, 255}},                            // LoopArrow
+    {{255, 215, 70, 255}},                            // Cloud
+    {{255, 140, 40, 255}},                            // StormCloud
+    {{255, 60, 80, 255}},                             // Tornado
+    {White, Yellow},                                  // CrownedStar
+    {Orange},                                         // Compass
+    {{190, 90, 255, 255}},                            // Comet
+    {Cyan},                                           // Gear
+    {Purple},                                         // Heart
+    {{255, 50, 60, 255}},                             // Power
+    {Pink},                                           // Lotus
+    {Gold},                                           // Goblet
+    {Cyan},                                           // Stopwatch
+    {Mint},                                           // Sack
+    {Teal},                                           // Wings
+    {Sky},                                            // Flag
+    {{235, 235, 245, 255}},                           // Feather
+    {Gold, {255, 244, 211, 255}},                     // Chest
+    {Moss},                                           // Pickaxe
+    {Sky},                                            // Anchor
+    {Mint},                                           // Swords
+    {Cyan},                                           // Coil
+    {Green},                                          // Clover
+    {Purple},                                         // Swirl
+    {Sky},                                            // TurnArrow
+    {Green},                                          // Copy
+    {Yellow},                                         // Cat
+    {Teal},                                           // Couch
+    {{255, 95, 65, 255}},                             // Pedal
+    {{190, 160, 255, 255}},                           // Mask
+    {Mint},                                           // Hen
+    {Cyan},                                           // Tire
+    {Rose},                                           // Bubble
+    {Rose},                                           // Scroll
+    {Orange, Yellow},                                 // Flame
+});
+static_assert(OwnColors.size() == IconCount);
+
+IconStyle Resolved(Icon icon, float size, const IconLook& look) {
+    const IconColors& own = OwnColors[static_cast<std::size_t>(icon)];
+    const Color4 color = look.color.value_or(own.color);
+    return {color, look.detail.value_or(ScaleAlpha(own.detail, static_cast<float>(color.a) / 255.0f)),
+            look.line.value_or(std::max(MinLine, size * LineShare))};
+}
 
 // --- Drawing helpers (angles in radians: 0 points right, clockwise on screen) ---
 
@@ -772,7 +873,9 @@ void Power(Painter& p, Float2 c, float s, const IconStyle& style) {
 }
 } // namespace
 
-void DrawIcon(Painter& paint, Icon icon, Float2 center, float size, const IconStyle& style) {
+void DrawIcon(Painter& paint, Icon icon, Float2 center, float size, const IconLook& look) {
+    if (icon == Icon::Count) return;
+    const IconStyle style = Resolved(icon, size, look);
     Painter& p = paint;
     const Float2 c = center;
     const float s = size;

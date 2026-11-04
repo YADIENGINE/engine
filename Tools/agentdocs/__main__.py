@@ -17,7 +17,7 @@ def main():
     for header in headers:
         for declaration in header.declarations:
             if not declaration.comment:
-                area = header.path.split('/')[1] if header.path.startswith('Core/') else 'Editor'
+                area = header.path.split('/')[1] if header.path.startswith(('Core/', 'Assets/')) else 'Editor'
                 counts[area] += 1
                 missing.append(f'{header.path}: {declaration.owner + "::" if declaration.owner else ""}'
                                f'{declaration.signature}')

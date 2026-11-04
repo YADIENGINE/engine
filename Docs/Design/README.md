@@ -1255,6 +1255,36 @@ look-ahead, damping, confiner, target groups with weight and radius, group frami
 keeps one stage per view). A dynamic (Voronoi) split. Soft zones, platform snapping and cue focus (Keren's terms) wait for
 the platformer kit. Rotation-aware limits and fitting. A camera panel in the editor.
 
+### D36. Graphics own their look
+Status: implemented (2026-11-05). Usage: [Asset library](AssetLibrary.md#authoring-rule).
+
+**Decision:** a ready-made graphic lives in `Assets/Graphics` and carries its own look. Calling it with no look draws it
+as intended; a caller overrides only what it needs. `.asset.cpp` keeps registration and passes no colors, so the
+Assets panel shows the original. `Core/Graphics` keeps drawing primitives, helpers and what a Core system calls.
+
+**Why:** the panel drew icons in one near-white color because the only colors lived at the game's call sites. A
+registration that chose colors was a second opinion on the drawing, and the engine's own icons broke the location rule
+that games already followed.
+
+**Decided:**
+1. *What moves.* Anything no Core system calls: `DefaultIcons`, `Backgrounds/Backdrops`. Core never depends on Assets, so
+   `Neon` (used by `Ui/Looks/Neon`), `IrisTransition`, `SpeedLines`, `ParticleDraw` and `DrawVignette` stay. Moving `Neon`
+   needs a look-pack design of its own.
+2. *One signature.* `DrawX(paint, ..., const XLook& look = {})`. A single drawing's defaults are field initializers. In a
+   set whose items differ, fields are `std::optional` and an empty one takes that item's value (`IconLook`).
+3. *Fading.* `Painter::Opacity` fades a drawing without choosing its colors. A translucent `color` still works, and an
+   icon's own detail fades with it.
+4. *Non-color defaults too.* Stroke width follows `size`, so previews and small icons keep their proportions.
+5. *Themed graphics stay themed.* Backdrops and UI widgets take colors from the active theme and looks. A project on
+   `PlainTheme` sees grey widgets in the panel, as it does in the game.
+6. *Target and includes.* `EngineAssets` links above `EngineHeadless`; games and workers link it. Its include root is
+   `Assets/`, so the path reads `Graphics/DefaultIcons.h`. `Assets/Graphics/...` would resolve to a project's own file
+   of the same name, silently.
+7. *Registration stays apart.* Prebuilt libraries compile once, so an `#ifdef` inside `X.cpp` cannot keep the catalog
+   out of a game for engine graphics. The item-name table stays hand-written: C++20 cannot list enum names.
+8. *Folders stay free.* A graphic may sit directly under `Graphics/`, as `DefaultIcons` does, have its own folder, or
+   share one such as `Enemies/`.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

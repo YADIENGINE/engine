@@ -57,6 +57,9 @@ skeleton with `python Engine asset new X --folder <Folder>`. Keep a model-readin
 drawing part into Graphics and call it from the View. Variants (color, kind) are `items` in one set, not separate assets.
 Existing code need not move. The project's own agent file takes precedence if it specifies another location.
 
+A drawing also carries its own look: colors and other values have defaults in the drawing's code, so `DrawX(paint, box, time)` draws it as intended.
+The `.asset.cpp` file passes no colors; a game overrides only what it needs.
+
 An existing drawing may stay at its current location and be registered through a thin `X.asset.cpp` under Graphics.
 For a new drawing, the generated `X.cpp` contains the implementation and game code includes its `X.h` directly.
 

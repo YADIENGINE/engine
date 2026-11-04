@@ -4,7 +4,7 @@
 
 # The runtime the package is built with. A project's development build links the same libraries, so both use it.
 set(ENGINE_PREBUILT_RUNTIME MultiThreadedDLL)
-set(ENGINE_PREBUILT_ROOTS Engine EngineHeadless EngineLocalization EngineNumberPopup EnginePersistence EnginePopup
+set(ENGINE_PREBUILT_ROOTS Engine EngineAssets EngineHeadless EngineLocalization EngineNumberPopup EnginePersistence EnginePopup
     EngineProfiler EngineProfilerRuntime EngineRunTracking EngineRunTrackingRuntime EngineScoreBoard EngineSteam
     EngineVersion EngineWorkerRuntime)
 

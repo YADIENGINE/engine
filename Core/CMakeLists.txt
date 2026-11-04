@@ -174,8 +174,6 @@ add_library(EngineHeadless STATIC
     Graphics/Draw/Neon.cpp
     Graphics/Draw/ParticleDraw.cpp
     Graphics/Draw/SpeedLines.cpp
-    Graphics/Icons/Icons.cpp
-    Graphics/Style/Backdrop.cpp
     Graphics/Style/Theme.cpp
     Graphics/Gpu/Internals/NullDevice.cpp
     Graphics/Paint/Internals/DrawList.cpp
@@ -253,6 +251,15 @@ set_target_properties(EngineHeadless PROPERTIES POSITION_INDEPENDENT_CODE ON CXX
 target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}")
 target_link_libraries(EngineHeadless PUBLIC EngineCamera EnginePersistence EnginePhysics EngineSimulation EngineTuning
     PRIVATE EngineStorage)
+# The engine's ready-made graphics (Assets/Graphics). They sit above the engine's systems, so nothing in Core calls them.
+# X.asset.cpp registrations are left out: they reach only the editor worker.
+file(GLOB_RECURSE engineAssetSources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../Assets/Graphics/*.cpp")
+list(FILTER engineAssetSources EXCLUDE REGEX "[.]asset[.]cpp$")
+add_library(EngineAssets STATIC ${engineAssetSources})
+target_include_directories(EngineAssets PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../Assets")
+target_link_libraries(EngineAssets PUBLIC EngineHeadless)
+set_target_properties(EngineAssets PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_warnings(EngineAssets)
 # Glyph rasterization compiles a private copy of stb_truetype from raylib's bundled headers (header only, no raylib).
 set_source_files_properties(Graphics/Text/Internals/FontData.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${ENGINE_THIRD_PARTY_DIR}/raylib/src/external")

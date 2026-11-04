@@ -38,7 +38,7 @@ canvas texture (render resolution).
 ## Backgrounds
 
 `Graphics/Draw/BackgroundDraw.h` provides `DrawGrid2D`, `DrawScanlines`, `DrawVignette` and `BackdropStyle` (scrolling
-grid, vignette, scanline alpha). Each drawing call receives `Painter&` first. `Graphics/Style/Backdrop.h` draws theme
+grid, vignette, scanline alpha). Each drawing call receives `Painter&` first. `Graphics/Backgrounds/Backdrops.h` (under `Assets/`) draws theme
 roles (`DrawBackdropGrid(paint, BackdropRole::Menu, area)`) and `DrawScanlineOverlay(paint, area, alpha)`; a non-theme
 background passes its own style. Grid/scanline color, spacing and thickness are explicit; nonpositive spacing is invalid
 and nonpositive thickness/size disables drawing. Views determine layer order. `GameSettings::smoothCanvas` defaults to

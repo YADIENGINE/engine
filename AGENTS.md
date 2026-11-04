@@ -32,7 +32,7 @@ New modules follow [Module rules](Docs/Contributing/ModuleRules.md#1-directory-s
 raylib belongs only in platform implementation: window/renderer, input, audio, platform, ToolUi and editor transport.
 Public headers and headless code never include raylib. Expose platform actions through raylib-free facades.
 Only `Graphics/Render/Internals/Window` opens/closes the window. Drawing uses `Painter`.
-Dependency directions: Animation/Render → Utilities; Simulation → Animation; Draw → Render/Animation; Icons → Draw;
+Dependency directions: Animation/Render → Utilities; Simulation → Animation; Draw → Render/Animation; Assets/Graphics → Draw/Style, and Core never includes it;
 Camera → Utilities/Animation only (its `Debug/` draws); Paint → Camera's view; Fx → Camera, Draw/Paint/Animation, and Runtime/TimeScale for cues; Style → Draw/Fx style types. Graphics draws; Animation computes values over time.
 Ui/Layout → Utilities; Ui/Kernel → Layout/Input/Paint; Ui/Looks → Kernel/Style/Draw; Ui/Widgets → Looks/Kernel, no drawing or audio; Ui/Kit → Widgets; Ui/Sound → Kernel/Audio, and Runtime connects it. `check` enforces these.
 Draw, Render and Fx take styles and time as parameters; they never read the theme. A widget added to `Ui/Widgets` uses only public kernel API.
@@ -47,7 +47,7 @@ editor/test-only dependencies are excluded: [Third-party rules](ThirdParty/READM
 C++20, `/W4` clean; `.clang-format` (4 spaces, 120 columns); UTF-8 and LF.
 No named namespaces; `.cpp` helpers use anonymous namespaces. Each class has its own `.h` / `.cpp`.
 Use `#pragma once`, RAII, no raw new/delete or C arrays; `enum class` on one line.
-Include paths are relative to `Core/` (editor: engine root); no `../` includes.
+Include paths are relative to `Core/` or `Assets/` (editor: engine root); no `../` includes.
 Include order: own header → third party → standard library → project headers.
 Types/functions/constants: PascalCase; locals: camelCase; private members: _camelCase.
 Getters are `[[nodiscard]]` and const where applicable; avoid global names that collide with raylib.

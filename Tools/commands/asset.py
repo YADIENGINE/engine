@@ -27,18 +27,24 @@ DRAW_SCOPE = re.compile(r'\bnamespace(?:\s+[A-Za-z_]\w*(?:::\w+)*)?\s*\{|[{}]|'
                         r'\bvoid\s+(?P<function>Draw\w+)\s*\(\s*Painter\s*&(?!&)')
 
 HEADER = """#pragma once
+#include "Utilities/Color4.h"
 #include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
 
-void Draw{name}(Painter& paint, const FloatRect& box, float time);
+// How the drawing looks on its own. The Assets panel shows these values; a game changes only what it needs.
+struct {name}Look {{
+    Color4 color{{255, 180, 70, 255}};
+}};
+
+void Draw{name}(Painter& paint, const FloatRect& box, float time, const {name}Look& look = {{}});
 """
 SOURCE = """#include "{include}.h"
 #include "Graphics/Paint/Painter.h"
 
-void Draw{name}(Painter& paint, const FloatRect& box, float time) {{
+void Draw{name}(Painter& paint, const FloatRect& box, float time, const {name}Look& look) {{
     (void)time;
-    paint.Circle(box.Center(), box.width * 0.5f, Fill({{255, 255, 255, 255}}));
+    paint.Circle(box.Center(), box.width * 0.5f, Fill(look.color));
 }}
 """
 REGISTRATION = """#include "{include}.h"

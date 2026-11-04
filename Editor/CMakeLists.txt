@@ -76,7 +76,7 @@ if(ENGINE_BUILD_EDITOR)
     add_library(EngineWorkerRuntime STATIC EXCLUDE_FROM_ALL
         Worker/AssetThumbnailGame.cpp Worker/AudioReport.cpp Worker/WorkerScene.cpp Worker/WorkerGame.cpp Worker/WorkerSession.cpp Worker/WorkerHost.cpp
         Worker/WorkerProfiler.cpp Worker/GlowBenchmark.cpp Worker/RenderGallery.cpp)
-    target_link_libraries(EngineWorkerRuntime PUBLIC Engine EngineEditorApi EngineEditorSupport EngineProfilerRuntime)
+    target_link_libraries(EngineWorkerRuntime PUBLIC Engine EngineAssets EngineEditorApi EngineEditorSupport EngineProfilerRuntime)
     engine_warnings(EngineWorkerRuntime)
 
     include("${CMAKE_CURRENT_LIST_DIR}/WorkerTargets.cmake")

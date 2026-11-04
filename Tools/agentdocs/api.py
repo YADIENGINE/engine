@@ -216,6 +216,7 @@ def parse_header(path: str, text: str) -> Header:
 def public_headers(root: Path) -> list[Path]:
     headers = [path for path in (root / 'Core').rglob('*.h')
                if not {'Internals', 'Tests'} & set(path.relative_to(root).parts)]
+    headers += list((root / 'Assets').rglob('*.h'))
     headers += list((root / 'Editor' / 'Api').rglob('*.h'))
     # WorkerHost is the worker entry point; the other Scene headers are host implementation.
     host = root / 'Editor/Worker/WorkerHost.h'
@@ -230,9 +231,9 @@ def generate(root: Path) -> tuple[dict[str, str], list[Header]]:
     areas: dict[str, list[Header]] = defaultdict(list)
     for header in headers:
         parts = header.path.split('/')
-        area = parts[1] if parts[0] == 'Core' else 'Editor'
+        area = parts[1] if parts[0] in ('Core', 'Assets') else 'Editor'
         if area == 'Graphics':
-            area += '-' + parts[2]
+            area += '-' + Path(parts[2]).stem
         if area == 'Modules':
             area += '-' + parts[2]
         areas[area].append(header)

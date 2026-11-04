@@ -6,7 +6,7 @@
 #include "Graphics/Draw/BackgroundDraw.h"
 #include "Graphics/Draw/DrawUtils.h"
 #include "Graphics/Draw/Neon.h"
-#include "Graphics/Icons/Icons.h"
+#include "Graphics/DefaultIcons.h"
 #include "Graphics/Paint/Path.h"
 #include "Graphics/Text/FontFace.h"
 #include "Graphics/Text/TextStyle.h"
@@ -384,18 +384,61 @@ TEST_CASE("Engine.Widgets.ShapesProduceGeometryAndLightningGlowFollowsQuality", 
 TEST_CASE("Engine.Widgets.EveryIconDrawsInsideItsBoxInOneBatch", "[engine][paint]") {
     constexpr Float2 Center{100.0f, 100.0f};
     constexpr float Size = 20.0f;
-    constexpr IconStyle Style{.color = Cyan, .detail = Dark, .line = 2.0f};
+    constexpr IconLook Look{.color = Cyan, .detail = Dark, .line = 2.0f};
     for (std::size_t i = 0; i < IconCount; ++i) {
         CAPTURE(i);
         PaintHarness h;
         h.Begin();
-        DrawIcon(h.paint, static_cast<Icon>(i), Center, Size, Style);
+        DrawIcon(h.paint, static_cast<Icon>(i), Center, Size, Look);
         h.End();
         REQUIRE(h.Draws().size() == 1);
         const auto vertices = h.Drawn();
         CHECK_FALSE(vertices.empty());
         CHECK(Inside(vertices, FloatRect::FromCenter(Center, Float2{Size, Size} * 2.5f)));
     }
+}
+
+TEST_CASE("Engine.Widgets.EveryIconDrawsInItsOwnLookWithoutOne", "[engine][paint]") {
+    constexpr Float2 Center{100.0f, 100.0f};
+    constexpr float Size = 20.0f;
+    for (std::size_t i = 0; i < IconCount; ++i) {
+        CAPTURE(i);
+        PaintHarness own;
+        own.Begin();
+        DrawIcon(own.paint, static_cast<Icon>(i), Center, Size);
+        own.End();
+        REQUIRE(own.Draws().size() == 1);
+        const auto vertices = own.Drawn();
+        CHECK(std::ranges::any_of(vertices, [](const PaintVertex& vertex) { return vertex.color.a > 0; }));
+        CHECK(Inside(vertices, FloatRect::FromCenter(Center, Float2{Size, Size} * 2.5f)));
+    }
+}
+
+TEST_CASE("Engine.Widgets.AnIconLookChangesOnlyWhatItNames", "[engine][paint]") {
+    constexpr Float2 Center{100.0f, 100.0f};
+    constexpr float Size = 20.0f;
+    const auto colors = [&](const IconLook& look) {
+        PaintHarness h;
+        h.Begin();
+        DrawIcon(h.paint, Icon::Flame, Center, Size, look);
+        h.End();
+        std::vector<PaintColor> result;
+        for (const PaintVertex& vertex : h.Drawn())
+            // A clear vertex is the edge of a shape's anti-aliasing, the same for every colour.
+            if (vertex.color.a > 0 && std::ranges::find(result, vertex.color) == result.end())
+                result.push_back(vertex.color);
+        return result;
+    };
+    const auto shared = [](const std::vector<PaintColor>& a, const std::vector<PaintColor>& b) {
+        return std::ranges::any_of(a, [&](const PaintColor& color) { return std::ranges::find(b, color) != b.end(); });
+    };
+    const auto own = colors({});
+    const auto recolored = colors({.color = Cyan});
+    REQUIRE(own.size() > 1); // Flame has a body and a core
+    CHECK(recolored != own);
+    CHECK(shared(own, recolored)); // The core keeps its own colour
+    // A translucent colour fades the core with it, so it never shows through at full strength.
+    CHECK_FALSE(shared(own, colors({.color = WithAlpha(Cyan, 0.5f)})));
 }
 
 TEST_CASE("Engine.Widgets.RowSlotsCentreTheRow", "[engine][paint]") {

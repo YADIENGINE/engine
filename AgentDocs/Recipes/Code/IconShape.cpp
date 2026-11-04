@@ -1,6 +1,6 @@
 // [recipe:IconShape]
 #include "AgentDocs/Recipes/Code/IconShape.h"
-#include "Graphics/Icons/Icons.h"
+#include "Graphics/DefaultIcons.h"
 #include "Graphics/Paint/Painter.h"
 
 namespace {

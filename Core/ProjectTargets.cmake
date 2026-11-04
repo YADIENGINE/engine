@@ -167,7 +167,7 @@ function(engine_add_game target)
     endif()
     add_executable(${target} ${GAME_SOURCES} "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Main.cpp"
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Runtime/Internals/DevelopmentChecksBinding.cpp")
-    target_link_libraries(${target} PRIVATE Engine ${GAME_LIBRARIES})
+    target_link_libraries(${target} PRIVATE Engine EngineAssets ${GAME_LIBRARIES})
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     engine_warnings(${target})
     if(GAME_ASSETS)
