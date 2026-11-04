@@ -1,6 +1,7 @@
 #pragma once
 #include <optional>
 #include <string_view>
+#include "Ui/Kernel/UiTypes.h"
 #include "Ui/Layout/UiLayout.h"
 #include "Utilities/Color4.h"
 
@@ -12,4 +13,5 @@ struct UiControlOptions {
     UiSize width = UiFill();
     UiSize height{};
     std::string_view tooltip{};
+    UiSound sound = UiSound::Auto; // What a change plays; a press that changes nothing is silent
 };

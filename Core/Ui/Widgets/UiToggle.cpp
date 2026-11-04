@@ -18,9 +18,16 @@ bool UiToggle(Ui& ui, UiId id, std::string_view label, bool& value, const UiCont
     UiElement row = OpenUiControlRow(ui, id, text, textSize, options, look.metrics);
 
     const bool before = value;
-    const UiAction action = row.Activated();
-    if (action) value = !value;
-    if (const UiStep step = row.Step(); step.x != 0) value = step.x > 0;
+    int user = 0;
+    if (const UiAction action = row.Activated()) {
+        value = !value;
+        user = action.user;
+    }
+    if (const UiStep step = row.Step(); step.x != 0) {
+        value = step.x > 0;
+        user = step.user;
+    }
+    if (value != before) row.ReportChange(user, options.sound);
     const ButtonAnimState animation = AnimateUiControlRow(ui, row, look.metrics, value != before);
 
     KnobPosition& knob = row.Remember<KnobPosition>(KnobPosition{value ? 1.0f : 0.0f});

@@ -25,6 +25,7 @@ bool UiElement::Focused(int user) const { return Open(_kernel).Focused(_node, us
 UiAction UiElement::Activated() const { return Open(_kernel).Activated(_node); }
 UiStep UiElement::Step() const { return Open(_kernel).Step(_node); }
 bool UiElement::Denied() const { return Open(_kernel).Denied(_node); }
+void UiElement::ReportChange(int user, UiSound sound) { Open(_kernel).ReportChange(_node, user, sound); }
 void UiElement::TakeFocus(int user) { Open(_kernel).TakeFocus(_node, user); }
 FloatRect UiElement::LastRect() const { return Open(_kernel).LastRect(_node); }
 Float2 UiElement::Size() const { return Open(_kernel).LastSize(_node); }

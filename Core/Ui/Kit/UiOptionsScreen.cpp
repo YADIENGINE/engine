@@ -121,6 +121,7 @@ UiOptionsResult UiOptionsScreen(Ui& ui, UiId id, UiOptionsValues& values, const 
         case Tab::Extra  : config.extraRows(ui); break;
         }
     }
-    result.closed = static_cast<bool>(UiButton(ui, "back", texts.back)) || static_cast<bool>(ui.Back());
+    result.closed =
+        static_cast<bool>(UiButton(ui, "back", texts.back, {.sound = UiSound::Back})) || static_cast<bool>(ui.Back());
     return result;
 }

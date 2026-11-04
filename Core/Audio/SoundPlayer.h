@@ -22,6 +22,9 @@ public:
     // Whether the key names a row of a registered table. It asks the tables, not the device, so a system can check its
     // keys at startup, before audio has loaded. An empty key: false.
     [[nodiscard]] bool Has(SoundKey key) const;
+    // Whether any file of the row is playing now; false for a key Has rejects. For "never overlap itself" whatever the
+    // row says: `if (!sounds.IsPlaying(key)) sounds.Play(key);`.
+    [[nodiscard]] bool IsPlaying(SoundKey key) const;
     // Plays the row at its picked pitch times `pitch`. False when the row's cooldown or SoundOverlap::Skip stopped it.
     // Throws std::out_of_range for a key Has rejects (a table that was never registered, an empty key, Enum::Count),
     // std::invalid_argument for a pitch that is not finite and positive, and std::logic_error before audio has loaded.
@@ -44,6 +47,7 @@ private:
         std::vector<Row> rows;
     };
     [[nodiscard]] std::size_t PickFile(const Row& row);
+    [[nodiscard]] bool RowPlaying(const Row& row) const;
 
     SoundOutput& _output;
     Rng _rng;

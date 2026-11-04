@@ -31,10 +31,14 @@ PROJECT_SIMULATION_FOLDER = "Game/Simulation"
 # widget, so that a game's widget is as good as the engine's; widgets do not draw, looks do not read input.
 UI_LAYER_RULES = (
     ("Layout", re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Ui/Layout/)[^"]*"'''), "only Utilities"),
-    ("Kernel", re.compile(r'''^\s*#\s*include\s*"Ui/(?:Looks|Widgets|Kit)/[^"]*"'''), "no widgets or looks"),
-    ("Looks", re.compile(r'''^\s*#\s*include\s*"(?:Ui/(?:Widgets|Kit)|Input)/[^"]*"'''), "no widgets or input"),
-    ("Widgets", re.compile(r'''^\s*#\s*include\s*"(?:Ui/Kit|Graphics/(?:Paint|Draw|Style|Surface))/[^"]*"'''),
-     "no drawing: that is the look's"),
+    ("Kernel", re.compile(r'''^\s*#\s*include\s*"(?:Ui/(?:Looks|Widgets|Kit|Sound)|Audio)/[^"]*"'''),
+     "no widgets, looks or audio"),
+    ("Looks", re.compile(r'''^\s*#\s*include\s*"(?:Ui/(?:Widgets|Kit|Sound)|Input|Audio)/[^"]*"'''),
+     "no widgets, input or audio"),
+    ("Widgets",
+     re.compile(r'''^\s*#\s*include\s*"(?:Ui/(?:Kit|Sound)|Audio|Graphics/(?:Paint|Draw|Style|Surface))/[^"]*"'''),
+     "no drawing or audio: widgets say what happened"),
+    ("Sound", re.compile(r'''^\s*#\s*include\s*"(?!Ui/(?:Kernel|Sound)/|Audio/)[^"]*"'''), "only the kernel and audio"),
 )
 PLATFORM_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:[^>"/]*/)*(raylib|raymath|rlgl)\.h[>"]')
 

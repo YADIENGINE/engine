@@ -67,6 +67,8 @@ catalog. `SoundPlayer` builds in `EngineHeadless` and reaches the device only th
 tested with no device; `Game` connects it to `AudioSystem`. A simulation cannot include any of `Audio/`
 (`python Engine check`) or link it. To play a table's sound, go through the player: its IDs are not for use with `AudioSystem`.
 
+`IsPlaying(key)` asks whether any file of a row is playing, for "never over itself" when the row itself allows copies. A game's menus use its rows through `settings.uiSounds`: [UI sounds](Ui.md#sounds).
+
 **Not here:** [D32](Design/README.md#d32-sound-tables) says what was left out and why.
 
 ## Setting up a catalog

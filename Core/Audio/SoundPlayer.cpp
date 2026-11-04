@@ -32,6 +32,17 @@ bool SoundPlayer::Has(SoundKey key) const {
     return table != nullptr && key.Index() < table->rows.size();
 }
 
+bool SoundPlayer::RowPlaying(const Row& row) const {
+    const auto first = static_cast<std::size_t>(row.firstId);
+    for (std::size_t i = 0; i < row.files; ++i)
+        if (_output.IsPlaying(SoundId{first + i})) return true;
+    return false;
+}
+
+bool SoundPlayer::IsPlaying(SoundKey key) const {
+    return Has(key) && RowPlaying(FindTable(_tables, *key.Type())->rows[key.Index()]);
+}
+
 std::size_t SoundPlayer::PickFile(const Row& row) {
     if (row.files == 1) return 0;
     if (!row.lastFile) return _rng.Index(row.files);
@@ -52,11 +63,9 @@ bool SoundPlayer::Play(SoundKey key, float pitch) {
 
     Row& row = table->rows[key.Index()];
     if (_seconds - row.lastPlayed < static_cast<double>(row.cooldown)) return false;
-    const auto first = static_cast<std::size_t>(row.firstId);
-    if (row.skipWhilePlaying)
-        for (std::size_t i = 0; i < row.files; ++i)
-            if (_output.IsPlaying(SoundId{first + i})) return false;
+    if (row.skipWhilePlaying && RowPlaying(row)) return false;
 
+    const auto first = static_cast<std::size_t>(row.firstId);
     const std::size_t file = PickFile(row);
     _output.Play(SoundId{first + file}, _rng.Float(row.pitch.low, row.pitch.high) * pitch);
     row.lastPlayed = _seconds;

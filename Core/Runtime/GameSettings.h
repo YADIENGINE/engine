@@ -8,6 +8,7 @@
 #include "Modules/Persistence/Persistence.h"
 #include "Graphics/Style/PlainTheme.h"
 #include "Ui/Kernel/UiLooks.h"
+#include "Ui/Sound/UiSounds.h"
 #include "Utilities/Color4.h"
 
 struct GameSettings {
@@ -33,6 +34,9 @@ struct GameSettings {
     Theme theme = PlainTheme;
     // How widgets look; what a new Ui starts with. Empty: each widget's plain look. See Ui/Kernel/UiLooks.h.
     UiLooks uiLooks;
+    // What every Ui plays, from the rows of `sounds`; empty fields are silent. A key that cannot play throws at startup.
+    // See Docs/Ui.md.
+    UiSounds uiSounds;
     // Transient tools/offscreen runs can use their supplied settings without reading or writing preferences.
     bool persistentOptions = true;
     // Embedded/remote application hosts own the OS window and frame transport dimensions.

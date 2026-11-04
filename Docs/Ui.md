@@ -64,7 +64,7 @@ Positions are not written anywhere, so nothing has to be kept apart by hand and 
 
 Each player has one cursor, moved by direction keys to whatever lies that way on screen. There is no list of what is next to what: a grid, a sidebar and a footer work with no code. A screen starts with a cursor on its first focusable element (`UiSettings::autoFocus`), going past the last continues from the first (`wrapFocus`), and a held direction repeats (`repeatDelay`, `repeatSeconds`). When the focused element goes away the cursor moves to the nearest one left.
 
-Moving the mouse moves the cursor; a resting mouse does not, so the keyboard keeps working under it. A click is a press and a release on the same element. Default keys are arrows and WASD, Enter and Space, Escape. `_ui.Back()` is true when a back key was pressed and the layer being described is the top one. `UiTraits::enabled = false` lets the cursor land, so the player can see why it does not work, and reports `Denied()` instead.
+Moving the mouse moves the cursor; a resting mouse does not, so the keyboard keeps working under it. A click is a press and a release on the same element. Default keys are arrows and WASD, Enter and Space, Escape. `_ui.Back()` is true when a back key was pressed and the layer being described is the top one; a back key that no screen asks about does nothing, and makes no sound. `UiTraits::enabled = false` lets the cursor land, so the player can see why it does not work, and reports `Denied()` instead.
 
 An element that sets `UiTraits::capture` takes the direction keys along that axis while it has the cursor, and reads them with `Step()`: this is how a slider has left and right. They repeat when held. `_ui.PageStep()` gives the previous and next page keys (Q and E), for the top layer.
 
@@ -153,7 +153,48 @@ void Build() {
 }
 ```
 
-`UiOptionsScreen` has tabs for audio, display and effects, over plain `UiOptionsValues`; `Game::UiOptions` and `Game::ApplyUiOptions` give and take them, and they persist with the game's other options. `UiOptionsConfig` turns tabs off, sets the size, gives `UiOptionsTexts` for another language, and adds a tab of the game's own rows (`extraTab`, `extraRows`). It adds no sound, since a game's sounds are its own; see `ui.Events()` below. Window size and render resolution are not on it yet: they need the monitor's list.
+`UiOptionsScreen` has tabs for audio, display and effects, over plain `UiOptionsValues`; `Game::UiOptions` and `Game::ApplyUiOptions` give and take them, and they persist with the game's other options. `UiOptionsConfig` turns tabs off, sets the size, gives `UiOptionsTexts` for another language, and adds a tab of the game's own rows (`extraTab`, `extraRows`). Its sounds are the game's, like every other screen's: see [Sounds](#sounds), and its back button plays `back`. Window size and render resolution are not on it yet: they need the monitor's list.
+
+## Sounds
+
+A game gives its menu sounds once, and every `Ui` plays them with no code on the screen. They are rows of its own [sound table](Audio.md#sound-tables), never names, so a misspelling does not compile.
+
+```cpp
+settings.sounds = SfxTable;
+settings.uiSounds = {.move = Sfx::UiMove, .confirm = Sfx::UiConfirm, .back = Sfx::UiBack, .deny = Sfx::UiDeny};
+```
+
+Every field is optional, and an empty one is silent. The engine ships no sound files, so a game that gives none has silent menus.
+
+| What happens | Plays | |
+| --- | --- | --- |
+| A cursor moves, by keys or by the mouse moving onto an element | `move` | Never over itself |
+| A slider, stepper or toggle changes; tabs switch | `step`, or `move` if `step` is empty | Never over itself |
+| A press | `confirm` | Every time |
+| A back key a screen answered: `_ui.Back()` was true | `back` | Every time, once in a frame |
+| A press or a step on something disabled | `deny` | Every time |
+| A modal layer opens, closes | `open`, `close` | |
+| A cursor placed by the screen: a menu opening, `TakeFocus` | Nothing | |
+
+"Never over itself" holds whatever the row's `whenPlaying` says: while that row plays, the new one is dropped, so a held key is not a machine gun. A row's other choices, such as volume, variants, pitch range and cooldown, apply as usual.
+
+A control has no separate press sound. A press on a toggle or a stepper plays the change it makes, and a press on a slider, or letting go of a drag, plays nothing. A slider at its end, a toggle told to be what it already is, and a list of one choice stay silent, because nothing changed. A mouse dragging a slider sounds as its value changes, so a player can hear the level while setting it.
+
+**One element can differ.** Buttons, controls and tabs take a meaning, not a sound:
+
+```cpp
+UiButton(ui, "leave", "Leave", {.sound = UiSound::Back}); // Sounds as a back key does
+UiButton(ui, "buy", "Buy", {.sound = UiSound::None});     // The game plays its own
+UiToggle(ui, "alarm", "Alarm", _alarm, {.sound = UiSound::Confirm});
+```
+
+`.sound` says what a press or a change plays. The cursor arriving there still plays `move`, and a refused press on a disabled one still plays `deny`. A widget of your own says the same through `UiTraits::sound`.
+
+**One screen can differ.** Sounds live among a `Ui`'s looks, so one `Ui` replaces them in the same way: `_ui.Looks().Set(UiSounds{.confirm = Sfx::ShopBell});`. That replaces all of them for that `Ui`, and an empty set silences it.
+
+**Errors.** Every key in `settings.uiSounds` is checked against the tables when the game starts, in every configuration, and a missing one throws at once. One `Ui`'s own set is checked on the first frame it shows.
+
+**A game can also do it itself.** `ui.Events()` is still there, whatever plays, for effects or for a sound that depends on the game: `.sound = UiSound::None` and read the press. A `UiEvent` holds `kind`, `id`, `user`, `rect` and `sound`.
 
 ## Widgets of your own
 
@@ -176,7 +217,9 @@ bool SpellSlot(Ui& ui, UiId id, Icon icon) {
 - `SetVisual` moves, scales or fades an element and its children without moving its siblings, and clicks follow it. This is how entrance animations are written, with `Age()` or a remembered tween.
 - `UiTraits::measure` gives a leaf a size of its own, and `clip` cuts children at the edges.
 - `Held()` and `ui.Pointer()` are for dragging, `Step()` for keys it captures, `Size()` and `FocusInside()` for what a scrolling area needs, and `PointerInside()` with `ui.Wheel()` for the wheel.
-- `ui.Events()` lists what happened this frame (`FocusMoved`, `Activated`, `Stepped`, `Denied`, `Back`, `LayerOpened`, `LayerClosed`). Play sounds and effects from it; a cursor placed by the screen itself is not an event, so opening a menu makes no sound, and layer events are for modal layers only.
+- `ui.Events()` lists what happened this frame (`FocusMoved`, `Activated`, `Changed`, `Denied`, `Back`, `LayerOpened`, `LayerClosed`); read it after building. A cursor placed by the screen itself is not an event, and layer events are for modal layers only.
+- `UiTraits::sound` says what a press plays. A press that does nothing by itself says `UiSound::None`.
+- `ReportChange(user)` says the player changed this widget's value. Only the widget knows that: a key taken with `Step()` may have changed nothing. Call it when, and only when, the value changed, by whatever means, and the step sound follows; a widget that does not call it is silent.
 
 ## Looks
 
@@ -205,10 +248,11 @@ Change looks between frames. A built frame keeps pointing at the looks it was bu
 | Folder | What it holds | Includes |
 | --- | --- | --- |
 | `Ui/Layout` | The box model; private solver | `Utilities` only |
-| `Ui/Kernel` | `Ui`, `UiElement`, layers, focus, ids, keys, events, the look registry | `Layout`, `Input`, `Painter`; no widget and no look |
-| `Ui/Looks` | One look type per widget, with its plain drawing; `Neon/` | `Kernel`, `Graphics`; no widget and no input |
-| `Ui/Widgets` | Behaviour only: `UiLabel`, `UiButton`, `UiPanel`, `UiRow`, `UiColumn`, `UiGrid`, `UiSpacer`, `UiLayer`, `UiToggle`, `UiSlider`, `UiStepper`, `UiTabs`, `UiScroll`, `UiTooltip` | `Looks`, `Kernel`, text measuring; no drawing |
+| `Ui/Kernel` | `Ui`, `UiElement`, layers, focus, ids, keys, events, the look registry, `UiListener` | `Layout`, `Input`, `Painter`; no widget, no look, no audio |
+| `Ui/Looks` | One look type per widget, with its plain drawing; `Neon/` | `Kernel`, `Graphics`; no widget, no input, no audio |
+| `Ui/Widgets` | Behaviour only: `UiLabel`, `UiButton`, `UiPanel`, `UiRow`, `UiColumn`, `UiGrid`, `UiSpacer`, `UiLayer`, `UiToggle`, `UiSlider`, `UiStepper`, `UiTabs`, `UiScroll`, `UiTooltip` | `Looks`, `Kernel`, text measuring; no drawing, no audio |
 | `Ui/Kit` | Whole screens: `UiOptionsScreen` | `Widgets` and whatever a screen needs |
+| `Ui/Sound` | `UiSounds`, what an event means, `UiSoundListener`, which plays it | `Kernel`, `Audio`; `Game` connects it |
 
 `python Engine check` enforces this, and keeps simulations away from all of it. UI is view code: a choice that changes a simulation goes in as a command or input, so a replay holds it.
 

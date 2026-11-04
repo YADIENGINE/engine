@@ -47,6 +47,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `GameSettings`: `SaveSettings save`
 - `GameSettings`: `Theme theme = PlainTheme` — Colours, backgrounds and effects; activated before the game's scenes and views are created (see Style/Theme.h).
 - `GameSettings`: `UiLooks uiLooks` — How widgets look; what a new Ui starts with.
+- `GameSettings`: `UiSounds uiSounds` — What every Ui plays, from the rows of `sounds`; empty fields are silent.
 - `GameSettings`: `bool persistentOptions = true` — Transient tools/offscreen runs can use their supplied settings without reading or writing preferences.
 - `GameSettings`: `bool fixedWindow = false` — Embedded/remote application hosts own the OS window and frame transport dimensions.
 

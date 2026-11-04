@@ -4,6 +4,7 @@
 #include "Modules/Persistence/Persistence.h"
 #include "Audio/AudioSystem.h"
 #include "Audio/SoundPlayer.h"
+#include "Ui/Sound/UiSoundListener.h"
 #include "Options/GameOptions.h"
 #include "Runtime/TimeScale.h"
 #include "Graphics/Render/RenderStats.h"
@@ -140,6 +141,7 @@ private:
     AudioSystem _audio;
     std::unique_ptr<SoundOutput> _soundOutput;
     SoundPlayer _sounds;
+    UiSoundListener _uiSoundListener;
     std::unique_ptr<InputNormalizer> _input;
     TimeScale _timeScale;
     std::filesystem::path _applicationId;

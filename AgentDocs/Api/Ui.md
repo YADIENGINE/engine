@@ -21,7 +21,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Ui`: `[[nodiscard]] UiElement Element(UiId id, const UiBox& box = { }, const UiTraits& traits = { })` — An element, open until the returned scope ends: elements added meanwhile are its children.
 - `Ui`: `[[nodiscard]] UiElement Element(const UiBox& box = { }, const UiTraits& traits = { })` — An element nobody needs to find again: a text, a row.
 - `Ui`: `[[nodiscard]] UiLayerScope Layer(UiId id, bool open, const UiLayerSpec& spec = { })` — A sheet over the canvas with its own focus.
-- `Ui`: `[[nodiscard]] UiAction Back() const` — A back key was pressed, and the layer being described is the one on top.
+- `Ui`: `[[nodiscard]] UiAction Back()` — A back key was pressed, and the layer being described is the one on top.
 - `Ui`: `[[nodiscard]] int PageStep() const` — The same for the previous and next page keys: -1, 0 or 1.
 - `Ui`: `[[nodiscard]] std::optional<Float2> Pointer() const` — The mouse's last position on the canvas, and this frame's wheel (positive: up).
 - `Ui`: `[[nodiscard]] float Wheel() const`
@@ -46,6 +46,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiElement`: `[[nodiscard]] UiAction Activated() const`
 - `UiElement`: `[[nodiscard]] UiStep Step() const` — A direction key it captures (UiTraits::capture).
 - `UiElement`: `[[nodiscard]] bool Denied() const` — Activating it was refused, because it is disabled.
+- `UiElement`: `void ReportChange(int user = 0, UiSound sound = UiSound::Auto)` — Says that the player changed this element's value this frame, which only the widget can know: a key at a slider's end changes nothing.
 - `UiElement`: `void TakeFocus(int user = 0)`
 - `UiElement`: `[[nodiscard]] FloatRect LastRect() const` — Where it was last frame, in canvas coordinates after clips and UiVisual.
 - `UiElement`: `[[nodiscard]] Float2 Size() const` — Its laid-out size last frame, before clips and UiVisual.
@@ -101,6 +102,13 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiLayerScope`: `void Draw(UiDrawFunction draw)` — Called while drawing, under the layer's elements: a dimmed backdrop, for example.
 - `UiLayerScope`: `void SetVisual(const UiVisual& visual)`
 
+## `Core/Ui/Kernel/UiListener.h`
+
+- `class UiListener` — Told when a Ui has finished building a frame, so that something above the kernel can act on what happened without the kernel knowing what that is.
+- `UiListener`: `virtual void FrameBuilt(const Ui& ui) = 0` — At the end of Ui::End.
+- `[[nodiscard]] UiListener* ActiveUiListener()` — Who every Ui tells: read at each Ui::End, so nothing dangles when it changes.
+- `void SetActiveUiListener(UiListener* listener)`
+
 ## `Core/Ui/Kernel/UiLooks.h`
 
 - `class UiLooks` — How things look, one value per widget type.
@@ -114,6 +122,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `enum class UiInteract { None, Pointer, Focus }` — None: only drawn.
 - `enum class UiCapture { None, Horizontal, Vertical, Both }` — Direction keys along these axes go to a focused element instead of moving the cursor: a slider's left and right.
 - `inline constexpr int UiAnyUser = - 1`
+- `enum class UiSound { Auto, None, Move, Step, Confirm, Back, Deny, Open, Close }` — What pressing or changing an element should sound like, by meaning: the kernel only carries this, and Ui/Sound turns it into the game's sound.
 - `struct UiVisual` — A change to how an element and everything inside it appear, around the element's centre.
 - `UiVisual`: `Float2 offset { }`
 - `UiVisual`: `float scale = 1.0f`
@@ -122,6 +131,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiTraits`: `UiInteract interact = UiInteract::None`
 - `UiTraits`: `UiCapture capture = UiCapture::None` — Read with UiElement::Step
 - `UiTraits`: `bool enabled = true` — A disabled element can still be focused, so the player sees why it does not work; activating it reports Denied.
+- `UiTraits`: `UiSound sound = UiSound::Auto` — What pressing it plays.
 - `UiTraits`: `int owner = UiAnyUser` — Only this player's keys reach it.
 - `UiTraits`: `bool clip = false` — Children are cut at its edges, and cannot be clicked outside them
 - `UiTraits`: `UiVisual visual { }`
@@ -148,12 +158,13 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiDrawState`: `Color4 secondCursorColor { 0, 0, 0, 0 }`
 - `UiDrawState`: `float age = 0.0f` — Seconds since it first appeared
 - `using UiDrawFunction = std::function<void(Painter&, const UiDrawState&)>`
-- `enum class UiEventKind { FocusMoved, Activated, Stepped, Denied, Back, LayerOpened, LayerClosed }` — Layer events are for modal layers; a notice or a tooltip coming and going says nothing.
+- `enum class UiEventKind { FocusMoved, Activated, Changed, Denied, Back, LayerOpened, LayerClosed }` — Layer events are for modal layers; a notice or a tooltip coming and going says nothing.
 - `struct UiEvent` — What happened this frame, for sounds and effects.
 - `UiEvent`: `UiEventKind kind = UiEventKind::FocusMoved`
 - `UiEvent`: `UiId id { }`
 - `UiEvent`: `int user = 0`
 - `UiEvent`: `FloatRect rect { }`
+- `UiEvent`: `UiSound sound = UiSound::Auto` — The element's choice, for Activated and Changed
 - `struct UiSettings`
 - `UiSettings`: `FloatRect canvas { 0.0f, 0.0f, 1280.0f, 720.0f }`
 - `UiSettings`: `const FontFace* font = nullptr` — Borrowed
@@ -419,6 +430,26 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiTooltipLook`: `float fadeSeconds = 0.12f`
 - `UiTooltipLook`: `std::function<void(Painter&, const UiDrawState&)> draw = DrawPlainTooltip`
 
+## `Core/Ui/Sound/UiSoundListener.h`
+
+- `class UiSoundListener final : public UiListener` — Plays what each Ui's frame says, from that Ui's UiSounds.
+- `UiSoundListener`: `explicit UiSoundListener(SoundPlayer& player)`
+- `UiSoundListener`: `void FrameBuilt(const Ui& ui) override` — Throws std::invalid_argument when a Ui's own UiSounds has a key that cannot play, on the first frame it shows.
+
+## `Core/Ui/Sound/UiSounds.h`
+
+- `struct UiSounds` — What a game's menus play, as rows of its own sound tables.
+- `UiSounds`: `SoundKey move` — A cursor moving, by keys or by the mouse
+- `UiSounds`: `SoundKey step` — A value changing: slider, stepper, toggle, tabs.
+- `UiSounds`: `SoundKey confirm` — A press
+- `UiSounds`: `SoundKey back` — A back key a screen answered, or a button with UiSound::Back
+- `UiSounds`: `SoundKey deny` — A press or a step on something disabled
+- `UiSounds`: `SoundKey open` — A modal layer opening
+- `UiSounds`: `SoundKey close` — A modal layer closing
+- `[[nodiscard]] UiSound UiSoundOf(const UiEvent& event)` — The meaning of what happened: the element's own choice, or what its kind means by default.
+- `[[nodiscard]] SoundKey UiSoundKey(const UiSounds& sounds, UiSound sound)` — The row that meaning plays; an empty key for silence.
+- `void CheckUiSounds(const UiSounds& sounds, const SoundPlayer& player, std::string_view where)` — Throws std::invalid_argument, naming the field and `where`, for a key the player cannot play.
+
 ## `Core/Ui/Widgets/UiButton.h`
 
 - `struct UiButtonOptions`
@@ -431,6 +462,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiButtonOptions`: `Float2 offset { }`
 - `UiButtonOptions`: `const UiButtonLook* look = nullptr` — Borrowed until drawn; empty: the Ui's current look
 - `UiButtonOptions`: `std::string_view tooltip { }`
+- `UiButtonOptions`: `UiSound sound = UiSound::Auto` — What a press plays: `UiSound::Back`, or None when the game plays its own
 - `[[nodiscard]] UiAction UiButton(Ui& ui, UiId id, std::string_view label, const UiButtonOptions& options = { })` — A button that the mouse and every player's keys can press.
 
 ## `Core/Ui/Widgets/UiControlOptions.h`
@@ -442,6 +474,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiControlOptions`: `UiSize width = UiFill()`
 - `UiControlOptions`: `UiSize height { }`
 - `UiControlOptions`: `std::string_view tooltip { }`
+- `UiControlOptions`: `UiSound sound = UiSound::Auto` — What a change plays; a press that changes nothing is silent
 
 ## `Core/Ui/Widgets/UiLabel.h`
 
@@ -496,6 +529,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiTabsOptions`: `float textSize = 0.0f` — 0: the look's
 - `UiTabsOptions`: `bool fill = false` — Tabs share the width of the row instead of fitting their text
 - `UiTabsOptions`: `bool pageKeys = true` — The previous and next page keys (Q and E) switch tabs wherever the cursor is
+- `UiTabsOptions`: `UiSound sound = UiSound::Auto` — What switching plays; a press on the tab already open is silent
 - `[[nodiscard]] bool UiTabs(Ui& ui, UiId id, std::span<const std::string_view> labels, int& selected, const UiTabsOptions& options = { })` — A row of tabs: one stop for the cursor, where left and right switch.
 
 ## `Core/Ui/Widgets/UiToggle.h`

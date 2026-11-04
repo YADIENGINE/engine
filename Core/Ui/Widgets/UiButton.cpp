@@ -18,7 +18,7 @@ UiAction UiButton(Ui& ui, UiId id, std::string_view label, const UiButtonOptions
     // A look's minimum is for a button that sizes itself; room given by the screen is not overruled.
     if (box.width.kind == UiSizeKind::Fit) box.width.min = std::max(box.width.min, look.minWidth);
     if (box.height.kind == UiSizeKind::Fit) box.height.min = std::max(box.height.min, look.minHeight);
-    UiTraits traits{.interact = UiInteract::Focus, .enabled = options.enabled};
+    UiTraits traits{.interact = UiInteract::Focus, .enabled = options.enabled, .sound = options.sound};
     traits.measure = [font, text, textSize](float) { return font->Measure(text, textSize); };
     UiElement element = ui.Element(id, box, traits);
 

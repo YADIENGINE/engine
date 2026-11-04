@@ -94,6 +94,7 @@ void UiKernel::Begin(float seconds) {
     _wheel = 0.0f;
     _pageStep = 0;
     _backUsers.clear();
+    _backAnswered = false;
     _text.Reset();
     _seen = 0;
     _scopeError = nullptr;
@@ -193,6 +194,7 @@ int UiKernel::OpenElement(std::optional<UiId> given, const UiBox& box, const UiT
     node.interact = traits.interact;
     node.capture = traits.capture;
     node.enabled = traits.enabled;
+    node.sound = traits.sound;
     node.clip = traits.clip;
     node.visual = traits.visual;
     node.measure = traits.measure;
@@ -277,10 +279,13 @@ void UiKernel::CloseLayer(int savedCursor, int savedLayer) noexcept {
     _cursorLayer = savedLayer;
 }
 
-UiAction UiKernel::Back() const {
+UiAction UiKernel::Back() {
     CheckBuilding("Ui::Back");
     if (_backUsers.empty() || !DescribingTopLayer()) return {};
-    return {true, _backUsers.front()};
+    const int user = _backUsers.front();
+    if (!_backAnswered) Emit(UiEventKind::Back, {}, user, {});
+    _backAnswered = true;
+    return {true, user};
 }
 int UiKernel::PageStep() const {
     CheckBuilding("Ui::PageStep");
@@ -357,6 +362,10 @@ UiStep UiKernel::Step(int index) const {
 bool UiKernel::Denied(int index) const {
     const UiNode& node = Node(index);
     return !ClosingLayer(node.layer) && std::ranges::find(_denied, node.id) != _denied.end();
+}
+void UiKernel::ReportChange(int index, int user, UiSound sound) {
+    const UiNode& node = Node(index);
+    Emit(UiEventKind::Changed, node.id, user, node.entry->full, sound);
 }
 FloatRect UiKernel::LastRect(int index) const { return Node(index).entry->visible; }
 Float2 UiKernel::LastSize(int index) const { return Node(index).entry->size; }
@@ -483,7 +492,6 @@ void UiKernel::ResolveKeys(const DeviceInput& input) {
             if (focused && Captures(focused->capture, *move)) {
                 if (focused->enabled) {
                     _steps.push_back({focused->id, StepOf(*move, user)});
-                    Emit(UiEventKind::Stepped, focused->id, user, focused->full);
                 } else {
                     _denied.push_back(focused->id);
                     Emit(UiEventKind::Denied, focused->id, user, focused->full);
@@ -495,10 +503,7 @@ void UiKernel::ResolveKeys(const DeviceInput& input) {
         if (Any(keys.previous, input.keysPressed)) _pageStep = -1;
         if (Any(keys.next, input.keysPressed)) _pageStep = 1;
         state.confirmDown = Any(keys.confirm, input.keysDown);
-        if (Any(keys.back, input.keysPressed)) {
-            _backUsers.push_back(user);
-            Emit(UiEventKind::Back, {}, user, {});
-        }
+        if (Any(keys.back, input.keysPressed)) _backUsers.push_back(user);
         if (!Any(keys.confirm, input.keysPressed)) continue;
         if (const UiHit* focused = FocusedHit(user)) Activate(*focused, user, false);
     }
@@ -575,14 +580,14 @@ void UiKernel::MoveFocusBy(int user, UiMove move) {
 void UiKernel::Activate(const UiHit& hit, int user, bool byPointer) {
     if (hit.enabled) {
         _activated.push_back({hit.id, user, byPointer});
-        Emit(UiEventKind::Activated, hit.id, user, hit.full);
+        Emit(UiEventKind::Activated, hit.id, user, hit.full, hit.sound);
     } else {
         _denied.push_back(hit.id);
         Emit(UiEventKind::Denied, hit.id, user, hit.full);
     }
 }
-void UiKernel::Emit(UiEventKind kind, UiId id, int user, const FloatRect& rect) {
-    _events.push_back({kind, id, user, rect});
+void UiKernel::Emit(UiEventKind kind, UiId id, int user, const FloatRect& rect, UiSound sound) {
+    _events.push_back({kind, id, user, rect, sound});
 }
 UiKernel::UiLayerMemory& UiKernel::MemoryOf(UiId layer) {
     auto [found, created] = _layerMemory.try_emplace(layer);
@@ -641,7 +646,7 @@ void UiKernel::CollectHits() {
     for (const UiNode& node : _nodes) {
         if (node.interact == UiInteract::None || node.entry->full.Empty()) continue;
         _hits.push_back({node.id, node.entry->visible, node.entry->full, node.layer, node.owner, node.interact,
-                         node.capture, node.enabled});
+                         node.capture, node.enabled, node.sound});
     }
     std::ranges::stable_sort(_hits, {}, &UiHit::layer);
 }

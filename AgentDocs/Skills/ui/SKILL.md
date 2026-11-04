@@ -5,7 +5,7 @@ description: Build or debug game UI - menus, options, pause screens, dialogs, pa
 
 # Build or debug game UI
 
-Reference: `Docs/Ui.md`. Examples that compile: `AgentDocs/Recipes/UiMenu.md`, `AgentDocs/Recipes/UiOptions.md`. Includes start at `Ui/`.
+Reference: `Docs/Ui.md`. Examples that compile: `AgentDocs/Recipes/UiMenu.md`, `AgentDocs/Recipes/UiOptions.md`, `AgentDocs/Recipes/UiSounds.md`. Includes start at `Ui/`.
 
 An options screen is one call: `UiOptionsScreen` in `Ui/Kit`. Add the game's rows to it before writing another.
 
@@ -17,11 +17,11 @@ An options screen is one call: `UiOptionsScreen` in `Ui/Kit`. Add the game's row
 4. Read and write the game's own values directly in the function. There is nothing to bind or refresh.
 5. A dialog or a pause screen is a `UiLayer`. Its input and cursor take care of themselves. Settings rows are `UiToggle`, `UiSlider` and `UiStepper`; pages are `UiTabs`; a long list or a grid is `UiScroll`; an explanation is `.tooltip`.
 6. A widget that does not exist is a function over `ui.Element`, with `Remember`, `Draw` and `SetVisual`. Add a look type if a second game could want it looking different.
-7. Sound and effects: read `ui.Events()` once a frame after building.
+7. Sound: give `settings.uiSounds` once, from the game's sound table, and write no sound code on a screen. A button that means leaving says `.sound = UiSound::Back`; one whose sound the game plays says `UiSound::None`. A widget of the game's own that holds a value calls `element.ReportChange(user)` when, and only when, the value changed. Effects: read `ui.Events()` once a frame after building.
 
 ## Check it
 
-UI runs without a window: test a screen by feeding `DeviceInput` to `Input` and looking at what it pressed. For how it looks, use the `visual-change` skill.
+UI runs without a window: test a screen by feeding `DeviceInput` to `Input` and looking at what it pressed. To test what it plays, give a `SoundPlayer` a fake `SoundOutput`, and `SetActiveUiListener` a `UiSoundListener` over it. For how it looks, use the `visual-change` skill. You cannot hear: never claim a sound is right, leave that to the developer.
 
 ## When it misbehaves
 
@@ -38,3 +38,7 @@ UI runs without a window: test a screen by feeding `DeviceInput` to `Input` and 
 | A list does not scroll, or its rows are squashed | `UiScroll` fills its parent's room: the parent needs a height (`UiFixed`, `UiFill`) |
 | The mouse does nothing with two players | An area with an `owner` ignores the mouse by design |
 | Text is cut or very small | It got less room than it wants: a `UiFit` label shrinks; `wrap` wraps it instead |
+| Menus are silent | `settings.uiSounds` was not given, the engine has no default set. In an editor work scene, the project's `Editor/Main.cpp` must pass the game's settings |
+| Escape makes no sound | Nothing asked `_ui.Back()`, or the layer asking is not on top |
+| A custom widget's value is silent | It must call `ReportChange` when the value changes |
+| "cannot play" at startup | A key in `uiSounds` whose table is not in `settings.sounds` |

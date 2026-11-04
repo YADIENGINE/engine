@@ -1,6 +1,7 @@
 #include "Ui/Kernel/Ui.h"
 #include <utility>
 #include "Ui/Kernel/Internals/UiKernel.h"
+#include "Ui/Kernel/UiListener.h"
 
 Ui::Ui(const UiSettings& settings)
     : _kernel(std::make_unique<UiKernel>(settings)) {}
@@ -16,7 +17,10 @@ const UiLooks& Ui::Looks() const { return _kernel->looks; }
 void Ui::Input(const DeviceInput& input) { _kernel->Input(input); }
 void Ui::CancelInput() { _kernel->CancelInput(); }
 void Ui::Begin(float seconds) { _kernel->Begin(seconds); }
-void Ui::End() { _kernel->End(); }
+void Ui::End() {
+    _kernel->End();
+    if (UiListener* listener = ActiveUiListener()) listener->FrameBuilt(*this);
+}
 void Ui::Draw(Painter& paint) const { _kernel->Draw(paint); }
 UiElement Ui::Element(UiId id, const UiBox& box, const UiTraits& traits) {
     return UiElement(*_kernel, _kernel->OpenElement(id, box, traits));
@@ -27,7 +31,7 @@ UiElement Ui::Element(const UiBox& box, const UiTraits& traits) {
 UiLayerScope Ui::Layer(UiId id, bool open, const UiLayerSpec& spec) {
     return UiLayerScope(*_kernel, id, open, spec);
 }
-UiAction Ui::Back() const { return _kernel->Back(); }
+UiAction Ui::Back() { return _kernel->Back(); }
 int Ui::PageStep() const { return _kernel->PageStep(); }
 std::optional<Float2> Ui::Pointer() const { return _kernel->Pointer(); }
 float Ui::Wheel() const { return _kernel->Wheel(); }

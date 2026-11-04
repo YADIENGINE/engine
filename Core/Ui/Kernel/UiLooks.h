@@ -5,7 +5,8 @@
 
 // How things look, one value per widget type. A widget defines a look type whose default values draw it plainly, and
 // asks for it with Get; a look set is the list of what differs from those. A game's own widget and look type work the
-// same way as the engine's. Change looks between frames: a built frame draws with the looks it was built with.
+// same way as the engine's. Change looks between frames: a built frame draws with the looks it was built with. How a Ui
+// sounds (UiSounds) is kept here too: it has the same life, a value for the whole game that one Ui can replace.
 class UiLooks {
 public:
     template <class Look> void Set(Look look) {

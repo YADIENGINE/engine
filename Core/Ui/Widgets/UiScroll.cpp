@@ -63,7 +63,7 @@ void DescribeBar(Ui& ui, UiElement& viewport, ScrollMemory& memory, const UiScro
                                 .height = UiFill(),
                                 .anchor = UiAnchor::TopRight,
                                 .offset = {look.barWidth + look.barGap, 0.0f}},
-                               {.interact = UiInteract::Pointer});
+                               {.interact = UiInteract::Pointer, .sound = UiSound::None});
     const FloatRect track = bar.LastRect();
     const float height = memory.contentHeight;
     const float range = height - size.y;

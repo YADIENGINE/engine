@@ -9,6 +9,7 @@ struct UiTabsOptions {
     float textSize = 0.0f; // 0: the look's
     bool fill = false;     // Tabs share the width of the row instead of fitting their text
     bool pageKeys = true;  // The previous and next page keys (Q and E) switch tabs wherever the cursor is
+    UiSound sound = UiSound::Auto; // What switching plays; a press on the tab already open is silent
 };
 
 // A row of tabs: one stop for the cursor, where left and right switch. What each tab shows is up to the caller:

@@ -8,7 +8,10 @@ UiElement OpenUiControlRow(Ui& ui, UiId id, std::string_view label, float textSi
     UiBox box{.width = options.width, .height = options.height, .padding = metrics.padding};
     if (box.width.kind == UiSizeKind::Fit) box.width.min = std::max(box.width.min, metrics.minWidth);
     if (box.height.kind == UiSizeKind::Fit) box.height.min = std::max(box.height.min, metrics.minHeight);
-    UiTraits traits{.interact = UiInteract::Focus, .capture = UiCapture::Horizontal, .enabled = options.enabled};
+    UiTraits traits{.interact = UiInteract::Focus,
+                    .capture = UiCapture::Horizontal,
+                    .enabled = options.enabled,
+                    .sound = UiSound::None};
     const float control = metrics.controlWidth + metrics.labelGap;
     traits.measure = [font, label, textSize, control](float) {
         const Float2 text = font->Measure(label, textSize);

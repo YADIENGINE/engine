@@ -65,6 +65,7 @@ Game::Game(const GameSettings& settings)
     , _audio(_assetRoot, settings.audioVolume)
     , _soundOutput(std::make_unique<AudioSoundOutput>(_audio))
     , _sounds(settings.sounds, *_soundOutput)
+    , _uiSoundListener(_sounds)
     , _input(std::make_unique<InputNormalizer>())
     , _applicationId(settings.applicationId)
     , _saveSettings(settings.save)
@@ -76,15 +77,19 @@ Game::Game(const GameSettings& settings)
     _frameExecution.fpsLimit = settings.window.targetFps;
     _renderer->SetFont(_font ? &*_font : nullptr); // _font, renderer'dan önce yıkılır; o sırada kare çizilmez
     SetTheme(settings.theme);            // Türeyen oyunun View ve Ui üyeleri kurulurken tema etkin olmalı
-    SetActiveUiLooks(settings.uiLooks);
+    CheckUiSounds(settings.uiSounds, _sounds, "GameSettings::uiSounds");
+    UiLooks uiLooks = settings.uiLooks;
+    uiLooks.Set(settings.uiSounds);
+    SetActiveUiLooks(std::move(uiLooks));
     _audio.BeginLoading(CatalogWithSounds(settings.audio, settings.sounds)); // Run'daki yükleme ekranı bitişini bekler
     const StartupTimer timer(_persistentOptions ? "Options (load + apply)" : "Transient settings");
     if (_persistentOptions) {
         _options.Load();
         ApplyOptions();
     }
+    SetActiveUiListener(&_uiSoundListener); // Last: a constructor that throws runs no destructor to take it back
 }
-Game::~Game() = default;
+Game::~Game() { SetActiveUiListener(nullptr); }
 void Game::ObserveFrames(FrameObserver* observer) {
     _frameObserver = observer;
     _renderer->SetObserver(observer);

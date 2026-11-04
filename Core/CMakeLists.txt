@@ -195,6 +195,7 @@ add_library(EngineHeadless STATIC
     Ui/Kernel/UiElement.cpp
     Ui/Kernel/UiKeys.cpp
     Ui/Kernel/UiLayerScope.cpp
+    Ui/Kernel/UiListener.cpp
     Ui/Kernel/UiLooks.cpp
     Ui/Layout/Internals/UiLayoutSolver.cpp
     Ui/Looks/Neon/NeonLooks.cpp
@@ -210,6 +211,8 @@ add_library(EngineHeadless STATIC
     Ui/Looks/UiTabLook.cpp
     Ui/Looks/UiToggleLook.cpp
     Ui/Looks/UiTooltipLook.cpp
+    Ui/Sound/UiSoundListener.cpp
+    Ui/Sound/UiSounds.cpp
     Ui/Widgets/Internals/UiControlRow.cpp
     Ui/Widgets/UiButton.cpp
     Ui/Widgets/UiLabel.cpp

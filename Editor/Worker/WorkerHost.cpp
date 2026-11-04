@@ -109,6 +109,7 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
             PrepareHiddenWindow(settings);
             settings.audio = {}; // Drawing only: no reason to load the game's sounds
             settings.sounds = {};
+            settings.uiSounds = {};
             AssetThumbnailGame game(settings, *thumbnails);
             game.Run();
             return 0;

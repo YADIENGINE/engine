@@ -63,8 +63,9 @@ public:
     // without taking input, so its content can animate out with Open(). A modal layer stops input reaching those below.
     [[nodiscard]] UiLayerScope Layer(UiId id, bool open, const UiLayerSpec& spec = {});
 
-    // A back key was pressed, and the layer being described is the one on top.
-    [[nodiscard]] UiAction Back() const;
+    // A back key was pressed, and the layer being described is the one on top. Asking is what makes the key count: the
+    // first true answer of a frame adds the Back event, so a key no screen asks about makes no sound.
+    [[nodiscard]] UiAction Back();
     // The same for the previous and next page keys: -1, 0 or 1.
     [[nodiscard]] int PageStep() const;
     // The mouse's last position on the canvas, and this frame's wheel (positive: up).

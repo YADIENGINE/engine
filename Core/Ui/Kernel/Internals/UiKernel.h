@@ -34,7 +34,7 @@ public:
     [[nodiscard]] bool OpenLayer(UiId id, bool open, const UiLayerSpec& spec, float& progress, int& root,
                                  int& savedCursor, int& savedLayer);
     void CloseLayer(int savedCursor, int savedLayer) noexcept;
-    [[nodiscard]] UiAction Back() const;
+    [[nodiscard]] UiAction Back();
     [[nodiscard]] int PageStep() const;
     [[nodiscard]] std::optional<Float2> Pointer() const { return _pointer; }
     [[nodiscard]] float Wheel() const { return _wheel; }
@@ -50,6 +50,7 @@ public:
     [[nodiscard]] UiAction Activated(int node) const;
     [[nodiscard]] UiStep Step(int node) const;
     [[nodiscard]] bool Denied(int node) const;
+    void ReportChange(int node, int user, UiSound sound);
     [[nodiscard]] FloatRect LastRect(int node) const;
     [[nodiscard]] Float2 LastSize(int node) const;
     [[nodiscard]] std::optional<FloatRect> FocusInside(int node) const;
@@ -94,6 +95,7 @@ private:
         UiInteract interact = UiInteract::None;
         UiCapture capture = UiCapture::None;
         bool enabled = true;
+        UiSound sound = UiSound::Auto;
         bool clip = false;
         UiVisual visual{};
         UiMeasure measure{};
@@ -127,6 +129,7 @@ private:
         UiInteract interact = UiInteract::None;
         UiCapture capture = UiCapture::None;
         bool enabled = true;
+        UiSound sound = UiSound::Auto;
     };
     struct UiUserInput {
         std::optional<UiMove> held;
@@ -163,7 +166,7 @@ private:
     void Activate(const UiHit& hit, int user, bool byPointer);
     [[nodiscard]] const UiHit* FocusedHit(int user) const;
     [[nodiscard]] bool DescribingTopLayer() const;
-    void Emit(UiEventKind kind, UiId id, int user, const FloatRect& rect);
+    void Emit(UiEventKind kind, UiId id, int user, const FloatRect& rect, UiSound sound = UiSound::Auto);
     [[nodiscard]] UiLayerMemory& MemoryOf(UiId layer);
     void SizeMemory(UiLayerMemory& memory) const;
 
@@ -208,6 +211,7 @@ private:
     std::vector<StepOutcome> _steps;
     std::vector<UiId> _denied;
     std::vector<int> _backUsers;
+    bool _backAnswered = false;
     UiTextArena _text;
     std::uint64_t _frame = 0;
     float _delta = 0.0f;

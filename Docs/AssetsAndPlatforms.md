@@ -34,10 +34,11 @@ built-in default font is used. The engine provides manifest preparation and font
 | `smoothCanvas` | true; linear filtering for canvas presentation |
 | `applicationId` | Game; persistent identity for user data |
 | `font` | empty means no game font; otherwise an asset path, with glyphs loaded on demand; [font guide](Graphics/Text.md) |
-| `assets`, `audio` | empty manifest / catalog |
+| `assets`, `audio`, `sounds` | empty manifest / catalog / [sound tables](Audio.md#sound-tables) |
 | `audioVolume` | [audio steps and groups](Audio.md) |
 | `save` | [SaveSettings](Modules/Persistence/README.md); supports per-file overrides |
-| `theme` | NeonArcadeTheme |
+| `theme` | PlainTheme |
+| `uiLooks`, `uiSounds` | empty: plain widgets, silent menus; [UI](Ui.md#sounds) |
 | `persistentOptions` | true; when false, player preferences are neither read nor written |
 | `fixedWindow` | false; if the host sets true, options do not change capture/window size |
 

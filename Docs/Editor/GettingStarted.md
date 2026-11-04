@@ -111,6 +111,16 @@ the canvas, and the worker targets 30 FPS. The canvas must be positive and at mo
 fonts/audio, supply a GameSettings manifest/catalog and copy the asset folder beside the worker executable with
 `ASSETS`. This copy is independent of the game target.
 
+A scene sees the game's theme, `uiLooks`, sound tables and `uiSounds` only if this file passes them: the worker's `Game` is built from these settings and nothing else, and it never sees the game's own `main`. So that the two cannot drift apart, keep them in one function, in a header under `Game/`, and change here only what a worker needs:
+
+```cpp
+GameSettings settings = MyProjectSettings(); // The game's main calls the same one
+settings.applicationId = "MyProjectWorker";
+settings.persistentOptions = false;
+```
+
+A project with no `Editor/Main.cpp`, only `Editor/Work/` scenes, runs on the engine's starter worker, whose settings are empty: plain looks, the default theme, silent menus and no sound tables. Add the file above as soon as a work scene shows the game's UI.
+
 ## Running as a developer
 
 ```powershell

@@ -33,6 +33,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Add a toggle, a slider or a stepper; settings rows | `Core/Ui/Widgets/UiToggle.h`<br>`Core/Ui/Widgets/UiSlider.h`<br>`Core/Ui/Widgets/UiStepper.h` | `Recipes/UiOptions.md` | `Docs/Ui.md#controls` |
 | Add tabs, a tooltip, or a scrolling list or grid | `Core/Ui/Widgets/UiTabs.h`<br>`Core/Ui/Widgets/UiTooltip.h`<br>`Core/Ui/Widgets/UiScroll.h`<br>`Core/Ui/Widgets/UiPanel.h` | `Recipes/UiOptions.md` | `Docs/Ui.md#lists-and-grids` |
 | Add a ready options screen: volume, display, effects | `Core/Ui/Kit/UiOptionsScreen.h`<br>`Core/Runtime/Game.h` | `Recipes/UiOptions.md` | `Docs/Ui.md#ready-screens` |
+| Give menus sounds: move, confirm, back, deny; one button or one screen that differs | `Core/Ui/Sound/UiSounds.h`<br>`Core/Ui/Kernel/UiTypes.h`<br>`Core/Runtime/GameSettings.h` | `Recipes/UiSounds.md` | `Docs/Ui.md#sounds` |
 | Write a widget of the game's own | `Core/Ui/Kernel/UiElement.h`<br>`Core/Ui/Kernel/UiTypes.h` | `Recipes/UiMenu.md` | `Docs/Ui.md#widgets-of-your-own` |
 | Change how widgets look | `Core/Ui/Kernel/UiLooks.h`<br>`Core/Ui/Looks/UiButtonLook.h`<br>`Core/Ui/Looks/Neon/NeonLooks.h` | - | `Docs/Ui.md#looks` |
 | Choose a theme: colours, backgrounds, effects | `Core/Graphics/Style/Theme.h`<br>`Core/Graphics/Style/ThemePalette.h`<br>`Core/Graphics/Style/PlainTheme.h`<br>`Core/Graphics/Style/NeonArcadeTheme.h` | - | `Docs/Graphics/ThemesAndUi.md#themes` |

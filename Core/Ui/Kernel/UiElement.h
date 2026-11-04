@@ -37,6 +37,10 @@ public:
     [[nodiscard]] UiStep Step() const;
     // Activating it was refused, because it is disabled.
     [[nodiscard]] bool Denied() const;
+    // Says that the player changed this element's value this frame, which only the widget can know: a key at a slider's
+    // end changes nothing. It adds a Changed event, which is what plays the step sound. An element that holds no value
+    // never needs it.
+    void ReportChange(int user = 0, UiSound sound = UiSound::Auto);
     void TakeFocus(int user = 0);
     // Where it was last frame, in canvas coordinates after clips and UiVisual. Empty on its first frame.
     [[nodiscard]] FloatRect LastRect() const;

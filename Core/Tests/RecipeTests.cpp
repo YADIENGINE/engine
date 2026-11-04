@@ -19,6 +19,7 @@
 #include "AgentDocs/Recipes/Code/SpriteLayer.h"
 #include "AgentDocs/Recipes/Code/TextLayout.h"
 #include "AgentDocs/Recipes/Code/TuningValue.h"
+#include "AgentDocs/Recipes/Code/UiSounds.h"
 #include "Audio/SoundPlayer.h"
 #include "Graphics/Surface/Surface.h"
 #include "Graphics/Text/FontFace.h"
@@ -33,6 +34,8 @@
 #include "Simulation/StateHash.h"
 #include "Tests/PaintHarness.h"
 #include "Tests/Support/TempDirectory.h"
+#include "Ui/Kernel/UiListener.h"
+#include "Ui/Sound/UiSoundListener.h"
 
 TEST_CASE("Engine.Recipes.MenuPressesAndAsksInADialog", "[engine][recipes]") {
     const FontFace font = FontFace::FromFile(ENGINE_RECIPE_FONT);
@@ -399,6 +402,53 @@ TEST_CASE("Engine.Recipes.PopupEffectsDrawWithThePublicApi", "[engine][recipes]"
     effects.Draw(harness.paint);
     harness.End();
     CHECK(harness.Draws().empty());
+}
+
+TEST_CASE("Engine.Recipes.UiSoundsPlayWithNoCodeOnTheScreen", "[engine][recipes]") {
+    struct Output final : SoundOutput {
+        [[nodiscard]] bool IsPlaying(SoundId) const override { return false; }
+        void Play(SoundId, float) override { ++plays; }
+        int plays = 0;
+    };
+    GameSettings settings;
+    AddRecipeUiSounds(settings);
+    Output output;
+    SoundPlayer sounds(settings.sounds, output);
+    CheckUiSounds(settings.uiSounds, sounds, "settings");
+    UiSoundListener listener(sounds);
+    SetActiveUiListener(&listener);
+    {
+        const FontFace font = FontFace::FromFile(ENGINE_RECIPE_FONT);
+        RecipeShop shop(&font);
+        const auto press = [&shop](InputKey key) {
+            DeviceInput input;
+            input.keysPressed[static_cast<std::size_t>(key)] = true;
+            input.keysDown[static_cast<std::size_t>(key)] = true;
+            shop.Input(input);
+            shop.Update(1.0f / 60.0f);
+        };
+        shop.Update(1.0f / 60.0f);
+        shop.Update(1.0f / 60.0f); // Silent: its own sounds are not given here, so the look set is empty
+        CHECK(output.plays == 0);
+        press(InputKey::Enter);
+        CHECK(output.plays == 0);
+
+        RecipeShop own(&font, true);
+        own.Update(1.0f / 60.0f);
+        own.Update(1.0f / 60.0f);
+        DeviceInput down;
+        down.keysPressed[static_cast<std::size_t>(InputKey::Down)] = true;
+        own.Input(down);
+        own.Update(1.0f / 60.0f);
+        CHECK(output.plays == 1); // The cursor's move
+        DeviceInput enter;
+        enter.keysPressed[static_cast<std::size_t>(InputKey::Enter)] = true;
+        own.Input(enter);
+        own.Update(1.0f / 60.0f);
+        CHECK(own.Purchases() == 1);
+        CHECK(output.plays == 1); // `.sound = None`: the game plays its own
+    }
+    SetActiveUiListener(nullptr);
 }
 
 TEST_CASE("Engine.Recipes.SoundTablePlaysThroughAPlayer", "[engine][recipes]") {

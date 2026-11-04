@@ -16,6 +16,10 @@ enum class UiCapture { None, Horizontal, Vertical, Both };
 
 inline constexpr int UiAnyUser = -1;
 
+// What pressing or changing an element should sound like, by meaning: the kernel only carries this, and Ui/Sound turns
+// it into the game's sound. Auto: a press is Confirm and a change is Step. None: silent, as the game plays its own.
+enum class UiSound { Auto, None, Move, Step, Confirm, Back, Deny, Open, Close };
+
 // A change to how an element and everything inside it appear, around the element's centre. It does not move its
 // siblings. Clicks follow it, so what looks like a button is where the button is.
 struct UiVisual {
@@ -30,6 +34,8 @@ struct UiTraits {
     UiCapture capture = UiCapture::None; // Read with UiElement::Step
     // A disabled element can still be focused, so the player sees why it does not work; activating it reports Denied.
     bool enabled = true;
+    // What pressing it plays. A press that does nothing by itself, such as on a slider, says None.
+    UiSound sound = UiSound::Auto;
     int owner = UiAnyUser; // Only this player's keys reach it. Inherited by children.
     bool clip = false;     // Children are cut at its edges, and cannot be clicked outside them
     UiVisual visual{};
@@ -69,13 +75,16 @@ struct UiDrawState {
 using UiDrawFunction = std::function<void(Painter&, const UiDrawState&)>;
 
 // Layer events are for modal layers; a notice or a tooltip coming and going says nothing.
-enum class UiEventKind { FocusMoved, Activated, Stepped, Denied, Back, LayerOpened, LayerClosed };
-// What happened this frame, for sounds and effects. Valid until the next Begin.
+// Changed comes from the widget (UiElement::ReportChange), since only it knows whether a key changed anything. Back
+// comes from a screen asking Ui::Back and getting true, so a back key nobody asked about is no event.
+enum class UiEventKind { FocusMoved, Activated, Changed, Denied, Back, LayerOpened, LayerClosed };
+// What happened this frame, for sounds and effects. Read it after building: valid until the next Begin.
 struct UiEvent {
     UiEventKind kind = UiEventKind::FocusMoved;
     UiId id{};
     int user = 0;
     FloatRect rect{};
+    UiSound sound = UiSound::Auto; // The element's choice, for Activated and Changed
 };
 
 struct UiSettings {

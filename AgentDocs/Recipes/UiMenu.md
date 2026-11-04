@@ -92,7 +92,7 @@ void RecipeMenu::QuitDialog() {
         UiLabel(_ui, "Quit the game?");
         auto buttons = UiRow(_ui, {.gap = 8.0f});
         if (UiButton(_ui, "yes", "Quit")) _quit = true;
-        if (UiButton(_ui, "no", "Stay") || _ui.Back()) _askingToQuit = false;
+        if (UiButton(_ui, "no", "Stay", {.sound = UiSound::Back}) || _ui.Back()) _askingToQuit = false;
     }
 }
 ```

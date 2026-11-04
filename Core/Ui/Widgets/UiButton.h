@@ -14,6 +14,7 @@ struct UiButtonOptions {
     Float2 offset{};
     const UiButtonLook* look = nullptr; // Borrowed until drawn; empty: the Ui's current look
     std::string_view tooltip{};
+    UiSound sound = UiSound::Auto; // What a press plays: `UiSound::Back`, or None when the game plays its own
 };
 
 // A button that the mouse and every player's keys can press. 'id' stays the same when the label is translated.

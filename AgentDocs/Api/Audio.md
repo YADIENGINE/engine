@@ -103,6 +103,7 @@ For tools that work on source files, such as an editor previewing assets.
 - `SoundPlayer`: `static constexpr std::uint64_t DefaultSeed = 0x536F756E64` — Fixed: nobody can hear that two runs pick alike
 - `SoundPlayer`: `SoundPlayer(const SoundTables& tables, SoundOutput& output, std::uint64_t seed = DefaultSeed)`
 - `SoundPlayer`: `[[nodiscard]] bool Has(SoundKey key) const` — Whether the key names a row of a registered table.
+- `SoundPlayer`: `[[nodiscard]] bool IsPlaying(SoundKey key) const` — Whether any file of the row is playing now; false for a key Has rejects.
 - `SoundPlayer`: `bool Play(SoundKey key, float pitch = 1.0f)` — Plays the row at its picked pitch times `pitch`.
 - `SoundPlayer`: `void Update(float realSeconds)` — Moves the cooldown clock.
 

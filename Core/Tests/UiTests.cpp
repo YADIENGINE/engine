@@ -686,6 +686,7 @@ TEST_CASE("Engine.Ui.EventsTellWhatHappenedForSoundsAndEffects", "[engine][ui]")
         Box(ui, "a");
         Box(ui, "b");
         if (auto layer = ui.Layer("dialog", open, {.seconds = 0.0f})) Box(ui, "c");
+        static_cast<void>(ui.Back());
         for (const UiEvent& event : ui.Events()) ++counts[event.kind];
     };
     screen.Run(build);

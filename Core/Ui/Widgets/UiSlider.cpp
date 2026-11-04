@@ -37,8 +37,10 @@ struct Drag {
     UiElement row = OpenUiControlRow(ui, id, text, textSize, options, look.metrics);
 
     const float before = value;
+    int user = 0; // The mouse acts as the first player
     if (const UiStep key = row.Step(); key.x != 0) {
         value = Snapped(value + static_cast<float>(key.x) * stride, min, max, stride);
+        user = key.user;
     }
     Drag& drag = row.Remember<Drag>();
     const std::optional<Float2> pointer = ui.Pointer();
@@ -55,6 +57,7 @@ struct Drag {
         drag.held = false;
     }
     const bool changed = value != before;
+    if (changed) row.ReportChange(user, options.sound);
     const ButtonAnimState animation = AnimateUiControlRow(ui, row, look.metrics, false);
     const float fraction = (std::clamp(value, min, max) - min) / (max - min);
     const std::string_view number = NumberText(ui, value, decimals);

@@ -51,6 +51,7 @@ engine_tests(EngineTests
         SceneObjectsTests.cpp
         SceneSafetyTests.cpp
         UiLayoutTests.cpp
+        UiSoundTests.cpp
         UiTests.cpp
         UiWidgetTests.cpp
         SceneTimeTests.cpp
@@ -134,6 +135,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/TweenMenu.cpp"
     "${recipeRoot}/UiMenu.cpp"
     "${recipeRoot}/UiOptions.cpp"
+    "${recipeRoot}/UiSounds.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/EditorScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneParameter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneRegistry.cpp"

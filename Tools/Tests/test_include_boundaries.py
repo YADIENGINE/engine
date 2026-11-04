@@ -115,7 +115,13 @@ class BoundaryTests(unittest.TestCase):
                               ("Core/Ui/Kernel/Ui.h", "Ui/Looks/UiButtonLook.h"),
                               ("Core/Ui/Looks/UiButtonLook.h", "Ui/Widgets/UiButton.h"),
                               ("Core/Ui/Looks/UiButtonLook.cpp", "Input/Input.h"),
-                              ("Core/Ui/Widgets/UiButton.cpp", "Graphics/Paint/Painter.h")):
+                              ("Core/Ui/Widgets/UiButton.cpp", "Graphics/Paint/Painter.h"),
+                              ("Core/Ui/Widgets/UiButton.cpp", "Audio/SoundPlayer.h"),
+                              ("Core/Ui/Kernel/UiKernel.cpp", "Audio/SoundKey.h"),
+                              ("Core/Ui/Kernel/Ui.h", "Ui/Sound/UiSounds.h"),
+                              ("Core/Ui/Looks/UiButtonLook.h", "Audio/SoundKey.h"),
+                              ("Core/Ui/Sound/UiSounds.cpp", "Ui/Widgets/UiButton.h"),
+                              ("Core/Ui/Sound/UiSounds.cpp", "Graphics/Paint/Painter.h")):
             with self.subTest(path=path, include=include):
                 self.write(f"Engine/{path}", f'#include "{include}"\n')
                 self.assertEqual(len(self.check()), 1, self.check())
@@ -126,6 +132,7 @@ class BoundaryTests(unittest.TestCase):
         self.write("Engine/Core/Ui/Kernel/Ui.cpp", '#include "Ui/Layout/UiLayout.h"\n#include "Graphics/Paint/Painter.h"\n')
         self.write("Engine/Core/Ui/Looks/Look.cpp", '#include "Ui/Kernel/Ui.h"\n#include "Graphics/Paint/Painter.h"\n')
         self.write("Engine/Core/Ui/Widgets/Button.cpp", '#include "Ui/Looks/Look.h"\n#include "Ui/Kernel/Ui.h"\n')
+        self.write("Engine/Core/Ui/Sound/Sounds.cpp", '#include "Ui/Kernel/Ui.h"\n#include "Audio/SoundKey.h"\n')
         self.assertEqual(self.check(), [])
 
     def test_a_simulation_cannot_include_the_sound_player_or_keys(self):
