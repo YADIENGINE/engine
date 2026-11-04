@@ -60,7 +60,7 @@ const std::array<EditorCommandInfo, static_cast<std::size_t>(EditorCommand::Coun
                           ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_B, "Ctrl+Shift+B"},
         EditorCommandInfo{EditorCommand::Cancel, "Cancel operation", EditorGlyph::Cancel, 0, nullptr},
         EditorCommandInfo{EditorCommand::Step, "Step one frame", EditorGlyph::Step, ImGuiKey_F7, "F7"},
-        EditorCommandInfo{EditorCommand::BuildAndPlay, "Play game", EditorGlyph::Play, 0, nullptr}};
+        EditorCommandInfo{EditorCommand::BuildAndPlay, "Play", EditorGlyph::Play, 0, nullptr}};
     return commands;
 }
 
@@ -105,7 +105,7 @@ float EditorCommandButtonWidth(EditorCommand command, const EditorSnapshot& snap
 bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, const EditorUiActions& actions,
                          bool showLabel) {
     // Color says what a button does: green starts the scene, a rose tint stops it, a paused scene lights Resume in
-    // amber. Build and Play game color only their icons; the rest stays neutral.
+    // amber. Build and Play color only their icons; the rest stays neutral.
     const bool enabled = snapshot.capabilities.Can(command);
     const bool primary = command == EditorPrimaryCommand(snapshot);
     const bool starts = enabled && primary && command == EditorCommand::Open;
@@ -120,12 +120,25 @@ bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, 
         ImGui::PushStyleColor(ImGuiCol_Button, ToolPalette::Selected);
         ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Accent);
     }
-    std::string label =
-        showLabel ? CommandButtonLabel(command, snapshot) : EditorGlyphText(CommandGlyph(command, snapshot));
+    const bool centerPauseGlyph = command == EditorCommand::Pause && !showLabel;
+    std::string label;
+    if (showLabel)
+        label = CommandButtonLabel(command, snapshot);
+    else if (!centerPauseGlyph)
+        label = EditorGlyphText(CommandGlyph(command, snapshot));
     if (command == EditorCommand::BuildAndPlay || command == EditorCommand::Refresh) label.clear();
     label += "###command";
     const bool pressed =
         ToolButton(label.c_str(), {EditorCommandButtonWidth(command, snapshot, showLabel), ImGui::GetFrameHeight()});
+    if (centerPauseGlyph) {
+        const auto start = ImGui::GetItemRectMin();
+        const auto end = ImGui::GetItemRectMax();
+        const char* glyph = EditorGlyphText(CommandGlyph(command, snapshot));
+        const auto extent = ImGui::CalcTextSize(glyph);
+        ImGui::GetWindowDrawList()->AddText(
+            {(start.x + end.x - extent.x) * 0.5f, (start.y + end.y - extent.y) * 0.5f},
+            ImGui::GetColorU32(ImGuiCol_Text), glyph);
+    }
     if (active) ImGui::PopStyleColor(2);
     if (starts || stops) PopEditorButton();
     if (command == EditorCommand::Refresh) {

@@ -71,7 +71,8 @@ std::size_t NextCharacter(std::string_view text, std::size_t start) {
 // ImGui draws the frame, handle and value in one go. The frame and handle are made transparent and the bar is drawn
 // beneath them on a lower channel, so the value stays on top.
 template <typename T>
-bool DrawSlider(const char* label, ImGuiDataType type, T& value, T minimum, T maximum, const char* format) {
+bool DrawSlider(const char* label, ImGuiDataType type, T& value, T minimum, T maximum, const char* format,
+                ImVec4 fill = ToolPalette::Control, ImVec4 hoveredFill = ToolPalette::Hover) {
     auto* draw = ImGui::GetWindowDrawList();
     const auto well = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
     constexpr ImVec4 Clear{0, 0, 0, 0};
@@ -94,8 +95,7 @@ bool DrawSlider(const char* label, ImGuiDataType type, T& value, T minimum, T ma
     const double ratio = range > 0 ? (static_cast<double>(value) - static_cast<double>(minimum)) / range : 0.0;
     const float edge = std::round(start.x + (end.x - start.x) * static_cast<float>(std::clamp(ratio, 0.0, 1.0)));
     if (edge > start.x) {
-        draw->AddRectFilled(start, {edge, end.y},
-                            ImGui::GetColorU32(active || hovered ? ToolPalette::Hover : ToolPalette::Control), rounding,
+        draw->AddRectFilled(start, {edge, end.y}, ImGui::GetColorU32(active || hovered ? hoveredFill : fill), rounding,
                             ImDrawFlags_RoundCornersLeft);
         // Only while dragging: at rest a line would cut through the centered value.
         if (active) {
@@ -110,6 +110,10 @@ bool DrawSlider(const char* label, ImGuiDataType type, T& value, T minimum, T ma
 } // namespace
 bool ToolSlider(const char* label, float& value, float minimum, float maximum, const char* format) {
     return DrawSlider(label, ImGuiDataType_Float, value, minimum, maximum, format);
+}
+bool ToolSlider(const char* label, float& value, float minimum, float maximum, const char* format, ImVec4 fill,
+                ImVec4 hoveredFill) {
+    return DrawSlider(label, ImGuiDataType_Float, value, minimum, maximum, format, fill, hoveredFill);
 }
 bool ToolSlider(const char* label, double& value, double minimum, double maximum, const char* format) {
     return DrawSlider(label, ImGuiDataType_Double, value, minimum, maximum, format);
@@ -385,13 +389,14 @@ bool ToolSingleLineButton(const char* label, bool primary) {
 }
 bool ToolWrappedSelectable(const char* label, bool selected, ImGuiSelectableFlags flags, float reservedRight) {
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+    const float selectableWidth = std::max(1.0f, width - reservedRight);
     const float inset = 6 * ToolUiScale();
-    const float textWidth = std::max(1.0f, width - inset * 2 - reservedRight);
+    const float textWidth = std::max(1.0f, selectableWidth - inset * 2);
     const auto textSize = ImGui::CalcTextSize(label, nullptr, false, textWidth);
     const auto position = ImGui::GetCursorScreenPos();
     const float height = std::max(ImGui::GetFrameHeight(), textSize.y + 4 * ToolUiScale());
     ImGui::PushID(label);
-    const bool pressed = ImGui::Selectable("##wrapped", selected, flags, {width, height});
+    const bool pressed = ImGui::Selectable("##wrapped", selected, flags, {selectableWidth, height});
     DrawWrappedLabel(label, {position.x + inset, position.y + (height - textSize.y) * 0.5f}, {textWidth, textSize.y});
     ImGui::PopID();
     return pressed;

@@ -32,6 +32,8 @@ void ToolStatusBadge(const char* label, ImVec4 color);
 // Clamped to the range. Width comes from SetNextItemWidth. `format` nullptr: the type's default; "" hides the value.
 [[nodiscard]] bool ToolSlider(const char* label, float& value, float minimum, float maximum,
                               const char* format = "%.2f");
+[[nodiscard]] bool ToolSlider(const char* label, float& value, float minimum, float maximum, const char* format,
+                              ImVec4 fill, ImVec4 hoveredFill);
 [[nodiscard]] bool ToolSlider(const char* label, double& value, double minimum, double maximum,
                               const char* format = "%.3f");
 [[nodiscard]] bool ToolSlider(const char* label, int& value, int minimum, int maximum, const char* format = nullptr);
@@ -43,6 +45,6 @@ void ToolStatusBadge(const char* label, ImVec4 color);
 void ContinueToolToolbar(const char* label, bool separateGroup = false);
 void ContinueToolToolbar(float itemWidth, bool separateGroup = false);
 [[nodiscard]] bool ToolSingleLineButton(const char* label, bool primary = false);
-// `reservedRight`: width kept free at the row's end for a control placed over it.
+// `reservedRight`: width kept free at the row's end for a separate control.
 [[nodiscard]] bool ToolWrappedSelectable(const char* label, bool selected, ImGuiSelectableFlags flags,
                                          float reservedRight = 0);

@@ -360,7 +360,9 @@ void AssetsPanel::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions&
     ImGui::SameLine();
     const bool hasText = _search[0] != '\0';
     const float clear = hasText ? ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.x : 0.0f;
-    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - clear);
+    const float sliderWidth = SizeSliderWidth * ToolUiScale();
+    const float slider = sliderWidth + ImGui::GetStyle().ItemSpacing.x;
+    ImGui::SetNextItemWidth(std::max(1.0f, ImGui::GetContentRegionAvail().x - clear - slider));
     if (_focusSearch) {
         ImGui::SetKeyboardFocusHere();
         _focusSearch = false;
@@ -371,6 +373,14 @@ void AssetsPanel::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions&
         ImGui::SameLine();
         if (ToolIconButton("clear-search", ICON_FA_XMARK, "Clear search")) _search.fill('\0');
     }
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(sliderWidth);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ToolPalette::Panel);
+    const auto tileFill = EditorTintSurface(ToolPalette::Control, ToolPalette::Accent, 0.38f);
+    const auto tileHover = EditorTintSurface(ToolPalette::Hover, ToolPalette::AccentHover, 0.48f);
+    (void)ToolSlider("##tile-size", _tileSize, MinTileSize, MaxTileSize, "", tileFill, tileHover);
+    ImGui::PopStyleColor();
+    ToolTooltip("Tile size (Ctrl+wheel over the grid)");
 }
 
 void AssetsPanel::TreeNode(const AssetNode& node, int depth, const EditorSnapshot& snapshot,
@@ -560,16 +570,8 @@ void AssetsPanel::Grid(const EditorSnapshot& snapshot, const EditorUiActions& ac
 }
 
 void AssetsPanel::Footer() {
-    const float scale = ToolUiScale();
     ImGui::AlignTextToFramePadding();
     ImGui::TextDisabled("%s", std::format("{} {}", _tileIndex, _tileIndex == 1 ? "item" : "items").c_str());
-    ImGui::SameLine(ImGui::GetContentRegionMax().x - SizeSliderWidth * scale);
-    ImGui::SetNextItemWidth(SizeSliderWidth * scale);
-    // The grid's surface is as dark as a field; a lighter well shows the slider's whole length.
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ToolPalette::Panel);
-    (void)ToolSlider("##tile-size", _tileSize, MinTileSize, MaxTileSize, "");
-    ImGui::PopStyleColor();
-    ToolTooltip("Tile size (Ctrl+wheel over the grid)");
 }
 
 void AssetsPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions) {

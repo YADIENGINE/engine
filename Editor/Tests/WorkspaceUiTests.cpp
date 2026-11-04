@@ -331,6 +331,66 @@ TEST_CASE("Editor.Catalog.CategoryIsOneGroupWhateverItsEntriesOrders", "[engine-
     CHECK(text.find("Shared") < text.find("Middle"));
 }
 
+TEST_CASE("Editor.Catalog.FavoriteControlOwnsItsClick", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {800, 600};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    SceneDefinition scene;
+    scene.id = "myproject.scene";
+    scene.name = "Scene";
+    scene.category = "General";
+    const std::vector catalog{scene};
+    const SceneParameters parameters;
+    const EditorDiagnostics diagnostics;
+    const std::string status;
+    EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};
+    snapshot.selected = &catalog.front();
+    CatalogPanel panel;
+    EditorPreferences preferences;
+    bool opened = false;
+    EditorUiActions actions;
+    actions.select = [&](const std::string&) { opened = true; };
+    actions.command = [&](EditorCommand) { opened = true; };
+    ImGuiWindow* entries = nullptr;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({20, 20});
+        ImGui::SetNextWindowSize({400, 500});
+        ImGui::Begin("Project");
+        panel.Draw(snapshot, actions, preferences);
+        auto* project = ImGui::GetCurrentWindow();
+        for (auto* child : project->DC.ChildWindows)
+            if (child->ChildId == project->GetID("catalog-entries")) entries = child;
+        const float scale = ToolUiScale();
+        const float starSize = ImGui::GetTextLineHeight() + 4 * scale;
+        const ImVec2 star{entries->WorkRect.Max.x - ToolMetrics::Space * scale - starSize * 0.5f,
+                          entries->DC.CursorPos.y - scale - starSize * 0.5f};
+        ImGui::End();
+        ImGui::Render();
+        return star;
+    };
+    const auto star = frame();
+    REQUIRE(entries);
+    io.AddMousePosEvent(star.x, star.y);
+    (void)frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    (void)frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    (void)frame();
+    CHECK(preferences.IsFavorite(scene.id));
+    CHECK_FALSE(opened);
+}
+
 TEST_CASE("Editor.Widgets.RepeatedChoiceNamesDoNotConflict", "[engine-editor]") {
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
                                                                                   ImGui::DestroyContext);

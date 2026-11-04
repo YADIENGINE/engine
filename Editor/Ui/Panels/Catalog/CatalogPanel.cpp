@@ -68,10 +68,12 @@ void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& sna
     const bool favorite = preferences.IsFavorite(entry.id);
     const bool selected = snapshot.selected && snapshot.selected->id == entry.id;
     const bool enabled = !snapshot.busy || (selected && snapshot.capabilities.Can(EditorCommand::Open));
+    const float starInset = ToolMetrics::Space * ToolUiScale();
     const float starWidth = ImGui::GetFrameHeight();
+    const float rowWidth = ImGui::GetContentRegionAvail().x;
     ImGui::BeginDisabled(!enabled);
-    const bool clicked =
-        ToolWrappedSelectable(entry.name.c_str(), selected, ImGuiSelectableFlags_AllowOverlap, starWidth);
+    const bool clicked = ToolWrappedSelectable(entry.name.c_str(), selected, ImGuiSelectableFlags_None,
+                                               starWidth + starInset);
     ToolTooltip(entry.description.c_str());
     if (selected && _reveal && !ImGui::IsItemVisible()) ImGui::SetScrollHereY(0.5f);
     if (enabled && clicked) {
@@ -79,21 +81,26 @@ void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& sna
         actions.command(EditorCommand::Open);
     }
     ImGui::EndDisabled();
-    // The star stays out of the way until the row is hovered; a favorite always shows it.
+    // The button remains submitted through mouse-down/release; only its icon hides when the row is idle.
     const auto rowStart = ImGui::GetItemRectMin();
-    const auto rowEnd = ImGui::GetItemRectMax();
+    const auto selectableEnd = ImGui::GetItemRectMax();
+    const auto rowEnd = ImVec2{rowStart.x + rowWidth, ImGui::GetItemRectMax().y};
     const bool hovered = ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(rowStart, rowEnd);
-    if (favorite || hovered) {
-        const auto after = ImGui::GetCursorScreenPos();
-        ImGui::SetCursorScreenPos({rowEnd.x - starWidth, rowStart.y + (rowEnd.y - rowStart.y - starWidth) * 0.5f});
-        ImGui::PushStyleColor(ImGuiCol_Text, favorite ? ToolPalette::Accent : ToolPalette::Muted);
-        if (EditorIconButton("favorite", EditorGlyph::Star, favorite ? "Remove favorite" : "Add favorite"))
-            preferences.ToggleFavorite(entry.id);
-        ImGui::PopStyleColor();
-        // Dummy clears ImGui's pending SetCursorPos state; starting one spacing above preserves `after`.
-        ImGui::SetCursorScreenPos({after.x, after.y - ImGui::GetStyle().ItemSpacing.y});
-        ImGui::Dummy({0, 0});
-    }
+    if (selected || hovered)
+        ImGui::GetWindowDrawList()->AddRectFilled({selectableEnd.x, rowStart.y}, rowEnd,
+                                                  ImGui::GetColorU32(selected ? ImGuiCol_Header
+                                                                             : ImGuiCol_HeaderHovered));
+    const auto after = ImGui::GetCursorScreenPos();
+    ImGui::SetCursorScreenPos(
+        {rowEnd.x - starWidth - starInset, rowStart.y + (rowEnd.y - rowStart.y - starWidth) * 0.5f});
+    ImGui::PushStyleColor(ImGuiCol_Text,
+                          favorite ? ToolPalette::Accent : hovered ? ToolPalette::Muted : ImVec4{0, 0, 0, 0});
+    if (EditorIconButton("favorite", EditorGlyph::Star, favorite ? "Remove favorite" : "Add favorite"))
+        preferences.ToggleFavorite(entry.id);
+    ImGui::PopStyleColor();
+    // Dummy clears ImGui's pending SetCursorPos state; starting one spacing above preserves `after`.
+    ImGui::SetCursorScreenPos({after.x, after.y - ImGui::GetStyle().ItemSpacing.y});
+    ImGui::Dummy({0, 0});
     ImGui::PopID();
 }
 void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
