@@ -156,7 +156,7 @@ draw text with the game's font:
 | `Graphics/Draw/BackgroundDraw.h` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `DrawBackdrop*` with `BackdropStyle` |
 | `Graphics/Backgrounds/Backdrops.h` | Theme background roles: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
 | `Graphics/DefaultIcons.h` | Shared icon set in its own colors: `DrawIcon(paint, Icon::Star, center, size)`; override with `{.color = gold}` |
-| `Graphics/Input/KeyPrompts.h` | Keyboard keys, WASD and arrow sets, mouse buttons for control hints: `DrawKeyPrompt(paint, box, KeyPrompt::Space)`. Labels are strokes, so a game needs no font; `KeyPromptAspect` lays out a row |
+| `Graphics/KeyPrompts.h` | Keyboard keys, WASD and arrow sets, mouse buttons for control hints: `DrawKeyPrompt(paint, box, KeyPrompt::Space)`. Labels are strokes, so a game needs no font; `KeyPromptAspect` lays out a row |
 | `Fx/*` | Effects (particles, floating text, rings, shockwaves, overlays, cameras, `FxStage`): [Effects](Effects.md) |
 
 A camera's view is `Camera/CameraView.h` (`offset`, `target`, `rotation` in radians, `zoom`, `viewport`; `Transform()`,

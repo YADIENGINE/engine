@@ -1,4 +1,4 @@
-#include "Graphics/Input/KeyPrompts.h"
+#include "Graphics/KeyPrompts.h"
 #include <algorithm>
 #include <array>
 #include <span>

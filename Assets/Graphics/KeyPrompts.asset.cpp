@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 #include "Editor/Api/GraphicAsset.h"
-#include "Graphics/Input/KeyPrompts.h"
+#include "Graphics/KeyPrompts.h"
 
 namespace {
 constexpr float PressRate = 3.0f; // The preview keeps pressing the key, to show 'pressed'

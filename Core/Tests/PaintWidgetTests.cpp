@@ -7,7 +7,7 @@
 #include "Graphics/Draw/DrawUtils.h"
 #include "Graphics/Draw/Neon.h"
 #include "Graphics/DefaultIcons.h"
-#include "Graphics/Input/KeyPrompts.h"
+#include "Graphics/KeyPrompts.h"
 #include "Graphics/Paint/Path.h"
 #include "Graphics/Text/FontFace.h"
 #include "Graphics/Text/TextStyle.h"
