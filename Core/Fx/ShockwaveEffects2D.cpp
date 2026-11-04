@@ -1,7 +1,7 @@
 #include "Fx/ShockwaveEffects2D.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 #include "Graphics/Paint/Painter.h"
 
 ShockwaveEffects2D::ShockwaveEffects2D(const ShockwaveStyle& style)

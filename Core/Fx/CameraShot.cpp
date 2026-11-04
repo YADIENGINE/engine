@@ -1,6 +1,6 @@
 #include "Fx/CameraShot.h"
 #include <algorithm>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 #include "Utilities/MathUtils.h"
 
 CameraShot FrameCameraShot(const FloatRect& bounds, const CameraFraming& framing) {

@@ -55,7 +55,9 @@ class RequestTests(unittest.TestCase):
         self.assertEqual(request("step", "5"), {"command": "step", "frames": 5})
         self.assertEqual(request("step", "5", "--sim"), {"command": "step", "frames": 5, "sim": True})
         self.assertEqual(request("seek", "--step", "1200"), {"command": "seek", "step": 1200})
-        for argv in (("seek",), ("seek", "1.5", "--step", "3")):
+        self.assertEqual(request("seek", "--moment", "boss"), {"command": "seek", "moment": "boss"})
+        for argv in (("seek",), ("seek", "1.5", "--step", "3"), ("seek", "1.5", "--moment", "boss"),
+                     ("seek", "--step", "3", "--moment", "boss")):
             with self.subTest(argv=argv), self.assertRaises(ToolError):
                 request(*argv)
         grid = request("frames", "--from", "100", "--to", "400", "--steps")

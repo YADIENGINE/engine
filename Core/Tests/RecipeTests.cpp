@@ -2,6 +2,7 @@
 #include "AgentDocs/Recipes/Code/AnimatedCharacter.h"
 #include "AgentDocs/Recipes/Code/CharacterScene.h"
 #include "AgentDocs/Recipes/Code/CollisionBullets.h"
+#include "AgentDocs/Recipes/Code/TimelineBoss.h"
 #include "AgentDocs/Recipes/Code/FxBurst.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
@@ -82,6 +83,42 @@ TEST_CASE("Engine.Recipes.CollisionBulletsReplayAndDraw", "[engine][recipes]") {
     DrawRecipeShooter(harness.paint, simulation, true);
     harness.End();
     CHECK_FALSE(harness.Draws().empty());
+}
+
+TEST_CASE("Engine.Recipes.TimelineBossReplaysAndDraws", "[engine][recipes]") {
+    const auto definition = RecipeBossDefinition();
+    Scenario scenario(definition, {.seed = 1, .players = 1});
+    const auto& simulation = dynamic_cast<const RecipeBossSimulation&>(scenario.Sim());
+    scenario.Run(120);
+    CHECK_FALSE(simulation.BossIn());
+    scenario.Run(1);
+    CHECK(simulation.BossIn());
+    CHECK(simulation.Charge(1.0f) == 0.0f);
+    scenario.Run(44);
+    CHECK(simulation.Shots() == 0);
+    CHECK(simulation.Charge(1.0f) > 0.9f);
+    scenario.Run(1);
+    CHECK(simulation.Shots() == 1); // The step whose clock is 45 meets "fire"
+    scenario.Run(90);
+    CHECK(simulation.Shots() == 2);
+    CHECK_FALSE(VerifyTape(definition, scenario.Tape()).mismatch);
+
+    PaintHarness harness;
+    harness.Begin();
+    DrawRecipeBoss(harness.paint, simulation, 0.5f);
+    harness.End();
+    CHECK_FALSE(harness.Draws().empty());
+}
+
+TEST_CASE("Engine.Recipes.TimelineScenarioInTheRecipePasses", "[engine][recipes]") {
+    SimulationRegistry registry;
+    registry.Add(RecipeBossDefinition());
+    const auto script = JsonIO::Parse(R"json({ "simulation": "myproject.boss", "seed": 1, "script": [
+  { "expect": { "phase": "intro", "shots": 0 } },
+  { "run": 120 }, { "expect": { "phase": "boss", "bossStart": -1 } },
+  { "run": 46 }, { "expect": { "bossStart": 120, "attackPhase": "fire", "shots": 1 } } ] })json");
+    const auto result = RunScenarioScript(registry, script);
+    CHECK(result.passed);
 }
 
 TEST_CASE("Engine.Recipes.CollisionScenarioInTheRecipePasses", "[engine][recipes]") {

@@ -25,7 +25,7 @@ public:
     [[nodiscard]] bool Load(const std::filesystem::path& file);
     [[nodiscard]] bool Save(const std::filesystem::path& file);
     void SetLastError(std::string text) { _lastError = std::move(text); }
-    // {"step", "stepsPerSecond", "tapeSteps", "replay", optional "mismatch" and "error"}; null without a simulation.
+    // {"step", "stepsPerSecond", "tapeSteps", "replay", optional "moments", "mismatch" and "error"}; null without a simulation.
     [[nodiscard]] nlohmann::json State() const;
 
 private:

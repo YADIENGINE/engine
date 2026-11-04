@@ -1,9 +1,9 @@
 #include <catch2/catch_approx.hpp>
 #include "Tests/Support/Diagnostics.h"
 #include <stdexcept>
-#include "Graphics/Anim/AnimatedCounter.h"
-#include "Graphics/Anim/ButtonAnim.h"
-#include "Fx/FxQuality.h"
+#include "Animation/AnimatedCounter.h"
+#include "Animation/ButtonAnim.h"
+#include "Animation/SpringPoint.h"
 
 TEST_CASE("Engine.ButtonAnim.DefaultsAndNonpositiveTime", "[engine][graphics]") {
     ButtonAnim button;
@@ -81,20 +81,15 @@ TEST_CASE("Engine.AnimatedCounter.IncreasesDecreasesAndClears", "[engine][animat
     CHECK(counter.Target() == 0);
     CHECK(counter.Punch() == 0.0f);
 }
-TEST_CASE("Engine.FxQuality.ScalesParticlesAndShake", "[engine][graphics]") {
-    const FxQuality defaults;
-    CHECK(defaults.ParticleCount(40) == 40);
-    CHECK(defaults.ShakeScale() == 1.0f);
-
-    const FxQuality reduced{.particlePercent = 50, .shake = EffectLevel::Reduced};
-    CHECK(reduced.ParticleCount(40) == 20);
-    CHECK(reduced.ParticleCount(1) == 1); // A one-particle trail does not vanish
-    CHECK(reduced.ParticleCount(0) == 0);
-    CHECK(reduced.ShakeScale() > 0.0f);
-    CHECK(reduced.ShakeScale() < 1.0f);
-
-    const FxQuality beyond{.particlePercent = 250, .shake = EffectLevel::Off};
-    CHECK(beyond.ParticleCount(40) == 40); // Clamped to 100%
-    CHECK(beyond.ShakeScale() == 0.0f);
-    CHECK(FxQuality{.particlePercent = 0}.ParticleCount(40) == 0);
+TEST_CASE("Engine.SpringPoint.FollowsAndClampsLongFrames", "[engine][animation]") {
+    SpringPoint point;
+    point.Snap({10.0f, 20.0f});
+    CHECK(point.position.x == 10.0f);
+    CHECK(point.velocity.y == 0.0f);
+    SpringPoint clamped = point;
+    SpringPoint stalled = point;
+    clamped.Follow({100.0f, 20.0f}, 0.1f, 40.0f, 8.0f, 0.1f);
+    stalled.Follow({100.0f, 20.0f}, 5.0f, 40.0f, 8.0f, 0.1f); // A stall moves it no further than the longest step
+    CHECK(clamped.position.x > 10.0f);
+    CHECK(stalled.position.x == clamped.position.x);
 }

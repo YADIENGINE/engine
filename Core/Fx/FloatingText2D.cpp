@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 
 void FloatingText2D::Emit(Float2 position, const std::string& text, Color4 color, const FloatingTextStyle& style) {
     if (!std::isfinite(style.duration) || style.duration <= 0.0f || !std::isfinite(style.fadeSeconds) ||

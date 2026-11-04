@@ -1,6 +1,6 @@
 // [recipe:AnimatedCharacter-header]
 #pragma once
-#include "Graphics/Anim/SpringPoint.h"
+#include "Animation/SpringPoint.h"
 
 class Painter;
 

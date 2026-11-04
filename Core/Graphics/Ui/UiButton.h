@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/Anim/ButtonAnim.h"
+#include "Animation/ButtonAnim.h"
 #include "Graphics/Draw/Neon.h"
 
 // Selection spring, press and rejection shake using the theme's button animation (CurrentTheme().ui.buttonAnimation).

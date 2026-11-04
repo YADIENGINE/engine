@@ -5,7 +5,7 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 #include "Graphics/Text/TextStyle.h"
 #include "Utilities/DevelopmentChecks.h"
 #include "Utilities/Float2.h"

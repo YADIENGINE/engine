@@ -930,6 +930,59 @@ before the surface (0.005 units).
 grids, rigid-body dynamics, a fatter tree margin or a grid if measurements ask for one, and a collider overlay switch in the
 editor.
 
+### D28. Animation: curves and timelines
+Status: implemented (2026-11-04). Usage: [Animation](../Animation.md).
+
+**Decision:** own code, in `Core/Animation`, with no third-party library. `Timeline.h` holds named moments as constant data, and
+`Easing.h` moved here from `Graphics/Anim` with wider curves. Neither has a clock: the caller owns the time. A tween is not an
+object: it is a position, a curve and `Mix`. `Graphics/Anim` is gone: `Graphics` draws, `Animation` computes values over time.
+
+**Library survey (2026-11-04):** Tweeny 4 (MIT, header-only, rewritten in August 2026) is the only serious candidate and came
+closer than expected, because its durations are whole frames and `peek(frame)` is const. It was still rejected: no named moments, so
+the timeline would have to be written anyway; events are callbacks stored in the object, which a state hash cannot read; `seek` and
+`step` need a stored position; its positions are frames only, while views here run on float seconds. Choreograph (BSD-2, last pushed
+in 2023) is stateful and looks unmaintained. The others are a few curves, or tied to Unreal or ImGui. What a library would save is a
+few short, well-known formulas.
+
+**Decided (2026-11-04):**
+1. *`Core/Animation`, not `Modules/` or `Graphics/`.* `check` refuses `Graphics/` inside a simulation, so curves could not stay
+   there. The engine core uses curves in 14 files, and a module may not sit under the core; the one existing exception stays the
+   only one. Timelines and curves are used together, so they stay together. It is headers only, depending on `Utilities`, so it has
+   no target; `Simulation/TimelineMoments.h` is what connects it to a run.
+2. *Positions in steps inside a simulation.* `StepTimeline` has `int` positions, compared exactly. `SecondsTimeline` is for views, on
+   ordinary time. Both are one template, and a simulation cannot mistake one for the other by writing `1.5`. `StepsIn` lets an author
+   think in seconds, rounding once.
+3. *Tweens in both places.* A pure function has no home to choose: the rules may read a curve to decide, and a view reads the same
+   timeline between steps. Only the clock is state, and it belongs to whoever owns it.
+4. *`before <= at < after`.* With a clock from 0, one call per step meets every moment once, including a moment at 0, with no -1
+   start. The older `Crossed` counts `before < moment <= after`; it was left alone because views use it on single moments.
+5. *Names, not ids.* Agents read and write names, and tools need them. Unknown names throw in every configuration. A misspelled
+   comparison inside `ForEachCrossed` cannot throw, which is the known cost; a scenario shows it.
+6. *`SpringPoint`, `AnimatedCounter` and `ButtonAnim` moved too.* None of them draws, so they had no reason to be in `Graphics`.
+   `ButtonAnim` could not go to `Graphics/Ui`, because `Draw/Neon.h` reads its state and `Ui` depends on `Draw`. Their two `.cpp` files
+   became headers: left in `EngineHeadless`, a simulation could include them and then fail to link. They stay for views, because they
+   keep private state that `State` cannot reach.
+7. *`Simulation::Moments`, for tools only.* The answer can depend on the run, so `ctl seek --moment` resolves the name in the
+   editor from the current status and then seeks by step, with no new worker message. The field is added to the status without
+   raising the worker protocol or `toolsContract`, as with the other status additions.
+
+**Measured (2026-11-04, MSVC 19.44, x64, one machine):** a simulation feeding all 22 curves, sampled over their whole range for 700
+steps, into its hash: a tape recorded in Debug verifies in Release at every step, and two runs agree. Through a new project from the
+template, the recipe's rules passed a scenario and a Debug tape verified in Release. Cost in Release of `Wrap`, `ForEachCrossed` and
+an eased `Progress` together, asking for the last name:
+
+| Moments | Each | 5,000 per step |
+| --- | --- | --- |
+| 4 | 18 ns | 0.09 ms |
+| 8 | 30 ns | 0.16 ms |
+| 32 | 76 ns | 0.38 ms |
+
+**Costs:** the include paths of `Easing.h` and the three helpers changed. Curves are inline, so a game built with `/fp:fast` could lend a simulation another
+copy of one; `StepSmoothed` already has this limit, and it was reasoned, not measured.
+
+**Deferred:** multi-point value tracks (several values over several moments), a curve enum for text data, a scenario operation
+that runs to a moment, and listing a repeating timeline's later cycles.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

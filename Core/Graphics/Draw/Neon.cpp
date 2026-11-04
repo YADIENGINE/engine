@@ -1,7 +1,7 @@
 #include "Graphics/Draw/Neon.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Text/FontFace.h"
 #include "Graphics/Text/TextStyle.h"

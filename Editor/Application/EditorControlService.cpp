@@ -104,6 +104,19 @@ std::uint64_t StepNumber(const nlohmann::json& arguments, const char* key, doubl
             std::format("\"{}\" must be a whole number from {} to {}", key, minimum, MaxSeekSteps));
     return static_cast<std::uint64_t>(value);
 }
+// The step of a moment the open simulation names now; a refusal lists the names it does know.
+double MomentStep(const EditorController& controller, const std::string& name) {
+    const auto& state = controller.SimulationState();
+    const auto moments = state.find("moments");
+    if (moments != state.end()) {
+        if (const auto found = moments->find(name); found != moments->end()) return found->get<double>();
+        std::string known;
+        for (const auto& [moment, step] : moments->items())
+            known += (known.empty() ? "" : ", ") + moment;
+        throw std::runtime_error(std::format("The simulation names no moment \"{}\" at this step; it knows: {}", name, known));
+    }
+    throw std::runtime_error("The simulation names no moments; it can list them in Simulation::Moments");
+}
 const SceneDefinition& Selected(const EditorSnapshot& snapshot) {
     if (!snapshot.selected) throw std::runtime_error("No scene is selected; open one first");
     return *snapshot.selected;
@@ -370,9 +383,13 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
     }
     case EditorControlCommand::Seek: {
         RequireReady(snapshot);
-        if (arguments.contains("step")) {
+        if (arguments.contains("step") || arguments.contains("moment")) {
             RequireSimulation(controller);
-            const auto step = StepNumber(arguments, "step", 0.0);
+            const auto step = StepNumber(
+                arguments.contains("moment")
+                    ? nlohmann::json{{"step", MomentStep(controller, Text(arguments, "moment"))}}
+                    : arguments,
+                "step", 0.0);
             controller.SeekStep(step);
             controller.Notify(std::format("Seek step {}", step));
             const auto travel = std::max(step, controller.SimulationState().at("step").get<std::uint64_t>());

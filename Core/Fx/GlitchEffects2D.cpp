@@ -1,7 +1,7 @@
 #include "Fx/GlitchEffects2D.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 #include "Graphics/Paint/Painter.h"
 #include "Utilities/MathUtils.h"
 

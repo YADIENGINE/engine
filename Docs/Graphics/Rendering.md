@@ -28,7 +28,7 @@ order. `paint.Clip(area)` intersects the current clip; rotated clips are rejecte
 | Header | Purpose |
 | --- | --- |
 | `Utilities/Float2.h`, `FloatRect.h`, `Affine2.h`, `Color4.h` | Continuous geometry, transformations and colors |
-| `Graphics/Anim/Easing.h` | Curves, `Progress01`, `Since`, `Staggered`, `Crossed`, `CountDown` |
+| `Animation/Easing.h` | Curves, `Progress01`, `Since`, `Staggered`, `Crossed`, `CountDown` ([Animation](../Animation.md)) |
 | `Utilities/MathUtils.h` | Constants, hashes, scalar interpolation and index helpers |
 | `Utilities/UiTransform.h` | Centered aspect-preserving design-to-panel mapping and inverse input mapping |
 

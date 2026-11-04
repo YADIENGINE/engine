@@ -1,6 +1,7 @@
 #include "Editor/Internals/Session/WorkerSimulation.h"
 #include <exception>
 #include <utility>
+#include "Simulation/Simulation.h"
 
 SimulationStart WorkerSimulation::StartFor(const SimulationSettings& settings, SimulationStart fallback) {
     if (_loadedStart && _loadedStart->players <= settings.maxPlayers) return *_loadedStart;
@@ -78,6 +79,11 @@ nlohmann::json WorkerSimulation::State() const {
                          {"stepsPerSecond", _runner->Settings().stepsPerSecond},
                          {"tapeSteps", _runner->Tape().steps},
                          {"replay", _runner->Replaying() ? "playing" : "live"}};
+    if (const auto moments = _runner->Sim().Moments(); !moments.empty()) {
+        auto& named = state["moments"] = nlohmann::json::object();
+        for (const auto& moment : moments)
+            named[moment.name] = moment.step;
+    }
     if (const auto& mismatch = _runner->Mismatch()) {
         state["mismatch"] = {
             {"firstMismatch", mismatch->firstMismatch},

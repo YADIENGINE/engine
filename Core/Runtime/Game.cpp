@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
+#include "Animation/Easing.h"
 #include "Platform/Internals/ApplicationFiles.h"
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Render/Internals/Renderer.h"
@@ -15,7 +16,6 @@
 #include "Runtime/Internals/StartupTimer.h"
 #include "Input/Internals/InputNormalizer.h"
 #include "Input/Internals/InputReader.h"
-#include "Graphics/Anim/Easing.h"
 #include "Graphics/Text/TextStyle.h"
 #include "Graphics/Style/Theme.h"
 #include "Tuning/TuningLive.h"

@@ -3,7 +3,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <utility>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 #include "Graphics/Paint/Painter.h"
 
 namespace {

@@ -31,10 +31,11 @@ Changed rules or tuning also make a tape differ, and then the mismatch is expect
 
 Everything that decides gameplay comes from `SimulationStart` or the steps. No drawing, audio, clocks or `<random>`; own an
 `Rng` from `start.seed`; name every deciding field in `State`, the `Rng` included. `python Engine check` reports forbidden
-includes. Add new state to `State` in the same change. Collision inside the rules: `AgentDocs/Skills/collision/SKILL.md`.
+includes. Add new state to `State` in the same change. Collision inside the rules: `AgentDocs/Skills/collision/SKILL.md`. Timing inside the rules:
+`AgentDocs/Skills/timeline/SKILL.md`.
 
 ## In the editor
 
-Open scenes with a simulation work in exact steps: `python Engine ctl seek --step N`, `ctl step --sim N`, `ctl frames
+Open scenes with a simulation work in exact steps: `python Engine ctl seek --step N` or `--moment NAME`, `ctl step --sim N`, `ctl frames
 --steps --from A --to B`. `ctl replay load FILE` plays a tape in the open scene, so a failing scenario can be watched.
 Prefer steps to seconds there: hitstop makes seconds and steps drift apart.

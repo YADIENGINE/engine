@@ -7,11 +7,12 @@
 | `Core/` | Shipping engine code and include root (`Runtime/Game.h`); targets in `Core/CMakeLists.txt` |
 | `Core/Runtime/` | Game, settings, loop and services; `Core/Main.cpp` calls the project's `CreateGame()` |
 | `Core/GameObjects/`, `Core/Scene/` | Headless object/scene lifecycle and optional object ownership |
-| `Core/Graphics/` | Paint, Text, Surface, Post; GPU/render implementation; Draw, Icons, Ui, Style, Anim helpers |
+| `Core/Graphics/` | Paint, Text, Surface, Post; GPU/render implementation; Draw, Icons, Ui, Style helpers |
 | `Core/Input/`, `Core/Audio/`, `Core/Platform/` | Public services and private platform backends |
 | `Core/Fx/`, `Core/Menus/`, `Core/Gameplay/`, `Core/Progress/`, `Core/Utilities/` | Headless effects and reusable logic/value types |
 | `Core/Options/` | Engine/player options, backed by Persistence |
 | `Core/Tuning/` | Tuning format, live values (`ENGINE_TUNING_LIVE`), `Tuning<T>()` |
+| `Core/Animation/` | Values over time: curves and timelines for simulations and views, small helpers for views. Headers only, with no target of their own; nothing here draws |
 | `Core/Physics/` | Collision over Box2D (`EnginePhysics`); Box2D stays behind `Internals/`. `Debug/` draws and belongs to `EngineHeadless` |
 | `Core/Modules/` | Opt-in systems; each module owns its facade, internals and tests |
 | `Core/Tests/` | Core tests and shared `Support/` (temporary directories, diagnostics, gzip inflater) |

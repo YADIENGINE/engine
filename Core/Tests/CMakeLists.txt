@@ -36,7 +36,6 @@ engine_tests(EngineTests
         FrameworkTests.cpp
         FxTests.cpp
         GameOptionsTests.cpp
-        GraphicsAnimationTests.cpp
         GridMenuTests.cpp
         GridViewportTests.cpp
         InputTests.cpp
@@ -77,6 +76,9 @@ engine_tests(EnginePhysicsTests
 # also goes through the console tool, end to end.
 engine_tests(EngineSimulationTests
     SOURCES
+        Animation/AnimationHelpersTests.cpp
+        Animation/EasingTests.cpp
+        Animation/TimelineTests.cpp
         Simulation/CollisionReplayTests.cpp
         Simulation/ReplayCheckTests.cpp
         Simulation/RngTests.cpp
@@ -91,7 +93,10 @@ add_test(NAME Engine.SimulationTool
     COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyScenario.json")
 add_test(NAME Engine.SimulationToolCollision
     COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyCollisionScenario.json")
-set_tests_properties(Engine.SimulationTool Engine.SimulationToolCollision PROPERTIES LABELS engine TIMEOUT 30)
+add_test(NAME Engine.SimulationToolTimeline
+    COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyTimelineScenario.json")
+set_tests_properties(Engine.SimulationTool Engine.SimulationToolCollision Engine.SimulationToolTimeline
+    PROPERTIES LABELS engine TIMEOUT 30)
 
 # Compile all consumer examples, including runtime-only factories. The static archive lets the headless smoke
 # executable exercise public logic/drawing without pulling the runtime factory or opening a platform window.
@@ -109,6 +114,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/SceneGame.cpp"
     "${recipeRoot}/SceneTransition.cpp"
     "${recipeRoot}/SimulationPlay.cpp"
+    "${recipeRoot}/TimelineBoss.cpp"
     "${recipeRoot}/SpriteLayer.cpp"
     "${recipeRoot}/TextLayout.cpp"
     "${recipeRoot}/ThemedMenu.cpp"

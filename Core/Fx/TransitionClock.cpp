@@ -1,6 +1,6 @@
 #include "Fx/TransitionClock.h"
 #include <stdexcept>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 
 TransitionClock::TransitionClock(float closeSeconds, float holdSeconds, float openSeconds)
     : _closeSeconds(closeSeconds)

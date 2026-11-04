@@ -24,6 +24,7 @@ Use a simulation for a game's rules. Menus, transitions and effects stay ordinar
 | `Input/InputBindings.h` | Keys to per-player actions |
 | `Utilities/Rng.h`, `Utilities/WeightedPick.h` | Seeded random numbers, weighted choice |
 | `Physics/Collision/CollisionWorld.h` | Hits and overlaps inside the rules: [Collision](Collision.md) |
+| `Animation/Timeline.h`, `Animation/Easing.h` | Boss and wave timing, curves: [Animation](Animation.md) |
 | `Editor/Api/HostedSimulation.h` | A simulation an editor scene hosts |
 
 Worked example: [AgentDocs/Recipes/Simulation.md](../AgentDocs/Recipes/Simulation.md).
@@ -174,7 +175,8 @@ error (exit 2), not a failed check. C++ tests use `Scenario`, the same driver, w
 ## In the editor
 
 An editor scene keeps a `HostedSimulation<T>` built from `services.simulation`; the worker then records its tape across
-resets. The toolbar shows the step and whether a replay is playing, and Step advances one simulation step.
+resets. The toolbar shows the step and whether a replay is playing, and Step advances one simulation step. A simulation can
+name points of its run with `Moments`, for `ctl seek --moment` ([Animation](Animation.md#jumping-to-a-moment)).
 
 In a scene with a simulation the tape is the only record. Viewport input and `ctl action` both reach it: an action that
 changes gameplay calls `Runner().Command(...)`. An action that only changes the view should be a parameter, because

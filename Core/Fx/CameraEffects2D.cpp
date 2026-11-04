@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 
 CameraEffects2D::CameraEffects2D(const CameraEffectsSettings& settings)
     : _settings(settings) {

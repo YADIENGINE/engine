@@ -1,6 +1,6 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 #include "Utilities/MathUtils.h"
 #include "Utilities/Vec2.h"
 

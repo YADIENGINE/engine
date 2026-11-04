@@ -32,10 +32,9 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 
 | Folder | Contents | Depends on |
 | --- | --- | --- |
-| `Graphics/Anim` | `Easing`, `SpringPoint`, `AnimatedCounter`, `ButtonAnim` (headless) | `Utilities` |
 | `Graphics/Render` | `RenderStats`; `Internals/`: `Window`, `Renderer`, `RenderPipeline`, `FrameExecutor`, `RenderResources` | `Utilities` |
 | `Graphics/Paint`, `Text`, `Surface`, `Post`, `Gpu` | Drawing API, fonts, images, finishing and GPU backends | `Utilities`, private renderer services |
-| `Graphics/Draw` | Painter helpers (`DrawUtils.h`, `Neon.h`, `BackgroundDraw.h`, `ParticleDraw.h`) | `Paint`, `Anim` |
+| `Graphics/Draw` | Painter helpers (`DrawUtils.h`, `Neon.h`, `BackgroundDraw.h`, `ParticleDraw.h`) | `Paint`, `Animation` |
 | `Menus` | Menu/grid selection, scrolling and tile layout (`GridViewport`, float bounds and tile areas; integer pointer input) | `Utilities`, `Input` |
 | `Graphics/Icons` | Shared icon library: shape-named `Icon` + `DrawIcon` | `Draw` |
 | `Graphics/Style` | `Theme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
@@ -62,8 +61,10 @@ rather than in the game.
 - `GameObjects/`: GameObject and ObjectList; ordered lifecycle with reference registration or dynamic object ownership.
 - Dependency direction is Runtime → Scene → GameObjects; SceneManager, Scene, GameObject, and ObjectList are in
   EngineHeadless, while Game is in the raylib-based Engine target.
-- `Graphics/Anim`, basic geometry, and gameplay helpers are available headlessly.
-- `Graphics/Draw` → Render/Anim; Icons → Draw; Fx → Draw/Paint/Anim (headless); Style → Draw/Fx style types; Ui →
+- `Animation` computes values over time and `Graphics` draws. It stands outside `Graphics` so that a simulation can use it, and
+  depends only on `Utilities` ([Animation](Animation.md)).
+- `Animation`, basic geometry, and gameplay helpers are available headlessly.
+- `Graphics/Draw` → Render/Animation; Icons → Draw; Fx → Draw/Paint/Animation (headless); Style → Draw/Fx style types; Ui →
   Style/Draw. Only high-level Ui reads the theme.
 - Engine → Game, module → another module's Internals, and circular module dependencies are forbidden.
 - GL resource owners are created after the window is set up and destroyed before it closes. A resource-owning member is

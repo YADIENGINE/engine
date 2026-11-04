@@ -100,9 +100,13 @@ Use these generated signatures to locate public declarations; open the header fo
 
 ## `Core/Simulation/Simulation.h`
 
+- `struct SimulationMoment` — A named point of a run, for tools: `ctl seek --moment NAME`.
+- `SimulationMoment`: `std::string name`
+- `SimulationMoment`: `std::uint64_t step = 0`
 - `class Simulation` — A game's rules as plain state: no window, drawing, audio, clocks or global random generators.
 - `Simulation`: `virtual void Step(const SimulationStep& step) = 0`
 - `Simulation`: `virtual void State(StateVisitor& state) const = 0` — Names every field that decides later steps, a Rng included.
+- `Simulation`: `[[nodiscard]] virtual std::vector<SimulationMoment> Moments() const` — The named points known at this step, for tools to jump to; never read by the rules.
 
 ## `Core/Simulation/SimulationRegistry.h`
 
@@ -211,3 +215,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `StepSmoothed`: `constexpr void Snap(T value)`
 - `StepSmoothed`: `[[nodiscard]] constexpr const T& Current() const`
 - `StepSmoothed`: `[[nodiscard]] constexpr T At(float alpha) const`
+
+## `Core/Simulation/TimelineMoments.h`
+
+- `inline void AppendMoments(std::vector<SimulationMoment>& moments, const StepTimeline& timeline, std::uint64_t startStep = 0, const std::string& prefix = { })` — A timeline's moments for Simulation::Moments.

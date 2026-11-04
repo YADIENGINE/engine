@@ -148,8 +148,6 @@ add_library(EngineHeadless STATIC
     Fx/TransitionClock.cpp
     GameObjects/GameObject.cpp
     GameObjects/ObjectList.cpp
-    Graphics/Anim/AnimatedCounter.cpp
-    Graphics/Anim/ButtonAnim.cpp
     Graphics/Draw/BackgroundDraw.cpp
     Graphics/Draw/DrawUtils.cpp
     Menus/GridViewport.cpp
@@ -276,6 +274,7 @@ if(ENGINE_BUILD_TESTS OR ENGINE_BUILD_TOY_SIMULATION)
         Tests/Simulation/ToyCollision.cpp
         Tests/Simulation/ToyRegistry.cpp
         Tests/Simulation/ToySimulation.cpp
+        Tests/Simulation/ToyTimeline.cpp
     )
 endif()
 if(ENGINE_BUILD_TESTS)

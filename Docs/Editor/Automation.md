@@ -27,6 +27,7 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 | `reset` | Restarts the scene with its parameters, waits until it runs; status |
 | `seek SECONDS` | Pauses at that playback time (0–600); status. Going back replays from 0 with the current parameters and re-runs the actions taken since open / reset at their times (an action after a rewind replaces the later ones) |
 | `seek --step N` | Pauses at that simulation step; status. Going back replays the tape from step 0 with the current parameters and keeps what follows. Exit 1 on a scene without a simulation |
+| `seek --moment NAME` | The same at a [moment the simulation names](../Animation.md#jumping-to-a-moment); `status` lists them under `moments`. Exit 1 on an unknown name, with the names it knows |
 | `replay load FILE` | Plays a saved replay in the open scene from its first step, paused, with the replay's own start; status. Exit 1 when it is for another simulation, step rate or action list |
 | `replay save FILE` | Writes the open simulation's tape; status |
 | `screenshot [--window] [--out PATH] [--scale S] [--crop X Y W H]` | Writes the current frame as PNG; status + `path`, `width`, `height`. Crop is in canvas units, applied before scaling (0.05–4). `--window`: the whole editor window instead (panels included, no scene needed; crop in window pixels; also `window` size) |

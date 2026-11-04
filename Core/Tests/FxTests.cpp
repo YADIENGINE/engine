@@ -229,3 +229,20 @@ TEST_CASE("Engine.Fx.IrisCoversAccordingToItsProgress", "[engine][fx]") {
     closed.End();
     CHECK(closed.Draws().size() == 1); // A plain curtain over the whole area
 }
+TEST_CASE("Engine.FxQuality.ScalesParticlesAndShake", "[engine][graphics]") {
+    const FxQuality defaults;
+    CHECK(defaults.ParticleCount(40) == 40);
+    CHECK(defaults.ShakeScale() == 1.0f);
+
+    const FxQuality reduced{.particlePercent = 50, .shake = EffectLevel::Reduced};
+    CHECK(reduced.ParticleCount(40) == 20);
+    CHECK(reduced.ParticleCount(1) == 1); // A one-particle trail does not vanish
+    CHECK(reduced.ParticleCount(0) == 0);
+    CHECK(reduced.ShakeScale() > 0.0f);
+    CHECK(reduced.ShakeScale() < 1.0f);
+
+    const FxQuality beyond{.particlePercent = 250, .shake = EffectLevel::Off};
+    CHECK(beyond.ParticleCount(40) == 40); // Clamped to 100%
+    CHECK(beyond.ShakeScale() == 0.0f);
+    CHECK(FxQuality{.particlePercent = 0}.ParticleCount(40) == 0);
+}

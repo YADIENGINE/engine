@@ -1,13 +1,13 @@
 Draw a character from primitives and drive its pose with a spring.
 
-APIs: Core/Graphics/Paint/Painter.h, Core/Graphics/Paint/Path.h, Core/Graphics/Anim/SpringPoint.h.
+APIs: Core/Graphics/Paint/Painter.h, Core/Graphics/Paint/Path.h, Core/Animation/SpringPoint.h.
 
 Call Pose from Update with the chosen delta; call Draw from the production View. Keep decorative cycles on paint.Time().
 
 <!-- recipe:AnimatedCharacter-header -->
 ```cpp
 #pragma once
-#include "Graphics/Anim/SpringPoint.h"
+#include "Animation/SpringPoint.h"
 
 class Painter;
 
@@ -61,7 +61,7 @@ void RecipeCharacterView::Draw(Painter& paint) const {
 ```
 <!-- /recipe -->
 
-Pitfalls: Core/Graphics/Anim/SpringPoint.h is header-only; Follow clamps long frames. Do not retain Painter or a scope between calls.
+Pitfalls: Core/Animation/SpringPoint.h is header-only; Follow clamps long frames. Do not retain Painter or a scope between calls.
 
 Concept: `Docs/Graphics/Painter.md#shapes`.
 

@@ -1,6 +1,6 @@
 #pragma once
+#include "Animation/ButtonAnim.h"
 #include "Fx/FxStyle.h"
-#include "Graphics/Anim/ButtonAnim.h"
 #include "Graphics/Draw/BackgroundDraw.h"
 #include "Graphics/Draw/Neon.h"
 #include "Graphics/Style/ThemePalette.h"

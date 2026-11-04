@@ -1,7 +1,7 @@
 #include "Fx/FxStage.h"
 #include <algorithm>
 #include <cmath>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 #include "Graphics/Draw/BackgroundDraw.h"
 #include "Graphics/Paint/Painter.h"
 

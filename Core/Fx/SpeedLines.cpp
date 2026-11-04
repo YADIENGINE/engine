@@ -1,7 +1,7 @@
 #include "Fx/SpeedLines.h"
 #include <cmath>
 #include <stdexcept>
-#include "Graphics/Anim/Easing.h"
+#include "Animation/Easing.h"
 #include "Graphics/Paint/Painter.h"
 #include "Utilities/MathUtils.h"
 

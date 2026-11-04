@@ -1,6 +1,6 @@
 #pragma once
 #include <string_view>
-#include "Graphics/Anim/ButtonAnim.h"
+#include "Animation/ButtonAnim.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Float2.h"
 #include "Utilities/FloatRect.h"

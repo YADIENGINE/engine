@@ -7,6 +7,7 @@
 #include "Simulation/SimulationRunner.h"
 #include "Simulation/StateHash.h"
 #include "Tests/Simulation/ToySimulation.h"
+#include "Tests/Simulation/ToyTimeline.h"
 #include "Tests/Support/TempDirectory.h"
 
 namespace {
@@ -157,4 +158,21 @@ TEST_CASE("Editor.Simulation.WithoutAHostAHostedSimulationStillRuns", "[engine-e
     HostedSimulation<ToySimulation> hosted(nullptr, ToyDefinition().settings, SimulationStart{.seed = 1});
     hosted.Runner().RunTo(3);
     CHECK(hosted.Sim().Steps() == 3);
+}
+
+TEST_CASE("Editor.WorkerSimulation.StateNamesTheMoments", "[editor][simulation]") {
+    WorkerSimulation worker;
+    {
+        HostedSimulation<ToySimulation> plain(&worker, ToyDefinition().settings, SimulationStart{.seed = 1, .players = 2});
+        CHECK_FALSE(worker.State().contains("moments")); // A simulation that names nothing adds nothing
+    }
+    HostedSimulation<ToyTimelineSimulation> hosted(&worker, ToyTimelineDefinition().settings,
+                                                   SimulationStart{.seed = 1, .players = 1});
+    auto state = worker.State();
+    REQUIRE(state.contains("moments"));
+    CHECK(state.at("moments").at("boss").get<std::uint64_t>() == 180);
+    CHECK_FALSE(state.at("moments").contains("attack.fire"));
+    hosted.Runner().RunTo(181);
+    state = worker.State();
+    CHECK(state.at("moments").at("attack.fire").get<std::uint64_t>() == 210);
 }

@@ -65,9 +65,10 @@ def add_parser(commands) -> None:
     actions.add_parser("speed", help="playback speed (0.1-4)").add_argument("speed", type=float)
     actions.add_parser("reset", help="restart the open scene with its parameters")
     action = actions.add_parser("seek", help="pause at a playback time in seconds, or at a simulation step with --step "
-                                "(replays from 0 to go back)")
+                                "or --moment (replays from 0 to go back)")
     action.add_argument("seconds", type=float, nargs="?")
     action.add_argument("--step", type=int, metavar="N", help="the simulation step to pause at")
+    action.add_argument("--moment", metavar="NAME", help="the named moment to pause at; `ctl status` lists them")
     replay = actions.add_parser("replay", help="load or save the open simulation's replay")
     replay.add_argument("replay_action", choices=("load", "save"), metavar="load|save")
     replay.add_argument("file", metavar="FILE")
@@ -289,10 +290,12 @@ def request_of(args: argparse.Namespace) -> dict:
         case "speed":
             request["speed"] = args.speed
         case "seek":
-            if (args.seconds is None) == (args.step is None):
-                raise ToolError("seek needs SECONDS or --step N")
+            if sum(value is not None for value in (args.seconds, args.step, args.moment)) != 1:
+                raise ToolError("seek needs one of SECONDS, --step N or --moment NAME")
             if args.step is not None:
                 request["step"] = args.step
+            elif args.moment is not None:
+                request["moment"] = args.moment
             else:
                 request["seconds"] = args.seconds
         case "replay":

@@ -36,7 +36,8 @@ class BoundaryTests(unittest.TestCase):
 
     def test_simulation_stays_away_from_drawing_clocks_and_standard_random(self):
         self.write("Game/Simulation/Rules.cpp", '#include "Simulation/Simulation.h"\n#include "Utilities/Rng.h"\n'
-                   '#include "Tuning/Tuning.h"\n#include "Simulation/Rules.h"\n#include <vector>\n')
+                   '#include "Tuning/Tuning.h"\n#include "Simulation/Rules.h"\n#include "Animation/Timeline.h"\n'
+                   '#include "Animation/Easing.h"\n#include <vector>\n')
         self.assertEqual(self.check(), [])
         for include in ('"Physics/Debug/ColliderDraw.h"', '"Graphics/Paint/Painter.h"', '"Audio/AudioSystem.h"', '"Fx/TimeScale.h"', "<random>", "<chrono>",
                         "<raylib.h>", '"Scene/Scene.h"'):

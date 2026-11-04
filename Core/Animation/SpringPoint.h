@@ -1,7 +1,7 @@
 #pragma once
 #include "Utilities/Float2.h"
 
-// 2D point approaching its target with a spring (e.g. menu cursors). Header-only.
+// 2D point approaching its target with a spring (e.g. menu cursors). For views, on seconds. Header-only.
 struct SpringPoint {
     Float2 position{};
     Float2 velocity{};

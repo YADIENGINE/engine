@@ -16,7 +16,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Configure canvas, window and assets | `Core/Runtime/GameSettings.h`<br>`Core/Graphics/Render/WindowSettings.h` | - | `Docs/AssetsAndPlatforms.md#gamesettings-reference` |
 | Add a scene or fade between scenes | `Core/Scene/Scene.h`<br>`Core/Fx/TransitionClock.h` | `Recipes/SceneTransition.md` | `Docs/Runtime.md#input-and-time-selection` |
 | Add, disable or remove a GameObject | `Core/GameObjects/GameObject.h`<br>`Core/GameObjects/ObjectList.h` | `Recipes/SceneObjects.md` | `Docs/Runtime.md#lifecycle` |
-| Draw an animated character or rotating shape | `Core/Graphics/Paint/Painter.h`<br>`Core/Graphics/Anim/SpringPoint.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Painter.md#shapes` |
+| Draw an animated character or rotating shape | `Core/Graphics/Paint/Painter.h`<br>`Core/Animation/SpringPoint.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Painter.md#shapes` |
 | Draw a curved outline or polygon | `Core/Graphics/Paint/Path.h`<br>`Core/Graphics/Paint/PaintStyle.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Painter.md#shapes` |
 | Clip, transform, fade or blend drawing | `Core/Graphics/Paint/Painter.h`<br>`Core/Utilities/Affine2.h` | `Recipes/SpriteLayer.md` | `Docs/Graphics/Painter.md#scopes` |
 | Fade a multi-shape sprite as one | `Core/Graphics/Paint/Painter.h` | `Recipes/SpriteLayer.md` | `Docs/Graphics/Painter.md#scopes` |
@@ -25,7 +25,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Add bloom or choose rendering quality | `Core/Graphics/Post/PostSettings.h`<br>`Core/Graphics/Post/RenderQuality.h`<br>`Core/Runtime/GraphicsSettings.h` | - | `Docs/Graphics/Painter.md#post-process-and-quality` |
 | Load fonts, measure, wrap or align text | `Core/Graphics/Text/FontFace.h`<br>`Core/Graphics/Text/TextStyle.h`<br>`Core/Graphics/Text/TextBlock.h` | `Recipes/TextLayout.md` | `Docs/Graphics/Text.md#drawing-and-layout` |
 | Choose colors or work with floating geometry | `Core/Utilities/Color4.h`<br>`Core/Utilities/Float2.h`<br>`Core/Utilities/FloatRect.h`<br>`Core/Utilities/FloatRange.h` | - | `Docs/Graphics/Painter.md#basic-types` |
-| Ease a pose or animate a counter | `Core/Graphics/Anim/Easing.h`<br>`Core/Graphics/Anim/SpringPoint.h`<br>`Core/Graphics/Anim/AnimatedCounter.h`<br>`Core/Graphics/Anim/ButtonAnim.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Rendering.md#geometry-and-timing` |
+| Ease a pose or animate a counter | `Core/Animation/Easing.h`<br>`Core/Animation/SpringPoint.h`<br>`Core/Animation/AnimatedCounter.h`<br>`Core/Animation/ButtonAnim.h` | `Recipes/AnimatedCharacter.md` | `Docs/Graphics/Rendering.md#geometry-and-timing` |
 | Convert coordinates or use math helpers | `Core/Utilities/MathUtils.h`<br>`Core/Utilities/UiTransform.h`<br>`Core/Utilities/Vec2.h`<br>`Core/Utilities/Rect.h` | - | `Docs/Graphics/Rendering.md#geometry-and-timing` |
 | Draw a new character, enemy, item or prop and list it in the Assets panel | `Editor/Api/GraphicAsset.h` | `Recipes/GraphicAsset.md` | `Docs/Editor/Api.md#graphic-assets` |
 | Draw a shared icon or add a new shape | `Core/Graphics/Icons/Icons.h` | `Recipes/IconShape.md` | `Docs/Graphics/Painter.md#helpers-and-theme` |
@@ -44,6 +44,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Bind keys to per-player actions | `Core/Input/InputBindings.h`<br>`Core/Simulation/PlayerInput.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#input-and-tapes` |
 | Test gameplay without a window (`sim run`), or check a replay (`sim verify`, `sim diverge`) | `Tools/commands/sim.py`<br>`Core/Simulation/Scenario.h`<br>`Core/Simulation/ReplayCheck.h`<br>`Core/Simulation/InputTape.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#scenarios` |
 | Test shapes against each other, find what is in an area or along a ray, stop fast bullets, push a shape out of a wall | `Core/Physics/Collision/CollisionWorld.h`<br>`Core/Physics/Collision/Collision.h`<br>`Core/Physics/Collision/Shape.h`<br>`Core/Physics/Collision/CollisionMask.h` | `Recipes/Collision.md` | `Docs/Collision.md#many-colliders` |
+| Time a boss attack, a wave plan or a sequence with named moments; tween a value with a curve | `Core/Animation/Timeline.h`<br>`Core/Animation/Easing.h`<br>`Core/Simulation/TimelineMoments.h` | `Recipes/Timeline.md` | `Docs/Animation.md#timelines` |
 | Show colliders on screen | `Core/Physics/Debug/ColliderDraw.h` | `Recipes/Collision.md` | `Docs/Collision.md#seeing-colliders` |
 | Use seeded random numbers | `Core/Utilities/Rng.h` | `Recipes/Simulation.md` | `Docs/Simulation.md#writing-a-simulation` |
 | Read keys and navigate a menu | `Core/Input/Input.h`<br>`Core/Input/InputNavigation.h`<br>`Core/Menus/MenuSelection.h`<br>`Core/Menus/MenuInput.h` | `Recipes/ThemedMenu.md` | `Docs/Input.md#physical-snapshot-and-semantic-queries` |
