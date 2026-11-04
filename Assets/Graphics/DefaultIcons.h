@@ -14,6 +14,8 @@ class Painter;
 // Cards (three cards fanned out), LoopArrow (arrow turning around itself), Lotus, Goblet, Stopwatch, Sack (money bag),
 // Wings, Flag (chequered finish flag), Feather, Chest (treasure chest), Pickaxe, Anchor, Swords (two crossed), Coil
 // (coiled snake; eye in 'detail'), Swirl, TurnArrow (up, then curling right), Copy (two stacked pages).
+// Interface: Play, Pause, Restart, Check, Cross, Home, Info, Warning, SoundOn, SoundOff, Music, Save, Trash.
+// Items and nature: Sword, Bow, Potion, Bomb, Skull, Key, Crown, Trophy, Moon, Droplet, Snowflake, Leaf, Eye, Target.
 enum class Icon {
     Star,
     Egg,
@@ -75,6 +77,33 @@ enum class Icon {
     Bubble,
     Scroll,
     Flame,
+    Play,
+    Pause,
+    Restart,
+    Check,
+    Cross,
+    Home,
+    Info,
+    Warning,
+    SoundOn,
+    SoundOff,
+    Music,
+    Save,
+    Trash,
+    Sword,
+    Bow,
+    Potion,
+    Bomb,
+    Skull,
+    Key,
+    Crown,
+    Trophy,
+    Moon,
+    Droplet,
+    Snowflake,
+    Leaf,
+    Eye,
+    Target,
     Count
 };
 inline constexpr std::size_t IconCount = static_cast<std::size_t>(Icon::Count);

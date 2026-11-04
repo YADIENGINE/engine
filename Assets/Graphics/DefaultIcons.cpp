@@ -107,6 +107,33 @@ constexpr auto OwnColors = std::to_array<IconColors>({
     {Rose},                                           // Bubble
     {Rose},                                           // Scroll
     {Orange, Yellow},                                 // Flame
+    {Mint},                                           // Play
+    {Sky},                                            // Pause
+    {Teal},                                           // Restart
+    {Green},                                          // Check
+    {Rose},                                           // Cross
+    {Orange, Ink},                                    // Home
+    {Sky},                                            // Info
+    {Yellow, Ink},                                    // Warning
+    {Teal},                                           // SoundOn
+    {{190, 186, 220, 255}, Rose},                     // SoundOff
+    {Pink},                                           // Music
+    {Sky},                                            // Save
+    {Rose},                                           // Trash
+    {{205, 225, 245, 255}, Gold},                     // Sword
+    {{215, 160, 95, 255}, {235, 235, 245, 255}},      // Bow
+    {Pink, Sand},                                     // Potion
+    {{125, 122, 155, 255}, Orange},                   // Bomb
+    {{238, 232, 215, 255}, Ink},                      // Skull
+    {Gold},                                           // Key
+    {Gold, Rose},                                     // Crown
+    {Gold, {255, 244, 211, 255}},                     // Trophy
+    {{240, 235, 190, 255}},                           // Moon
+    {{70, 170, 255, 255}},                            // Droplet
+    {{170, 225, 255, 255}},                           // Snowflake
+    {{110, 210, 90, 255}, {35, 95, 50, 255}},         // Leaf
+    {Teal, Ink},                                      // Eye
+    {Rose},                                           // Target
 });
 static_assert(OwnColors.size() == IconCount);
 
@@ -155,6 +182,8 @@ Color4 Tinted(Color4 color, const IconStyle& style) {
 Color4 DetailOr(const IconStyle& style) {
     return style.detail.a > 0 ? style.detail : Tinted(WithAlpha(Black, 0.6f), style);
 }
+// The second colour of a two-coloured icon (a guard, a cork, a spark): 'detail', or the icon's own without one.
+Color4 AccentOr(const IconStyle& style) { return style.detail.a > 0 ? style.detail : style.color; }
 // Translucent fill with the icon's outline.
 ShapeStyle Framed(const IconStyle& style, float fillAlpha = FillAlpha) {
     return {.fill = Faded(style, fillAlpha), .stroke = {style.line, style.color}};
@@ -871,6 +900,377 @@ void Power(Painter& p, Float2 c, float s, const IconStyle& style) {
     Band(p, c, s * 0.8f - width, s * 0.8f, Radians(-55.0f), Radians(235.0f), style.color);
     Segment(p, {c.x, c.y - s}, {c.x, c.y - s * 0.1f}, width, style.color, StrokeCap::Round);
 }
+
+// --- Interface icons ---
+
+void Play(Painter& p, Float2 c, float s, Color4 color) {
+    const std::array<Float2, 3> arrow{
+        {{c.x - s * 0.62f, c.y - s * 0.9f}, {c.x + s * 0.92f, c.y}, {c.x - s * 0.62f, c.y + s * 0.9f}}};
+    p.Polygon(arrow, {.fill = color, .stroke = {s * 0.12f, color, StrokeAlign::Center, StrokeJoin::Round}});
+}
+
+void Pause(Painter& p, Float2 c, float s, Color4 color) {
+    for (const float side : {-1.0f, 1.0f})
+        p.RoundRect({c.x + side * s * 0.42f - s * 0.25f, c.y - s * 0.88f, s * 0.5f, s * 1.76f}, s * 0.12f, Fill(color));
+}
+
+// A ring turning counter-clockwise, open at the top right, where the arrowhead ends it.
+void Restart(Painter& p, Float2 c, float s, Color4 color) {
+    const float radius = s * 0.64f;
+    const Float2 center{c.x - s * 0.04f, c.y + s * 0.08f};
+    p.Arc(center, radius, Radians(-115.0f), Radians(-280.0f),
+          {.width = s * 0.28f, .color = color, .cap = StrokeCap::Round});
+    const Float2 normal = Float2::FromAngle(Radians(-35.0f));
+    const Float2 along{normal.y, -normal.x}; // Counter-clockwise on the ring
+    const Float2 at = center + normal * radius;
+    Tri(p, at + along * (s * 0.42f), at + normal * (s * 0.36f), at - normal * (s * 0.36f), color);
+}
+
+void Check(Painter& p, Float2 c, float s, Color4 color) {
+    const std::array<Float2, 3> mark{
+        {{c.x - s * 0.8f, c.y + s * 0.02f}, {c.x - s * 0.26f, c.y + s * 0.62f}, {c.x + s * 0.8f, c.y - s * 0.68f}}};
+    Chain(p, mark, s * 0.3f, color, StrokeJoin::Round, StrokeCap::Round);
+}
+
+void Cross(Painter& p, Float2 c, float s, Color4 color) {
+    const float d = s * 0.7f;
+    Segment(p, {c.x - d, c.y - d}, {c.x + d, c.y + d}, s * 0.3f, color, StrokeCap::Round);
+    Segment(p, {c.x + d, c.y - d}, {c.x - d, c.y + d}, s * 0.3f, color, StrokeCap::Round);
+}
+
+// House: a roof wider than its walls and a door.
+void Home(Painter& p, Float2 c, float s, const IconStyle& style) {
+    Tri(p, {c.x - s * 0.98f, c.y - s * 0.04f}, {c.x, c.y - s * 0.95f}, {c.x + s * 0.98f, c.y - s * 0.04f}, style.color);
+    Box(p, {c.x - s * 0.68f, c.y - s * 0.1f, s * 1.36f, s * 1.02f}, style.color);
+    p.RoundRect({c.x - s * 0.2f, c.y + s * 0.28f, s * 0.4f, s * 0.64f}, s * 0.06f, Fill(DetailOr(style)));
+}
+
+void Info(Painter& p, Float2 c, float s, const IconStyle& style) {
+    FramedDisc(p, c, s * 0.98f, style);
+    Disc(p, {c.x, c.y - s * 0.42f}, s * 0.15f, style.color);
+    Segment(p, {c.x, c.y - s * 0.1f}, {c.x, c.y + s * 0.55f}, s * 0.24f, style.color, StrokeCap::Round);
+}
+
+// Rounded triangle with an exclamation mark.
+void Warning(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const std::array<Float2, 3> sign{
+        {{c.x, c.y - s * 0.8f}, {c.x + s * 0.86f, c.y + s * 0.76f}, {c.x - s * 0.86f, c.y + s * 0.76f}}};
+    p.Polygon(sign, {.fill = style.color, .stroke = {s * 0.2f, style.color, StrokeAlign::Center, StrokeJoin::Round}});
+    const Color4 mark = DetailOr(style);
+    Segment(p, {c.x, c.y - s * 0.28f}, {c.x, c.y + s * 0.26f}, s * 0.2f, mark, StrokeCap::Round);
+    Disc(p, {c.x, c.y + s * 0.6f}, s * 0.12f, mark);
+}
+
+// Speaker facing right; what comes out of it is up to the icon.
+void Speaker(Painter& p, Float2 c, float s, Color4 color) {
+    const std::array<Float2, 6> cone{{{c.x - s * 0.95f, c.y - s * 0.32f},
+                                      {c.x - s * 0.52f, c.y - s * 0.32f},
+                                      {c.x - s * 0.06f, c.y - s * 0.78f},
+                                      {c.x - s * 0.06f, c.y + s * 0.78f},
+                                      {c.x - s * 0.52f, c.y + s * 0.32f},
+                                      {c.x - s * 0.95f, c.y + s * 0.32f}}};
+    p.Polygon(cone, Fill(color));
+}
+
+void SoundOn(Painter& p, Float2 c, float s, const IconStyle& style) {
+    Speaker(p, c, s, style.color);
+    for (const float radius : {0.4f, 0.8f})
+        p.Arc({c.x + s * 0.06f, c.y}, s * radius, Radians(-48.0f), Radians(96.0f),
+              {.width = s * 0.15f, .color = style.color, .cap = StrokeCap::Round});
+}
+
+void SoundOff(Painter& p, Float2 c, float s, const IconStyle& style) {
+    Speaker(p, c, s, style.color);
+    const Float2 at{c.x + s * 0.5f, c.y};
+    const float d = s * 0.3f;
+    const Color4 mark = AccentOr(style);
+    Segment(p, at + Float2{-d, -d}, at + Float2{d, d}, s * 0.16f, mark, StrokeCap::Round);
+    Segment(p, at + Float2{d, -d}, at + Float2{-d, d}, s * 0.16f, mark, StrokeCap::Round);
+}
+
+// Two notes joined by a beam.
+void Music(Painter& p, Float2 c, float s, Color4 color) {
+    const float stem = s * 0.14f;
+    const Float2 head{s * 0.34f, s * 0.26f};
+    const Float2 left{c.x - s * 0.56f, c.y + s * 0.66f};
+    const Float2 right{c.x + s * 0.54f, c.y + s * 0.48f};
+    const float leftStem = left.x + head.x - stem * 0.5f;
+    const float rightStem = right.x + head.x - stem * 0.5f;
+    p.Ellipse(left, head, Fill(color));
+    p.Ellipse(right, head, Fill(color));
+    Segment(p, {leftStem, left.y}, {leftStem, c.y - s * 0.5f}, stem, color);
+    Segment(p, {rightStem, right.y}, {rightStem, c.y - s * 0.7f}, stem, color);
+    const std::array<Float2, 4> beam{{{leftStem - stem * 0.5f, c.y - s * 0.68f},
+                                      {rightStem + stem * 0.5f, c.y - s * 0.95f},
+                                      {rightStem + stem * 0.5f, c.y - s * 0.6f},
+                                      {leftStem - stem * 0.5f, c.y - s * 0.33f}}};
+    p.Polygon(beam, Fill(color));
+}
+
+// Floppy disk: one corner cut, a shutter on top and a label below.
+void Save(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const float e = s * 0.92f;
+    const std::array<Float2, 5> body{{{c.x - e, c.y - e},
+                                      {c.x + s * 0.56f, c.y - e},
+                                      {c.x + e, c.y - s * 0.56f},
+                                      {c.x + e, c.y + e},
+                                      {c.x - e, c.y + e}}};
+    p.Polygon(body, Framed(style));
+    Box(p, {c.x - s * 0.46f, c.y - e, s * 0.86f, s * 0.58f}, style.color);
+    Box(p, {c.x + s * 0.06f, c.y - s * 0.82f, s * 0.2f, s * 0.32f}, DetailOr(style));
+    Box(p, {c.x - s * 0.56f, c.y + s * 0.08f, s * 1.12f, s * 0.84f}, style.color);
+    for (const float y : {0.32f, 0.6f})
+        Segment(p, {c.x - s * 0.36f, c.y + s * y}, {c.x + s * 0.36f, c.y + s * y}, style.line * 0.8f, DetailOr(style));
+}
+
+// Bin: a tapered body with ribs, a lid and its handle.
+void Trash(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const std::array<Float2, 4> body{{{c.x - s * 0.66f, c.y - s * 0.46f},
+                                      {c.x + s * 0.66f, c.y - s * 0.46f},
+                                      {c.x + s * 0.5f, c.y + s * 0.94f},
+                                      {c.x - s * 0.5f, c.y + s * 0.94f}}};
+    p.Polygon(body, Framed(style));
+    for (const float x : {-0.26f, 0.0f, 0.26f})
+        Segment(p, {c.x + s * x, c.y - s * 0.2f}, {c.x + s * x * 0.82f, c.y + s * 0.7f}, style.line, style.color);
+    const float lid = c.y - s * 0.62f;
+    Segment(p, {c.x - s * 0.88f, lid}, {c.x + s * 0.88f, lid}, style.line * 1.6f, style.color, StrokeCap::Round);
+    const std::array<Float2, 4> handle{{{c.x - s * 0.28f, lid},
+                                        {c.x - s * 0.28f, c.y - s * 0.9f},
+                                        {c.x + s * 0.28f, c.y - s * 0.9f},
+                                        {c.x + s * 0.28f, lid}}};
+    Chain(p, handle, style.line * 1.2f, style.color);
+}
+
+// --- Item and nature icons ---
+
+// One sword on the diagonal: a framed blade with its ridge; guard and grip in 'detail'.
+void Sword(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const Float2 d{0.707f, -0.707f};
+    const Float2 across = Perpendicular(d);
+    const Float2 pommel = c - d * (s * 1.2f);
+    const auto at = [&](float along, float aside) { return pommel + (d * along + across * aside) * s; };
+    const Color4 hilt = AccentOr(style);
+    const std::array blade{at(0.6f, 0.17f), at(2.1f, 0.17f), at(2.48f, 0.0f), at(2.1f, -0.17f), at(0.6f, -0.17f)};
+    p.Polygon(blade, Framed(style, 0.45f));
+    Segment(p, at(0.65f, 0.0f), at(2.2f, 0.0f), style.line * 0.8f, style.color);
+    Segment(p, at(0.56f, 0.46f), at(0.56f, -0.46f), s * 0.17f, hilt, StrokeCap::Round);
+    Segment(p, at(0.08f, 0.0f), at(0.56f, 0.0f), s * 0.15f, hilt);
+    Disc(p, at(0.08f, 0.0f), s * 0.14f, hilt);
+}
+
+// Upright bow with its string on the left; an arrow in 'detail' points right.
+void Bow(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const Color4 arrow = AccentOr(style);
+    const Float2 center{c.x - s * 0.55f, c.y};
+    const float width = s * 0.17f;
+    const float radius = s - width * 0.5f;
+    const float reach = Radians(68.0f);
+    Segment(p, center + Float2::FromAngle(-reach, radius), center + Float2::FromAngle(reach, radius), style.line * 0.7f,
+            arrow);
+    p.Arc(center, radius, -reach, reach * 2.0f, {.width = width, .color = style.color, .cap = StrokeCap::Round});
+    const float tip = c.x + s * 0.96f;
+    Segment(p, {c.x - s * 0.8f, c.y}, {tip - s * 0.2f, c.y}, s * 0.08f, arrow);
+    Tri(p, {tip, c.y}, {tip - s * 0.34f, c.y - s * 0.18f}, {tip - s * 0.34f, c.y + s * 0.18f}, arrow);
+    for (const float side : {-1.0f, 1.0f})
+        Segment(p, {c.x - s * 0.72f, c.y}, {c.x - s * 0.92f, c.y + side * s * 0.17f}, s * 0.08f, arrow);
+}
+
+// Round flask half full, a narrow neck and a cork in 'detail'.
+void Potion(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const Float2 belly{c.x, c.y + s * 0.3f};
+    const float r = s * 0.66f;
+    HalfDisc(p, {belly.x, belly.y - s * 0.02f}, r - style.line * 0.5f, style.color);
+    Box(p, {c.x - s * 0.2f, c.y - s * 0.66f, s * 0.4f, s * 0.42f}, Faded(style));
+    FramedDisc(p, belly, r, style, 0.18f);
+    for (const float side : {-1.0f, 1.0f})
+        Segment(p, {c.x + side * s * 0.2f, c.y - s * 0.68f}, {c.x + side * s * 0.2f, c.y - s * 0.3f}, style.line,
+                style.color);
+    p.RoundRect({c.x - s * 0.27f, c.y - s * 0.98f, s * 0.54f, s * 0.36f}, s * 0.07f, Fill(AccentOr(style)));
+    Disc(p, {c.x + s * 0.22f, belly.y - s * 0.24f}, s * 0.08f, Faded(style, 0.8f));
+    Disc(p, {c.x - s * 0.18f, belly.y - s * 0.15f}, s * 0.05f, Faded(style, 0.8f));
+}
+
+// Round bomb: a cap, a curved fuse and a spark at its end in 'detail'.
+void Bomb(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const Float2 body{c.x - s * 0.14f, c.y + s * 0.18f};
+    const float r = s * 0.78f;
+    const Float2 up = Normalized({1.0f, -1.0f});
+    const Float2 cap = body + up * r;
+    const std::array<Float2, 4> fuse{{cap,
+                                      cap + Float2{s * 0.1f, -s * 0.2f},
+                                      cap + Float2{s * 0.24f, -s * 0.3f},
+                                      cap + Float2{s * 0.34f, -s * 0.22f}}};
+    Chain(p, fuse, s * 0.09f, Tinted(Color4{220, 205, 170, 255}, style), StrokeJoin::Round);
+    DrawRotatedRect(p, body + up * (r * 0.98f), {s * 0.2f, s * 0.13f}, Radians(-45.0f), Fill(style.color));
+    Disc(p, body, r, style.color);
+    p.Arc(body, r * 0.68f, Radians(195.0f), Radians(65.0f),
+          {.width = s * 0.11f, .color = Tinted(WithAlpha(White, 0.65f), style), .cap = StrokeCap::Round});
+    DrawStar(p, fuse.back(), s * 0.22f, Fill(AccentOr(style)));
+}
+
+// Skull: a round cranium over a jaw; sockets, nose and teeth in 'detail'.
+void Skull(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const Color4 hole = DetailOr(style);
+    Disc(p, {c.x, c.y - s * 0.16f}, s * 0.82f, style.color);
+    p.RoundRect({c.x - s * 0.44f, c.y + s * 0.28f, s * 0.88f, s * 0.68f}, s * 0.12f, Fill(style.color));
+    for (const float side : {-1.0f, 1.0f})
+        p.Ellipse({c.x + side * s * 0.34f, c.y - s * 0.1f}, {s * 0.21f, s * 0.24f}, Fill(hole));
+    Tri(p, {c.x, c.y + s * 0.1f}, {c.x + s * 0.12f, c.y + s * 0.36f}, {c.x - s * 0.12f, c.y + s * 0.36f}, hole);
+    for (const float x : {-0.15f, 0.15f})
+        Segment(p, {c.x + s * x, c.y + s * 0.62f}, {c.x + s * x, c.y + s * 0.96f}, s * 0.08f, hole);
+}
+
+// Key on the diagonal: a round bow at the top left, two teeth at the end of the shaft.
+void Key(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const Float2 d{0.707f, 0.707f};
+    const Float2 across = Perpendicular(d);
+    const Float2 eye{c.x - s * 0.5f, c.y - s * 0.5f};
+    const float outer = s * 0.46f;
+    const float width = s * 0.2f;
+    Ring(p, eye, outer - width, outer, style.color);
+    const auto at = [&](float along, float aside) { return eye + (d * along + across * aside) * s; };
+    Segment(p, at(0.42f, 0.0f), at(1.8f, 0.0f), width, style.color);
+    for (const float along : {1.32f, 1.7f})
+        Segment(p, at(along, 0.0f), at(along, -0.3f), width * 0.9f, style.color);
+}
+
+// Crown: three points with a ball on each, a band below and gems in 'detail'.
+void Crown(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const std::array<Float2, 7> points{{{c.x - s * 0.82f, c.y + s * 0.55f},
+                                        {c.x - s * 0.88f, c.y - s * 0.52f},
+                                        {c.x - s * 0.42f, c.y - s * 0.02f},
+                                        {c.x, c.y - s * 0.74f},
+                                        {c.x + s * 0.42f, c.y - s * 0.02f},
+                                        {c.x + s * 0.88f, c.y - s * 0.52f},
+                                        {c.x + s * 0.82f, c.y + s * 0.55f}}};
+    p.Polygon(points, Fill(style.color));
+    Disc(p, points[1], s * 0.11f, style.color);
+    Disc(p, points[3], s * 0.12f, style.color);
+    Disc(p, points[5], s * 0.11f, style.color);
+    p.RoundRect({c.x - s * 0.82f, c.y + s * 0.62f, s * 1.64f, s * 0.26f}, s * 0.05f, Fill(style.color));
+    const Color4 gem = DetailOr(style);
+    Disc(p, {c.x, c.y + s * 0.28f}, s * 0.14f, gem);
+    for (const float side : {-1.0f, 1.0f})
+        Disc(p, {c.x + side * s * 0.5f, c.y + s * 0.3f}, s * 0.08f, gem);
+}
+
+// Cup with two handles on a stem and base; a star on the cup in 'detail'.
+void Trophy(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const float top = c.y - s * 0.92f;
+    const float bottom = c.y - s * 0.3f;
+    const float r = s * 0.56f;
+    for (const float side : {-1.0f, 1.0f})
+        p.Arc({c.x + side * r, c.y - s * 0.56f}, s * 0.27f, Radians(side > 0.0f ? -90.0f : 90.0f), Pi,
+              {.width = s * 0.13f, .color = style.color});
+    Box(p, {c.x - r, top, r * 2.0f, bottom - top + s * 0.04f}, style.color); // Overlaps the bowl: no seam
+    HalfDisc(p, {c.x, bottom}, r, style.color);
+    Box(p, {c.x - s * 0.1f, bottom + r * 0.8f, s * 0.2f, s * 0.5f}, style.color);
+    p.RoundRect({c.x - s * 0.5f, c.y + s * 0.62f, s, s * 0.32f}, s * 0.06f, Fill(style.color));
+    DrawStar(p, {c.x, c.y - s * 0.46f}, s * 0.3f, Fill(DetailOr(style)));
+}
+
+// Crescent leaning left, a small star in its hollow: a big circle less a smaller one set to the right.
+void Moon(Painter& p, Float2 c, float s, Color4 color) {
+    constexpr std::size_t Side = 24;
+    constexpr float Outer = 0.92f;
+    constexpr float Inner = 0.76f;
+    constexpr float InnerAt = 0.62f;
+    const float lean = Radians(-20.0f);
+    const float tipX = (Outer * Outer - Inner * Inner + InnerAt * InnerAt) / (2.0f * InnerAt);
+    const float tipY = std::sqrt(Outer * Outer - tipX * tipX);
+    const float outerTip = std::atan2(tipY, tipX);
+    const float innerTip = std::atan2(tipY, tipX - InnerAt);
+    const auto place = [&](Float2 point) { return c + Rotated(point * s, lean); };
+    std::array<Float2, Side * 2 - 2> crescent{};
+    for (std::size_t i = 0; i < Side; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(Side - 1);
+        crescent[i] = place(Float2::FromAngle(outerTip + (2.0f * Pi - 2.0f * outerTip) * t, Outer));
+    }
+    for (std::size_t i = 1; i + 1 < Side; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(Side - 1);
+        const float angle = (2.0f * Pi - innerTip) - (2.0f * Pi - 2.0f * innerTip) * t;
+        crescent[Side + i - 1] = place(Float2{InnerAt, 0.0f} + Float2::FromAngle(angle, Inner));
+    }
+    p.Polygon(crescent, Fill(color));
+    DrawStar(p, place({InnerAt * 0.72f, 0.0f}), s * 0.24f, Fill(color));
+}
+
+// Drop: a circle closed by its tangents up to a point; a shine on the left.
+void Droplet(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const Float2 belly{c.x, c.y + s * 0.3f};
+    const float r = s * 0.66f;
+    const float tip = s * 1.26f; // From the belly's centre up to the point
+    const float along = r * r / tip;
+    const float half = r * std::sqrt(1.0f - (r / tip) * (r / tip));
+    Disc(p, belly, r, style.color);
+    Tri(p, {c.x, belly.y - tip}, {c.x + half, belly.y - along}, {c.x - half, belly.y - along}, style.color);
+    p.Arc(belly, r * 0.62f, Radians(110.0f), Radians(70.0f),
+          {.width = s * 0.11f, .color = Tinted(WithAlpha(White, 0.7f), style), .cap = StrokeCap::Round});
+}
+
+// Six arms, each with a pair of branches.
+void Snowflake(Painter& p, Float2 c, float s, const IconStyle& style) {
+    const float width = std::max(style.line * 1.2f, s * 0.1f);
+    for (int i = 0; i < 6; ++i) {
+        const float angle = Radians(static_cast<float>(i) * 60.0f);
+        const Float2 d = Dir(angle);
+        Segment(p, c, c + d * (s * 0.93f), width, style.color, StrokeCap::Round);
+        const Float2 fork = c + d * (s * 0.56f);
+        for (const float side : {-1.0f, 1.0f})
+            Segment(p, fork, fork + Dir(angle + side * Radians(55.0f)) * (s * 0.32f), width, style.color,
+                    StrokeCap::Round);
+    }
+}
+
+// A pointed leaf on the diagonal; rib and veins in 'detail', the stem in its own colour.
+void LeafIcon(Painter& p, Float2 c, float s, const IconStyle& style) {
+    constexpr std::size_t Side = 16;
+    const float width = s * 0.58f;
+    const Float2 base{c.x - s * 0.62f, c.y + s * 0.62f};
+    const Float2 along = Float2{c.x + s * 0.92f, c.y - s * 0.92f} - base;
+    const Float2 across = Perpendicular(Normalized(along));
+    std::array<Float2, Side * 2 - 2> outline{};
+    for (std::size_t i = 0; i < Side; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(Side - 1);
+        outline[i] = base + along * t + across * (width * std::sin(Pi * t));
+        if (i > 0 && i + 1 < Side) outline[Side * 2 - 2 - i] = base + along * t - across * (width * std::sin(Pi * t));
+    }
+    p.Polygon(outline, Fill(style.color));
+    const Color4 rib = DetailOr(style);
+    Segment(p, {c.x - s * 0.9f, c.y + s * 0.9f}, base, s * 0.11f, style.color, StrokeCap::Round);
+    Segment(p, base, base + along * 0.86f, s * 0.07f, rib);
+    for (const float t : {0.3f, 0.55f})
+        for (const float side : {-1.0f, 1.0f}) {
+            const Float2 from = base + along * t;
+            Segment(p, from, from + along * 0.14f + across * (side * width * 0.62f), s * 0.05f, rib);
+        }
+}
+
+// Almond outline, an iris, a pupil in 'detail' and a glint.
+void Eye(Painter& p, Float2 c, float s, const IconStyle& style) {
+    constexpr std::size_t Side = 16;
+    const float e = s - style.line * 0.5f;
+    const float open = s * 0.62f;
+    std::array<Float2, Side * 2 - 2> outline{};
+    for (std::size_t i = 0; i < Side; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(Side - 1);
+        const float x = c.x - e + 2.0f * e * t;
+        outline[i] = {x, c.y - open * std::sin(Pi * t)};
+        if (i > 0 && i + 1 < Side) outline[Side * 2 - 2 - i] = {x, c.y + open * std::sin(Pi * t)};
+    }
+    p.Polygon(outline, Framed(style));
+    Disc(p, c, s * 0.42f, style.color);
+    Disc(p, c, s * 0.2f, DetailOr(style));
+    Disc(p, c + Float2{s * 0.12f, -s * 0.14f}, s * 0.08f, Tinted(White, style));
+}
+
+// Bullseye: two rings and a centre, faintly filled between them.
+void Target(Painter& p, Float2 c, float s, const IconStyle& style) {
+    Disc(p, c, s * 0.98f, Faded(style));
+    Ring(p, c, s * 0.76f, s * 0.98f, style.color);
+    Ring(p, c, s * 0.42f, s * 0.62f, style.color);
+    Disc(p, c, s * 0.24f, style.color);
+}
 } // namespace
 
 void DrawIcon(Painter& paint, Icon icon, Float2 center, float size, const IconLook& look) {
@@ -940,6 +1340,33 @@ void DrawIcon(Painter& paint, Icon icon, Float2 center, float size, const IconLo
     case Icon::Bubble     : Bubble(p, c, s, style); break;
     case Icon::Scroll     : Scroll(p, c, s, style); break;
     case Icon::Flame      : Flame(p, c, s, style); break;
+    case Icon::Play       : Play(p, c, s, style.color); break;
+    case Icon::Pause      : Pause(p, c, s, style.color); break;
+    case Icon::Restart    : Restart(p, c, s, style.color); break;
+    case Icon::Check      : Check(p, c, s, style.color); break;
+    case Icon::Cross      : Cross(p, c, s, style.color); break;
+    case Icon::Home       : Home(p, c, s, style); break;
+    case Icon::Info       : Info(p, c, s, style); break;
+    case Icon::Warning    : Warning(p, c, s, style); break;
+    case Icon::SoundOn    : SoundOn(p, c, s, style); break;
+    case Icon::SoundOff   : SoundOff(p, c, s, style); break;
+    case Icon::Music      : Music(p, c, s, style.color); break;
+    case Icon::Save       : Save(p, c, s, style); break;
+    case Icon::Trash      : Trash(p, c, s, style); break;
+    case Icon::Sword      : Sword(p, c, s, style); break;
+    case Icon::Bow        : Bow(p, c, s, style); break;
+    case Icon::Potion     : Potion(p, c, s, style); break;
+    case Icon::Bomb       : Bomb(p, c, s, style); break;
+    case Icon::Skull      : Skull(p, c, s, style); break;
+    case Icon::Key        : Key(p, c, s, style); break;
+    case Icon::Crown      : Crown(p, c, s, style); break;
+    case Icon::Trophy     : Trophy(p, c, s, style); break;
+    case Icon::Moon       : Moon(p, c, s, style.color); break;
+    case Icon::Droplet    : Droplet(p, c, s, style); break;
+    case Icon::Snowflake  : Snowflake(p, c, s, style); break;
+    case Icon::Leaf       : LeafIcon(p, c, s, style); break;
+    case Icon::Eye        : Eye(p, c, s, style); break;
+    case Icon::Target     : Target(p, c, s, style); break;
     case Icon::Count      : break;
     }
 }
