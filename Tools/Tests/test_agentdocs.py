@@ -8,6 +8,7 @@ from unittest.mock import patch
 from Tools import cli
 from Tools.agentdocs.api import generate, parse_header, public_headers, sentence
 from Tools.agentdocs.check import check_agentdocs, check_skills
+from Tools.agentdocs.links import anchor, check_links
 
 
 class ParserTests(unittest.TestCase):
@@ -229,3 +230,47 @@ class SkillTests(unittest.TestCase):
         problems = check_skills(self.root, self.parser)
         self.assertEqual(problems, ['AgentDocs/Recipes/Use.md:2: unknown action "python Engine ctl teleport"',
                                     'AgentDocs/Recipes/Use.md:2: unknown command "python Engine launch"'])
+
+
+class LinkTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.write('Docs/Ui.md', '# UI\n\n## Sounds\n\n## Editor/Main.cpp\n\n```md\n## Not a heading\n```\n## Sounds\n')
+        self.write('Core/Ui/Ui.h', '')
+        self.write('AgentDocs/Recipes/Menu.md', '# Menu\n')
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def write(self, path, text):
+        target = self.root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding='utf-8', newline='\n')
+
+    def test_github_anchors(self):
+        self.assertEqual(anchor('Editor/Main.cpp'), 'editormaincpp')
+        self.assertEqual(anchor('1. Directory structure'), '1-directory-structure')
+        self.assertEqual(anchor('`Ui` and **looks**'), 'ui-and-looks')
+        self.assertEqual(anchor('D31. Game UI'), 'd31-game-ui')
+
+    def test_existing_files_and_headings_pass(self):
+        self.write('AgentDocs/Index.md',
+                   '# Index\n'
+                   '| `Core/Ui/Ui.h` | `Recipes/Menu.md` | `Docs/Ui.md#sounds` | `Engine/Docs/Ui.md#sounds-1` |\n'
+                   '[UI](../Docs/Ui.md#editormaincpp), [top](#index), [web](https://example.com/x#y)\n'
+                   'Placeholders: `AgentDocs/Skills/<name>/SKILL.md`; project files: `Game/Main.cpp`, `Editor/Main.cpp`.\n')
+        self.assertEqual(check_links(self.root), [])
+
+    def test_missing_files_and_headings_fail(self):
+        self.write('AgentDocs/Index.md', 'See `Docs/Gone.md`, `Recipes/Gone.md`, `Core/Ui/Gone.h`,\n'
+                   '`Docs/Ui.md#gone`, `Docs/Ui.md#not-a-heading` and [x](../Docs/Ui.md#gone).\n'
+                   '```cpp\n// `Docs/InCode.md` is code, not a route\n```\n')
+        problems = check_links(self.root)
+        self.assertEqual(len(problems), 6, problems)
+        self.assertTrue(all(p.startswith('AgentDocs/Index.md:') for p in problems))
+        self.assertEqual(sum('heading' in p for p in problems), 3)
+
+    def test_generated_api_pages_are_not_scanned(self):
+        self.write('AgentDocs/Api/Ui.md', '`Docs/Gone.md`\n')
+        self.assertEqual(check_links(self.root), [])

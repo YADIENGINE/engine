@@ -7,7 +7,7 @@ description: Check, compare or clean up the project's sounds without hearing the
 
 You cannot hear. Judge sounds by numbers and waveform images; let the developer listen before calling a sound good.
 Commands run from the project root. Reference: `Docs/AudioTools.md`. To add a sound to the game, add a row to its sound
-table: `Recipes/SoundTable.md`. Table rows appear below as catalog entries, one per file, under the row's `label`
+table: `Recipes/SoundTable.md`. Menu sounds are rows too, given once in `settings.uiSounds`: `Recipes/UiSounds.md`; write no play call on a screen. Table rows appear below as catalog entries, one per file, under the row's `label`
 (`Sfx[0]` without one): give a row a label when you will need to find it here.
 
 1. **Facts:** `python Engine audio info FILE...` (paths may be relative to the asset folder, e.g. `Audio/hit.ogg`).

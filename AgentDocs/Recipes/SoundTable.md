@@ -53,3 +53,5 @@ bool RecipeHit(SoundPlayer& sounds) { return sounds.Play(RecipeSfx::Hit); }
 A second table for another enum: `settings.sounds = {RecipeSfxTable, MyUiTable};`. A system that stores a sound without knowing the enum keeps a `SoundKey` and checks it at startup with `Has`.
 
 Pitfalls: Put `static_assert(RowsInIdOrder(table))` beside each table, or rows out of order are found only at startup. A table must be in `GameSettings::sounds` or playing its enum throws; that is the one mistake the compiler cannot see. `Play` returning false is normal: a cooldown or `SoundOverlap::Skip` stopped it. `SoundOverlap::Copies` counts per file. After changing a table, build again before trusting `python Engine audio catalog`. A simulation never plays a sound: it lists events and the view plays them. Music stays in `GameSettings::audio`.
+
+Menus play rows of this table with no code on the screen: `Recipes/UiSounds.md`.

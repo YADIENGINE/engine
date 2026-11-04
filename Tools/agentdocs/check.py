@@ -2,7 +2,8 @@
 
 Skills (`AgentDocs/Skills/<name>/SKILL.md`) need Agent Skills front matter whose name is the folder name, and a row in
 `AgentDocs/Agent.md`. Every `python Engine <command> [<action>]` written in AgentDocs must exist in the tools' parser,
-so a renamed command cannot leave an agent instruction behind.
+so a renamed command cannot leave an agent instruction behind. Every file and heading AgentDocs points at must exist
+(links.py).
 """
 
 import argparse
@@ -10,6 +11,7 @@ import re
 from pathlib import Path
 
 from .api import generate
+from .links import check_links
 
 REGION = re.compile(r'^// \[recipe:([\w-]+)\]\n(.*?)^// \[/recipe\]\n?', re.M | re.S)
 SNIPPET = re.compile(r'<!-- recipe:([\w-]+) -->\n```cpp\n(.*?)```\n<!-- /recipe -->', re.S)
@@ -122,4 +124,5 @@ def check_agentdocs(root: Path, fix: bool = False) -> tuple[list[str], list[str]
         problems.append(f'AgentDocs/Recipes: code region {name} has no Markdown snippet')
     from ..cli import build_parser  # The parser module imports this checker
     problems += check_skills(root, build_parser())
+    problems += check_links(root)
     return problems, fixed
