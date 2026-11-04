@@ -39,6 +39,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Change how widgets look | `Core/Ui/Kernel/UiLooks.h`<br>`Core/Ui/Looks/UiButtonLook.h`<br>`Core/Ui/Looks/Neon/NeonLooks.h` | - | `Docs/Ui.md#looks` |
 | Choose a theme: colours, backgrounds, effects | `Core/Graphics/Style/Theme.h`<br>`Core/Graphics/Style/ThemePalette.h`<br>`Core/Graphics/Style/PlainTheme.h`<br>`Core/Graphics/Style/NeonArcadeTheme.h` | - | `Docs/Graphics/ThemesAndUi.md#themes` |
 | Draw explicit-style neon shapes | `Core/Graphics/Draw/DrawUtils.h`<br>`Core/Graphics/Draw/Neon.h` | - | `Docs/Graphics/Painter.md#helpers-and-theme` |
+| Fill the screen with a ready-made sky, space, landscape, sea, city, retro or pattern background | `Assets/Graphics/Backgrounds/` | - | `Docs/Graphics/ThemesAndUi.md#ready-made-scenes` |
 | Add menu/play backdrops or a grid | `Assets/Graphics/Backgrounds/Backdrops.h`<br>`Core/Graphics/Draw/BackgroundDraw.h` | - | `Docs/Graphics/ThemesAndUi.md#backgrounds` |
 | Name what an event looks like and play it (`fx.Play("player_hit")`), also from an animation's moment | `Core/Fx/FxCue.h`<br>`Core/Fx/FxCueSet.h`<br>`Core/Fx/FxStage.h` | `Recipes/FxCues.md` | `Docs/Graphics/Effects.md#cues` |
 | Emit a particle burst, shake and flash | `Core/Fx/FxStage.h`<br>`Core/Fx/FxStyle.h`<br>`Core/Fx/FxQuality.h` | `Recipes/FxBurst.md` | `Docs/Graphics/Effects.md#effect-stage-and-particle-recipes` |

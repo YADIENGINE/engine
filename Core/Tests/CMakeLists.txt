@@ -47,6 +47,7 @@ engine_tests(EngineTests
         PaintGeometryTests.cpp
         PaintTextTests.cpp
         PaintWidgetTests.cpp
+        BackgroundAssetTests.cpp
         RenderPipelineTests.cpp
         SceneManagerTests.cpp
         SceneObjectsTests.cpp
