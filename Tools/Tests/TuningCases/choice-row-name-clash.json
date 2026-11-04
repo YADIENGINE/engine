@@ -1,0 +1,4 @@
+{
+  "odds": { "type": "table", "columns": { "a": { "type": "int" } }, "rows": [{ "a": 1 }] },
+  "oddsRow": { "type": "choice", "choices": ["A"], "value": "A" }
+}

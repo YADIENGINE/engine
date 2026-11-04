@@ -7,6 +7,7 @@
 #include "Simulation/PlayerInput.h"
 #include "Simulation/SimulationSettings.h"
 #include "Simulation/SimulationStep.h"
+#include "Tuning/TuningLive.h"
 
 // A recorded run: where it started and what each step received, as sparse changes. A change holds a player's whole
 // input from that step on, except 'pressed', which applies to that step only. The file is JSON, readable and writable
@@ -44,6 +45,9 @@ public:
     // State hashes at steps 0, hashEvery, 2 * hashEvery ...; the state after that many steps have run.
     int hashEvery = 1;
     std::vector<std::uint64_t> hashes;
+    // The tuning values the run started with (TuningDigests after its first recorded step), so a replay that disagrees
+    // can name the files that changed since. Empty in Release, where values are compiled, and in older tapes.
+    std::vector<TuningDigest> tuning;
 
     // Forgets step 'step' and everything after it; the state after 'step' steps stays known.
     void Truncate(std::uint64_t step);

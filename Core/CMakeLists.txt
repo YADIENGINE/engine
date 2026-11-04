@@ -105,7 +105,7 @@ add_library(EngineSimulation STATIC
 target_include_directories(EngineSimulation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineSimulation PUBLIC cxx_std_20)
 target_compile_definitions(EngineSimulation PRIVATE ENGINE_VERSION="${engineVersion}")
-target_link_libraries(EngineSimulation PUBLIC EngineJsonIO)
+target_link_libraries(EngineSimulation PUBLIC EngineJsonIO EngineTuning)
 set_target_properties(EngineSimulation PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_simulation_flags(EngineSimulation)
 engine_warnings(EngineSimulation)

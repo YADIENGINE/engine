@@ -22,6 +22,8 @@ EditorController::EditorController(const std::filesystem::path& projectFile) {
         _snapshots.emplace(_project->worker);
         _output.StartArchive(_project->buildDirectory / "editor-logs" / (NewWorkerSession() + ".log"));
         _tuning.Open(_project->buildDirectory);
+        if (!_project->sourceDirectory.empty())
+            _baselines = std::make_unique<TuningBaselines>(_project->sourceDirectory);
         Log("Project: " + _project->name);
         if (!_output.ArchiveError().empty()) Log(_output.ArchiveError(), EditorLogLevel::Warning);
         if (!_snapshots->BuildAvailable()) {
@@ -133,6 +135,7 @@ void EditorController::Cancel() {
         StopActive("Canceled");
 }
 void EditorController::Select(const std::string& id) {
+    _inspectedTuning.clear(); // Picking a scene brings the Inspector back to it
     if (Busy() || id == _selected || std::ranges::find(_catalog, id, &SceneDefinition::id) == _catalog.end()) return;
     if (_active && _active->Mode() == WorkerProcessMode::Scene) StopActive("Stopped");
     _selected = id;
@@ -170,9 +173,71 @@ void EditorController::Action(const std::string& id) {
         FailScene(error.what());
     }
 }
-void EditorController::Tune(std::size_t file, const TuningLocation& at, const TuningValue& value) {
-    if (const auto error = _tuning.Set(file, at, value); !error.empty())
-        Log("Tuning not written: " + error, EditorLogLevel::Warning);
+void EditorController::Tuning(const TuningEditRequest& request) {
+    const auto used = [&] {
+        const auto* file = _tuning.Find(request.source);
+        return _ready && file && file->used;
+    };
+    std::string error;
+    switch (request.kind) {
+    case TuningEditKind::Preview: {
+        if (!used()) return;
+        const auto source = request.source.generic_u8string();
+        try {
+            Send("tuning-preview",
+                 EncodeWorkerTuningPreview({{source.begin(), source.end()}, request.at, request.value}));
+            _previewing.emplace(request.source, request.at);
+        } catch (const std::exception& failure) {
+            FailScene(failure.what());
+        }
+        return;
+    }
+    case TuningEditKind::EndPreview:
+        if (_previewing) ReloadTuning(_previewing->first);
+        _previewing.reset();
+        return;
+    case TuningEditKind::Set   : error = _tuning.Set(request.source, request.at, request.value); break;
+    case TuningEditKind::Resize: error = _tuning.Resize(request.source, request.at, request.resize); break;
+    case TuningEditKind::Revert: error = _tuning.Revert(request.source, request.at.field); break;
+    case TuningEditKind::Undo  :
+    case TuningEditKind::Redo  : {
+        const auto step = request.kind == TuningEditKind::Undo ? _tuning.Undo() : _tuning.Redo();
+        if (!step) return;
+        Log(step->text, step->done ? EditorLogLevel::Info : EditorLogLevel::Warning);
+        if (step->done) ReloadTuning(step->source);
+        return;
+    }
+    }
+    // The file decides now; a preview left in the scene (a rejected value) goes too.
+    _previewing.reset();
+    if (!error.empty()) Log("Tuning not written: " + error, EditorLogLevel::Warning);
+    ReloadTuning(request.source);
+}
+void EditorController::ReloadTuning(const std::filesystem::path& source) {
+    const auto* file = _tuning.Find(source);
+    if (!_ready || !file || !file->used) return;
+    const auto text = source.generic_u8string();
+    try {
+        Send("tuning-reload", {{"source", std::string(text.begin(), text.end())}});
+    } catch (const std::exception& failure) {
+        FailScene(failure.what());
+    }
+}
+void EditorController::ReceiveTuningUsed(const std::vector<std::string>& sources) {
+    std::vector<std::filesystem::path> paths;
+    for (const auto& source : sources)
+        paths.emplace_back(std::u8string(source.begin(), source.end()));
+    _tuning.SetUsed(paths);
+}
+void EditorController::TickTuning() {
+    _tuning.Poll();
+    if (!_baselines) return;
+    std::vector<std::filesystem::path> files;
+    for (const auto& file : _tuning.Files())
+        files.push_back(file.source);
+    _baselines->Watch(files);
+    for (const auto& [file, text] : _baselines->Take())
+        _tuning.SetCommitted(file, text);
 }
 void EditorController::ReceiveTuning(const WorkerTuningStatus& status) {
     const std::string label = _tuning.Report(status);
@@ -355,6 +420,7 @@ EditorSnapshot EditorController::Snapshot() const {
                             _hostTransferMs,
                             benchmarkCancelPending,
                             _project ? &_tuning : nullptr};
+    snapshot.inspectedTuning = _inspectedTuning;
     snapshot.notice = _notice;
     snapshot.controlEvents = &_controlEvents;
     snapshot.controlEventCount = _controlEventCount;
@@ -449,6 +515,7 @@ void EditorController::Invalidate(std::uint64_t generation) {
     _pendingParameters.clear();
     _lastParameterRequest.clear();
     _displayed = _accepted[_selected];
+    _previewing.reset();
 }
 void EditorController::Send(const std::string& type, nlohmann::json data) {
     if (!_active) throw std::runtime_error("No scene connection");
@@ -483,6 +550,10 @@ void EditorController::Receive(const WorkerMessage& message) {
     }
     if (message.type == "tuning") {
         ReceiveTuning(DecodeWorkerTuning(message.data));
+        return;
+    }
+    if (message.type == "tuning-used") {
+        if (message.generation == _generation) ReceiveTuningUsed(DecodeWorkerTuningUsed(message.data));
         return;
     }
     if (message.type == "audio") {
@@ -702,6 +773,8 @@ void EditorController::ReceiveReplacement(const WorkerMessage& message) {
         Log(message.data.at("text").get<std::string>(), EditorLogLevel::Info, EditorLogSource::Worker);
     } else if (message.type == "tuning") {
         replacement.tuning.push_back(DecodeWorkerTuning(message.data));
+    } else if (message.type == "tuning-used") {
+        if (message.generation == replacement.generation) replacement.tuningUsed = DecodeWorkerTuningUsed(message.data);
     } else if (message.type == "audio") {
         replacement.audio = DecodeAudioCatalog(message.data);
     } else if (message.type == "catalog") {
@@ -733,6 +806,7 @@ void EditorController::CommitReplacement(const WorkerMessage& ready) {
     _tuning.ClearWorkerStatus();
     for (const auto& status : replacement.tuning)
         ReceiveTuning(status);
+    if (replacement.tuningUsed) ReceiveTuningUsed(*replacement.tuningUsed);
     _recordOpen = false;
     ApplyReady(ready);
     _refresh.Started();
@@ -829,7 +903,7 @@ void EditorController::FinishFailedAttempt() {
     _attemptFailure.reset();
 }
 void EditorController::Tick() {
-    _tuning.Poll();
+    TickTuning();
     try {
         TickBuild();
     } catch (const std::exception& error) {

@@ -167,7 +167,6 @@ TEST_CASE("Editor.Workspace.AgentLayoutKeepsViewportLargerAndConsoleInFront", "[
         EditorPreferences preferences;
         preferences.layout = EditorWorkspaceLayout::Agent;
         preferences.Visible(EditorPanel::Catalog) = false;
-        preferences.Visible(EditorPanel::Tuning) = false;
         preferences.Visible(EditorPanel::Console) = true;
         EditorWorkspace workspace;
         int fontSize = 100;

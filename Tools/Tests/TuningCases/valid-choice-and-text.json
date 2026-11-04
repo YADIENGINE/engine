@@ -1,0 +1,18 @@
+{
+  "mode": { "type": "choice", "choices": ["Off", "Pulse"], "value": "Pulse", "group": "Look", "note": "How it moves" },
+  "modes": { "type": "choice[]", "choices": ["Calm", "Wild"], "value": ["Wild", "Calm"] },
+  "speed": { "value": 2.5, "min": 0, "unit": "px/s", "group": "Look" },
+  "kinds": {
+    "type": "table",
+    "group": "Balance",
+    "note": "Weights per kind",
+    "columns": {
+      "kind": { "type": "choice", "choices": ["Small", "Big"], "note": "Size" },
+      "weight": { "type": "int", "min": 0, "unit": "%" }
+    },
+    "rows": [
+      { "kind": "Small", "weight": 70 },
+      { "kind": "Big", "weight": 30 }
+    ]
+  }
+}

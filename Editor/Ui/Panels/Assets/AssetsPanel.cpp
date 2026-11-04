@@ -14,6 +14,13 @@
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
+// A node's tuning file ("Goblin.tuning.json" beside "Goblin.h"), which the Inspector edits.
+std::optional<std::filesystem::path> TuningFileOf(const AssetNode& node) {
+    if (node.kind == AssetKind::Folder) return std::nullopt;
+    for (const auto& file : node.files)
+        if (file.ends_with(".tuning.json")) return std::filesystem::absolute(node.path.parent_path() / file);
+    return std::nullopt;
+}
 constexpr double ScanSeconds = 2.0;
 constexpr float TreeWidth = 220;
 constexpr float TreeRowHeight = 28;
@@ -475,6 +482,11 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
                  _tileSize);
     if (notBuilt) {
         ToolTooltip("Not built yet: use Build & Refresh");
+    } else if (TuningFileOf(node)) {
+        std::string files;
+        for (const auto& file : node.files)
+            files += (files.empty() ? "" : "\n") + file;
+        ToolTooltip((files + "\nClick: edit its tuning values in the Inspector").c_str());
     } else if (!node.files.empty()) {
         std::string files;
         for (const auto& file : node.files)
@@ -493,6 +505,8 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
                 actions.previewAudio({AudioPreviewAction::Stop, {}, snapshot.audio.loop, snapshot.audio.volume});
             else
                 PlayAudio(node, snapshot, actions);
+        } else if (const auto tuning = TuningFileOf(node); tuning && actions.inspectTuning) {
+            actions.inspectTuning(*tuning); // The Inspector shows and edits it
         }
     }
     DragSource(node);

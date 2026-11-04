@@ -74,25 +74,28 @@ std::string Line(const nlohmann::json& json) {
 [[noreturn]] void Mismatch(const SceneParameter& parameter, std::string_view expected) {
     throw std::runtime_error("Parameter '" + parameter.id + "' expects " + std::string(expected));
 }
-float HexChannel(std::string_view text, std::size_t at) {
+std::uint8_t HexChannel(std::string_view text, std::size_t at) {
     unsigned value = 0;
     const auto [end, error] = std::from_chars(text.data() + at, text.data() + at + 2, value, 16);
     if (error != std::errc{} || end != text.data() + at + 2)
         throw std::runtime_error("Invalid color: " + std::string(text));
-    return static_cast<float>(value) / 255.0f;
+    return static_cast<std::uint8_t>(value);
 }
-SceneColor ColorOf(const SceneParameter& parameter, const nlohmann::json& value) {
+// "#rrggbb(aa)", or channels from 0 to 1 as [r, g, b(, a)]; stored as 8-bit Color4.
+Color4 ColorOf(const SceneParameter& parameter, const nlohmann::json& value) {
     if (value.is_string()) {
         const auto text = value.get<std::string>();
         if (!text.starts_with('#') || (text.size() != 7 && text.size() != 9)) Mismatch(parameter, "\"#rrggbb(aa)\"");
         return {HexChannel(text, 1), HexChannel(text, 3), HexChannel(text, 5),
-                text.size() == 9 ? HexChannel(text, 7) : 1.0f};
+                text.size() == 9 ? HexChannel(text, 7) : std::uint8_t{255}};
     }
     if (!value.is_array() || (value.size() != 3 && value.size() != 4)) Mismatch(parameter, "[r, g, b(, a)]");
-    std::array<float, 4> channels{1.0f, 1.0f, 1.0f, 1.0f};
+    std::array<std::uint8_t, 4> channels{255, 255, 255, 255};
     for (std::size_t i = 0; i < value.size(); ++i) {
         if (!value[i].is_number()) Mismatch(parameter, "[r, g, b(, a)] numbers");
-        channels[i] = value[i].get<float>();
+        const double channel = value[i].get<double>();
+        if (!std::isfinite(channel) || channel < 0.0 || channel > 1.0) Mismatch(parameter, "channels from 0 to 1");
+        channels[i] = static_cast<std::uint8_t>(std::lround(channel * 255.0));
     }
     return {channels[0], channels[1], channels[2], channels[3]};
 }
@@ -215,8 +218,8 @@ nlohmann::json ControlValue(const SceneValue& value) {
     std::visit(
         [&data](const auto& item) {
             using T = std::decay_t<decltype(item)>;
-            if constexpr (std::is_same_v<T, SceneColor>)
-                data = nlohmann::json::array({item.r, item.g, item.b, item.a});
+            if constexpr (std::is_same_v<T, Color4>) // Channels from 0 to 1, as agents send them
+                data = nlohmann::json::array({item.r / 255.0f, item.g / 255.0f, item.b / 255.0f, item.a / 255.0f});
             else
                 data = item;
         },

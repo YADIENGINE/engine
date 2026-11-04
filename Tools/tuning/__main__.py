@@ -1,6 +1,7 @@
-"""Derleme adımı: `python -m Tools.tuning generate <json> <header>` (engine kökünden; CMake `engine_add_tuning`).
+"""Build step: `python -m Tools.tuning generate <json> <header> <project root>` (from the engine root; CMake
+`engine_add_tuning`).
 
-Hata derleme çıktısına `dosya:satır: error: açıklama` olarak yazılır ve derleme durur (çıkış 1).
+Errors go to the build output as `file:line: error: text` and stop the build (exit 1).
 """
 
 import sys
@@ -11,12 +12,13 @@ from .header import generate
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 3 or argv[0] != "generate":
-        print("usage: python -m Tools.tuning generate <source.tuning.json> <header.tuning.h>", file=sys.stderr)
+    if len(argv) != 4 or argv[0] != "generate":
+        print("usage: python -m Tools.tuning generate <source.tuning.json> <header.tuning.h> <project root>",
+              file=sys.stderr)
         return 2
-    source, header = Path(argv[1]), Path(argv[2])
+    source, header, root = Path(argv[1]), Path(argv[2]), Path(argv[3])
     try:
-        generate(source, header)
+        generate(source, header, root)
     except TuningError as error:
         print(f"{source}:{error.line}: error: {error.text}", file=sys.stderr)
         return 1

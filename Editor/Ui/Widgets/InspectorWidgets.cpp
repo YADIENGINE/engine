@@ -7,6 +7,7 @@
 #include "Editor/Api/SceneInspection.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
+#include "Editor/Ui/Widgets/PropertyWidgets.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
 
@@ -53,7 +54,7 @@ void InspectorLabel(const char* label, const char* description, bool modified, f
     InspectorText(label, std::max(1.0f, width - markerWidth));
     if (*description) ToolTooltip(description);
 }
-bool InspectorResetButton(bool changed, bool pending, bool inlineRow) {
+bool InspectorResetButton(bool changed, bool pending, bool inlineRow, const char* tooltip) {
     const float size = ResetButtonSize * InspectorScale();
     const float offset = inlineRow ? std::max(0.0f, (ImGui::GetFrameHeight() - size) * 0.5f) : 0.0f;
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offset);
@@ -73,7 +74,7 @@ bool InspectorResetButton(bool changed, bool pending, bool inlineRow) {
     }
     ImGui::EndDisabled();
     if (!changed) ImGui::PopStyleColor();
-    ToolTooltip("Default: restore this parameter's default value.");
+    ToolTooltip(tooltip);
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     ImGui::PopFont();
@@ -141,13 +142,19 @@ bool BeginInspectorProperties(const char* id, float labelWidth, bool readOnly) {
     return true;
 }
 void EndInspectorProperties() { ImGui::EndTable(); }
+bool InspectorChoiceFitsRow(const PropertySpec& spec) {
+    if (spec.kind != PropertyKind::Choice || !spec.choiceButtons) return false;
+    return spec.choices.size() <= MaximumRowChoices &&
+           PropertyChoiceColumns(spec) >= static_cast<int>(spec.choices.size());
+}
 bool InspectorChoiceFitsRow(const SceneParameter& parameter) {
-    if (parameter.kind != SceneParameterKind::Choice || !parameter.choiceButtons) return false;
-    return parameter.choices.size() <= MaximumRowChoices &&
-           EditorChoiceColumns(parameter) >= static_cast<int>(parameter.choices.size());
+    return InspectorChoiceFitsRow(ScenePropertySpec(parameter));
 }
 bool InspectorChoiceIsBlock(const SceneParameter& parameter, float labelWidth, float width) {
-    if (parameter.kind != SceneParameterKind::Choice || !parameter.choiceButtons) return false;
+    return InspectorChoiceIsBlock(ScenePropertySpec(parameter), labelWidth, width);
+}
+bool InspectorChoiceIsBlock(const PropertySpec& parameter, float labelWidth, float width) {
+    if (parameter.kind != PropertyKind::Choice || !parameter.choiceButtons) return false;
     if (!InspectorChoiceFitsRow(parameter)) return true;
     const auto& style = ImGui::GetStyle();
     const float scale = InspectorScale();
@@ -161,29 +168,48 @@ bool InspectorChoiceIsBlock(const SceneParameter& parameter, float labelWidth, f
 }
 bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value, bool pending, const char* applyHint,
                              bool* contextRequested) {
+    InspectorRow row;
+    row.label = parameter.label;
+    row.modified = value != parameter.initial;
+    row.pending = pending;
+    row.tooltip = parameter.label + "\nScene control: kept for this session, not saved." +
+                  (row.modified ? "\nModified from default." : "") +
+                  (parameter.description.empty() ? "" : "\n" + parameter.description) +
+                  (*applyHint ? "\n" + std::string(applyHint) : "");
+    auto property = ScenePropertyValue(parameter, value);
+    const auto edit = InspectorPropertyField(row, ScenePropertySpec(parameter), property);
+    if (contextRequested && edit.context) *contextRequested = true;
+    if (edit.reset) {
+        value = parameter.initial;
+        return true;
+    }
+    if (edit.changed) value = SceneValueOf(parameter, property);
+    return edit.changed;
+}
+InspectorEdit InspectorPropertyField(const InspectorRow& row, const PropertySpec& spec, PropertyValue& value) {
+    InspectorEdit edit;
     const auto context = [&] {
-        if (contextRequested && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) &&
-            ImGui::IsMouseReleased(ImGuiMouseButton_Right))
-            *contextRequested = true;
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+            edit.context = true;
     };
-    const bool modified = value != parameter.initial;
-    const std::string tooltip = parameter.label + (modified ? "\nModified from default." : "") +
-                                (parameter.description.empty() ? "" : "\n" + parameter.description);
-    const std::string labelTooltip = tooltip + (*applyHint ? "\n" + std::string(applyHint) : "");
-    const bool compact = parameter.kind == SceneParameterKind::Boolean ||
-                         (parameter.kind == SceneParameterKind::Choice && !parameter.choiceButtons);
+    const bool modified = row.modified;
+    const bool pending = row.pending;
+    const std::string& tooltip = row.tooltip;
+    const std::string& labelTooltip = row.tooltip;
+    const bool compact =
+        spec.kind == PropertyKind::Boolean || (spec.kind == PropertyKind::Choice && !spec.choiceButtons);
     if (compact) {
-        const float padding = parameter.kind == SceneParameterKind::Boolean ? CheckboxPaddingY : DropdownPaddingY;
+        const float padding = spec.kind == PropertyKind::Boolean ? CheckboxPaddingY : DropdownPaddingY;
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {ImGui::GetStyle().FramePadding.x, padding * InspectorScale()});
     }
     // Choice blocks stand outside any table (InspectorChoiceIsBlock); everything else shares its group's table.
     const bool choiceGrid =
-        parameter.kind == SceneParameterKind::Choice && parameter.choiceButtons && ImGui::TableGetColumnCount() == 0;
+        spec.kind == PropertyKind::Choice && spec.choiceButtons && ImGui::TableGetColumnCount() == 0;
     const bool inlineRow = !choiceGrid && ImGui::TableGetColumnCount() > 1;
     const float resetSize = ResetButtonSize * InspectorScale();
     const float gap = ImGui::GetStyle().ItemSpacing.x;
     const bool inlineCheckbox =
-        !inlineRow && parameter.kind == SceneParameterKind::Boolean &&
+        !inlineRow && spec.kind == PropertyKind::Boolean &&
         ImGui::GetContentRegionAvail().x >= resetSize + ToolToggleWidth("##value") + gap * 2 + ImGui::GetFontSize();
     if (choiceGrid) {
         ImGui::BeginGroup();
@@ -193,33 +219,31 @@ bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value,
     }
     if (inlineRow) {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetStyle().FramePadding.y);
-        InspectorLabel(parameter.label.c_str(), labelTooltip.c_str(), modified, ImGui::GetContentRegionAvail().x);
+        InspectorLabel(row.label.c_str(), labelTooltip.c_str(), modified, ImGui::GetContentRegionAvail().x);
         context();
         ImGui::TableSetColumnIndex(2);
     } else {
         const float checkboxWidth = inlineCheckbox ? ToolToggleWidth("##value") + gap : 0;
         const float labelWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - resetSize - gap - checkboxWidth);
         ImGui::AlignTextToFramePadding();
-        InspectorLabel(parameter.label.c_str(), labelTooltip.c_str(), modified, labelWidth);
+        InspectorLabel(row.label.c_str(), labelTooltip.c_str(), modified, labelWidth);
         context();
         ImGui::SameLine(0, gap);
     }
-    bool edited = false;
-    if (!inlineCheckbox) edited = InspectorResetButton(modified, pending, inlineRow);
-    if (edited) value = parameter.initial;
+    if (!inlineCheckbox) edit.reset = InspectorResetButton(modified, pending, inlineRow, row.resetTooltip.c_str());
     if (inlineRow) ImGui::TableSetColumnIndex(1);
     ImGui::SetNextItemWidth(-FLT_MIN);
-    const bool technical = parameter.kind == SceneParameterKind::Integer ||
-                           parameter.kind == SceneParameterKind::Float || parameter.kind == SceneParameterKind::Color;
+    const bool technical = spec.kind == PropertyKind::Integer || spec.kind == PropertyKind::Float ||
+                           spec.kind == PropertyKind::Color || spec.kind == PropertyKind::Vec2 ||
+                           spec.kind == PropertyKind::Range;
     if (technical) ImGui::PushFont(ToolFont(ToolFontRole::Technical), 0);
     if (modified) {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, InspectorScale());
         ImGui::PushStyleColor(ImGuiCol_Border, AccentSurface(ImGuiCol_Border, 0.35f, ToolTone::Warning));
     }
-    const bool modifiedNumber =
-        modified && (parameter.kind == SceneParameterKind::Integer || parameter.kind == SceneParameterKind::Float);
+    const bool modifiedNumber = modified && technical && spec.kind != PropertyKind::Color;
     if (modifiedNumber) ImGui::PushStyleColor(ImGuiCol_Text, ToolToneColor(ToolTone::Warning));
-    edited = EditorParameterWidget(parameter, value) || edited;
+    edit.changed = PropertyWidget(spec, value);
     context();
     if (modifiedNumber) ImGui::PopStyleColor();
     ToolTooltip(tooltip.c_str());
@@ -230,10 +254,7 @@ bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value,
     if (technical) ImGui::PopFont();
     if (inlineCheckbox) {
         ImGui::SameLine(0, gap);
-        if (InspectorResetButton(modified, pending, true)) {
-            value = parameter.initial;
-            edited = true;
-        }
+        edit.reset = InspectorResetButton(modified, pending, true, row.resetTooltip.c_str());
     }
     if (pending) {
         ToolStatusBadge("Pending", EditorPhaseColor(EditorPhase::Paused));
@@ -244,7 +265,7 @@ bool InspectorParameterField(const SceneParameter& parameter, SceneValue& value,
         context();
     }
     if (compact) ImGui::PopStyleVar();
-    return edited;
+    return edit;
 }
 void InspectorReadOnlyField(const SceneReadout& value) {
     ImGui::TableNextRow();

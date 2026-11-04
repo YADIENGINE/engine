@@ -16,5 +16,20 @@
       { "from": 2, "chances": [70, 30] },
       { "from": 5, "chances": [55, 45] }
     ]
+  },
+  "mode": { "type": "choice", "choices": ["Off", "Pulse", "Wave"], "value": "Pulse", "group": "Look", "note": "How it moves" },
+  "moods": { "type": "choice[]", "choices": ["Calm", "Wild"], "value": ["Wild", "Calm"] },
+  "speed": { "value": 2.5, "min": 0, "unit": "px/s", "group": "Look" },
+  "kinds": {
+    "type": "table",
+    "note": "Weights per kind",
+    "columns": {
+      "kind": { "type": "choice", "choices": ["Small", "Big"] },
+      "weight": { "type": "int", "min": 0, "unit": "%" }
+    },
+    "rows": [
+      { "kind": "Small", "weight": 70 },
+      { "kind": "Big", "weight": 30 }
+    ]
   }
 }

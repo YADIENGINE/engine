@@ -80,6 +80,7 @@ private:
     std::optional<Seek> _seek;
     std::deque<WorkerMessage> _queued; // Read but not yet applied (waiting behind a seek)
     std::size_t _droppedLogs = 0;
+    std::uint64_t _tuningUse = 0; // TuningUseRevision last sent as "tuning-used"
     // Actions since open / reset at their playback time; a rewind replays them as the clock passes them again. A scene
     // with a simulation keeps none here: its actions are commands on the tape (D26).
     struct TimedAction {

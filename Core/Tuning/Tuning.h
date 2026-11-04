@@ -9,11 +9,12 @@
 //     const auto& tuning = Tuning<GlowTuning>();
 //
 // In development (ENGINE_TUNING_LIVE), the first call registers and reads the file; changes refresh values at the
-// start of the next frame. Reading runs on the main thread. Release uses compiled `constexpr` values.
+// start of the next frame, and each call tells the editor which files the open scene reads. Reading runs on the main
+// thread. Release uses compiled `constexpr` values.
 template <class T> [[nodiscard]] const T& Tuning() {
 #if ENGINE_TUNING_LIVE
     static TuningSlot<T> slot;
-    return slot.Value();
+    return slot.Use();
 #else
     static constexpr T Values{};
     return Values;

@@ -47,13 +47,13 @@ TEST_CASE("Editor.Control.ValuesFollowTheParameterKind", "[engine-editor]") {
     CHECK_THROWS(ControlValueOf(Parameter(SceneParameterKind::Boolean), 1));
     CHECK(ControlValueOf(Parameter(SceneParameterKind::Choice), "Fast") == SceneValue{std::string("Fast")});
     CHECK(ControlValueOf(Parameter(SceneParameterKind::Color), nlohmann::json::array({1, 0, 0})) ==
-          SceneValue{SceneColor{1.0f, 0.0f, 0.0f, 1.0f}});
-    CHECK(ControlValueOf(Parameter(SceneParameterKind::Color), "#ff000080") ==
-          SceneValue{SceneColor{1.0f, 0.0f, 0.0f, 128.0f / 255.0f}});
+          SceneValue{Color4{255, 0, 0, 255}});
+    CHECK(ControlValueOf(Parameter(SceneParameterKind::Color), "#ff000080") == SceneValue{Color4{255, 0, 0, 128}});
     CHECK_THROWS(ControlValueOf(Parameter(SceneParameterKind::Color), "red"));
     CHECK_THROWS(ControlValueOf(Parameter(SceneParameterKind::Color), nlohmann::json::array({1, 0})));
     // Values go back out as plain JSON
-    CHECK(ControlValue(SceneColor{0.0f, 1.0f, 0.0f, 1.0f}) == nlohmann::json::array({0.0f, 1.0f, 0.0f, 1.0f}));
+    CHECK(ControlValue(Color4{0, 255, 0, 255}) == nlohmann::json::array({0.0f, 1.0f, 0.0f, 1.0f}));
+    CHECK_THROWS(ControlValueOf(Parameter(SceneParameterKind::Color), nlohmann::json::array({2, 0, 0})));
     CHECK(ControlValue(std::int64_t{7}) == 7);
 }
 

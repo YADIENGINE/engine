@@ -27,6 +27,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/AudioWaveformCache.cpp
     Internals/Session/EditorProject.cpp
     Internals/Session/RefreshState.cpp
+    Internals/Session/TuningBaselines.cpp
     Internals/Session/TuningWorkspace.cpp
     Internals/Session/WorkerSimulation.cpp
     Internals/Session/WorkerSnapshots.cpp
@@ -90,6 +91,8 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Widgets/EditorWidgets.cpp
         Ui/Widgets/EditorAgentSetup.cpp
         Ui/Widgets/InspectorWidgets.cpp
+        Ui/Widgets/Properties.cpp
+        Ui/Widgets/PropertyWidgets.cpp
         Ui/Widgets/EditorPlaybackControls.cpp
         Ui/Widgets/EditorAgentActivity.cpp
         Ui/Widgets/EditorGitBar.cpp
@@ -100,7 +103,7 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Panels/Catalog/CatalogPanel.cpp
         Ui/Panels/Viewport/ViewportPanel.cpp
         Ui/Panels/Inspector/InspectorPanel.cpp
-        Ui/Panels/Tuning/TuningPanel.cpp
+        Ui/Panels/Inspector/TuningInspector.cpp
         Ui/Panels/Output/OutputPanel.cpp
         Ui/Panels/Console/ConsolePanel.cpp
         Ui/Panels/Git/GitDiffView.cpp

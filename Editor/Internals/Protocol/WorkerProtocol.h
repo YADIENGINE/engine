@@ -8,8 +8,9 @@
 #include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Session/AudioUsage.h"
 #include "Input/Input.h"
+#include "Tuning/TuningFile.h"
 
-inline constexpr std::uint32_t WorkerProtocolVersion = 13;
+inline constexpr std::uint32_t WorkerProtocolVersion = 14;
 inline constexpr std::size_t WorkerMaxInputPoints = 32;
 inline constexpr std::size_t WorkerMaxMessageBytes = 1024 * 1024;
 inline constexpr std::size_t WorkerMaxQueuedMessages = 256;
@@ -66,3 +67,18 @@ struct WorkerTuningStatus {
 [[nodiscard]] std::vector<AudioUse> DecodeAudioCatalog(const nlohmann::json& json);
 [[nodiscard]] nlohmann::json EncodeWorkerTuning(const WorkerTuningStatus& status);
 [[nodiscard]] WorkerTuningStatus DecodeWorkerTuning(const nlohmann::json& json);
+
+// One tuning value the editor sends while it is dragged ("tuning-preview"): the worker writes it in memory only, and
+// the file it then writes replaces it. "tuning-reload" carries only the source: the worker rereads the file at once.
+struct WorkerTuningPreview {
+    std::string source; // Absolute, UTF-8
+    TuningLocation at;
+    TuningValue value;
+};
+[[nodiscard]] nlohmann::json EncodeTuningValue(const TuningValue& value);
+[[nodiscard]] TuningValue DecodeTuningValue(const nlohmann::json& json);
+[[nodiscard]] nlohmann::json EncodeWorkerTuningPreview(const WorkerTuningPreview& preview);
+[[nodiscard]] WorkerTuningPreview DecodeWorkerTuningPreview(const nlohmann::json& json);
+// The files the open scene has read since it opened ("tuning-used"), absolute UTF-8 paths in first-read order.
+[[nodiscard]] nlohmann::json EncodeWorkerTuningUsed(const std::vector<std::string>& sources);
+[[nodiscard]] std::vector<std::string> DecodeWorkerTuningUsed(const nlohmann::json& json);

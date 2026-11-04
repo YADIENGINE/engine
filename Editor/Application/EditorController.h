@@ -9,6 +9,7 @@
 #include "Editor/Application/WorkerProcess.h"
 #include "Editor/Internals/Session/EditorProject.h"
 #include "Editor/Internals/Session/RefreshState.h"
+#include "Editor/Internals/Session/TuningBaselines.h"
 #include "Editor/Internals/Session/TuningWorkspace.h"
 #include "Editor/Internals/Session/WorkerSnapshots.h"
 
@@ -62,7 +63,8 @@ public:
     void MarkControlAttempt() { _controlAttempt = _output.Attempt().id; }
     void Input(const DeviceInput& input);
     void Profile(EditorProfilerCommand command, const Profiler::Recipe& recipe, const std::string& file);
-    void Tune(std::size_t file, const TuningLocation& at, const TuningValue& value);
+    void Tuning(const TuningEditRequest& request);
+    void InspectTuning(const std::filesystem::path& file) { _inspectedTuning = file; }
     void HostTransfer(double ms) { _hostTransferMs = ms; }
     void Log(const std::string& text, EditorLogLevel level = EditorLogLevel::Info,
              EditorLogSource source = EditorLogSource::Editor);
@@ -94,6 +96,7 @@ private:
         std::map<std::string, SceneParameters> accepted;
         bool selectionMissing = false; // The new catalog lacks the selected scene: it only refreshes the catalog
         std::vector<WorkerTuningStatus> tuning;
+        std::optional<std::vector<std::string>> tuningUsed;
     };
 
     void Open();
@@ -123,6 +126,10 @@ private:
     void ActiveExited(WorkerProcessMode mode, unsigned long code);
     // Worker'ın tuning raporu: panelin durumu ve Output (ilk başarılı okuma hariç).
     void ReceiveTuning(const WorkerTuningStatus& status);
+    void ReceiveTuningUsed(const std::vector<std::string>& sources);
+    // Asks the running scene to reread a file the editor just wrote.
+    void ReloadTuning(const std::filesystem::path& source);
+    void TickTuning();
 
     void TickBuild();
     void BuildFinished(const WorkerBuildExit& exit);
@@ -192,5 +199,8 @@ private:
     std::uint64_t _profilerRequest = 0;
     bool _benchmarkCancelPending = false;
     double _hostTransferMs = 0;
-    TuningWorkspace _tuning; // Durumu aktif worker'ın; worker değişince sıfırlanır
+    TuningWorkspace _tuning;                     // Worker state is the active worker's; reset when the worker changes
+    std::unique_ptr<TuningBaselines> _baselines; // Committed values; none without a project folder
+    std::filesystem::path _inspectedTuning;
+    std::optional<std::pair<std::filesystem::path, TuningLocation>> _previewing; // A dragged value not yet written
 };

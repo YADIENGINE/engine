@@ -27,7 +27,7 @@ CMake; the project's code replaces the starter game when the first `.cpp` is add
 
 The same file connects `*.tuning.json` settings files under `Game/` to the build with `engine_add_tuning(${PROJECT_NAME}
 ROOT Game)` ([Tuning](Tuning.md)): keeping manually adjusted numbers such as radius, speed, and color there instead of
-in code lets you change them while the game runs or from the editor's Tuning panel without building.
+in code lets you change them while the game runs or from the editor's Inspector without building.
 
 `engine_add_game` adds the engine's `Main.cpp` and Engine link; the project owns the `CreateGame()` factory. Supported
 arguments: `SOURCES`, `LIBRARIES` for extra targets (e.g. `EngineLocalization`), and `ASSETS` for the folder to copy

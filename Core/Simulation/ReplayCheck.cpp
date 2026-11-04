@@ -36,7 +36,17 @@ TapeVerification VerifyTape(const SimulationDefinition& definition, const InputT
         std::min<std::uint64_t>(tape.hashes.size(), tape.steps / static_cast<std::uint64_t>(tape.hashEvery) + 1U);
     result.mismatch = run.runner.Mismatch();
     result.sameVersions = tape.SameVersions(definition.settings);
+    result.tuningChanged = TuningChanged(tape);
     return result;
+}
+std::vector<std::string> TuningChanged(const InputTape& tape) {
+    std::vector<std::string> changed;
+    const auto now = TuningDigests();
+    for (const auto& recorded : tape.tuning) {
+        const auto current = std::ranges::find(now, recorded.source, &TuningDigest::source);
+        if (current != now.end() && current->hash != recorded.hash) changed.push_back(recorded.source);
+    }
+    return changed;
 }
 std::optional<RunDivergence> FindDivergence(const SimulationDefinition& definition, const InputTape& tape) {
     RequirePlayable(definition, tape);

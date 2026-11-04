@@ -79,6 +79,11 @@ std::vector<std::uint64_t> DecodeHashes(const std::string& text) {
     }
     return hashes;
 }
+std::uint64_t TuningHash(const std::string& text) {
+    const auto hashes = DecodeHashes(text);
+    if (hashes.size() != 1) throw std::runtime_error("A tape's tuning hash has a wrong length");
+    return hashes.front();
+}
 } // namespace
 
 InputTape::InputTape(const SimulationSettings& settings, SimulationStart startState)
@@ -149,6 +154,12 @@ JsonIO::Document InputTape::ToDocument() const {
     document["commands"] = std::move(timed);
     document["hashEvery"] = hashEvery;
     document["hashes"] = EncodeHashes(hashes);
+    if (!tuning.empty()) {
+        auto files = JsonIO::Document::MakeObject();
+        for (const auto& digest : tuning)
+            files[digest.source] = FormatStateHash(digest.hash);
+        document["tuning"] = std::move(files);
+    }
     return document;
 }
 InputTape InputTape::FromDocument(const JsonIO::Document& document) {
@@ -196,6 +207,9 @@ InputTape InputTape::FromDocument(const JsonIO::Document& document) {
     tape.hashEvery = IntOf(document.At("hashEvery"), "hashEvery");
     if (tape.hashEvery < 1) throw std::runtime_error("Tape hashEvery must be at least 1");
     tape.hashes = DecodeHashes(document.At("hashes").AsString());
+    if (const auto* files = Find(document, "tuning"))
+        for (const auto& [source, hash] : files->Members())
+            tape.tuning.push_back({source, TuningHash(hash.AsString())});
     return tape;
 }
 void InputTape::Save(const std::filesystem::path& file) const {

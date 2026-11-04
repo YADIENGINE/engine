@@ -146,7 +146,7 @@ nlohmann::json EncodeSceneValue(const SceneValue& value) {
     std::visit(
         [&data](const auto& item) {
             using T = std::decay_t<decltype(item)>;
-            if constexpr (std::is_same_v<T, SceneColor>)
+            if constexpr (std::is_same_v<T, Color4>)
                 data = nlohmann::json::array({item.r, item.g, item.b, item.a});
             else
                 data = item;
@@ -172,11 +172,12 @@ SceneValue DecodeSceneValue(const nlohmann::json& json) {
     case 3:
         if (value.is_array() && value.size() == 4) {
             for (const auto& channel : value)
-                if (!channel.is_number() || !std::isfinite(channel.get<double>()) || channel.get<double>() < 0.0 ||
-                    channel.get<double>() > 1.0)
+                if (!channel.is_number_unsigned() || channel.get<std::uint64_t>() > 255)
                     throw std::runtime_error("Invalid color channel");
-            return SceneColor{value[0].get<float>(), value[1].get<float>(), value[2].get<float>(),
-                              value[3].get<float>()};
+            const auto channel = [&](std::size_t i) {
+                return static_cast<std::uint8_t>(value[i].get<std::uint64_t>());
+            };
+            return Color4{channel(0), channel(1), channel(2), channel(3)};
         }
         break;
     case 4:
@@ -229,6 +230,76 @@ WorkerTuningStatus DecodeWorkerTuning(const nlohmann::json& json) {
     return {json.at("source").get<std::string>(),
             static_cast<WorkerTuningState>(found - WorkerTuningStateNames.begin()), json.at("line").get<int>(),
             json.at("text").get<std::string>(), json.at("reload").get<bool>()};
+}
+nlohmann::json EncodeTuningValue(const TuningValue& value) {
+    nlohmann::json data;
+    std::visit(
+        [&data](const auto& item) {
+            using T = std::decay_t<decltype(item)>;
+            if constexpr (std::is_same_v<T, Color4>)
+                data = nlohmann::json::array({item.r, item.g, item.b, item.a});
+            else if constexpr (std::is_same_v<T, Float2>)
+                data = nlohmann::json::array({item.x, item.y});
+            else if constexpr (std::is_same_v<T, FloatRange>)
+                data = nlohmann::json::array({item.min, item.max});
+            else if constexpr (std::is_same_v<T, TuningChoice>)
+                data = item.index;
+            else
+                data = item;
+        },
+        value);
+    return {{"type", value.index()}, {"value", data}};
+}
+TuningValue DecodeTuningValue(const nlohmann::json& json) {
+    const auto& value = json.at("value");
+    const auto number = [](const nlohmann::json& item) {
+        if (!item.is_number() || !std::isfinite(item.get<double>())) throw std::runtime_error("Invalid tuning number");
+        return item.get<float>();
+    };
+    const auto pair = [&](auto make) {
+        if (!value.is_array() || value.size() != 2) throw std::runtime_error("Invalid tuning pair");
+        return make(number(value[0]), number(value[1]));
+    };
+    switch (static_cast<TuningType>(Unsigned(json.at("type")))) {
+    case TuningType::Float: return number(value);
+    case TuningType::Int:
+        if (!value.is_number_integer()) break;
+        return value.get<int>();
+    case TuningType::Bool:
+        if (!value.is_boolean()) break;
+        return value.get<bool>();
+    case TuningType::Color: {
+        if (!value.is_array() || value.size() != 4) break;
+        for (const auto& channel : value)
+            if (!channel.is_number_unsigned() || channel.get<std::uint64_t>() > 255)
+                throw std::runtime_error("Invalid color channel");
+        const auto channel = [&](std::size_t i) { return static_cast<std::uint8_t>(value[i].get<std::uint64_t>()); };
+        return Color4{channel(0), channel(1), channel(2), channel(3)};
+    }
+    case TuningType::Vec2 : return pair([](float x, float y) { return TuningValue{Float2{x, y}}; });
+    case TuningType::Range: return pair([](float low, float high) { return TuningValue{FloatRange{low, high}}; });
+    case TuningType::Choice:
+        if (!value.is_number_integer() || value.get<std::int64_t>() < 0 ||
+            value.get<std::int64_t>() > std::numeric_limits<int>::max())
+            break;
+        return TuningChoice{value.get<int>()};
+    }
+    throw std::runtime_error("Invalid tuning value");
+}
+nlohmann::json EncodeWorkerTuningPreview(const WorkerTuningPreview& preview) {
+    return {{"source", preview.source},      {"field", preview.at.field},
+            {"row", preview.at.row},         {"column", preview.at.column},
+            {"element", preview.at.element}, {"value", EncodeTuningValue(preview.value)}};
+}
+WorkerTuningPreview DecodeWorkerTuningPreview(const nlohmann::json& json) {
+    return {json.at("source").get<std::string>(),
+            {json.at("field").get<std::string>(), static_cast<std::size_t>(Unsigned(json.at("row"))),
+             json.at("column").get<std::string>(), static_cast<std::size_t>(Unsigned(json.at("element")))},
+            DecodeTuningValue(json.at("value"))};
+}
+nlohmann::json EncodeWorkerTuningUsed(const std::vector<std::string>& sources) { return {{"sources", sources}}; }
+std::vector<std::string> DecodeWorkerTuningUsed(const nlohmann::json& json) {
+    return json.at("sources").get<std::vector<std::string>>();
 }
 nlohmann::json EncodeSceneCatalog(const std::vector<SceneDefinition>& definitions) {
     auto entries = nlohmann::json::array();

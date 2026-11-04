@@ -3,8 +3,7 @@
 ## Window
 
 Saved dock layout and panel visibility are retained; Viewport starts open and in front on every editor launch. On first
-launch, Develop shows Scenes, Viewport, Inspector, and Tuning (a tab in the same right area as Inspector); Output,
-Profiler, and Console are closed. The bottom status bar has Output and Console buttons.
+launch, Develop shows Scenes, Viewport and Inspector; Output, Profiler, and Console are closed. The bottom status bar has Output and Console buttons.
 
 The toolbar's **Play game** button, immediately right of Build, uses a pixel invader icon. It builds the
 standalone game in Debug through the project tools, then opens it in its own window after a successful build.
@@ -37,6 +36,18 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
   letter by letter, with full text in tooltips. Advanced groups start collapsed; search and Modified filters expand
   matching groups. Live information shows numbers right-aligned in technical font, short statuses as badges, and
   explanations wrapped.
+  Two kinds of values share these widgets, and each says which it is on hover. **Scene controls** (the scene's
+  parameter groups) last for the session and are never saved; their reset restores the default. **Tuning files**
+  ([Tuning](../Tuning.md)) follow them, one section per file the running scene has read, and are saved: a dragged number
+  previews in the scene at once and is written to the file as one line when the drag ends; typing commits on Enter or
+  when the box loses focus. Modified compares tuning with the last commit (git HEAD), and their reset button or
+  right-click → Revert to committed writes it back. Right-click also opens the field's line in the code editor or sends
+  it to the agent. Ctrl+Z / Ctrl+Y undo and redo the Inspector's tuning writes while the file still holds what they
+  wrote. Lists and tables have `+` / `-` to change their length, which needs Build & Refresh. A section's badge is the
+  scene's state for the file: Live, Not applied (line and reason), Build needed (with Build & Refresh), Unreadable; a
+  file no build has seen yet is Not built. Any other tuning file opens from the list under the sections, from the list
+  shown when no scene is selected, or by clicking its tile in Assets; the Inspector then shows only that file, with a
+  button back to the scene. Picking a scene in Scenes returns to it too.
 - **Output:** one row of controls above the lines. `Problems` lists the latest build's compiler, linker and CMake
   messages, errors first and without repeats; a click opens the file at the line (VS Code when `code` is on PATH,
   otherwise the file's default application), *Fix* pastes that error into the agent session and *Fix all with agent*
@@ -78,16 +89,6 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
   In live applications such as Claude and Codex, wheel input follows the requested mouse protocol; full-screen
   applications without mouse reporting receive cursor keys. Shift+wheel forces local history browsing, and fractional
   touchpad movement accumulates. Double-click word selection is not yet available.
-- **Tuning:** the project's `*.tuning.json` files ([Tuning](../Tuning.md)); the list comes from the build's
-  `Tuning/TuningFiles.json`, with new files appearing after the next configure. File selection is at the top, followed
-  by the scene's latest state for that file: Live, Not applied (invalid file; line and reason), Build needed (field /
-  length changed; Build & Refresh button), Unreadable. If the scene does not use the file or is not open, this is
-  stated. Value fields are label / box rows; tables are grids. Type numbers, vec2, range, and colors (`#RRGGBB[AA]`) and
-  commit with Enter; leaving a box without Enter reverts the edit; checkboxes write on click. Out-of-bounds or invalid
-  values are not sent; the box stays red, with the reason in a tooltip. An accepted value is patched as a single value
-  into the current file on disk and written atomically (external changes are not overwritten); if the file is currently
-  invalid, no write occurs and Output gets a warning. External edits (by hand or AI) refresh the panel. Add rows /
-  fields in the file, not in the panel.
 - **Profiler:** Live / Benchmarks / Compare. Opens when a benchmark example is selected; warmup / measurement frames /
   repetition pairs are under Advanced benchmark settings. Glow override is one choice group; highlighting shows the last
   requested value. Compare's Export menu offers JSON and Markdown. Details: [Profiler](Profiler.md).

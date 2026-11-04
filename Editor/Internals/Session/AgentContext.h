@@ -19,6 +19,9 @@
 // One Inspector parameter: its value, range or choices and description.
 [[nodiscard]] std::string ParameterContext(const SceneDefinition& definition, const SceneParameter& parameter,
                                            const SceneValue& value);
+// A tuning field: its file and line, current value, and details such as bounds, the committed value and its note.
+[[nodiscard]] std::string TuningContext(const std::string& file, int line, const std::string& field,
+                                        const std::string& value, const std::string& details);
 // Output lines, one per line, after a header; at most `limit`, keeping the newest.
 [[nodiscard]] std::string OutputContext(const std::vector<EditorLogEntry>& entries, std::size_t limit);
 // The last Build & Refresh failure: result, exit code and its error lines (at most `limit`); empty when it did not

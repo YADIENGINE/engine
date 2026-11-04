@@ -7,7 +7,7 @@ from pathlib import Path
 
 from Tools.tuning.check import check_tuning
 from Tools.tuning.document import TuningError, read_fields
-from Tools.tuning.header import generate, render, struct_name
+from Tools.tuning.header import generate, project_path, render, struct_name
 from Tools.tuning.layout import canonical
 
 CASES = Path(__file__).resolve().parent / "TuningCases"
@@ -26,6 +26,25 @@ SAMPLE = """{
     "rows": [
       { "from": 2, "chances": [70, 30] },
       { "from": 5, "chances": [55, 45] }
+    ]
+  }
+}
+"""
+
+DESCRIBED = """{
+  "mode": { "type": "choice", "choices": ["Off", "Pulse"], "value": "Pulse", "group": "Look", "note": "How it moves" },
+  "modes": { "type": "choice[]", "choices": ["Calm", "Wild"], "value": ["Wild", "Calm"] },
+  "speed": { "value": 2.5, "min": 0, "unit": "px/s" },
+  "kinds": {
+    "type": "table",
+    "note": "Weights per kind",
+    "columns": {
+      "kind": { "type": "choice", "choices": ["Small", "Big"] },
+      "weight": { "type": "int", "min": 0, "unit": "%", "note": "Share" }
+    },
+    "rows": [
+      { "kind": "Small", "weight": 70 },
+      { "kind": "Big", "weight": 30 }
     ]
   }
 }
@@ -58,6 +77,15 @@ class DocumentTests(unittest.TestCase):
         self.assertEqual([name for name, _ in table.columns], ["from", "chances"])
         self.assertEqual(table.rows[1], {"from": 5, "chances": [55.0, 45.0]})
 
+    def test_choices_and_editor_text(self):
+        mode, modes, speed, kinds = read_fields(DESCRIBED)
+        self.assertEqual((mode.spec.type, mode.spec.choices, mode.value), ("choice", ["Off", "Pulse"], "Pulse"))
+        self.assertEqual((mode.group, mode.note), ("Look", "How it moves"))
+        self.assertEqual(modes.value, ["Wild", "Calm"])
+        self.assertEqual(speed.spec.unit, "px/s")
+        self.assertEqual(kinds.note, "Weights per kind")
+        self.assertEqual(dict(kinds.columns)["weight"].note, "Share")
+
 
 class HeaderTests(unittest.TestCase):
     def test_struct_name_comes_from_the_file_name(self):
@@ -67,29 +95,60 @@ class HeaderTests(unittest.TestCase):
                 struct_name(Path(bad))
 
     def test_members_carry_the_file_values(self):
-        text = render(read_fields(SAMPLE), "SampleTuning", Path("Sample.tuning.json"))
+        text = render(read_fields(SAMPLE), "SampleTuning", "Game/Sample.tuning.json")
         for expected in ("struct SampleTuning {", "float glowRadius = 12.0f;", "int count = 3;",
                          "Color4 tint = Color4{255, 64, 128, 255};", "FloatRange spread = FloatRange{1.0f, 3.0f};",
                          "struct OddsRow {", "std::array<float, 2> chances{};", "std::array<OddsRow, 2> odds{",
                          "OddsRow{5, {55.0f, 45.0f}},", 'visitor.Table("odds", odds);', "#if ENGINE_TUNING_LIVE",
-                         '#include "Tuning/Tuning.h"', '#include "Utilities/Color4.h"'):
+                         '#include "Tuning/Tuning.h"', '#include "Utilities/Color4.h"',
+                         'TuningSource = u8"Game/Sample.tuning.json";'):
             self.assertIn(expected, text)
         self.assertNotIn("Float2", text)
+
+    def test_choices_become_enums_and_notes_comments(self):
+        text = render(read_fields(DESCRIBED), "LookTuning", "Game/Look.tuning.json")
+        for expected in ("enum class Mode : int { Off, Pulse };",
+                         'static constexpr std::array<std::string_view, 2> ModeNames{"Off", "Pulse"};',
+                         "    // How it moves", "Mode mode = Mode::Pulse;",
+                         "std::array<Modes, 2> modes{Modes::Wild, Modes::Calm};",
+                         'visitor.Choice("mode", mode, ModeNames);', "    // (px/s)",
+                         "        enum class Kind : int { Small, Big };", "        // Share (%)",
+                         "        Kind kind{};", "KindsRow{KindsRow::Kind::Big, 30},",
+                         'visitor.Choice("kind", kind, KindNames);', "    // Weights per kind"):
+            self.assertIn(expected, text)
+
+    def test_source_is_relative_to_the_project(self):
+        with tempfile.TemporaryDirectory(prefix="EngineTuning-") as directory:
+            root = Path(directory)
+            source = root / "Game" / "Glow.tuning.json"
+            self.assertEqual(project_path(source, root), "Game/Glow.tuning.json")
+            with self.assertRaises(TuningError):
+                project_path(Path(tempfile.gettempdir()) / "Elsewhere.tuning.json", root / "Game")
 
     def test_unchanged_header_is_not_rewritten(self):
         with tempfile.TemporaryDirectory(prefix="EngineTuning-") as directory:
             source, header = Path(directory) / "Sample.tuning.json", Path(directory) / "out" / "Sample.tuning.h"
             source.write_text(SAMPLE, encoding="utf-8")
-            self.assertTrue(generate(source, header))
-            self.assertFalse(generate(source, header))
+            root = Path(directory)
+            self.assertTrue(generate(source, header, root))
+            self.assertFalse(generate(source, header, root))
             source.write_text(SAMPLE.replace('"value": 3', '"value": 4'), encoding="utf-8")
-            self.assertTrue(generate(source, header))
+            self.assertTrue(generate(source, header, root))
             self.assertIn("int count = 4;", header.read_text(encoding="utf-8"))
 
 
 class LayoutTests(unittest.TestCase):
     def test_canonical_is_stable(self):
         self.assertEqual(canonical(SAMPLE), SAMPLE)
+        self.assertEqual(canonical(DESCRIBED), DESCRIBED)
+
+    def test_table_text_comes_before_columns(self):
+        messy = ('{"t":{"rows":[{"x":2}],"note":"N","columns":{"x":{"note":"X","type":"int","unit":"s"}},'
+                 '"type":"table","group":"G"}}')
+        expected = ('{\n  "t": {\n    "type": "table",\n    "group": "G",\n    "note": "N",\n    "columns": {\n'
+                    '      "x": { "type": "int", "unit": "s", "note": "X" }\n    },\n    "rows": [\n'
+                    '      { "x": 2 }\n    ]\n  }\n}\n')
+        self.assertEqual(canonical(messy), expected)
 
     def test_layout_is_normalised_and_numbers_are_kept(self):
         messy = ('{"a":{"max":40,"value":12.50,"min":0},"t":{"rows":[{"y":1,"x":2}],"type":"table",'

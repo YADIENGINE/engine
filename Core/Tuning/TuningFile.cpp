@@ -8,10 +8,11 @@
 #include "Tuning/Internals/TuningJson.h"
 
 namespace {
-constexpr std::array<std::string_view, 6> TypeNames{"float", "int", "bool", "color", "vec2", "range"};
-constexpr std::array<std::string_view, 4> FieldKeys{"type", "value", "min", "max"};
-constexpr std::array<std::string_view, 3> TableKeys{"type", "columns", "rows"};
-constexpr std::array<std::string_view, 3> ColumnKeys{"type", "min", "max"};
+constexpr std::array<std::string_view, 7> TypeNames{"float", "int", "bool", "color", "vec2", "range", "choice"};
+constexpr std::array<std::string_view, 8> FieldKeys{"type", "choices", "value", "min", "max", "unit", "group", "note"};
+constexpr std::array<std::string_view, 5> TableKeys{"type", "group", "note", "columns", "rows"};
+constexpr std::array<std::string_view, 6> ColumnKeys{"type", "choices", "min", "max", "unit", "note"};
+constexpr std::size_t MaxUnit = 16; // Characters (code points)
 // Alan adı üretilen struct'ın üyesi olur; küçük harfle başlayan C++ anahtar sözcükleri ad olamaz.
 constexpr auto CppKeywords = std::to_array<std::string_view>(
     {"alignas",     "alignof",   "and",        "and_eq",    "asm",      "auto",         "bitand",
@@ -74,8 +75,22 @@ std::optional<Color4> ParseColor(std::string_view text) {
     return Color4{channels[0], channels[1], channels[2], channels[3]};
 }
 
-TuningValue Decode(const TuningJsonNode& node, TuningType type, const std::string& what) {
-    switch (type) {
+std::string ChoiceList(const std::vector<std::string>& choices) {
+    std::string out;
+    for (const auto& choice : choices)
+        out += (out.empty() ? "" : ", ") + choice;
+    return out;
+}
+
+TuningValue Decode(const TuningJsonNode& node, const TuningSpec& spec, const std::string& what) {
+    switch (spec.type) {
+    case TuningType::Choice: {
+        const auto found = node.kind == TuningJsonKind::String
+                               ? std::find(spec.choices.begin(), spec.choices.end(), node.text)
+                               : spec.choices.end();
+        if (found == spec.choices.end()) Fail(node.line, what + " must be one of " + ChoiceList(spec.choices));
+        return TuningChoice{static_cast<int>(found - spec.choices.begin())};
+    }
     case TuningType::Float: return static_cast<float>(Number(node, what));
     case TuningType::Int  : {
         const bool integer = node.kind == TuningJsonKind::Number && node.text.find_first_of(".eE") == std::string::npos;
@@ -112,6 +127,7 @@ TuningValue Decode(const TuningJsonNode& node, TuningType type, const std::strin
 }
 
 std::vector<double> Numbers(const TuningValue& value, const TuningJsonNode& node) {
+    if (std::holds_alternative<TuningChoice>(value)) return {};
     if (std::holds_alternative<int>(value)) return {static_cast<double>(std::get<int>(value))};
     // Float'a çevrilmeden önceki sayılar: sınır, Python üreticisi gibi yazılan değere uygulanır.
     if (std::holds_alternative<float>(value)) return {Number(node, {})};
@@ -123,7 +139,7 @@ std::vector<double> Numbers(const TuningValue& value, const TuningJsonNode& node
 
 std::vector<TuningValue> Checked(const TuningJsonNode& node, const TuningSpec& spec, const std::string& what) {
     const auto one = [&](const TuningJsonNode& item, const std::string& label) {
-        TuningValue value = Decode(item, spec.type, label);
+        TuningValue value = Decode(item, spec, label);
         for (const double number : Numbers(value, item))
             if ((spec.min && number < *spec.min) || (spec.max && number > *spec.max))
                 Fail(item.line,
@@ -155,7 +171,45 @@ void CheckName(std::string_view name, int line, const std::string& what) {
         Fail(line, what + " " + Quoted(name) + " is a C++ keyword");
 }
 
-bool Bounded(TuningType type) { return type != TuningType::Bool && type != TuningType::Color; }
+bool Bounded(TuningType type) {
+    return type != TuningType::Bool && type != TuningType::Color && type != TuningType::Choice;
+}
+
+std::size_t CodePoints(std::string_view text) {
+    return static_cast<std::size_t>(
+        std::count_if(text.begin(), text.end(), [](char c) { return (static_cast<unsigned char>(c) & 0xC0) != 0x80; }));
+}
+
+// A one-line text key: note, group, unit.
+std::string Text(const TuningJsonNode& node, const std::string& what, std::size_t limit = 0) {
+    const bool blank = std::all_of(node.text.begin(), node.text.end(), [](char c) { return c == ' '; });
+    if (node.kind != TuningJsonKind::String || blank) Fail(node.line, what + " must be non-empty text");
+    if (std::any_of(node.text.begin(), node.text.end(), [](char c) { return static_cast<unsigned char>(c) < 0x20; }))
+        Fail(node.line, what + " must be a single line");
+    if (limit && CodePoints(node.text) > limit)
+        Fail(node.line, what + " is longer than " + std::to_string(limit) + " characters");
+    return node.text;
+}
+
+std::vector<std::string> Choices(const TuningJsonNode& node, const std::string& where) {
+    if (node.kind != TuningJsonKind::Array || node.items.empty())
+        Fail(node.line, where + " \"choices\" must be a non-empty list");
+    std::vector<std::string> names;
+    for (const auto& item : node.items) {
+        const bool pascal = item.kind == TuningJsonKind::String && !item.text.empty() && item.text[0] >= 'A' &&
+                            item.text[0] <= 'Z' && std::all_of(item.text.begin(), item.text.end(), [](char c) {
+                                return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+                            });
+        if (!pascal)
+            Fail(item.line, where + " choice " +
+                                Quoted(item.kind == TuningJsonKind::String ? item.text : "a non-text value") +
+                                " must be PascalCase: an uppercase letter, then letters and digits");
+        if (std::find(names.begin(), names.end(), item.text) != names.end())
+            Fail(item.line, where + " lists the choice " + Quoted(item.text) + " twice");
+        names.push_back(item.text);
+    }
+    return names;
+}
 
 TuningSpec Spec(const TuningJsonNode& node, const TuningJsonNode* type, const std::string& where,
                 std::optional<TuningType> inferred = std::nullopt) {
@@ -182,7 +236,23 @@ TuningSpec Spec(const TuningJsonNode& node, const TuningJsonNode* type, const st
     }
     if (spec.min && spec.max && *spec.min > *spec.max)
         Fail(node.Find("min")->line, where + " has min greater than max");
+    if (const auto* choices = node.Find("choices")) {
+        if (spec.type != TuningType::Choice)
+            Fail(choices->line, where + " of type " + typeText + " cannot have \"choices\"");
+        spec.choices = Choices(*choices, where);
+    } else if (spec.type == TuningType::Choice) {
+        Fail(node.line, where + " of type " + typeText + " needs \"choices\"");
+    }
+    if (const auto* unit = node.Find("unit")) {
+        if (!Bounded(spec.type)) Fail(unit->line, where + " of type " + typeText + " cannot have \"unit\"");
+        spec.unit = Text(*unit, where + " \"unit\"", MaxUnit);
+    }
     return spec;
+}
+
+void Describe(TuningField& field, const TuningJsonNode& node, const std::string& where) {
+    if (const auto* group = node.Find("group")) field.group = Text(*group, where + " \"group\"");
+    if (const auto* note = node.Find("note")) field.note = Text(*note, where + " \"note\"");
 }
 
 std::optional<TuningType> Inferred(const TuningJsonNode* value) {
@@ -200,6 +270,7 @@ TuningField ValueField(const TuningJsonMember& member) {
     TuningField field{member.key, member.line};
     field.spec = Spec(node, node.Find("type"), where, Inferred(value));
     field.values = Checked(*value, field.spec, where + " value");
+    Describe(field, node, where);
     return field;
 }
 
@@ -214,12 +285,15 @@ TuningField TableField(const TuningJsonMember& member) {
     if (columns.kind != TuningJsonKind::Object || columns.members.empty())
         Fail(columns.line, where + " \"columns\" must be a non-empty object");
     TuningField field{member.key, member.line, true};
+    Describe(field, node, where);
     for (const auto& column : columns.members) {
         CheckName(column.key, column.line, "column");
         const std::string label = "column " + Quoted(column.key);
         if (column.value.kind != TuningJsonKind::Object) Fail(column.value.line, label + " must be an object");
         CheckKeys(column.value, ColumnKeys, label);
-        field.columns.push_back({column.key, Spec(column.value, column.value.Find("type"), label)});
+        auto& added = field.columns.emplace_back(
+            TuningColumn{column.key, {}, Spec(column.value, column.value.Find("type"), label)});
+        if (const auto* note = column.value.Find("note")) added.note = Text(*note, label + " \"note\"");
     }
     if (rows.kind != TuningJsonKind::Array || rows.items.empty())
         Fail(rows.line, where + " \"rows\" must be a non-empty list");
@@ -260,6 +334,17 @@ std::vector<TuningField> Fields(const TuningJsonNode& root) {
         const bool table = type && type->kind == TuningJsonKind::String && type->text == "table";
         fields.push_back(table ? TableField(member) : ValueField(member));
     }
+    // A choice's enum and a table's row struct live in the same generated struct, so their names must differ.
+    const auto typeName = [](const std::string& name) {
+        return static_cast<char>(name[0] - 'a' + 'A') + name.substr(1);
+    };
+    for (const auto& field : fields) {
+        if (field.table || field.spec.type != TuningType::Choice) continue;
+        for (const auto& table : fields)
+            if (table.table && typeName(table.name) + "Row" == typeName(field.name))
+                Fail(field.line, "choice " + Quoted(field.name) + " names the enum " + typeName(field.name) +
+                                     ", which table " + Quoted(table.name) + " uses for its rows");
+    }
     return fields;
 }
 
@@ -277,8 +362,13 @@ std::string FormatHex(std::uint8_t channel) {
     return {Digits[channel >> 4], Digits[channel & 0x0F]};
 }
 
-// Kanonik satır içi yazım (Tools/tuning/layout.py ile aynı).
-std::string Format(const TuningValue& value) {
+// The canonical inline spelling (as Tools/tuning/layout.py writes it).
+std::string Format(const TuningValue& value, const TuningSpec& spec) {
+    if (const auto* choice = std::get_if<TuningChoice>(&value)) {
+        if (choice->index < 0 || static_cast<std::size_t>(choice->index) >= spec.choices.size())
+            throw TuningFormatError(1, "the choice is not one of " + ChoiceList(spec.choices));
+        return Quoted(spec.choices[static_cast<std::size_t>(choice->index)]);
+    }
     if (const auto* number = std::get_if<float>(&value)) return FormatNumber(*number);
     if (const auto* integer = std::get_if<int>(&value)) return std::to_string(*integer);
     if (const auto* flag = std::get_if<bool>(&value)) return *flag ? "true" : "false";
@@ -331,7 +421,44 @@ std::string PatchTuningValue(std::string_view text, const TuningLocation& at, co
     if (value.index() != static_cast<std::size_t>(spec.type))
         Fail(target->line, "a " + std::string(TuningTypeName(spec.type)) + " value is expected");
     std::string patched =
-        std::string(text.substr(0, target->begin)) + Format(value) + std::string(text.substr(target->end));
-    (void)ParseTuningFile(patched); // Sınır dışı değer burada reddedilir; dosya yazılmaz
+        std::string(text.substr(0, target->begin)) + Format(value, spec) + std::string(text.substr(target->end));
+    (void)ParseTuningFile(patched); // An out-of-bounds value is rejected here; nothing is written
     return patched;
+}
+
+std::string ResizeTuningField(std::string_view text, const TuningLocation& at, TuningResize resize) {
+    const TuningJsonNode root = ParseTuningJson(text);
+    const auto fields = Fields(root);
+    const auto field =
+        std::find_if(fields.begin(), fields.end(), [&](const TuningField& f) { return f.name == at.field; });
+    if (field == fields.end()) Fail(1, "no field " + Quoted(at.field));
+    const auto& fieldNode = *root.Find(at.field);
+    if (!field->table && !field->spec.list) Fail(fieldNode.line, Quoted(at.field) + " is neither a list nor a table");
+    const auto& items = (field->table ? fieldNode.Find("rows") : fieldNode.Find("value"))->items;
+    const std::size_t index = field->table ? at.row : at.element;
+    std::string resized(text);
+    if (resize == TuningResize::Remove) {
+        if (items.size() == 1) Fail(fieldNode.line, Quoted(at.field) + " keeps at least one entry");
+        if (index >= items.size())
+            Fail(fieldNode.line, "no entry " + std::to_string(index) + " in " + Quoted(at.field));
+        // The entry with the separator before it, or after it for the first one.
+        const std::size_t from = index == 0 ? items[0].begin : items[index - 1].end;
+        const std::size_t to = index == 0 ? items[1].begin : items[index].end;
+        resized.erase(from, to - from);
+    } else {
+        const auto& last = items.back();
+        std::string separator = ", ";
+        if (items.size() > 1) {
+            separator = std::string(text.substr(items[items.size() - 2].end, last.begin - items[items.size() - 2].end));
+        } else {
+            const std::size_t lineStart = text.rfind('\n', last.begin);
+            const std::size_t from = lineStart == std::string_view::npos ? 0 : lineStart + 1;
+            const auto indent = text.substr(from, last.begin - from);
+            if (lineStart != std::string_view::npos && indent.find_first_not_of(" \t") == std::string_view::npos)
+                separator = ",\n" + std::string(indent);
+        }
+        resized.insert(last.end, separator + std::string(text.substr(last.begin, last.end - last.begin)));
+    }
+    (void)ParseTuningFile(resized);
+    return resized;
 }

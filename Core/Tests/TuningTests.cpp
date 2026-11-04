@@ -6,6 +6,12 @@
 #include "TestValues.tuning.h"
 #include "Tuning/Internals/TuningJson.h"
 #include "Tuning/TuningFile.h"
+#if ENGINE_TUNING_LIVE
+#include <algorithm>
+#include "Simulation/ReplayCheck.h"
+#include "Tests/Support/TempDirectory.h"
+#include "Tuning/TuningLive.h"
+#endif
 
 namespace {
 std::string Replaced(std::string text, const std::string& from, const std::string& to) {
@@ -56,6 +62,12 @@ TEST_CASE("Engine.Tuning.GeneratedStructCarriesTheFileValues", "[engine][tuning]
     REQUIRE(Values.odds.size() == 2);
     CHECK(Values.odds[1].from == 5);
     CHECK(Values.odds[1].chances == std::array{55.0f, 45.0f});
+    STATIC_REQUIRE(Values.mode == TestValuesTuning::Mode::Pulse);
+    STATIC_REQUIRE(TestValuesTuning::ModeNames[2] == "Wave");
+    CHECK(Values.moods == std::array{TestValuesTuning::Moods::Wild, TestValuesTuning::Moods::Calm});
+    CHECK(Values.speed == 2.5f);
+    CHECK(Values.kinds[1].kind == TestValuesTuning::KindsRow::Kind::Big);
+    CHECK(Values.kinds[1].weight == 30);
 
     const auto& read = Tuning<TestValuesTuning>();
     CHECK(read.radius == Values.radius);
@@ -72,6 +84,54 @@ TEST_CASE("Engine.Tuning.PatchChangesOnlyThatValue", "[engine][tuning]") {
     CHECK(PatchTuningValue(text, {"spread"}, FloatRange{0.5f, 2.0f}) ==
           Replaced(text, "{ \"min\": 1, \"max\": 3 }", "{ \"min\": 0.5, \"max\": 2.0 }"));
     CHECK(PatchTuningValue(text, {"steps", 0, {}, 2}, 25) == Replaced(text, "20]", "25]"));
+}
+
+TEST_CASE("Engine.Tuning.EditorTextAndChoicesAreRead", "[engine][tuning]") {
+    const auto fields = ParseTuningFile(FixtureText());
+    REQUIRE(fields.size() == 12);
+    const auto& mode = fields[8];
+    CHECK(mode.spec.type == TuningType::Choice);
+    CHECK(mode.spec.choices == std::vector<std::string>{"Off", "Pulse", "Wave"});
+    CHECK(std::get<TuningChoice>(mode.values[0]).index == 1);
+    CHECK(mode.group == "Look");
+    CHECK(mode.note == "How it moves");
+    CHECK(fields[10].spec.unit == "px/s");
+    const auto& kinds = fields[11];
+    CHECK(kinds.note == "Weights per kind");
+    CHECK(kinds.columns[1].spec.unit == "%");
+    CHECK(std::get<TuningChoice>(kinds.rows[1][0][0]).index == 1);
+}
+
+TEST_CASE("Engine.Tuning.PatchWritesChoicesByName", "[engine][tuning]") {
+    const std::string text = FixtureText();
+    CHECK(PatchTuningValue(text, {"mode"}, TuningChoice{2}) ==
+          Replaced(text, "\"value\": \"Pulse\"", "\"value\": \"Wave\""));
+    CHECK(PatchTuningValue(text, {"kinds", 0, "kind", 0}, TuningChoice{1}) ==
+          Replaced(text, "\"kind\": \"Small\"", "\"kind\": \"Big\""));
+    CHECK_THROWS_AS(PatchTuningValue(text, {"mode"}, TuningChoice{3}), TuningFormatError);
+    CHECK_THROWS_AS(PatchTuningValue(text, {"mode"}, 1), TuningFormatError);
+}
+
+TEST_CASE("Engine.Tuning.ResizeCopiesTheLastEntryOrRemovesOne", "[engine][tuning]") {
+    const std::string text = FixtureText();
+    CHECK(ResizeTuningField(text, {"steps"}, TuningResize::Append) ==
+          Replaced(text, "[10, 15, 20]", "[10, 15, 20, 20]"));
+    CHECK(ResizeTuningField(text, {"steps", 0, {}, 0}, TuningResize::Remove) ==
+          Replaced(text, "[10, 15, 20]", "[15, 20]"));
+    CHECK(ResizeTuningField(text, {"steps", 0, {}, 2}, TuningResize::Remove) ==
+          Replaced(text, "[10, 15, 20]", "[10, 15]"));
+    const std::string row = "      { \"from\": 5, \"chances\": [55, 45] }";
+    CHECK(ResizeTuningField(text, {"odds"}, TuningResize::Append) == Replaced(text, row, row + ",\n" + row));
+    CHECK(ResizeTuningField(text, {"odds", 1}, TuningResize::Remove) == Replaced(text, ",\n" + row, ""));
+    CHECK(ParseTuningFile(ResizeTuningField(text, {"odds"}, TuningResize::Append))[7].rows.size() == 3);
+
+    const std::string single =
+        "{\n  \"t\": {\n    \"type\": \"table\",\n    \"columns\": { \"a\": { \"type\": \"int\" } },"
+        "\n    \"rows\": [\n      { \"a\": 1 }\n    ]\n  }\n}\n";
+    CHECK(ResizeTuningField(single, {"t"}, TuningResize::Append) ==
+          Replaced(single, "      { \"a\": 1 }", "      { \"a\": 1 },\n      { \"a\": 1 }"));
+    CHECK_THROWS_AS(ResizeTuningField(single, {"t"}, TuningResize::Remove), TuningFormatError); // One stays
+    CHECK_THROWS_AS(ResizeTuningField(text, {"radius"}, TuningResize::Append), TuningFormatError);
 }
 
 TEST_CASE("Engine.Tuning.PatchRejectsInvalidValues", "[engine][tuning]") {
@@ -131,5 +191,77 @@ TEST_CASE("Engine.Tuning.ApplyIsAllOrNothing", "[engine][tuning]") {
         ApplyTuningText(Replaced(text, "{ \"type\": \"int\", \"value\": 3 }", "{ \"value\": 3 }"), retyped.fields);
     CHECK(changed.outcome == TuningOutcome::NeedsBuild);
     CHECK(retyped.values.radius == original.radius);
+
+    Collected rechosen; // A new choice changes the enum
+    const auto more =
+        ApplyTuningText(Replaced(text, "\"Pulse\", \"Wave\"]", "\"Pulse\", \"Wave\", \"Spin\"]"), rechosen.fields);
+    CHECK(more.outcome == TuningOutcome::NeedsBuild);
+}
+
+TEST_CASE("Engine.Tuning.ApplyWritesChoices", "[engine][tuning]") {
+    Collected target;
+    std::string text = Replaced(FixtureText(), "\"value\": \"Pulse\"", "\"value\": \"Off\"");
+    text = Replaced(text, "\"kind\": \"Big\"", "\"kind\": \"Small\"");
+    REQUIRE(ApplyTuningText(text, target.fields).outcome == TuningOutcome::Applied);
+    CHECK(target.values.mode == TestValuesTuning::Mode::Off);
+    CHECK(target.values.kinds[1].kind == TestValuesTuning::KindsRow::Kind::Small);
+}
+
+TEST_CASE("Engine.Tuning.LiveFileIsFoundFromTheProjectRoot", "[engine][tuning]") {
+    CHECK(std::filesystem::exists(TuningRoot() / "Project.json"));
+    const auto& read = Tuning<TestValuesTuning>();
+    CHECK(read.mode == TestValuesTuning::Mode::Pulse);
+    const auto source = TuningRoot() / std::filesystem::path(TestValuesTuning::TuningSource);
+    CHECK(std::filesystem::equivalent(source, std::filesystem::path(ENGINE_TUNING_TEST_FILE)));
+}
+
+TEST_CASE("Engine.Tuning.UsePeriodsListTheFilesRead", "[engine][tuning]") {
+    (void)Tuning<TestValuesTuning>();
+    BeginTuningUse();
+    const auto revision = TuningUseRevision();
+    CHECK(TuningUsed().empty());
+    (void)Tuning<TestValuesTuning>();
+    (void)Tuning<TestValuesTuning>();
+    const auto used = TuningUsed();
+    REQUIRE(used.size() == 1);
+    CHECK(std::filesystem::equivalent(used[0], std::filesystem::path(ENGINE_TUNING_TEST_FILE)));
+    CHECK(TuningUseRevision() == revision + 1);
+}
+
+TEST_CASE("Engine.Tuning.PreviewWritesOneValueUntilTheFileIsRead", "[engine][tuning]") {
+    const std::filesystem::path file(ENGINE_TUNING_TEST_FILE);
+    const float original = Tuning<TestValuesTuning>().radius;
+    const auto before = TuningDigests();
+    CHECK(PreviewTuning(file, {"radius"}, 30.0f).empty());
+    CHECK(Tuning<TestValuesTuning>().radius == 30.0f);
+    CHECK(TuningDigests() != before);
+    CHECK(PreviewTuning(file, {"kinds", 1, "kind", 0}, TuningChoice{0}).empty());
+    CHECK(Tuning<TestValuesTuning>().kinds[1].kind == TestValuesTuning::KindsRow::Kind::Small);
+    CHECK_FALSE(PreviewTuning(file, {"radius"}, 3).empty());             // Wrong type
+    CHECK_FALSE(PreviewTuning(file, {"mode"}, TuningChoice{9}).empty()); // No such choice
+    CHECK_FALSE(PreviewTuning(file, {"missing"}, 1.0f).empty());
+    CHECK_FALSE(PreviewTuning(file.parent_path() / "Other.tuning.json", {"radius"}, 1.0f).empty());
+    ReloadTuning(file);
+    CHECK(Tuning<TestValuesTuning>().radius == original);
+    CHECK(TuningDigests() == before);
+}
+
+TEST_CASE("Engine.Tuning.TapeNamesTheFilesThatChanged", "[engine][tuning]") {
+    (void)Tuning<TestValuesTuning>();
+    const std::string source = "Core/Tests/Tuning/TestValues.tuning.json";
+    const auto now = TuningDigests();
+    const auto current = std::ranges::find(now, source, &TuningDigest::source);
+    REQUIRE(current != now.end());
+
+    InputTape tape;
+    tape.tuning = {{source, current->hash}, {"Game/NotReadHere.tuning.json", 1}};
+    CHECK(TuningChanged(tape).empty()); // Same values; a file this process never read is left out
+    tape.tuning[0].hash ^= 1U;
+    CHECK(TuningChanged(tape) == std::vector<std::string>{source});
+
+    tape.hashes = {7};
+    TempDirectory directory;
+    tape.Save(directory.Path() / "run.replay");
+    CHECK(InputTape::Load(directory.Path() / "run.replay").tuning == tape.tuning);
 }
 #endif

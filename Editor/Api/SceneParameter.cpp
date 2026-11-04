@@ -41,12 +41,7 @@ std::string ValidateSceneValue(const SceneParameter& parameter, const SceneValue
         if (std::holds_alternative<bool>(value)) return {};
         break;
     case SceneParameterKind::Color:
-        if (const auto* color = std::get_if<SceneColor>(&value)) {
-            const auto valid = [](float channel) {
-                return std::isfinite(channel) && channel >= 0.0f && channel <= 1.0f;
-            };
-            if (valid(color->r) && valid(color->g) && valid(color->b) && valid(color->a)) return {};
-        }
+        if (std::holds_alternative<Color4>(value)) return {};
         break;
     case SceneParameterKind::Choice:
         if (const auto* choice = std::get_if<std::string>(&value)) {

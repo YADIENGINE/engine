@@ -112,7 +112,9 @@ A change holds a player's whole input from that step on, except `pressed`, which
 **Playing a different tape:** another simulation id, step rate or action list refuses to play. A different engine or
 simulation version is reported and the hashes decide. Configuration is information only. Raise
 `SimulationSettings::version` when a change makes old tapes play differently. Tuning belongs to the build, not to the
-tape: replaying under changed values gives a different run, and the check says so.
+tape: replaying under changed values gives a different run, and the check says so. A tape recorded in a development build
+also stores a digest of each tuning file's values (`"tuning": {"Game/Glow.tuning.json": "<hash>"}`), so `sim verify`
+names the files whose values changed since in `tuningChanged` ([Tuning](Tuning.md#tapes)).
 
 A player watches a replay with `Play(tape, AfterTape::Stop)`. With `AfterTape::Live`, input takes over when the tape ends,
 and a press or a command during it cuts the tape there.
@@ -126,7 +128,7 @@ object on stdout; build output goes to stderr. All take `--release`.
 | --- | --- | --- |
 | `sim list` | `simulations`: id, version, step rate, players, buttons, axes | |
 | `sim run SCENARIO [--out TAPE]` | `passed`, `steps`, `hash`, `failures`, `reads` | An expectation failed |
-| `sim verify TAPE` | `match`, `hashes`, `steps`, `hash`, `hashEvery`, `sameVersions`, `recorded`; `mismatch` with `lastMatch`, `firstMismatch`; `reason` when the tape holds no hashes | The hashes differ, or there are none to compare |
+| `sim verify TAPE` | `match`, `hashes`, `steps`, `hash`, `hashEvery`, `sameVersions`, `recorded`; `mismatch` with `lastMatch`, `firstMismatch`; `reason` when the tape holds no hashes; `tuningChanged` when tuning values differ from the recording | The hashes differ, or there are none to compare |
 | `sim diverge TAPE` | `deterministic`; `step` and `fields` (`field`, `first`, `second`) when two runs differ | Two runs differ |
 | `sim state TAPE [--step N]` | `step`, `hash`, `state` (the flat dump) | |
 

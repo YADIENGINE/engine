@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include "Editor/Internals/Viewport/ViewportInputRouter.h"
 #include "Runtime/Game.h"
+#include "Tuning/TuningLive.h"
 
 namespace {
 constexpr double StepSeconds = 1.0 / 60.0; // One Step, and one seek step
@@ -26,6 +27,9 @@ struct CapturedImage {
     CapturedImage(const CapturedImage&) = delete;
     CapturedImage& operator=(const CapturedImage&) = delete;
 };
+std::filesystem::path Utf8Path(const std::string& text) {
+    return std::filesystem::path(std::u8string_view(reinterpret_cast<const char8_t*>(text.data()), text.size()));
+}
 } // namespace
 
 WorkerSession::WorkerSession(Game& game, const GameSettings& settings, const SceneRegistry& registry,
@@ -111,6 +115,7 @@ void WorkerSession::Restart() {
     _statsStartedAt = 0.0;
     _publishedFrames = 0;
     _elapsed = 0.0;
+    BeginTuningUse(); // The Inspector lists the tuning files this run reads
     _actions.reset();
     _actions.activate(_scene);
 }
@@ -240,6 +245,15 @@ void WorkerSession::Command(const WorkerMessage& message) {
         return;
     }
     if (message.generation != _generation || !_scene.HasContent()) return;
+    if (message.type == "tuning-preview") { // A dragged value; the file write that ends the drag replaces it
+        const auto preview = DecodeWorkerTuningPreview(message.data);
+        (void)PreviewTuning(Utf8Path(preview.source), preview.at, preview.value);
+        return;
+    }
+    if (message.type == "tuning-reload") { // The editor just wrote the file
+        ReloadTuning(Utf8Path(message.data.at("source").get<std::string>()));
+        return;
+    }
     if (message.type == "profiler") {
         try {
             _profiler.Command(message);
@@ -317,6 +331,15 @@ void WorkerSession::PrepareFrame() {
     }
     if (_channel.Closed()) _actions.quit();
     _profiler.Tick(_generation);
+    if (const auto revision = TuningUseRevision(); _scene.HasContent() && revision != _tuningUse) {
+        std::vector<std::string> sources;
+        for (const auto& source : TuningUsed()) {
+            const auto text = source.generic_u8string();
+            sources.emplace_back(text.begin(), text.end());
+        }
+        if (_channel.TrySend({{}, _generation, 0, "tuning-used", EncodeWorkerTuningUsed(sources)}))
+            _tuningUse = revision;
+    }
 }
 DeviceInput WorkerSession::ReadInput() {
     if (_profiler.Busy()) {

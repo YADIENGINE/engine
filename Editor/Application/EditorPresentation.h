@@ -18,6 +18,16 @@
 class TuningWorkspace;
 
 enum class EditorCommand { Open, Stop, Pause, Reset, Refresh, Cancel, Step, BuildAndPlay, Count };
+// What the Inspector asks of a tuning file (Docs/Tuning.md → Editor). Preview sends a dragged value to the running
+// scene only; Set writes it to the file, which ends the preview. EndPreview drops a preview without writing.
+enum class TuningEditKind { Preview, EndPreview, Set, Resize, Revert, Undo, Redo };
+struct TuningEditRequest {
+    TuningEditKind kind = TuningEditKind::Set;
+    std::filesystem::path source; // Absolute; unused by Undo / Redo
+    TuningLocation at;            // Revert: at.field
+    TuningValue value;
+    TuningResize resize = TuningResize::Append;
+};
 // The scene's phase. Building only while no scene runs; a running scene stays Ready / Paused while it builds.
 enum class EditorPhase { ReadingCatalog, Starting, Ready, Paused, Building, Stopped, Error };
 // clang-format off
@@ -95,7 +105,8 @@ struct EditorSnapshot {
     ProfilerSessionSnapshot profiler;
     double hostTransferMs = 0.0;
     bool benchmarkCancelPending = false;
-    const TuningWorkspace* tuning = nullptr; // Projenin tuning dosyaları; proje yoksa null
+    const TuningWorkspace* tuning = nullptr; // The project's tuning files; null without a project
+    std::filesystem::path inspectedTuning;   // The tuning file the Inspector shows instead of the scene; empty: none
     AudioPreviewState audio;                 // The Audio Preview panel's sound; set by the host
     const AudioUsage* audioUsage = nullptr;  // Which sound files the project's audio catalog plays
     std::string notice;                      // Last change made through the control endpoint
@@ -134,8 +145,9 @@ struct EditorUiActions {
     std::function<void(double, bool)> playback;
     std::function<void(EditorProfilerCommand, Profiler::Recipe, const std::string&)> profiler;
     std::function<void(bool)> openOutputLog;
-    // Tuning dosyasındaki bir değeri diske yamar (Enter); dosya sırası TuningWorkspace::Files'tır.
-    std::function<void(std::size_t, const TuningLocation&, const TuningValue&)> tune;
+    std::function<void(const TuningEditRequest&)> tuning;
+    // Shows a tuning file in the Inspector (empty: back to the selected scene).
+    std::function<void(const std::filesystem::path&)> inspectTuning;
     std::function<void(const AudioPreviewRequest&)> previewAudio;
     // Opens a file or folder in its default application.
     std::function<void(const std::filesystem::path&)> openPath;

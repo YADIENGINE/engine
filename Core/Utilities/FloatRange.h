@@ -4,4 +4,5 @@
 struct FloatRange {
     float min = 0.0f;
     float max = 0.0f;
+    friend constexpr bool operator==(const FloatRange&, const FloatRange&) = default;
 };

@@ -12,9 +12,11 @@ Source: AgentDocs/Recipes/Code/Character.tuning.json. Add engine_add_tuning(MyGa
 
 // Generated from AgentDocs/Recipes/Code/Character.tuning.json by engine_add_tuning.
 float RecipeRadius() { return Tuning<CharacterTuning>().radius; }
+// A "choice" field is a generated enum class named after the field.
+bool RecipeRuns() { return Tuning<CharacterTuning>().gait == CharacterTuning::Gait::Run; }
 ```
 <!-- /recipe -->
 
-Pitfalls: Use a reference to Tuning<T>() when reading multiple fields. Release uses compiled values; adding/removing fields requires a build. Each target needs unique tuning filenames.
+Pitfalls: Use a reference to Tuning<T>() when reading multiple fields. Release uses compiled values; adding/removing fields requires a build. Each target needs unique tuning filenames. A `choice` field is a generated `enum class` (`CharacterTuning::Gait::Run`); add a choice in the JSON, never in C++. Write what a value does in its `note`: the Inspector shows it and the header carries it as a comment. Values are tuned in the editor's Inspector; edit the JSON only to add fields.
 
 Concept: `Docs/Tuning.md#setup`.

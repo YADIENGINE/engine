@@ -379,6 +379,7 @@ TEST_CASE("Engine.Recipes.EditorSceneAndTextWorkWithoutWindow", "[engine][recipe
     RecipeTextView text(ENGINE_RECIPE_FONT);
     CHECK(text.Measured().x > 0.0f);
     CHECK(RecipeRadius() > 0.0f);
+    CHECK_FALSE(RecipeRuns());
 }
 
 TEST_CASE("Engine.Recipes.PopupEffectsDrawWithThePublicApi", "[engine][recipes]") {

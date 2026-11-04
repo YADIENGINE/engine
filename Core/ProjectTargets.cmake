@@ -11,6 +11,7 @@ function(engine_add_tuning target)
     endif()
     cmake_path(ABSOLUTE_PATH TUNING_ROOT NORMALIZE)
     _engine_schedule_tuning_manifest()
+    set_property(GLOBAL APPEND PROPERTY ENGINE_TUNING_ROOTS "${target}|${TUNING_ROOT}")
     file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${TUNING_ROOT}/*.tuning.json")
     if(NOT sources)
         return()
@@ -34,7 +35,7 @@ function(engine_add_tuning target)
         # search the working directory with `-m`.
         set(command "${Python3_EXECUTABLE}" -B -c
             "__import__('sys').path.insert(0, __import__('sys').argv.pop(1)) or __import__('runpy').run_module('Tools.tuning', run_name='__main__')"
-            "${ENGINE_TUNING_GENERATOR_ROOT}" generate "${source}" "${header}")
+            "${ENGINE_TUNING_GENERATOR_ROOT}" generate "${source}" "${header}" "${CMAKE_SOURCE_DIR}")
         if(NOT EXISTS "${header}")
             # Let IntelliSense find it before the first build; the build reports any errors.
             execute_process(COMMAND ${command} WORKING_DIRECTORY "${ENGINE_TUNING_GENERATOR_ROOT}"
@@ -53,7 +54,7 @@ function(engine_add_tuning target)
     target_include_directories(${target} PUBLIC "${outputRoot}")
 endfunction()
 
-# The editor's tuning panel reads the file list from <build>/Tuning/TuningFiles.json; written once at configure end.
+# The editor reads the tuning roots and files from <build>/Tuning/TuningFiles.json; written once at configure end.
 function(_engine_schedule_tuning_manifest)
     get_property(scheduled GLOBAL PROPERTY ENGINE_TUNING_MANIFEST_SCHEDULED)
     if(NOT scheduled)
@@ -62,23 +63,33 @@ function(_engine_schedule_tuning_manifest)
     endif()
 endfunction()
 
-function(_engine_write_tuning_manifest)
-    get_property(files GLOBAL PROPERTY ENGINE_TUNING_FILES)
+function(_engine_tuning_manifest_list property key output)
+    get_property(items GLOBAL PROPERTY ${property})
     set(entries)
-    foreach(file IN LISTS files)
-        string(REPLACE "|" ";" parts "${file}")
+    foreach(item IN LISTS items)
+        string(REPLACE "|" ";" parts "${item}")
         list(GET parts 0 target)
-        list(GET parts 1 source)
-        string(REPLACE "\\" "\\\\" source "${source}")
-        string(REPLACE "\"" "\\\"" source "${source}")
-        list(APPEND entries "    { \"target\": \"${target}\", \"source\": \"${source}\" }")
+        list(GET parts 1 path)
+        string(REPLACE "\\" "\\\\" path "${path}")
+        string(REPLACE "\"" "\\\"" path "${path}")
+        list(APPEND entries "    { \"target\": \"${target}\", \"${key}\": \"${path}\" }")
     endforeach()
     list(JOIN entries ",\n" body)
     if(body)
         set(body "\n${body}\n  ")
     endif()
+    set(${output} "${body}" PARENT_SCOPE)
+endfunction()
+
+# The editor lists every *.tuning.json under a root at once (new files show before they are built); `files` are those
+# the last configure gave a header.
+function(_engine_write_tuning_manifest)
+    _engine_tuning_manifest_list(ENGINE_TUNING_ROOTS root roots)
+    _engine_tuning_manifest_list(ENGINE_TUNING_FILES source files)
+    set(project "${CMAKE_SOURCE_DIR}")
+    string(REPLACE "\"" "\\\"" project "${project}")
     file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/Tuning/TuningFiles.json"
-        CONTENT "{\n  \"version\": 1,\n  \"files\": [${body}]\n}\n" @ONLY)
+        CONTENT "{\n  \"version\": 2,\n  \"project\": \"${project}\",\n  \"roots\": [${roots}],\n  \"files\": [${files}]\n}\n" @ONLY)
 endfunction()
 
 # Starter placeholders use Painter text; ship their font and its license beside the executable.

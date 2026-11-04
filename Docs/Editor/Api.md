@@ -83,7 +83,7 @@ drawing. Recipe: [Graphic asset](../../AgentDocs/Recipes/GraphicAsset.md). Rule 
 
 ## Parameter and action contract
 
-`SceneValue`: `int64_t`, `double`, `bool`, normalized `SceneColor`, or option text (`std::string`).
+`SceneValue`: `int64_t`, `double`, `bool`, 8-bit `Color4` (as in tuning files), or option text (`std::string`).
 `SceneParameter` carries type, default, range / options, application time, `group`, and `description`. Numbers must be
 finite and within range, color channels 0..1. Values are rejected, never silently clamped. Groups consisting of
 `advanced = true` fields start collapsed; search / Modified filter matches expand them. `applyAction` can name the

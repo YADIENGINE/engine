@@ -1,8 +1,8 @@
-"""Tuning dosyasının kanonik yazımı (Docs/Tuning.md → Yazma ve eşzamanlılık).
+"""The canonical layout of a tuning file (Docs/Tuning.md → Format check).
 
-2 boşluk girinti; alanlar dosyadaki sırayla, her biri kendi satırında; alan içindeki anahtarlar sabit sırada
-(type, value, min, max; tablo: type, columns, rows); tablo satırları sütun sırasıyla, satır başına bir. Sayılar
-yazıldıkları gibi kalır. Editör tek değer değiştirirken aynı satır içi biçimi kullanır (Core/Tuning/TuningFile.cpp).
+Two-space indentation; fields in file order, one per line; keys within a field in a fixed order (document.FIELD_KEYS;
+a table: type, group, note, columns, rows, each on its own line); table rows in column order, one per line. Numbers keep
+their spelling. The editor writes the same inline form when it changes values (Core/Tuning/TuningFile.cpp).
 """
 
 import json
@@ -52,7 +52,9 @@ def canonical(text: str) -> str:
             continue
         parts = dict(_ordered(node, TABLE_KEYS))
         column_order = tuple(column for column, _ in field.columns)
-        lines += [f"  {_key(name)}: {{", '    "type": "table",', '    "columns": {']
+        lines += [f"  {_key(name)}: {{", '    "type": "table",']
+        lines += [f"    {_key(key)}: {_inline(parts[key])}," for key in ("group", "note") if key in parts]
+        lines.append('    "columns": {')
         columns = [f"{_key(key)}: {_inline(item, COLUMN_KEYS)}" for key, _, item in parts["columns"].value]
         _block(lines, "      ", columns, "},")
         lines.append('    "rows": [')

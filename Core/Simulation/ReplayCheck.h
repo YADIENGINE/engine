@@ -16,7 +16,10 @@ struct TapeVerification {
     std::uint64_t hashes = 0;             // Stored hashes the run reaches; 0: nothing could be compared
     std::optional<TapeMismatch> mismatch; // Empty: every stored hash matched
     bool sameVersions = true;
+    std::vector<std::string> tuningChanged; // Files the tape recorded whose values differ now (TuningChanged)
 };
+// The tape's tuning files whose values differ in this process now; files not read here are left out.
+[[nodiscard]] std::vector<std::string> TuningChanged(const InputTape& tape);
 [[nodiscard]] TapeVerification VerifyTape(const SimulationDefinition& definition, const InputTape& tape);
 
 // Two fresh runs of a tape in this process, compared at every step. A difference is nondeterminism in the simulation,

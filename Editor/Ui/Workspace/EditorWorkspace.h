@@ -11,7 +11,6 @@
 #include "Editor/Ui/Panels/Output/OutputPanel.h"
 #include "Editor/Ui/Panels/Viewport/ViewportPanel.h"
 #include "Editor/Ui/Panels/Profiler/ProfilerPanel.h"
-#include "Editor/Ui/Panels/Tuning/TuningPanel.h"
 #include "Editor/Ui/Shell/EditorShell.h"
 #include "Editor/Ui/Widgets/EditorAgentSetup.h"
 
@@ -84,7 +83,6 @@ private:
     InspectorPanel _inspector;
     OutputPanel _output;
     ProfilerPanel _profiler;
-    TuningPanel _tuning;
     ConsolePanel _console;
     AssetsPanel _assets;
     AudioPreviewPanel _audioPreview;

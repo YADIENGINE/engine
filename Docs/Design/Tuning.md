@@ -1,7 +1,9 @@
 # Tuning dosyaları (tasarım)
 
 Durum: uygulandı (2026-10-31). Kullanım rehberi: [Tuning](../Tuning.md). Karar kaydı:
-[README → D2](README.md#d2-ayar-değerleri-tuning-dosyaları). Uygulamada netleşenler en altta.
+[README → D2](README.md#d2-ayar-değerleri-tuning-dosyaları). Uygulamada netleşenler en altta. Editör tarafı, sürükleyerek
+önizleme, `choice`, `note` / `unit` / `group` ve proje köküne göre yol 2026-11-04'te değişti:
+[D33](README.md#d33-inspector-and-tuning); aşağıda o tarihten eski olan maddeler işaretli.
 
 ## Amaç
 
@@ -97,8 +99,7 @@ JSON her karede okunmaz; sadece açılışta ve dosya değiştiğinde okunur.
 - `float` ve `bool` değerden anlaşılır; diğer tiplerde `"type"` zorunludur (`3` kendiliğinden `int` olmaz).
 - Slider yok: sayılar kutuya yazılır, değer Enter'a basınca girilir (yazarken ara değer uygulanmaz, kutudan
   çıkınca Enter'sız yazılan geri alınır). `min` / `max` slider aralığı değil, geçerlilik sınırıdır.
-- Enum seçimi v1'de yok: üretilen header oyunun enum'unu bilemez, JSON'da değer listesi C++ ile çift kaynak olur.
-  Enum'ların da tuning'den tanımlandığı bir model ayrı tasarım konusudur; o zamana kadar enum'a bağlı değer kodda kalır.
+- ~~Enum seçimi v1'de yok~~ → D33: `"type": "choice"` enum'u header'da üretir; liste tek kaynak JSON'dur.
 
 ## Liste ve tablolar
 
@@ -170,7 +171,8 @@ Geliştirme ve Release'de kural aynıdır; hiçbir değer sessizce kırpılmaz y
 
 ## Yazma ve eşzamanlılık
 
-- **Tek yol dosyadır:** editör değeri çalışan oyuna ayrıca göndermez, JSON'a yazar; oyun dosyayı izler. Elle, ajanla
+- **Tek yol dosyadır:** kalıcı yazma yalnız JSON'a yapılır; oyun dosyayı izler. (D33: sürüklenirken değer önizleme
+  olarak worker'a gider, bellekte kalır; sürükleme bitince dosyaya tek kez yazılır.) Elle, ajanla
   ve editörle yapılan değişiklik aynı yoldan geçer. Worker build snapshot'ından çalışsa da tuning dosyalarını kaynak
   ağacından okur (kaynak yolu geliştirme exe'sine derlenir).
 - **Kanonik biçim:** 2 boşluk girinti; alan sırası dosyadaki sıradır (yeniden sıralanmaz); her alan kendi satırında,
@@ -193,11 +195,12 @@ değerleri kullanan header / class'ın yanında.
 
 - Header yolu `build/Tuning/<hedef>/<ROOT'a göre yol>.tuning.h`; editörün dosya listesi `build/Tuning/TuningFiles.json`.
   Engine'in kendi kodu henüz tuning kullanmıyor (`engine_add_tuning` yalnız Engine testlerinde).
-- Kaynak yolu worker'a açılışta verilmez: üretilen struct geliştirme derlemesinde dosyanın mutlak yolunu taşır
-  (`TuningSource`); snapshot'tan çalışan worker da kaynak ağacını okur.
-- Inspector yerine ayrı Tuning paneli: tuning proje geneldir, seçili önizlemeye bağlı değildir. Renk seçici yerine
-  `#RRGGBB[AA]` kutusu + renk örneği (Enter kuralıyla aynı).
-- Kanonik biçimde alan içi anahtarların sırası sabittir (`type, value, min, max`; tablo `type, columns, rows`;
+- ~~Üretilen struct dosyanın mutlak yolunu taşır~~ → D33: proje köküne göre yol; exe projeyi kendi klasöründen
+  yukarı `Project.json` arayarak bulur. Snapshot'tan çalışan worker da kaynak ağacını okur.
+- ~~Inspector yerine ayrı Tuning paneli~~ → D33: Inspector, sahnenin okuduğu dosyaları kendi bölümlerinde gösterir;
+  tek dosya da açılabilir. Sayılar sürüklenir, renk seçicisi sahne parametreleriyle aynıdır.
+- Kanonik biçimde alan içi anahtarların sırası sabittir (`type, choices, value, min, max, unit, group, note`; tablo
+  `type, group, note, columns, rows`;
   satır hücreleri sütun sırasıyla); sayılar yazıldığı gibi kalır; satır sonu (CRLF / LF) biçim farkı sayılmaz.
 - Kurallar iki kez uygulanır: derlemede Python (`Tools/tuning`), çalışırken ve editörde C++ (`Core/Tuning/TuningFile`);
   `Tools/Tests/TuningCases/` ikisinin de koştuğu ortak örneklerdir.

@@ -70,13 +70,7 @@ Use these generated signatures to locate public declarations; open the header fo
 
 - `enum class SceneParameterKind { Integer, Float, Boolean, Color, Choice }`
 - `enum class SceneApplyMode { Immediate, NextAction, OnReset }`
-- `struct SceneColor`
-- `SceneColor`: `float r = 1.0f`
-- `SceneColor`: `float g = 1.0f`
-- `SceneColor`: `float b = 1.0f`
-- `SceneColor`: `float a = 1.0f`
-- `SceneColor`: `bool operator==(const SceneColor&) const = default`
-- `using SceneValue = std::variant<std::int64_t, double, bool, SceneColor, std::string>`
+- `using SceneValue = std::variant<std::int64_t, double, bool, Color4, std::string>` — A color is 8-bit RGBA (Color4), the same as in tuning files.
 - `using SceneParameters = std::map<std::string, SceneValue>`
 - `struct SceneParameter`
 - `SceneParameter`: `std::string id`

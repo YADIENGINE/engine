@@ -8,23 +8,30 @@ Use these generated signatures to locate public declarations; open the header fo
 
 ## `Core/Tuning/TuningFile.h`
 
-Tuning file format (Docs/Tuning.md): reading, validation and single-value patching.
+Tuning file format (Docs/Tuning.md): reading, validation, value patching and list / table resizing.
 
-- `enum class TuningType { Float, Int, Bool, Color, Vec2, Range }` — Scalar types used to build lists and table columns.
-- `using TuningValue = std::variant<float, int, bool, Color4, Float2, FloatRange>`
+- `enum class TuningType { Float, Int, Bool, Color, Vec2, Range, Choice }` — Scalar types used to build lists and table columns.
+- `struct TuningChoice` — A choice's position in its spec's `choices`; the generated enum has the same order.
+- `TuningChoice`: `int index = 0`
+- `using TuningValue = std::variant<float, int, bool, Color4, Float2, FloatRange, TuningChoice>`
 - `[[nodiscard]] std::string_view TuningTypeName(TuningType type)`
 - `struct TuningSpec` — min / max are validity bounds; applied to each list element and each number in vec2 / range.
 - `TuningSpec`: `TuningType type = TuningType::Float`
 - `TuningSpec`: `bool list = false`
 - `TuningSpec`: `std::optional<double> min`
 - `TuningSpec`: `std::optional<double> max`
+- `TuningSpec`: `std::vector<std::string> choices`
+- `TuningSpec`: `std::string unit`
 - `struct TuningColumn`
 - `TuningColumn`: `std::string name`
+- `TuningColumn`: `std::string note`
 - `TuningColumn`: `TuningSpec spec`
 - `struct TuningField` — Value / list field: spec + values (one element for a scalar).
 - `TuningField`: `std::string name`
 - `TuningField`: `int line = 1`
 - `TuningField`: `bool table = false`
+- `TuningField`: `std::string group`
+- `TuningField`: `std::string note`
 - `TuningField`: `TuningSpec spec`
 - `TuningField`: `std::vector<TuningValue> values`
 - `TuningField`: `std::vector<TuningColumn> columns`
@@ -39,6 +46,8 @@ Tuning file format (Docs/Tuning.md): reading, validation and single-value patchi
 - `TuningFormatError`: `[[nodiscard]] int Line() const`
 - `[[nodiscard]] std::vector<TuningField> ParseTuningFile(std::string_view text)` — Validated fields in file order.
 - `[[nodiscard]] std::string PatchTuningValue(std::string_view text, const TuningLocation& at, const TuningValue& value)` — Changes only that value's spelling in valid 'text'; the rest stays byte-identical.
+- `enum class TuningResize { Append, Remove }` — Changing a length is structural: the running game reports "build to apply" until the next build.
+- `[[nodiscard]] std::string ResizeTuningField(std::string_view text, const TuningLocation& at, TuningResize resize)` — A list field (at.field): appends a copy of its last element, or removes element at.element.
 
 ## `Core/Tuning/TuningLive.h`
 
@@ -64,10 +73,13 @@ Live side of tuning values (Docs/Tuning.md).
 - `TuningFieldRef`: `void* data = nullptr`
 - `TuningFieldRef`: `bool table = false`
 - `TuningFieldRef`: `std::vector<std::vector<TuningFieldRef>> rows`
+- `TuningFieldRef`: `std::span<const std::string_view> choices`
 - `class TuningCollector` — Visitor for generated VisitTuning: converts fields to a TuningFieldRef list.
 - `TuningCollector`: `explicit TuningCollector(std::vector<TuningFieldRef>& fields)`
 - `TuningCollector`: `template<class T> void Field(std::string_view name, T& value)`
 - `TuningCollector`: `template<class T, std::size_t N> void Field(std::string_view name, std::array<T, N>& values)`
+- `TuningCollector`: `template<class E, std::size_t C> void Choice(std::string_view name, E& value, const std::array<std::string_view, C>& names)`
+- `TuningCollector`: `template<class E, std::size_t N, std::size_t C> void Choice(std::string_view name, std::array<E, N>& values, const std::array<std::string_view, C>& names)`
 - `TuningCollector`: `template<class Row, std::size_t N> void Table(std::string_view name, std::array<Row, N>& rows)`
 - `enum class TuningOutcome { Applied, Invalid, NeedsBuild, Unreadable }` — Applied: values written.
 - `struct TuningReport`
@@ -79,14 +91,26 @@ Live side of tuning values (Docs/Tuning.md).
 - `[[nodiscard]] TuningReport ApplyTuningText(std::string_view text, std::span<const TuningFieldRef> fields)` — Validates text against compiled fields; writes all values if valid with matching structure, otherwise changes none.
 - `[[nodiscard]] std::string DescribeTuningReport(const TuningReport& report)` — One line in "file:line: ..." format.
 - `class TuningBinding` — A registered tuning struct; Tuning<T>() creates it as TuningSlot<T>.
-- `TuningBinding`: `[[nodiscard]] virtual std::filesystem::path Source() const = 0`
-- `TuningBinding`: `[[nodiscard]] virtual TuningReport Apply(std::string_view text) = 0`
+- `TuningBinding`: `[[nodiscard]] std::u8string_view Relative() const`
+- `TuningBinding`: `[[nodiscard]] virtual std::vector<TuningFieldRef> Fields() = 0`
+- `TuningBinding`: `void NoteUse()` — Marks the binding used in the current use period (BeginTuningUse); cheap when already marked.
+- `void SetTuningRoot(const std::filesystem::path& root)` — The folder tuning sources are relative to.
+- `[[nodiscard]] std::filesystem::path TuningRoot()`
 - `void RegisterTuning(TuningBinding& binding)` — Registers and reads the file once immediately (initial values are compiled defaults, or file values if changed since).
 - `void UnregisterTuning(TuningBinding& binding)`
 - `void PollTuning()` — Reapplies changed registered files; Game calls this at each frame start (main thread).
+- `void ReloadTuning(const std::filesystem::path& source)` — Rereads one file now (absolute path), reporting the outcome; the editor calls it right after writing.
+- `[[nodiscard]] std::string PreviewTuning(const std::filesystem::path& source, const TuningLocation& at, const TuningValue& value)` — Writes one value of a registered file (absolute path) in memory, for the editor's preview while a value is dragged; the file is untouched, and its next read replaces the value.
 - `void SetTuningReporter(std::function<void(const TuningReport&)> reporter)` — Report destination; an empty function restores the default (stderr).
+- `void BeginTuningUse()` — Use periods: the editor shows which files the open scene reads.
+- `[[nodiscard]] std::vector<std::filesystem::path> TuningUsed()` — Absolute paths of the files read in this period, in the order first read.
+- `[[nodiscard]] std::uint64_t TuningUseRevision()` — Changes whenever the period starts or its list grows.
+- `struct TuningDigest` — A file's applied values, for tapes: FNV-1a 64 over field names and value bits.
+- `TuningDigest`: `std::string source`
+- `TuningDigest`: `std::uint64_t hash = 0`
+- `[[nodiscard]] std::vector<TuningDigest> TuningDigests()` — Every registered file, sorted by source.
 - `template<class T> class TuningSlot final : public TuningBinding`
 - `TuningSlot`: `TuningSlot()`
+- `TuningSlot`: `[[nodiscard]] const T& Use()`
 - `TuningSlot`: `[[nodiscard]] const T& Value() const`
-- `TuningSlot`: `[[nodiscard]] std::filesystem::path Source() const override`
-- `TuningSlot`: `[[nodiscard]] TuningReport Apply(std::string_view text) override`
+- `TuningSlot`: `[[nodiscard]] std::vector<TuningFieldRef> Fields() override`

@@ -81,6 +81,12 @@ int Verify(const SimulationRegistry& registry, const std::vector<std::string_vie
     answer["hash"] = FormatStateHash(result.hash);
     answer["hashEvery"] = tape.hashEvery;
     answer["sameVersions"] = result.sameVersions;
+    if (!result.tuningChanged.empty()) {
+        auto files = JsonIO::Document::MakeArray();
+        for (const auto& file : result.tuningChanged)
+            files.Append(file);
+        answer["tuningChanged"] = std::move(files);
+    }
     auto recorded = JsonIO::Document::MakeObject();
     recorded["engine"] = tape.engineVersion;
     recorded["simulationVersion"] = tape.simulationVersion;

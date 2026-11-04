@@ -22,6 +22,16 @@
     { "file": "not-camel-case.json", "line": 2 },
     { "file": "leading-zero.json", "line": 2 },
     { "file": "int-overflow.json", "line": 2 },
-    { "file": "comment.json", "line": 2 }
+    { "file": "comment.json", "line": 2 },
+    { "file": "valid-choice-and-text.json", "line": null },
+    { "file": "choice-not-listed.json", "line": 2 },
+    { "file": "choice-without-choices.json", "line": 2 },
+    { "file": "choices-not-pascal.json", "line": 4 },
+    { "file": "choices-duplicate.json", "line": 4 },
+    { "file": "choices-on-float.json", "line": 2 },
+    { "file": "unit-on-bool.json", "line": 4 },
+    { "file": "unit-too-long.json", "line": 2 },
+    { "file": "note-multiline.json", "line": 4 },
+    { "file": "choice-row-name-clash.json", "line": 3 }
   ]
 }

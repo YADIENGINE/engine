@@ -8,11 +8,11 @@
 
 inline constexpr std::array EditorFontSizes{75, 100, 125, 150};
 struct EditorPreferences {
-    std::array<bool, static_cast<std::size_t>(EditorPanel::Count)> visible = DefaultEditorPanelVisibility();
+    EditorPanelVisibility visible = DefaultEditorPanelVisibility();
     std::string docking;
     EditorWorkspaceLayout layout = EditorWorkspaceLayout::Develop;
     std::string customDocking;
-    std::array<bool, static_cast<std::size_t>(EditorPanel::Count)> customVisible = DefaultEditorPanelVisibility();
+    EditorPanelVisibility customVisible = DefaultEditorPanelVisibility();
     EditorPanel lastBottomPanel = EditorPanel::Output;
     std::vector<std::string> favorites;
     std::vector<std::string> recent;

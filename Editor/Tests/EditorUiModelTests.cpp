@@ -264,6 +264,28 @@ TEST_CASE("Editor.Settings.ProjectIsolationAndCorruptFileRecovery", "[engine-edi
     CHECK(font == 100);
 }
 
+TEST_CASE("Editor.Settings.PanelsBySavedOrderMoveToKeys", "[engine-editor]") {
+    TempDirectory directory;
+    const auto file = directory.Path() / "preferences.json";
+    // Saved before panels had keys: one array in the old order, which had a Tuning panel between Profiler and Console.
+    (void)WriteBinaryFileAtomic(file, R"({"version": 1, "projects": {"project-a": {
+        "visible": [false, true, true, false, false, true, true, false, false], "lastBottomPanel": 6}}})");
+    EditorSettingsStore store(file);
+    EditorPreferences restored;
+    int font = 100;
+    REQUIRE(store.Load("project-a", restored, font).empty());
+    CHECK_FALSE(restored.Visible(EditorPanel::Catalog));
+    CHECK(restored.Visible(EditorPanel::Inspector));
+    CHECK(restored.Visible(EditorPanel::Console)); // Index 6, past the removed Tuning panel
+    CHECK_FALSE(restored.Visible(EditorPanel::Assets));
+    CHECK(restored.lastBottomPanel == EditorPanel::Console);
+    REQUIRE(store.Save("project-a", restored, font).empty());
+    const auto saved = nlohmann::json::parse(ReadBinaryFile(file, 1 << 20)).at("projects").at("project-a");
+    CHECK(saved.at("panels").at("console") == true);
+    CHECK(saved.at("bottomPanel") == "console");
+    CHECK_FALSE(saved.contains("visible"));
+}
+
 TEST_CASE("Editor.Settings.AgentChoiceBelongsToTheUser", "[engine-editor]") {
     TempDirectory directory;
     const auto file = directory.Path() / "preferences.json";

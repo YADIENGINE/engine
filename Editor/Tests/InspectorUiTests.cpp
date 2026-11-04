@@ -6,6 +6,7 @@
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "Editor/Ui/Widgets/InspectorWidgets.h"
+#include "Editor/Ui/Widgets/Properties.h"
 #include "ToolUi/ToolPixel.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
@@ -155,7 +156,7 @@ TEST_CASE("Editor.Inspector.ResizesWithoutOverflowOrCommands", "[engine-editor]"
         {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{42}, 0, 1000000},
         {"size", "Size", SceneParameterKind::Float, 0.5, 0, 1},
         {"enabled", "Enabled", SceneParameterKind::Boolean, true},
-        {"color", "Tint", SceneParameterKind::Color, SceneColor{}},
+        {"color", "Tint", SceneParameterKind::Color, Color4{255, 255, 255, 255}},
         {"choice",
          "View",
          SceneParameterKind::Choice,
@@ -287,4 +288,29 @@ TEST_CASE("Editor.Inspector.NarrowControlsKeepReadableHeight", "[engine-editor]"
     }
     CHECK(commands == 0);
     CHECK(value == choices.initial);
+}
+
+TEST_CASE("Editor.Properties.ConvertBothWays", "[engine-editor]") {
+    CHECK(PropertyLabel("glowRadius") == "Glow radius");
+    CHECK(PropertyLabel("tier2Odds") == "Tier 2 odds");
+    for (const TuningValue& value :
+         {TuningValue{2.5f}, TuningValue{-3}, TuningValue{true}, TuningValue{Color4{1, 2, 3, 4}},
+          TuningValue{Float2{1, -2}}, TuningValue{FloatRange{0.5f, 2}}, TuningValue{TuningChoice{1}}})
+        CHECK(TuningValueOf(TuningPropertyValue(value)) == value);
+    TuningSpec spec;
+    spec.type = TuningType::Int;
+    spec.min = 0;
+    spec.unit = "%";
+    const auto property = TuningPropertySpec(spec);
+    CHECK(property.kind == PropertyKind::Integer);
+    CHECK(property.numbers == PropertyNumbers::Drag);
+    CHECK(PropertyText(property, std::int64_t{70}) == "70 %");
+    CHECK(PropertyBounds(property) == "0..*");
+
+    SceneParameter choice{"mode", "Mode", SceneParameterKind::Choice, std::string("Fast")};
+    choice.choices = {"Slow", "Fast"};
+    const auto scene = ScenePropertyValue(choice, std::string("Fast"));
+    CHECK(std::get<PropertyChoice>(scene).index == 1);
+    CHECK(SceneValueOf(choice, PropertyChoice{0}) == SceneValue{std::string("Slow")});
+    CHECK(ScenePropertySpec(choice).numbers == PropertyNumbers::Slider);
 }

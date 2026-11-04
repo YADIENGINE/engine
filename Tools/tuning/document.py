@@ -8,16 +8,19 @@ import json
 import re
 from dataclasses import dataclass, field
 
-SCALAR_TYPES = ("float", "int", "bool", "color", "vec2", "range")
-BOUNDED_TYPES = ("float", "int", "vec2", "range")  # min / max alabilen tipler
-FIELD_KEYS = ("type", "value", "min", "max")  # Kanonik sıra da budur
-TABLE_KEYS = ("type", "columns", "rows")
-COLUMN_KEYS = ("type", "min", "max")
+SCALAR_TYPES = ("float", "int", "bool", "color", "vec2", "range", "choice")
+BOUNDED_TYPES = ("float", "int", "vec2", "range")  # Types that take min / max, and a unit
+# Allowed keys; also the canonical order.
+FIELD_KEYS = ("type", "choices", "value", "min", "max", "unit", "group", "note")
+TABLE_KEYS = ("type", "group", "note", "columns", "rows")
+COLUMN_KEYS = ("type", "choices", "min", "max", "unit", "note")
 RANGE_KEYS = ("min", "max")
+MAX_UNIT = 16
 MAX_DEPTH = 32
 
 FIELD_NAME = re.compile(r"[a-z][A-Za-z0-9]*\Z")
-TYPE_NAME = re.compile(r"(float|int|bool|color|vec2|range)(\[\])?\Z")
+TYPE_NAME = re.compile(r"(float|int|bool|color|vec2|range|choice)(\[\])?\Z")
+CHOICE_NAME = re.compile(r"[A-Z][A-Za-z0-9]*\Z")
 COLOR = re.compile(r"#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?\Z")
 INTEGER = re.compile(r"-?(0|[1-9][0-9]*)\Z")
 NUMBER = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?")
@@ -56,10 +59,16 @@ class Node:
 
 @dataclass
 class Spec:
+    """A value's type and its editor information. `choices` only for choice; `note` only on table columns (a value
+    field keeps its note in Field)."""
+
     type: str
     is_list: bool
     min: float | None = None
     max: float | None = None
+    choices: list[str] = field(default_factory=list)
+    unit: str | None = None
+    note: str | None = None
 
     @property
     def text(self) -> str:
@@ -77,6 +86,8 @@ class Field:
     value: object = None
     columns: list[tuple[str, Spec]] = field(default_factory=list)
     rows: list[dict[str, object]] = field(default_factory=list)
+    group: str | None = None
+    note: str | None = None
 
     @property
     def is_table(self) -> bool:
@@ -210,8 +221,13 @@ def _number(node: Node, what: str) -> float:
     return float(node.value)
 
 
-def _decode(node: Node, type_name: str, what: str):
-    """Tek değer: float, int, bool, (r, g, b, a), (x, y) ya da (min, max)."""
+def _decode(node: Node, spec: Spec, what: str):
+    """One value: float, int, bool, (r, g, b, a), (x, y), (min, max) or a choice's name."""
+    type_name = spec.type
+    if type_name == "choice":
+        if node.kind != "string" or node.value not in spec.choices:
+            raise TuningError(node.line, f"{what} must be one of {', '.join(spec.choices)}")
+        return node.value
     if type_name == "float":
         return _number(node, what)
     if type_name == "int":
@@ -251,7 +267,7 @@ def _numbers(type_name: str, value) -> list[float]:
 def _checked(node: Node, spec: Spec, what: str):
     """Değeri tipine göre çözer ve sınırlarını denetler; liste ise her elemanı."""
     def one(item: Node, label: str):
-        value = _decode(item, spec.type, label)
+        value = _decode(item, spec, label)
         for number in _numbers(spec.type, value):
             if (spec.min is not None and number < spec.min) or (spec.max is not None and number > spec.max):
                 raise TuningError(item.line, f"{label} {_shown(number)} is outside {_shown(spec.min)}..{_shown(spec.max)}")
@@ -283,6 +299,32 @@ def _check_name(name: str, line: int, what: str):
         raise TuningError(line, f'{what} "{name}" is a C++ keyword')
 
 
+def _text(node: Node, what: str, limit: int | None = None) -> str:
+    """A one-line text key: note, group, unit."""
+    if node.kind != "string" or not node.value.strip():
+        raise TuningError(node.line, f"{what} must be non-empty text")
+    if any(ord(char) < 0x20 for char in node.value):
+        raise TuningError(node.line, f"{what} must be a single line")
+    if limit is not None and len(node.value) > limit:
+        raise TuningError(node.line, f"{what} is longer than {limit} characters")
+    return node.value
+
+
+def _choices(node: Node, where: str) -> list[str]:
+    if node.kind != "array" or not node.value:
+        raise TuningError(node.line, f'{where} "choices" must be a non-empty list')
+    names = []
+    for item in node.value:
+        if item.kind != "string" or not CHOICE_NAME.match(item.value):
+            shown = item.value if item.kind == "string" else "a non-text value"
+            raise TuningError(item.line, f'{where} choice "{shown}" must be PascalCase: an uppercase letter, then '
+                                         f"letters and digits")
+        if item.value in names:
+            raise TuningError(item.line, f'{where} lists the choice "{item.value}" twice')
+        names.append(item.value)
+    return names
+
+
 def _spec(node: Node, type_node: Node | None, where: str, inferred: str | None = None) -> Spec:
     if type_node is None:
         if inferred is None:
@@ -301,7 +343,25 @@ def _spec(node: Node, type_node: Node | None, where: str, inferred: str | None =
             setattr(spec, bound, _number(keys[bound], f'"{bound}"'))
     if spec.min is not None and spec.max is not None and spec.min > spec.max:
         raise TuningError(keys["min"].line, f"{where} has min greater than max")
+    if "choices" in keys:
+        if spec.type != "choice":
+            raise TuningError(keys["choices"].line, f'{where} of type {spec.text} cannot have "choices"')
+        spec.choices = _choices(keys["choices"], where)
+    elif spec.type == "choice":
+        raise TuningError(node.line, f'{where} of type {spec.text} needs "choices"')
+    if "unit" in keys:
+        if spec.type not in BOUNDED_TYPES:
+            raise TuningError(keys["unit"].line, f'{where} of type {spec.text} cannot have "unit"')
+        spec.unit = _text(keys["unit"], f'{where} "unit"', MAX_UNIT)
     return spec
+
+
+def _described(result: "Field", keys: dict, where: str) -> "Field":
+    if "group" in keys:
+        result.group = _text(keys["group"], f'{where} "group"')
+    if "note" in keys:
+        result.note = _text(keys["note"], f'{where} "note"')
+    return result
 
 
 def _inferred(value: Node | None) -> str | None:
@@ -318,7 +378,7 @@ def _value_field(name: str, line: int, node: Node) -> Field:
     if "value" not in keys:
         raise TuningError(node.line, f'{where} needs "value"')
     spec = _spec(node, keys.get("type"), where, _inferred(keys["value"]))
-    return Field(name, line, spec, _checked(keys["value"], spec, f"{where} value"))
+    return _described(Field(name, line, spec, _checked(keys["value"], spec, f"{where} value")), keys, where)
 
 
 def _table_field(name: str, line: int, node: Node) -> Field:
@@ -331,14 +391,17 @@ def _table_field(name: str, line: int, node: Node) -> Field:
     columns_node, rows_node = keys["columns"], keys["rows"]
     if columns_node.kind != "object" or not columns_node.value:
         raise TuningError(columns_node.line, f'{where} "columns" must be a non-empty object')
-    result = Field(name, line)
+    result = _described(Field(name, line), keys, where)
     for column, column_line, column_node in columns_node.value:
         _check_name(column, column_line, "column")
         if column_node.kind != "object":
             raise TuningError(column_node.line, f'column "{column}" must be an object')
         _check_keys(column_node, COLUMN_KEYS, f'column "{column}"')
-        type_node = next((item for key, _, item in column_node.value if key == "type"), None)
-        result.columns.append((column, _spec(column_node, type_node, f'column "{column}"')))
+        column_keys = {key: item for key, _, item in column_node.value}
+        spec = _spec(column_node, column_keys.get("type"), f'column "{column}"')
+        if "note" in column_keys:
+            spec.note = _text(column_keys["note"], f'column "{column}" "note"')
+        result.columns.append((column, spec))
     if rows_node.kind != "array" or not rows_node.value:
         raise TuningError(rows_node.line, f'{where} "rows" must be a non-empty list')
     lengths: dict[str, int] = {}
@@ -378,7 +441,22 @@ def parse_fields(root: Node) -> list[Field]:
         type_node = next((item for key, _, item in node.value if key == "type"), None)
         is_table = type_node is not None and type_node.kind == "string" and type_node.value == "table"
         fields.append(_table_field(name, line, node) if is_table else _value_field(name, line, node))
+    _check_type_names(fields)
     return fields
+
+
+def type_name(name: str) -> str:
+    """The C++ type a field names: `pulseMode` → `PulseMode` (a choice's enum); a table's row struct adds `Row`."""
+    return name[0].upper() + name[1:]
+
+
+def _check_type_names(fields: list[Field]):
+    """A choice's enum and a table's row struct live in the same struct, so their names must differ."""
+    rows = {type_name(f.name) + "Row": f.name for f in fields if f.is_table}
+    for f in fields:
+        if f.spec is not None and f.spec.type == "choice" and type_name(f.name) in rows:
+            raise TuningError(f.line, f'choice "{f.name}" names the enum {type_name(f.name)}, which table '
+                                      f'"{rows[type_name(f.name)]}" uses for its rows')
 
 
 def read_fields(text: str) -> list[Field]:

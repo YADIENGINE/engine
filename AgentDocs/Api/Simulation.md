@@ -27,6 +27,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `InputTape`: `std::vector<TimedCommand> commands` — In step order
 - `InputTape`: `int hashEvery = 1` — State hashes at steps 0, hashEvery, 2 * hashEvery ...; the state after that many steps have run.
 - `InputTape`: `std::vector<std::uint64_t> hashes`
+- `InputTape`: `std::vector<TuningDigest> tuning` — The tuning values the run started with (TuningDigests after its first recorded step), so a replay that disagrees can name the files that changed since.
 - `InputTape`: `void Truncate(std::uint64_t step)` — Forgets step 'step' and everything after it; the state after 'step' steps stays known.
 - `InputTape`: `[[nodiscard]] std::string Incompatibility(const SimulationSettings& settings) const` — Explains why this tape cannot play on 'settings'; empty when it can.
 - `InputTape`: `[[nodiscard]] bool SameVersions(const SimulationSettings& settings) const`
@@ -59,6 +60,8 @@ Use these generated signatures to locate public declarations; open the header fo
 - `TapeVerification`: `std::uint64_t hashes = 0` — Stored hashes the run reaches; 0: nothing could be compared
 - `TapeVerification`: `std::optional<TapeMismatch> mismatch` — Empty: every stored hash matched
 - `TapeVerification`: `bool sameVersions = true`
+- `TapeVerification`: `std::vector<std::string> tuningChanged` — Files the tape recorded whose values differ now (TuningChanged)
+- `[[nodiscard]] std::vector<std::string> TuningChanged(const InputTape& tape)` — The tape's tuning files whose values differ in this process now; files not read here are left out.
 - `[[nodiscard]] TapeVerification VerifyTape(const SimulationDefinition& definition, const InputTape& tape)`
 - `struct FieldDifference` — Two fresh runs of a tape in this process, compared at every step.
 - `FieldDifference`: `std::string path`

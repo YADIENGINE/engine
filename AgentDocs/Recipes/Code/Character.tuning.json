@@ -1,3 +1,4 @@
 {
-  "radius": { "value": 32, "min": 1, "max": 100 }
+  "radius": { "value": 32, "min": 1, "max": 100, "unit": "px", "note": "Body circle used for hits" },
+  "gait": { "type": "choice", "choices": ["Walk", "Run"], "value": "Walk", "note": "How the character moves at rest" }
 }

@@ -46,13 +46,21 @@ update together to the same protocol version; the project recipe version does no
 
 ## Tuning
 
-The only write path for tuning files ([Tuning](../Tuning.md)) is the file itself; the editor does not send values to
-workers. `Internals/Session/TuningWorkspace` reads the build's `Tuning/TuningFiles.json` list (CMake
-`engine_add_tuning`) and files, refreshes on external changes, patches the current file on disk with `PatchTuningValue`,
-and writes atomically. In development builds, the worker watches files itself (`PollTuning`); `WorkerHost` forwards
-live tuning reports to the host in `tuning` messages (`WorkerTuningStatus`: source, state, line, text). State belongs
-to the active worker: it resets when the worker changes; during Build & Refresh, the new worker's reports switch with
-it. Release-built workers neither read live nor send reports. Presentation is `Ui/Panels/Tuning/TuningPanel`.
+The only lasting write path for tuning files ([Tuning](../Tuning.md)) is the file itself.
+`Internals/Session/TuningWorkspace` reads the build's `Tuning/TuningFiles.json` (CMake `engine_add_tuning`: project
+folder, roots, built files), scans the roots for new files, refreshes on external changes, patches the current file on
+disk (`PatchTuningValue`, `ResizeTuningField`), writes atomically, and keeps the undo history of its own writes.
+`TuningBaselines` reads each file's text at git HEAD on its own thread for Modified and Revert.
+
+Messages: the worker forwards live reports in `tuning` (`WorkerTuningStatus`: source, state, line, text) and the files
+the open scene has read since it opened in `tuning-used` (`BeginTuningUse` on every open, reset and rewind;
+`TuningUseRevision` says when to resend). While a value is dragged, the host sends `tuning-preview`: the worker writes it
+in memory only (`PreviewTuning`), and the file write that ends the drag replaces it; after every write the host sends
+`tuning-reload` so the worker rereads the file at once (`ReloadTuning`) instead of at its next poll. State belongs to
+the active worker: it resets when the worker changes; during Build & Refresh, the new worker's reports switch with it.
+Release-built workers neither read live nor send reports. Presentation is `Ui/Panels/Inspector/TuningInspector` inside
+the Inspector; scene parameters and tuning values convert to one model (`Ui/Widgets/Properties`) drawn by one widget
+set (`Ui/Widgets/PropertyWidgets`). Why: [D33](../Design/README.md#d33-inspector-and-tuning).
 
 ## Source control
 

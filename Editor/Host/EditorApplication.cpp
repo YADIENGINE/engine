@@ -379,8 +379,11 @@ void EditorApplication::DrawToolOverlay() const {
             commands.emplace_back([this, command, recipe, file] { _controller.Profile(command, recipe, file); });
         },
         [&](bool attempt) { commands.emplace_back([this, attempt] { _controller.OpenOutputLog(attempt); }); },
-        [&](std::size_t file, const TuningLocation& at, const TuningValue& value) {
-            commands.emplace_back([this, file, at, value] { _controller.Tune(file, at, value); });
+        [&](const TuningEditRequest& request) {
+            commands.emplace_back([this, request] { _controller.Tuning(request); });
+        },
+        [&](const std::filesystem::path& file) {
+            commands.emplace_back([this, file] { _controller.InspectTuning(file); });
         },
         [&](const AudioPreviewRequest& request) { (void)QueueAudio(request); },
         [&](const std::filesystem::path& path) {

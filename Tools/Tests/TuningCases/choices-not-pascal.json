@@ -1,0 +1,7 @@
+{
+  "mode": {
+    "type": "choice",
+    "choices": ["Off", "pulse"],
+    "value": "Off"
+  }
+}

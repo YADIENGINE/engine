@@ -1118,6 +1118,57 @@ Status: implemented (2026-11-04). Usage: [Audio](../Audio.md#sound-tables).
 
 **Left out, and why:** strings, as above. Mixer, buses and ducking: no game has asked, and the row options leave room. 3D or positional sound: a game can pass a pitch, and nothing else needs it. Music in the table: a track is one streamed file with a volume group, and has none of a row's choices. Scanning asset folders: it would bring back what a typo costs. Loading tables from text: not built; decision 3 keeps it possible, since `SoundRow` checks at run time and `SoundTable` owns its text, though a text table has no enum, so it will need a way to make a key. A sound in `FxCue`: D29 decided against it. Default sound files: the engine ships none (the user's). `Stop` and per-row volume changes: nothing needs them yet; they are one line each over the row's IDs.
 
+### D33. Inspector and tuning
+Status: implemented (2026-11-04). Usage: [Tuning](../Tuning.md#editor), [Editor usage](../Editor/Usage.md).
+
+**Decision:** the Inspector edits both kinds of value: a scene's controls and the tuning files the running scene reads.
+The Tuning panel is gone. The file format, the generated header, the all-or-nothing apply and Release `constexpr`
+values stay; what changed is the editor around them and the plumbing between editor, file and worker.
+
+**Why:** the first design ([Tuning](Tuning.md)) gave tuning its own panel because a file is project-wide. Used, that
+split showed two parallel systems: two value types (`SceneValue`, `TuningValue`) with two colors, two widget sets, three
+validations, a flat file list with no link to what is on screen, Enter-only boxes because "the file is the only path"
+ruled out a preview, and no undo or "what changed". Unity and Godot edit both in one Inspector; their known pain is that
+a play-mode change is lost because it does not say it is temporary. So here one Inspector shows both and every value
+says what it is.
+
+**Decided:**
+1. *What the Inspector shows (the user's).* The selected scene: its controls, then one section per tuning file the
+   running scene has read. Or one tuning file on its own, opened from the Inspector's file list or an Assets tile, with
+   a way back. Picking a scene returns to it.
+2. *Which files a scene reads.* `Tuning<T>()` marks its file in the current use period; the worker starts a period on
+   every open, reset and rewind and sends `tuning-used` when the list grows. A file read only on a code path not taken
+   yet is not listed; the file list reaches it.
+3. *One model, one widget set.* Scene parameters and tuning fields convert to `PropertySpec` / `PropertyValue`
+   (`Editor/Ui/Widgets/Properties.h`), drawn by `PropertyWidget`. Scene parameters keep their sliders; tuning numbers
+   drag, so no range is needed and `min` / `max` stay validity bounds. A scene color is `Color4`, as in tuning files.
+4. *The file stays the only lasting write path; a preview is not one (the user's).* While a value is dragged the editor
+   sends it to the worker, which writes it in memory only; the end of the drag writes the file once, a one-line diff,
+   and the worker rereads it at once. Hand and agent edits still take the file path; a preview is lost by any read.
+5. *Modified means "since the last commit".* The committed text comes from `git show HEAD:` on a thread of its own
+   (`TuningBaselines`); the reset button and Revert write it back. A value's default is what the repository has, not
+   what a build compiled. Without git or a commit nothing is marked.
+6. *Undo is the editor's own writes.* Whole-text before / after pairs; one is undone only while the file still holds
+   what it wrote, so an agent's later edit is never overwritten.
+7. *Editor text belongs in the file.* `note`, `unit`, `group` (one line each, optional) serve the Inspector, the header
+   comment and an agent reading the file. Labels come from names.
+8. *Choices are generated.* `"type": "choice"` with `choices` makes an `enum class` and its names in the header, so the
+   file is the only list (the first design ruled enums out as a second source; generating them removes it).
+9. *Lengths from the Inspector.* `+` / `-` copy the last element or row, or remove one, through `ResizeTuningField`;
+   the scene reports Build needed until Build & Refresh, as for a hand edit.
+10. *Paths from the project folder.* The header records the file's path relative to the project; the executable finds
+    the project from its own folder (`Project.json` above it). Moving a project no longer needs a rebuild.
+11. *New files show at once.* `TuningFiles.json` (version 2) also names the project folder and each target's root; the
+    editor scans the roots, and a file no build has seen yet is Not built.
+12. *Tapes name changed tuning.* A tape stores a digest of each registered file's values after its first step;
+    `sim verify` reports `tuningChanged` when a replay disagrees and values moved since.
+13. *Panels are saved by key.* Removing a panel shifted the old index-based visibility arrays; preferences now save
+    `{"inspector": true, ...}`, and the old arrays are read once in their old order.
+
+**Left out, and why:** a list column's length in a table (every row would change at once; edit the file). Undo of
+scene controls (they last a session and reset in one click). A preview of a file the scene does not read (nothing would
+show it). Tuning files outside an `engine_add_tuning` root (no build could read them).
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

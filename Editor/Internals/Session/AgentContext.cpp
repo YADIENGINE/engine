@@ -52,6 +52,11 @@ std::string ParameterContext(const SceneDefinition& definition, const SceneParam
     if (!parameter.description.empty()) line += " - " + parameter.description;
     return line + " ";
 }
+std::string TuningContext(const std::string& file, int line, const std::string& field, const std::string& value,
+                          const std::string& details) {
+    return std::format("[editor] tuning={}:{} field={} = {}{} ", file, line, field, value,
+                       details.empty() ? "" : " " + details);
+}
 std::string OutputContext(const std::vector<EditorLogEntry>& entries, std::size_t limit) {
     const auto shown = std::min(entries.size(), limit);
     std::string text = std::format("[editor] output, {} line{}", entries.size(), entries.size() == 1 ? "" : "s");

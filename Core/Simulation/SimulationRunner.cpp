@@ -135,7 +135,9 @@ bool SimulationRunner::RunStep() {
         _nextChange = _tape.changes.size();
         _nextCommand = _tape.commands.size();
     }
+    const bool firstRecorded = _step == 0U && _step + 1U == _tape.steps;
     _simulation.Step({_step, _fixedSeconds, _current, _stepCommands});
+    if (firstRecorded) _tape.tuning = TuningDigests(); // The simulation has read its tuning by now
     ++_step;
     Checkpoint();
     return true;

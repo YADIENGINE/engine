@@ -74,7 +74,8 @@ A dockable Assets panel in the lower editor area, in the style of Unity's Projec
 catalog: back and search across the top, a folder tree on the left (sets are rows too), a tile grid on the right, and
 tile size in the footer.
 
-- **Shared viewport:** one click opens the graphic in the normal viewport, with the Inspector and Tuning panels.
+- **Shared viewport:** one click opens the graphic in the normal viewport, with the Inspector. A tile that has a
+  `.tuning.json` opens that file in the Inspector.
 - **Back:** one history for browsing and opened graphics; each press undoes the last move or opened graphic.
 - **Tiles, not files:** `Goblin.h`, `Goblin.cpp`, `Goblin.asset.cpp` and `Goblin.tuning.json` are one tile, which can
   be expanded.

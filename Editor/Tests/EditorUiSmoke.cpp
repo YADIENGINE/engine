@@ -49,7 +49,9 @@ constexpr std::array Stages{
     SmokeStage{"output", SmokeView::Running, 1600, 900, 100, EditorPanel::Output},
     SmokeStage{"output-narrow", SmokeView::Running, 1100, 680, 100, EditorPanel::Output},
     SmokeStage{"profiler", SmokeView::Running, 1600, 1200, 100, EditorPanel::Profiler},
-    SmokeStage{"tuning", SmokeView::Running, 1600, 900, 100, EditorPanel::Tuning},
+    SmokeStage{"tuning", SmokeView::Running, 1600, 1000, 100, EditorPanel::Inspector},
+    SmokeStage{"tuning-file", SmokeView::Running, 1600, 1000, 100, EditorPanel::Inspector},
+    SmokeStage{"tuning-narrow", SmokeView::Running, 1100, 680, 150, EditorPanel::Inspector},
     SmokeStage{"assets", SmokeView::Running, 1600, 900, 100, EditorPanel::Assets},
     SmokeStage{"audio", SmokeView::Running, 1600, 900, 100, EditorPanel::AudioPreview},
     SmokeStage{"agent-strip", SmokeView::AgentStrip},
@@ -189,7 +191,9 @@ EditorUiActions QuietActions() {
     actions.playback = [](double, bool) {};
     actions.profiler = [](EditorProfilerCommand, Profiler::Recipe, const std::string&) {};
     actions.openOutputLog = [](bool) {};
-    actions.tune = [](std::size_t, const TuningLocation&, const TuningValue&) {};
+    actions.tuning = [](const TuningEditRequest&) {};
+    actions.inspectTuning = [](const std::filesystem::path&) {};
+    actions.openSource = [](const std::string&, int) {};
     actions.previewAudio = [](const AudioPreviewRequest&) {};
     actions.openPath = [](const std::filesystem::path&) {};
     actions.assetThumbnail = [](const std::string&) { return std::uint64_t{0}; };
@@ -259,13 +263,14 @@ public:
              {"Graphics/Enemies/Slime.asset.cpp", "Graphics/Enemies/Dragon.asset.cpp", "Graphics/Player/Hero.asset.cpp",
               "Audio/SE/Hit.wav", "Audio/SE/Pickup.wav", "Audio/SE/Explosion.wav", "Audio/Music/Theme.ogg"})
             WriteFile(AssetsDirectory() / file);
-        const auto tuning = _root / "Game" / "Enemy.tuning.json";
-        WriteFile(tuning, "{\n  \"radius\": { \"value\": 12, \"min\": 0, \"max\": 40 },\n"
-                          "  \"speed\": { \"value\": 2.5, \"min\": 0, \"max\": 10 },\n"
-                          "  \"visible\": { \"value\": true }\n}\n");
+        WriteFile(TuningFile(), EnemyTuning);
+        WriteFile(_root / "Game" / "Effects" / "Glow.tuning.json",
+                  "{\n  \"radius\": { \"value\": 12, \"min\": 0, \"unit\": \"px\" }\n}\n");
+        const auto quoted = [](const std::filesystem::path& path) { return "\"" + path.generic_string() + "\""; };
         WriteFile(_root / "build" / "Tuning" / "TuningFiles.json",
-                  "{ \"version\": 1, \"files\": [ { \"target\": \"MyGame\", \"source\": \"" + tuning.generic_string() +
-                      "\" } ] }");
+                  "{ \"version\": 2, \"project\": " + quoted(_root) + ", \"roots\": [ { \"target\": \"MyGame\", " +
+                      "\"root\": " + quoted(_root / "Game") + " } ], \"files\": [ { \"target\": \"MyGame\", " +
+                      "\"source\": " + quoted(TuningFile()) + " } ] }");
     }
     ~SmokeProject() {
         std::error_code error;
@@ -274,6 +279,32 @@ public:
     [[nodiscard]] std::filesystem::path EngineDirectory() const { return _root / "Engine"; }
     [[nodiscard]] std::filesystem::path AssetsDirectory() const { return _root / "Game" / "Assets"; }
     [[nodiscard]] std::filesystem::path BuildDirectory() const { return _root / "build"; }
+    // Read by the running scene; Effects/Glow.tuning.json is not built yet.
+    [[nodiscard]] std::filesystem::path TuningFile() const { return _root / "Game" / "Enemy.tuning.json"; }
+    static constexpr std::string_view EnemyTuning = R"({
+  "radius": { "value": 12, "min": 0, "max": 40, "unit": "px", "note": "Hit circle around the enemy" },
+  "speed": { "value": 2.5, "min": 0, "max": 10, "unit": "px/s" },
+  "visible": { "value": true },
+  "mode": { "type": "choice", "choices": ["Patrol", "Chase", "Flee"], "value": "Chase", "group": "Behaviour" },
+  "tint": { "type": "color", "value": "#FF4080", "group": "Look" },
+  "offset": { "type": "vec2", "value": [0, -4], "unit": "px", "group": "Look" },
+  "delay": { "type": "range", "value": { "min": 0.2, "max": 0.6 }, "min": 0, "unit": "s", "group": "Behaviour" },
+  "steps": { "type": "float[]", "value": [0, 0.5, 1], "group": "Behaviour" },
+  "odds": {
+    "type": "table",
+    "group": "Balance",
+    "note": "Spawn odds per level",
+    "columns": {
+      "fromLevel": { "type": "int", "min": 1 },
+      "chances": { "type": "float[]", "min": 0, "max": 100, "unit": "%" }
+    },
+    "rows": [
+      { "fromLevel": 1, "chances": [70, 30] },
+      { "fromLevel": 5, "chances": [40, 60] }
+    ]
+  }
+}
+)";
 
 private:
     std::filesystem::path _root;
@@ -324,7 +355,7 @@ std::vector<SceneDefinition> SampleCatalog() {
     speed.minimum = 0.1;
     speed.maximum = 2.0;
     auto hitboxes = Parameter("hitboxes", "Show hitboxes", SceneParameterKind::Boolean, false, "Debug");
-    auto tint = Parameter("tint", "Arena tint", SceneParameterKind::Color, SceneColor{0.3f, 0.5f, 0.7f, 1.0f}, "Debug");
+    auto tint = Parameter("tint", "Arena tint", SceneParameterKind::Color, Color4{77, 128, 179, 255}, "Debug");
     fight.parameters = {enemy, stage, level, speed, hitboxes, tint};
     fight.actions = {SceneAction{"start", "Start", "Start the fight from this stage.", true},
                      SceneAction{"win", "Skip to the end", "Finish the fight.", false}};
@@ -391,6 +422,14 @@ public:
         _workspace.SetAssetRoots(_project.EngineDirectory(), _project.AssetsDirectory());
         _workspace.SetProjectName("MyProject");
         _tuning.Open(_project.BuildDirectory());
+        // The scene reads Enemy.tuning.json live; its commit had another radius and speed, so both show Modified.
+        _tuning.SetUsed({_project.TuningFile()});
+        (void)_tuning.Report({_project.TuningFile().generic_string(), WorkerTuningState::Applied});
+        auto committed = std::string(SmokeProject::EnemyTuning);
+        for (const auto& [now, then] :
+             {std::pair{"\"value\": 12", "\"value\": 10"}, {"\"value\": 2.5", "\"value\": 3.5"}})
+            committed.replace(committed.find(now), std::string_view(now).size(), then);
+        _tuning.SetCommitted(_project.TuningFile(), committed);
         const auto picture = [](Color first, Color second) {
             const Image image = GenImageChecked(64, 64, 8, 8, first, second);
             const Texture2D texture = LoadTextureFromImage(image);
@@ -464,6 +503,7 @@ protected:
         snapshot.profiler.live = _capture;
         snapshot.profiler.liveSummary = _summary;
         snapshot.tuning = &_tuning;
+        if (std::string_view(stage.name) == "tuning-file") snapshot.inspectedTuning = _project.TuningFile();
         snapshot.audio.file = _project.AssetsDirectory() / "Audio" / "SE" / "Hit.wav";
         snapshot.audio.length = _waveform->seconds;
         snapshot.audio.position = 0.7f;
