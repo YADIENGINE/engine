@@ -8,7 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..cmake import PYTHON_DEFINITION, read_cache, remove_build_dir, run
+from ..agent_output import quiet, shown
+from ..cmake import BUILD_LOG, PYTHON_DEFINITION, read_cache, remove_build_dir, run
 from ..errors import EXIT_FAILED, EXIT_OK, ToolError
 from ..msvc import GENERATOR, msvc_env, tool
 from ..prebuilt import prebuilt_directory
@@ -65,15 +66,18 @@ def editor(project: Project, release: bool, build_only: bool, clean: bool) -> in
         command = [cmake, "-S", str(project.root), "-B", str(build_dir), "-G", GENERATOR,
                    "-DCMAKE_C_COMPILER=cl", "-DCMAKE_CXX_COMPILER=cl", PYTHON_DEFINITION]
         command.extend(f"-D{name}={value}" for name, value in options.items())
-        run(command, project.root, env)
+        run(command, project.root, env, log=build_dir / BUILD_LOG)
 
     config = config_name(release)
     worker = settings.get("worker", project.name + "EditorWorker")
     # CMake decides whether the package fits this project; a package already holds the editor itself.
     packaged = prebuilt is not None and (read_cache(build_dir) or {}).get("ENGINE_PREBUILT_USED") == "TRUE"
     targets = [worker] if packaged else ["EngineEditor", worker]
-    run([cmake, "--build", str(build_dir), "--config", config, "--target", *targets], project.root, env)
+    run([cmake, "--build", str(build_dir), "--config", config, "--target", *targets], project.root, env,
+        log=build_dir / BUILD_LOG)
     if build_only:
+        if quiet():
+            print(f"Editor build: succeeded (log: {shown(build_dir / BUILD_LOG)})", flush=True)
         return EXIT_OK
 
     recipe_folder = build_dir / "Editor" / config

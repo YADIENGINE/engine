@@ -58,5 +58,7 @@ EditorGameBuild ReadEditorGameBuild(const EditorProject& project) {
     const auto engine = project.engineDirectory.u8string();
     result.build.arguments = {std::string(engine.begin(), engine.end()), "build"};
     result.build.directory = project.sourceDirectory;
+    // The editor reads every compiler line into Output and Problems, even when an agent started the editor
+    result.build.environment["ENGINE_AGENT"] = "0";
     return result;
 }

@@ -3,7 +3,7 @@
 import shutil
 from pathlib import Path
 
-from ..cmake import PYTHON_DEFINITION, run
+from ..cmake import BUILD_LOG, PYTHON_DEFINITION, run
 from ..errors import EXIT_OK, ToolError
 from ..manifest import ENGINE_ROOT
 from ..msvc import GENERATOR, msvc_env, tool
@@ -25,7 +25,8 @@ def prebuilt(output: Path) -> int:
          "-DCMAKE_CXX_COMPILER=cl", "-DCMAKE_CONFIGURATION_TYPES=Release", f"-DCMAKE_MSVC_RUNTIME_LIBRARY={RUNTIME}",
          "-DENGINE_BUILD_RUNTIME=ON", "-DENGINE_BUILD_EDITOR=ON", "-DENGINE_BUILD_TESTS=OFF",
          "-DENGINE_BUILD_EDITOR_TESTS=OFF", f"-DENGINE_PREBUILT_OUTPUT={output.as_posix()}", PYTHON_DEFINITION],
-        ENGINE_ROOT, env)
-    run([cmake, "--build", str(build_dir), "--config", "Release", "--target", "EnginePrebuiltPackage"], ENGINE_ROOT, env)
+        ENGINE_ROOT, env, log=build_dir / BUILD_LOG)
+    run([cmake, "--build", str(build_dir), "--config", "Release", "--target", "EnginePrebuiltPackage"], ENGINE_ROOT,
+        env, log=build_dir / BUILD_LOG)
     print(f"Prebuilt engine: {output}", flush=True)
     return EXIT_OK

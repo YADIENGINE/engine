@@ -13,13 +13,16 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..agent_output import quiet, shorten, shown, tail
+from ..build_errors import summary
 from ..cmake import PYTHON_DEFINITION, clear_stale_build, remove_build_dir
 from ..errors import EXIT_FAILED, EXIT_INFRA, EXIT_OK
 from ..msvc import msvc_env, tool
 
 
 def _execute(command: list[str], root: Path, log: Path, env: dict[str, str]) -> int:
-    print(f"> {subprocess.list2cmdline(command)}", flush=True)
+    if not quiet():
+        print(f"> {subprocess.list2cmdline(command)}", flush=True)
     with log.open("w", encoding="utf-8") as output:
         try:
             process = subprocess.Popen(
@@ -156,9 +159,18 @@ def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, 
             print(f"Tests: listed ({counts['total']} cases)")
         else:
             print(f"Tests: {report['status']} ({counts['passed']}/{counts['total']} passed)")
+        agent = quiet()
         for test in report["tests"]:
             if test["status"] in ("failed", "skipped"):
-                print(f"\n{test['name']}: {test['status']}\n{test['diagnostics']}\nRerun: {test['rerun_command']}")
+                diagnostics = shorten(test["diagnostics"]) if agent else test["diagnostics"]
+                print(f"\n{test['name']}: {test['status']}\n{diagnostics}\nRerun: {test['rerun_command']}")
         if report["status"] == "error":
-            print(f"Stage: {report['stage']}\n{report['diagnostics']}")
+            print(f"Stage: {report['stage']}")
+            if agent:  # The errors, not the whole log: the log stays in the report folder
+                lines = report["diagnostics"].splitlines()
+                print("\n".join(summary(lines, root) or tail(lines)))
+                if report["stages"]:
+                    print(f"Full log: {shown(report_dir / report['stages'][-1]['log'])}")
+            else:
+                print(report["diagnostics"])
         print(f"Report: {report_dir / 'results.json'}")

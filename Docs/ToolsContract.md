@@ -47,6 +47,12 @@ use the same Python. Project root: `--project` if supplied; otherwise the engine
 Failed builds (`build`, `run`, `release`, `test`, `editor`, `refresh`) end their output with an `Errors (N):` summary of
 the distinct compiler, linker and CMake errors ([Editor automation](Editor/Automation.md#build-errors)).
 
+Under a coding agent, `build`, `run`, `release`, `test`, `sim`, `editor` and `refresh` print only their result: a success
+line, or the `Errors (N):` summary (the end of the output when no error is recognized) and the path of the full log.
+Build output always goes to `build.log` in the build folder (`refresh.log` in the editor's for `refresh`); `test` keeps
+its stage logs in the report folder and shows at most 30 lines of a failed test's diagnostics. Agents read everything a
+command prints again on every later request, so the full output stays in the file.
+
 Settings are in `Project.json` ([ProjectSetup](ProjectSetup.md)).
 
 ## `info` output
@@ -100,6 +106,8 @@ commit, file hashes); tools read only its `files`, to tell whether a prebuilt en
 | `ENGINE_LAUNCHER` | editor | Full path to the windowed executable of the launcher that started the editor. If present, "Back to project list" appears in File: the editor starts that executable and closes. The launcher sets it for every engine command; tools forward it unchanged to the editor |
 | `ENGINE_PREBUILT` | `build`, `run`, `release`, `editor` | Folder of the compiled engine for the project's version ([Prebuilt engine](Prebuilt.md)). The launcher sets it when it has one; tools remember it for commands run without the launcher |
 | `ENGINE_ASSET_REPORT` | a built game | When set, the game prints its asset list as `asset: <path>` lines and exits before opening a window. `release` sets it |
+| `CLAUDECODE`, `CODEX_CI` | `build`, `run`, `release`, `test`, `sim`, `editor`, `refresh` | Set by Claude Code and Codex: the command runs under a coding agent and prints only its result (see [Commands](#commands)) |
+| `ENGINE_AGENT` | same | `1` gives the agent output anywhere, `0` turns it off under an agent |
 | `ENGINE_EDITOR_CONTROL` | `refresh`, `ctl` | The control pipe of the editor whose Console started the command; used instead of the build directory's announcement. The editor sets it for its Console's shell |
 
 ## Project status files

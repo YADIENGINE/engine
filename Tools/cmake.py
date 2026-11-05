@@ -6,9 +6,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .agent_output import quiet, shown, tail, write_log
 from .build_errors import summary
 from .errors import EXIT_FAILED, ToolError
 from .msvc import GENERATOR
+
+BUILD_LOG = "build.log"  # In a build folder: the whole output of its last build; agents see only the summary
 
 # Her configure'a: CMake'in Python adımları (tuning üretimi) araçları çalıştıran yorumlayıcıyı kullanır, PATH'te ya
 # da registry'de bulduğu başka bir Python'u değil (launcher'ın gömülü Python'u, ayrıntı Docs/ToolsContract.md).
@@ -22,27 +25,38 @@ def _text(raw: bytes) -> str:
         return raw.decode(locale.getpreferredencoding(False), errors="replace")
 
 
-def run(command: list[str], cwd: Path, env: dict[str, str]) -> None:
-    """Komutu çıktısı terminale akarak çalıştırır; başarısızsa çıktıdaki hataların özetini yazar ve EXIT_FAILED ile
-    durur (build_errors.py)."""
-    print(f"> {subprocess.list2cmdline(command)}", flush=True)
+def run(command: list[str], cwd: Path, env: dict[str, str], *, log: Path) -> None:
+    """Runs a command and writes its whole output to `log`. A person sees the output as it comes; under an agent
+    nothing is printed unless it fails (agent_output.py). A failure prints the summary of the errors in the output
+    (build_errors.py) and stops with EXIT_FAILED."""
+    agent = quiet()
+    line = f"> {subprocess.list2cmdline(command)}"
+    if not agent:
+        print(line, flush=True)
     output: list[str] = []
     try:
         with subprocess.Popen(command, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as process:
             for raw in process.stdout:
                 text = _text(raw).rstrip("\r\n")
+                output.append(text)
+                if agent:
+                    continue
                 if stream := getattr(sys.stdout, "buffer", None):  # The bytes as written: the console decodes them
                     stream.write(raw)
                     stream.flush()
                 else:
                     print(text, flush=True)
-                output.append(text)
             code = process.wait()
     except OSError as error:
         raise ToolError(f"Cannot run {command[0]}: {error}") from error
+    finally:
+        write_log(log, [line, *output])
     if code != 0:
-        for line in summary(output, cwd):
-            print(line, flush=True)
+        errors = summary(output, cwd)
+        for text in errors or (tail(output) if agent else []):
+            print(text, flush=True)
+        if agent:
+            print(f"Full log: {shown(log)}", flush=True)
         raise ToolError(f"{Path(command[0]).name} exited with code {code}", EXIT_FAILED)
 
 

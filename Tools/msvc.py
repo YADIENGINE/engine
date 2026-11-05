@@ -16,6 +16,7 @@ GENERATOR = "Ninja Multi-Config"  # CMakePresets.json ile aynı; başka generato
 VSWHERE = (Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
            / "Microsoft Visual Studio" / "Installer" / "vswhere.exe")
 NINJA_COMPONENT = "'C++ CMake tools for Windows'"  # Ninja'yı getiren Visual Studio bileşeni
+ENGLISH = "1033"  # VSLANG for English compiler and linker messages
 
 
 def visual_studio() -> Path | None:
@@ -76,6 +77,11 @@ def msvc_env(cache: Path) -> dict[str, str]:
     merged = {key.upper(): value for key, value in os.environ.items()}
     merged.update(env)
     merged["PATH"] = env.get("PATH", "") + os.pathsep + os.environ.get("PATH", "")
+    # Compiler and linker messages in English whatever the Windows language: the error summary, the docs and agents
+    # all read English, and the editor's Problems panel shows the same text. It needs Visual Studio's English language
+    # pack; without it the compiler keeps the installed language.
+    merged["VSLANG"] = ENGLISH
+
     if shutil.which("ninja", path=merged["PATH"]) is None:
         raise ToolError(f"ninja.exe not found; install the {NINJA_COMPONENT} component of Visual Studio")
     return merged

@@ -12,7 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..cmake import PYTHON_DEFINITION, clear_stale_build, read_cache, run
+from ..cmake import BUILD_LOG, PYTHON_DEFINITION, clear_stale_build, read_cache, run
 from ..errors import EXIT_INFRA, ToolError
 from ..msvc import msvc_env, tool
 from ..prebuilt import cache_definition, prebuilt_directory, write_state
@@ -63,9 +63,10 @@ def build_tool(project: Project, section: dict, release: bool) -> Path:
     with contextlib.redirect_stdout(sys.stderr):
         if needs_configure(project.root, build_dir) or cached != definition.split("=", 1)[1]:
             run([tool("cmake"), "--preset", section["configurePreset"], PYTHON_DEFINITION, definition], project.root,
-                env)
+                env, log=build_dir / BUILD_LOG)
             (build_dir / CONFIGURE_STAMP).touch()
-        run([tool("cmake"), "--build", "--preset", section["buildPresets"][config]], project.root, env)
+        run([tool("cmake"), "--build", "--preset", section["buildPresets"][config]], project.root, env,
+            log=build_dir / BUILD_LOG)
     return build_dir / config / (section.get("target", f"{project.name}SimulationTool") + ".exe")
 
 

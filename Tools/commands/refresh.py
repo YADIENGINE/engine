@@ -13,6 +13,7 @@ import os
 import time
 from pathlib import Path
 
+from ..agent_output import quiet, shown, tail, write_log
 from ..build_errors import summary
 from ..errors import EXIT_FAILED, EXIT_INFRA, EXIT_OK, ToolError
 from ..project import Project
@@ -23,6 +24,7 @@ ENVIRONMENT = "ENGINE_EDITOR_CONTROL"  # Set by the editor for its console: that
 VERSION = 3
 CONNECT_TIMEOUT = 5.0  # Seconds to wait while another client holds the endpoint
 CONNECT_RETRY = 0.1
+REFRESH_LOG = "refresh.log"  # In the editor build folder: the editor's build lines of the last refresh
 PIPE_BUSY = errno.EINVAL  # How open() reports ERROR_PIPE_BUSY: the C runtime maps it to this, and winerror stays empty
 
 
@@ -74,20 +76,27 @@ def exit_code(result: str) -> int:
 
 
 def refresh(project: Project) -> int:
+    """Asks the open editor to build and refresh. Its build lines stream here, or under an agent go only to
+    `<editor build>/refresh.log` (agent_output.py)."""
+    agent = quiet()
+    log = editor_build_dir(project) / REFRESH_LOG
     output: list[str] = []
     with connect(editor_pipe(project)) as stream:
         stream.write((json.dumps({"version": VERSION, "command": "refresh"}) + "\n").encode("utf-8"))
         for reply in replies(stream):
             match reply.get("type"):
                 case "log":
-                    print(reply["text"], flush=True)
+                    if not agent:
+                        print(reply["text"], flush=True)
                     output.append(reply["text"])
                 case "result":
+                    write_log(log, output)
                     code = exit_code(reply["result"])
                     if code != EXIT_OK:
-                        for line in summary(output, project.root):
+                        for line in summary(output, project.root) or (tail(output) if agent else []):
                             print(line, flush=True)
-                    print(f"> Build & Refresh: {reply['result']}", flush=True)
+                    where = f" (log: {shown(log)})" if agent else ""
+                    print(f"> Build & Refresh: {reply['result']}{where}", flush=True)
                     return code
                 case "error":
                     raise ToolError(reply["text"], EXIT_INFRA)

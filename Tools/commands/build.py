@@ -7,7 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..cmake import PYTHON_DEFINITION, clear_stale_build, read_cache, remove_build_dir, run
+from ..agent_output import quiet, shown
+from ..cmake import BUILD_LOG, PYTHON_DEFINITION, clear_stale_build, read_cache, remove_build_dir, run
 from ..errors import EXIT_FAILED, EXIT_OK
 from ..msvc import msvc_env, tool
 from ..prebuilt import cache_definition, prebuilt_directory, write_state
@@ -41,6 +42,8 @@ def build(project: Project, release: bool, clean: bool) -> Path:
             write_last_build(build_dir, False)
         raise
     write_last_build(build_dir, True)
+    if quiet():  # Nothing else was printed
+        print(f"Build: succeeded (log: {shown(build_dir / BUILD_LOG)})", flush=True)
     return built
 
 
@@ -59,9 +62,11 @@ def _compile(project: Project, release: bool, clean: bool) -> Path:
     definition = cache_definition(prebuilt)
     cached = (read_cache(build_dir) or {}).get("ENGINE_PREBUILT_DIR", "")
     if needs_configure(project.root, build_dir) or cached != definition.split("=", 1)[1]:
-        run([tool("cmake"), "--preset", game["configurePreset"], PYTHON_DEFINITION, definition], project.root, env)
+        run([tool("cmake"), "--preset", game["configurePreset"], PYTHON_DEFINITION, definition], project.root, env,
+            log=build_dir / BUILD_LOG)
         (build_dir / CONFIGURE_STAMP).touch()
-    run([tool("cmake"), "--build", "--preset", game["buildPresets"][config]], project.root, env)
+    run([tool("cmake"), "--build", "--preset", game["buildPresets"][config]], project.root, env,
+        log=build_dir / BUILD_LOG)
 
     target = game.get("target", project.name)
     return build_dir / config / (target + (".exe" if sys.platform == "win32" else ""))

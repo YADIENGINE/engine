@@ -25,7 +25,8 @@ The include root is `Engine/Core/` (`#include "Runtime/Game.h"`); editor API inc
 
 Requirements: on Windows, VS 2022 Build Tools (C++ workload + "C++ CMake tools", which includes Ninja), CMake 3.24+, and
 Python 3.10+. Dependencies (raylib, JSON, editor and test libraries) come in the engine's `ThirdParty/` folder; building
-does not require internet access.
+does not require internet access. The tools ask the compiler for English messages (`VSLANG=1033`); on a Visual Studio
+installed in another language, add the English language pack in the Visual Studio Installer to get them.
 
 Place only Engine in the project folder; the folder must be named exactly `Engine` (GitHub ZIPs extract as
 `<repo>-main`; rename it). Then run setup from the project folder:

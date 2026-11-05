@@ -9,7 +9,8 @@ description: Fix a failed build, test run or editor refresh, or compiler warning
    while the editor is open) or `python Engine test --filter NAME` / `--label LABEL`.
 2. **Read the summary, not the log:** failed builds end with `Errors (N):`, one `file:line:column: CODE message` per
    distinct error, paths relative to the project. Fix the first error of each file first; later ones often follow from
-   it. Warnings fail a clean build too: fix the code, never silence a warning.
+   it. Warnings fail a clean build too: fix the code, never silence a warning. The `Full log:` path below the summary
+   holds everything else; read it by range, and only when the summary is not enough.
 3. **Tests:** the run prints `Tests:` and a `Report:` path (`results.json`): open the report for failed test names and
    messages rather than scrolling output. Fix behaviour, not the assertion, unless the test is wrong.
 4. **Editor-side failures:** a scene that fails to start or misbehaves after a refresh logs to the editor:
