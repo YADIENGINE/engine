@@ -40,7 +40,7 @@ Where the cost goes: every request reads the whole context again, so total token
 requests. Cache reads are cheaper per token than new input or output, but they are most of the tokens.
 
 Claude Code writes one log line per part of a response and repeats the usage on each; requests are counted once per
-response. Codex reports cached input inside input; the report splits it out. A Codex script that runs several commands counts as one tool call per command when its output reports one exit code per command; otherwise its whole output stays with the script.
+response. Codex reports cached input inside input; the report splits it out. A Codex script that runs several commands counts as one tool call per command when its output reports one exit code per command; otherwise its whole output stays with the script. Either way, engine commands and file reads count one by one: a `;` chain, a command template over a list (`queries.map(q => ... python Engine api "${q}")`) and `$p='X.h'; Get-Content $p` are all seen, and a call that ran several shares its output evenly between them.
 
 ## agent-eval
 

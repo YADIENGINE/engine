@@ -420,7 +420,7 @@ def measure(sessions: list[Session], project: Path | None = None) -> dict:
         "startupContext": max((row["context"]["startup"] for row in main), default=0),
         "toolOutputTokens": sum(categories.values()),
         "toolOutputByCategory": dict(sorted(categories.items(), key=lambda item: -item[1])),
-        "engineCommands": sum(1 for session in sessions for call in session.tools if call.engine),
+        "engineCommands": sum(len(call.engine_runs()) for session in sessions for call in session.tools),
         "engineFailures": sum(row["engineFailures"] for row in rows),
         "compactions": sum(row["compactions"] for row in rows),
         "behaviour": _behaviour_totals([row["behaviour"] for row in rows if not row["parent"]]),

@@ -10,7 +10,7 @@ import os
 import re
 from pathlib import Path
 
-from .classify import claude_category, engine_command, read_files, search_roots, shell_category
+from .classify import claude_category, engine_commands, read_files, search_roots, shell_category
 from .model import Request, Session, ToolCall, lines
 
 KEEP_TYPES = ('"type":"assistant"', '"type":"user"', '"type":"system"', '"type":"ai-title"')
@@ -69,8 +69,9 @@ def _result_size(content) -> tuple[int, int]:
 def _tool(name: str, data: dict) -> ToolCall:
     if name in {"Bash", "PowerShell"}:
         command = str(data.get("command", ""))
-        return ToolCall(name, shell_category(command), command, engine=engine_command(command),
-                        files=read_files(command), roots=search_roots(command))
+        engines = engine_commands(command)
+        return ToolCall(name, shell_category(command), command, engine=engines[0] if engines else None,
+                        engines=engines, files=read_files(command), roots=search_roots(command))
     category = claude_category(name)
     if name in {"Grep", "Glob"}:
         return ToolCall(name, category, str(data.get("pattern", "")), roots=[str(data.get("path") or ".")])

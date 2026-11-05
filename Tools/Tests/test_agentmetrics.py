@@ -81,6 +81,9 @@ class ClassifyTests(unittest.TestCase):
 
     def test_reads_and_categories(self):
         self.assertEqual(read_files("cat Game/A.cpp; sed -n 1,40p 'Game/B c.h'"), ["Game/A.cpp", "Game/B c.h"])
+        variables = ("$p='Engine/Core/Scene/Scene.h'; $lines=Get-Content $p; for($i=0;$i -lt 9;$i++){ $lines[$i] }; "
+                     "$p='Engine/Core/Runtime/Game.h'; Get-Content $p -TotalCount 40")
+        self.assertEqual(read_files(variables), ["Engine/Core/Scene/Scene.h", "Engine/Core/Runtime/Game.h"])
         self.assertEqual(read_files("Get-Content -LiteralPath Engine\\Core\\X.h -TotalCount 40"),
                          ["Engine\\Core\\X.h"])
         self.assertEqual(shell_category("cd x && cat a.txt"), "read")
@@ -139,6 +142,14 @@ class BehaviourTests(unittest.TestCase):
         self.assertEqual((found["engineSourceReads"], found["engineSourceTokens"]), (1, 100))
         self.assertEqual(found["failedEditorCalls"], 1)
         self.assertTrue(found["editBeforeSkill"])
+        grouped = Session("codex", "g", Path("g.jsonl"), tools=[
+            ToolCall("exec", "engine", "api x3", chars=1200, engine="api", engines=["api", "api", "api"]),
+            ToolCall("exec", "read", "two headers", chars=800,
+                     files=["Engine/Core/Scene/Scene.h", "Engine/Core/Runtime/Game.h"]),
+        ])
+        found = behaviour(grouped)
+        self.assertEqual((found["apiCalls"], found["apiTokens"]), (3, 300))
+        self.assertEqual((found["engineSourceReads"], found["engineSourceTokens"]), (2, 200))
 
     def test_behaviour_totals_accept_runs_without_newer_counts(self):
         from Tools.agentmetrics.report import _behaviour_totals, render_behaviour
@@ -183,6 +194,22 @@ class CodexScriptTests(unittest.TestCase):
         call = codex._call("exec", listed)
         self.assertEqual((call.category, call.engine), ("engine", "ctl status"))
         self.assertEqual(call.target, "python Engine ctl status ; git status --short")  # Labels are not commands
+
+    def test_a_command_template_over_a_list_counts_once_per_item(self):
+        script = ('const queries=["camera shake","Game::Effects","SoundTable"];\n'
+                  'const rs=await Promise.all(queries.map(q=>tools.exec_command({cmd:`python Engine api \\"${q}\\"`,'
+                  'workdir:"C:\\\\x"})));\nfor(let i=0;i<queries.length;i++) text(`---${queries[i]}---\\n${rs[i].output}`);')
+        call = codex._call("exec", script)
+        self.assertEqual(call.engine_runs(), ["api", "api", "api"])
+        self.assertIn('python Engine api "Game::Effects"', call.target)
+        loop = 'const files = ["a/A.h", "b/B.h"];\nfor (const f of files) await tools.exec_command({cmd: `cat ${f}`});'
+        self.assertEqual(codex._call("exec", loop).files, ["a/A.h", "b/B.h"])
+
+    def test_a_chain_counts_every_engine_command(self):
+        script = ('const r = await tools.exec_command({"cmd":"python Engine api CameraEffectsStyle; '
+                  'python Engine api FxStyle; python Engine build","workdir":"C:\\\\x"}); text(r.output);')
+        call = codex._call("exec", script)
+        self.assertEqual((call.engine, call.engine_runs()), ("api", ["api", "api", "build"]))
 
 
 class ParseTests(unittest.TestCase):

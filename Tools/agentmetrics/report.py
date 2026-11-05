@@ -42,21 +42,23 @@ def behaviour(session: Session, root: Path | None = None) -> dict:
     """Habits that cost tokens, counted from the tool calls (tokens are tool output):
     engine source read instead of AgentDocs; searches over the whole project or engine copy; editor commands that
     failed (usually: no editor open); a first edit before any skill was read. `api` queries are the habit that should
-    replace engine searches, counted next to them."""
+    replace engine searches, counted next to them. Reads and queries count one by one, also when one call made several
+    (a script or a `;` chain); such a call's output is split evenly between them."""
     def relative(path: str) -> str:
         return _normal(path, root) if root else path.replace("\\", "/")
 
-    source = [call for call in session.tools if any(engine_source(relative(file)) for file in call.files)]
+    source = [(call, len(call.files)) for call in session.tools for file in call.files
+              if engine_source(relative(file))]
     wide = [call for call in session.tools if call.category == "search" and wide_search(call.roots)]
     ctl = [call for call in session.tools if (call.engine or "").startswith("ctl") and call.failed]
-    api = [call for call in session.tools if call.engine == "api"]
+    api = [(call, len(call.engine_runs())) for call in session.tools for run in call.engine_runs() if run == "api"]
     first_edit = next((i for i, call in enumerate(session.tools) if call.category == "edit"), None)
     first_skill = next((i for i, call in enumerate(session.tools)
                         if any("AgentDocs/Skills/" in file.replace("\\", "/") for file in call.files)), None)
     return {
-        "engineSourceReads": len(source), "engineSourceTokens": sum(call.output_tokens for call in source),
+        "engineSourceReads": len(source), "engineSourceTokens": sum(call.output_tokens // n for call, n in source),
         "wideSearches": len(wide), "wideSearchTokens": sum(call.output_tokens for call in wide),
-        "apiCalls": len(api), "apiTokens": sum(call.output_tokens for call in api),
+        "apiCalls": len(api), "apiTokens": sum(call.output_tokens // n for call, n in api),
         "failedEditorCalls": len(ctl),
         "editBeforeSkill": first_edit is not None and (first_skill is None or first_edit < first_skill),
     }
@@ -105,12 +107,13 @@ def summarize(sessions: list[Session], root: Path, engine_root: Path, top: int =
 
     engine: dict[str, dict] = defaultdict(lambda: {"runs": 0, "failed": 0, "tokens": 0, "largest": 0})
     for call in tools:
-        if call.engine:
-            entry = engine[call.engine]
+        runs = call.engine_runs()
+        for name in runs:  # A call that ran several commands: its output split evenly
+            entry = engine[name]
             entry["runs"] += 1
             entry["failed"] += call.failed
-            entry["tokens"] += call.output_tokens
-            entry["largest"] = max(entry["largest"], call.output_tokens)
+            entry["tokens"] += call.output_tokens // len(runs)
+            entry["largest"] = max(entry["largest"], call.output_tokens // len(runs))
 
     reads: dict[str, dict] = defaultdict(lambda: {"reads": 0, "tokens": 0})
     areas: Counter = Counter()

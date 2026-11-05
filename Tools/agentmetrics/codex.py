@@ -13,7 +13,7 @@ import os
 import re
 from pathlib import Path
 
-from .classify import READ_VERBS, SEARCH_VERBS, engine_command, read_files, search_roots, shell_category
+from .classify import READ_VERBS, SEARCH_VERBS, engine_commands, read_files, search_roots, shell_category
 from .model import Request, Session, ToolCall, lines
 
 STRING = re.compile(r'''"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`''')
@@ -23,6 +23,10 @@ COMMAND_VERBS = READ_VERBS | SEARCH_VERBS | {
     "copy-item", "move-item", "remove-item", "new-item", "set-content", "add-content", "out-file", "mkdir", "rm", "cp",
     "mv", "echo", "write-output", "start-process", "invoke-expression", "codex", "claude"}
 TOOL_NAME = re.compile(r"\btools\.(\w+)\s*\(")
+ARRAY = re.compile(r"\b(\w+)\s*=\s*\[([^\[\]]*)\]")  # `const queries = ["a", "b"]`
+# `queries.map(q => ...)`, `queries.forEach((q) => ...)`, `for (const q of queries)`
+LOOP = re.compile(r"\b(\w+)\s*\.\s*(?:map|forEach)\s*\(\s*(?:async\s*)?\(?\s*(\w+)"
+                  r"|\bfor\s*\(\s*(?:const|let|var)\s+(\w+)\s+of\s+(\w+)")
 EXIT_CODE = re.compile(r"""\\?"exit_code\\?"\s*:\s*(-?\d+)|Exit code:\s*(-?\d+)|Process exited with code (-?\d+)""")
 INJECTED = ("<environment_context", "<user_instructions", "# AGENTS.md", "<permissions", "<user_shell_command")
 
@@ -82,7 +86,8 @@ def _unquote(literal: str) -> str:
 
 def _commands(script: str) -> list[str]:
     """Shell commands in an exec script: strings passed as `cmd` or `command`, and any string that starts with a
-    command, such as the items of a list the script runs one by one."""
+    command, such as the items of a list the script runs one by one. A command template over a list
+    (`queries.map(q => exec({cmd: \\`python Engine api "${q}"\\`}))`) counts once per item."""
     found = []
     for match in STRING.finditer(script):
         text = _unquote(match.group(0)).strip()
@@ -92,7 +97,28 @@ def _commands(script: str) -> list[str]:
         words = text.split(maxsplit=1)
         if keyed or (len(words) > 1 and words[0].lower() in COMMAND_VERBS):  # A lone word is a label, as "git"
             found.append(text)
-    return found
+    return _expanded(script, found)
+
+
+def _expanded(script: str, commands: list[str]) -> list[str]:
+    """Commands with a `${item}` placeholder of a loop over a literal list, one per list item."""
+    arrays = {name: [_unquote(item) for item in STRING.findall(body)] for name, body in ARRAY.findall(script)}
+    loops = {}  # List name: the loop's item variable
+    for match in LOOP.finditer(script):
+        if match.group(1):
+            loops[match.group(1)] = match.group(2)
+        else:
+            loops[match.group(4)] = match.group(3)
+    result = []
+    for command in commands:
+        expansion = None
+        for array, item in loops.items():
+            placeholder = re.compile(rf"\$\{{\s*(?:{re.escape(item)}|{re.escape(array)}\[\w+\])\s*\}}")
+            if arrays.get(array) and placeholder.search(command):
+                expansion = [placeholder.sub(lambda _, value=value: value, command) for value in arrays[array]]
+                break
+        result.extend(expansion or [command])
+    return result
 
 
 def _listed_paths(script: str) -> list[str]:
@@ -106,9 +132,10 @@ def _listed_paths(script: str) -> list[str]:
 
 
 def _command_call(name: str, command: str) -> ToolCall:
-    engine = engine_command(command)
-    return ToolCall(name, "engine" if engine else shell_category(command), command, engine=engine,
-                    files=read_files(command), roots=search_roots(command))
+    engines = engine_commands(command)
+    return ToolCall(name, "engine" if engines else shell_category(command), command,
+                    engine=engines[0] if engines else None, engines=engines, files=read_files(command),
+                    roots=search_roots(command))
 
 
 def _parts(text: str) -> list[str]:
@@ -135,13 +162,13 @@ def _call(name: str, script: str) -> ToolCall:
     inner = set(TOOL_NAME.findall(script))
     if commands:
         joined = " ; ".join(commands)
-        engines = [found for found in map(engine_command, commands) if found]
+        engines = [found for command in commands for found in engine_commands(command)]
         files = [file for command in commands for file in read_files(command)]
         if any("${" in command and shell_category(command) == "read" for command in commands):
             files += _listed_paths(script)  # `Get-Content ${p}` over a list of paths: the list names the files
         category = "engine" if engines else shell_category(commands[0])
-        return ToolCall(name, category, joined, engine=engines[0] if engines else None, files=files,
-                        roots=[root for command in commands for root in search_roots(command)])
+        return ToolCall(name, category, joined, engine=engines[0] if engines else None, engines=engines,
+                        files=files, roots=[root for command in commands for root in search_roots(command)])
     if "apply_patch" in inner or name == "apply_patch":
         return ToolCall(name, "edit", "apply_patch")
     if inner & {"web_search", "web_fetch"}:

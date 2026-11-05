@@ -31,7 +31,8 @@ class Request:
 @dataclass
 class ToolCall:
     """One tool call. `category` groups calls (read, search, edit, engine, shell, ...); `target` is the file or the
-    command; `engine` names an engine command such as "build" or "ctl status"."""
+    command; `engine` names the first engine command it ran, such as "build" or "ctl status", and `engines` all of
+    them: a `;` chain or a script over a list of queries runs several in one call."""
 
     name: str
     category: str
@@ -43,10 +44,15 @@ class ToolCall:
     engine: str | None = None
     files: list[str] = field(default_factory=list)  # Files the call read
     roots: list[str] = field(default_factory=list)  # Folders a search covered; "." is where the agent runs
+    engines: list[str] = field(default_factory=list)
 
     @property
     def output_tokens(self) -> int:
         return self.tokens if self.tokens is not None else self.chars // CHARS_PER_TOKEN
+
+    def engine_runs(self) -> list[str]:
+        """Every engine command the call ran, in order."""
+        return self.engines or ([self.engine] if self.engine else [])
 
 
 @dataclass

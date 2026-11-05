@@ -57,16 +57,23 @@ def _known() -> dict[str, set[str]]:
 _COMMANDS: dict[str, set[str]] | None = None
 
 
-def engine_command(command: str) -> str | None:
-    """The engine command a shell command runs, e.g. "build" or "ctl screenshot"; None when it runs none."""
+def engine_commands(command: str) -> list[str]:
+    """Every engine command a shell command runs, in order, e.g. ["api", "api"] for
+    `python Engine api A; python Engine api B`."""
     known = _known()
+    found = []
     for match in ENGINE_COMMAND.finditer(command):
         name = match.group(1)
         if name not in known:
             continue
         action = (match.group(2) or "").split()[-1:] or [""]
-        return f"{name} {action[0]}" if action[0] in known[name] else name
-    return None
+        found.append(f"{name} {action[0]}" if action[0] in known[name] else name)
+    return found
+
+
+def engine_command(command: str) -> str | None:
+    """The first engine command a shell command runs, e.g. "build" or "ctl screenshot"; None when it runs none."""
+    return next(iter(engine_commands(command)), None)
 
 
 def _segments(command: str) -> list[list[str]]:
@@ -80,10 +87,29 @@ def _segments(command: str) -> list[list[str]]:
     return words
 
 
+ASSIGNED = re.compile(r"""\$(\w+)\s*=\s*(?:"([^"$]*)"|'([^']*)')""")
+
+
+def _with_variables(command: str) -> str:
+    """The command with PowerShell variables set to a literal earlier on the line put in their place:
+    `$p='Engine/Core/Scene/Scene.h'; Get-Content $p` reads Scene.h."""
+    values: dict[str, str] = {}
+    parts = []
+    for segment in segments(command):
+        for match in ASSIGNED.finditer(segment):
+            values[match.group(1).lower()] = match.group(2) if match.group(2) is not None else match.group(3)
+        if values and not ASSIGNED.match(segment.strip()):
+            segment = re.sub(r"\$(\w+)\b", lambda m: f"'{values[m.group(1).lower()]}'"
+                             if m.group(1).lower() in values else m.group(0), segment)
+        parts.append(segment)
+    return " ; ".join(parts)
+
+
 def read_files(command: str) -> list[str]:
     """Files a shell command prints: arguments of cat, sed, head, Get-Content and the like."""
     files = []
-    for segment in segments(command):
+    for segment in segments(_with_variables(command)):
+        segment = re.sub(r"^\s*\$\w+\s*=\s*", "", segment)  # `$lines = Get-Content x` reads x
         parts = segment.strip().split(maxsplit=1)
         if len(parts) < 2 or parts[0].lower().split("\\")[-1].split("/")[-1] not in READ_VERBS:
             continue
