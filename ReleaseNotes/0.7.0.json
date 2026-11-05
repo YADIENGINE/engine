@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-05",
+  "changes": [
+    "Collision: Added collision system powered by Box2D.",
+    "Animation: Added a new animation kit, will expand in future",
+    "Game UI: UI widget expansion",
+    "Camera: A game camera"
+  ],
+  "breaking": [
+    {
+      "change": "Packages now include only the sounds a game names.",
+      "migrate": "List sounds loaded from code in release.keepAssets."
+    },
+    {
+      "change": "Core/Menus and Graphics/Ui are gone, and PlainTheme is the default theme.",
+      "migrate": "Build screens with Core/Ui (Docs/Ui.md)."
+    },
+    {
+      "change": "Headers moved: Graphics/Anim to Animation, Core/Fx into folders with shorter names, Core/Utilities into Geometry, Math and Random, Icons to Graphics/DefaultIcons.h, Backdrop to Graphics/Backgrounds/Backdrops.h.",
+      "migrate": "Update include paths. MathUtils.h is split into Math/Noise.h, Math/Scalar.h and Math/Index.h."
+    },
+    {
+      "change": "FxStage::Update takes game time and real time, and particle recipes are plain data.",
+      "migrate": "Pass both clocks to FxStage::Update and see Docs/Graphics/Effects.md."
+    },
+    {
+      "change": "WeightedIndex takes an Rng.",
+      "migrate": "Pass your own Rng."
+    },
+    {
+      "change": "The Tuning panel is merged into the Inspector.",
+      "migrate": "Open tuning files from the Inspector."
+    }
+  ]
+}
