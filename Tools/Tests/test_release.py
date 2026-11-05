@@ -106,8 +106,10 @@ class PackageTests(unittest.TestCase):
 
     def test_a_game_that_cannot_answer_stops_the_release(self):
         self.sounds("Audio/Hit.wav")
-        with self.assertRaisesRegex(ToolError, "could not ask"):  # The test's exe is not a program
-            package(self.project(), self.exe)
+        # Starting the test's fake exe for real makes Windows show a dialog that waits for a click
+        with mock.patch("Tools.commands.release.subprocess.run", side_effect=OSError("not a program")):
+            with self.assertRaisesRegex(ToolError, "could not ask"):
+                package(self.project(), self.exe)
 
     def test_a_hook_selects_every_asset(self):
         self.sounds("Audio/Hit.wav", "Audio/Other.wav")
