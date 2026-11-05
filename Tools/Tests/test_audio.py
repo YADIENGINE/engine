@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 from Tools import cli
 from Tools.commands.audio import (ENGINE_ASSETS, catalog_uses, editor_recipe, resolve_sound, rounded, run_report,
-                                  source_file, usage_answer, use_label, uses_of, with_assets)
+                                  source_file, usage_answer, use_label, uses_of, with_assets, with_note)
 from Tools.commands.ctl import audio_request, request_of
 from Tools.errors import ToolError
 
@@ -124,6 +124,15 @@ class AudioCommandTests(unittest.TestCase):
         self.assertEqual(list((self.root / "build" / "editor" / "audio-report").iterdir()), [])  # No leftovers
         with self.assertRaisesRegex(ToolError, "broken request"):
             run_report(self.project, recipe, [Path("fail")])
+
+    def test_starter_worker_answers_carry_a_note(self):
+        answer = usage_answer(CATALOG, self.assets, self.assets)
+        self.assertEqual(with_note(answer, {"starterWorker": False}), answer)
+        self.assertEqual(with_note(answer, {}), answer)  # Recipes written before the flag
+        noted = with_note(answer, {"starterWorker": True})
+        self.assertEqual(noted["sounds"], answer["sounds"])
+        self.assertIn("sound tables", noted["note"])
+        self.assertIn("A release is not affected", noted["note"])
 
 
 if __name__ == "__main__":

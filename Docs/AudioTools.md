@@ -16,6 +16,11 @@ exits, without opening a window or an audio device. Build it once with `python E
 comes from that build, so after changing the catalog in code, build again (or use Build & Refresh in the editor). With
 no worker built, the command exits 2 and says how to build it.
 
+The worker knows only the settings its own `Editor/Main.cpp` passes ([Editor/Main.cpp](Editor/GettingStarted.md#editormaincpp)).
+A project without one runs on the engine's starter worker, which knows none of the game's sound tables: `info`, `usage`
+and `catalog` then add a `note` saying so, because those sounds show no uses. A release is not affected; it keeps the
+sounds the built game names ([Release](Release.md#only-the-sounds-a-game-uses)).
+
 | Command | Answer |
 | --- | --- |
 | `audio info FILE... [--silence-db DB]` | `files`: per file `file`, `asset` (path in the asset folder; null outside it), `seconds`, `sampleRate`, `channels`, `frames`, `peakDb`, `rmsDb`, `leadingSilence`, `trailingSilence`, `clipped`, `uses`; or `file` and `error`. Exit 1 when any file fails |

@@ -78,10 +78,17 @@ function(engine_add_editor_worker target)
     engine_editor_escape_json(engine_dir "${engineRoot}")
     engine_editor_escape_json(assets_dir "${assetsDirectory}")
     engine_editor_escape_json(python_path "${Python3_EXECUTABLE}") # Runs the Assets panel's file actions
+    # The starter worker knows none of the game's settings (sound tables, theme): `python Engine audio` says so.
+    if(useStarter)
+        set(starterWorker "true")
+    else()
+        set(starterWorker "false")
+    endif()
     file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>/EngineEditor.project.json" CONTENT
 "{
   \"version\": 1,
   \"name\": \"${name}\",
+  \"starterWorker\": ${starterWorker},
   \"buildDirectory\": \"${build_dir}\",
   \"sourceDirectory\": \"${source_dir}\",
   \"engineDirectory\": \"${engine_dir}\",

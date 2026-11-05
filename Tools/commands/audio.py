@@ -183,6 +183,17 @@ def with_assets(entry: dict, uses: list[dict], assets: Path) -> dict:
     return entry | {"asset": asset, "uses": [use["label"] for use in uses_of(uses, asset)]}
 
 
+STARTER_NOTE = ("This project has no editor worker of its own (no .cpp under Editor/), so the engine's starter worker "
+                "answered: it knows none of the game's sound tables (GameSettings::sounds), and their sounds show no "
+                "uses. A release is not affected: it keeps the sounds the built game names. To see them here, add "
+                "Editor/Main.cpp passing the game's settings: Engine/Docs/Editor/GettingStarted.md#editormaincpp")
+
+
+def with_note(answer: dict, recipe: dict) -> dict:
+    """The answer, with a note when uses come from the starter worker's empty catalog."""
+    return answer | {"note": STARTER_NOTE} if recipe.get("starterWorker") else answer
+
+
 def audio(project: Project, args: argparse.Namespace) -> int:
     recipe = editor_recipe(project)
     assets = Path(recipe["assetsDirectory"]).resolve()
@@ -191,7 +202,7 @@ def audio(project: Project, args: argparse.Namespace) -> int:
             files = [resolve_sound(text, project, assets) for text in args.files]
             report = run_report(project, recipe, files, silence_db=args.silence_db)
             uses = catalog_uses(report["catalog"])
-            answer = {"files": [with_assets(entry, uses, assets) for entry in report["files"]]}
+            answer = with_note({"files": [with_assets(entry, uses, assets) for entry in report["files"]]}, recipe)
         case "waveform":
             file = resolve_sound(args.file, project, assets)
             out = Path(args.out).resolve() if args.out else (
@@ -202,9 +213,9 @@ def audio(project: Project, args: argparse.Namespace) -> int:
         case "usage":
             folder = resolve_folder(args.folder, project, assets) if args.folder else assets
             report = run_report(project, recipe, [])
-            answer = usage_answer(report["catalog"], assets, folder, args.unused, args.missing)
+            answer = with_note(usage_answer(report["catalog"], assets, folder, args.unused, args.missing), recipe)
         case "catalog":
-            answer = {"uses": catalog_uses(run_report(project, recipe, [])["catalog"])}
+            answer = with_note({"uses": catalog_uses(run_report(project, recipe, [])["catalog"])}, recipe)
         case _:
             raise AssertionError(f"unhandled audio action {args.audio_action}")
     print(json.dumps(rounded(answer), ensure_ascii=False, indent=2), flush=True)
