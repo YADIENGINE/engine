@@ -120,7 +120,6 @@ GpuTarget PostChain::Run(GpuTarget canvas, int width, int height, float canvasHe
     compose.scanlineCount = settings.scanlineCount > 0.0f ? settings.scanlineCount : canvasHeight * 0.5f;
     // Aberration is given in canvas units; the shader offsets in source texels.
     compose.aberration = std::max(settings.aberration, 0.0f) * static_cast<float>(height) / canvasHeight;
-    compose.time = static_cast<float>(time);
     compose.fade = std::clamp(settings.fade, 0.0f, 1.0f);
     const float tint = std::clamp(settings.tint.amount, 0.0f, 1.0f);
     const auto tinted = [tint](std::uint8_t channel) {

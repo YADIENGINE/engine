@@ -77,7 +77,6 @@ struct PostUniforms {
     float scanlines = 0.0f;      // Compose: scanline darkening 0..1
     float scanlineCount = 0.0f;  // Compose: scanlines over the full height
     float aberration = 0.0f;     // Compose: chromatic offset in source texels at the edges
-    float time = 0.0f;
     float fade = 0.0f;           // Compose: colour drained toward grey 0..1
     float tintRed = 1.0f;        // Compose: colour multiplied over the image
     float tintGreen = 1.0f;
