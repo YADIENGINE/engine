@@ -232,6 +232,7 @@ class ParseTests(unittest.TestCase):
 
 
 class EvaluationTests(unittest.TestCase):
+    @unittest.skipUnless(evaluation.TASKS.is_dir(), "a released engine copy leaves the eval tasks out")
     def test_tasks_are_complete(self):
         tasks = evaluation.load_tasks()
         self.assertGreaterEqual(len(tasks), 5)

@@ -248,7 +248,8 @@ TEST_CASE("Engine.Tuning.PreviewWritesOneValueUntilTheFileIsRead", "[engine][tun
 
 TEST_CASE("Engine.Tuning.TapeNamesTheFilesThatChanged", "[engine][tuning]") {
     (void)Tuning<TestValuesTuning>();
-    const std::string source = "Core/Tests/Tuning/TestValues.tuning.json";
+    // The generated name, relative to the project: "Engine/Core/..." when the engine sits inside a game project
+    const std::string source(TestValuesTuning::TuningSource.begin(), TestValuesTuning::TuningSource.end());
     const auto now = TuningDigests();
     const auto current = std::ranges::find(now, source, &TuningDigest::source);
     REQUIRE(current != now.end());
