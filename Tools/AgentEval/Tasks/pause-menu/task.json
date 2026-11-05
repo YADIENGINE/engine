@@ -1,0 +1,14 @@
+{
+  "title": "UI: a pause menu",
+  "kind": "ui",
+  "status": "ready",
+  "timeoutMinutes": 30,
+  "prompt": "Add a pause menu. Esc opens it during play; it has Resume and Quit buttons, and Esc again resumes. The game must not move on while the menu is open.",
+  "notes": "Routes to the UI skill and recipe. Checks are weak (build and use of the engine's UI widgets); that the game stops is not checked.",
+  "checks": [
+    { "type": "build" },
+    { "type": "check", "name": "engine rules" },
+    { "type": "grep", "name": "uses engine buttons", "glob": "Game/**/*.cpp", "pattern": "UiButton\\(" },
+    { "type": "grep", "name": "has Resume", "glob": "Game/**/*.cpp", "pattern": "Resume" }
+  ]
+}

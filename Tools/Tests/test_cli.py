@@ -27,6 +27,8 @@ CONTRACT = {
     "info": [],
     "check": ["--fix"],
     "sim": ["list"],
+    "agent-report": ["--harness", "codex", "--since", "2026-01-01", "--top", "5", "--json"],
+    "agent-eval": ["list"],
 }
 
 

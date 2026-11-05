@@ -1,0 +1,11 @@
+{
+  "simulation": "arena.play",
+  "seed": 7,
+  "start": { "maxEnemies": 0, "coinX": 760, "coinY": 360 },
+  "script": [
+    { "hold": "Right" },
+    { "untilEvent": "CoinTaken", "limit": 60 },
+    { "expect": { "score": 1, "lives": 3 } },
+    { "release": "Right" }
+  ]
+}

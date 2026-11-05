@@ -41,6 +41,8 @@ use the same Python. Project root: `--project` if supplied; otherwise the engine
 | `prebuilt` | `--output FOLDER` | Compiles this engine into a package that projects link, replacing `FOLDER` ([Prebuilt engine](Prebuilt.md)) |
 | `info` | | Engine and project information, JSON (below) |
 | `check` | `--fix` | Internals include boundary ([API boundaries](Contributing/ApiBoundaries.md)), tuning validity / canonical format ([Tuning](Tuning.md)), and engine AgentDocs API/snippet freshness; `--fix` formats valid tuning files and regenerates API pages / recipe snippets |
+| `agent-report` | `--harness all\|claude\|codex`, `--since DATE`, `--until DATE`, `--session ID`, `--no-subagents`, `--top N`, `--json`, `--claude-home DIR`, `--codex-home DIR` | Tokens coding agents spent on the project, read from the session logs Claude Code and Codex write; prints text or JSON, writes nothing. Returns 2 when no session started in the project ([Agent metrics](Contributing/AgentMetrics.md#agent-report)) |
+| `agent-eval` | `list`, `verify`, `run [--harness codex\|claude] [--effort m\|h] [--repeat N]`, `watch [RUN]`, `show [RUN]`, `compare [RUN] [--against RUN]`, `baseline [RUN]`; `verify` and `run` take `--task ID`, `--all`, `--smoke`, `--keep` | Engine contributors: fixed agent tasks on a fixture project, graded by machine and measured in tokens; results under `build/agent-eval/` ([Agent metrics](Contributing/AgentMetrics.md#agent-eval)) |
 
 Failed builds (`build`, `run`, `release`, `test`, `editor`, `refresh`) end their output with an `Errors (N):` summary of
 the distinct compiler, linker and CMake errors ([Editor automation](Editor/Automation.md#build-errors)).

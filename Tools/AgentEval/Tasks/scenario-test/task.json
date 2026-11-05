@@ -1,0 +1,13 @@
+{
+  "title": "Test: a scenario for getting hit",
+  "kind": "test",
+  "status": "ready",
+  "smoke": true,
+  "timeoutMinutes": 20,
+  "prompt": "Write a simulation scenario that proves two things: the player loses a life when an enemy reaches them, and they cannot lose another life right after that. Save it under Game/Simulation/Scenarios and make sure it passes.",
+  "notes": "Uses the simulation skill. Graded by running the new scenario, then running it again against rules without the grace period: it must fail there.",
+  "checks": [
+    { "type": "scenarios", "name": "new scenario passes", "glob": "Game/Simulation/Scenarios/*.json", "exclude": ["Smoke.json"], "contains": ["PlayerHit"] },
+    { "type": "python", "name": "catches a missing grace period", "script": "mutation.py" }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "title": "Build fix: a renamed call and a stray variable",
+  "kind": "build-fix",
+  "status": "ready",
+  "brokenBuild": true,
+  "timeoutMinutes": 20,
+  "prompt": "The build has been broken since my last change. Fix it without changing how the game plays.",
+  "notes": "One call to a runner method that does not exist and one unused variable (warnings fail the build).",
+  "setupEdits": [
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "(_runner.StepIndex() / BlinkSteps)",
+      "new": "(_runner.CurrentStep() / BlinkSteps)"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "    if (_invulnerable > 0) {\n        --_invulnerable;",
+      "new": "    const int remaining = _invulnerable;\n    if (_invulnerable > 0) {\n        --_invulnerable;"
+    }
+  ],
+  "solutionEdits": [
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "(_runner.CurrentStep() / BlinkSteps)",
+      "new": "(_runner.StepIndex() / BlinkSteps)"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "    const int remaining = _invulnerable;\n",
+      "new": ""
+    }
+  ],
+  "checks": [
+    { "type": "build" },
+    { "type": "sim", "name": "still plays", "scenario": "Smoke.json" },
+    { "type": "sim", "name": "hits unchanged", "scenario": "Hits.json" }
+  ]
+}

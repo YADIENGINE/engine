@@ -1,0 +1,97 @@
+{
+  "title": "Feel: shake and sound when the player is hit",
+  "kind": "feel",
+  "status": "ready",
+  "timeoutMinutes": 30,
+  "prompt": "When the player gets hit, shake the screen a little and play the hit sound in Game/Assets/Audio/Hit.wav.",
+  "notes": "Simulation event to view, effects and a sound table. Checks are weak (build, a shake call, a sound played).",
+  "solutionEdits": [
+    {
+      "file": "Game/ArenaGame.cpp",
+      "old": "#include \"Scenes/PlayScene.h\"\n",
+      "new": "#include \"ArenaSounds.h\"\n#include \"Scenes/PlayScene.h\"\n"
+    },
+    {
+      "file": "Game/ArenaGame.cpp",
+      "old": "    settings.assets = {settings.font};\n",
+      "new": "    settings.assets = {settings.font};\n    settings.sounds = ArenaSfxTable;\n"
+    },
+    {
+      "file": "Game/ArenaGame.cpp",
+      "old": "        , _play(Time(), Seed) {}",
+      "new": "        , _play(Time(), Sounds(), Seed) {}"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.h",
+      "old": "#include \"Input/InputBindings.h\"\n",
+      "new": "#include \"Audio/SoundPlayer.h\"\n#include \"Fx/FxStage.h\"\n#include \"Input/InputBindings.h\"\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.h",
+      "old": "    PlayScene(TimeScale& time, std::uint64_t seed);",
+      "new": "    PlayScene(TimeScale& time, SoundPlayer& sounds, std::uint64_t seed);"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.h",
+      "old": "    TimeScale& _time;\n",
+      "new": "    TimeScale& _time;\n    SoundPlayer& _sounds;\n    FxStage _fx;\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "#include \"Utilities/Overloaded.h\"\n",
+      "new": "#include \"ArenaSounds.h\"\n#include \"Graphics/Style/Theme.h\"\n#include \"Utilities/Overloaded.h\"\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "constexpr int BlinkSteps = 6;\n",
+      "new": "constexpr int BlinkSteps = 6;\nconstexpr float HitShake = 0.35f;\nconstexpr FloatRect Screen{0.0f, 0.0f, 1280.0f, 720.0f};\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "PlayScene::PlayScene(TimeScale& time, std::uint64_t seed)\n    : Scene(TimeDomain::Game)\n    , _time(time)\n",
+      "new": "PlayScene::PlayScene(TimeScale& time, SoundPlayer& sounds, std::uint64_t seed)\n    : Scene(TimeDomain::Game)\n    , _time(time)\n    , _sounds(sounds)\n    , _fx(Screen, Screen, CurrentTheme().fx)\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "[&](const PlayerHit&) { _time.Hitstop(HitstopSeconds); }",
+      "new": "[&](const PlayerHit&) {\n                                  _time.Hitstop(HitstopSeconds);\n                                  _fx.Shake(HitShake);\n                                  (void)_sounds.Play(ArenaSfx::Hit);\n                              }"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "    (void)_runner.Advance(seconds);\n",
+      "new": "    (void)_runner.Advance(seconds);\n    _fx.Update(seconds, seconds);\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "    paint.Rect(paint.Bounds(), Fill(Background));\n",
+      "new": "    paint.Rect(paint.Bounds(), Fill(Background));\n    auto shaken = paint.Transform(_fx.WorldCamera(paint).Transform());\n"
+    }
+  ],
+  "checks": [
+    {
+      "type": "build"
+    },
+    {
+      "type": "check",
+      "name": "engine rules"
+    },
+    {
+      "type": "grep",
+      "name": "shakes",
+      "glob": "Game/**/*.cpp",
+      "pattern": "Shake\\("
+    },
+    {
+      "type": "grep",
+      "name": "names the sound",
+      "glob": "Game/**/*.*",
+      "pattern": "Hit\\.wav"
+    },
+    {
+      "type": "grep",
+      "name": "plays a sound",
+      "glob": "Game/**/*.cpp",
+      "pattern": "Sounds\\(\\)|SoundPlayer|\\.Play\\("
+    }
+  ]
+}

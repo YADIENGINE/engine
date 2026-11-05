@@ -1,0 +1,20 @@
+{
+  "simulation": "arena.play",
+  "seed": 4,
+  "start": { "maxEnemies": 0, "playerX": 200, "coinX": 100, "coinY": 600 },
+  "script": [
+    { "hold": "Right" },
+    { "run": 1 },
+    { "tap": "Dash" },
+    { "run": 12 },
+    { "expect": { "player.x": { "min": 360 } } },
+    { "run": 10 },
+    { "tap": "Dash" },
+    { "run": 12 },
+    { "expect": { "player.x": { "max": 520 } } },
+    { "run": 48 },
+    { "tap": "Dash" },
+    { "run": 12 },
+    { "expect": { "player.x": { "min": 890 } } }
+  ]
+}

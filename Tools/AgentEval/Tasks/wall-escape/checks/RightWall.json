@@ -1,0 +1,13 @@
+{
+  "simulation": "arena.play",
+  "seed": 3,
+  "start": { "maxEnemies": 0, "coinX": 100, "coinY": 600 },
+  "script": [
+    { "hold": "Right" },
+    { "run": 300 },
+    { "expect": { "player.x": { "min": 1220, "max": 1224.5 } } },
+    { "hold": "Down" },
+    { "run": 300 },
+    { "expect": { "player.x": { "min": 1220, "max": 1224.5 }, "player.y": { "max": 664.5 } } }
+  ]
+}

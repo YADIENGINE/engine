@@ -1,0 +1,51 @@
+{
+  "title": "Feature: a dash with a cooldown",
+  "kind": "feature",
+  "status": "ready",
+  "smoke": true,
+  "timeoutMinutes": 30,
+  "prompt": "Add a dash. Pressing Space makes the player move three times as fast for 0.2 seconds in the direction they are moving; after that the dash cannot be used again for 1 second. Name the new simulation button `Dash`.",
+  "notes": "Rules, input binding and state. Graded by a hidden scenario: a dash covers distance, a second press during the cooldown does not, a press after it does.",
+  "solutionEdits": [
+    {
+      "file": "Game/Simulation/ArenaSimulation.h",
+      "old": "enum class ArenaButton { Left, Right, Up, Down };",
+      "new": "enum class ArenaButton { Left, Right, Up, Down, Dash };"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.h",
+      "old": "    int _invulnerable = 0;\n",
+      "new": "    int _invulnerable = 0;\n    int _dashSteps = 0;\n    int _dashCooldown = 0;\n    Float2 _dashDirection;\n"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "made.buttons = {\"Left\", \"Right\", \"Up\", \"Down\"};",
+      "new": "made.buttons = {\"Left\", \"Right\", \"Up\", \"Down\", \"Dash\"};"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "    _player += Normalized(direction) * (PlayerSpeed * step.seconds);\n",
+      "new": "    if (_dashCooldown > 0) --_dashCooldown;\n    if (input.Pressed(ArenaButton::Dash) && _dashSteps == 0 && _dashCooldown == 0 && LengthSquared(direction) > 0.0f) {\n        _dashSteps = 12;\n        _dashDirection = Normalized(direction);\n    }\n    if (_dashSteps > 0) {\n        --_dashSteps;\n        _player += _dashDirection * (PlayerSpeed * 3.0f * step.seconds);\n        if (_dashSteps == 0) _dashCooldown = 60;\n    } else {\n        _player += Normalized(direction) * (PlayerSpeed * step.seconds);\n    }\n"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "    _over = false;\n}",
+      "new": "    _over = false;\n    _dashSteps = 0;\n    _dashCooldown = 0;\n}"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "    state.Field(\"invulnerable\", _invulnerable);\n",
+      "new": "    state.Field(\"invulnerable\", _invulnerable);\n    state.Field(\"dashSteps\", _dashSteps);\n    state.Field(\"dashCooldown\", _dashCooldown);\n    state.Field(\"dashDirection\", _dashDirection);\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "    bindings.Bind(0, ArenaButton::Down, InputKey::Down);\n",
+      "new": "    bindings.Bind(0, ArenaButton::Down, InputKey::Down);\n    bindings.Bind(0, ArenaButton::Dash, InputKey::Space);\n"
+    }
+  ],
+  "checks": [
+    { "type": "build" },
+    { "type": "sim", "name": "dash and cooldown", "scenario": "Dash.json" },
+    { "type": "grep", "name": "bound to Space", "glob": "Game/**/*.cpp", "pattern": "InputKey::Space" }
+  ]
+}

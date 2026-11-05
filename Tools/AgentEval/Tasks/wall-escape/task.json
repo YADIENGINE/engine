@@ -1,0 +1,27 @@
+{
+  "title": "Bug fix: the player walks out through the right wall",
+  "kind": "bugfix",
+  "status": "ready",
+  "smoke": true,
+  "timeoutMinutes": 20,
+  "prompt": "Players report that they can walk out of the arena through the right wall. Find the cause and fix it.",
+  "notes": "A wrong clamp bound in the rules. Graded by a hidden scenario that holds Right for five seconds.",
+  "setupEdits": [
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "std::clamp(_player.x, ArenaLeft + PlayerRadius, ArenaRight - PlayerRadius)",
+      "new": "std::clamp(_player.x, ArenaLeft + PlayerRadius, ArenaRight + PlayerRadius)"
+    }
+  ],
+  "solutionEdits": [
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "std::clamp(_player.x, ArenaLeft + PlayerRadius, ArenaRight + PlayerRadius)",
+      "new": "std::clamp(_player.x, ArenaLeft + PlayerRadius, ArenaRight - PlayerRadius)"
+    }
+  ],
+  "checks": [
+    { "type": "build" },
+    { "type": "sim", "name": "stays inside", "scenario": "RightWall.json" }
+  ]
+}

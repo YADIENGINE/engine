@@ -1,0 +1,12 @@
+{
+  "simulation": "arena.play",
+  "seed": 11,
+  "start": { "lives": 1000 },
+  "script": [
+    { "run": 1150 },
+    { "expect": { "fastEnemies": 0 } },
+    { "until": { "fastEnemies": { "min": 1 } }, "limit": 1300 },
+    { "run": 3000 },
+    { "expect": { "fastEnemies": { "min": 1, "max": 2 } } }
+  ]
+}

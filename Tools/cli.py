@@ -10,6 +10,10 @@ import os
 import sys
 from pathlib import Path
 
+from .commands.agent_eval import add_parser as add_agent_eval_parser
+from .commands.agent_eval import agent_eval
+from .commands.agent_report import add_parser as add_agent_report_parser
+from .commands.agent_report import agent_report
 from .commands.build import build, run_game
 from .commands.asset import add_parser as add_asset_parser
 from .commands.asset import asset
@@ -78,6 +82,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_asset_parser(commands)
     add_audio_parser(commands)
     add_sim_parser(commands)
+    add_agent_report_parser(commands)
+    add_agent_eval_parser(commands)
 
     command = commands.add_parser("new", help="set up the folder above Engine/ as a new project")
     command.add_argument("--name", help="project name (asked when omitted)")
@@ -132,6 +138,10 @@ def dispatch(args: argparse.Namespace) -> int:
             return audio(Project(root), args)
         case "sim":
             return sim(Project(root), args)
+        case "agent-report":
+            return agent_report(root, args)
+        case "agent-eval":
+            return agent_eval(args)
         case "new":
             return new(ENGINE_ROOT, args.project.resolve() if args.project else ENGINE_ROOT.parent, args.name,
                        args.dry_run)

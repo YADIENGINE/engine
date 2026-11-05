@@ -1,0 +1,46 @@
+{
+  "title": "Look: rain over the arena",
+  "kind": "visual",
+  "status": "ready",
+  "timeoutMinutes": 25,
+  "prompt": "Make it rain over the arena.",
+  "notes": "A one-line request that should route to the weather recipe. Checks are weak (build and use of the engine's weather and atmosphere).",
+  "solutionEdits": [
+    {
+      "file": "Game/Scenes/PlayScene.h",
+      "old": "#include \"Input/InputBindings.h\"\n",
+      "new": "#include \"Graphics/Atmosphere/Atmosphere.h\"\n#include \"Input/InputBindings.h\"\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.h",
+      "old": "    SimulationEventReader<ArenaEvent> _events;\n",
+      "new": "    SimulationEventReader<ArenaEvent> _events;\n    Atmosphere _air;\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "#include \"Utilities/Overloaded.h\"\n",
+      "new": "#include \"Utilities/Overloaded.h\"\n#include \"Weather/Weather.h\"\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "    (void)_runner.Advance(seconds);\n",
+      "new": "    (void)_runner.Advance(seconds);\n    _air.Update(seconds, Weather::Rain());\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "    paint.Circle(_simulation.Coin(), CoinRadius, Fill(CoinColor));\n",
+      "new": "    _air.DrawBehind(paint);\n    paint.Circle(_simulation.Coin(), CoinRadius, Fill(CoinColor));\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "    const std::string hud =",
+      "new": "    _air.DrawFront(paint);\n    const std::string hud ="
+    }
+  ],
+  "checks": [
+    { "type": "build" },
+    { "type": "check", "name": "engine rules" },
+    { "type": "grep", "name": "uses Weather", "glob": "Game/**/*.*", "pattern": "Weather/Weather\\.h" },
+    { "type": "grep", "name": "draws an atmosphere", "glob": "Game/**/*.*", "pattern": "Atmosphere|DriftField" }
+  ]
+}

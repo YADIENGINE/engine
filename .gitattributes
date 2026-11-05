@@ -13,6 +13,7 @@
 /CLAUDE.md export-ignore
 /AGENTS.md export-ignore
 /Docs/Design export-ignore
+/Tools/AgentEval export-ignore
 
 # Preserve vendored sources byte for byte from upstream (ThirdParty/README.md)
 /ThirdParty/raylib/** -text

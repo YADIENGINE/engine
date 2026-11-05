@@ -1,0 +1,13 @@
+{
+  "simulation": "arena.play",
+  "seed": 5,
+  "start": { "maxEnemies": 1, "enemyX": 700, "enemyY": 360, "coinX": 100, "coinY": 100 },
+  "script": [
+    { "untilEvent": "PlayerHit", "limit": 120 },
+    { "expect": { "lives": 2, "invulnerable": 90 } },
+    { "run": 89 },
+    { "expectEvent": "PlayerHit", "count": 0 },
+    { "untilEvent": "PlayerHit", "limit": 10 },
+    { "expect": { "lives": 1 } }
+  ]
+}

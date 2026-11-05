@@ -1,0 +1,55 @@
+{
+  "title": "Feature: a second, faster enemy kind",
+  "kind": "feature",
+  "status": "ready",
+  "timeoutMinutes": 40,
+  "prompt": "Add a second kind of enemy: smaller and twice as fast as the current one. It starts appearing after 20 seconds of play, and there are never more than 2 of them. Draw it in a different colour. In the simulation's State, write how many there are as `fastEnemies`.",
+  "notes": "A larger rules change that touches spawning, hits, state and drawing. Graded by a hidden scenario on the count over time.",
+  "solutionEdits": [
+    {
+      "file": "Game/Simulation/ArenaSimulation.h",
+      "old": "    [[nodiscard]] const std::vector<Float2>& Enemies() const { return _enemies; }\n",
+      "new": "    [[nodiscard]] const std::vector<Float2>& Enemies() const { return _enemies; }\n    [[nodiscard]] const std::vector<Float2>& FastEnemies() const { return _fastEnemies; }\n"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.h",
+      "old": "    std::vector<Float2> _enemies;\n",
+      "new": "    std::vector<Float2> _enemies;\n    std::vector<Float2> _fastEnemies;\n    int _playSteps = 0;\n"
+    },
+    {
+      "file": "Game/Simulation/ArenaRules.h",
+      "old": "inline constexpr float CoinRadius = 10.0f;\n",
+      "new": "inline constexpr float FastEnemySpeed = EnemySpeed * 2.0f;\ninline constexpr float FastEnemyRadius = 9.0f;\ninline constexpr int FastEnemyFirstStep = 1200;\ninline constexpr int FastEnemyEverySteps = 300;\ninline constexpr int MaxFastEnemies = 2;\n\ninline constexpr float CoinRadius = 10.0f;\n"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "    _enemies.clear();\n",
+      "new": "    _enemies.clear();\n    _fastEnemies.clear();\n    _playSteps = 0;\n"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "    for (auto& enemy : _enemies)\n        enemy += Normalized(_player - enemy) * (EnemySpeed * step.seconds);\n",
+      "new": "    for (auto& enemy : _enemies)\n        enemy += Normalized(_player - enemy) * (EnemySpeed * step.seconds);\n    for (auto& enemy : _fastEnemies)\n        enemy += Normalized(_player - enemy) * (FastEnemySpeed * step.seconds);\n    ++_playSteps;\n    if (_playSteps >= FastEnemyFirstStep && (_playSteps - FastEnemyFirstStep) % FastEnemyEverySteps == 0\n        && static_cast<int>(_fastEnemies.size()) < MaxFastEnemies)\n        _fastEnemies.push_back(RandomPoint(FastEnemyRadius));\n"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "        _enemies, [&](Float2 enemy) { return Distance(enemy, _player) < PlayerRadius + EnemyRadius; });\n",
+      "new": "        _enemies, [&](Float2 enemy) { return Distance(enemy, _player) < PlayerRadius + EnemyRadius; }) ||\n        std::ranges::any_of(_fastEnemies,\n                            [&](Float2 enemy) { return Distance(enemy, _player) < PlayerRadius + FastEnemyRadius; });\n"
+    },
+    {
+      "file": "Game/Simulation/ArenaSimulation.cpp",
+      "old": "    state.Field(\"maxEnemies\", _maxEnemies);\n",
+      "new": "    state.Field(\"fastEnemies\", static_cast<int>(_fastEnemies.size()));\n    for (std::size_t i = 0; i < _fastEnemies.size(); ++i)\n        state.Group(\"fastEnemy\", i, [&] {\n            state.Field(\"x\", _fastEnemies[i].x);\n            state.Field(\"y\", _fastEnemies[i].y);\n        });\n    state.Field(\"playSteps\", _playSteps);\n    state.Field(\"maxEnemies\", _maxEnemies);\n"
+    },
+    {
+      "file": "Game/Scenes/PlayScene.cpp",
+      "old": "        paint.Circle(enemy, EnemyRadius, Fill(EnemyColor));\n",
+      "new": "        paint.Circle(enemy, EnemyRadius, Fill(EnemyColor));\n    for (const Float2 enemy : _simulation.FastEnemies())\n        paint.Circle(enemy, FastEnemyRadius, Fill(Rgb(0xff9f1a)));\n"
+    }
+  ],
+  "checks": [
+    { "type": "build" },
+    { "type": "sim", "name": "appear after 20 s, at most 2", "scenario": "FastEnemies.json" },
+    { "type": "sim", "name": "old rules unchanged", "scenario": "Hits.json" }
+  ]
+}
