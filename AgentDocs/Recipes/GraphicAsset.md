@@ -96,4 +96,4 @@ or looks up the asset by string. Before finishing, run
 `python Engine asset unlisted Game/Assets/Graphics/Enemies/Goblin.h Game/Assets/Graphics/Enemies/Goblin.cpp Game/Assets/Graphics/Enemies/Goblin.asset.cpp`
 with the files you changed. Register every listed drawing or explain why it is not registered.
 
-Concept: [Asset library](../../Docs/Design/AssetLibrary.md#authoring-rule).
+Concept: [Graphic assets](../../Docs/Editor/Api.md#graphic-assets).

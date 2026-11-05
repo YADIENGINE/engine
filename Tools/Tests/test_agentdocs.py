@@ -274,3 +274,11 @@ class LinkTests(unittest.TestCase):
     def test_generated_api_pages_are_not_scanned(self):
         self.write('AgentDocs/Api/Ui.md', '`Docs/Gone.md`\n')
         self.assertEqual(check_links(self.root), [])
+
+    def test_files_left_out_of_released_copies_fail(self):
+        self.write('.gitattributes', '* text=auto\n/Docs/Design export-ignore\n')
+        self.write('Docs/Design/Assets.md', '# Assets\n\n## Rule\n')
+        self.write('AgentDocs/Index.md', 'See `Docs/Design/Assets.md#rule` and [rule](../Docs/Design/Assets.md#rule).\n')
+        problems = check_links(self.root)
+        self.assertEqual(len(problems), 2, problems)
+        self.assertTrue(all('export-ignore' in p for p in problems))

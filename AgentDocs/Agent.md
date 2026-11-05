@@ -31,7 +31,7 @@ Read the matching skill before acting. Each one is a short procedure; follow its
 
 ## Hard invariants
 
-- New standalone graphics go in `Game/Assets/Graphics/<Folder>/X.h`, `X.cpp` and `X.asset.cpp`; model-reading Views stay in place, variants use `items`, existing code need not move, and project agent rules take precedence: `Docs/Design/AssetLibrary.md#authoring-rule`.
+- New standalone graphics go in `Game/Assets/Graphics/<Folder>/X.h`, `X.cpp` and `X.asset.cpp`; model-reading Views stay in place, variants use `items`, existing code need not move, and project agent rules take precedence: `Docs/Editor/Api.md#graphic-assets`.
 - Draw through Painter: `Docs/Graphics/Painter.md#where-it-comes-from`.
 - Use logical canvas coordinates, y down: `Docs/Graphics/Painter.md#where-it-comes-from`.
 - Angles are radians, clockwise: `Docs/Graphics/Painter.md#where-it-comes-from`.

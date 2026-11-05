@@ -6,8 +6,9 @@ Two kinds of reference are checked, outside code blocks:
   `Recipes/` and `Skills/` are under AgentDocs; `Engine/` in front is the engine's folder in a project. A path with a
   placeholder (`<name>`, `*`) or any other first folder, such as a project's own `Game/` or `Editor/`, is not checked.
 
-A `#heading` must match a heading of the target, with GitHub's rule for making a heading into an anchor. Generated API
-pages are not scanned: they are made from the headers themselves.
+A `#heading` must match a heading of the target, with GitHub's rule for making a heading into an anchor. A target must
+also reach game projects: files that `.gitattributes` marks `export-ignore` are left out of released copies. Generated
+API pages are not scanned: they are made from the headers themselves.
 """
 
 import re
@@ -69,9 +70,31 @@ def _backtick_target(root: Path, reference: str) -> Path | None:
     return None
 
 
+def export_ignored(root: Path) -> list[str]:
+    """Paths `.gitattributes` keeps out of released copies, relative to the root."""
+    attributes = root / '.gitattributes'
+    if not attributes.is_file():
+        return []
+    found = []
+    for line in attributes.read_text(encoding='utf-8').splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and 'export-ignore' in parts[1:]:
+            found.append(parts[0].strip('/'))
+    return found
+
+
+def _released(root: Path, target: Path, ignored: list[str]) -> bool:
+    try:
+        relative = target.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return True
+    return not any(relative == path or relative.startswith(path + '/') for path in ignored)
+
+
 def check_links(root: Path) -> list[str]:
     problems = []
     cache: dict[Path, set[str]] = {}
+    ignored = export_ignored(root)
     docs = root / 'AgentDocs'
     for source in sorted(docs.rglob('*.md')):
         if source.parent == docs / 'Api':
@@ -92,6 +115,8 @@ def check_links(root: Path) -> list[str]:
                 where = f'{where_file}:{number}'
                 if not target.exists():
                     problems.append(f'{where}: "{text}" points at a file that does not exist')
+                elif not _released(root, target, ignored):
+                    problems.append(f'{where}: "{text}" points at a file released copies leave out (export-ignore)')
                 elif heading and target.suffix == '.md':
                     resolved = target.resolve()
                     if resolved not in cache:

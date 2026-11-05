@@ -5,7 +5,7 @@ description: Draw a new character, enemy, item, prop, icon, background or other 
 
 # Draw and register a graphic
 
-Commands run from the project root. Rule: [Asset library](../../../Docs/Design/AssetLibrary.md#authoring-rule).
+Commands run from the project root. Rule: [Graphic assets](../../../Docs/Editor/Api.md#graphic-assets).
 Example: [Graphic asset](../../Recipes/GraphicAsset.md).
 
 1. **Decide:** a new standalone graphic (character, enemy, item, prop, icon or background) draws only from parameters

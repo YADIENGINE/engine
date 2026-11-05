@@ -193,7 +193,7 @@ SceneDefinition RecipeShooterSceneDefinition() {
 ```
 <!-- /recipe -->
 
-Test it without a window: `python Engine sim run scenario.json --out run.replay`, with the scenario below. Comparing the
+Test it without a window: `python Engine sim run scenario.json --out build/run.replay`, with the scenario below. Comparing the
 game's position with its collider's catches a forgotten `Move`, which hashes cannot.
 
 ```json

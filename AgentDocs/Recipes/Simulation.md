@@ -233,7 +233,7 @@ SceneDefinition RecipePlaySceneDefinition() {
 ```
 <!-- /recipe -->
 
-Test it without a window: `python Engine sim run scenario.json --out run.replay --events`, with
+Test it without a window: `python Engine sim run scenario.json --out build/run.replay --events`, with
 
 ```json
 { "simulation": "myproject.play", "seed": 1, "script": [ { "hold": "Right" }, { "run": 60 },

@@ -14,17 +14,17 @@ Commands run from the project root. Reference: `Docs/Simulation.md`. Example: `A
 3. **Write a scenario** (a JSON file under `Game/Simulation/Scenarios/`, for instance) that holds, taps and runs, then
    checks with `expect`. Prefer `until` with a `limit` to guessing step counts. What happened (a hit, a death) is checked
    with `expectEvent` and waited for with `untilEvent`, when the simulation emits events.
-4. **Run it:** `python Engine sim run FILE --out run.replay`. Exit 1 lists `failures` with step, field, expected and actual.
+4. **Run it:** `python Engine sim run FILE --out build/run.replay` (tapes go under `build/`, which git ignores). Exit 1 lists `failures` with step, field, expected and actual.
    Add `read` operations to see values along the way; `--events` lists every event with its step and fields.
 5. **Fix and repeat.** Report the scenario that now passes and what it checks. A passing scenario says nothing about how
    the game looks: for that use `AgentDocs/Skills/visual-change/SKILL.md`.
 
 ## A replay that no longer matches
 
-- `python Engine sim verify run.replay`: `mismatch` says where. With `hashEvery` above 1 it is a range.
-- `python Engine sim diverge run.replay`: two runs of the same tape. `deterministic: false` names the step and fields, so
+- `python Engine sim verify build/run.replay`: `mismatch` says where. With `hashEvery` above 1 it is a range.
+- `python Engine sim diverge build/run.replay`: two runs of the same tape. `deterministic: false` names the step and fields, so
   the simulation has a hidden input: static state, uninitialized memory, a clock, unordered iteration.
-- `python Engine sim state run.replay --step N` reads any moment. A tape is plain JSON: cut its `input` to isolate a bug.
+- `python Engine sim state build/run.replay --step N` reads any moment. A tape is plain JSON: cut its `input` to isolate a bug.
 
 Changed rules or tuning also make a tape differ, and then the mismatch is expected. Say which you think it is.
 
