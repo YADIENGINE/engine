@@ -1,12 +1,20 @@
 #include "Graphics/Render/Internals/PostChain.h"
 #include <algorithm>
 #include <array>
+#include <cmath>
 
 namespace {
 constexpr int MaxBloomLevels = 6;
 constexpr int MinBloomSide = 8; // A level smaller than this ends the chain
 constexpr float MinSpread = 0.25f;
 constexpr float MaxSpread = 4.0f;
+constexpr double NoiseFramesPerSecond = 24.0; // Film's rate: faster reads as television static
+constexpr double NoiseFrames = 16777216.0;    // Whole numbers a float holds exactly: 8 days of moments
+// Compose.glsl's wobble waves all run at multiples of 1/16, so the rhythm wraps here without a jump.
+constexpr double WobbleWrap = 2.0 * 3.14159265358979323846 * 16.0;
+constexpr double TapeRollsPerSecond = 0.07; // A band crosses the image in about 14 seconds at speed 1
+constexpr float TapeBandPush = 28.0f;       // Canvas units a full band pushes the image
+constexpr float TapeLineHeight = 2.0f;      // Canvas units
 
 PostUniforms Texel(int width, int height) {
     PostUniforms uniforms;
@@ -25,8 +33,12 @@ bool PostChain::Blooms(const PostSettings& settings, const RenderQuality& qualit
 }
 
 bool PostChain::Active(const PostSettings& settings, const RenderQuality& quality) {
+    const Color4 tint = settings.tint.color;
+    const bool tinted = settings.tint.amount > 0.0f && (tint.r != 255 || tint.g != 255 || tint.b != 255);
+    const bool moving = quality.screenMotion && (settings.grain.amount > 0.0f || settings.wobble.amount > 0.0f ||
+                                                 settings.tape.band > 0.0f || settings.tape.shift > 0.0f);
     return Blooms(settings, quality) || settings.vignette > 0.0f || settings.scanlines > 0.0f ||
-           settings.aberration > 0.0f;
+           settings.aberration > 0.0f || settings.fade > 0.0f || tinted || moving;
 }
 
 void PostChain::Release() {
@@ -73,7 +85,7 @@ void PostChain::Pass(const Level& level, std::span<const GpuTexture> sources, Gp
 }
 
 GpuTarget PostChain::Run(GpuTarget canvas, int width, int height, float canvasHeight, const PostSettings& settings,
-                         const RenderQuality& quality, float time) {
+                         const RenderQuality& quality, double time) {
     const bool blooms = Blooms(settings, quality);
     Prepare(width, height, blooms ? quality.bloom : BloomQuality::Off);
     const float spread = std::clamp(settings.bloom.radius, MinSpread, MaxSpread);
@@ -108,7 +120,35 @@ GpuTarget PostChain::Run(GpuTarget canvas, int width, int height, float canvasHe
     compose.scanlineCount = settings.scanlineCount > 0.0f ? settings.scanlineCount : canvasHeight * 0.5f;
     // Aberration is given in canvas units; the shader offsets in source texels.
     compose.aberration = std::max(settings.aberration, 0.0f) * static_cast<float>(height) / canvasHeight;
-    compose.time = time;
+    compose.time = static_cast<float>(time);
+    compose.fade = std::clamp(settings.fade, 0.0f, 1.0f);
+    const float tint = std::clamp(settings.tint.amount, 0.0f, 1.0f);
+    const auto tinted = [tint](std::uint8_t channel) {
+        return 1.0f + (static_cast<float>(channel) / 255.0f - 1.0f) * tint;
+    };
+    compose.tintRed = tinted(settings.tint.color.r);
+    compose.tintGreen = tinted(settings.tint.color.g);
+    compose.tintBlue = tinted(settings.tint.color.b);
+
+    // A clock that stands still or runs back (a seek in the editor) leaves the rhythms where they are.
+    const double elapsed = std::max(time - _lastTime, 0.0);
+    _lastTime = time;
+    _wobblePhase = std::fmod(_wobblePhase + elapsed * std::max(settings.wobble.speed, 0.0f), WobbleWrap);
+    _tapeRoll = std::fmod(_tapeRoll + elapsed * TapeRollsPerSecond * std::max(settings.tape.speed, 0.0f), 1.0);
+    compose.noiseFrame = static_cast<float>(std::fmod(std::floor(time * NoiseFramesPerSecond), NoiseFrames));
+    compose.wobblePhase = static_cast<float>(_wobblePhase);
+    compose.tapeRoll = static_cast<float>(_tapeRoll);
+    // Canvas units to source texels.
+    const float texels = static_cast<float>(height) / canvasHeight;
+    compose.grainCell = std::max(settings.grain.size * texels, 1.0f);
+    compose.tapeLine = std::max(TapeLineHeight * texels, 1.0f);
+    if (quality.screenMotion) {
+        compose.grain = std::clamp(settings.grain.amount, 0.0f, 1.0f);
+        compose.wobble = std::max(settings.wobble.amount, 0.0f) * texels;
+        compose.tapeBand = std::clamp(settings.tape.band, 0.0f, 1.0f);
+        compose.tapePush = compose.tapeBand * TapeBandPush * texels;
+        compose.tapeShift = std::max(settings.tape.shift, 0.0f) * texels;
+    }
     const GpuTexture color = _device.TargetTexture(canvas, 0);
     const GpuTexture bloom = compose.bloomIntensity > 0.0f ? _device.TargetTexture(_bloom.front().target, 0) : color;
     const std::array textures{color, bloom};

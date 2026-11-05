@@ -60,6 +60,18 @@ private:
         int scanlines = -1;
         int scanlineCount = -1;
         int aberration = -1;
+        int fade = -1;
+        int tint = -1;
+        int grain = -1;
+        int grainCell = -1;
+        int noiseFrame = -1;
+        int wobble = -1;
+        int wobblePhase = -1;
+        int tapeBand = -1;
+        int tapePush = -1;
+        int tapeShift = -1;
+        int tapeRoll = -1;
+        int tapeLine = -1;
     };
     struct Stream {
         unsigned buffer = 0;

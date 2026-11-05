@@ -198,6 +198,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `UiOptionsTexts`: `std::string_view motion = "Motion effects"`
 - `UiOptionsTexts`: `std::string_view flashes = "Screen flashes"`
 - `UiOptionsTexts`: `std::string_view background = "Background effects"`
+- `UiOptionsTexts`: `std::string_view screenMotion = "Screen distortion"`
 - `UiOptionsTexts`: `std::string_view full = "Full"`
 - `UiOptionsTexts`: `std::string_view reduced = "Reduced"`
 - `UiOptionsTexts`: `std::string_view off = "Off"`

@@ -107,6 +107,18 @@ GlDevice::GlDevice() {
         result.scanlines = glGetUniformLocation(result.id, "uScanlines");
         result.scanlineCount = glGetUniformLocation(result.id, "uScanlineCount");
         result.aberration = glGetUniformLocation(result.id, "uAberration");
+        result.fade = glGetUniformLocation(result.id, "uFade");
+        result.tint = glGetUniformLocation(result.id, "uTint");
+        result.grain = glGetUniformLocation(result.id, "uGrain");
+        result.grainCell = glGetUniformLocation(result.id, "uGrainCell");
+        result.noiseFrame = glGetUniformLocation(result.id, "uNoiseFrame");
+        result.wobble = glGetUniformLocation(result.id, "uWobble");
+        result.wobblePhase = glGetUniformLocation(result.id, "uWobblePhase");
+        result.tapeBand = glGetUniformLocation(result.id, "uTapeBand");
+        result.tapePush = glGetUniformLocation(result.id, "uTapePush");
+        result.tapeShift = glGetUniformLocation(result.id, "uTapeShift");
+        result.tapeRoll = glGetUniformLocation(result.id, "uTapeRoll");
+        result.tapeLine = glGetUniformLocation(result.id, "uTapeLine");
         return result;
     };
     _programs[static_cast<std::size_t>(GpuProgram::Paint)] = program(PaintVertexShader, PaintFragmentShader, "Paint");
@@ -448,6 +460,18 @@ void GlDevice::DrawFullscreen(const PostUniforms& uniforms) {
     set(program.scanlines, uniforms.scanlines);
     set(program.scanlineCount, uniforms.scanlineCount);
     set(program.aberration, uniforms.aberration);
+    set(program.fade, uniforms.fade);
+    if (program.tint >= 0) glUniform3f(program.tint, uniforms.tintRed, uniforms.tintGreen, uniforms.tintBlue);
+    set(program.grain, uniforms.grain);
+    set(program.grainCell, uniforms.grainCell);
+    set(program.noiseFrame, uniforms.noiseFrame);
+    set(program.wobble, uniforms.wobble);
+    set(program.wobblePhase, uniforms.wobblePhase);
+    set(program.tapeBand, uniforms.tapeBand);
+    set(program.tapePush, uniforms.tapePush);
+    set(program.tapeShift, uniforms.tapeShift);
+    set(program.tapeRoll, uniforms.tapeRoll);
+    set(program.tapeLine, uniforms.tapeLine);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     ++_counters.drawCalls;
 }

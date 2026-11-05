@@ -126,7 +126,7 @@ GpuTarget RenderPipeline::FinishCanvas() {
     if (!_canvasEmission) post.bloom.intensity = 0.0f;
     _presented = PostChain::Active(post, _quality)
                      ? _post.Run(_canvas, _canvasWidth, _canvasHeight, _settings.canvasSize.y, post, _quality,
-                                 static_cast<float>(_context.frame.time))
+                                 _context.frame.time)
                      : _canvas;
     _phase = Phase::Window;
     // Window phase: the whole back buffer in device pixels, the canvas image letterboxed into it.

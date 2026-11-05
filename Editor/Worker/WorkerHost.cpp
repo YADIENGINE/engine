@@ -17,6 +17,7 @@
 #include "Editor/Worker/WorkerGame.h"
 #include "Editor/Worker/GlowBenchmark.h"
 #include "Editor/Worker/LightGallery.h"
+#include "Editor/Worker/PostGallery.h"
 #include "Editor/Worker/RenderGallery.h"
 #include "Tuning/TuningLive.h"
 
@@ -103,6 +104,7 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
         registry.Add(GlowBenchmarkDefinition());
         registry.Add(RenderGalleryDefinition());
         registry.Add(LightGalleryDefinition());
+        registry.Add(PostGalleryDefinition());
         AddRegisteredEditorScenes(registry);
         AddRegisteredGraphicAssets(registry);
         registerScenes(registry); // Metadata and factories only: no GL/assets/instances.

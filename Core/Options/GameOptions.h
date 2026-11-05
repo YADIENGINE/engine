@@ -7,7 +7,7 @@
 
 // Options saved by the engine itself; file keys are in the GameOptions.cpp table.
 // clang-format off
-enum class EngineOption { EffectsVolume, MusicVolume, MenuMusicVolume, FpsLimit, BorderlessFullscreen, WindowWidth, WindowHeight, RenderHeight, VSync, ShowFps, Glow, ParticlePercent, Shake, MotionEffects, Flashes, BackgroundEffects, Bloom, Count };
+enum class EngineOption { EffectsVolume, MusicVolume, MenuMusicVolume, FpsLimit, BorderlessFullscreen, WindowWidth, WindowHeight, RenderHeight, VSync, ShowFps, Glow, ParticlePercent, Shake, MotionEffects, Flashes, BackgroundEffects, Bloom, ScreenMotion, Count };
 // clang-format on
 // Missing: file was absent or an old schema was removed. Recovered: restored from backup.
 // Reset: corrupt file was archived and an empty state was started.

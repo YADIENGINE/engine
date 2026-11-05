@@ -18,7 +18,7 @@ struct GameSettings {
     Color4 background{0, 0, 0, 255};
     Color4 letterbox{0, 0, 0, 255};
     bool smoothCanvas = true;
-    // Full-screen finish (bloom, vignette, scanlines); a frame may change it through Painter::Post. The canvas keeps a
+    // Full-screen finish (bloom, vignette, grain, tint...); a frame may change it through Painter::Post. The canvas keeps a
     // bloom layer only while bloom is asked for (here, or by the previous frame).
     PostSettings post;
     std::filesystem::path applicationId = "Game";

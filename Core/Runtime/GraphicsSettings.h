@@ -7,6 +7,6 @@ struct GraphicsSettings {
     int renderHeight = 0; // Height limit of the canvas texture; 0: the window's resolution
     bool vsync = false;
     bool showFps = false; // Frame rate and frame time in the corner
-    RenderQuality render; // Glows, bloom, background animation (the Painter applies it)
+    RenderQuality render; // Glows, bloom, background animation, screen motion (the Painter and renderer apply it)
     FxQuality fx;         // Particles, shake, motion, flashes (Game::Effects(); the Fx classes apply it)
 };

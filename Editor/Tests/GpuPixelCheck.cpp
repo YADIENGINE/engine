@@ -1,7 +1,7 @@
 // Opt-in check of what the GPU really draws: a hidden window renders with the real device and reads the pixels back.
 // The NullDevice tests see vertices and commands, not shaders or GL state; these cover that gap. Not a CTest: it needs
 // a desktop/GPU, like EngineEditorUiSmoke.
-//   EngineGpuPixelCheck
+//   EngineGpuPixelCheck [--compose-cost]
 #include "external/glad.h"
 #include <raylib.h>
 #include <array>
@@ -15,6 +15,7 @@
 #include "Graphics/Light/LightLayer.h"
 #include "Graphics/Light/LightOccluders.h"
 #include "Graphics/Paint/Painter.h"
+#include "Graphics/Render/Internals/PostChain.h"
 #include "Graphics/Render/Internals/RenderPipeline.h"
 #include "Graphics/Surface/Internals/SurfaceState.h"
 #include "Graphics/Surface/Surface.h"
@@ -39,8 +40,8 @@ public:
         : _pipeline(_device, {.canvasSize = {WindowSize, WindowSize}}) {}
 
     // One frame: 'draw' records, the frame executes. Returns the finished canvas image (valid until the next frame).
-    GpuTarget Frame(const std::function<void(Painter&)>& draw) {
-        Painter& paint = _pipeline.BeginFrame({WindowSize, WindowSize}, 0.0, 0.0f);
+    GpuTarget Frame(const std::function<void(Painter&)>& draw, double time = 0.0) {
+        Painter& paint = _pipeline.BeginFrame({WindowSize, WindowSize}, time, 0.0f);
         draw(paint);
         const GpuTarget shown = _pipeline.FinishCanvas();
         (void)_pipeline.BeginWindow();
@@ -74,6 +75,8 @@ public:
         std::cout << (passed ? "ok    " : "FAIL  ") << name << ": " << actual << " (at least " << least << ")\n";
         if (!passed) ++_failures;
     }
+
+    void SetQuality(const RenderQuality& quality) { _pipeline.SetQuality(quality); }
 
     [[nodiscard]] int Failures() const { return _failures; }
 
@@ -519,9 +522,291 @@ void BloomShinesThroughTheDark(PixelCheck& check) {
     check.Above("bloom is visible at all", lit, 8);
     check.Near("bloom is the same in the dark", dark, lit, 2);
 }
+
+void DrawStripes(Painter& paint) {
+    paint.Rect({0.0f, 0.0f, 256.0f, 256.0f}, Fill(Black));
+    for (int x = 0; x < 256; x += 32)
+        paint.Rect({static_cast<float>(x), 0.0f, 16.0f, 256.0f}, Fill(White));
+}
+
+// How many pixels of a row differ from another image's.
+int RowDifference(PixelCheck& check, GpuTarget image, const std::vector<int>& reference, int y) {
+    int different = 0;
+    for (int x = 0; x < WindowSize; ++x)
+        different += std::abs(check.ReadTarget(image, x, y).r - reference[static_cast<std::size_t>(x)]) > 8 ? 1 : 0;
+    return different;
+}
+
+std::vector<int> Stripes(PixelCheck& check, int y) {
+    const GpuTarget plain = check.Frame([](Painter& paint) { DrawStripes(paint); });
+    std::vector<int> row;
+    for (int x = 0; x < WindowSize; ++x)
+        row.push_back(check.ReadTarget(plain, x, y).r);
+    return row;
+}
+
+struct Spread {
+    double mean = 0.0;
+    double deviation = 0.0;
+};
+
+// Over a square of pixels, 'side' wide, at (x, y).
+Spread SpreadOf(PixelCheck& check, GpuTarget image, int x, int y, int side) {
+    std::vector<int> values;
+    for (int row = 0; row < side; ++row)
+        for (int column = 0; column < side; ++column)
+            values.push_back(check.ReadTarget(image, x + column, y + row).r);
+    Spread spread;
+    for (const int value : values)
+        spread.mean += value;
+    spread.mean /= static_cast<double>(values.size());
+    for (const int value : values)
+        spread.deviation += (value - spread.mean) * (value - spread.mean);
+    spread.deviation = std::sqrt(spread.deviation / static_cast<double>(values.size()));
+    return spread;
+}
+
+// All the new settings at rest: the old finish comes out as the formula says, and no finish at all leaves the canvas.
+void OldFinishIsUntouched(PixelCheck& check) {
+    const GpuTarget untouched = check.Frame([](Painter& paint) {
+        paint.Post().tint.color = Rgb(0x304060); // A colour at amount 0
+        paint.Post().wobble.speed = 3.0f;
+        paint.Rect({0.0f, 0.0f, 256.0f, 256.0f}, Fill(Gray));
+    });
+    check.Near("nothing asked: the canvas itself", check.ReadTarget(untouched, 128, 128).r, 128, 0);
+    const GpuTarget vignette = check.Frame([](Painter& paint) {
+        paint.Post().vignette = 0.5f;
+        paint.Rect({0.0f, 0.0f, 256.0f, 256.0f}, Fill(White));
+    });
+    check.Near("vignette leaves the middle", check.ReadTarget(vignette, 128, 128).r, 255, 0);
+    check.Near("vignette darkens a corner", check.ReadTarget(vignette, 1, 1).r, 128, 2);
+    const GpuTarget lines = check.Frame([](Painter& paint) {
+        paint.Post().scanlines = 1.0f;
+        paint.Post().scanlineCount = 4.0f;
+        paint.Rect({0.0f, 0.0f, 256.0f, 256.0f}, Fill(White));
+    });
+    check.Near("a scanline's dark middle", check.ReadTarget(lines, 128, 0).r, 0, 3);
+    check.Near("a scanline's light middle", check.ReadTarget(lines, 128, 32).r, 255, 3);
+}
+
+void FadeDrainsColour(PixelCheck& check) {
+    const auto red = [&](float fade) {
+        const GpuTarget shown = check.Frame([&](Painter& paint) {
+            paint.Post().fade = fade;
+            paint.Rect({0.0f, 0.0f, 256.0f, 256.0f}, Fill({255, 0, 0, 255}));
+        });
+        return check.ReadTarget(shown, 128, 128);
+    };
+    const Pixel half = red(0.5f);
+    check.Near("half a fade: red", half.r, 166);
+    check.Near("half a fade: green", half.g, 38);
+    const Pixel full = red(1.0f);
+    check.Near("full fade: red is its brightness", full.r, 76);
+    check.Near("full fade: green matches", full.g, 76);
+    check.Near("full fade: blue matches", full.b, 76);
+}
+
+void TintMultiplies(PixelCheck& check) {
+    const auto white = [&](float amount) {
+        const GpuTarget shown = check.Frame([&](Painter& paint) {
+            paint.Post().tint = {.color = Rgb(0x6496c8), .amount = amount};
+            paint.Rect({0.0f, 0.0f, 256.0f, 256.0f}, Fill(White));
+        });
+        return check.ReadTarget(shown, 128, 128);
+    };
+    const Pixel full = white(1.0f);
+    check.Near("full tint: red", full.r, 0x64);
+    check.Near("full tint: green", full.g, 0x96);
+    check.Near("full tint: blue", full.b, 0xc8);
+    check.Near("half a tint: red", white(0.5f).r, (255 + 0x64) / 2);
+}
+
+void GrainMovesAndFavoursTheDark(PixelCheck& check) {
+    const auto frame = [&](double time) {
+        return check.Frame(
+            [](Painter& paint) {
+                paint.Post().grain.amount = 0.5f;
+                paint.Rect({0.0f, 0.0f, 128.0f, 256.0f}, Fill(Rgb(0x181818)));
+                paint.Rect({128.0f, 0.0f, 128.0f, 256.0f}, Fill(Rgb(0xe8e8e8)));
+            },
+            time);
+    };
+    GpuTarget image = frame(1.0);
+    const Spread dark = SpreadOf(check, image, 16, 16, 64);
+    const Spread light = SpreadOf(check, image, 176, 16, 64);
+    check.Above("grain shows in the dark (deviation x10)", static_cast<int>(dark.deviation * 10.0), 40);
+    check.Above("grain is stronger in the dark (x10)", static_cast<int>((dark.deviation - light.deviation * 1.5) * 10.0),
+                1);
+    check.Near("grain keeps a mid brightness", static_cast<int>(light.mean), 0xe8, 4);
+
+    // The same pixels at the same moment are the same; another moment or another place are different.
+    std::vector<int> first;
+    for (int x = 0; x < 64; ++x)
+        first.push_back(check.ReadTarget(image, x, 40).r);
+    image = frame(1.0);
+    int repeated = 0;
+    for (int x = 0; x < 64; ++x)
+        repeated += check.ReadTarget(image, x, 40).r == first[static_cast<std::size_t>(x)] ? 1 : 0;
+    check.Near("the same moment gives the same grain", repeated, 64, 0);
+    image = frame(1.0 + 1.0 / 24.0);
+    int same = 0;
+    for (int x = 0; x < 64; ++x)
+        same += check.ReadTarget(image, x, 40).r == first[static_cast<std::size_t>(x)] ? 1 : 0;
+    check.Above("the next moment gives other grain (different of 64)", 64 - same, 32);
+    int sameRow = 0;
+    for (int x = 0; x < 64; ++x)
+        sameRow += check.ReadTarget(image, x, 41).r == check.ReadTarget(image, x, 40).r ? 1 : 0;
+    check.Above("the next row gives other grain (different of 64)", 64 - sameRow, 32);
+}
+
+void WobbleBendsTheMiddleOnly(PixelCheck& check) {
+    const std::vector<int> plain = Stripes(check, 128);
+    const std::vector<int> edge = Stripes(check, 0);
+    const auto bent = [&](float amount, double time) {
+        return check.Frame(
+            [&](Painter& paint) {
+                paint.Post().wobble = {.amount = amount, .speed = 1.0f};
+                DrawStripes(paint);
+            },
+            time);
+    };
+    (void)bent(8.0f, 2.0);
+    const GpuTarget image = bent(8.0f, 4.0);
+    check.Above("the middle row moves", RowDifference(check, image, plain, 128), 8);
+    check.Near("the top edge stays still", RowDifference(check, image, edge, 0), 0, 0);
+    int leftEdge = 0;
+    for (int y = 0; y < WindowSize; y += 4)
+        leftEdge += std::abs(check.ReadTarget(image, 0, y).r - 255) > 8 ? 1 : 0;
+    check.Near("the left edge stays still", leftEdge, 0, 0);
+}
+
+void TapeBandRollsAndLinesJump(PixelCheck& check) {
+    const std::vector<int> plain = Stripes(check, 128);
+    const auto taped = [&](const TapeSettings& tape, double time) {
+        return check.Frame(
+            [&](Painter& paint) {
+                paint.Post().tape = tape;
+                DrawStripes(paint);
+            },
+            time);
+    };
+    const auto bandRow = [&](GpuTarget image) {
+        int best = -1;
+        int bestDifference = -1;
+        for (int y = 0; y < WindowSize; y += 2) {
+            const int difference = RowDifference(check, image, plain, y);
+            if (difference > bestDifference) {
+                bestDifference = difference;
+                best = y;
+            }
+        }
+        return best;
+    };
+    const TapeSettings band{.band = 1.0f};
+    (void)taped(band, 10.0);
+    GpuTarget image = taped(band, 12.0); // 2 seconds: 14% of the way, from the bottom of the image up
+    const int first = bandRow(image);
+    const int away = (first + WindowSize / 2) % WindowSize;
+    check.Above("the band pushes its row", RowDifference(check, image, plain, first), 32);
+    check.Near("a row far from the band is untouched", RowDifference(check, image, plain, away), 0, 0);
+    image = taped(band, 14.0);
+    const int later = bandRow(image);
+    check.Above("the band has rolled (rows moved)", std::abs(later - first), 16);
+
+    const TapeSettings lines{.shift = 8.0f};
+    (void)taped(lines, 20.0);
+    image = taped(lines, 21.0);
+    int changedRows = 0;
+    for (int y = 0; y < WindowSize; y += 2)
+        changedRows += RowDifference(check, image, plain, y) > 0 ? 1 : 0;
+    check.Above("lines jump sideways (of 128 rows)", changedRows, 32);
+}
+
+void PlayerSwitchStopsWhatMoves(PixelCheck& check) {
+    check.SetQuality({.screenMotion = false});
+    const auto draw = [](Painter& paint) {
+        paint.Post().grain.amount = 1.0f;
+        paint.Post().wobble.amount = 16.0f;
+        paint.Post().tape = {.band = 1.0f, .shift = 8.0f};
+        DrawStripes(paint);
+    };
+    const std::vector<int> plain = Stripes(check, 128);
+    const GpuTarget still = check.Frame(draw, 3.0);
+    check.Near("switch off: the row is as drawn", RowDifference(check, still, plain, 128), 0, 0);
+    const GpuTarget faded = check.Frame(
+        [&](Painter& paint) {
+            draw(paint);
+            paint.Post().tint = {.color = Rgb(0x808080), .amount = 1.0f};
+        },
+        3.0);
+    check.Near("switch off: the tint stays", check.ReadTarget(faded, 8, 128).r, 128);
+    check.SetQuality({});
+}
+
+// What the finish adds to the compose pass, measured on the GPU at full HD. Prints; never fails.
+void MeasureComposeCost() {
+    constexpr int Width = 1920;
+    constexpr int Height = 1080;
+    constexpr int Rounds = 240;
+    GlDevice device;
+    PostChain chain(device);
+    const GpuTarget canvas = device.CreateTarget({Width, Height, GpuFormat::Rgba8, GpuFilter::Linear, false, "Canvas"});
+    GLuint query = 0;
+    glGenQueries(1, &query);
+    const auto cost = [&](const char* name, const PostSettings& post) {
+        double total = 0.0;
+        int counted = 0;
+        for (int i = 0; i < Rounds; ++i) {
+            device.BeginFrame();
+            glBeginQuery(GL_TIME_ELAPSED, query);
+            (void)chain.Run(canvas, Width, Height, static_cast<float>(Height), post, RenderQuality{},
+                            static_cast<double>(i) / 60.0);
+            glEndQuery(GL_TIME_ELAPSED);
+            device.EndFrame();
+            GLuint64 elapsed = 0;
+            glGetQueryObjectui64v(query, GL_QUERY_RESULT, &elapsed);
+            if (i >= Rounds / 4) { // The first rounds warm up
+                total += static_cast<double>(elapsed);
+                ++counted;
+            }
+        }
+        std::cout << name << ": " << total / counted / 1000.0 << " us\n";
+    };
+    std::cout << "GPU: " << reinterpret_cast<const char*>(glGetString(GL_RENDERER)) << ", " << Width << " x " << Height
+              << "\n";
+    PostSettings post;
+    post.vignette = 0.001f;
+    cost("warming up", post);
+    cost("compose, one old effect (vignette)", post);
+    PostSettings fade = post;
+    fade.fade = 0.5f;
+    cost("+ fade", fade);
+    PostSettings tint = post;
+    tint.tint = {.color = Rgb(0x8c9ccc), .amount = 0.8f};
+    cost("+ tint", tint);
+    PostSettings grain = post;
+    grain.grain.amount = 0.3f;
+    cost("+ grain", grain);
+    PostSettings wobble = post;
+    wobble.wobble.amount = 6.0f;
+    cost("+ wobble", wobble);
+    PostSettings tape = post;
+    tape.tape = {.band = 0.7f, .shift = 2.0f};
+    cost("+ tape", tape);
+    PostSettings all = post;
+    all.fade = 0.7f;
+    all.tint = tint.tint;
+    all.grain = grain.grain;
+    all.wobble = wobble.wobble;
+    all.tape = tape.tape;
+    all.aberration = 1.5f;
+    cost("all of them, with aberration", all);
+    glDeleteQueries(1, &query);
+    device.DestroyTarget(canvas);
+}
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
     SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_HIDDEN);
     InitWindow(WindowSize, WindowSize, "GPU pixel check");
@@ -546,9 +831,17 @@ int main() {
         ShadowEdgesAreSoft(check);
         AWideSoftEdgeHasNoSteps(check);
         FlashesLightTheWorld(check);
+        OldFinishIsUntouched(check);
+        FadeDrainsColour(check);
+        TintMultiplies(check);
+        GrainMovesAndFavoursTheDark(check);
+        WobbleBendsTheMiddleOnly(check);
+        TapeBandRollsAndLinesJump(check);
+        PlayerSwitchStopsWhatMoves(check);
         failures = check.Failures();
         ReportCost(check);
     }
+    if (argc > 1 && std::string(argv[1]) == "--compose-cost") MeasureComposeCost();
     CloseWindow();
     std::cout << "GPU pixel checks: " << failures << " failures\n";
     return failures == 0 ? 0 : 1;

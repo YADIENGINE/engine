@@ -306,7 +306,7 @@ Canvas'ın iki eki vardır: renk (RGBA8) ve emission (RGBA8; bloom kapalıyken e
 
 ```
 canvas renk + emission ─► bloom (emission'dan, yarım çözünürlük, aşağı/yukarı örnekleme zinciri)
-                       ─► son birleştirme: renk + bloom, vinyet, tarama çizgisi, renk kayması, ton
+                       ─► son birleştirme: renk + bloom, vinyet, tarama çizgisi, renk kayması, soldurma, ton, gren, dalgalanma, bant (D41)
                        ─► pencereye sunum (letterbox)
 ```
 

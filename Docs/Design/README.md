@@ -1425,6 +1425,50 @@ two screen pixels wide at every zoom.
 **Left out:** normal maps, brightening past a pixel's colour, a quality screen, and colliders stopping light by themselves (D38).
 A penumbra that grows with distance can come later behind the same option.
 
+### D41. Analog screen finish
+Status: implemented (2026-11-05). Usage: [Analog finish](../Graphics/Painter.md#analog-finish).
+
+**Decision:** film grain, colour fade, tint, wobble and tape are fields of `PostSettings`, computed in the existing compose
+pass. `Mix(PostSettings, PostSettings, t)` moves between two finishes, so a single number can drive them all.
+
+**Why:** the look covers the whole image and needs only what compose already reads, so one more pass or shader per effect
+would add cost and code for nothing. Games get values and no shader access, as before.
+
+**Decided:**
+1. *Fields, not a system.* There is no "fear" object. A game writes `paint.Post() = Mix(calm, disturbed, danger)`. The number
+   comes from the game; the engine does not know what it means.
+2. *`Mix` is how it joins Animation.* `MixValue` already looks for a `Mix(a, b, t)` beside a type, so a `SecondsTween<float>`
+   driving the number, a `SecondsTween<PostSettings>`, clips and timelines all work, and Animation stays unaware of Graphics.
+   `t` is clamped, because an overshooting curve would make strengths negative.
+3. *An effect that is off has no say.* Mixing from a calm finish without a tint would otherwise pull the colour from
+   white, and likewise size and speed. Strengths move linearly; the rest takes the side that is on, and blends only when both
+   are on. A scanline count of 0 means "automatic", which has no number to blend, so it changes halfway.
+4. *Rhythms are added up, in `PostChain`.* `sin(time * speed)` jumps when `speed` changes: at second 1000, a change of 0.01
+   moves the phase 10 radians, and a mix changes it every frame. So wobble and tape keep a phase, advanced by elapsed time
+   times speed. It is view state; the price is that rewinding in the editor does not restore it, so a second can look
+   different the second time. Grain is a pure function of the clock.
+5. *Noise is an integer hash in the shader* (pcg3d), seeded by position and a frame number at film's 24 per second. It shows
+   no pattern, and needs neither `<random>` nor a simulation's `Rng`. The frame number comes from a `double` clock and wraps
+   at 2^24, the whole numbers a float holds exactly: 8 days. The clock used to be cast to `float` before `PostChain`.
+6. *The player's switch is `RenderQuality::screenMotion`.* Not a game setting, which a game can forget, and not
+   `FxQuality`, which belongs to `Fx` and would tie it to flashes. It stops what moves (grain, wobble, tape). What holds still
+   stays, so the mood survives. `Active` honours it: with nothing else asked, compose does not run.
+7. *Readable by construction.* No field has a non-zero default. Wobble fades to nothing over the outer 22% of the image, so
+   a HUD along the edges stays still and clamped edges do not smear. Grain is weakest on bright pixels. Most tape lines barely
+   move; a few jump the whole way. Drawing a HUD above the finish was not added: nothing has asked for it yet.
+8. *Order in compose:* wobble and line shifts choose where to read, then colour with aberration, bloom, fade, tint, the band's
+   dashes, scanlines, vignette, grain. Grain comes last because it belongs to the film, not to the scene; bloom reads at the
+   bent position so a glow follows its source.
+9. *Not `ScreenGlitch`.* It stays a timed burst drawn on the canvas by `Fx`. The tape is a lasting value.
+
+**Measured (2026-11-05, RX 9070 XT, 1920 x 1080, GPU timer, three runs of 180 frames):** compose with only a vignette, 22 to
+25 µs. Fade and tint add nothing measurable. Grain stays within the timer's noise of about 3 µs. Wobble adds 5 to 6 µs, tape
+3 to 10 µs, and everything together with aberration 8 to 15 µs, about 0.1% of a 60 Hz frame. A weak integrated GPU will
+cost many times this, not yet measured. With nothing asked, compose does not run. `EngineGpuPixelCheck --compose-cost`
+repeats the measurement on any machine.
+
+**Out of scope:** shaders written by a game, CRT curvature, palette reduction, a separate low-resolution mode.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

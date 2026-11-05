@@ -219,6 +219,7 @@ void Game::SetGraphics(const GraphicsSettings& graphics) {
     _options.Set(EngineOption::Glow, static_cast<std::int64_t>(graphics.render.glow));
     _options.Set(EngineOption::Bloom, static_cast<std::int64_t>(graphics.render.bloom));
     _options.Set(EngineOption::BackgroundEffects, graphics.render.backgroundEffects ? 1 : 0);
+    _options.Set(EngineOption::ScreenMotion, graphics.render.screenMotion ? 1 : 0);
     _options.Set(EngineOption::ParticlePercent, graphics.fx.particlePercent);
     _options.Set(EngineOption::Shake, static_cast<std::int64_t>(graphics.fx.shake));
     _options.Set(EngineOption::MotionEffects, graphics.fx.motion ? 1 : 0);
@@ -235,7 +236,8 @@ GraphicsSettings Game::Graphics() const {
                        .bloom =
                            StoredLevel(_options.Get(EngineOption::Bloom, static_cast<std::int64_t>(BloomQuality::Half)),
                                        BloomQuality::Full, BloomQuality::Half),
-                       .backgroundEffects = _options.Get(EngineOption::BackgroundEffects, 1) == 1},
+                       .backgroundEffects = _options.Get(EngineOption::BackgroundEffects, 1) == 1,
+                       .screenMotion = _options.Get(EngineOption::ScreenMotion, 1) == 1},
             .fx = {.particlePercent = particles >= 0 && particles <= 100 ? static_cast<int>(particles) : 100,
                    .shake = StoredLevel(_options.Get(EngineOption::Shake, 0), EffectLevel::Off, EffectLevel::Full),
                    .motion = _options.Get(EngineOption::MotionEffects, 1) == 1,

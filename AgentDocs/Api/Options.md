@@ -12,7 +12,7 @@ Selectable value lists for settings screens (scheme, FPS limit, language ...): r
 
 ## `Core/Options/GameOptions.h`
 
-- `enum class EngineOption { EffectsVolume, MusicVolume, MenuMusicVolume, FpsLimit, BorderlessFullscreen, WindowWidth, WindowHeight, RenderHeight, VSync, ShowFps, Glow, ParticlePercent, Shake, MotionEffects, Flashes, BackgroundEffects, Bloom, Count }` — Options saved by the engine itself; file keys are in the GameOptions.cpp table.
+- `enum class EngineOption { EffectsVolume, MusicVolume, MenuMusicVolume, FpsLimit, BorderlessFullscreen, WindowWidth, WindowHeight, RenderHeight, VSync, ShowFps, Glow, ParticlePercent, Shake, MotionEffects, Flashes, BackgroundEffects, Bloom, ScreenMotion, Count }` — Options saved by the engine itself; file keys are in the GameOptions.cpp table.
 - `enum class OptionsLoadResult { Missing, Loaded, Recovered, Reset }` — Missing: file was absent or an old schema was removed.
 - `class GameOptions` — One unencrypted options file editable by the player; values are integers.
 - `GameOptions`: `explicit GameOptions(std::filesystem::path file)`
