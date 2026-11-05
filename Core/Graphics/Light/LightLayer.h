@@ -1,10 +1,13 @@
 #pragma once
 #include <span>
+#include <vector>
 #include "Camera/CameraView.h"
 #include "Graphics/Paint/PaintStyle.h"
 #include "Graphics/Surface/Surface.h"
 #include "Utilities/Color4.h"
+#include "Utilities/Geometry/Visibility.h"
 
+class LightOccluders;
 class Painter;
 
 // What lights a world this frame. Plain data, described every frame, so a split screen gives the same frame to each
@@ -12,6 +15,8 @@ class Painter;
 struct LightFrame {
     Color4 ambient{255, 255, 255, 255}; // The light everything gets; white: lights change nothing. Alpha is ignored.
     std::span<const LightSource> lights;
+    std::span<const LightOccluders* const> occluders; // What stops the lights; usually a set that stands still and one
+                                                      // filled for what moves
 };
 
 struct LightLayerOptions {
@@ -34,4 +39,6 @@ public:
 private:
     float _resolution;
     mutable Surface _image; // Holds nothing between frames; only its size and GPU memory are kept
+    mutable VisibilityPolygon _visibility;
+    mutable std::vector<VisibilityEdge> _blocking;
 };

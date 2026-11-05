@@ -43,7 +43,8 @@ UI_LAYER_RULES = (
 # Core/Camera computes and draws nothing, so a simulation may keep a camera that decides gameplay; only its debug guides
 # draw (Docs/Camera.md).
 CAMERA_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|Camera/)[^"]*"''')
-# Lighting stands on Painter, like a game's own drawing, and Painter does not know it.
+# Lighting stands on Painter, like a game's own drawing, and Painter does not know it. One file bridges colliders to it.
+LIGHT_BRIDGE = "CollisionOccluders"
 LIGHT_RULE = re.compile(
     r'''^\s*#\s*include\s*"(?!Utilities/|Camera/CameraView\.h|Graphics/(?:Light|Paint|Surface)/)[^"]*"''')
 PAINT_LIGHT_RULE = re.compile(r'''^\s*#\s*include\s*"Graphics/Light/[^"]*"''')
@@ -103,7 +104,7 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                          if source.is_relative_to(engine_root / CORE / "Ui" / rule[0])), None)
         camera = (source.is_relative_to(engine_root / CORE / "Camera")
                   and not source.is_relative_to(engine_root / CORE / "Camera" / "Debug"))
-        light = source.is_relative_to(engine_root / CORE / "Graphics" / "Light")
+        light = source.is_relative_to(engine_root / CORE / "Graphics" / "Light") and source.stem != LIGHT_BRIDGE
         paint = source.is_relative_to(engine_root / CORE / "Graphics" / "Paint")
         for number, line in enumerate(lines, 1):
             if light and LIGHT_RULE.match(line):

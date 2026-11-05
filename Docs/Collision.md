@@ -60,6 +60,11 @@ for (const ColliderPair& pair : world.Pairs(MaskOf(Layer::Player), MaskOf(Layer:
 - **Ids:** a removed collider's id stays invalid, even after its slot is used again. Using one throws.
 - **A collider asking about itself:** pass its id as `ignore`, or it finds itself.
 
+## Walls that stop light
+
+`AddOccluders` (`Graphics/Light/CollisionOccluders.h`) gives a light layer the colliders in a mask. It only reads the world, and
+colliders stop no light unless you ask: [Lighting](Graphics/Lighting.md#shadows).
+
 ## In a simulation
 
 `engine_add_simulation` links collision, so a simulation only includes the headers. Keep the world as a member and include

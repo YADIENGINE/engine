@@ -4,10 +4,12 @@
 #include "Editor/Api/EditorScene.h"
 #include "Editor/Api/SceneRegistry.h"
 #include "Graphics/Light/LightLayer.h"
+#include "Graphics/Light/LightOccluders.h"
+#include "Physics/Collision/CollisionWorld.h"
 #include "Utilities/Geometry/Float2.h"
 
-// A dark room: the player carries a lantern and aims a flashlight, a torch flickers on the wall, and a neon sign shines
-// by itself. Lights are view code on seconds and decide nothing.
+// A dark room: the player carries a lantern and aims a flashlight, a torch flickers on the wall, walls cast shadows, and
+// a neon sign shines by itself. Lights are view code on seconds and decide nothing.
 class RecipeLitView {
 public:
     explicit RecipeLitView(Float2 canvas);
@@ -26,6 +28,8 @@ private:
     float _time = 0.0f;
     bool _guides = false;
     LightLayer _lights; // Keeps only an image's memory: the lights are described in Draw, every frame
+    CollisionWorld _colliders; // In a game: the simulation's, read by the view
+    LightOccluders _walls;     // Built once from the colliders: walls stand still
 };
 
 class RecipeLitScene final : public EditorScene {

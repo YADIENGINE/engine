@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include "Graphics/Light/LightOccluders.h"
 #include "Graphics/Paint/Painter.h"
 
 namespace {
@@ -28,8 +29,16 @@ void LightLayer::Draw(Painter& paint, const LightFrame& frame, const CameraView&
         auto into = paint.Target(_image, ambient);
         auto scale = paint.Transform(Affine2::Scale(_resolution));
         auto camera = paint.Camera(view);
-        for (const LightSource& light : frame.lights)
-            paint.Light(light);
+        for (const LightSource& light : frame.lights) {
+            _blocking.clear();
+            if (light.shadows && light.radius > 0.0f)
+                for (const LightOccluders* occluders : frame.occluders)
+                    if (occluders) occluders->AppendBlocking(light.at, light.radius, _blocking);
+            if (_blocking.empty())
+                paint.Light(light);
+            else
+                paint.Light(light, _visibility.From(light.at, light.radius, _blocking));
+        }
     }
     std::optional<PaintScope> clip;
     if (!view.viewport.Empty()) clip.emplace(paint.Clip(view.viewport));

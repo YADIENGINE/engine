@@ -41,6 +41,7 @@ engine_tests(EngineTests
         GameOptionsTests.cpp
         InputTests.cpp
         LifecycleTests.cpp
+        LightOccluderTests.cpp
         LightTests.cpp
         MathTests.cpp
         ObjectListSafetyTests.cpp

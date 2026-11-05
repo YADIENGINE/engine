@@ -179,7 +179,9 @@ add_library(EngineHeadless STATIC
     Graphics/Paint/Internals/DrawList.cpp
     Graphics/Paint/Internals/Tessellator.cpp
     Graphics/Light/Debug/LightGuides.cpp
+    Graphics/Light/CollisionOccluders.cpp
     Graphics/Light/LightLayer.cpp
+    Graphics/Light/LightOccluders.cpp
     Graphics/Paint/Painter.cpp
     Graphics/Paint/PainterText.cpp
     Graphics/Paint/Path.cpp
@@ -245,6 +247,7 @@ add_library(EngineHeadless STATIC
     Ui/Widgets/UiToggle.cpp
     Ui/Widgets/UiTooltip.cpp
     Utilities/Geometry/ShatterPattern.cpp
+    Utilities/Geometry/Visibility.cpp
     Utilities/Utf8.cpp
 )
 target_include_directories(EngineHeadless PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")

@@ -155,6 +155,8 @@ class BoundaryTests(unittest.TestCase):
                    '#include "Camera/CameraView.h"\n#include "Utilities/Color4.h"\n')
         self.write("Engine/Core/Graphics/Paint/Painter.cpp", '#include "Graphics/Surface/Surface.h"\n')
         self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Graphics/Light/CollisionOccluders.cpp", '#include "Physics/Collision/Shape.h"\n')
+        self.assertEqual(self.check(), [])
         self.write("Engine/Core/Graphics/Light/LightLayer.cpp", '#include "Physics/Collision/Shape.h"\n')
         self.assertIn("Core/Graphics/Light includes", self.check()[0])
         self.write("Engine/Core/Graphics/Light/LightLayer.cpp", '#include "Graphics/Paint/Painter.h"\n')

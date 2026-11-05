@@ -1339,6 +1339,29 @@ the surface does not inherit the camera.
 9. *`Painter::CurrentTransform`.* A layer called inside a camera stamps its image in the wrong place, which an agent cannot
    see in a test. Now it is an error at the call.
 
+**Shadows:**
+10. *Colliders do not stop light by themselves.* A hitbox answers "what does it hit", an occluder "what shadow falls". A
+    forgiving hitbox would cast a shadow smaller than its sprite, and glass or a trigger would cast one at all. Nor is there
+    a flag on a collider: `layers` goes into `State`, so a look would change the replay hash.
+11. *A one-way bridge, in one file.* With no bridge, a game defines each wall twice, and light leaks through the difference,
+    which no test catches. `AddOccluders` reads a `CollisionWorld` and writes nothing back. `check` lets only
+    `CollisionOccluders` see `Physics`, so the rest of `Light` knows plain outlines.
+12. *What moves gives the outline the view draws.* A collider stands at the last step and the view draws between steps. A
+    shadow from it would lag behind its sprite, so the bridge is for what stands still.
+13. *Rays, not a sorted sweep.* Rays go to every corner and every crossing of two edges, and just past each. A sweep is faster
+    but fails on edges that touch, cross or line up with the light, and those are ordinary here: a tile map's boxes touch, and
+    colliders overlap. A test compares the result with a sight line to thousands of points; it found the crossings, which
+    the first version missed. The inside can change without the API.
+14. *The outline stops at a box past the radius.* Light has faded to zero there, so the outline needs no arcs, and a long wall
+    is cut at the box to mark where it leaves.
+15. *Near side lit by default.* Only the edges facing away from the light stop it, so a shape is lit and its shadow starts
+    behind it, which reads right from above. Touching tiles light only the first. A light inside a closed shape ignores it, or
+    a lantern would be trapped in its carrier and a torch in its wall.
+16. *Geometry in `Utilities`.* `VisibilityPolygon` knows no light, so a guard's view can use it. It is view code: a simulation
+    does not link it, and rules ask `CollisionWorld::Raycast`.
+17. *Hard edges for now.* Soft shadows would cost a fan per sample. The half-resolution image softens the edges a little; up
+    close the steps of the image show. Left to a game that asks.
+
 **Found on the way:** a new `Surface`'s texture stayed bound from its creation while the first pass drew into it, a feedback
 loop that GL leaves undefined. An AMD driver then showed the next sampling an image without that drawing, for one frame,
 when the surface was as large as its target. `GlDevice::BeginPass` now unbinds a target's attachments.

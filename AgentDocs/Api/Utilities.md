@@ -149,6 +149,14 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Vec2`: `constexpr bool operator==(const Vec2&) const = default`
 - `[[nodiscard]] constexpr Float2 ToFloat2(Vec2 v)` — The same point in continuous coordinates (for drawing).
 
+## `Core/Utilities/Geometry/Visibility.h`
+
+- `struct VisibilityEdge` — A straight piece of something that blocks sight.
+- `VisibilityEdge`: `Float2 a`
+- `VisibilityEdge`: `Float2 b`
+- `class VisibilityPolygon` — What can be seen from a point past straight obstacles, for drawing: a light's reach, a guard's view.
+- `VisibilityPolygon`: `[[nodiscard]] std::span<const Float2> From(Float2 from, float radius, std::span<const VisibilityEdge> edges)` — The outline of what 'from' sees within 'radius', in order around 'from', so that a fan from 'from' fills it.
+
 ## `Core/Utilities/Math/FloatRange.h`
 
 - `struct FloatRange` — Inclusive bounds for a uniformly sampled scalar.

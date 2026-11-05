@@ -3,9 +3,11 @@
 #include <array>
 #include <cmath>
 #include <memory>
+#include "Graphics/Light/CollisionOccluders.h"
 #include "Graphics/Light/Debug/LightGuides.h"
 #include "Graphics/Paint/Painter.h"
 #include "Input/Input.h"
+#include "Physics/Collision/Shape.h"
 
 namespace {
 constexpr Color4 Floor = Rgb(0x8a8378);
@@ -17,13 +19,21 @@ constexpr Color4 TorchColor = Rgb(0xff8a3c);
 constexpr FloatRect Room{0.0f, 0.0f, 1600.0f, 1000.0f};
 constexpr Float2 Torch{1100.0f, 300.0f};
 constexpr Float2 Sign{500.0f, 280.0f};
+constexpr Float2 CrateAt{1000.0f, 600.0f};
+constexpr Float2 CrateHalf{60.0f, 60.0f};
 constexpr float PlayerSpeed = 320.0f;
+constexpr float PlayerRadius = 18.0f;
+enum class Layer { Wall };
 } // namespace
 
 RecipeLitView::RecipeLitView(Float2 canvas)
     : _canvas(canvas)
     , _player(Room.Center())
-    , _aim(Room.Center() + Float2{100.0f, 0.0f}) {}
+    , _aim(Room.Center() + Float2{100.0f, 0.0f}) {
+    (void)_colliders.Add(Shape::Box(CrateHalf.x, CrateHalf.y), {CrateAt}, MaskOf(Layer::Wall));
+    // Here light stops where the player stops. Anything else, such as a sprite's outline, goes in LightOccluders by hand.
+    AddOccluders(_walls, _colliders, MaskOf(Layer::Wall));
+}
 
 void RecipeLitView::Update(float seconds, Float2 move, Float2 mouse) {
     _time += seconds;
@@ -35,8 +45,8 @@ CameraView RecipeLitView::View() const { return {.offset = _canvas * 0.5f, .targ
 
 void RecipeLitView::DrawWorld(Painter& paint) const {
     paint.Rect(Room, Fill(Floor));
-    paint.Rect(FloatRect::FromCenter({1000.0f, 600.0f}, {120.0f, 120.0f}), Fill(Crate));
-    paint.Circle(_player, 18.0f, Fill(Rgb(0xe8ecff)));
+    paint.Rect(FloatRect::FromCenter(CrateAt, CrateHalf * 2.0f), Fill(Crate));
+    paint.Circle(_player, PlayerRadius, Fill(Rgb(0xe8ecff)));
 }
 
 void RecipeLitView::Draw(Painter& paint) const {
@@ -56,7 +66,15 @@ void RecipeLitView::Draw(Painter& paint) const {
                     .cone = {.direction = std::atan2(aimed.y, aimed.x), .halfAngle = 0.35f}},
         LightSource{.at = Torch, .radius = 300.0f * flicker, .color = TorchColor, .core = 0.15f},
     };
-    const LightFrame frame{.ambient = Night, .lights = lights};
+    // What moves gives its outline from where it is drawn, so its shadow does not lag behind it. The player's own
+    // lights stand inside this outline, so it stops only the torch.
+    LightOccluders moving;
+    const std::array<Float2, 8> body{Float2{1.0f, 0.0f}, {0.7f, 0.7f},  {0.0f, 1.0f},   {-0.7f, 0.7f},
+                                     {-1.0f, 0.0f},      {-0.7f, -0.7f}, {0.0f, -1.0f}, {0.7f, -0.7f}};
+    moving.Outline(body, Affine2::Translate(_player) * Affine2::Scale(PlayerRadius));
+    const std::array<const LightOccluders*, 2> occluders{&_walls, &moving};
+
+    const LightFrame frame{.ambient = Night, .lights = lights, .occluders = occluders};
     _lights.Draw(paint, frame, view); // Outside paint.Camera, with the view the world was drawn through
 
     {

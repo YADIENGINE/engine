@@ -1,11 +1,16 @@
 #include "Editor/Worker/LightGallery.h"
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <memory>
 #include <string>
+#include "Graphics/Light/CollisionOccluders.h"
 #include "Graphics/Light/Debug/LightGuides.h"
 #include "Graphics/Light/LightLayer.h"
+#include "Graphics/Light/LightOccluders.h"
 #include "Graphics/Paint/Painter.h"
+#include "Physics/Collision/CollisionWorld.h"
+#include "Physics/Collision/Shape.h"
 #include "Graphics/Text/TextStyle.h"
 #include "Utilities/Math/Scalar.h"
 
@@ -16,7 +21,11 @@ constexpr Color4 Warm = Rgb(0xffc98a);
 constexpr Color4 Cold = Rgb(0x8ab8ff);
 constexpr Color4 Green = Rgb(0x9dff8a);
 constexpr Color4 Neon = Rgb(0xff3fa4);
+constexpr Color4 WallColor = Rgb(0x5a5f73);
+constexpr Color4 CrateColor = Rgb(0xb5793a);
 constexpr float Tile = 80.0f;
+constexpr float CrateSize = 34.0f;
+enum class Layer { Wall };
 
 class LightGallery final : public EditorScene {
 public:
@@ -24,12 +33,24 @@ public:
         : _size(static_cast<float>(services.canvas.x), static_cast<float>(services.canvas.y)) {
         for (const auto& [id, value] : parameters)
             (void)ApplyParameter(id, value);
+        // Walls that stand still come from their colliders.
+        const Float2 center = _size * 0.5f;
+        const auto wall = MaskOf(Layer::Wall);
+        (void)_colliders.Add(Shape::Box(150.0f, 12.0f), {center + Float2{-20.0f, -130.0f}}, wall);
+        (void)_colliders.Add(Shape::Box(12.0f, 90.0f), {center + Float2{120.0f, 90.0f}, 0.3f}, wall);
+        (void)_colliders.Add(Shape::Circle(36.0f), {center + Float2{-170.0f, 40.0f}}, wall);
+        (void)_colliders.Add(Shape::Capsule({-60.0f, 0.0f}, {60.0f, 0.0f}, 14.0f),
+                             {center + Float2{340.0f, 90.0f}, 0.8f}, wall);
+        (void)_colliders.Add(Shape::Segment({-70.0f, 0.0f}, {70.0f, 0.0f}),
+                             {center + Float2{-420.0f, -100.0f}, -0.6f}, wall);
+        AddOccluders(_walls, _colliders, wall);
     }
 
     std::string ApplyParameter(const std::string& id, const SceneValue& value) override {
         if (id == "animate") _animate = std::get<bool>(value);
         if (id == "guides") _guides = std::get<bool>(value);
         if (id == "split") _split = std::get<bool>(value);
+        if (id == "shadows") _shadows = std::get<bool>(value);
         if (id == "ambient") _ambient = static_cast<float>(std::get<double>(value));
         if (id == "bloom") _bloom = static_cast<float>(std::get<double>(value));
         if (id == "zoom") _zoom = static_cast<float>(std::get<double>(value));
@@ -52,7 +73,7 @@ private:
             LightSource{.at = {center.x + 360.0f, center.y - 120.0f}, .radius = 170.0f, .color = Green, .core = 0.6f},
         };
         if (!_split) {
-            DrawView(paint, {.offset = center, .target = center, .rotation = _turn, .zoom = _zoom}, lights);
+            DrawView(paint, {.offset = center, .target = center, .rotation = _turn, .zoom = _zoom}, lights, time);
             return;
         }
         const Float2 half{_size.x * 0.5f, _size.y};
@@ -66,21 +87,35 @@ private:
                                .rotation = _turn,
                                .zoom = _zoom,
                                .viewport = {half.x, 0.0f, half.x, half.y}};
-        DrawView(paint, left, lights);
-        DrawView(paint, right, lights);
+        DrawView(paint, left, lights, time);
+        DrawView(paint, right, lights, time);
     }
 
-    void DrawView(Painter& paint, const CameraView& view, std::span<const LightSource> lights) const {
+    void DrawView(Painter& paint, const CameraView& view, std::span<const LightSource> lights, float time) const {
+        // What moves gives its outline from where it is drawn, not from a collider.
+        const Float2 crate = _size * 0.5f + Float2::FromAngle(-time * 0.5f, 120.0f);
+        const Affine2 crateAt = Affine2::Translate(crate) * Affine2::Rotate(time * 0.8f);
+        const std::array<Float2, 4> crateOutline{Float2{-CrateSize, -CrateSize}, Float2{CrateSize, -CrateSize},
+                                                 Float2{CrateSize, CrateSize}, Float2{-CrateSize, CrateSize}};
         {
             auto world = paint.Camera(view);
             DrawFloor(paint);
-            DrawSign(paint, {_size.x * 0.5f - 140.0f, _size.y * 0.5f});
+            DrawWalls(paint);
+            {
+                auto placed = paint.Transform(crateAt);
+                paint.Polygon(crateOutline, Fill(CrateColor));
+            }
+            DrawSign(paint, {_size.x * 0.5f - 140.0f, _size.y * 0.5f + 40.0f}); // Before the layer: its colour goes dark
         }
-        const LightFrame frame{.ambient = Ambient(), .lights = lights};
+        LightOccluders moving;
+        moving.Outline(crateOutline, crateAt);
+        const std::array<const LightOccluders*, 2> sets{&_walls, &moving};
+        LightFrame frame{.ambient = Ambient(), .lights = lights};
+        if (_shadows) frame.occluders = sets;
         _layer.Draw(paint, frame, view);
         {
             auto world = paint.Camera(view);
-            DrawSign(paint, {_size.x * 0.5f + 140.0f, _size.y * 0.5f}); // After the layer: at its full colour
+            DrawSign(paint, {_size.x * 0.5f + 140.0f, _size.y * 0.5f + 40.0f}); // After the layer: at its full colour
         }
         if (_guides) DrawLightGuides(paint, frame, view);
     }
@@ -97,6 +132,25 @@ private:
         paint.ChamferRect({_size.x * 0.42f, _size.y * 0.74f, 120.0f, 70.0f}, 14.0f, Fill(Rgb(0xd0b03a)));
     }
 
+    void DrawWalls(Painter& paint) const {
+        _colliders.ForEach([&](const ColliderView& collider) {
+            const std::span<const Float2> own = collider.shape.Points();
+            const Affine2 at = Affine2::Translate(collider.pose.position) * Affine2::Rotate(collider.pose.angle);
+            auto placed = paint.Transform(at);
+            switch (collider.shape.Kind()) {
+            case ShapeKind::Circle: paint.Circle(own[0], collider.shape.Radius(), Fill(WallColor)); break;
+            case ShapeKind::Capsule:
+            case ShapeKind::Segment:
+                paint.Line(own[0], own[1],
+                           {.width = std::max(collider.shape.Radius() * 2.0f, 3.0f),
+                            .color = WallColor,
+                            .cap = StrokeCap::Round});
+                break;
+            default: paint.Polygon(own, Fill(WallColor)); break;
+            }
+        });
+    }
+
     static void DrawSign(Painter& paint, Float2 at) {
         paint.RoundRect(FloatRect::FromCenter(at, {150.0f, 54.0f}), 14.0f,
                         {.stroke = {5.0f, Neon}, .emission = 1.0f});
@@ -111,9 +165,12 @@ private:
 
     Float2 _size;
     LightLayer _layer;
+    CollisionWorld _colliders;
+    LightOccluders _walls;
     bool _animate = true;
     bool _guides = false;
     bool _split = false;
+    bool _shadows = true;
     float _ambient = 0.12f;
     float _bloom = 0.8f;
     float _zoom = 1.0f;
@@ -135,12 +192,14 @@ SceneDefinition LightGalleryDefinition() {
     definition.id = "engine.light.gallery";
     definition.name = "Light Gallery";
     definition.category = "Engine";
-    definition.description = "The light layer: point lights, a cone and a core over a floor, a sign that shines by "
-                             "itself before and after the layer, camera and split screen.";
+    definition.description = "The light layer: point lights, a cone and a core over a floor, walls from colliders and "
+                             "a moving crate that cast shadows, a sign that shines by itself before and after the "
+                             "layer, camera and split screen.";
     definition.parameters = {
         {.id = "animate", .label = "Animate", .kind = SceneParameterKind::Boolean, .initial = true},
         {.id = "guides", .label = "Guides", .kind = SceneParameterKind::Boolean, .initial = false},
         {.id = "split", .label = "Split screen", .kind = SceneParameterKind::Boolean, .initial = false},
+        {.id = "shadows", .label = "Shadows", .kind = SceneParameterKind::Boolean, .initial = true},
         Slider("ambient", "Ambient", 0.12, 0.0, 1.0),
         Slider("resolution", "Resolution", 0.5, 0.25, 1.0),
         Slider("bloom", "Bloom", 0.8, 0.0, 2.0),

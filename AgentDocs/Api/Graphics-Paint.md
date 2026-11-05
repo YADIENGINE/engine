@@ -124,6 +124,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `LightSource`: `float intensity = 1.0f` — Multiplies the colour; above 1 saturates its channels instead of growing
 - `LightSource`: `float core = 0.0f` — 0..1: share of the radius that stays at full strength
 - `LightSource`: `LightCone cone { }`
+- `LightSource`: `bool shadows = true` — Whether a LightFrame's occluders stop it
 
 ## `Core/Graphics/Paint/Path.h`
 

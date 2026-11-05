@@ -10,8 +10,10 @@
 #include <functional>
 #include <iostream>
 #include <string>
+#include <vector>
 #include "Graphics/Gpu/Internals/GlDevice.h"
 #include "Graphics/Light/LightLayer.h"
+#include "Graphics/Light/LightOccluders.h"
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Render/Internals/RenderPipeline.h"
 #include "Graphics/Surface/Internals/SurfaceState.h"
@@ -314,6 +316,88 @@ void SurfaceShowsItsFirstDrawing(PixelCheck& check) {
     check.Near("the second drawing replaced the first", check.Read(world, 70, 8).r, 0);
 }
 
+// Everything through the layer at full resolution, on white under black ambient: a pixel shows only the light it gets.
+void LitBy(PixelCheck& check, Surface& world, const LightSource& light, const LightOccluders& occluders) {
+    const LightLayer layer({.resolution = 1.0f});
+    const std::array lights{light};
+    const std::array<const LightOccluders*, 1> sets{&occluders};
+    check.Frame([&](Painter& paint) {
+        auto into = paint.Target(world, White);
+        layer.Draw(paint, {.ambient = Black, .lights = lights, .occluders = sets});
+    });
+}
+
+void WallsCastShadows(PixelCheck& check) {
+    constexpr LightSource Light{.at = {30.0f, 64.0f}, .radius = 90.0f, .core = 0.8f};
+    Surface world({128.0f, 128.0f});
+    {
+        LightOccluders wall;
+        const std::vector<Float2> line{{64.0f, 34.0f}, {64.0f, 94.0f}};
+        wall.Line(line);
+        LitBy(check, world, Light, wall);
+        check.Near("before a wall is lit", check.Read(world, 60, 64).r, 255);
+        check.Near("behind a wall is dark", check.Read(world, 70, 64).r, 0);
+        check.Near("far behind a wall is dark", check.Read(world, 100, 64).r, 0);
+        check.Near("past the wall's end is lit", check.Read(world, 70, 16).r, 255);
+        check.Near("a shadow widens with distance", check.Read(world, 100, 14).r, 0);
+    }
+    {
+        LightOccluders box;
+        const std::vector<Float2> outline{{64.0f, 44.0f}, {84.0f, 44.0f}, {84.0f, 84.0f}, {64.0f, 84.0f}};
+        box.Outline(outline);
+        LitBy(check, world, Light, box);
+        check.Near("a self-lit outline is lit inside", check.Read(world, 74, 64).r, 255);
+        check.Near("its shadow starts behind it", check.Read(world, 90, 64).r, 0);
+        box.Clear();
+        box.Outline(outline, {}, false);
+        LitBy(check, world, Light, box);
+        check.Near("otherwise it is dark inside", check.Read(world, 74, 64).r, 0);
+        check.Near("and lit before it", check.Read(world, 60, 64).r, 255);
+    }
+    {
+        LightOccluders around;
+        const std::vector<Float2> outline{{20.0f, 54.0f}, {40.0f, 54.0f}, {40.0f, 74.0f}, {20.0f, 74.0f}};
+        around.Outline(outline);
+        LitBy(check, world, Light, around);
+        check.Near("a light inside an outline is not stopped by it", check.Read(world, 80, 64).r, 255);
+    }
+    {
+        LightOccluders corners; // Two boxes touching at a corner, on the line from the light through it
+        const std::vector<Float2> one{{44.0f, 64.0f}, {64.0f, 64.0f}, {64.0f, 84.0f}, {44.0f, 84.0f}};
+        const std::vector<Float2> two{{64.0f, 44.0f}, {84.0f, 44.0f}, {84.0f, 64.0f}, {64.0f, 64.0f}};
+        corners.Outline(one);
+        corners.Outline(two);
+        LitBy(check, world, {.at = {30.0f, 30.0f}, .radius = 140.0f, .core = 0.9f}, corners);
+        check.Near("no light leaks between boxes that touch", check.Read(world, 74, 74).r, 0);
+        check.Near("nor further along that line", check.Read(world, 96, 96).r, 0);
+    }
+    {
+        LightOccluders wall;
+        const std::vector<Float2> line{{64.0f, 34.0f}, {64.0f, 94.0f}};
+        wall.Line(line);
+        LightSource free = Light;
+        free.shadows = false;
+        LitBy(check, world, free, wall);
+        check.Near("a light without shadows passes", check.Read(world, 70, 64).r, 255);
+    }
+}
+
+// The fan's falloff must equal the plain light's, or a light would jump as a wall comes into its reach.
+void AFanFallsOffLikeAPlainLight(PixelCheck& check) {
+    constexpr LightSource Light{.at = {64.0f, 64.0f}, .radius = 50.0f};
+    Surface plain({128.0f, 128.0f});
+    Surface shadowed({128.0f, 128.0f});
+    const LightOccluders none;
+    LightOccluders far; // In reach, and hiding only its own small corner
+    const std::vector<Float2> line{{108.0f, 108.0f}, {112.0f, 104.0f}};
+    far.Line(line);
+    LitBy(check, plain, Light, none);
+    LitBy(check, shadowed, Light, far);
+    for (const int x : {64, 70, 80, 90, 100, 110})
+        check.Near("same falloff at x " + std::to_string(x), check.Read(shadowed, x, 64).r, check.Read(plain, x, 64).r,
+                   1);
+}
+
 // The whole chain, through the canvas: bloom is computed after the light layer and still sees the emissive drawing.
 void BloomShinesThroughTheDark(PixelCheck& check) {
     const LightLayer layer;
@@ -350,6 +434,8 @@ int main() {
         LightsAddUp(check);
         ConePointsWhereItIsTold(check);
         VisiblePolygonLimitsTheLight(check);
+        WallsCastShadows(check);
+        AFanFallsOffLikeAPlainLight(check);
         LayerDarkensTheWorld(check);
         LayerFollowsTheCamera(check);
         ViewportsDarkenOnlyTheirPart(check);

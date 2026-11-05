@@ -119,4 +119,5 @@ struct LightSource {
     float intensity = 1.0f;           // Multiplies the colour; above 1 saturates its channels instead of growing
     float core = 0.0f;                // 0..1: share of the radius that stays at full strength
     LightCone cone{};
+    bool shadows = true; // Whether a LightFrame's occluders stop it
 };

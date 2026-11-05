@@ -3,6 +3,7 @@
 #include <cmath>
 #include <optional>
 #include "Graphics/Light/LightLayer.h"
+#include "Graphics/Light/LightOccluders.h"
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Paint/PaintStyle.h"
 
@@ -20,6 +21,12 @@ void DrawLightGuides(Painter& paint, const LightFrame& frame, const CameraView& 
     const float width = style.width * unit;
     const float mark = MarkSize * unit;
     const LineStyle reach{.width = width, .color = style.reach};
+    const LineStyle stops{.width = width, .color = style.occluder};
+    for (const LightOccluders* occluders : frame.occluders) {
+        if (!occluders) continue;
+        for (const VisibilityEdge& edge : occluders->Edges())
+            paint.Line(edge.a, edge.b, stops);
+    }
     for (const LightSource& light : frame.lights) {
         if (!(light.radius > 0.0f)) continue;
         const Float2 at = light.at;

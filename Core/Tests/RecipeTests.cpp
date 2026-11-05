@@ -174,6 +174,7 @@ TEST_CASE("Engine.Recipes.LightingDarkensTheWorldBeforeTheSign", "[engine][recip
     h.End();
     CHECK(h.list.Rejected() == 0);
     // The world, the lights into their image, the stamp, then the sign and the guides undarkened.
+    CHECK_FALSE(h.Draws().empty());
     const auto pipelines = h.device.CommandsOf(NullCommandType::SetPipeline);
     REQUIRE(pipelines.size() >= 4);
     CHECK(pipelines[pipelines.size() - 2]->blend == GpuBlend::Multiply);
