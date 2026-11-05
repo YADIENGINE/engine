@@ -7,156 +7,17 @@
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
 
-namespace {
-// A starting program gets pasted text once its output has been quiet this long, or after the limit.
-constexpr auto SettleTime = std::chrono::milliseconds(800);
-constexpr auto SettleLimit = std::chrono::seconds(15);
-constexpr auto ProcessPollInterval = std::chrono::milliseconds(500);
-constexpr const char* SessionEnvironment = "ENGINE_EDITOR_SESSION"; // Read by `ctl note` (Tools/commands/ctl.py)
-std::uint32_t ToRgb(const ImVec4& color) {
-    const auto channel = [](float value) { return static_cast<std::uint32_t>(value * 255.0f + 0.5f) & 0xFF; };
-    return (channel(color.x) << 16) | (channel(color.y) << 8) | channel(color.z);
-}
-TerminalPalette ConsolePalette() {
-    TerminalPalette palette;
-    palette.background = ToRgb(ToolPalette::Window);
-    palette.foreground = ToRgb(ToolPalette::Text);
-    return palette;
-}
-std::optional<double> Seconds(const std::optional<std::chrono::steady_clock::time_point>& time) {
-    if (!time) return std::nullopt;
-    return std::chrono::duration<double>(time->time_since_epoch()).count();
-}
-} // namespace
-
 // Editor shortcuts stay available while the terminal owns keyboard input.
-ConsolePanel::Session::Session(std::uint64_t sessionId, std::string sessionTitle, std::optional<AgentKind> agentKind)
-    : id(sessionId)
-    , title(std::move(sessionTitle))
-    , agent(agentKind)
-    , launchAgent(agentKind)
-    , terminal(ConsolePalette())
-    , view({ImGuiMod_Ctrl | ImGuiKey_J, ImGuiMod_Ctrl | ImGuiKey_GraveAccent,
-            ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P, ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_A}) {}
-
-void ConsolePanel::Start(Session& session, const std::string& commandLine) {
-    auto environment = _environment;
-    environment.emplace_back(SessionEnvironment, std::to_string(session.id));
-    session.terminal.Start({.commandLine = commandLine, .directory = _directory, .environment = environment});
-    session.started = std::chrono::steady_clock::now();
-    session.lastOutput.reset();
-    session.lastBell.reset();
-    session.outputBytes = 0;
-    session.agentObserved = false;
+TerminalView& ConsolePanel::ViewOf(std::uint64_t id) {
+    auto& view = _views[id];
+    if (!view)
+        view = std::make_unique<TerminalView>(std::vector<ImGuiKeyChord>{
+            ImGuiMod_Ctrl | ImGuiKey_J, ImGuiMod_Ctrl | ImGuiKey_GraveAccent,
+            ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P, ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_A});
+    return *view;
 }
-std::string ConsolePanel::NextTitle(const std::string& base) const {
-    for (int number = 1;; ++number) {
-        auto title = number == 1 ? base : std::format("{} {}", base, number);
-        if (std::ranges::none_of(_sessions, [&](const auto& session) { return session->title == title; })) return title;
-    }
-}
-ConsolePanel::Session& ConsolePanel::Add(std::string title, std::optional<AgentKind> agent,
-                                         const std::string& commandLine) {
-    auto& session = *_sessions.emplace_back(std::make_unique<Session>(_nextId++, std::move(title), agent));
-    Start(session, commandLine);
-    Select(_sessions.size() - 1);
-    return session;
-}
-void ConsolePanel::OpenShell() { Add(NextTitle("Shell"), std::nullopt, {}); }
-void ConsolePanel::AddAgent(AgentKind kind, const std::string& commandLine) {
-    Add(NextTitle(AgentKindInfo(kind).sessionName), kind, commandLine);
-}
-void ConsolePanel::Revive(std::size_t index, const std::string& commandLine) {
-    if (index >= _sessions.size()) return;
-    auto& session = *_sessions[index];
-    if (!session.terminal.Running()) {
-        if (commandLine.empty())
-            session.terminal.Restart();
-        else
-            Start(session, commandLine);
-    }
-    Select(index);
-}
-void ConsolePanel::Paste(const std::string& text) {
-    if (_sessions.empty()) OpenShell();
-    _sessions[_selected]->terminal.Paste(text);
-}
-void ConsolePanel::SendTo(std::size_t index, const std::string& text, bool submit) {
-    if (index >= _sessions.size()) return;
-    Select(index);
-    auto& session = *_sessions[index];
-    session.pendingText += text;
-    session.pendingSubmit = session.pendingSubmit || submit;
-}
-void ConsolePanel::Select(std::size_t index) {
-    if (index >= _sessions.size()) return;
-    _selected = index;
-    if (_sessions[index]->agent) _lastAgent = _sessions[index]->id;
-}
-void ConsolePanel::Close(std::size_t index) {
-    if (index >= _sessions.size()) return;
-    _sessions.erase(_sessions.begin() + static_cast<std::ptrdiff_t>(index));
-    if (_selected > index || _selected >= _sessions.size()) _selected = _sessions.empty() ? 0 : _selected - 1;
-}
-void ConsolePanel::Update() {
-    const auto now = std::chrono::steady_clock::now();
-    const bool pollProcesses = now >= _nextProcessPoll;
-    if (pollProcesses) _nextProcessPoll = now + ProcessPollInterval;
-    _focused = false; // Set again by Draw; a hidden panel draws nothing
-    for (auto& pointer : _sessions) {
-        auto& session = *pointer;
-        session.terminal.Pump();
-        if (pollProcesses && session.terminal.Running()) {
-            if (const auto processes = session.terminal.ProcessNames()) {
-                auto agent = DetectRunningAgent(*processes, session.agent);
-                if (!agent && session.launchAgent == AgentKind::Custom) agent = AgentKind::Custom;
-                if (agent) session.agentObserved = true;
-                if (agent != session.agent) {
-                    if (!agent && session.agentObserved) {
-                        session.pendingText.clear();
-                        session.pendingSubmit = false;
-                    }
-                    session.title = NextTitle(agent ? AgentKindInfo(*agent).sessionName : "Shell");
-                    session.agent = agent;
-                    session.started = now; // Old notes and activity belong to the previous application.
-                    session.lastBell.reset();
-                    if (agent && pointer == _sessions[_selected]) _lastAgent = session.id;
-                }
-            }
-        }
-        if (session.terminal.TakeBell()) session.lastBell = now;
-        if (session.terminal.OutputBytes() != session.outputBytes) {
-            session.outputBytes = session.terminal.OutputBytes();
-            session.lastOutput = now;
-        }
-        if (session.pendingText.empty() && !session.pendingSubmit) continue;
-        if (!session.agent) continue; // Never submit queued agent context to a shell prompt.
-        const bool settled = session.lastOutput && now - *session.lastOutput >= SettleTime;
-        if (!session.terminal.Running() || (!settled && now - session.started < SettleLimit)) continue;
-        if (!session.pendingText.empty()) session.terminal.Paste(session.pendingText);
-        if (session.pendingSubmit) session.terminal.SendKey(TerminalKey::Enter, {});
-        session.pendingText.clear();
-        session.pendingSubmit = false;
-    }
-}
-SessionSignals ConsolePanel::Signals(const Session& session) const {
-    const auto input = session.terminal.LastInput();
-    SessionSignals signals{.now = Seconds(std::chrono::steady_clock::now()).value_or(0),
-                           .running = session.terminal.Running(),
-                           .lastOutput = session.lastOutput && *session.lastOutput >= session.started
-                                             ? Seconds(session.lastOutput)
-                                             : std::nullopt,
-                           .lastInput = input && *input >= session.started ? Seconds(input) : std::nullopt,
-                           .lastBell = Seconds(session.lastBell)};
-    if (const auto note = _notes.find(std::to_string(session.id));
-        session.agent && note != _notes.end() && note->second.time >= session.started) {
-        signals.note = note->second.note;
-        signals.noteTime = Seconds(note->second.time);
-    }
-    return signals;
-}
-bool ConsolePanel::DrawSessionRow(std::size_t index, const ConsoleSessionInfo& info) {
-    ImGui::PushID(std::to_string(_sessions[index]->id).c_str());
+bool ConsolePanel::DrawSessionRow(ConsoleSessions& sessions, const ConsoleSessionInfo& info) {
+    ImGui::PushID(std::to_string(info.id).c_str());
     const auto start = ImGui::GetCursorScreenPos();
     const float width = ImGui::GetContentRegionAvail().x;
     const float height = ImGui::GetFrameHeight();
@@ -175,7 +36,8 @@ bool ConsolePanel::DrawSessionRow(std::size_t index, const ConsoleSessionInfo& i
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, {0, 0, 0, 0});
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, {0, 0, 0, 0});
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0, ImGui::GetStyle().ItemSpacing.y});
-    if (ImGui::Selectable("##session", info.selected, 0, {std::max(1.0f, width - height), height})) Select(index);
+    if (ImGui::Selectable("##session", info.selected, 0, {std::max(1.0f, width - height), height}))
+        sessions.Select(info.id);
     ImGui::PopStyleColor(3);
     const auto detail = info.title + "\n" + SessionStateName(info.state) +
                         (info.activity.empty() ? std::string() : "\n" + info.activity);
@@ -220,13 +82,16 @@ bool ConsolePanel::DrawSessionRow(std::size_t index, const ConsoleSessionInfo& i
     ImGui::PopID();
     return close;
 }
-std::optional<ConsoleNewSession> ConsolePanel::Draw() {
-    if (_sessions.empty()) OpenShell();
+std::optional<ConsoleNewSession> ConsolePanel::Draw(ConsoleSessions& sessions) {
+    if (sessions.Empty()) sessions.OpenShell();
     _focused = false;
-    std::optional<std::size_t> closing;
+    std::optional<std::uint64_t> closing;
     std::optional<ConsoleNewSession> request;
     bool showClose = false;
-    const auto sessions = Sessions();
+    const auto infos = sessions.Infos();
+    std::erase_if(_views, [&](const auto& entry) {
+        return std::ranges::none_of(infos, [&](const ConsoleSessionInfo& info) { return info.id == entry.first; });
+    });
     const auto origin = ImGui::GetCursorPos();
     const auto originScreen = ImGui::GetCursorScreenPos();
     const auto available = ImGui::GetContentRegionAvail();
@@ -276,13 +141,13 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
         }
         ImGui::Separator();
         if (ImGui::BeginChild("sessions")) {
-            for (std::size_t index = 0; index < sessions.size(); ++index) {
-                if (DrawSessionRow(index, sessions[index])) {
-                    if (sessions[index].agent && sessions[index].state != SessionState::Exited) {
-                        _confirmClose = index;
+            for (const auto& info : infos) {
+                if (DrawSessionRow(sessions, info)) {
+                    if (info.agent && info.state != SessionState::Exited) {
+                        _confirmClose = info.id;
                         showClose = true;
                     } else {
-                        closing = index;
+                        closing = info.id;
                     }
                 }
             }
@@ -310,34 +175,18 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw() {
         ImGui::SetItemDefaultFocus();
         ImGui::EndPopup();
     }
-    if (closing) Close(*closing);
+    if (closing) sessions.Close(*closing);
     ImGui::SetCursorPos(origin);
     if (ImGui::BeginChild("console-terminal", {terminalWidth, available.y}, ImGuiChildFlags_AlwaysUseWindowPadding,
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse) &&
-        !_sessions.empty()) {
-        auto& session = *_sessions[_selected];
-        session.view.Draw(session.terminal);
-        _focused = session.view.Focused();
+        sessions.Selected()) {
+        const auto id = *sessions.Selected();
+        if (auto* terminal = sessions.Terminal(id)) {
+            auto& view = ViewOf(id);
+            view.Draw(*terminal);
+            _focused = view.Focused();
+        }
     }
     ImGui::EndChild();
     return request;
-}
-bool ConsolePanel::Focused() const { return _focused; }
-std::vector<ConsoleSessionInfo> ConsolePanel::Sessions() const {
-    std::vector<ConsoleSessionInfo> sessions;
-    for (std::size_t index = 0; index < _sessions.size(); ++index) {
-        const auto& session = *_sessions[index];
-        const auto signals = Signals(session);
-        sessions.push_back({session.title, session.agent, SessionStateOf(signals),
-                            session.agent ? SessionActivityText(signals, session.terminal.Title()) : std::string{},
-                            index == _selected});
-    }
-    return sessions;
-}
-std::optional<std::size_t> ConsolePanel::AgentSession() const {
-    if (_selected < _sessions.size() && _sessions[_selected]->agent) return _selected;
-    const auto found = std::ranges::find_if(
-        _sessions, [&](const auto& session) { return session->id == _lastAgent && session->agent.has_value(); });
-    if (found == _sessions.end()) return std::nullopt;
-    return static_cast<std::size_t>(found - _sessions.begin());
 }

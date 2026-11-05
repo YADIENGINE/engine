@@ -9,6 +9,7 @@
 #include <string>
 #include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
+#include "Editor/Internals/Agent/AgentReport.h"
 #include "Editor/Internals/Git/GitTypes.h"
 #include "Editor/Internals/Session/AudioUsage.h"
 #include "Editor/Internals/Session/AudioWaveformCache.h"
@@ -63,6 +64,10 @@ struct AudioPreviewState {
     std::uint64_t handled = 0; // Requests the host has carried out, counting from 1
 };
 
+// What an entry of the agents' activity is: a command (open, action, playback, ...), a changed parameter, a capture or
+// an agent's own note.
+enum class EditorControlEventKind { Command, Change, Capture, Note };
+
 // Something an agent tool did through the control endpoint.
 struct EditorControlEvent {
     std::chrono::system_clock::time_point time;
@@ -72,6 +77,9 @@ struct EditorControlEvent {
     std::string parameter;
     std::optional<SceneValue> previous;
     std::filesystem::path file; // A screenshot it took
+    EditorControlEventKind kind = EditorControlEventKind::Command;
+    // The Console session that sent it (ENGINE_EDITOR_SESSION, see EditorAgentReport); "" from outside the Console.
+    std::string session;
 };
 
 // The open scene's simulation, for the toolbar.
@@ -116,6 +124,8 @@ struct EditorSnapshot {
     std::uint64_t controlAttempt =
         0; // Build & Refresh attempt started through the control endpoint                  // Seconds since it was made
     const GitSnapshot* git = nullptr; // Source control; null without a project
+    // Agents' notes, tool lines and who holds the editor (EditorControlService); null without a control endpoint.
+    const EditorAgentReport* agents = nullptr;
 };
 
 enum class AudioPreviewAction { Play, Pause, Resume, Stop, Seek, Volume, Loop };

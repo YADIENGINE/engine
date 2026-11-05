@@ -148,6 +148,9 @@ FrameCaptureOptions CaptureOptionsOf(const nlohmann::json& arguments, Vec2 canva
     return options;
 }
 std::string Describe(const SceneValue& value) { return ControlValue(value).dump(); }
+double Now() { return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+constexpr const char* LookFirst =
+    "so the scene may not be as you left it. Check it with: python Engine ctl status, then retry";
 } // namespace
 
 EditorControlService::EditorControlService(const std::filesystem::path& buildDirectory, EditorCaptureHost host)
@@ -170,52 +173,142 @@ void EditorControlService::Tick(EditorController& controller) {
         for (const auto& line : _pipe.Poll())
             Handle(line, controller);
         Poll(controller);
-        if (!_watch) return;
-        if (!_pipe.Connected() || _pipe.Client() != _watch->client) {
-            _watch.reset(); // The client left; the attempt goes on without it
-            return;
+        if (_watch) {
+            if (!_pipe.Connected(_watch->from.client)) {
+                _watch.reset(); // The client left; the attempt goes on without it
+            } else {
+                _current = _watch->from;
+                controller.SetControlSource(_current.session);
+                Stream(controller);
+            }
         }
-        Stream(controller);
     } catch (const std::exception& error) {
         _watch.reset();
-        _pending.reset();
+        _pending.clear();
         controller.Log(std::string("Control endpoint: ") + error.what(), EditorLogLevel::Warning);
     }
+    // A held command still being answered (a build, a long seek) keeps its session from looking idle.
+    const double now = Now();
+    for (const auto& [client, pending] : _pending)
+        if (pending.from.holds) _lease.Touch(pending.from.session, now);
+    if (_watch && _watch->from.holds) _lease.Touch(_watch->from.session, now);
+    UpdateReport();
 }
-void EditorControlService::Handle(std::string_view line, EditorController& controller) {
+bool EditorControlService::Busy(std::uint64_t client) const {
+    return _pending.contains(client) || (_watch && _watch->from.client == client);
+}
+void EditorControlService::Handle(const EditorControlPipe::Line& line, EditorController& controller) {
+    if (Busy(line.client)) {
+        _pipe.Send(line.client, EncodeControlError("The editor is still answering this connection's last request"));
+        return;
+    }
+    _current = {line.client, {}, false};
     try {
-        if (_watch || _pending) throw std::runtime_error("The editor is still answering the previous request");
-        const auto request = DecodeControlRequest(line);
-        if (auto answer = Run(request, controller)) _pipe.Send(EncodeControlReply(std::move(*answer)));
+        const auto request = DecodeControlRequest(line.text);
+        _current.session = request.session;
+        controller.SetControlSource(request.session);
+        if (auto answer = Run(request, controller)) {
+            if (_current.holds) _lease.Touch(_current.session, Now());
+            _pipe.Send(line.client, EncodeControlReply(std::move(*answer)));
+        }
     } catch (const std::exception& error) {
-        _pending.reset();
-        _pipe.Send(EncodeControlError(error.what()));
+        _pending.erase(line.client);
+        if (_watch && _watch->from.client == line.client) _watch.reset();
+        _pipe.Send(line.client, EncodeControlError(error.what()));
     }
 }
 void EditorControlService::Poll(EditorController& controller) {
-    if (!_pending) return;
-    if (!_pipe.Connected() || _pipe.Client() != _pending->client) {
-        _pending.reset(); // The client left; what it started goes on
-        return;
-    }
-    try {
-        if (auto answer = _pending->poll(controller)) {
-            _pending.reset();
-            _pipe.Send(EncodeControlReply(std::move(*answer)));
-        } else if (std::chrono::steady_clock::now() >= _pending->deadline) {
-            const auto waited = _pending->waitingFor;
-            _pending.reset();
-            _pipe.Send(EncodeControlError("Timed out waiting for " + waited));
+    const auto now = std::chrono::steady_clock::now();
+    for (auto entry = _pending.begin(); entry != _pending.end();) {
+        auto& pending = entry->second;
+        const auto client = pending.from.client;
+        if (!_pipe.Connected(client)) { // The client left; what it started goes on
+            entry = _pending.erase(entry);
+            continue;
         }
-    } catch (const std::exception& error) {
-        _pending.reset();
-        _pipe.Send(EncodeControlError(error.what()));
+        _current = pending.from;
+        controller.SetControlSource(pending.from.session);
+        std::optional<std::string> reply;
+        try {
+            if (auto answer = pending.poll(controller))
+                reply = EncodeControlReply(std::move(*answer));
+            else if (now >= pending.deadline)
+                reply = EncodeControlError("Timed out waiting for " + pending.waitingFor);
+        } catch (const std::exception& error) {
+            reply = EncodeControlError(error.what());
+        }
+        if (!reply) {
+            ++entry;
+            continue;
+        }
+        if (pending.from.holds) _lease.Touch(pending.from.session, Now());
+        entry = _pending.erase(entry);
+        _pipe.Send(client, *reply);
     }
 }
 void EditorControlService::Await(std::string waitingFor, std::chrono::steady_clock::duration timeout,
                                  std::function<std::optional<nlohmann::json>(EditorController&)> poll) {
-    _pending =
-        Pending{_pipe.Client(), std::chrono::steady_clock::now() + timeout, std::move(waitingFor), std::move(poll)};
+    _pending[_current.client] =
+        Pending{_current, std::chrono::steady_clock::now() + timeout, std::move(waitingFor), std::move(poll)};
+}
+void EditorControlService::TakeHold(Requester& from) {
+    const auto running = std::ranges::find_if(_pending, [](const auto& entry) { return entry.second.from.holds; });
+    if (running != _pending.end() || (_watch && _watch->from.holds)) {
+        const auto& other = running != _pending.end() ? running->second.from.session : _watch->from.session;
+        throw std::runtime_error(
+            std::format("The editor is still carrying out a request from {}; retry when it has answered",
+                        other == from.session ? std::string("you") : NameOf(other)));
+    }
+    if (const auto refused = _lease.Take(from.session, Now())) {
+        switch (refused->refusal) {
+        case ControlLease::Refusal::Held:
+            throw std::runtime_error(std::format(
+                "{} is using the editor (last command {:.0f} s ago); it is free after {:.0f} s without commands. "
+                "Meanwhile use commands that only look (status, inspect, logs) or work that needs no editor, then "
+                "retry",
+                NameOf(refused->other), refused->idle, ControlLease::IdleSeconds));
+        case ControlLease::Refusal::Developer:
+            throw std::runtime_error(std::string("The developer used the editor since your last command, ") +
+                                     LookFirst);
+        case ControlLease::Refusal::Taken:
+            throw std::runtime_error(std::format("{} used the editor after you were idle for {:.0f} s, {}",
+                                                 NameOf(refused->other), ControlLease::IdleSeconds, LookFirst));
+        }
+    }
+    from.holds = true;
+}
+std::string EditorControlService::NameOf(const std::string& session) const {
+    if (session.empty()) return "An agent outside the editor's Console";
+    if (const auto found = _sessionTitles.find(session); found != _sessionTitles.end()) return found->second;
+    return "Console session " + session;
+}
+void EditorControlService::SetConsoleSessions(std::map<std::string, std::string> titles) {
+    // A session that was live and is not any more (closed, or its program exited) gives up the editor quietly.
+    for (const auto& [session, title] : _sessionTitles)
+        if (!titles.contains(session)) _lease.Forget(session);
+    _sessionTitles = std::move(titles);
+}
+void EditorControlService::UpdateReport() {
+    _report.control = _agentControl;
+    _report.visualChecks = _visualChecks;
+    _report.hold.reset();
+    if (const auto hold = _lease.Holder(Now())) _report.hold = AgentEditorHold{hold->client, hold->idle};
+}
+void EditorControlService::Note(const EditorControlRequest& request, EditorController& controller) {
+    auto note = DecodeAgentNote(request.arguments);
+    note.session = request.session;
+    auto& session = _report.sessions[note.session];
+    session.note = note;
+    session.noteTime = std::chrono::steady_clock::now();
+    if (note.text.empty()) return;
+    if (note.live) {
+        session.tools.push_back({std::chrono::system_clock::now(), note.text});
+        ++session.toolCount;
+        if (session.tools.size() > AgentToolsKept) session.tools.pop_front();
+        return;
+    }
+    controller.RecordControl(
+        {std::chrono::system_clock::now(), note.text, {}, {}, {}, {}, EditorControlEventKind::Note});
 }
 void EditorControlService::AwaitWorker(EditorController& controller, std::chrono::steady_clock::duration timeout,
                                        Answer answer) {
@@ -225,7 +318,8 @@ void EditorControlService::AwaitWorker(EditorController& controller, std::chrono
               const auto snapshot = session.Snapshot();
               if (!snapshot.ready) throw std::runtime_error("The scene stopped: " + snapshot.status);
               const auto& sync = session.LastSync();
-              if (sync.request != request || sync.frames < FramesAfterSync) return std::nullopt;
+              // Another client's later sync answers for this request too: the worker applies them in order.
+              if (sync.request < request || sync.frames < FramesAfterSync) return std::nullopt;
               return answer(session);
           });
 }
@@ -246,12 +340,17 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
         throw std::runtime_error("Agent control is off in the editor (Agent menu); ask the developer to turn it on");
     if (!_visualChecks && ControlCommandCaptures(request.command))
         throw std::runtime_error(std::string(VisualChecksOffText));
+    if (ControlCommandNeedsHold(request.command)) TakeHold(_current);
     switch (request.command) {
     case EditorControlCommand::Refresh: Refresh(controller); return std::nullopt;
     case EditorControlCommand::Status : {
         auto status = StatusOf(controller);
         status["control"] = _agentControl;
         status["visualChecks"] = _visualChecks;
+        if (const auto hold = _lease.Holder(Now()))
+            status["hold"] = {{"by", NameOf(hold->client)},
+                              {"yours", hold->client == request.session},
+                              {"idleSeconds", std::round(hold->idle)}};
         return status;
     }
     case EditorControlCommand::List: {
@@ -305,7 +404,8 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
                  definition.id,
                  id,
                  previous,
-                 {}});
+                 {},
+                 EditorControlEventKind::Change});
             controller.Parameter(id, value);
             notice += " " + id + "=" + Describe(value);
         }
@@ -473,14 +573,12 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
         return nlohmann::json{{"entries", entries}, {"last", last}};
     }
     case EditorControlCommand::Note: {
-        _activity = {DecodeAgentNote(arguments), std::chrono::steady_clock::now(), _activity.sequence + 1};
-        if (!_activity.note.session.empty()) _sessionActivity[_activity.note.session] = _activity;
-        if (!_activity.note.text.empty() && !_activity.note.live)
-            controller.RecordControl({std::chrono::system_clock::now(), _activity.note.text, {}, {}, {}, {}});
-        return nlohmann::json{{"state", AgentActivityName(_activity.note.state)},
-                              {"text", _activity.note.text},
-                              {"control", _agentControl}};
+        Note(request, controller);
+        const auto& note = *_report.sessions.at(request.session).note;
+        return nlohmann::json{
+            {"state", AgentActivityName(note.state)}, {"text", note.text}, {"control", _agentControl}};
     }
+    case EditorControlCommand::Release     : return nlohmann::json{{"released", _lease.Release(request.session)}};
     case EditorControlCommand::Audio       : return AudioStatus(controller);
     case EditorControlCommand::AudioControl:
         if (Text(arguments, "action") == "capture") {
@@ -609,8 +707,13 @@ std::filesystem::path EditorControlService::WriteCapture(const ViewportPixels& i
 }
 nlohmann::json EditorControlService::Saved(const std::filesystem::path& file, const ViewportPixels& image,
                                            EditorController& controller) {
-    controller.RecordControl(
-        {std::chrono::system_clock::now(), "Screenshot " + WorkerUtf8(file.filename().wstring()), {}, {}, {}, file});
+    controller.RecordControl({std::chrono::system_clock::now(),
+                              "Screenshot " + WorkerUtf8(file.filename().wstring()),
+                              {},
+                              {},
+                              {},
+                              file,
+                              EditorControlEventKind::Capture});
     auto status = StatusOf(controller);
     status["path"] = WorkerUtf8(file.wstring());
     status["width"] = image.width;
@@ -692,7 +795,7 @@ void EditorControlService::Frames(const nlohmann::json& arguments, EditorControl
               const auto current = session.Snapshot();
               if (!current.ready) throw std::runtime_error("The scene stopped: " + current.status);
               const auto& sync = session.LastSync();
-              if (sync.request != run->request || sync.frames < FramesAfterSync) return std::nullopt;
+              if (sync.request < run->request || sync.frames < FramesAfterSync) return std::nullopt;
               const auto frame = session.LatestFrame();
               if (!frame) throw std::runtime_error("No frame to capture");
               run->tiles.push_back(CaptureFrame(*frame, current.canvas, options));
@@ -721,7 +824,7 @@ void EditorControlService::Refresh(EditorController& controller) {
         controller.MarkControlAttempt();
         controller.Notify("Build & Refresh");
     }
-    _watch = Watch{_pipe.Client(), controller.Diagnostics().Attempt().id, 0};
+    _watch = Watch{_current, controller.Diagnostics().Attempt().id, 0};
     Stream(controller);
 }
 void EditorControlService::Stream(EditorController& controller) {
@@ -733,11 +836,11 @@ void EditorControlService::Stream(EditorController& controller) {
     }
     for (const auto& entry : diagnostics.AttemptEntries()) {
         if (entry.sequence <= _watch->sentSequence) continue;
-        _pipe.Send(EncodeControlLog(entry));
+        _pipe.Send(_watch->from.client, EncodeControlLog(entry));
         _watch->sentSequence = entry.sequence;
     }
     if (attempt.result == EditorBuildResult::Running || attempt.result == EditorBuildResult::None) return;
-    _pipe.Send(EncodeControlResult(attempt.result));
+    _pipe.Send(_watch->from.client, EncodeControlResult(attempt.result));
     if (attempt.result == EditorBuildResult::BuildFailed || attempt.result == EditorBuildResult::RefreshFailed)
         controller.Notify("Build & Refresh failed; see Output");
     _watch.reset();

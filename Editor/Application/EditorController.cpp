@@ -327,6 +327,7 @@ void EditorController::Notify(const std::string& text, bool record) {
 }
 void EditorController::RecordControl(EditorControlEvent event) {
     constexpr std::size_t ControlEventsKept = 500;
+    event.session = _controlSource;
     _controlEvents.push_back(std::move(event));
     ++_controlEventCount;
     if (_controlEvents.size() > ControlEventsKept) _controlEvents.pop_front();

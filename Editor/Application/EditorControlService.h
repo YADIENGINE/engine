@@ -13,6 +13,8 @@
 #include <string_view>
 #include <vector>
 #include "Editor/Application/EditorController.h"
+#include "Editor/Internals/Agent/AgentReport.h"
+#include "Editor/Internals/Agent/ControlLease.h"
 #include "Editor/Internals/Platform/Windows/EditorControlPipe.h"
 #include "Editor/Internals/Protocol/EditorControlProtocol.h"
 #include "Editor/Internals/Session/FrameCapture.h"
@@ -22,6 +24,11 @@
 // running, and streams that attempt's log lines and its result. The other commands drive and observe the session the
 // way its panels do; a change shows a notice over the viewport. Answers that depend on the worker wait until it has
 // applied every earlier command and drawn a frame after that, so a screenshot never shows a stale state.
+//
+// Several clients are answered at once (EditorControlPipe), each one request at a time. Commands that change or
+// capture the editor go through ControlLease: one session holds the editor, and only one such command runs at a time;
+// observing commands and notes always answer.
+
 // What the host (the editor window) provides for captures.
 struct EditorCaptureHost {
     std::function<std::vector<std::byte>(const ViewportPixels&, const std::vector<FrameCaptureLabel>&)> encodePng;
@@ -54,31 +61,43 @@ public:
     // Off: captures are refused (ControlCommandCaptures); the developer's "Visual checks" switch.
     void SetVisualChecks(bool allowed) { _visualChecks = allowed; }
     void SetAudioHost(EditorAudioHost host) { _audio = std::move(host); }
-    // A `ctl note`; `sequence` grows with each note.
-    struct Activity {
-        AgentNote note;
-        std::chrono::steady_clock::time_point time;
-        std::uint64_t sequence = 0;
-    };
-    // The latest note of each Console session, by its ENGINE_EDITOR_SESSION id.
-    [[nodiscard]] const std::map<std::string, Activity>& SessionActivity() const { return _sessionActivity; }
+    // The Console's live sessions, id → title ("Codex 2"), set every frame. Refusals name the holder by its title; a
+    // session that leaves this list (closed, or its program exited) gives up the editor.
+    void SetConsoleSessions(std::map<std::string, std::string> titles);
+    // The developer changed the editor (scene, parameter, playback, ...): the holder loses the editor (ControlLease).
+    void DeveloperUsedEditor() { _lease.DeveloperUsed(); }
+    // Notes, tool lines and who holds the editor, updated every Tick.
+    [[nodiscard]] const EditorAgentReport& Report() const { return _report; }
 
 private:
-    struct Watch {
+    // The client a request came from: its connection, its session, and whether the command needs the hold.
+    struct Requester {
         std::uint64_t client = 0;
+        std::string session;
+        bool holds = false;
+    };
+    struct Watch {
+        Requester from;
         std::uint64_t attempt = 0;
         std::uint64_t sentSequence = 0;
     };
     // An answer that waits for the session: `poll` returns it once ready, throws to fail, or is abandoned at the
     // deadline.
     struct Pending {
-        std::uint64_t client = 0;
+        Requester from;
         std::chrono::steady_clock::time_point deadline;
         std::string waitingFor;
         std::function<std::optional<nlohmann::json>(EditorController&)> poll;
     };
     using Answer = std::function<nlohmann::json(EditorController&)>;
-    void Handle(std::string_view line, EditorController& controller);
+    void Handle(const EditorControlPipe::Line& line, EditorController& controller);
+    // Refuses a command that needs the hold when another such command runs or another session holds the editor.
+    void TakeHold(Requester& from);
+    // How a refusal or the status names a session: its Console title, or what a client outside the Console is.
+    [[nodiscard]] std::string NameOf(const std::string& session) const;
+    [[nodiscard]] bool Busy(std::uint64_t client) const;
+    void Note(const EditorControlRequest& request, EditorController& controller);
+    void UpdateReport();
     // Returns the immediate answer, or nothing when the command left a Pending.
     [[nodiscard]] std::optional<nlohmann::json> Run(const EditorControlRequest& request, EditorController& controller);
     void Refresh(EditorController& controller);
@@ -103,10 +122,12 @@ private:
     std::filesystem::path _captures;
     EditorCaptureHost _host;
     EditorAudioHost _audio;
-    std::optional<Watch> _watch;
-    std::optional<Pending> _pending;
-    Activity _activity;
-    std::map<std::string, Activity> _sessionActivity;
+    std::optional<Watch> _watch;               // At most one refresh streams at a time
+    std::map<std::uint64_t, Pending> _pending; // By client
+    Requester _current;                        // The request being run (Handle) or answered (Poll)
+    ControlLease _lease;
+    std::map<std::string, std::string> _sessionTitles;
+    EditorAgentReport _report;
     bool _agentControl = true;
     bool _visualChecks = true;
 

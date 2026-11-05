@@ -220,7 +220,7 @@ editor context; it never calls a model itself. The agent drives the editor back 
   output went quiet after a request, *idle* before anyone typed into it, *exited* when the program ended. An agent's
   own `python Engine ctl note TEXT --state working|waiting|idle` from that session overrides the guess until you type
   again; its text, else the terminal title the CLI sets, is what the session shows on hover. Each session's program
-  gets `ENGINE_EDITOR_SESSION`, which `ctl note` sends along. Working shows a clock; waiting shows a pulsing question
+  gets `ENGINE_EDITOR_SESSION`, which every `ctl` request sends along. Working shows a clock; waiting shows a pulsing question
   mark in the warning color; done shows a green check. Idle has no state icon, and exited rows are dimmed.
 - **Opening an agent:** Ctrl+Shift+A opens the chosen CLI in the project folder, or selects its session, including
   from Console. The session's shell stays open after the CLI exits. On first use, a setup modal lets you choose
@@ -258,6 +258,9 @@ editor context; it never calls a model itself. The agent drives the editor back 
   screenshots. A changed parameter has *Undo* while its scene stays open and the value is still the agent's; a
   screenshot has *Open*; *Open session* shows the agent's session. Without a Console session, the strip still shows
   activity from agents elsewhere, in neutral. The status bar keeps the *Agent control off* warning.
+- **Several agents:** one session at a time may change or capture the editor; another one's such command is refused
+  until the holder has been idle for 60 s ([Several agents](Automation.md#several-agents)). Your own use of the editor
+  is never refused and ends an agent's hold.
 - **Agent layout** (Window → Layouts): the Viewport takes 60% of the width beside a tall 40% column shared by Console
   and Inspector, with Console selected in front. The Viewport remains larger at 1440×900 and 2560×1440.
 

@@ -79,9 +79,11 @@ Tools reach an open editor through a local named pipe (`Internals/Protocol/Edito
 `Internals/Platform/Windows/EditorControlPipe`, `Application/EditorControlService`). While running, the editor announces
 the pipe name in `EngineEditor.control.json` in the build directory (`version`, `pipe`, `pid`); on exit, it removes the
 file if it still owns it. Its Console starts the shell with `ENGINE_EDITOR_CONTROL` set to the pipe, which tools prefer
-over the announcement. Messages are one JSON object per line (UTF-8, `\n`); version is `EditorControlVersion` (2). A
-client sends `{"version": 2, "command": "...", ...arguments}` and reads until `result` or `error`; only one client
-connects at a time, and one request is answered at a time.
+over the announcement. Messages are one JSON object per line (UTF-8, `\n`); version is `EditorControlVersion` (4). A
+client sends `{"version": 4, "command": "...", "session": "...", ...arguments}` and reads until `result` or `error`.
+`session` is the sender's Console session (`ENGINE_EDITOR_SESSION`), absent outside the Console. The pipe has 8
+instances, so 8 clients are answered side by side, each one request at a time; `Internals/Agent/ControlLease` lets one
+session at a time run commands that change or capture ([Several agents](Automation.md#several-agents)).
 
 | Request | Responses |
 | --- | --- |
@@ -89,9 +91,9 @@ connects at a time, and one request is answered at a time.
 | Automation commands | One `{"type": "result", ...}` ([Editor automation](Automation.md)) |
 | invalid / unknown / refused | `{"type": "error", "text"}` |
 
-Answers that depend on the worker wait (`EditorControlService` keeps one pending answer): the service sends `sync`, the
-worker answers `synced` once every earlier message has applied, and the answer is built from the second frame received
-after that. `seek` makes the worker pause, lift its frame limit and skip readback while it steps playback in 1/60 s
+Answers that depend on the worker wait (`EditorControlService` keeps one pending answer per client): the service sends
+`sync`, the worker answers `synced` once every earlier message has applied, and the answer is built from the second frame
+received after that. A later client's `sync` answers for an earlier one too. `seek` makes the worker pause, lift its frame limit and skip readback while it steps playback in 1/60 s
 increments; messages behind it wait until it arrives. The worker records actions since open / reset with their playback
 time and re-runs them when a rewind passes them again. Changes go through `EditorController` like panel actions and set
 the viewport notice.

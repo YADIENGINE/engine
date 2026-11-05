@@ -13,7 +13,7 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 
 | Command | Answer |
 | --- | --- |
-| `status` | `editor` (`open`), `phase`, `status`, `ready`, `building`, `scene`, `control`; while ready also `paused`, `speed`, `seconds`, `canvas`; a scene with a simulation adds `step`, `stepsPerSecond`, `tapeSteps`, `replay` (`live` or `playing`) and, when a loaded replay differs, `mismatch`; with no scene a `next` hint |
+| `status` | `editor` (`open`), `phase`, `status`, `ready`, `building`, `scene`, `control`, `visualChecks`; `hold` (`by`, `yours`, `idleSeconds`) while a session holds the editor ([Several agents](#several-agents)); while ready also `paused`, `speed`, `seconds`, `canvas`; a scene with a simulation adds `step`, `stepsPerSecond`, `tapeSteps`, `replay` (`live` or `playing`) and, when a loaded replay differs, `mismatch`; with no scene a `next` hint |
 | `list` | `scenes`: id, name, category, `parameters` (id, kind, apply, current `value`, range or `choices`, `applyAction` when set), `actions` (`primary` when set). `--brief`: only id, name, category |
 | `find WORD... [--limit N]` | `matches` (best N, default 5): id, name, category, `matched`, `set` (choices the words select), `action`, `commands` that open it, compact `parameters`, `actions`; `more` when cut ([Finding a scene](#finding-a-scene)) |
 | `describe ID` | `scene`: that scene's `list` entry; exit 1 with close ids when unknown |
@@ -34,14 +34,15 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 | `frames --from A --to B [--count N] [--columns C] [--steps] [--out PATH] [--scale S] [--crop X Y W H]` | One grid PNG of N frames between A and B seconds, or simulation steps with `--steps` (pauses there); status + `path`, `frames` (times), `columns` ([Animation](#screenshots)) |
 | `inspect` | Status + `inspection` (readout values, tables, focus, disabled controls) |
 | `logs [--since N] [--limit N] [--level L]` | `entries` (sequence, level, source, text) after N, newest `limit` (100, max 1000) at or above L; `last` sequence |
-| `note [WORD...] [--state working\|waiting\|idle] [--hook] [--tool-stdin]` | Reports what the agent is doing (default `working`); `--hook`: see Agent hooks below. Run from a Console session (`ENGINE_EDITOR_SESSION` set, sent as `session`), it sets that session's state and hover text until the developer types into it again. `state`, `text` (up to 200 bytes), `control` |
+| `note [WORD...] [--state working\|waiting\|idle] [--hook] [--tool-stdin]` | Reports what the agent is doing (default `working`); `--hook`: see Agent hooks below. Run from a Console session, it sets that session's state and hover text until the developer types into it again. `state`, `text` (up to 200 bytes), `control` |
+| `release` | Gives up this session's hold on the editor at once ([Several agents](#several-agents)); `released` (false when it held nothing) |
 | `audio` | The Audio Preview panel: `loaded`, `catalog` (whether a worker has reported the audio catalog), `loop`, `volume`; with a sound also `file`, `asset` (path in the asset folder), `playing`, `paused`, `position`, `length` (seconds), `waveform` (`decoding` / `ready` / `failed`), `uses` (catalog entries: kind, id, name, label), `error` |
 | `audio play FILE [--at S] [--loop\|--no-loop]` | Loads the sound into Audio Preview (shown if hidden) and plays it from its source file; the scene is not touched. FILE is absolute or relative to the current folder, project root or asset folder. Answers the `audio` state once playing; exit 1 when it cannot be loaded |
 | `audio pause`, `resume`, `stop`, `seek S`, `volume V`, `loop on\|off` | The loaded sound's transport; `seek` starts a stopped sound there, `volume` is 0–1; the `audio` state |
 | `refresh` (top-level command) | Build & Refresh; streams build output ([Tools contract](../ToolsContract.md)) |
 
 Exit codes: 0 answered; 1 the editor refused the request (`error: ...` on stderr: unknown scene, invalid value, not
-running, timed out, agent control off); 2 no editor or wrong arguments.
+running, timed out, agent control off, another session holds the editor); 2 no editor or wrong arguments.
 
 **Agent hooks:** an agent CLI's own events report a session's state more reliably than the editor's guess (input,
 output, terminal bell). `ctl note --hook` is made for them: it prints nothing, always exits 0 (Claude Code blocks a
@@ -56,7 +57,7 @@ prompt or a stop on exit 2) and does nothing outside an editor Console session. 
     "PostToolUse": [{"hooks": [{"type": "command", "shell": "bash", "timeout": 10, "async": true,
       "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --tool-stdin --state working"}]}],
     "Notification": [{"matcher": "permission_prompt", "hooks": [{"type": "command", "shell": "bash", "timeout": 10,
-      "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --state | `note [WORD...] [--state working|waiting|idle] [--hook]` |"}]}],
+      "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --state waiting"}]}],
     "Stop": [{"hooks": [{"type": "command", "shell": "bash", "timeout": 10,
       "command": "python \"$CLAUDE_PROJECT_DIR/Engine\" ctl note --hook --state idle"}]}]
   }
@@ -65,7 +66,8 @@ prompt or a stop on exit 2) and does nothing outside an editor Console session. 
 
 `permission_prompt` keeps Claude Code's idle reminder from showing as a question; PostToolUse returns the session to
 working after an approval, and with `--tool-stdin` also names the tool from the hook's JSON on stdin ("Edit
-Player.cpp"). That text is live: the toolbar's agent strip shows it, the activity list does not keep it. An interrupted turn (Esc) runs no Stop hook; the state follows your next input. Codex runs
+Player.cpp"). That text is live: the toolbar's agent strip shows it, and the session keeps its last 100 tools apart
+from the activity list. An interrupted turn (Esc) runs no Stop hook; the state follows your next input. Codex runs
 `notify` (in `~/.codex/config.toml`) only when a turn completes:
 `notify = ["python", "<project>/Engine", "ctl", "note", "--hook", "--state", "idle"]` (the JSON payload it appends is
 ignored).
@@ -112,12 +114,37 @@ Use `describe ID` when the compact `parameters` are not enough; `list` is the wh
   the tape holds input and actions, and `seek --step` lands on an exact step. Hitstop makes seconds and steps drift apart,
   so prefer steps in such a scene.
 - **Visible changes:** each state-changing command shows "Control: ..." over the viewport for a few seconds and is logged
-  in Output. The developer's own input keeps working; the editor does not lock.
+  in Output. The developer's own input keeps working; the editor never locks the developer out.
+- **One agent at a time changes the editor:** see [Several agents](#several-agents).
 - **No blocking dialogs:** a Build & Refresh started through the endpoint (`refresh`) reports a failure to its client
   and as a notice; it does not open the failure dialog. A newer attempt closes a dialog left from an older one.
 - **The right editor:** the editor's Console starts its shell with `ENGINE_EDITOR_CONTROL` (that editor's pipe), so
   commands from the Console reach it even when several editors are open. Elsewhere the build directory's
   `EngineEditor.control.json` announcement is used.
+
+## Several agents
+
+The editor has one scene, one playhead and one Audio Preview. Two agents taking turns would act on each other's state:
+one opens a scene, the other opens another, and the first one's screenshot shows the second one's scene. So the editor
+lets one session at a time change or capture it.
+
+- **Who asks:** every request names its Console session (`ENGINE_EDITOR_SESSION`, which the editor gives each Console
+  session's program; `ctl` and `refresh` send it as `session`). Every client outside the Console counts as one session:
+  run parallel agents in Console sessions.
+- **The hold:** a command that changes or captures the editor (`open`, `set`, `action`, playback, `seek`, `replay`,
+  `screenshot`, `frames`, `refresh`, `audio` with an action) takes the hold for its session. Another session's such
+  command is refused with exit 1 and names the holder, while the holder's command is being answered and for 60 s after
+  its last one. Then anyone may take it. `ctl release` frees it at once; a Console session that closes or exits frees it
+  too. Commands that only look (`status`, `list`, `find`, `describe`, `inspect`, `logs`, plain `audio`) and `note`
+  always answer; `status` shows the hold under `hold`.
+- **A lost hold is said once:** when the developer used the editor (a scene, a parameter, playback, tuning, a sound)
+  since a session's last command, or another session took the editor while it was idle, that session's next command is
+  refused once, saying so. Check with `status`, then retry.
+- **The developer is never refused.** Their own use ends an agent's hold.
+- **Connections:** up to 8 clients are connected at once, so a status or note is answered during another agent's build
+  or long seek. One connection has one request at a time, and one command that needs the hold runs at a time.
+
+Design record: `Docs/Design/README.md` → D43 (engine repository).
 
 ## Screenshots
 
@@ -161,6 +188,5 @@ A failed `refresh`, `build`, `test` or `editor` build prints `Errors (N):` after
 
 ## Limits
 
-One request at a time: a second client waits up to 5 s while another is being answered (a `refresh` holds the endpoint
-until its build ends). Commands that need a running scene fail while a profiler run owns it. Waiting for a scene to
+Up to 8 connections at once; a ninth client waits up to 5 s for a free one. Commands that need a running scene fail while a profiler run owns it. Waiting for a scene to
 start times out after 90 s; other waits after 15 s (`seek` adds time for long seeks).

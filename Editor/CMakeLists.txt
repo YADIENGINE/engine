@@ -38,6 +38,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/AgentContext.cpp
     Internals/Session/QuickOpen.cpp
     Internals/Agent/AgentProfile.cpp
+    Internals/Agent/ControlLease.cpp
     Internals/Agent/SessionActivity.cpp
     Internals/Git/GitAttention.cpp
     Internals/Git/GitClient.cpp
@@ -107,6 +108,7 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Panels/Inspector/TuningInspector.cpp
         Ui/Panels/Output/OutputPanel.cpp
         Ui/Panels/Console/ConsolePanel.cpp
+        Ui/Panels/Console/ConsoleSessions.cpp
         Ui/Panels/Git/GitDiffView.cpp
         Ui/Panels/Git/GitDrawer.cpp)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)

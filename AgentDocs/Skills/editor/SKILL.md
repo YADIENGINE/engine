@@ -39,4 +39,6 @@ and `python Engine ctl seek SECONDS`.
   simulation plays with input without a window (`AgentDocs/Skills/simulation/SKILL.md`), and `ctl replay load` shows the run.
 - The developer can use the editor at the same time; your changes show as viewport notices. If a command is refused
   with "agent control is off", the developer has locked the editor: ask before continuing.
+- Another agent may be using the editor: a refusal names it. Work without the editor meanwhile, then retry. After your
+  last editor step, run `python Engine ctl release` so others need not wait.
 - To change what you see, use `AgentDocs/Skills/visual-change/SKILL.md`.

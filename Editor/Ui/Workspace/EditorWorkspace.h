@@ -35,7 +35,7 @@ public:
     // Shown at the menu bar's far end.
     void SetProjectName(std::string name) { _projectName = std::move(name); }
     // Konsolun kabuğu bu klasörde başlar (proje kökü).
-    void SetConsoleDirectory(const std::filesystem::path& directory) { _console.SetDirectory(directory); }
+    void SetConsoleDirectory(const std::filesystem::path& directory) { _sessions.SetDirectory(directory); }
     void SetAssetRoots(const std::filesystem::path& engineDirectory, const std::filesystem::path& assetsDirectory) {
         _assets.SetRoots(engineDirectory, assetsDirectory);
         _audioPreview.SetRoots(engineDirectory, assetsDirectory);
@@ -47,14 +47,11 @@ public:
     // Shows the Console and pastes `text` into the agent session, starting the chosen agent CLI when needed; `submit`
     // presses Enter after it. Returns a problem for the log (empty when none).
     [[nodiscard]] std::string SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences);
-    // The sessions' latest `ctl note`s and the control switch (set by the host every frame).
-    void SetAgentReport(std::map<std::string, ConsoleNote> notes, bool control) {
-        _console.SetNotes(std::move(notes));
-        _agentControl = control;
-    }
     void SetConsoleEnvironment(std::vector<std::pair<std::string, std::string>> environment) {
-        _console.SetEnvironment(std::move(environment));
+        _sessions.SetEnvironment(std::move(environment));
     }
+    // The Console's sessions, also for the host (it tells the control endpoint which sessions live).
+    [[nodiscard]] const ConsoleSessions& Sessions() const { return _sessions; }
 
 private:
     void ShowConsole(EditorPreferences& preferences);
@@ -64,7 +61,7 @@ private:
     [[nodiscard]] std::string AddSession(const ConsoleNewSession& request, EditorPreferences& preferences);
     void HandleAgent(EditorAgentRequest request, const EditorSnapshot& snapshot, EditorPreferences& preferences,
                      EditorWorkspaceResult& result);
-    [[nodiscard]] EditorAgentStatus AgentStatus() const;
+    [[nodiscard]] EditorAgentStatus AgentStatus(const EditorSnapshot& snapshot) const;
     void SetMaximized(bool maximized, EditorPreferences& preferences);
     void ApplyLayout(EditorWorkspaceLayout layout, EditorPreferences& preferences);
     void ToggleBottom(EditorPreferences& preferences, std::optional<EditorPanel> panel);
@@ -83,6 +80,7 @@ private:
     InspectorPanel _inspector;
     OutputPanel _output;
     ProfilerPanel _profiler;
+    ConsoleSessions _sessions;
     ConsolePanel _console;
     AssetsPanel _assets;
     AudioPreviewPanel _audioPreview;
@@ -112,7 +110,6 @@ private:
     bool _showFailedOutput = false;
     bool _fixFailedBuild = false; // Problems' "Fix all with agent"
     bool _openQuickOpen = false;  // The toolbar search box was pressed
-    bool _agentControl = true;
     ImGuiID _centerDock = 0;
     int _ignoreLayoutChanges = 0;
     bool _resetDock = false;

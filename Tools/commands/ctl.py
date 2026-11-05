@@ -22,10 +22,9 @@ from ..errors import EXIT_FAILED, EXIT_OK, ToolError
 from ..project import Project
 from .audio import REPORT_FOLDER, editor_recipe, resolve_sound
 from .editor import editor_build_dir
-from .refresh import VERSION, connect, editor_pipe, replies
+from .refresh import SESSION_ENVIRONMENT, connect, editor_pipe, replies, request_line
 
 
-SESSION_ENVIRONMENT = "ENGINE_EDITOR_SESSION"  # Set by the editor for each Console session; `note` names its session
 # What a tool works on, most telling first: (key in its input, whether it is a path).
 NOTE_SUBJECTS = (("file_path", True), ("notebook_path", True), ("description", False), ("pattern", False),
                  ("command", False), ("query", False), ("url", False), ("path", True))
@@ -119,8 +118,9 @@ def add_parser(commands) -> None:
     action.add_argument("--hook", action="store_true",
                         help="for agent hooks: no output, always exit 0, nothing outside an editor Console session")
     action.add_argument("--tool-stdin", action="store_true",
-                        help="with --hook: name the tool from the hook's JSON on stdin; shown live, not kept in the "
-                             "editor's activity list")
+                        help="with --hook: name the tool from the hook's JSON on stdin; shown live and in the "
+                             "session's tool list, not in the editor's activity list")
+    actions.add_parser("release", help="let another agent use the editor now instead of after 60 s without commands")
 
 
 def parse_value(text: str):
@@ -336,8 +336,6 @@ def request_of(args: argparse.Namespace) -> dict:
             request.update(audio_request(args))
         case "note":
             request.update(text=" ".join(args.text), state=args.state)
-            if session := os.environ.get(SESSION_ENVIRONMENT):
-                request["session"] = session
     return request
 
 
@@ -374,7 +372,7 @@ def audio_request(args: argparse.Namespace) -> dict:
 def send(pipe: str, request: dict) -> dict:
     """One request on its own connection; the editor's result, or ToolError with its refusal."""
     with connect(pipe) as stream:
-        stream.write((json.dumps({"version": VERSION, **request}) + "\n").encode("utf-8"))
+        stream.write(request_line(request))
         for reply in replies(stream):
             match reply.pop("type", None):
                 case "result":

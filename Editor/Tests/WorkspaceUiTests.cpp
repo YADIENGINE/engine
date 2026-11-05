@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <memory>
@@ -25,7 +26,14 @@ TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[en
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     io.Fonts->SetTexID(ImTextureID{1});
     ApplyToolTheme();
+    ConsoleSessions sessions;
     ConsolePanel panel;
+    // The selected session's row, counted from the top of the list.
+    const auto selectedRow = [&] {
+        const auto infos = sessions.Infos();
+        return static_cast<std::size_t>(
+            std::ranges::find_if(infos, [](const ConsoleSessionInfo& info) { return info.selected; }) - infos.begin());
+    };
     ImGuiWindow* list = nullptr;
     ImGuiWindow* terminal = nullptr;
     ImGuiWindow* rows = nullptr;
@@ -38,7 +46,7 @@ TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[en
         ImGui::Begin("Console");
         rowHeight = ImGui::GetFrameHeight();
         rowStride = rowHeight + ImGui::GetStyle().ItemSpacing.y;
-        const auto request = panel.Draw();
+        const auto request = panel.Draw(sessions);
         auto* console = ImGui::GetCurrentWindow();
         for (auto* child : console->DC.ChildWindows) {
             if (child->ChildId == console->GetID("console-session-list")) list = child;
@@ -61,20 +69,20 @@ TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[en
     };
     (void)frame();
     (void)frame();
-    REQUIRE(panel.Sessions().size() == 1); // First draw still opens a shell.
+    REQUIRE(sessions.Infos().size() == 1); // First draw still opens a shell.
     REQUIRE(list);
     REQUIRE(terminal);
     REQUIRE(rows); // One session is listed like any number of them, so the list keeps its look.
     CHECK(terminal->Pos.x + terminal->Size.x <= list->Pos.x);
     CHECK(terminal->Size.x > list->Size.x);
     const float oneSessionWidth = list->Size.x;
-    panel.OpenShell();
+    sessions.OpenShell();
     (void)frame();
-    REQUIRE(panel.Selected() == 1);
+    REQUIRE(selectedRow() == 1);
     CHECK(list->Size.x == oneSessionWidth);
     (void)click({rows->WorkRect.Min.x + 30, rows->WorkRect.Min.y + rowHeight * 0.5f});
-    CHECK(panel.Selected() == 0);
-    CHECK(panel.Sessions()[0].selected);
+    CHECK(selectedRow() == 0);
+    CHECK(sessions.Infos()[0].selected);
 
     const float previousWidth = list->Size.x;
     const ImVec2 splitter{(terminal->Pos.x + terminal->Size.x + list->Pos.x) * 0.5f, list->Pos.y + 100};
@@ -105,18 +113,18 @@ TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[en
             {popup->WorkRect.Min.x + 40, popup->WorkRect.Min.y + stride * static_cast<float>(index) + stride * 0.5f});
         REQUIRE(request);
         CHECK(request->agent == kinds[index]);
-        CHECK(panel.Sessions().size() == 2); // Workspace, not Draw, starts the requested program.
+        CHECK(sessions.Infos().size() == 2); // Workspace, not Draw, starts the requested program.
         (void)frame();
     }
     // Closing another row leaves the selected session selected.
     (void)click({rows->WorkRect.Max.x - rowHeight * 0.5f, rows->WorkRect.Min.y + rowStride + rowHeight * 0.5f});
-    CHECK(panel.Sessions().size() == 1);
-    CHECK(panel.Selected() == 0);
+    CHECK(sessions.Infos().size() == 1);
+    CHECK(selectedRow() == 0);
 
     // A shell labelled as an agent exercises confirmation without requiring an installed agent CLI.
-    panel.AddAgent(AgentKind::Codex, {});
+    sessions.AddAgent(AgentKind::Codex, {});
     (void)frame();
-    REQUIRE(panel.Sessions()[1].state != SessionState::Exited);
+    REQUIRE(sessions.Infos()[1].state != SessionState::Exited);
     (void)click({rows->WorkRect.Min.x + 30, rows->WorkRect.Min.y + rowStride + rowHeight * 0.5f},
                 ImGuiMouseButton_Right);
     (void)frame();
@@ -127,19 +135,19 @@ TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[en
     (void)frame();
     REQUIRE(ImGui::GetTopMostPopupModal());
     CHECK_FALSE(panel.Focused());
-    CHECK(panel.Sessions().size() == 2);
+    CHECK(sessions.Infos().size() == 2);
     io.AddKeyEvent(ImGuiKey_Escape, true);
     (void)frame();
     io.AddKeyEvent(ImGuiKey_Escape, false);
     (void)frame();
     CHECK_FALSE(ImGui::GetTopMostPopupModal());
-    CHECK(panel.Sessions().size() == 2);
+    CHECK(sessions.Infos().size() == 2);
     (void)click({rows->WorkRect.Max.x - rowHeight * 0.5f, rows->WorkRect.Min.y + rowStride + rowHeight * 0.5f});
     (void)frame();
     const auto* confirmation = ImGui::GetTopMostPopupModal();
     REQUIRE(confirmation);
     (void)click({confirmation->WorkRect.Min.x + 40, confirmation->WorkRect.Max.y - rowHeight * 0.5f});
-    CHECK(panel.Sessions().size() == 1);
+    CHECK(sessions.Infos().size() == 1);
 }
 
 TEST_CASE("Editor.Workspace.AgentLayoutKeepsViewportLargerAndConsoleInFront", "[engine-editor]") {

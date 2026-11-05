@@ -46,6 +46,7 @@ private:
     // All GPU/UI resources are owned after the base Game has created its window.
     mutable EditorController _controller;
     std::optional<EditorControlService> _control; // Tools reach this editor through it (`python Engine refresh`)
+    mutable bool _developerUsedEditor = false;    // Since the last update: ends an agent's hold (ControlLease)
     mutable ToolUiContext _ui;
     mutable ViewportDisplay _display;
     mutable AssetThumbnailStore _thumbnails;

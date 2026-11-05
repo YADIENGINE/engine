@@ -1,6 +1,7 @@
 """`ctl` without an editor: arguments → control requests and finding the editor; no compiler."""
 
 import io
+import json
 import os
 import unittest
 from pathlib import Path
@@ -9,7 +10,7 @@ from unittest.mock import patch
 from Tools import cli
 from Tools.commands.ctl import (brief, ctl, describe_scene, find_scenes, open_scene, parse_value, request_of,
                                 tool_note, with_hint)
-from Tools.commands.refresh import ENVIRONMENT, editor_pipe
+from Tools.commands.refresh import ENVIRONMENT, VERSION, editor_pipe, request_line
 from Tools.errors import EXIT_FAILED, EXIT_INFRA, ToolError
 
 
@@ -79,8 +80,15 @@ class RequestTests(unittest.TestCase):
         self.assertEqual(request("note", "opening", "the", "boss"),
                          {"command": "note", "text": "opening the boss", "state": "working"})
         self.assertEqual(request("note", "--state", "idle"), {"command": "note", "text": "", "state": "idle"})
+        self.assertEqual(request("release"), {"command": "release"})
+
+    def test_every_request_names_its_console_session(self):
+        """The editor lets one session at a time change it, so every command says who asks, not only notes."""
         with patch.dict(os.environ, {"ENGINE_EDITOR_SESSION": "3"}):
-            self.assertEqual(request("note", "x")["session"], "3")
+            line = json.loads(request_line({"command": "open", "id": "x"}))
+        self.assertEqual(line, {"version": VERSION, "session": "3", "command": "open", "id": "x"})
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertNotIn("session", json.loads(request_line({"command": "status"})))
 
     def test_logs_filters(self):
         self.assertEqual(request("logs", "--since", "7", "--level", "warning"),
@@ -251,7 +259,7 @@ class HookNoteTests(unittest.TestCase):
 
     def test_a_session_note_is_sent_and_failures_are_swallowed(self):
         code, sent = self.run_hook({"ENGINE_EDITOR_SESSION": "4"})
-        self.assertEqual((code, sent[0]["session"], sent[0]["state"]), (0, "4", "waiting"))
+        self.assertEqual((code, sent[0]["state"]), (0, "waiting"))  # `send` adds the session to every request
         code, _ = self.run_hook({"ENGINE_EDITOR_SESSION": "4"}, ToolError("No editor is open"))
         self.assertEqual(code, 0)
 

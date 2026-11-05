@@ -21,8 +21,9 @@ from .editor import editor_build_dir
 
 ANNOUNCEMENT = "EngineEditor.control.json"
 ENVIRONMENT = "ENGINE_EDITOR_CONTROL"  # Set by the editor for its console: that editor's pipe
-VERSION = 3
-CONNECT_TIMEOUT = 5.0  # Seconds to wait while another client holds the endpoint
+SESSION_ENVIRONMENT = "ENGINE_EDITOR_SESSION"  # Set by the editor for each Console session: who is asking
+VERSION = 4
+CONNECT_TIMEOUT = 5.0  # Seconds to wait while every connection of the endpoint is taken
 CONNECT_RETRY = 0.1
 REFRESH_LOG = "refresh.log"  # In the editor build folder: the editor's build lines of the last refresh
 PIPE_BUSY = errno.EINVAL  # How open() reports ERROR_PIPE_BUSY: the C runtime maps it to this, and winerror stays empty
@@ -75,6 +76,15 @@ def exit_code(result: str) -> int:
     return EXIT_OK if result == "succeeded" else EXIT_FAILED
 
 
+def request_line(request: dict) -> bytes:
+    """One request as the editor reads it: the protocol version and, from a Console session, which session asks (the
+    editor lets one session at a time change or capture it; Docs/Editor/Automation.md#several-agents)."""
+    header = {"version": VERSION}
+    if session := os.environ.get(SESSION_ENVIRONMENT):
+        header["session"] = session
+    return (json.dumps({**header, **request}) + "\n").encode("utf-8")
+
+
 def refresh(project: Project) -> int:
     """Asks the open editor to build and refresh. Its build lines stream here, or under an agent go only to
     `<editor build>/refresh.log` (agent_output.py)."""
@@ -82,7 +92,7 @@ def refresh(project: Project) -> int:
     log = editor_build_dir(project) / REFRESH_LOG
     output: list[str] = []
     with connect(editor_pipe(project)) as stream:
-        stream.write((json.dumps({"version": VERSION, "command": "refresh"}) + "\n").encode("utf-8"))
+        stream.write(request_line({"command": "refresh"}))
         for reply in replies(stream):
             match reply.get("type"):
                 case "log":

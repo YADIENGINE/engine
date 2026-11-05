@@ -31,6 +31,7 @@ constexpr std::array CommandRows{
     CommandRow{EditorControlCommand::Audio, "audio"},
     CommandRow{EditorControlCommand::AudioControl, "audio-control"},
     CommandRow{EditorControlCommand::Replay, "replay"},
+    CommandRow{EditorControlCommand::Release, "release"},
 };
 static_assert(RowsInIdOrder(CommandRows));
 
@@ -118,9 +119,13 @@ EditorControlRequest DecodeControlRequest(std::string_view line) {
     const auto name = request.at("command").get<std::string>();
     for (const auto& row : CommandRows) {
         if (row.name != name) continue;
+        std::string session;
+        if (const auto found = request.find("session"); found != request.end() && found->is_string())
+            session = found->get<std::string>().substr(0, AgentSessionMaxBytes);
         request.erase("version");
         request.erase("command");
-        return {row.id, std::move(request)};
+        request.erase("session");
+        return {row.id, std::move(request), std::move(session)};
     }
     throw std::runtime_error("Unknown editor control command: " + name);
 }
@@ -141,8 +146,6 @@ AgentNote DecodeAgentNote(const nlohmann::json& arguments) {
         if (!text->is_string()) throw std::runtime_error("\"text\" must be a string");
         note.text = text->get<std::string>().substr(0, AgentNoteMaxBytes);
     }
-    if (const auto session = arguments.find("session"); session != arguments.end() && session->is_string())
-        note.session = session->get<std::string>().substr(0, AgentSessionMaxBytes);
     if (const auto live = arguments.find("live"); live != arguments.end() && live->is_boolean())
         note.live = live->get<bool>();
     if (const auto state = arguments.find("state"); state != arguments.end()) {
@@ -180,12 +183,16 @@ bool ControlCommandChangesEditor(EditorControlCommand command) {
     case EditorControlCommand::Logs        :
     case EditorControlCommand::Note        :
     case EditorControlCommand::Audio       :
+    case EditorControlCommand::Release     :
     case EditorControlCommand::Count       : return false;
     }
     return false;
 }
 bool ControlCommandCaptures(EditorControlCommand command) {
     return command == EditorControlCommand::Screenshot || command == EditorControlCommand::Frames;
+}
+bool ControlCommandNeedsHold(EditorControlCommand command) {
+    return ControlCommandChangesEditor(command) || ControlCommandCaptures(command);
 }
 nlohmann::json ControlLogEntry(const EditorLogEntry& entry) {
     return {{"sequence", entry.sequence},

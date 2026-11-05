@@ -1592,6 +1592,44 @@ not been judged by a person.
 **Out of scope:** splashes on a side view's ground, snow that settles, wet floors, wind gusts, fog that lamps scatter in, a
 forecast.
 
+### D43. Several agents in one editor
+Status: implemented (2026-11-05); the Agents panel is the next step. Usage: [Several agents](../Editor/Automation.md#several-agents).
+
+**Decision:** every control request names its Console session, and one session at a time may change or capture the
+editor (`ControlLease`). The pipe answers 8 clients side by side. The Console's sessions live in `ConsoleSessions`, apart
+from the panel that draws them, so a second panel can show them.
+
+**Why:** the editor has one scene, one playhead and one Audio Preview. With two agents, one agent's screenshot could show
+the scene the other had just opened, and nothing failed. The pipe took one client at a time, so another agent's status
+or hook note waited, then failed, while a build ran. Activity named no session, so the strip could mix one agent's
+state with another's last action.
+
+**Decided:**
+1. *A hold, not a queue.* A refused agent hears it at once and does other work. A queue would keep it waiting and paying
+   for nothing. The hold lasts while the holder's command is answered and 60 s after its last one, about one agent turn.
+2. *Only what changes or captures needs it.* Looking (`status`, `inspect`, `logs`) and notes never wait.
+3. *A lost hold is said once.* When the developer used the editor, or another session took it while this one was idle,
+   the next command is refused once and asks the agent to look first. This catches the silent case, a screenshot of state
+   someone else made, without a version number on every answer.
+4. *The developer always wins.* The UI actions that change the scene, its parameters, playback, tuning or sounds end the
+   hold. The editor never locks the developer out.
+5. *Identity is the Console session.* `ENGINE_EDITOR_SESSION` already reached every Console program; now every request
+   sends it. Clients outside the Console share one identity: the CLIs give no id a tool could read reliably. Parallel
+   agents belong in Console sessions.
+6. *A session that closes or exits frees its hold.* The host tells the service which sessions live every frame.
+7. *Concurrency stays small.* Each connection has one request at a time, and one command that needs the hold runs at a
+   time. A wait for the worker accepts a later client's sync, since the worker applies messages in order.
+8. *Sessions by id.* `ConsoleSessions` owns the terminals and is addressed by a stable id. `ConsolePanel` keeps only the
+   views and the list width. Events (`EditorControlEvent::session`, `kind`) and hook tool lines
+   (`EditorAgentReport::sessions[...].tools`, 100 per session) are kept per session for the Agents panel.
+
+**Checking:** unit tests cover the hold (idle, release, developer, takeover, ended session) and two pipe clients at once.
+An open editor was driven by two session ids. The second one's `open` was refused, naming the first, while its `status`
+and `note` answered. It answered within 0.2 s during the first one's build, and `release` handed over at once.
+
+**Out of scope:** an editor rendering without a window for private checks (proposed; would let agents in worktrees verify
+looks), separate identities outside the Console, CLI session ids, token use, resume.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

@@ -10,7 +10,7 @@
 // `python Engine ctl ...`). While it runs, the editor announces the pipe in EditorControlFile inside its build
 // directory. Messages are JSON objects, one per '\n'-terminated UTF-8 line; a client sends one request and reads
 // replies until a "result" or "error". Reference: Docs/Editor/Automation.md.
-inline constexpr int EditorControlVersion = 3;
+inline constexpr int EditorControlVersion = 4;
 inline constexpr std::string_view EditorControlFile = "EngineEditor.control.json";
 inline constexpr std::size_t EditorControlMaxLineBytes = 64 * 1024;
 
@@ -41,12 +41,15 @@ enum class EditorControlCommand {
     Audio,        // The Audio Preview panel's state
     AudioControl, // Plays, pauses, stops, seeks or changes the Audio Preview sound ("action")
     Replay,       // Loads or saves the open simulation's replay ("action", "path")
+    Release,      // Gives up the requesting session's hold on the editor (ControlLease)
     Count
 };
 
 struct EditorControlRequest {
     EditorControlCommand command = EditorControlCommand::Status;
-    nlohmann::json arguments = nlohmann::json::object(); // The request without "version" and "command"
+    nlohmann::json arguments = nlohmann::json::object(); // The request without "version", "command" and "session"
+    // The Console session that sent it (its ENGINE_EDITOR_SESSION); empty from a client outside the Console.
+    std::string session;
 };
 
 // What an agent reports with `ctl note` (shown in the status bar): working on a request, waiting for the developer,
@@ -55,13 +58,13 @@ enum class AgentActivityState { Idle, Working, Waiting };
 struct AgentNote {
     AgentActivityState state = AgentActivityState::Working;
     std::string text;
-    std::string session; // The Console session it came from (its ENGINE_EDITOR_SESSION); empty from elsewhere
+    std::string session; // The Console session it came from (the request's); empty from elsewhere
     bool live = false;   // Describes this moment only: shown while current, not kept in the session's activity
 };
 inline constexpr std::size_t AgentNoteMaxBytes = 200;
 inline constexpr std::size_t AgentSessionMaxBytes = 64;
-// {"text": "...", "state": "working" | "waiting" | "idle", "session": "...", "live": true} (state optional, default
-// working; session and live optional); text and session are cut to their limits. Throws for an unknown state.
+// {"text": "...", "state": "working" | "waiting" | "idle", "live": true} (state optional, default working; live
+// optional); text is cut to its limit. Throws for an unknown state. The session comes from the request.
 [[nodiscard]] AgentNote DecodeAgentNote(const nlohmann::json& arguments);
 [[nodiscard]] const char* AgentActivityName(AgentActivityState state);
 // Commands that change the editor (scene, playback, build). The developer's "Agent control" switch refuses them;
@@ -70,6 +73,8 @@ inline constexpr std::size_t AgentSessionMaxBytes = 64;
 // Commands that capture the viewport or the window as an image. The developer's "Visual checks" switch refuses them,
 // so looking at the result stays with the developer.
 [[nodiscard]] bool ControlCommandCaptures(EditorControlCommand command);
+// Commands that change or capture the editor: one session at a time may send them (ControlLease).
+[[nodiscard]] bool ControlCommandNeedsHold(EditorControlCommand command);
 inline constexpr std::string_view VisualChecksOffText =
     "Visual checks are off in the editor (Agent menu): do not capture; tell the developer what to look at, or ask "
     "them to turn visual checks on";

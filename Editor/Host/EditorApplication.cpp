@@ -220,10 +220,12 @@ void EditorApplication::Update(float realSeconds) {
     if (_control) {
         _control->SetAgentControl(_preferences.agent.control);
         _control->SetVisualChecks(_preferences.agent.visualChecks);
-        std::map<std::string, ConsoleNote> notes;
-        for (const auto& [session, activity] : _control->SessionActivity())
-            notes.emplace(session, ConsoleNote{activity.note, activity.time});
-        _workspace.SetAgentReport(std::move(notes), _preferences.agent.control);
+        // Sessions whose program still runs; a holder whose program ended gives up the editor.
+        std::map<std::string, std::string> sessions;
+        for (const auto& info : _workspace.Sessions().Infos())
+            if (info.state != SessionState::Exited) sessions.emplace(std::to_string(info.id), info.title);
+        _control->SetConsoleSessions(std::move(sessions));
+        if (std::exchange(_developerUsedEditor, false)) _control->DeveloperUsedEditor();
     }
     SavePreferences(false);
 }
@@ -353,40 +355,52 @@ void EditorApplication::DrawToolOverlay() const {
     // Defer mutations until all panels have consumed the same borrowed snapshot.
     std::vector<std::function<void()>> commands;
     bool editorInput = false;
+    // What the developer does to the scene, its parameters, playback or sounds ends an agent's hold on the editor.
+    const auto developer = [this] { _developerUsedEditor = true; };
     const EditorUiActions actions{
         [&](EditorCommand command) {
             editorInput = true;
+            developer();
             commands.emplace_back([this, command] { _controller.Execute(command); });
         },
         [&](const std::string& id) {
             editorInput = true;
+            developer();
             commands.emplace_back([this, id] { _controller.Select(id); });
         },
         [&](const std::string& id, const SceneValue& value) {
+            developer();
             commands.emplace_back([this, id, value] { _controller.Parameter(id, value); });
         },
         [&](const std::string& id) {
             editorInput = true;
+            developer();
             commands.emplace_back([this, id] { _controller.Action(id); });
         },
         [&] { commands.emplace_back([this] { _controller.ClearOutput(); }); },
         [&] { commands.emplace_back([this] { _controller.AcknowledgeOutput(); }); },
         [&](double speed, bool step) {
             editorInput = true;
+            developer();
             commands.emplace_back([this, speed, step] { _controller.Playback(speed, step); });
         },
         [&](EditorProfilerCommand command, Profiler::Recipe recipe, const std::string& file) {
             editorInput = true;
+            developer();
             commands.emplace_back([this, command, recipe, file] { _controller.Profile(command, recipe, file); });
         },
         [&](bool attempt) { commands.emplace_back([this, attempt] { _controller.OpenOutputLog(attempt); }); },
         [&](const TuningEditRequest& request) {
+            developer();
             commands.emplace_back([this, request] { _controller.Tuning(request); });
         },
         [&](const std::filesystem::path& file) {
             commands.emplace_back([this, file] { _controller.InspectTuning(file); });
         },
-        [&](const AudioPreviewRequest& request) { (void)QueueAudio(request); },
+        [&](const AudioPreviewRequest& request) {
+            developer();
+            (void)QueueAudio(request);
+        },
         [&](const std::filesystem::path& path) {
             const auto text = path.u8string();
             const std::string_view utf8(reinterpret_cast<const char*>(text.data()), text.size());
@@ -407,6 +421,7 @@ void EditorApplication::DrawToolOverlay() const {
     auto snapshot = _controller.Snapshot();
     snapshot.audio = _audio;
     snapshot.git = _gitSnapshot.get();
+    if (_control) snapshot.agents = &_control->Report();
     const auto result = _workspace.Draw(snapshot, actions, _display.Image(), _preferences, _fontSize);
     _quit = result.quit;
     if (result.interaction.mark) _mark = result.interaction.mark;

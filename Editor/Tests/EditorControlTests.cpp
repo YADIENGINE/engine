@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "Editor/Internals/Agent/AgentProfile.h"
+#include "Editor/Internals/Agent/ControlLease.h"
 #include "Editor/Internals/Agent/SessionActivity.h"
 #include "Editor/Internals/Protocol/EditorControlProtocol.h"
 #include "Editor/Internals/Session/AgentContext.h"
@@ -215,14 +216,16 @@ TEST_CASE("Editor.Mark.WindowRegionsUseFramebufferPixels", "[engine-editor]") {
 }
 
 TEST_CASE("Editor.Control.NotesAndWhichCommandsChangeTheEditor", "[engine-editor]") {
-    const auto request =
-        DecodeControlRequest(R"({"version": 3, "command": "note", "text": "reading", "state": "waiting"})");
+    const auto request = DecodeControlRequest(
+        R"({"version": 4, "command": "note", "text": "reading", "state": "waiting", "session": "7"})");
     REQUIRE(request.command == EditorControlCommand::Note);
+    CHECK(request.session == "7"); // Its Console session's ENGINE_EDITOR_SESSION, apart from the arguments
+    CHECK_FALSE(request.arguments.contains("session"));
+    CHECK(DecodeControlRequest(R"({"version": 4, "command": "status"})").session.empty());
     const auto note = DecodeAgentNote(request.arguments);
     CHECK(note.state == AgentActivityState::Waiting);
     CHECK(note.text == "reading");
     CHECK(DecodeAgentNote(nlohmann::json::object()).state == AgentActivityState::Working);
-    CHECK(DecodeAgentNote({{"session", "7"}}).session == "7"); // Its Console session's ENGINE_EDITOR_SESSION
     CHECK(DecodeAgentNote({{"live", true}}).live);
     CHECK_FALSE(DecodeAgentNote(nlohmann::json::object()).live);
     CHECK(DecodeAgentNote({{"text", std::string(AgentNoteMaxBytes * 2, 'x')}}).text.size() == AgentNoteMaxBytes);
@@ -242,6 +245,13 @@ TEST_CASE("Editor.Control.NotesAndWhichCommandsChangeTheEditor", "[engine-editor
     for (const auto command : {EditorControlCommand::Status, EditorControlCommand::Open, EditorControlCommand::Seek,
                                EditorControlCommand::Inspect, EditorControlCommand::Audio})
         CHECK_FALSE(ControlCommandCaptures(command));
+    // One session at a time may change or capture the editor; anyone may look, note or give up a hold
+    for (const auto command : {EditorControlCommand::Open, EditorControlCommand::Screenshot,
+                               EditorControlCommand::Frames, EditorControlCommand::Refresh})
+        CHECK(ControlCommandNeedsHold(command));
+    for (const auto command : {EditorControlCommand::Status, EditorControlCommand::Inspect, EditorControlCommand::Logs,
+                               EditorControlCommand::Note, EditorControlCommand::Audio, EditorControlCommand::Release})
+        CHECK_FALSE(ControlCommandNeedsHold(command));
 }
 
 TEST_CASE("Editor.Agent.ContextLines", "[engine-editor]") {
@@ -372,4 +382,45 @@ TEST_CASE("Editor.Agent.SessionStateFollowsInputOutputBellsAndNotes", "[engine-e
     CHECK(SessionActivityText(signals, "  Fixing tests  ") == "Fixing tests");
     signals.running = false;
     CHECK(SessionStateOf(signals) == SessionState::Exited);
+}
+
+TEST_CASE("Editor.Control.OneSessionHoldsTheEditorUntilItIsIdle", "[engine-editor]") {
+    ControlLease lease;
+    CHECK_FALSE(lease.Holder(0.0));
+    CHECK_FALSE(lease.Take("1", 0.0)); // Free: the first command takes it
+    CHECK_FALSE(lease.Take("1", 5.0)); // Its own commands renew it
+    const auto refused = lease.Take("2", 10.0);
+    REQUIRE(refused);
+    CHECK(refused->refusal == ControlLease::Refusal::Held);
+    CHECK(refused->other == "1");
+    CHECK(refused->idle == 5.0);
+    lease.Touch("1", 60.0); // A long seek or build is still being answered
+    CHECK(lease.Take("2", 100.0));
+    REQUIRE(lease.Holder(100.0));
+    CHECK(lease.Holder(100.0)->client == "1");
+    CHECK_FALSE(lease.Holder(120.0)); // Idle for IdleSeconds: free again
+    CHECK_FALSE(lease.Take("2", 120.0));
+    // The former holder learns once that its state may be gone, then takes turns again
+    const auto lost = lease.Take("1", 121.0);
+    REQUIRE(lost);
+    CHECK(lost->refusal == ControlLease::Refusal::Taken);
+    CHECK(lost->other == "2");
+    CHECK(lease.Take("1", 122.0)->refusal == ControlLease::Refusal::Held);
+}
+
+TEST_CASE("Editor.Control.TheDeveloperAndEndedSessionsEndAHold", "[engine-editor]") {
+    ControlLease lease;
+    CHECK_FALSE(lease.Take("", 0.0)); // A client outside the Console
+    lease.DeveloperUsed();
+    CHECK_FALSE(lease.Holder(1.0));
+    CHECK(lease.Take("", 1.0)->refusal == ControlLease::Refusal::Developer);
+    CHECK_FALSE(lease.Take("", 2.0));
+    lease.DeveloperUsed(); // Nobody holds it: nobody is told
+    CHECK_FALSE(lease.Take("3", 3.0));
+    CHECK_FALSE(lease.Release("1"));
+    CHECK(lease.Release("3"));
+    CHECK_FALSE(lease.Take("4", 4.0)); // Released: no wait, and "3" lost nothing
+    CHECK(lease.Take("3", 4.0)->refusal == ControlLease::Refusal::Held);
+    lease.Forget("4"); // Its Console session closed
+    CHECK_FALSE(lease.Take("3", 5.0));
 }

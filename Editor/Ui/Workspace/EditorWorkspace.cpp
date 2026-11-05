@@ -170,8 +170,8 @@ void EditorWorkspace::ShowConsole(EditorPreferences& preferences) {
 }
 void EditorWorkspace::PasteToConsole(const std::string& text, EditorPreferences& preferences) {
     ShowConsole(preferences);
-    if (const auto agent = _console.AgentSession()) _console.Select(*agent);
-    _console.Paste(text);
+    if (const auto agent = _sessions.AgentSession()) _sessions.Select(*agent);
+    _sessions.Paste(text);
 }
 std::string EditorWorkspace::OpenAgent(EditorPreferences& preferences) {
     if (_agentSetup.Active()) return {};
@@ -189,16 +189,16 @@ std::string EditorWorkspace::OpenAgent(EditorPreferences& preferences) {
     ShowConsole(preferences);
     // The agent session requests go to is reused when it runs the chosen CLI; otherwise a new session starts.
     const auto commandLine = AgentCommandLine(DefaultTerminalShell(), command);
-    if (const auto agent = _console.AgentSession(); agent && _console.Sessions()[*agent].agent == kind.id)
-        _console.Revive(*agent, commandLine);
+    if (const auto agent = _sessions.AgentSession(); agent && _sessions.Info(*agent)->agent == kind.id)
+        _sessions.Revive(*agent, commandLine);
     else
-        _console.AddAgent(kind.id, commandLine);
+        _sessions.AddAgent(kind.id, commandLine);
     return {};
 }
 std::string EditorWorkspace::AddSession(const ConsoleNewSession& request, EditorPreferences& preferences) {
     if (!request.agent) {
         ShowConsole(preferences);
-        _console.OpenShell();
+        _sessions.OpenShell();
         return {};
     }
     if (_agentSetup.Active()) return {};
@@ -212,7 +212,7 @@ std::string EditorWorkspace::AddSession(const ConsoleNewSession& request, Editor
     }
     preferences.agent.configured = true;
     ShowConsole(preferences);
-    _console.AddAgent(*request.agent, AgentCommandLine(DefaultTerminalShell(), command));
+    _sessions.AddAgent(*request.agent, AgentCommandLine(DefaultTerminalShell(), command));
     return {};
 }
 std::string EditorWorkspace::SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences) {
@@ -220,8 +220,8 @@ std::string EditorWorkspace::SendToAgent(const std::string& text, bool submit, E
     if (_agentSetup.Active()) {
         _pendingAgentText += text;
         _pendingAgentSubmit = _pendingAgentSubmit || submit;
-    } else if (const auto agent = _console.AgentSession()) {
-        _console.SendTo(*agent, text, submit);
+    } else if (const auto agent = _sessions.AgentSession()) {
+        _sessions.SendTo(*agent, text, submit);
     }
     return problem;
 }
@@ -235,7 +235,7 @@ void EditorWorkspace::HandleAgent(EditorAgentRequest request, const EditorSnapsh
     case EditorAgentRequest::Open: result.agentProblem = OpenAgent(preferences); break;
     case EditorAgentRequest::NewShell:
         ShowConsole(preferences);
-        _console.OpenShell();
+        _sessions.OpenShell();
         break;
     case EditorAgentRequest::SendScene: result.sendScene = true; break;
     case EditorAgentRequest::SendBuildFailure:
@@ -248,10 +248,10 @@ void EditorWorkspace::HandleAgent(EditorAgentRequest request, const EditorSnapsh
     }
     result.cancelViewportInput = true;
 }
-EditorAgentStatus EditorWorkspace::AgentStatus() const {
-    EditorAgentStatus status{.control = _agentControl};
-    if (const auto agent = _console.AgentSession()) {
-        const auto session = _console.Sessions()[*agent];
+EditorAgentStatus EditorWorkspace::AgentStatus(const EditorSnapshot& snapshot) const {
+    EditorAgentStatus status{.control = !snapshot.agents || snapshot.agents->control};
+    if (const auto agent = _sessions.AgentSession()) {
+        const auto session = *_sessions.Info(*agent);
         status.session = true;
         status.title = session.title;
         status.state = session.state;
@@ -499,7 +499,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         SetMaximized(!_maximized, preferences);
         _pendingToggle = false;
     }
-    _console.Update();
+    _sessions.Update(snapshot.agents);
     const auto oldVisibility = preferences.visible;
     EditorWorkspaceResult result;
     if (_showFailedOutput) {
@@ -538,14 +538,15 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     const float menuHeight = ImGui::GetFrameHeight();
     EditorToolbarSearch search;
     if (menu.showActivity) _agentActivity.Show();
-    const float toolbarHeight = _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight},
-                                               viewport->Size.x, _marking, search, AgentStatus(), _agentActivity);
+    const float toolbarHeight =
+        _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight}, viewport->Size.x, _marking,
+                       search, AgentStatus(snapshot), _agentActivity);
     if (_agentActivity.TakeOpenSession()) menu.agent = EditorAgentRequest::Open;
     _palette.SetAnchor(search.centerX, search.top);
     _openQuickOpen = search.pressed;
     const float statusHeight =
-        _shell.Status(snapshot, preferences, AgentStatus(), {viewport->Pos.x, viewport->Pos.y + viewport->Size.y},
-                      viewport->Size.x, menu);
+        _shell.Status(snapshot, preferences, AgentStatus(snapshot),
+                      {viewport->Pos.x, viewport->Pos.y + viewport->Size.y}, viewport->Size.x, menu);
     if (_fixFailedBuild) {
         menu.agent = EditorAgentRequest::FixBuild;
         _fixFailedBuild = false;
@@ -636,7 +637,8 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                     break;
                 case EditorPanel::Profiler: _profiler.Draw(snapshot, actions); break;
                 case EditorPanel::Console:
-                    if (const auto request = _console.Draw()) result.agentProblem = AddSession(*request, preferences);
+                    if (const auto request = _console.Draw(_sessions))
+                        result.agentProblem = AddSession(*request, preferences);
                     consoleDrawn = true;
                     break;
                 case EditorPanel::Assets      : _assets.Draw(snapshot, actions); break;
