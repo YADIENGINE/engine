@@ -267,6 +267,26 @@ TEST_CASE("Editor.Agents.DrawerKeepsOrderShowsOneTerminalAndStartsAgents", "[eng
     drawer.SwitchView();
     CHECK(drawer.Shown(infos) == waitingId);
 
+    // The bottom-left corner resizes it, also on Activity, whose list once covered the corner
+    drawer.SwitchView();
+    (void)frame();
+    const auto* window = ImGui::FindWindowByName("Agents###editor.agents-drawer");
+    REQUIRE(window);
+    const ImVec2 before = window->Size;
+    const ImVec2 corner{window->Pos.x + 5, window->Pos.y + window->Size.y - 5};
+    io.AddMousePosEvent(corner.x, corner.y);
+    (void)frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    (void)frame();
+    io.AddMousePosEvent(corner.x - 60, corner.y + 40);
+    (void)frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    (void)frame();
+    (void)frame();
+    CHECK(window->Size.x > before.x + 40);
+    CHECK(window->Size.y > before.y + 20);
+    drawer.SwitchView();
+
     drawer.Toggle(std::nullopt);
     CHECK_FALSE(drawer.IsOpen());
     CHECK_FALSE(drawer.Shown(infos));

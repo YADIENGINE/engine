@@ -447,6 +447,7 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
         // No agent yet: a robot, one line on what happens, and the agents to start, the usual one first; Enter
         // starts that one
         if (std::exchange(_focusTerminal, false)) ImGui::SetWindowFocus();
+        _askAdd = false; // Its buttons are the New agent menu
         if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
             !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel) &&
             (ImGui::IsKeyPressed(ImGuiKey_Enter, false) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false)))
@@ -556,7 +557,8 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
             }
         }
         const float bodyTop = barTop + ImGui::GetFrameHeight() + Scaled(ToolMetrics::Space) * 2;
-        const ImVec2 body{width - Scaled(1), origin.y + height - bodyTop - Scaled(1)};
+        // The body stops a grip's height above the bottom, so no child window covers the resize corner
+        const ImVec2 body{width - Scaled(1), std::max(1.0f, origin.y + height - bodyTop - Scaled(GripSize))};
         ImGui::SetCursorScreenPos({origin.x + Scaled(1), bodyTop});
         if (view == View::Terminal) {
             if (auto* terminal = terminals ? terminals(*chosen->id) : nullptr) {
@@ -567,7 +569,7 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
                 ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, ToolMetrics::Radius * scale);
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {Scaled(Padding), Scaled(ToolMetrics::Gap)});
                 ImGui::PushStyleColor(ImGuiCol_ChildBg, ToolPalette::Window);
-                if (ImGui::BeginChild("agents-terminal", {width - inset * 2, body.y - inset},
+                if (ImGui::BeginChild("agents-terminal", {width - inset * 2, body.y},
                                       ImGuiChildFlags_AlwaysUseWindowPadding, StillChild)) {
                     auto& terminalView = views.View(*chosen->id);
                     terminalView.Draw(*terminal);

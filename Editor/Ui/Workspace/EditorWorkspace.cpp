@@ -700,6 +700,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     result.quit = menu.quit;
     result.returnToProjectList = menu.returnToProjectList;
     if (_maximized) {
+        _consoleFocused = false; // No Console while the scene fills the workspace; the drawer's terminal is added below
         ImGui::SetNextWindowPos(workspacePosition);
         ImGui::SetNextWindowSize(workspaceSize);
         constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
@@ -779,7 +780,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             if (focusedBottomDrawn) _focusBottom.reset();
         }
         _focusCatalog = false;
-        _consoleFocused = (consoleDrawn && _console.Focused()) || _agentsDrawer.TerminalFocused();
+        _consoleFocused = consoleDrawn && _console.Focused();
         if (!viewportDrawn) {
             _viewport.ReleaseFocus();
             result.interaction = {};
@@ -821,6 +822,9 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     }
     GitOverlay(snapshot, actions, menu, workspacePosition, workspaceSize, preferences, result);
     AgentsOverlay(snapshot, actions, workspacePosition, workspaceSize, preferences, result);
+    // Typing to an agent in the drawer counts as typing in a terminal, maximized or not: F5 and the like stay the
+    // agent's
+    _consoleFocused = _consoleFocused || _agentsDrawer.TerminalFocused();
     if (_marking) MarkOverlay(snapshot, actions, menuHeight + toolbarHeight, result);
     if (result.cancelViewportInput) _viewport.ReleaseFocus();
     _viewportFocused = result.interaction.focused;
