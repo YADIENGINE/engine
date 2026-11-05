@@ -144,7 +144,10 @@ engine_warnings(EngineCamera)
 
 add_library(EngineHeadless STATIC
     Audio/Internals/AudioVolumePolicy.cpp
+    Audio/Internals/LiveVoices.cpp
     Audio/Internals/Validation.cpp
+    Audio/LiveSound.cpp
+    Audio/SoundLayers.cpp
     Audio/SoundPlayer.cpp
     Audio/SoundTables.cpp
     Camera/Debug/CameraGuides.cpp
@@ -206,6 +209,7 @@ add_library(EngineHeadless STATIC
     Options/GameOptions.cpp
     Platform/Internals/UserData.cpp
     Runtime/TimeScale.cpp
+    Runtime/Internals/GameAssetManifest.cpp
     Runtime/Internals/StartupTimer.cpp
     Scene/Internals/SceneManager.cpp
     Scene/Scene.cpp
@@ -269,6 +273,29 @@ engine_warnings(EngineAssets)
 set_source_files_properties(Graphics/Text/Internals/FontData.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${ENGINE_THIRD_PARTY_DIR}/raylib/src/external")
 engine_warnings(EngineHeadless)
+
+# miniaudio and stb_vorbis as one object, with their warnings off: they are vendored and unmodified.
+add_library(EngineMiniaudio STATIC Audio/Internals/Miniaudio.c)
+target_include_directories(EngineMiniaudio SYSTEM PUBLIC "${ENGINE_THIRD_PARTY_DIR}/miniaudio")
+set_target_properties(EngineMiniaudio PROPERTIES POSITION_INDEPENDENT_CODE ON)
+if(MSVC)
+    target_compile_options(EngineMiniaudio PRIVATE /W0)
+endif()
+
+# The audio engine. It needs no window, so the real thing runs offline in the tests (Docs/Audio.md).
+add_library(EngineAudio STATIC
+    Audio/AudioFiles.cpp
+    Audio/AudioSystem.cpp
+    Audio/Internals/AudioDecoder.cpp
+    Audio/Internals/AudioGraph.cpp
+    Audio/Internals/AudioShaper.cpp
+    Audio/Internals/AudioVoice.cpp
+    Audio/Internals/ShapeNode.cpp
+    Audio/Internals/State.cpp
+)
+target_link_libraries(EngineAudio PUBLIC EngineHeadless PRIVATE EngineMiniaudio)
+set_target_properties(EngineAudio PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_warnings(EngineAudio)
 
 # Opt-in: headless profiler statistics and reports, independent of the runtime/editor.
 add_library(EngineProfiler STATIC EXCLUDE_FROM_ALL
@@ -352,13 +379,6 @@ if(NOT ENGINE_BUILD_RUNTIME)
     return()
 endif()
 add_library(Engine STATIC
-    Audio/AudioFiles.cpp
-    Audio/AudioSystem.cpp
-    Audio/Internals/AudioDecoder.cpp
-    Audio/Internals/AudioDevice.cpp
-    Audio/Internals/AudioMusicStream.cpp
-    Audio/Internals/EffectVoices.cpp
-    Audio/Internals/State.cpp
     Graphics/Gpu/Internals/GlDevice.cpp
     Graphics/Render/Internals/Renderer.cpp
     Graphics/Render/Internals/Window.cpp
@@ -367,7 +387,7 @@ add_library(Engine STATIC
     Platform/Internals/Shell.cpp
     Runtime/Game.cpp
 )
-target_link_libraries(Engine PUBLIC EngineHeadless raylib)
+target_link_libraries(Engine PUBLIC EngineAudio EngineHeadless raylib)
 # GLSL sources are compiled into the engine: Graphics/Gpu/Internals/Shaders/Name.glsl -> NameShader in EngineShaders.h.
 # Configure-time generation; editing a shader re-runs configure.
 file(GLOB engineShaders CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Gpu/Internals/Shaders/*.glsl")

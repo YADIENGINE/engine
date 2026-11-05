@@ -22,6 +22,10 @@ public:
     // The enum's type; null for an empty key.
     [[nodiscard]] const std::type_info* Type() const { return _type; }
     [[nodiscard]] std::size_t Index() const { return _index; }
+    friend bool operator==(const SoundKey& a, const SoundKey& b) {
+        if (!a._type || !b._type) return a._type == b._type;
+        return *a._type == *b._type && a._index == b._index;
+    }
 
 private:
     const std::type_info* _type = nullptr;

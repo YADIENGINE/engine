@@ -1,6 +1,6 @@
 ---
 name: audio
-description: Check, compare or clean up the project's sounds without hearing them (length, loudness, silent edges, clipping, waveform image), find unused sound files or missing catalog files, see which catalog ID plays a file, or play a sound for the developer in the editor's Audio Preview.
+description: Check, compare or clean up the project's sounds without hearing them (length, loudness, silent edges, clipping, waveform image), find unused sound files or missing catalog files, see which catalog ID plays a file, record and measure what a running scene plays (pan, fades, loop seams), or play a sound for the developer in the editor's Audio Preview.
 ---
 
 # Work with sounds
@@ -21,11 +21,15 @@ sound the settings do not name stays out of the package unless it is in `release
    whose file is gone; `python Engine audio usage FOLDER` shows one folder with the entries that play each file. The
    catalog comes from the last editor build: after changing it in code, build again before trusting the answer. Never
    delete a sound only because it is unused; list it and ask.
-4. **Change:** edit or regenerate the sound (`Docs/AudioGeneration.md` for generated sets), then repeat steps 1–2 and
+4. **What a scene plays:** for pan, distance, fades, layers or loops, `python Engine ctl audio capture SECONDS` while the
+   scene runs, then `audio info` and `audio waveform` on the `path` it prints. Left and right are channels 1 and 2: a
+   sound on the right is louder in 2. A loop seam is a spike in the waveform at the loop's length. Spatial sound and
+   live loops: `Recipes/SpatialSound.md`.
+5. **Change:** edit or regenerate the sound (`Docs/AudioGeneration.md` for generated sets), then repeat steps 1–2 and
    compare with the numbers from before.
-5. **Let the developer listen:** `python Engine ctl status` first; exit 2 means no editor is open, so say how to listen
+6. **Let the developer listen:** `python Engine ctl status` first; exit 2 means no editor is open, so say how to listen
    instead. Otherwise `python Engine ctl audio play FILE` (add `--at SECONDS` for a moment, `--loop` for music), and
    `python Engine ctl audio` to see what plays. If Agent control is off, ask the developer to turn it on or to click the
    sound in Assets.
-6. **Report:** the numbers that changed (before → after), the waveform path, and that it is playing in Audio Preview
+7. **Report:** the numbers that changed (before → after), the waveform path, and that it is playing in Audio Preview
    if you started it. Ask the developer how it sounds; do not claim it sounds right.

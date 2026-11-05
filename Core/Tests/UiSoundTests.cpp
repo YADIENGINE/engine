@@ -25,6 +25,7 @@
 #include "Ui/Widgets/UiStepper.h"
 #include "Ui/Widgets/UiTabs.h"
 #include "Ui/Widgets/UiToggle.h"
+#include "Tests/Support/FakeSoundOutput.h"
 
 namespace {
 constexpr float Frame = 1.0f / 60.0f;
@@ -52,21 +53,15 @@ const UiSounds AllSounds{.move = Sfx::Move,
 }
 
 // The device: what would have been heard, in order. Plays until told otherwise, like a sound longer than a frame.
-class FakeOutput final : public SoundOutput {
+class FakeOutput final : public FakeSoundOutput {
 public:
-    [[nodiscard]] bool IsPlaying(SoundId id) const override { return _playing.contains(Row(id)); }
-    void Play(SoundId id, float) override {
-        heard.push_back(static_cast<Sfx>(Row(id)));
-        _playing.insert(Row(id));
+    [[nodiscard]] VoiceId StartVoice(SoundId id, const VoiceStart& start) override {
+        heard.push_back(static_cast<Sfx>(static_cast<std::size_t>(id) - SoundTables::FirstGeneratedId));
+        playing.insert(id);
+        return FakeSoundOutput::StartVoice(id, start);
     }
-    void Finish() { _playing.clear(); }
+    void Finish() { playing.clear(); }
     std::vector<Sfx> heard;
-
-private:
-    [[nodiscard]] static std::size_t Row(SoundId id) {
-        return static_cast<std::size_t>(id) - SoundTables::FirstGeneratedId;
-    }
-    std::set<std::size_t> _playing;
 };
 
 // A Ui as a real game has one: the listener set, the sounds among its looks, the device faked.

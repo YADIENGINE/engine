@@ -28,7 +28,7 @@
 | `ThirdParty/` | Unmodified vendored dependencies, notices and notice tests; see [Third-party rules](../../ThirdParty/README.md) |
 | `Tools/` | Standard-library Python CLI and project template (offline audio authoring has separate NumPy/SciPy dependencies) |
 
-`EngineHeadless` contains platform-free code; `Engine` adds the runtime platform layer. `EngineSimulation`,
+`EngineHeadless` contains platform-free code; `Engine` adds the runtime platform layer. `EngineAudio` is the audio engine over miniaudio: it needs no window, so `Engine` links it and its tests run it offline. `EngineSimulation`,
 `EnginePhysics`, `EngineCamera` and `EngineTuning` sit below `EngineHeadless` and reach neither drawing nor audio, so
 simulation code can link only them. `EngineAssets` sits above `EngineHeadless`; games, workers and tests link it, and
 nothing in Core does.

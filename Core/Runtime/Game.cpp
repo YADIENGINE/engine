@@ -17,6 +17,7 @@
 #include "Scene/Internals/SceneManager.h"
 #include "Audio/Internals/AudioSoundOutput.h"
 #include "Scene/Scene.h"
+#include "Runtime/Internals/GameAssetManifest.h"
 #include "Runtime/Internals/StartupTimer.h"
 #include "Input/Internals/InputNormalizer.h"
 #include "Input/Internals/InputReader.h"
@@ -26,20 +27,11 @@
 #include "Tuning/TuningLive.h"
 
 namespace {
-std::vector<std::filesystem::path> AssetManifest(const GameSettings& settings) {
-    const AudioCatalog audio = CatalogWithSounds(settings.audio, settings.sounds);
-    auto assets = settings.assets;
-    for (const auto& effect : audio.effects)
-        assets.push_back(effect.file);
-    for (const auto& music : audio.music)
-        assets.push_back(music.file);
-    return assets;
-}
 // `python Engine release` asks the built game which files it uses, because only the running code knows its settings.
 // With this variable set, the game prints the list and exits before opening a window. Keep in step with release.py.
 void ReportAssetsWhenAsked(const GameSettings& settings) {
     if (!AssetReportAsked()) return;
-    for (const auto& file : AssetManifest(settings)) {
+    for (const auto& file : GameAssetManifest(settings)) {
         const auto path = file.generic_u8string();
         std::cout << "asset: " << std::string_view(reinterpret_cast<const char*>(path.data()), path.size()) << '\n';
     }
@@ -79,7 +71,7 @@ template <class Level> Level StoredLevel(std::int64_t stored, Level last, Level 
 
 Game::Game(const GameSettings& settings)
     : _renderer(OpenRenderer(settings))
-    , _assetRoot(PrepareAssets(AssetManifest(settings)))
+    , _assetRoot(PrepareAssets(GameAssetManifest(settings)))
     , _font(settings.font.empty() ? std::optional<FontFace>{} : FontFace::FromFile(_assetRoot / settings.font))
     , _audio(_assetRoot, settings.audioVolume)
     , _soundOutput(std::make_unique<AudioSoundOutput>(_audio))
@@ -397,6 +389,7 @@ void Game::Run() {
             if (scene && scene->Clock() == TimeDomain::Real) scene->Tick(realSeconds);
             const bool paused = _paused || (scene && scene->Enabled() && scene->GameTimePaused());
             const float gameSeconds = paused ? 0.0f : _timeScale.Advance(realSeconds);
+            _sounds.SetBusPaused(SoundBus::World, paused);
             if (scene && scene->Clock() == TimeDomain::Game) scene->Tick(gameSeconds);
             if (observer) observer->EndRegion(FrameRegion::Scene);
             Present();

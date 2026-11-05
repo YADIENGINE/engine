@@ -268,6 +268,14 @@ void EditorController::Playback(double speed, bool step) {
         FailScene(error.what());
     }
 }
+void EditorController::CaptureAudio(const std::string& file, double seconds) {
+    if (!_ready) return;
+    try {
+        Send("audio-capture", {{"file", file}, {"seconds", seconds}});
+    } catch (const std::exception& error) {
+        FailScene(error.what());
+    }
+}
 void EditorController::SetPaused(bool paused) {
     if (!_ready || _profiler.Snapshot().busy || paused == _paused) return;
     try {

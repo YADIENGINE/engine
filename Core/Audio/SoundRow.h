@@ -4,7 +4,9 @@
 #include <limits>
 #include <stdexcept>
 #include <string_view>
+#include "Audio/SoundBus.h"
 #include "Audio/SoundKey.h"
+#include "Audio/SoundSpace.h"
 
 // A row's files, relative to the asset root. The fixed size keeps a row constexpr: a ninth file fails to compile.
 inline constexpr std::size_t MaxSoundVariants = 8;
@@ -44,6 +46,10 @@ struct SoundOptions {
     // Real seconds after a play during which Play returns false; hitstop and slow motion do not stretch it.
     float cooldown = 0.0f;
     SoundOverlap whenPlaying = SoundOverlap::Copies(4);
+    bool loop = false;     // Plays forever: SoundPlayer::Start only, so that something can stop it
+    bool streamed = false; // Read from disk while it plays, not loaded into memory: for long files
+    SoundBus bus = SoundBus::World;
+    SoundFalloff falloff{}; // How it fades with distance when played at a position in the world
     std::string_view label; // For tools; a row without one gets a generated label
 };
 
@@ -77,6 +83,10 @@ constexpr void CheckSoundRow(const SoundFiles& files, const SoundOptions& option
         throw std::invalid_argument("A sound row's pitch range must be positive, with low <= high");
     if (!(options.cooldown >= 0.0f && options.cooldown <= Largest))
         throw std::invalid_argument("A sound row's cooldown must be finite and not negative");
+    if (!IsValid(options.falloff))
+        throw std::invalid_argument("A sound row's falloff needs 0 <= fullWithin < silentBeyond");
+    if (options.bus != SoundBus::World && options.bus != SoundBus::Ui && options.bus != SoundBus::Music)
+        throw std::invalid_argument("A sound row names an unknown bus");
 }
 
 // One sound of a game's table. `id` is its enum value, so that static_assert(RowsInIdOrder(table)) works. Invalid data

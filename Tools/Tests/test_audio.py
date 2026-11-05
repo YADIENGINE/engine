@@ -70,6 +70,9 @@ class AudioCommandTests(unittest.TestCase):
                                             "at": 1.5, "loop": True})
         args = cli.build_parser().parse_args(["ctl", "audio"])
         self.assertEqual(request_of(args), {"command": "audio"})
+        args = cli.build_parser().parse_args(["ctl", "audio", "capture", "2.5", "--out", "mix.wav"])
+        self.assertEqual(request_of(args), {"command": "audio-control", "action": "capture", "seconds": 2.5,
+                                            "file": "mix.wav"})
         self.assertEqual(audio_request(SimpleNamespace(audio_action="loop", state="off")),
                          {"command": "audio-control", "action": "loop", "on": False})
 

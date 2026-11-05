@@ -48,6 +48,9 @@ public:
     void ApplyUiOptions(const UiOptionsValues& values);
     // The game's sound tables (GameSettings::sounds). Public so that a scene can play with only a Game&.
     [[nodiscard]] SoundPlayer& Sounds() { return _sounds; }
+    // Music, hand-numbered effects and the volume options. Public for the same reason.
+    [[nodiscard]] AudioSystem& Audio() { return _audio; }
+    [[nodiscard]] const AudioSystem& Audio() const { return _audio; }
 
 protected:
     explicit Game(const GameSettings& settings);
@@ -61,8 +64,6 @@ protected:
     [[nodiscard]] TimeScale& Time() { return _timeScale; }
     // This frame's real duration: what a hitstop, slow motion or a pause does not change.
     [[nodiscard]] float RealSeconds() const { return _frameSeconds; }
-    [[nodiscard]] AudioSystem& Audio() { return _audio; }
-    [[nodiscard]] const AudioSystem& Audio() const { return _audio; }
     // The game's font (GameSettings::font) for Painter::Text; throws logic_error when the game has none.
     [[nodiscard]] const FontFace& Font() const;
     [[nodiscard]] bool HasFont() const { return _font.has_value(); }

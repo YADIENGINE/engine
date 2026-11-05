@@ -29,7 +29,7 @@ Use public `.h` facades; put implementation under its owner's `Internals/`, neve
 Games and recipes never include engine internals. Core internals are engine-private;
 module, editor and terminal internals are owner-private: [API boundaries](Docs/Contributing/ApiBoundaries.md#three-tiers).
 New modules follow [Module rules](Docs/Contributing/ModuleRules.md#1-directory-structure).
-raylib belongs only in platform implementation: window/renderer, input, audio, platform, ToolUi and editor transport.
+raylib belongs only in platform implementation: window/renderer, input, platform, ToolUi and editor transport. Audio is miniaudio, only in `Core/Audio/Internals`.
 Public headers and headless code never include raylib. Expose platform actions through raylib-free facades.
 Only `Graphics/Render/Internals/Window` opens/closes the window. Drawing uses `Painter`.
 Dependency directions: Animation/Render → Utilities; Simulation → Animation; Draw → Render/Animation; Assets/Graphics → Draw/Style, and Core never includes it;

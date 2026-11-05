@@ -19,6 +19,7 @@
 #include "AgentDocs/Recipes/Code/SceneTransition.h"
 #include "AgentDocs/Recipes/Code/SimulationPlay.h"
 #include "AgentDocs/Recipes/Code/SoundTable.h"
+#include "AgentDocs/Recipes/Code/SpatialSound.h"
 #include "AgentDocs/Recipes/Code/SpriteLayer.h"
 #include "AgentDocs/Recipes/Code/TextLayout.h"
 #include "AgentDocs/Recipes/Code/TuningValue.h"
@@ -36,6 +37,7 @@
 #include "Simulation/SimulationRegistry.h"
 #include "Simulation/StateHash.h"
 #include "Tests/PaintHarness.h"
+#include "Tests/Support/FakeSoundOutput.h"
 #include "Tests/Support/TempDirectory.h"
 #include "Ui/Kernel/UiListener.h"
 #include "Ui/Sound/UiSoundListener.h"
@@ -524,9 +526,11 @@ TEST_CASE("Engine.Recipes.PopupEffectsDrawWithThePublicApi", "[engine][recipes]"
 }
 
 TEST_CASE("Engine.Recipes.UiSoundsPlayWithNoCodeOnTheScreen", "[engine][recipes]") {
-    struct Output final : SoundOutput {
-        [[nodiscard]] bool IsPlaying(SoundId) const override { return false; }
-        void Play(SoundId, float) override { ++plays; }
+    struct Output final : FakeSoundOutput {
+        [[nodiscard]] VoiceId StartVoice(SoundId id, const VoiceStart& start) override {
+            ++plays;
+            return FakeSoundOutput::StartVoice(id, start);
+        }
         int plays = 0;
     };
     GameSettings settings;
@@ -571,9 +575,11 @@ TEST_CASE("Engine.Recipes.UiSoundsPlayWithNoCodeOnTheScreen", "[engine][recipes]
 }
 
 TEST_CASE("Engine.Recipes.SoundTablePlaysThroughAPlayer", "[engine][recipes]") {
-    struct Output final : SoundOutput {
-        [[nodiscard]] bool IsPlaying(SoundId) const override { return false; }
-        void Play(SoundId, float) override { ++plays; }
+    struct Output final : FakeSoundOutput {
+        [[nodiscard]] VoiceId StartVoice(SoundId id, const VoiceStart& start) override {
+            ++plays;
+            return FakeSoundOutput::StartVoice(id, start);
+        }
         int plays = 0;
     };
     GameSettings settings;
@@ -587,4 +593,33 @@ TEST_CASE("Engine.Recipes.SoundTablePlaysThroughAPlayer", "[engine][recipes]") {
     sounds.Update(0.25f);
     CHECK(RecipeHit(sounds));
     CHECK(output.plays == 2);
+}
+
+TEST_CASE("Engine.Recipes.SpatialSoundFollowsTheState", "[engine][recipes]") {
+    GameSettings settings;
+    AddRecipeNoises(settings);
+    CHECK(CatalogWithSounds(settings.audio, settings.sounds).effects.size() == 4);
+    FakeSoundOutput output;
+    SoundPlayer sounds(settings.sounds, output);
+    RecipeHauntSounds haunt(sounds);
+    REQUIRE(output.started.size() == 3); // Hum, heart and the first ambience layer
+    CameraView view;
+    view.target = {0.0f, 0.0f};
+    view.offset = {640.0f, 360.0f};
+    view.viewport = {0.0f, 0.0f, 1280.0f, 720.0f};
+
+    haunt.Update({.player = {0.0f, 0.0f}, .ghost = {600.0f, 0.0f}}, view);
+    CHECK(output.Of(0).pan > 0.0f); // Right of the camera, heard on the right
+    CHECK(output.Of(1).volume == 0.0f);
+    CHECK(haunt.BeatsPerSecond() == Catch::Approx(0.9f));
+    haunt.Update({.player = {0.0f, 0.0f}, .ghost = {-50.0f, 0.0f}}, view);
+    CHECK(output.Of(0).pan < 0.0f);
+    CHECK(output.Of(1).volume > 0.9f);
+    CHECK(output.Of(1).pitch > 2.0f);
+
+    haunt.Update({.player = {0.0f, 0.0f}, .ghost = {-50.0f, 0.0f}, .indoors = true}, view);
+    REQUIRE(output.started.size() == 4); // Rain joined
+    CHECK(output.Of(2).volume == 0.0f);  // Wind out
+    CHECK(output.Of(3).volume == 0.8f);
+    CHECK(output.Of(3).muffle == 0.8f);
 }

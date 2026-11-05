@@ -15,6 +15,7 @@
 #include "Audio/SoundPlayer.h"
 #include "Audio/SoundTables.h"
 #include "Runtime/GameSettings.h"
+#include "Tests/Support/FakeSoundOutput.h"
 
 namespace {
 enum class Sfx { Hit, Coin, UiMove, Count };
@@ -64,14 +65,15 @@ static_assert(!std::is_convertible_v<SoundId, SoundKey>);
 static_assert(!std::is_convertible_v<Plain, SoundKey>);
 static_assert(!std::is_convertible_v<int, SoundKey>);
 
-class FakeOutput final : public SoundOutput {
+class FakeOutput final : public FakeSoundOutput {
 public:
-    [[nodiscard]] bool IsPlaying(SoundId id) const override { return playing.contains(id); }
-    void Play(SoundId id, float pitch) override { plays.emplace_back(id, pitch); }
+    [[nodiscard]] VoiceId StartVoice(SoundId id, const VoiceStart& start) override {
+        plays.emplace_back(id, start.pitch);
+        return FakeSoundOutput::StartVoice(id, start);
+    }
     [[nodiscard]] std::size_t File(std::size_t play, SoundId first) const {
         return static_cast<std::size_t>(plays[play].first) - static_cast<std::size_t>(first);
     }
-    std::set<SoundId> playing;
     std::vector<std::pair<SoundId, float>> plays;
 };
 
@@ -181,8 +183,8 @@ TEST_CASE("Engine.Sounds.BadPitchThrowsEvenDuringACooldown", "[engine][audio]") 
     FakeOutput output;
     SoundPlayer player(SfxTable, output);
     CHECK(player.Play(Sfx::Hit));
-    CHECK_THROWS_AS(player.Play(Sfx::Hit, 0.0f), std::invalid_argument);
-    CHECK_THROWS_AS(player.Play(Sfx::Hit, std::nanf("")), std::invalid_argument);
+    CHECK_THROWS_AS(player.Play(Sfx::Hit, {.pitch = 0.0f}), std::invalid_argument);
+    CHECK_THROWS_AS(player.Play(Sfx::Hit, {.pitch = std::nanf("")}), std::invalid_argument);
 }
 
 TEST_CASE("Engine.Sounds.NeverTheSameFileTwiceInARowAndEveryFileComes", "[engine][audio]") {
@@ -223,7 +225,7 @@ TEST_CASE("Engine.Sounds.PitchIsPickedFromTheRangeTimesTheCaller", "[engine][aud
     float lowest = 100.0f;
     float highest = 0.0f;
     for (int i = 0; i < 500; ++i) {
-        player.Play(Sfx::Hit, 2.0f);
+        player.Play(Sfx::Hit, {.pitch = 2.0f});
         player.Update(1.0f);
         lowest = std::min(lowest, output.plays.back().second);
         highest = std::max(highest, output.plays.back().second);
@@ -234,7 +236,7 @@ TEST_CASE("Engine.Sounds.PitchIsPickedFromTheRangeTimesTheCaller", "[engine][aud
     CHECK(highest > 2.9f);
     player.Play(Sfx::Coin); // No range: exactly 1
     CHECK(output.plays.back().second == 1.0f);
-    player.Play(Sfx::Coin, 0.75f);
+    player.Play(Sfx::Coin, {.pitch = 0.75f});
     CHECK(output.plays.back().second == 0.75f);
 }
 

@@ -70,6 +70,11 @@ if(ENGINE_BUILD_RUNTIME)
         # raylib 5.5 declares a legacy minimum; apply modern compatibility only to that dependency.
         set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
         add_subdirectory(ThirdParty/raylib)
+        # Audio is miniaudio's engine (Core/Audio/Internals). raudio holds a second, older copy of it, which cannot link
+        # beside that one, so it stays out of the build. Only this file: raylib's CUSTOMIZE_BUILD would have turned this
+        # off too, and with it the image formats that config.h turns on under a condition.
+        set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/raylib/src/raudio.c" TARGET_DIRECTORY raylib
+            PROPERTY HEADER_FILE_ONLY ON)
     endfunction()
     engine_add_raylib()
 endif()

@@ -27,9 +27,38 @@ void ValidateAudioVolume(float volume) {
 void ValidateAudioPitch(float pitch) {
     if (!std::isfinite(pitch) || pitch <= 0.0f) throw std::invalid_argument("Audio pitch must be finite and positive");
 }
+void ValidateAudioPan(float pan) {
+    if (!(pan >= -1.0f && pan <= 1.0f)) throw std::invalid_argument("Audio pan must be finite and between -1 and 1");
+}
+void ValidateAudioMuffle(float amount) {
+    if (!(amount >= 0.0f && amount <= 1.0f))
+        throw std::invalid_argument("Audio muffle must be finite and between 0 and 1");
+}
+void ValidateAudioFade(float seconds) {
+    if (!std::isfinite(seconds) || seconds < 0.0f)
+        throw std::invalid_argument("An audio fade must be finite and not negative");
+}
+void ValidateAudioBus(SoundBus bus) {
+    switch (bus) {
+    case SoundBus::World:
+    case SoundBus::Ui   :
+    case SoundBus::Music: return;
+    }
+    throw std::invalid_argument("Invalid sound bus");
+}
+void ValidateAudioVoiceStart(const VoiceStart& start) {
+    ValidateAudioVolume(start.volume);
+    ValidateAudioPitch(start.pitch);
+    ValidateAudioVolume(start.gain);
+    ValidateAudioPan(start.pan);
+    ValidateAudioMuffle(start.muffle);
+    ValidateAudioFade(start.fadeIn);
+    ValidateAudioSeek(start.startAt);
+}
 void ValidateAudioEffectSettings(const EffectSettings& settings) {
     if (settings.maxConcurrent == 0) throw std::invalid_argument("Effect maxConcurrent must be at least 1");
     ValidateAudioVolume(settings.volume);
+    ValidateAudioBus(settings.bus);
     switch (settings.overflow) {
     case EffectOverflow::RestartNext:
     case EffectOverflow::Skip       : return;

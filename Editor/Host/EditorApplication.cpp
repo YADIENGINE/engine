@@ -292,7 +292,7 @@ void EditorApplication::HandleAudioPreview(const AudioPreviewRequest& request) {
             audio.SetMusicVolume(request.volume);
             // From the source file, so a sound added since the last build plays without Build & Refresh.
             LoadMusicFile(audio, PreviewId, request.file);
-            audio.PlayMusic(PreviewId, request.loop);
+            audio.PlayMusic(PreviewId, {.loop = request.loop});
             _audio.length = audio.MusicLength();
             break;
         case AudioPreviewAction::Pause:

@@ -37,7 +37,9 @@ std::filesystem::path Utf8Path(const std::string& text) {
 WorkerSession::WorkerSession(Game& game, const GameSettings& settings, const SceneRegistry& registry,
                              ControlChannel& channel, const std::string& session, const FontFace* font,
                              AudioSystem& audio, SoundPlayer& sounds, WorkerSessionActions actions)
-    : _game(game)
+    : _audio(audio)
+    , _sounds(sounds)
+    , _game(game)
     , _registry(registry)
     , _channel(channel)
     , _canvas{settings.canvasWidth, settings.canvasHeight}
@@ -65,6 +67,7 @@ float WorkerSession::Advance(float realSeconds) {
     if (_profiler.Busy()) return _profiler.Advance();
     ReplayDue();
     float seconds = _paused ? 0.0f : realSeconds * _speed;
+    _sounds.SetHold(_paused); // A paused scene, or one seeking through steps, holds its live sounds in place
     const double fixedSeconds = _simulation.StepSeconds(StepSeconds);
     if (_seek) {
         const auto* runner = _simulation.Runner();
@@ -281,6 +284,14 @@ void WorkerSession::Command(const WorkerMessage& message) {
         _inputState = {};
         _inputState.cancelled = true;
         Reply(message, "state", PlaybackState());
+    } else if (message.type == "audio-capture") {
+        try {
+            const std::filesystem::path file = Utf8Path(message.data.at("file").get<std::string>());
+            _audio.StartCapture(file, static_cast<float>(message.data.at("seconds").get<double>()));
+            Reply(message, "state", PlaybackState());
+        } catch (const std::exception& error) {
+            Reply(message, "rejected", {{"text", error.what()}});
+        }
     } else if (message.type == "playback") {
         const double speed = message.data.at("speed").get<double>();
         if (!ValidPlaybackSpeed(speed)) {

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "intro": "Components linked into this application or shipped with its assets. raylib's bundled libraries are listed conservatively, including optional file format readers that may not be linked into the executable.",
+  "intro": "Components linked into this application or shipped with its assets. raylib's bundled libraries are listed conservatively, including its audio module and optional file format readers that are not linked into the executable.",
   "components": [
     {
       "name": "nlohmann/json",
@@ -18,6 +18,12 @@
         "contains": "VERSION {version}"
       },
       "license": "Box2D/LICENSE"
+    },
+    {
+      "name": "miniaudio",
+      "version": "0.11.26",
+      "text": "Notices/miniaudio.txt",
+      "pin": { "file": "miniaudio/miniaudio.h", "contains": "miniaudio - v{version} - " }
     },
     {
       "name": "Monocypher",
