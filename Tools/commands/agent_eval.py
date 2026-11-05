@@ -10,6 +10,7 @@ import time
 
 from ..agentmetrics import evaluation
 from ..agentmetrics.live import describe
+from ..agentmetrics.report import render_behaviour
 from ..errors import EXIT_FAILED, EXIT_INFRA, EXIT_OK, ToolError
 
 COLUMNS = ("medianTotal", "medianOutput", "medianRequests", "medianToolOutput", "medianPeakContext")
@@ -94,6 +95,10 @@ def render_summary(summary: dict) -> str:
                      f"{_k(task['medianPeakContext']):>7} {_k(task['medianEngineFailures']):>5} "
                      f"{task['medianSeconds']:>6.0f} {_k(task['tokensPerSuccess']):>8}")
     lines.append("  (medians per attempt; tools = tool output tokens; per ok = all tokens / passed attempts)")
+    if summary.get("behaviour"):
+        lines.append("  Behaviour, all attempts:")
+        lines.append(render_behaviour(summary["behaviour"], summary["overall"]["attempts"]).replace("\n  ", "\n    ")
+                     .replace("  ", "    ", 1))
     return "\n".join(lines)
 
 

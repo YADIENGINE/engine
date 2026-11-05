@@ -110,6 +110,57 @@ class LiveTests(unittest.TestCase):
         self.assertEqual(describe("claude", json.dumps(event)), "Bash: python Engine test\nsays: Done.")
 
 
+class BehaviourTests(unittest.TestCase):
+    def test_search_roots_and_quotes(self):
+        from Tools.agentmetrics.classify import search_roots, segments, wide_search
+        self.assertEqual(segments('cat a.txt; rg "a|b" x | head'), ["cat a.txt", 'rg "a|b" x', "head"])
+        self.assertEqual(search_roots('rg -n "Space|Button" Game/Simulation Game/Scenes'),
+                         ["Game/Simulation", "Game/Scenes"])
+        self.assertEqual(search_roots("rg -n -g '*.md' Foo"), ["."])
+        self.assertEqual(search_roots("rg --files Game"), ["Game"])
+        self.assertTrue(wide_search(search_roots('rg -n "x" Game Engine')))
+        self.assertFalse(wide_search(search_roots('rg -n "x" Engine/AgentDocs/Recipes')))
+
+    def test_habits(self):
+        from Tools.agentmetrics.model import Session, ToolCall
+        from Tools.agentmetrics.report import behaviour
+        session = Session("codex", "s", Path("s.jsonl"), tools=[
+            ToolCall("exec", "search", "rg x", chars=4000, roots=["."]),
+            ToolCall("exec", "read", "cat", chars=400, files=["Engine/Core/Simulation/Scenario.cpp"]),
+            ToolCall("exec", "engine", "python Engine ctl status", failed=True, engine="ctl status"),
+            ToolCall("exec", "edit", "apply_patch"),
+            ToolCall("exec", "read", "cat", files=["Engine/AgentDocs/Skills/simulation/SKILL.md"]),
+        ])
+        found = behaviour(session)
+        self.assertEqual((found["wideSearches"], found["wideSearchTokens"]), (1, 1000))
+        self.assertEqual((found["engineSourceReads"], found["engineSourceTokens"]), (1, 100))
+        self.assertEqual(found["failedEditorCalls"], 1)
+        self.assertTrue(found["editBeforeSkill"])
+
+    def test_codex_split_and_listed_reads(self):
+        script = 'const cmds = [["a", "python Engine sim list"], ["b", "rg --files Game"]];\n' \
+                 'await Promise.all(cmds.map(([n, c]) => tools.shell_command({command: c})));'
+        output = [{"type": "input_text", "text": "Script completed\n"},
+                  {"type": "input_text", "text": "## a\nExit code: 0\nOutput:\n{}\n## b\nExit code: 1\nOutput:\n"
+                                                 + "x" * 400}]
+        root = Path(tempfile.mkdtemp())
+        log = write_lines(root / "rollout.jsonl", [
+            {"type": "session_meta", "payload": {"id": "t", "cwd": str(root)}},
+            {"type": "response_item", "payload": {"type": "custom_tool_call", "name": "exec", "call_id": "c",
+                                                  "input": script}},
+            {"type": "response_item", "payload": {"type": "custom_tool_call_output", "call_id": "c",
+                                                  "output": output}},
+            {"type": "response_item", "payload": {"type": "custom_tool_call", "name": "exec", "call_id": "d",
+                                                  "input": 'for (const p of ["Engine/AgentDocs/Agent.md"]) '
+                                                           'await tools.shell_command({command: `Get-Content ${p}`});'}},
+        ])
+        tools = codex.parse(log).tools
+        self.assertEqual([(t.engine, t.failed) for t in tools[:2]], [("sim list", False), (None, True)])
+        self.assertLess(tools[0].chars, 60)
+        self.assertGreater(tools[1].chars, 400)
+        self.assertEqual(tools[2].files, ["Engine/AgentDocs/Agent.md"])
+
+
 class CodexScriptTests(unittest.TestCase):
     def test_command_shapes(self):
         keyed = 'const r = await tools.shell_command({command:"Get-Content -Raw Engine/AgentDocs/Agent.md",' \

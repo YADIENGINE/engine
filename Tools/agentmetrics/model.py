@@ -42,6 +42,7 @@ class ToolCall:
     failed: bool = False
     engine: str | None = None
     files: list[str] = field(default_factory=list)  # Files the call read
+    roots: list[str] = field(default_factory=list)  # Folders a search covered; "." is where the agent runs
 
     @property
     def output_tokens(self) -> int:

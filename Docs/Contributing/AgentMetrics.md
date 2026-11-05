@@ -32,6 +32,7 @@ logs are read from `CLAUDE_CONFIG_DIR` or `~/.claude/projects/`, subagents inclu
 | Engine commands | Each `python Engine ...` command: runs, failures, output tokens; the longest run of failed engine commands in a row (a build-fix loop) |
 | File reads | Files read by tools or by `cat`/`sed`/`Get-Content`, by area (game, engine source, engine Docs, AgentDocs, agent files), the largest, and those read three times or more |
 | AgentDocs | Which AgentDocs files were read and which skills were never read |
+| Behaviour | Habits that cost tokens, counted from the tool calls: engine source files read (`Engine/Core`, `Editor`, `Assets`, `Tools`, `ThirdParty`) instead of AgentDocs; searches over the whole project or the whole engine copy, with the tokens they returned; editor commands that failed (usually no editor open); sessions whose first edit came before any skill was read |
 | Largest tool outputs | The single biggest results, with the command or file |
 | Sessions by tokens | The heaviest sessions with requests, peak context, total and output tokens, failed engine commands |
 
@@ -39,7 +40,7 @@ Where the cost goes: every request reads the whole context again, so total token
 requests. Cache reads are cheaper per token than new input or output, but they are most of the tokens.
 
 Claude Code writes one log line per part of a response and repeats the usage on each; requests are counted once per
-response. Codex reports cached input inside input; the report splits it out.
+response. Codex reports cached input inside input; the report splits it out. A Codex script that runs several commands counts as one tool call per command when its output reports one exit code per command; otherwise its whole output stays with the script.
 
 ## agent-eval
 
@@ -87,7 +88,7 @@ and `compare` uses the one of the run's setting.
 
 ### Reading a run
 
-`show` lists, per task, attempts passed and medians: total tokens, output, requests, tool output, peak context,
+`show` lists, per task, attempts passed and medians, and the behaviour counts over all attempts: total tokens, output, requests, tool output, peak context,
 failed engine commands, seconds, and tokens per success (all tokens of the task divided by passed attempts, so failed
 attempts are charged). `compare` puts a run next to the committed baseline of its setting, or next to another run.
 Token counts compare only within one harness, model and effort: tokenizers, harnesses and effort levels differ. Judge a change by tokens per

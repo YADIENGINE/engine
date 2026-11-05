@@ -3,7 +3,7 @@
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from .classify import area
+from .classify import area, engine_source, wide_search
 from .model import Session, ToolCall
 
 TOKEN_FIELDS = ("input", "cache_read", "cache_write", "output", "reasoning")
@@ -38,7 +38,28 @@ def _failure_runs(tools: list[ToolCall]) -> int:
     return longest
 
 
-def session_row(session: Session) -> dict:
+def behaviour(session: Session, root: Path | None = None) -> dict:
+    """Habits that cost tokens, counted from the tool calls (tokens are tool output):
+    engine source read instead of AgentDocs; searches over the whole project or engine copy; editor commands that
+    failed (usually: no editor open); a first edit before any skill was read."""
+    def relative(path: str) -> str:
+        return _normal(path, root) if root else path.replace("\\", "/")
+
+    source = [call for call in session.tools if any(engine_source(relative(file)) for file in call.files)]
+    wide = [call for call in session.tools if call.category == "search" and wide_search(call.roots)]
+    ctl = [call for call in session.tools if (call.engine or "").startswith("ctl") and call.failed]
+    first_edit = next((i for i, call in enumerate(session.tools) if call.category == "edit"), None)
+    first_skill = next((i for i, call in enumerate(session.tools)
+                        if any("AgentDocs/Skills/" in file.replace("\\", "/") for file in call.files)), None)
+    return {
+        "engineSourceReads": len(source), "engineSourceTokens": sum(call.output_tokens for call in source),
+        "wideSearches": len(wide), "wideSearchTokens": sum(call.output_tokens for call in wide),
+        "failedEditorCalls": len(ctl),
+        "editBeforeSkill": first_edit is not None and (first_skill is None or first_edit < first_skill),
+    }
+
+
+def session_row(session: Session, root: Path | None = None) -> dict:
     return {
         "harness": session.harness,
         "id": session.id,
@@ -60,6 +81,7 @@ def session_row(session: Session) -> dict:
         "toolOutputTokens": sum(call.output_tokens for call in session.tools),
         "engineFailures": sum(1 for call in session.tools if call.engine and call.failed),
         "longestFailureRun": _failure_runs(session.tools),
+        "behaviour": behaviour(session, root),
     }
 
 
@@ -109,7 +131,7 @@ def summarize(sessions: list[Session], root: Path, engine_root: Path, top: int =
     skills_read = {skill for skill in skills if f"Skills/{skill}/SKILL.md" in agent_docs}
 
     largest = sorted(tools, key=lambda call: call.output_tokens, reverse=True)[:top]
-    rows = sorted((session_row(session) for session in sessions), key=lambda row: row["tokens"]["total"],
+    rows = sorted((session_row(session, root) for session in sessions), key=lambda row: row["tokens"]["total"],
                   reverse=True)
     return {
         "root": str(root),
@@ -143,10 +165,32 @@ def summarize(sessions: list[Session], root: Path, engine_root: Path, top: int =
         "agentDocs": {"files": len(agent_docs), "reads": sum(agent_docs.values()),
                       "read": dict(agent_docs.most_common()),
                       "skillsNeverRead": [skill for skill in skills if skill not in skills_read]},
+        "behaviour": _behaviour_totals([session_row(s, root)["behaviour"] for s in sessions if not s.subagent]),
         "largestOutputs": [{"tool": call.name, "category": call.category, "tokens": call.output_tokens,
                             "target": " ".join(call.target.split())[:160]} for call in largest],
         "topSessions": rows[:top],
     }
+
+
+def _behaviour_totals(rows: list[dict]) -> dict:
+    if not rows:
+        return {}
+    totals = {key: sum(row[key] for row in rows) for key in rows[0] if key != "editBeforeSkill"}
+    totals["sessionsEditingBeforeSkill"] = sum(1 for row in rows if row["editBeforeSkill"])
+    return totals
+
+
+def render_behaviour(totals: dict, sessions: int) -> str:
+    """One line per habit, with the tokens it cost."""
+    if not totals:
+        return "  none"
+    return "\n".join([
+        f"  engine source read instead of AgentDocs: {totals['engineSourceReads']} reads, "
+        f"~{_k(totals['engineSourceTokens'])} tokens",
+        f"  searches over the whole project or engine: {totals['wideSearches']}, ~{_k(totals['wideSearchTokens'])} tokens",
+        f"  editor commands that failed (no editor open?): {totals['failedEditorCalls']}",
+        f"  sessions that edited before reading any skill: {totals['sessionsEditingBeforeSkill']} of {sessions}",
+    ])
 
 
 def _k(value: int) -> str:
@@ -241,6 +285,10 @@ def render(summary: dict) -> str:
         add("  read: none")
     if docs["skillsNeverRead"]:
         add("  skills never read: " + ", ".join(docs["skillsNeverRead"]))
+
+    add("")
+    add("Behaviour (habits that cost tokens)")
+    add(render_behaviour(summary["behaviour"], summary["sessions"]["main"]))
 
     add("")
     add("Largest tool outputs")

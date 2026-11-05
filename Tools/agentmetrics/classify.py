@@ -11,6 +11,20 @@ READ_VERBS = {"cat", "head", "tail", "sed", "awk", "less", "more", "type", "get-
 SEARCH_VERBS = {"grep", "rg", "egrep", "find", "ls", "dir", "tree", "get-childitem", "gci", "select-string", "sls",
                 "wc", "fd", "where", "where.exe", "which", "test-path"}
 SEGMENT_SPLIT = re.compile(r"\s*(?:&&|\|\||;|\|)\s*")
+QUOTED = re.compile(r""""(?:[^"\\]|\\.)*"|'[^']*'""")
+
+
+def segments(command: str) -> list[str]:
+    """The commands of a shell line, split at `;`, `&&`, `||` and `|` outside quotes: a search pattern such as
+    "A|B" stays whole."""
+    quoted: list[str] = []
+
+    def hide(match: re.Match) -> str:
+        quoted.append(match.group(0))
+        return f"\0{len(quoted) - 1}\0"
+
+    masked = QUOTED.sub(hide, command)
+    return [re.sub(r"\0(\d+)\0", lambda m: quoted[int(m.group(1))], part) for part in SEGMENT_SPLIT.split(masked)]
 FILE_TOKEN = re.compile(r"""(?:"([^"]+\.[A-Za-z0-9]{1,6})"|'([^']+\.[A-Za-z0-9]{1,6})'|([^\s"'|;&<>]+\.[A-Za-z0-9]{1,6}))""")
 NOT_FILES = re.compile(r"^(?:-|\d|https?:|\$)|[*?{}]")
 
@@ -57,7 +71,7 @@ def engine_command(command: str) -> str | None:
 
 def _segments(command: str) -> list[list[str]]:
     words = []
-    for segment in SEGMENT_SPLIT.split(command):
+    for segment in segments(command):
         parts = segment.strip().split()
         while parts and (parts[0] in {"cd", "Set-Location", "pushd"} or "=" in parts[0].split("/")[0]):
             parts = parts[2:] if parts[0] in {"cd", "Set-Location", "pushd"} else parts[1:]
@@ -69,7 +83,7 @@ def _segments(command: str) -> list[list[str]]:
 def read_files(command: str) -> list[str]:
     """Files a shell command prints: arguments of cat, sed, head, Get-Content and the like."""
     files = []
-    for segment in SEGMENT_SPLIT.split(command):
+    for segment in segments(command):
         parts = segment.strip().split(maxsplit=1)
         if len(parts) < 2 or parts[0].lower().split("\\")[-1].split("/")[-1] not in READ_VERBS:
             continue
@@ -78,6 +92,59 @@ def read_files(command: str) -> list[str]:
             if not NOT_FILES.search(token):
                 files.append(token)
     return files
+
+
+# Options of search commands that take a value, so the value is not taken for a path
+VALUE_OPTIONS = {"-g", "--glob", "-t", "--type", "-T", "--type-not", "-e", "--regexp", "-f", "--file", "-A", "-B",
+                 "-C", "-m", "--max-count", "--max-depth", "-d", "--include", "--exclude", "-name", "-iname",
+                 "-type", "-Filter", "-Include", "-Exclude", "-Path", "-Pattern", "-Depth"}
+PATTERN_FIRST = {"rg", "grep", "egrep", "select-string", "sls"}  # The first free word is the pattern
+
+
+def _words(text: str) -> list[str]:
+    """Words of a command, a quoted argument counting as one."""
+    return [match.group(0) for match in re.finditer(r""""(?:[^"\\]|\\.)*"|'[^']*'|\S+""", text)]
+
+
+def search_roots(command: str) -> list[str]:
+    """Folders the search commands in a shell command cover; "." when a search names no folder."""
+    roots = []
+    for segment in segments(command):
+        words = _words(segment.strip())
+        while words and words[0] in {"cd", "Set-Location", "pushd"}:
+            words = words[2:]
+        if not words:
+            continue
+        verb = words[0].lower().split("\\")[-1].split("/")[-1]
+        if verb not in SEARCH_VERBS or verb in {"wc", "where", "where.exe", "which", "test-path"}:
+            continue
+        free, skip, pattern_given = [], False, False
+        for word in words[1:]:
+            if skip:
+                skip = False
+                continue
+            if word.startswith("-"):
+                skip = word in VALUE_OPTIONS
+                pattern_given = pattern_given or word in {"-e", "--regexp", "-f", "--file", "--files", "-Pattern"}
+                continue
+            free.append(word.strip("'\""))
+        if verb in PATTERN_FIRST and not pattern_given and free:
+            free = free[1:]
+        roots.extend(free or ["."])
+    return roots
+
+
+def wide_search(roots: list[str]) -> bool:
+    """A search over the whole project or the whole engine copy."""
+    return any(root.replace("\\", "/").rstrip("/") in {".", "", "Engine", "./Engine"} for root in roots)
+
+
+def engine_source(path: str) -> bool:
+    """A file of the engine's own implementation in a project: not AgentDocs, Docs or a public header's API page."""
+    normal = path.replace("\\", "/")
+    return (normal.startswith("Engine/") or "/Engine/" in normal) and any(
+        f"Engine/{folder}/" in normal for folder in ("Core", "Editor", "Assets", "Tools", "ThirdParty")) and \
+        normal.rsplit(".", 1)[-1] in {"h", "hpp", "cpp", "c", "inl", "py", "cmake", "txt"}
 
 
 def shell_category(command: str) -> str:

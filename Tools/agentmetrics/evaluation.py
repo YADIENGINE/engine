@@ -33,7 +33,7 @@ from ..prebuilt import COPY_RECORD, PREBUILT_VARIABLE
 from . import claude, codex
 from .live import describe
 from .model import Session
-from .report import session_row
+from .report import _behaviour_totals, session_row
 
 EVAL_ROOT = ENGINE_ROOT / "Tools" / "AgentEval"
 FIXTURE = EVAL_ROOT / "Fixture"
@@ -401,8 +401,8 @@ def sessions_of(harness: str, project: Path) -> list[Session]:
     return [claude.parse(log, parent) for log, parent in claude.session_files(project, claude.home())]
 
 
-def measure(sessions: list[Session]) -> dict:
-    rows = [session_row(session) for session in sessions]
+def measure(sessions: list[Session], project: Path | None = None) -> dict:
+    rows = [session_row(session, project) for session in sessions]
     main = [row for row in rows if not row["parent"]]
     tokens = {name: sum(row["tokens"][name] for row in rows) for name in rows[0]["tokens"]} if rows else {}
     categories: dict[str, int] = {}
@@ -423,6 +423,7 @@ def measure(sessions: list[Session]) -> dict:
         "engineCommands": sum(1 for session in sessions for call in session.tools if call.engine),
         "engineFailures": sum(row["engineFailures"] for row in rows),
         "compactions": sum(row["compactions"] for row in rows),
+        "behaviour": _behaviour_totals([row["behaviour"] for row in rows if not row["parent"]]),
     }
 
 
@@ -459,7 +460,7 @@ def attempt(task: Task, number: int, harness: str | None, effort: str, run_dir: 
     result["passed"] = all(check["passed"] for check in result["checks"]) and not result.get("problem")
     if harness:
         sessions = sessions_of(harness, project)
-        result["metrics"] = measure(sessions)
+        result["metrics"] = measure(sessions, project)
         result["sessionLogs"] = [str(session.path) for session in sessions]
     try:
         result["changes"] = diff_stat(project)
@@ -496,9 +497,13 @@ def summarize_run(attempts: list[dict]) -> dict:
             "medianSeconds": _median([entry["seconds"] for entry in mine]),
             "tokensPerSuccess": round(sum(total) / len(passed)) if passed else None,
         }
+    behaviour = [(entry.get("metrics") or {}).get("behaviour") for entry in attempts]
+    behaviour = _behaviour_totals([row | {"editBeforeSkill": row["sessionsEditingBeforeSkill"] > 0}
+                                   for row in behaviour if row])
     all_total = sum((e.get("metrics") or {}).get("tokens", {}).get("total", 0) for e in attempts)
     all_passed = sum(1 for e in attempts if e["passed"])
     return {"tasks": tasks,
+            "behaviour": behaviour,
             "overall": {"attempts": len(attempts), "passed": all_passed,
                         "errors": sum(1 for entry in attempts if entry.get("error")),
                         "successRate": round(all_passed / len(attempts), 3) if attempts else 0,

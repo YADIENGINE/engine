@@ -1,9 +1,10 @@
 """Codex session logs: `<home>/sessions/YYYY/MM/DD/rollout-*.jsonl` (and `archived_sessions/`).
 
 Codex reports input tokens with the cached part included; Request.input holds only the uncached rest. Shell commands
-run inside an `exec` script (`tools.exec_command({cmd: ...})`, `tools.shell_command({command: ...})`, or a list
-of command strings the script maps over) or as older `shell` / `exec_command` function calls;
-their outputs carry `exit_code`. Output size is what the model got back (`original_token_count` is the size before
+run inside an `exec` script (`tools.exec_command({cmd: ...})`, `tools.shell_command({command: ...})`, or a list of
+command strings the script maps over) or as older `shell` / `exec_command` function calls; their outputs carry an
+exit code. A script that ran several commands counts as one tool call per command when its output reports one exit
+code per command; otherwise the whole output stays with the script. Output size is what the model got back (`original_token_count` is the size before
 Codex cut it, so it is not used).
 """
 
@@ -12,7 +13,7 @@ import os
 import re
 from pathlib import Path
 
-from .classify import READ_VERBS, SEARCH_VERBS, engine_command, read_files, shell_category
+from .classify import READ_VERBS, SEARCH_VERBS, engine_command, read_files, search_roots, shell_category
 from .model import Request, Session, ToolCall, lines
 
 STRING = re.compile(r'''"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`''')
@@ -93,6 +94,34 @@ def _commands(script: str) -> list[str]:
             found.append(text)
     return found
 
+
+def _listed_paths(script: str) -> list[str]:
+    """Strings in a script that are file paths: a folder part and an extension, no spaces."""
+    found = []
+    for match in STRING.finditer(script):
+        text = _unquote(match.group(0)).strip()
+        if " " not in text and re.search(r"[/\\]", text) and re.search(r"\.[A-Za-z0-9]{1,6}$", text):
+            found.append(text)
+    return found
+
+
+def _command_call(name: str, command: str) -> ToolCall:
+    engine = engine_command(command)
+    return ToolCall(name, "engine" if engine else shell_category(command), command, engine=engine,
+                    files=read_files(command), roots=search_roots(command))
+
+
+def _parts(text: str) -> list[str]:
+    """The output of each command a script ran, in order: the text is cut where each command's exit code is
+    reported, whether the script returned one part per command or joined them."""
+    starts = [text.rfind("\n", 0, match.start()) + 1 for match in EXIT_CODE.finditer(text)]
+    return [text[begin:end] for begin, end in zip(starts, starts[1:] + [len(text)])]
+
+
+def _exit_failed(text: str) -> bool:
+    return any(int(next(group for group in match.groups() if group)) != 0 for match in EXIT_CODE.finditer(text))
+
+
 def _call(name: str, script: str) -> ToolCall:
     """A tool call from an exec script or a function call's arguments."""
     commands = _commands(script)
@@ -108,8 +137,11 @@ def _call(name: str, script: str) -> ToolCall:
         joined = " ; ".join(commands)
         engines = [found for found in map(engine_command, commands) if found]
         files = [file for command in commands for file in read_files(command)]
+        if any("${" in command and shell_category(command) == "read" for command in commands):
+            files += _listed_paths(script)  # `Get-Content ${p}` over a list of paths: the list names the files
         category = "engine" if engines else shell_category(commands[0])
-        return ToolCall(name, category, joined, engine=engines[0] if engines else None, files=files)
+        return ToolCall(name, category, joined, engine=engines[0] if engines else None, files=files,
+                        roots=[root for command in commands for root in search_roots(command)])
     if "apply_patch" in inner or name == "apply_patch":
         return ToolCall(name, "edit", "apply_patch")
     if inner & {"web_search", "web_fetch"}:
@@ -145,7 +177,8 @@ def parse(path: Path, parent: str | None = None) -> Session:
     records: dict[str, Request] = {}
     counted: list[Request] = []  # From token_count events, for logs without token_usage_record
     last_total = None
-    calls: dict[str, ToolCall] = {}
+    calls: dict[str, tuple[ToolCall, list[str]]] = {}  # call id: the call and the commands its script runs
+    split: dict[int, list[ToolCall]] = {}  # Position in session.tools: the call's commands, one call each
     typed: list[str] = []  # user_message events
     items: list[str] = []  # User messages in the model's history, for logs without those events
     for line in lines(path):
@@ -176,20 +209,29 @@ def parse(path: Path, parent: str | None = None) -> Session:
             session.compactions += 1
         elif inner in {"custom_tool_call", "function_call", "local_shell_call"}:
             script = payload.get("input") or payload.get("arguments") or json.dumps(payload.get("action") or {})
-            call = _call(payload.get("name") or inner, script if isinstance(script, str) else json.dumps(script))
-            calls[payload.get("call_id", str(len(calls)))] = call
+            script = script if isinstance(script, str) else json.dumps(script)
+            call = _call(payload.get("name") or inner, script)
+            calls[payload.get("call_id", str(len(calls)))] = (call, _commands(script))
             session.tools.append(call)
         elif inner in {"custom_tool_call_output", "function_call_output", "local_shell_call_output"}:
-            call = calls.get(payload.get("call_id", ""))
-            if call is not None:
+            found = calls.get(payload.get("call_id", ""))
+            if found is not None:
+                call, commands = found
                 text = _output_text(payload.get("output"))
                 call.chars = len(text)
-                codes = [int(next(group for group in match.groups() if group)) for match in EXIT_CODE.finditer(text)]
-                call.failed = any(code != 0 for code in codes)
+                call.failed = _exit_failed(text)
+                parts = _parts(text)
+                if len(commands) > 1 and len(parts) == len(commands):  # Each command gets its own output
+                    own = [_command_call(call.name, command) for command in commands]
+                    for each, part in zip(own, parts):
+                        each.chars, each.failed = len(part), _exit_failed(part)
+                    split[next(i for i, tool in enumerate(session.tools) if tool is call)] = own
         elif inner == "user_message":
             typed.append(str(payload.get("message", "")).strip())
         elif inner == "message" and payload.get("role") == "user":
             items.append(_output_text(payload.get("content")).strip())
+    if split:
+        session.tools = [each for i, tool in enumerate(session.tools) for each in split.get(i, [tool])]
     prompts = [text for text in (typed or items) if text and not text.startswith(INJECTED)]
     session.prompts = len(prompts)
     session.requests = list(records.values()) if records else counted
