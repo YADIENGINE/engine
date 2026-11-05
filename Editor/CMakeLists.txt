@@ -107,8 +107,10 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Panels/Inspector/InspectorPanel.cpp
         Ui/Panels/Inspector/TuningInspector.cpp
         Ui/Panels/Output/OutputPanel.cpp
+        Ui/Panels/Agents/AgentsDrawer.cpp
         Ui/Panels/Console/ConsolePanel.cpp
         Ui/Panels/Console/ConsoleSessions.cpp
+        Ui/Panels/Console/ConsoleViews.cpp
         Ui/Panels/Git/GitDiffView.cpp
         Ui/Panels/Git/GitDrawer.cpp)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)

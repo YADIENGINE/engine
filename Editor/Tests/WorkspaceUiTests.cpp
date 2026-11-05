@@ -4,6 +4,7 @@
 #include <imgui_internal.h>
 #include <memory>
 #include <limits>
+#include "Editor/Ui/Panels/Agents/AgentsDrawer.h"
 #include "Editor/Ui/Panels/Assets/AssetsPanel.h"
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
@@ -27,6 +28,7 @@ TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[en
     io.Fonts->SetTexID(ImTextureID{1});
     ApplyToolTheme();
     ConsoleSessions sessions;
+    ConsoleViews views;
     ConsolePanel panel;
     // The selected session's row, counted from the top of the list.
     const auto selectedRow = [&] {
@@ -46,7 +48,7 @@ TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[en
         ImGui::Begin("Console");
         rowHeight = ImGui::GetFrameHeight();
         rowStride = rowHeight + ImGui::GetStyle().ItemSpacing.y;
-        const auto request = panel.Draw(sessions);
+        const auto request = panel.Draw(sessions, views).add;
         auto* console = ImGui::GetCurrentWindow();
         for (auto* child : console->DC.ChildWindows) {
             if (child->ChildId == console->GetID("console-session-list")) list = child;
@@ -148,6 +150,255 @@ TEST_CASE("Editor.Console.SessionListSelectsResizesAndRequestsNewSessions", "[en
     REQUIRE(confirmation);
     (void)click({confirmation->WorkRect.Min.x + 40, confirmation->WorkRect.Max.y - rowHeight * 0.5f});
     CHECK(sessions.Infos().size() == 1);
+}
+
+TEST_CASE("Editor.Agents.DrawerKeepsOrderShowsOneTerminalAndStartsAgents", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {1400, 800};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+
+    ConsoleSessions console;
+    const auto workingId = console.AddAgent(AgentKind::ClaudeCode, {});
+    const auto waitingId = console.AddAgent(AgentKind::Codex, {}); // Selected in the Console
+    const auto shellId = console.OpenShell();
+    console.Select(workingId);
+    const auto now = std::chrono::steady_clock::now();
+    std::vector<ConsoleSessionInfo> infos{
+        {.id = workingId,
+         .title = "Working agent",
+         .agent = AgentKind::ClaudeCode,
+         .state = SessionState::Working,
+         .started = now - std::chrono::minutes(8)},
+        {.id = waitingId,
+         .title = "Waiting agent",
+         .agent = AgentKind::Codex,
+         .state = SessionState::Waiting,
+         .started = now - std::chrono::minutes(5)},
+        {.id = shellId, .title = "Shell", .state = SessionState::Idle, .started = now}};
+    EditorAgentReport report;
+    report.sessions[std::to_string(waitingId)].note = AgentNote{AgentActivityState::Waiting, "Choose the target"};
+    report.sessions[std::to_string(waitingId)].noteTime = now;
+    const std::vector<SceneDefinition> catalog;
+    const SceneParameters parameters;
+    const EditorDiagnostics diagnostics;
+    const std::string status;
+    std::deque<EditorControlEvent> events;
+    EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};
+    snapshot.agents = &report;
+    snapshot.controlEvents = &events;
+    AgentsDrawer drawer;
+    ConsoleViews views;
+    std::string log;
+    ImGuiWindow* list = nullptr;
+    const auto frame = [&](bool captureLog = false) {
+        ImGui::NewFrame();
+        if (captureLog) ImGui::LogToBuffer();
+        const auto request = drawer.Draw(infos, {}, views, snapshot, {}, {0, 40}, {1400, 760});
+        if (captureLog) {
+            log = ImGui::GetCurrentContext()->LogBuffer.c_str();
+            ImGui::LogFinish();
+        }
+        if (auto* window = ImGui::FindWindowByName("Agents###editor.agents-drawer"))
+            for (auto* child : window->DC.ChildWindows)
+                if (child->ChildId == window->GetID("agents-chips")) list = child;
+        ImGui::Render();
+        return request;
+    };
+    const auto click = [&](ImVec2 point) {
+        io.AddMousePosEvent(point.x, point.y);
+        (void)frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+        (void)frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+        return frame();
+    };
+
+    CHECK_FALSE(drawer.Shown(infos)); // Closed: the Console keeps every terminal
+    drawer.Open(waitingId);
+    REQUIRE(drawer.Shown(infos) == waitingId);
+    (void)frame(true);
+    REQUIRE(list);
+    // Rows keep the Console's order however the states change; shells stay in the Console
+    REQUIRE(log.find("Working agent") != std::string::npos);
+    CHECK(log.find("Working agent") < log.find("Waiting agent"));
+    CHECK(log.find("Shell") == std::string::npos);
+    CHECK(log.find("Outside the Console") == std::string::npos);
+
+    // Choosing a chip shows its terminal there and leaves the Console's selection alone
+    (void)click({list->WorkRect.Min.x + 12, list->WorkRect.Min.y + ImGui::GetFrameHeight() * 0.5f});
+    CHECK(drawer.Shown(infos) == workingId);
+    CHECK(console.Selected() == workingId);
+    console.Select(waitingId);
+    (void)frame();
+    CHECK(drawer.Shown(infos) == workingId);
+
+    // What agents outside the Console did gets its row, which has no terminal
+    events.push_back({.time = std::chrono::system_clock::now(), .text = "Opened a scene", .session = ""});
+    (void)frame(true);
+    CHECK(log.find("Outside the") != std::string::npos);
+
+    // Keys: chips by number, the next and previous one (around the end), Terminal / Activity
+    drawer.Pick(1);
+    CHECK(drawer.Shown(infos) == waitingId);
+    CHECK(drawer.ChosenSession() == waitingId);
+    drawer.Step(1); // To the outside chip: no terminal, no session to send to
+    (void)frame();
+    CHECK_FALSE(drawer.Shown(infos));
+    CHECK_FALSE(drawer.ChosenSession());
+    drawer.Step(1);
+    CHECK(drawer.Shown(infos) == workingId);
+    drawer.Step(-1);
+    drawer.Step(-1);
+    CHECK(drawer.ChosenSession() == waitingId);
+    drawer.Pick(8); // No ninth chip: nothing changes
+    CHECK(drawer.ChosenSession() == waitingId);
+    drawer.SwitchView(); // Activity draws no terminal, so the Console may show it
+    CHECK_FALSE(drawer.Shown(infos));
+    drawer.SwitchView();
+    CHECK(drawer.Shown(infos) == waitingId);
+
+    drawer.Toggle(std::nullopt);
+    CHECK_FALSE(drawer.IsOpen());
+    CHECK_FALSE(drawer.Shown(infos));
+
+    // With no agent, the drawer offers to start one
+    infos.resize(0);
+    events.clear();
+    drawer.Open();
+    (void)frame(true);
+    CHECK(log.find("No agent running") != std::string::npos);
+    CHECK(log.find("Custom command") != std::string::npos);
+}
+
+TEST_CASE("Editor.Agents.DrawerMenusOpenInFrontOfIt", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {1440, 900};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    const std::vector<SceneDefinition> catalog;
+    const SceneParameters parameters;
+    const EditorDiagnostics diagnostics;
+    const std::string status;
+    EditorAgentReport report;
+    EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};
+    snapshot.agents = &report;
+    EditorPreferences preferences;
+    // A custom agent that is only a shell, so the drawer starts a session without an agent CLI installed
+    preferences.agent.kind = AgentKind::Custom;
+    preferences.agent.customCommand = "cmd /d /k";
+    preferences.agent.configured = true;
+    EditorWorkspace workspace;
+    int fontSize = 100;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        (void)workspace.Draw(snapshot, {}, {}, preferences, fontSize);
+        ImGui::Render();
+    };
+    const auto drawerWindow = [] { return ImGui::FindWindowByName("Agents###editor.agents-drawer"); };
+    (void)frame();
+    io.AddKeyEvent(ImGuiMod_Ctrl, true);
+    io.AddKeyEvent(ImGuiMod_Shift, true);
+    io.AddKeyEvent(ImGuiKey_A, true);
+    (void)frame();
+    io.AddKeyEvent(ImGuiKey_A, false);
+    io.AddKeyEvent(ImGuiMod_Ctrl, false);
+    io.AddKeyEvent(ImGuiMod_Shift, false);
+    (void)frame();
+    // No agent yet: the drawer opens on its empty state, and Enter starts the usual agent
+    REQUIRE(drawerWindow());
+    CHECK(workspace.Sessions().Empty());
+    io.AddKeyEvent(ImGuiKey_Enter, true);
+    (void)frame();
+    io.AddKeyEvent(ImGuiKey_Enter, false);
+    for (int index = 0; index < 3; ++index)
+        (void)frame();
+    CHECK_FALSE(workspace.Sessions().Empty());
+    auto* drawer = drawerWindow();
+    REQUIRE(drawer);
+    REQUIRE(drawer->Active);
+    ImGuiWindow* chips = nullptr;
+    for (auto* child : drawer->DC.ChildWindows)
+        if (child->ChildId == drawer->GetID("agents-chips")) chips = child;
+    REQUIRE(chips);
+    // "+" ends the chip row: its menu must open over the drawer and stay there
+    const ImVec2 add{chips->Pos.x + chips->ContentSize.x - ImGui::GetFrameHeight() * 0.5f,
+                     chips->Pos.y + ImGui::GetFrameHeight() * 0.5f};
+    io.AddMousePosEvent(add.x, add.y);
+    (void)frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    (void)frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    for (int index = 0; index < 3; ++index)
+        (void)frame();
+    auto& g = *ImGui::GetCurrentContext();
+    REQUIRE_FALSE(g.OpenPopupStack.empty());
+    auto* menu = g.OpenPopupStack.back().Window;
+    REQUIRE(menu);
+    CHECK(ImGui::FindWindowDisplayIndex(menu) > ImGui::FindWindowDisplayIndex(drawerWindow()));
+}
+
+TEST_CASE("Editor.Console.ShowsWhereTheDrawerHasATerminal", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.DisplaySize = {1000, 700};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    ConsoleSessions sessions;
+    ConsoleViews views;
+    ConsolePanel panel;
+    const auto agent = sessions.AddAgent(AgentKind::Codex, {});
+    std::string log;
+    ImGuiWindow* terminal = nullptr;
+    const auto frame = [&](std::optional<std::uint64_t> elsewhere) {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({20, 20});
+        ImGui::SetNextWindowSize({900, 500});
+        ImGui::Begin("Console");
+        ImGui::LogToBuffer();
+        const auto request = panel.Draw(sessions, views, elsewhere);
+        log = ImGui::GetCurrentContext()->LogBuffer.c_str();
+        ImGui::LogFinish();
+        auto* window = ImGui::GetCurrentWindow();
+        for (auto* child : window->DC.ChildWindows)
+            if (child->ChildId == window->GetID("console-terminal")) terminal = child;
+        ImGui::End();
+        ImGui::Render();
+        return request;
+    };
+    // The drawer shows the selected session: the Console says so instead of drawing the screen a second time
+    (void)frame(agent);
+    CHECK(log.find("is open in Agents") != std::string::npos);
+    CHECK(log.find("Show here") != std::string::npos);
+    REQUIRE(terminal);
+    (void)frame(std::nullopt);
+    CHECK(log.find("is open in Agents") == std::string::npos);
 }
 
 TEST_CASE("Editor.Workspace.AgentLayoutKeepsViewportLargerAndConsoleInFront", "[engine-editor]") {

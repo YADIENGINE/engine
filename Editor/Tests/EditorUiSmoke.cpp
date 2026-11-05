@@ -16,8 +16,11 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 #include "Editor/Internals/Session/TuningWorkspace.h"
+#include "Editor/Ui/Panels/Agents/AgentsDrawer.h"
+#include "Terminal/TerminalSession.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
 #include "Runtime/Game.h"
 #include "ToolUi/ToolTheme.h"
@@ -25,7 +28,42 @@
 #include "ToolUi/ToolWindow.h"
 
 namespace {
-enum class SmokeView { Idle, Running, Paused, Building, Inspector, QuickOpen, Palette, BuildFailed, AgentStrip };
+// The Console's terminal colours (ConsoleSessions): the screen's ground is the window's.
+TerminalPalette ConsoleLikePalette() {
+    const auto rgb = [](const ImVec4& color) {
+        const auto channel = [](float value) { return static_cast<std::uint32_t>(value * 255.0f + 0.5f) & 0xFF; };
+        return (channel(color.x) << 16) | (channel(color.y) << 8) | channel(color.z);
+    };
+    TerminalPalette palette;
+    palette.background = rgb(ToolPalette::Window);
+    palette.foreground = rgb(ToolPalette::Text);
+    return palette;
+}
+// What an agent CLI's screen could look like, written by a short PowerShell script (no agent runs).
+std::string AgentScreenCommand() {
+    return "powershell.exe -NoLogo -NoProfile -Command \""
+           "Write-Host '> Make the Agents drawer resizable from its left edge' -ForegroundColor Gray; Write-Host ''; "
+           "Write-Host '* Reading the workspace overlay first.' -ForegroundColor White; "
+           "Write-Host '  Read Editor/Ui/Workspace/EditorWorkspace.cpp' -ForegroundColor DarkGray; "
+           "Write-Host '  Edit Editor/Ui/Panels/Agents/AgentsDrawer.cpp (+42 -3)' -ForegroundColor DarkGray; "
+           "Write-Host '  Bash python . check' -ForegroundColor DarkGray; Write-Host ''; "
+           "Write-Host 'Which side should the drawer take when the Git drawer is open?' -ForegroundColor Yellow; "
+           "Write-Host '  1. Beside it, on the right' -ForegroundColor White; "
+           "Write-Host '  2. Over it' -ForegroundColor White\"";
+}
+enum class SmokeView {
+    Idle,
+    Running,
+    Paused,
+    Building,
+    Inspector,
+    QuickOpen,
+    Palette,
+    BuildFailed,
+    AgentStrip,
+    Agents,
+    AgentsEmpty
+};
 // clang-format off
 enum class SmokeGit { Clean, Behind, Fetching, Setup, Missing, Changes, Problem, Conflict, TextDiff, ImageDiff, Incoming };
 // clang-format on
@@ -55,6 +93,9 @@ constexpr std::array Stages{
     SmokeStage{"assets", SmokeView::Running, 1600, 900, 100, EditorPanel::Assets},
     SmokeStage{"audio", SmokeView::Running, 1600, 900, 100, EditorPanel::AudioPreview},
     SmokeStage{"agent-strip", SmokeView::AgentStrip},
+    SmokeStage{"agents", SmokeView::Agents},
+    SmokeStage{"agents-150", SmokeView::Agents, 1280, 800, 150},
+    SmokeStage{"agents-empty", SmokeView::AgentsEmpty},
     SmokeStage{"quick-open", SmokeView::QuickOpen},
     SmokeStage{"palette", SmokeView::Palette},
     SmokeStage{"build-failed", SmokeView::BuildFailed},
@@ -442,6 +483,51 @@ public:
             const auto& texture = file == "before.png" ? _before : _after;
             return EditorGitImage{texture.id, texture.width, texture.height};
         };
+        const auto steadyNow = std::chrono::steady_clock::now();
+        _agentInfos = {{.id = 1,
+                        .title = "Codex",
+                        .agent = AgentKind::Codex,
+                        .state = SessionState::Working,
+                        .activity = "Building the Agents panel",
+                        .started = steadyNow - std::chrono::minutes(18),
+                        .lastOutput = steadyNow - std::chrono::seconds(8)},
+                       {.id = 2,
+                        .title = "Claude 2",
+                        .agent = AgentKind::ClaudeCode,
+                        .state = SessionState::Waiting,
+                        .activity = "Which layout should I update?",
+                        .started = steadyNow - std::chrono::minutes(11),
+                        .lastOutput = steadyNow - std::chrono::minutes(1)},
+                       {.id = 3,
+                        .title = "Codex 2",
+                        .agent = AgentKind::Codex,
+                        .state = SessionState::Done,
+                        .activity = "Editor tests passed",
+                        .started = steadyNow - std::chrono::minutes(24),
+                        .lastOutput = steadyNow - std::chrono::minutes(4)}};
+        const auto systemNow = std::chrono::system_clock::now();
+        auto& working = _agentReport.sessions["1"];
+        working.note = AgentNote{AgentActivityState::Working, "Building the Agents panel", "1"};
+        working.noteTime = steadyNow - std::chrono::seconds(8);
+        working.tools = {{systemNow - std::chrono::minutes(2), "Read EditorWorkspace.cpp"},
+                         {systemNow - std::chrono::seconds(15), "Edit AgentsDrawer.cpp"}};
+        working.toolCount = 7;
+        auto& waiting = _agentReport.sessions["2"];
+        waiting.note = AgentNote{AgentActivityState::Waiting, "Which layout should I update?", "2"};
+        waiting.noteTime = steadyNow - std::chrono::minutes(1);
+        waiting.tools = {{systemNow - std::chrono::minutes(3), "Read Docs/Design/README.md"}};
+        waiting.toolCount = 3;
+        auto& done = _agentReport.sessions["3"];
+        done.note = AgentNote{AgentActivityState::Idle, "Editor tests passed", "3"};
+        done.noteTime = steadyNow - std::chrono::minutes(4);
+        done.tools = {{systemNow - std::chrono::minutes(5), "Run EngineEditorTests"}};
+        done.toolCount = 4;
+        _agentReport.hold = AgentEditorHold{"1", 12.0};
+        // A real terminal showing what an agent CLI's screen looks like (made-up text; no agent runs)
+        _agentTerminal.Start({.commandLine = AgentScreenCommand()});
+        _agentReport.visualChecks = false;
+        for (std::size_t index = 0; index < _events.size(); ++index)
+            _events[index].session = index < 2 ? "1" : index == 2 ? "2" : "3";
     }
     ~EditorUiSmoke() override {
         if (_frame.id != 0) UnloadTexture(_frame);
@@ -475,6 +561,13 @@ protected:
             return;
         }
         if (_frameIndex == 0) SetWindowSize({Stages[_stage].width, Stages[_stage].height});
+        _agentTerminal.Pump();
+        // The drawer's terminal shows its text once the program has written and ended (a few frames are not enough)
+        if (Stages[_stage].view == SmokeView::Agents && _frameIndex == FramesPerStage - 1 && _agentTerminal.Running() &&
+            _agentWaits++ < 200) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(25));
+            return;
+        }
         ++_frameIndex;
         _tuning.Poll();
     }
@@ -510,6 +603,8 @@ protected:
         snapshot.audio.waveform = {WaveformState::Ready, _waveform, {}};
         snapshot.controlEvents = &_events;
         snapshot.controlEventCount = _events.size();
+        if (stage.view == SmokeView::Agents || stage.view == SmokeView::AgentStrip) snapshot.agents = &_agentReport;
+        if (stage.view == SmokeView::AgentsEmpty) snapshot.agents = &_emptyReport;
         // A failure reported through the control endpoint opens no popup; only the one stage wants it.
         snapshot.controlAttempt = stage.view == SmokeView::BuildFailed ? 0 : _diagnostics.Attempt().id;
         const ViewportImage image{_frame.id, _frame.width, _frame.height, 1, 1, 0.0};
@@ -546,6 +641,19 @@ protected:
         }
         (void)_workspace.Draw(snapshot, _actions, _frame.id != 0 ? image : ViewportImage{}, _preferences, _fontSize);
         if (stage.view == SmokeView::AgentStrip) DrawAgentStrips(snapshot);
+        if (stage.view == SmokeView::Agents || stage.view == SmokeView::AgentsEmpty) {
+            // Where the workspace puts it: below the toolbar, above the status bar, on the right
+            const auto* toolbar = ImGui::FindWindowByName("Toolbar###editor.toolbar");
+            const auto* bar = ImGui::FindWindowByName("Status###editor.status");
+            const float top = toolbar ? toolbar->Pos.y + toolbar->Size.y : 0.0f;
+            const float bottom = bar ? bar->Pos.y : ImGui::GetIO().DisplaySize.y;
+            _agentsDrawer.Open(2);
+            const bool empty = stage.view == SmokeView::AgentsEmpty;
+            (void)_agentsDrawer.Draw(empty ? std::vector<ConsoleSessionInfo>{} : _agentInfos,
+                                     [this](std::uint64_t id) { return id == 2 ? &_agentTerminal : nullptr; },
+                                     _agentViews, snapshot, _actions, {0, top},
+                                     {ImGui::GetIO().DisplaySize.x, bottom - top});
+        }
         if (_frameIndex == FramesPerStage) {
             for (const auto* name : {"Toolbar###editor.toolbar", "Status###editor.status"}) {
                 const auto* window = ImGui::FindWindowByName(name);
@@ -589,6 +697,20 @@ private:
             }
             ImGui::NewLine();
         }
+        // Several agents: one waits, one works and holds the editor, one is done
+        EditorAgentStatus several{.session = true,
+                                  .title = "Codex 2",
+                                  .state = SessionState::Waiting,
+                                  .activity = "Which layout should I update?"};
+        several.sessions = {{SessionState::Working, true}, {SessionState::Waiting}, {SessionState::Done},
+                            {SessionState::Idle},          {SessionState::Working}, {SessionState::Done}};
+        for (const float width : Widths) {
+            ImGui::PushID(static_cast<int>(strip));
+            _agentStrips[strip++].Draw(snapshot, _actions, several, width);
+            ImGui::PopID();
+            ImGui::SameLine();
+        }
+        ImGui::NewLine();
         ImGui::End();
     }
 
@@ -609,7 +731,14 @@ private:
     Texture2D _after{};
     mutable EditorPreferences _preferences;
     mutable EditorWorkspace _workspace;
-    mutable std::array<EditorAgentActivity, 12> _agentStrips;
+    mutable std::array<EditorAgentActivity, 15> _agentStrips;
+    std::vector<ConsoleSessionInfo> _agentInfos;
+    EditorAgentReport _agentReport;
+    EditorAgentReport _emptyReport; // No agent has run yet
+    mutable AgentsDrawer _agentsDrawer;
+    mutable ConsoleViews _agentViews;
+    mutable TerminalSession _agentTerminal{ConsoleLikePalette()};
+    int _agentWaits = 0;
     mutable int _fontSize = 100;
     mutable int _failures = 0;
     mutable ToolUiContext _ui;

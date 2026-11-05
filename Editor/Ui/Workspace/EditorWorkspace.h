@@ -2,6 +2,7 @@
 #include <vector>
 #include "Editor/Ui/Commands/EditorCommandPalette.h"
 #include "Editor/Ui/Panels/Assets/AssetsPanel.h"
+#include "Editor/Ui/Panels/Agents/AgentsDrawer.h"
 #include "Editor/Ui/Panels/Audio/AudioPreviewPanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
@@ -21,7 +22,8 @@ struct EditorWorkspaceResult {
     bool cancelViewportInput = false;
     std::optional<FloatRect> windowMark; // A finished mark outside the scene: window framebuffer pixels
     bool sendScene = false;              // Agent → Send scene: the host captures the frame and calls SendToAgent
-    std::string agentProblem;            // For the log, e.g. the agent CLI was not found
+    std::optional<std::uint64_t> sendSceneSession; // Agents drawer: send to this Console session
+    std::string agentProblem;                      // For the log, e.g. the agent CLI was not found
 };
 
 class EditorWorkspace {
@@ -41,12 +43,14 @@ public:
         _audioPreview.SetRoots(engineDirectory, assetsDirectory);
         _palette.SetAssetRoots(engineDirectory, assetsDirectory);
     }
-    // Shows the Console and pastes `text` (no Enter) into the agent session when there is one, else the selected
-    // session, starting a shell if needed.
+    // Pastes `text` (no Enter) into the agent session, shown in the Agents drawer, when there is one; else into the
+    // Console's selected session, starting a shell if needed.
     void PasteToConsole(const std::string& text, EditorPreferences& preferences);
-    // Shows the Console and pastes `text` into the agent session, starting the chosen agent CLI when needed; `submit`
-    // presses Enter after it. Returns a problem for the log (empty when none).
+    // Pastes `text` into the agent session, shown in the Agents drawer, starting the chosen agent CLI when needed;
+    // `submit` presses Enter after it. Returns a problem for the log (empty when none).
     [[nodiscard]] std::string SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences);
+    // Sends to an existing agent session chosen in the Agents drawer; it never starts another session.
+    [[nodiscard]] std::string SendToSession(std::uint64_t id, const std::string& text, bool submit);
     void SetConsoleEnvironment(std::vector<std::pair<std::string, std::string>> environment) {
         _sessions.SetEnvironment(std::move(environment));
     }
@@ -55,13 +59,22 @@ public:
 
 private:
     void ShowConsole(EditorPreferences& preferences);
+    // The Agents drawer, on `session` (an agent session) or the one the strip speaks of.
+    void ShowAgents(std::optional<std::uint64_t> session, EditorPreferences& preferences);
+    // The drawer behind the strip, right of the Git drawer when that is open.
+    void AgentsOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position, ImVec2 size,
+                       EditorPreferences& preferences, EditorWorkspaceResult& result);
     // Opens (or selects) the agent session; returns a problem for the log (empty when none).
     [[nodiscard]] std::string OpenAgent(EditorPreferences& preferences);
     // The Console's add button: a shell, or a new session of an agent CLI (setup first when it is missing).
-    [[nodiscard]] std::string AddSession(const ConsoleNewSession& request, EditorPreferences& preferences);
+    // `inDrawer`: asked from the Agents drawer, which then shows the new session instead of the Console.
+    [[nodiscard]] std::string AddSession(const ConsoleNewSession& request, EditorPreferences& preferences,
+                                         bool inDrawer = false);
     void HandleAgent(EditorAgentRequest request, const EditorSnapshot& snapshot, EditorPreferences& preferences,
                      EditorWorkspaceResult& result);
     [[nodiscard]] EditorAgentStatus AgentStatus(const EditorSnapshot& snapshot) const;
+    // The session the strip speaks of and the drawer opens on: one waiting for the developer, else the agent target.
+    [[nodiscard]] std::optional<std::uint64_t> AgentStatusFocus() const;
     void SetMaximized(bool maximized, EditorPreferences& preferences);
     void ApplyLayout(EditorWorkspaceLayout layout, EditorPreferences& preferences);
     void ToggleBottom(EditorPreferences& preferences, std::optional<EditorPanel> panel);
@@ -81,6 +94,8 @@ private:
     OutputPanel _output;
     ProfilerPanel _profiler;
     ConsoleSessions _sessions;
+    ConsoleViews _views;
+    AgentsDrawer _agentsDrawer;
     ConsolePanel _console;
     AssetsPanel _assets;
     AudioPreviewPanel _audioPreview;

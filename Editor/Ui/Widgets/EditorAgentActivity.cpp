@@ -13,7 +13,6 @@
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
-constexpr const char* PopupId = "agent-activity";
 constexpr float WorkingTint = 0.16f;
 constexpr float DoneTint = 0.14f;
 constexpr float HoverTint = 0.06f;
@@ -24,12 +23,12 @@ constexpr double DoneFadeSeconds = 2.0;
 constexpr float Padding = 9.0f;
 constexpr float Gap = 8.0f;
 constexpr float CountPadding = 5.0f;
-constexpr float PopupWidth = 500.0f;
-constexpr float PopupMaximumListHeight = 360.0f;
-constexpr float PopupOffset = 2.0f;
 constexpr float TimeColumnWidth = 72.0f;
 constexpr float IconColumnWidth = 22.0f;
 constexpr float UnseenTint = 0.09f;
+constexpr float DotRadius = 3.5f;
+constexpr float DotGap = 4.0f;
+constexpr std::size_t MaximumDots = 5; // More sessions show as "+N" after the last dot
 
 std::string TimeLabel(std::chrono::system_clock::time_point time) {
     const auto value = std::chrono::system_clock::to_time_t(time);
@@ -55,11 +54,13 @@ ImVec4 StateTone(SessionState state) {
     }
     return EditorAgentColor();
 }
-void DrawEvent(const EditorControlEvent& event, const EditorSnapshot& snapshot, const EditorUiActions& actions,
-               bool unseen) {
+} // namespace
+
+void DrawEditorAgentEventRow(const EditorControlEvent& event, const EditorSnapshot& snapshot,
+                             const EditorUiActions& actions, bool highlighted) {
     const float scale = ToolUiScale();
     const auto start = ImGui::GetCursorScreenPos();
-    if (unseen) {
+    if (highlighted) {
         auto tint = EditorAgentColor();
         tint.w = UnseenTint;
         ImGui::GetWindowDrawList()->AddRectFilled(
@@ -99,12 +100,11 @@ void DrawEvent(const EditorControlEvent& event, const EditorSnapshot& snapshot, 
         }
     }
 }
-} // namespace
 
-bool EditorAgentActivity::TakeOpenSession() { return std::exchange(_openSession, false); }
+bool EditorAgentActivity::TakeOpenAgents() { return std::exchange(_openAgents, false); }
 
-void EditorAgentActivity::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                               const EditorAgentStatus& agent, float width) {
+void EditorAgentActivity::Draw(const EditorSnapshot& snapshot, const EditorUiActions&, const EditorAgentStatus& agent,
+                               float width) {
     const float scale = ToolUiScale();
     const double now = ImGui::GetTime();
     const auto state = agent.session ? agent.state : SessionState::Idle;
@@ -142,29 +142,65 @@ void EditorAgentActivity::Draw(const EditorSnapshot& snapshot, const EditorUiAct
     const bool pressed = ImGui::InvisibleButton("strip", {width, height});
     const bool hovered = ImGui::IsItemHovered();
     if (pressed || std::exchange(_showRequested, false)) {
-        ImGui::OpenPopup(PopupId);
-        _seenAtOpen = _seen;
+        _openAgents = true;
+        _seen = total;
     }
 
     auto* draw = ImGui::GetWindowDrawList();
-    draw->AddRectFilled(
-        start, end, ImGui::GetColorU32(EditorTintSurface(ToolPalette::Panel, tone, tint + (hovered ? HoverTint : 0))),
-        ToolMetrics::Radius * scale);
+    draw->AddRectFilled(start, end,
+                        ImGui::GetColorU32(EditorTintSurface(ToolPalette::Panel, tone,
+                                                             tint + (hovered || agent.drawerOpen ? HoverTint : 0) +
+                                                                 (agent.drawerOpen ? HoverTint : 0))),
+                        ToolMetrics::Radius * scale);
     const float padding = Padding * scale;
     const float gap = Gap * scale;
     const float side = ToolActivitySide();
     ToolDrawActivity(*draw, {start.x + padding, start.y + (height - side) * 0.5f}, quiet ? ToolPalette::Muted : tone,
                      state == SessionState::Working);
-    const float lineStart = start.x + padding + side + gap;
+    float lineStart = start.x + padding + side + gap;
     float right = end.x - padding;
     const bool compact = width < EditorAgentActivityMetrics::Medium * scale;
+    // Several agents: one dot each, so a waiting one shows even when the line speaks of another.
+    if (agent.sessions.size() > 1 && !compact) {
+        const float radius = DotRadius * scale;
+        const float centerY = start.y + height * 0.5f;
+        float x = lineStart + radius;
+        // A narrower strip keeps fewer dots, so the line still has room
+        const auto shown = std::min(agent.sessions.size(),
+                                    width < EditorAgentActivityMetrics::Ideal * scale ? MaximumDots - 2 : MaximumDots);
+        for (std::size_t index = 0; index < shown; ++index) {
+            const auto& dot = agent.sessions[index];
+            const auto color =
+                dot.state == SessionState::Idle ? ToolPalette::Muted : EditorSessionStateColor(dot.state);
+            draw->AddCircleFilled({x, centerY}, radius, ImGui::GetColorU32(color));
+            if (dot.holds)
+                draw->AddCircle({x, centerY}, radius + 2.0f * scale, ImGui::GetColorU32(EditorAgentColor()), 0,
+                                1.0f * scale);
+            x += radius * 2 + DotGap * scale;
+        }
+        if (agent.sessions.size() > shown) {
+            ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
+            const auto more = std::format("+{}", agent.sessions.size() - shown);
+            const auto size = ImGui::CalcTextSize(more.c_str());
+            draw->AddText({x - radius, centerY - size.y * 0.5f}, ImGui::GetColorU32(ToolPalette::Muted), more.c_str());
+            x += size.x;
+            ImGui::PopFont();
+        }
+        lineStart = x - radius + gap;
+    }
+    const bool heldByOther = snapshot.agents && snapshot.agents->hold &&
+                             (!agent.session || snapshot.agents->hold->session != agent.sessionId);
     if (!compact) {
-        const char* chevron = ICON_FA_CHEVRON_DOWN;
-        ImGui::PushFont(ToolFont(ToolFontRole::Ui), ToolMetrics::CaptionSize);
-        const auto size = ImGui::CalcTextSize(chevron);
+        const char* open = agent.drawerOpen ? ICON_FA_CHEVRON_UP : ICON_FA_CHEVRON_DOWN;
+        const auto size = ImGui::CalcTextSize(open);
         draw->AddText({right - size.x, start.y + (height - size.y) * 0.5f}, ImGui::GetColorU32(ToolPalette::Muted),
-                      chevron);
-        ImGui::PopFont();
+                      open);
+        right -= size.x + gap;
+    }
+    if (heldByOther && agent.sessions.size() < 2) { // With dots, the holder's dot wears a ring instead
+        const auto size = ImGui::CalcTextSize(ICON_FA_LOCK);
+        draw->AddText({right - size.x, start.y + (height - size.y) * 0.5f}, ImGui::GetColorU32(EditorAgentColor()),
+                      ICON_FA_LOCK);
         right -= size.x + gap;
     }
     ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
@@ -189,63 +225,18 @@ void EditorAgentActivity::Draw(const EditorSnapshot& snapshot, const EditorUiAct
     }
     ImGui::PopFont();
     if (!compact && right > lineStart) {
-        const auto clipped = ToolClipText(line.c_str(), right - lineStart);
+        // Several agents: the line names its session; a narrower strip keeps only the dots (its colour still says
+        // that one waits)
+        const bool several = agent.session && agent.sessions.size() > 1;
+        const auto said = !several                                            ? line
+                          : width < EditorAgentActivityMetrics::Ideal * scale ? std::string()
+                                                                              : agent.title + ": " + line;
+        const auto clipped = ToolClipText(said.c_str(), right - lineStart);
         draw->AddText({lineStart, start.y + (height - ImGui::GetTextLineHeight()) * 0.5f},
                       ImGui::GetColorU32(quiet && !last ? ToolPalette::Muted : ToolPalette::Text), clipped.c_str());
     }
-    if (!ImGui::IsPopupOpen(PopupId)) ToolTooltip((line + "\n\nClick to see what the agent did").c_str());
-
-    const float popupWidth = PopupWidth * scale;
-    ImGui::SetNextWindowPos({end.x, end.y + PopupOffset * scale}, ImGuiCond_Always, {1.0f, 0.0f});
-    ImGui::SetNextWindowSize({popupWidth, 0});
-    if (ImGui::BeginPopup(PopupId)) {
-        _seen = total;
-        DrawList(snapshot, actions, agent);
-        ImGui::EndPopup();
-    }
+    ToolTooltip(((agent.session ? agent.title + ": " : std::string()) + line +
+                 (heldByOther ? "\nAnother session holds the editor." : "") + "\n\nClick for Agents")
+                    .c_str());
     ImGui::PopID();
-}
-
-void EditorAgentActivity::DrawList(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                   const EditorAgentStatus& agent) {
-    const float scale = ToolUiScale();
-    const std::size_t total = snapshot.controlEventCount;
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Agent activity");
-    ImGui::SameLine();
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(
-        ToolPalette::Muted, "%s",
-        (total == 0 ? std::string("nothing this session") : std::format("{} this session", total)).c_str());
-    if (agent.session) {
-        constexpr const char* Label = "Open session";
-        const float buttonWidth = ImGui::CalcTextSize(Label).x + ImGui::GetStyle().FramePadding.x * 2;
-        ImGui::SameLine(ImGui::GetContentRegionMax().x - buttonWidth);
-        if (ToolButton(Label)) {
-            _openSession = true;
-            ImGui::CloseCurrentPopup();
-        }
-    }
-    ImGui::Separator();
-    if (!snapshot.controlEvents || snapshot.controlEvents->empty()) {
-        ImGui::TextColored(ToolPalette::Muted, "What agent tools change or capture in this session appears here.");
-        return;
-    }
-    const auto& events = *snapshot.controlEvents;
-    const float rowHeight = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y;
-    const float listHeight = std::min(rowHeight * static_cast<float>(events.size()), PopupMaximumListHeight * scale);
-    if (ImGui::BeginChild("rows", {0, listHeight})) {
-        // A row's place in the whole session: the deque holds its latest entries.
-        const std::size_t first = total - events.size();
-        ImGuiListClipper clipper;
-        clipper.Begin(static_cast<int>(events.size()), rowHeight);
-        while (clipper.Step())
-            for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row) {
-                const std::size_t index = events.size() - 1 - static_cast<std::size_t>(row);
-                ImGui::PushID(static_cast<int>(first + index));
-                DrawEvent(events[index], snapshot, actions, first + index >= _seenAtOpen);
-                ImGui::PopID();
-            }
-    }
-    ImGui::EndChild();
 }

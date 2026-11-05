@@ -91,8 +91,8 @@ void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorSh
     if (ImGui::MenuItem("Ask agent to fix build", nullptr, false, failed)) result.agent = EditorAgentRequest::FixBuild;
     ToolTooltip(failed ? "Send the build errors and ask the agent to fix them. This presses Enter."
                        : "The last Build & Refresh did not fail.");
-    if (ImGui::MenuItem("Show activity")) result.showActivity = true;
-    ToolTooltip("What agent tools changed or captured in this session, with Undo.");
+    if (ImGui::MenuItem("Show agents", "Ctrl+Shift+A")) result.showActivity = true;
+    ToolTooltip("Every agent, its terminal and what it did in the editor.");
     ImGui::SeparatorText("Settings");
     (void)ToolToggle("Agent control", agent.control);
     ToolTooltip("Allow agent tools (python Engine ctl) to change the editor.\n"

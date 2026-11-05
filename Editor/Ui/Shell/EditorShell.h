@@ -11,6 +11,16 @@
 // Agent menu / palette / toolbar requests (Docs/Editor/Usage.md → Agent workspace).
 enum class EditorAgentRequest { Open, NewShell, SendScene, SendBuildFailure, FixBuild };
 
+// The Agents drawer's keys (Docs/Editor/Usage.md → Agent workspace).
+struct EditorAgentsKeys {
+    bool toggle = false;             // Ctrl+Shift+A
+    int step = 0;                    // Ctrl+PageDown / Ctrl+PageUp: the next or previous agent
+    std::optional<std::size_t> chip; // Ctrl+1…9, from 0
+    bool switchView = false;         // Ctrl+Shift+T: Terminal ↔ Activity
+    bool add = false;                // Ctrl+Shift+N: the New agent menu
+    bool sendScene = false;          // Ctrl+Shift+S while the drawer is open: to the chosen agent
+};
+
 struct EditorShellResult {
     bool quit = false;
     bool returnToProjectList = false;
@@ -18,11 +28,12 @@ struct EditorShellResult {
     bool openCommands = false; // The palette with commands only
     bool openQuick = false;    // The palette over everything
     bool showProblems = false;
-    bool showActivity = false; // The agent strip's list
+    bool showActivity = false; // The Agents drawer
     bool toggleBottom = false;
     std::optional<EditorPanel> bottomPanel;
     std::optional<EditorWorkspaceLayout> layout;
     std::optional<EditorAgentRequest> agent;
+    EditorAgentsKeys agents;
     EditorGitBarResult git;
 };
 

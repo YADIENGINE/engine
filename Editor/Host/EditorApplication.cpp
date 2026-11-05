@@ -186,8 +186,9 @@ void EditorApplication::Update(float realSeconds) {
         _mark.reset();
     }
     if (_sendScene) {
-        SendScene();
+        SendScene(_sendSceneSession);
         _sendScene = false;
+        _sendSceneSession.reset();
     }
     if (!_agentProblem.empty()) _controller.Log(std::exchange(_agentProblem, {}), EditorLogLevel::Warning);
     for (const auto& request : std::exchange(_audioRequests, {}))
@@ -268,7 +269,7 @@ void EditorApplication::PasteMark(const FloatRect& region) {
         _controller.Log(std::string("Mark: ") + error.what(), EditorLogLevel::Warning);
     }
 }
-void EditorApplication::SendScene() {
+void EditorApplication::SendScene(std::optional<std::uint64_t> session) {
     try {
         const auto snapshot = _controller.Snapshot();
         const auto frame = _controller.LatestFrame();
@@ -279,8 +280,9 @@ void EditorApplication::SendScene() {
         const auto file = _control->WriteCapture(image, {}, {}, "scene");
         const auto text = SceneContext(*snapshot.selected, snapshot.parameters, _controller.Seconds(), snapshot.paused,
                                        snapshot.canvas, file);
-        if (auto problem = _workspace.SendToAgent(text, false, _preferences); !problem.empty())
-            _controller.Log(problem, EditorLogLevel::Warning);
+        const auto problem = session ? _workspace.SendToSession(*session, text, false)
+                                     : _workspace.SendToAgent(text, false, _preferences);
+        if (!problem.empty()) _controller.Log(problem, EditorLogLevel::Warning);
     } catch (const std::exception& error) {
         _controller.Log(std::string("Send scene: ") + error.what(), EditorLogLevel::Warning);
     }
@@ -426,7 +428,10 @@ void EditorApplication::DrawToolOverlay() const {
     _quit = result.quit;
     if (result.interaction.mark) _mark = result.interaction.mark;
     if (result.windowMark) _windowMark = result.windowMark;
-    if (result.sendScene) _sendScene = true;
+    if (result.sendScene) {
+        _sendScene = true;
+        _sendSceneSession = result.sendSceneSession;
+    }
     if (!result.agentProblem.empty()) _agentProblem = result.agentProblem;
     if (result.returnToProjectList) {
         if (auto error = StartLauncher(_launcher); error.empty())

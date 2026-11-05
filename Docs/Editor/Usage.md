@@ -131,7 +131,12 @@ Reset recreates the scene in the same worker process. Use Run to restart the wor
 | Ctrl+Shift+B | Build & Refresh |
 | Ctrl+P | Quick open: scenes and their choices, graphics, sounds, commands |
 | Ctrl+Shift+P | The same window, commands only |
-| Ctrl+Shift+A | Open the chosen agent session (also while Console is focused) |
+| Ctrl+Shift+A | Open or close the Agents drawer, on the agent that waits for you (also from a terminal) |
+| Ctrl+Shift+S | Send scene: to the drawer's chosen agent while it is open, else to the agent session |
+| Ctrl+Shift+N | New agent (the drawer's **+** menu) |
+| Ctrl+PageDown / Ctrl+PageUp | In the Agents drawer: the next / previous agent |
+| Ctrl+1 … Ctrl+9 | In the Agents drawer: agent 1 to 9 |
+| Ctrl+Shift+T | In the Agents drawer: Terminal ↔ Activity |
 | Ctrl+J | Toggle last bottom tool panel |
 
 Quick open starts with the scenes opened last, then the commands; typing finds anything by any of its words, in any
@@ -213,7 +218,7 @@ editor context; it never calls a model itself. The agent drives the editor back 
   The **+** button at the top (*Add terminal* on hover) offers Shell, Claude, Codex and *Custom agent*, with the named
   CLIs' commands alongside them. Choosing an agent makes it the one agent requests start next. Each session keeps
   running while the panel is hidden; closing one ends its program (a running agent asks first). Agent requests
-  (Ctrl+Shift+A, Send scene, Marks, ...) go to the selected session when it runs an agent, else to the agent session
+  (Send scene, Marks, ...) go to the selected session when it runs an agent, else to the agent session
   selected last; with none, the chosen agent starts. The first draw opens a shell when there is none.
 - **Session state** (each session's icon): *working* while its program writes output for a request, *waiting for you*
   when it rang the terminal bell after your last input (agent CLIs ring it when they ask something), *done* when the
@@ -222,8 +227,29 @@ editor context; it never calls a model itself. The agent drives the editor back 
   again; its text, else the terminal title the CLI sets, is what the session shows on hover. Each session's program
   gets `ENGINE_EDITOR_SESSION`, which every `ctl` request sends along. Working shows a clock; waiting shows a pulsing question
   mark in the warning color; done shows a green check. Idle has no state icon, and exited rows are dimmed.
-- **Opening an agent:** Ctrl+Shift+A opens the chosen CLI in the project folder, or selects its session, including
-  from Console. The session's shell stays open after the CLI exits. On first use, a setup modal lets you choose
+- **Agents drawer** (a click on the agent strip, Agent → *Show agents*, Ctrl+Shift+A): where you work with agents. It
+  hangs under the strip at the workspace's top right, about a quarter of the screen, over the panels and without moving
+  them, and stays open until you close it (✕, Ctrl+Shift+A, the strip again, or Esc while its terminal does not have
+  the keyboard: Esc belongs to the agent, which stops on it); drag its bottom-left corner to resize it. Its keys work
+  while you type in its terminal; they are in the shortcut table above.
+  - *Header:* how many agents work, wait for you or are done; who holds the editor ([Several agents](Automation.md#several-agents))
+    and for how long it has been idle; the *Agent control* / *Visual checks* warnings.
+  - *Chips:* one per agent session in the Console's order, so a chip never moves while you aim at it: its state's dot,
+    its name and a lock on the holder; a waiting agent's chip glows. Hover shows its latest note or tool line. Shells
+    stay in the Console. Agents run outside the Console share one chip, *Outside the Console* (a ring for a dot), while
+    they have an editor action, a note or the hold. **+** starts Claude, Codex or a custom agent; right-click a chip
+    for *Open in Console*, *Restart* and *Close session*.
+  - *Terminal:* the chosen agent's live terminal, with the keyboard when the drawer opens; you talk to the agent here.
+    While the drawer shows it, the Console shows "… is open in Agents" with *Show here* instead of drawing the same
+    terminal twice.
+  - *Activity:* what that agent did, newest first, filtered by *All*, *Editor* (changes with *Undo*, captures with
+    *Open*, commands and notes) or *Tools* (its last 100 tool lines from hooks).
+  - *Send scene* pastes the open scene into this agent's prompt; an exited agent offers *Restart*; the ⋯ menu has *Open
+    in Console* and *Close session* (a running agent asks first).
+  - *No agent yet:* the drawer offers Claude Code, Codex and a custom command, the one in your preferences first;
+    Enter starts it.
+- **Opening an agent:** the drawer's **+**, its empty state, the Console's add button or the palette's *Open* entry start
+  the chosen CLI in the project folder (or select its session) and show it in the Agents drawer. The session's shell stays open after the CLI exits. On first use, a setup modal lets you choose
   Claude Code, Codex or Custom, checks the executable on PATH (or at its full path), and offers an *Install...* link
   for the named CLIs. Custom shows a command field with an argument hint. *Check again* rechecks installation; if PATH
   changed, restart the editor or use a full path. *Start* accepts the choice and opens the session; *Cancel* leaves
@@ -233,11 +259,12 @@ editor context; it never calls a model itself. The agent drives the editor back 
 - **Agent menu** groups Send context and Settings. Open agent and New shell are available through the Console's add
   button and remain in the command palette as "Agent" entries, alongside the context commands:
   - *Send scene* pastes the open scene's id, playback time, changed parameters and a capture of the frame
-    (`editor-captures/scene-*.png`) into the agent session, without Enter: type your request after it.
+    (`editor-captures/scene-*.png`) into the agent session, shown in the Agents drawer, without Enter: type your
+    request after it.
   - *Send build failure* pastes the last failed Build & Refresh with its error lines; *Ask agent to fix build* also
     asks for a fix and presses Enter, as *Fix all with agent* in Output → Problems does. Disabled context commands
     explain why in a tooltip.
-  - *Show activity* opens the agent strip's list.
+  - *Show agents* opens the Agents drawer.
   - *Agent control* (on by default): off, tools may observe the editor (status, list, screenshot, inspect, logs) but
     every command that changes it (open, set, action, playback, seek, frames, refresh) is refused. The status bar shows
     "Agent control off".
@@ -248,16 +275,18 @@ editor context; it never calls a model itself. The agent drives the editor back 
 - **Output:** right-click → *Send Selected to Agent* pastes the selected lines.
 - **Inspector:** right-click a parameter's label or value → *Send to Agent* pastes its current value, range or choices
   and description, without Enter. This is also available for disabled parameters.
-- **Marks** (toolbar Mark, Alt+drag) go to the agent session when there is one.
-- **Agent strip** (toolbar, far right): the agent session's state in color, its latest activity and how many came
-  before ("+47", "99+" past two digits; filled until you have opened the list). Working uses the agent's own hue with
+- **Marks** (toolbar Mark, Alt+drag) go to the agent session when there is one, in the Agents drawer.
+- **Agent strip** (toolbar, far right): it speaks of the session that waits for you, else of the one agent requests go
+  to: its state in color, its latest activity and how many came before ("+47", "99+" past two digits; filled until you
+  have opened Agents). With two or more agent sessions it also shows a dot per session in its state's colour (the
+  holder's dot has a ring, more than five show as "+N") and names the session; a narrower strip keeps the dots only. Working uses the agent's own hue with
   the walking cells and shows what the session says it is doing; waiting pulses in the warning color; done stays green
   for a few seconds, then neutral. A new activity lights the strip once. An older entry shows its age ("4m"). In a
   narrow window the text shortens, then the tools move to overflow, and last only the mark and the count remain.
-  A click opens what agent tools did through the control endpoint this session, newest first: changes, notes and
-  screenshots. A changed parameter has *Undo* while its scene stays open and the value is still the agent's; a
-  screenshot has *Open*; *Open session* shows the agent's session. Without a Console session, the strip still shows
-  activity from agents elsewhere, in neutral. The status bar keeps the *Agent control off* warning.
+  A click toggles the Agents drawer, on the waiting session when there is one. With one session, a small lock appears
+  when another client holds the editor. Without a
+  Console session, the strip still shows activity from agents elsewhere, in neutral. The status bar keeps the *Agent
+  control off* warning.
 - **Several agents:** one session at a time may change or capture the editor; another one's such command is refused
   until the holder has been idle for 60 s ([Several agents](Automation.md#several-agents)). Your own use of the editor
   is never refused and ends an agent's hold.

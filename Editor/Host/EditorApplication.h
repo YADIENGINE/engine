@@ -35,8 +35,8 @@ private:
     // Saves the marked region of the latest frame and pastes its context line into the Console.
     void PasteMark(const FloatRect& region);
     void PasteWindowMark(const FloatRect& region, const ViewportPixels& window);
-    // Agent → Send scene: saves the latest frame and sends the scene's context line to the agent session.
-    void SendScene();
+    // Agent → Send scene: saves the latest frame and sends the context to the chosen session, or the current target.
+    void SendScene(std::optional<std::uint64_t> session);
     void HandleAudioPreview(const AudioPreviewRequest& request);
     // Handled in the next Update; returns the AudioPreviewState::handled count it brings.
     std::uint64_t QueueAudio(const AudioPreviewRequest& request) const;
@@ -71,6 +71,7 @@ private:
     mutable std::optional<FloatRect> _mark; // Drawn this frame, handled in the next Update
     mutable std::optional<FloatRect> _windowMark;
     mutable bool _sendScene = false; // Requested this frame, handled in the next Update
+    mutable std::optional<std::uint64_t> _sendSceneSession;
     mutable std::string _agentProblem;
     mutable std::vector<AudioPreviewRequest> _audioRequests; // Made while drawing, handled in the next Update
     mutable std::uint64_t _audioQueued = 0;

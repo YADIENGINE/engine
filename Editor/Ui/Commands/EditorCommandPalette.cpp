@@ -192,8 +192,9 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
     const auto attempt = snapshot.diagnostics.Attempt().result;
     const bool failed = attempt == EditorBuildResult::BuildFailed || attempt == EditorBuildResult::RefreshFailed;
     const auto agentEntry = [&](std::string label, bool enabled, const char* reason, EditorAgentRequest request) {
-        entries.push_back({"Agent", std::move(label), "", request == EditorAgentRequest::Open ? "Ctrl+Shift+A" : "",
-                           enabled, enabled ? "" : reason, [&result, request] { result.agent = request; }});
+        entries.push_back({"Agent", std::move(label), "",
+                           request == EditorAgentRequest::SendScene ? "Ctrl+Shift+S" : "", enabled,
+                           enabled ? "" : reason, [&result, request] { result.agent = request; }});
     };
     agentEntry(std::string("Open ") + AgentKindInfo(preferences.agent.kind).name, true, "", EditorAgentRequest::Open);
     agentEntry("New shell", true, "", EditorAgentRequest::NewShell);
@@ -201,7 +202,9 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
     agentEntry("Send build failure", failed, "The last Build & Refresh did not fail",
                EditorAgentRequest::SendBuildFailure);
     agentEntry("Ask agent to fix build", failed, "The last Build & Refresh did not fail", EditorAgentRequest::FixBuild);
-    entries.push_back({"Agent", "Show activity", "", "", true, {}, [&result] { result.showActivity = true; }});
+    entries.push_back(
+        {"Agent", "Show agents", "", "Ctrl+Shift+A", true, {}, [&result] { result.showActivity = true; }});
+    entries.push_back({"Agent", "New agent", "", "Ctrl+Shift+N", true, {}, [&result] { result.agents.add = true; }});
     entries.push_back({"Agent",
                        preferences.agent.control ? "Turn agent control off" : "Turn agent control on",
                        "",

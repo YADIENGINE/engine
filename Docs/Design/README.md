@@ -1630,6 +1630,49 @@ and `note` answered. It answered within 0.2 s during the first one's build, and 
 **Out of scope:** an editor rendering without a window for private checks (proposed; would let agents in worktrees verify
 looks), separate identities outside the Console, CLI session ids, token use, resume.
 
+### D44. The Agents drawer
+Status: implemented (2026-11-05), awaiting the developer's look. Usage: [Agent workspace](../Editor/Usage.md#agent-workspace).
+
+**Decision:** agents are worked with in a compact drawer that hangs under the toolbar's agent strip, not in a dock panel.
+It has a chip per agent session and the chosen one's live terminal or activity. The strip gains a dot per session.
+
+**Why:** agents are one of the editor's main things, not one panel among equals. A dock panel competed with the Console
+for room, and every action in it sent the developer to the Console, where the conversation is. A dropdown from the strip
+would be prominent, but it closes on the first click outside, and a terminal you type into cannot live in one. A first
+drawer covered half the workspace; the developer wanted about a quarter.
+
+**Decided:**
+1. *A drawer from the strip.* About a quarter of the screen at the workspace's top right, above the panels, so the layout
+   never changes (the Git drawer's way, D25). Its default is capped at 45 % × 65 % of the workspace so a large UI scale
+   does not make it huge. It stays open until closed; Esc closes it only when its terminal does not have the keyboard,
+   since agent CLIs use Esc. Its bottom-left corner resizes it.
+2. *The terminal is in it.* The conversation is the agent work, so the drawer draws the chosen session's terminal and
+   does not reinvent a prompt box. `ConsoleViews` holds one view per session for both places, and a terminal is drawn in
+   one place per frame: the Console shows "open in Agents" with *Show here* for it.
+3. *Chips, not a list; tabs, not columns.* At this size a list and an activity column would leave the terminal no room.
+   Chips keep the Console's order, since states change every few seconds and a sorted chip would move from under the
+   pointer; a waiting one glows instead. *Terminal | Activity* share the body.
+4. *Agent requests come here.* Opening an agent, Send scene, marks and build failures show the agent session in the
+   drawer.
+   Shells and the Console's own add button stay in the Console.
+5. *The strip speaks of the waiting session first,* then of the agent target, and opens the drawer on it. With several
+   sessions it shows a dot each (a ring on the holder), and a narrow strip keeps only the dots.
+6. *One chip for every agent outside the Console.* It has no terminal, so it shows its activity.
+7. *Keys that work while you type to the agent.* Ctrl+Shift+A opens and closes it (as Ctrl+Shift+G does the Git
+   drawer), Ctrl+PageDown/PageUp and Ctrl+1…9 choose an agent, Ctrl+Shift+T switches the tab, Ctrl+Shift+S sends the
+   scene, Ctrl+Shift+N starts one. The terminal reserves them. Alt+letter belongs to terminal programs (word moves),
+   and `[` `]` need AltGr on some layouts, so neither is used. Esc stays the agent's: CLIs stop on it, so it closes the
+   drawer only when the terminal does not have the keys. Ctrl+Shift+A no longer starts an agent by itself; with none,
+   the drawer opens on its empty state and Enter starts the usual one.
+
+**Replaced:** the dock panel an earlier pass built (`AgentsPanel`, `EditorPanel::Agents`), and the strip's popup list.
+
+**Checking:** ImGui tests cover the order, a choice that leaves the Console's selection alone, the one-terminal rule, the
+outside chip and the empty state. The smoke run draws the drawer where the workspace puts it, with a real terminal, at
+1600×900 and 1280×800 at 150 %, and the strip with six sessions. The developer has not yet looked at it in the editor.
+
+**Out of scope:** remembering the drawer's size between runs, reordering chips, per-agent notifications.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

@@ -7,14 +7,27 @@
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
 
-// Editor shortcuts stay available while the terminal owns keyboard input.
-TerminalView& ConsolePanel::ViewOf(std::uint64_t id) {
-    auto& view = _views[id];
-    if (!view)
-        view = std::make_unique<TerminalView>(std::vector<ImGuiKeyChord>{
-            ImGuiMod_Ctrl | ImGuiKey_J, ImGuiMod_Ctrl | ImGuiKey_GraveAccent,
-            ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P, ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_A});
-    return *view;
+std::optional<std::uint64_t> DrawCloseAgentDialog(std::optional<std::uint64_t>& pending) {
+    std::optional<std::uint64_t> closing;
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({380 * ToolUiScale(), 0}, ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal(CloseAgentDialogId, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped("Closing this session ends its running program. Any work in progress will be interrupted.");
+        ImGui::Separator();
+        if (ToolButton("Close session", {}, true)) {
+            closing = pending;
+            pending.reset();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ToolButton("Keep open") || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+            pending.reset();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SetItemDefaultFocus();
+        ImGui::EndPopup();
+    }
+    return closing;
 }
 bool ConsolePanel::DrawSessionRow(ConsoleSessions& sessions, const ConsoleSessionInfo& info) {
     ImGui::PushID(std::to_string(info.id).c_str());
@@ -82,16 +95,15 @@ bool ConsolePanel::DrawSessionRow(ConsoleSessions& sessions, const ConsoleSessio
     ImGui::PopID();
     return close;
 }
-std::optional<ConsoleNewSession> ConsolePanel::Draw(ConsoleSessions& sessions) {
+ConsoleRequest ConsolePanel::Draw(ConsoleSessions& sessions, ConsoleViews& views,
+                                  std::optional<std::uint64_t> elsewhere) {
     if (sessions.Empty()) sessions.OpenShell();
     _focused = false;
     std::optional<std::uint64_t> closing;
-    std::optional<ConsoleNewSession> request;
+    ConsoleRequest request;
     bool showClose = false;
     const auto infos = sessions.Infos();
-    std::erase_if(_views, [&](const auto& entry) {
-        return std::ranges::none_of(infos, [&](const ConsoleSessionInfo& info) { return info.id == entry.first; });
-    });
+    views.Prune(infos);
     const auto origin = ImGui::GetCursorPos();
     const auto originScreen = ImGui::GetCursorScreenPos();
     const auto available = ImGui::GetContentRegionAvail();
@@ -131,11 +143,11 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw(ConsoleSessions& sessions) {
         ToolTooltip("Add terminal");
         if (add) ImGui::OpenPopup("Add terminal");
         if (ImGui::BeginPopup("Add terminal")) {
-            if (ImGui::MenuItem(ICON_FA_TERMINAL "  Shell")) request = ConsoleNewSession{};
+            if (ImGui::MenuItem(ICON_FA_TERMINAL "  Shell")) request.add = ConsoleNewSession{};
             for (const auto& kind : AgentKinds) {
                 const auto label = std::string(ICON_FA_ROBOT "  ") +
                                    (kind.id == AgentKind::Custom ? "Custom agent" : kind.sessionName);
-                if (ImGui::MenuItem(label.c_str(), kind.command)) request = ConsoleNewSession{kind.id};
+                if (ImGui::MenuItem(label.c_str(), kind.command)) request.add = ConsoleNewSession{kind.id};
             }
             ImGui::EndPopup();
         }
@@ -156,33 +168,25 @@ std::optional<ConsoleNewSession> ConsolePanel::Draw(ConsoleSessions& sessions) {
     }
     EndToolPanel();
     ImGui::PopStyleVar(2);
-    if (showClose) ImGui::OpenPopup("Close agent session?");
-    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
-    ImGui::SetNextWindowSize({380 * ToolUiScale(), 0}, ImGuiCond_Appearing);
-    if (ImGui::BeginPopupModal("Close agent session?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextWrapped("Closing this session ends its running program. Any work in progress will be interrupted.");
-        ImGui::Separator();
-        if (ToolButton("Close session", {}, true)) {
-            closing = _confirmClose;
-            _confirmClose.reset();
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ToolButton("Keep open") || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-            _confirmClose.reset();
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SetItemDefaultFocus();
-        ImGui::EndPopup();
-    }
+    if (showClose) ImGui::OpenPopup(CloseAgentDialogId);
+    if (const auto confirmed = DrawCloseAgentDialog(_confirmClose)) closing = confirmed;
     if (closing) sessions.Close(*closing);
     ImGui::SetCursorPos(origin);
     if (ImGui::BeginChild("console-terminal", {terminalWidth, available.y}, ImGuiChildFlags_AlwaysUseWindowPadding,
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse) &&
         sessions.Selected()) {
         const auto id = *sessions.Selected();
-        if (auto* terminal = sessions.Terminal(id)) {
-            auto& view = ViewOf(id);
+        if (elsewhere && *elsewhere == id) {
+            // The Agents drawer shows this terminal now; one screen has one size.
+            const auto info = sessions.Info(id);
+            const auto title = (info ? info->title : std::string("This session")) + " is open in Agents";
+            ToolEmptyState(title.c_str(), "Its terminal is in the Agents drawer.");
+            const char* label = "Show here";
+            const float width = ImGui::CalcTextSize(label).x + ImGui::GetStyle().FramePadding.x * 2;
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - width) * 0.5f);
+            if (ToolButton(label)) request.showHere = true;
+        } else if (auto* terminal = sessions.Terminal(id)) {
+            auto& view = views.View(id);
             view.Draw(*terminal);
             _focused = view.Focused();
         }

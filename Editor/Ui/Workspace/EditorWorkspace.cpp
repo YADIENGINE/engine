@@ -168,9 +168,18 @@ void EditorWorkspace::ShowConsole(EditorPreferences& preferences) {
     _focusBottom = EditorPanel::Console;
     _viewport.ReleaseFocus();
 }
+void EditorWorkspace::ShowAgents(std::optional<std::uint64_t> session, EditorPreferences& preferences) {
+    (void)preferences;
+    _agentsDrawer.Open(session ? session : AgentStatusFocus());
+    _viewport.ReleaseFocus();
+}
 void EditorWorkspace::PasteToConsole(const std::string& text, EditorPreferences& preferences) {
-    ShowConsole(preferences);
-    if (const auto agent = _sessions.AgentSession()) _sessions.Select(*agent);
+    if (const auto agent = _sessions.AgentSession()) {
+        _sessions.Select(*agent);
+        ShowAgents(agent, preferences);
+    } else {
+        ShowConsole(preferences);
+    }
     _sessions.Paste(text);
 }
 std::string EditorWorkspace::OpenAgent(EditorPreferences& preferences) {
@@ -186,16 +195,19 @@ std::string EditorWorkspace::OpenAgent(EditorPreferences& preferences) {
                    "' was not found on PATH; choose an available command in agent setup";
         return {};
     }
-    ShowConsole(preferences);
     // The agent session requests go to is reused when it runs the chosen CLI; otherwise a new session starts.
+    // Either way the Agents drawer shows it: agents are worked with there.
     const auto commandLine = AgentCommandLine(DefaultTerminalShell(), command);
-    if (const auto agent = _sessions.AgentSession(); agent && _sessions.Info(*agent)->agent == kind.id)
+    if (const auto agent = _sessions.AgentSession(); agent && _sessions.Info(*agent)->agent == kind.id) {
         _sessions.Revive(*agent, commandLine);
-    else
-        _sessions.AddAgent(kind.id, commandLine);
+        ShowAgents(agent, preferences);
+    } else {
+        ShowAgents(_sessions.AddAgent(kind.id, commandLine), preferences);
+    }
     return {};
 }
-std::string EditorWorkspace::AddSession(const ConsoleNewSession& request, EditorPreferences& preferences) {
+std::string EditorWorkspace::AddSession(const ConsoleNewSession& request, EditorPreferences& preferences,
+                                        bool inDrawer) {
     if (!request.agent) {
         ShowConsole(preferences);
         _sessions.OpenShell();
@@ -211,8 +223,11 @@ std::string EditorWorkspace::AddSession(const ConsoleNewSession& request, Editor
                "' was not found on PATH; choose an available command in agent setup";
     }
     preferences.agent.configured = true;
-    ShowConsole(preferences);
-    _sessions.AddAgent(*request.agent, AgentCommandLine(DefaultTerminalShell(), command));
+    const auto id = _sessions.AddAgent(*request.agent, AgentCommandLine(DefaultTerminalShell(), command));
+    if (inDrawer)
+        ShowAgents(id, preferences);
+    else
+        ShowConsole(preferences);
     return {};
 }
 std::string EditorWorkspace::SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences) {
@@ -224,6 +239,13 @@ std::string EditorWorkspace::SendToAgent(const std::string& text, bool submit, E
         _sessions.SendTo(*agent, text, submit);
     }
     return problem;
+}
+std::string EditorWorkspace::SendToSession(std::uint64_t id, const std::string& text, bool submit) {
+    const auto session = _sessions.Info(id);
+    if (!session || !session->agent) return "The selected agent session is no longer available.";
+    if (session->state == SessionState::Exited) return "Restart the selected agent session before sending context.";
+    _sessions.SendTo(id, text, submit);
+    return {};
 }
 void EditorWorkspace::HandleAgent(EditorAgentRequest request, const EditorSnapshot& snapshot,
                                   EditorPreferences& preferences, EditorWorkspaceResult& result) {
@@ -248,11 +270,23 @@ void EditorWorkspace::HandleAgent(EditorAgentRequest request, const EditorSnapsh
     }
     result.cancelViewportInput = true;
 }
+std::optional<std::uint64_t> EditorWorkspace::AgentStatusFocus() const {
+    // A session that asks the developer something comes first; then the one agent requests go to.
+    for (const auto& info : _sessions.Infos())
+        if (info.agent && info.state == SessionState::Waiting) return info.id;
+    return _sessions.AgentSession();
+}
 EditorAgentStatus EditorWorkspace::AgentStatus(const EditorSnapshot& snapshot) const {
     EditorAgentStatus status{.control = !snapshot.agents || snapshot.agents->control};
-    if (const auto agent = _sessions.AgentSession()) {
+    status.drawerOpen = _agentsDrawer.IsOpen();
+    const auto* hold = snapshot.agents && snapshot.agents->hold ? &*snapshot.agents->hold : nullptr;
+    for (const auto& info : _sessions.Infos())
+        if (info.agent) status.sessions.push_back({info.state, hold && hold->session == std::to_string(info.id)});
+    if (const auto agent = AgentStatusFocus()) {
         const auto session = *_sessions.Info(*agent);
         status.session = true;
+        status.focus = session.id;
+        status.sessionId = std::to_string(session.id);
         status.title = session.title;
         status.state = session.state;
         status.activity = session.activity;
@@ -276,7 +310,19 @@ bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiAc
     const bool quickOpen = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, route);
     const bool bottom = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_J, route);
     const bool console = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_GraveAccent, route);
-    const bool agent = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_A, route);
+    const bool agents = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_A, route);
+    const bool sendScene = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, route);
+    const bool newAgent = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_N, route);
+    // Keys that only mean something while the drawer is open; closed, they stay free for whatever else has the keys
+    const bool drawer = _agentsDrawer.IsOpen();
+    const bool nextAgent = drawer && ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_PageDown, route);
+    const bool previousAgent = drawer && ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_PageUp, route);
+    const bool switchView = drawer && ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_T, route);
+    std::optional<std::size_t> chip;
+    if (drawer)
+        for (int index = 0; index < 9; ++index)
+            if (ImGui::Shortcut(ImGuiMod_Ctrl | static_cast<ImGuiKey>(ImGuiKey_1 + index), route))
+                chip = static_cast<std::size_t>(index);
     const bool primary = ImGui::Shortcut(ImGuiKey_F5, route);
     const bool git = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_G, route);
     const auto& io = ImGui::GetIO();
@@ -292,9 +338,20 @@ bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiAc
         result.bottomPanel = EditorPanel::Console;
         consumed = true;
     }
-    if (agent && !popup) {
-        result.agent = EditorAgentRequest::Open;
-        consumed = true;
+    if (!popup) {
+        if (agents) result.agents.toggle = true;
+        if (newAgent) result.agents.add = true;
+        if (sendScene && snapshot.ready) {
+            if (drawer)
+                result.agents.sendScene = true;
+            else
+                result.agent = EditorAgentRequest::SendScene;
+        }
+        if (nextAgent || previousAgent) result.agents.step = nextAgent ? 1 : -1;
+        if (switchView) result.agents.switchView = true;
+        result.agents.chip = chip;
+        consumed =
+            consumed || agents || newAgent || sendScene || nextAgent || previousAgent || switchView || chip.has_value();
     }
     if (git && !popup && snapshot.git) {
         result.git.toggle = GitDrawerTab::Changes;
@@ -338,9 +395,10 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
         ImGuiID center = dock;
         std::array<ImGuiID, 4> groups{};
         const bool agentLayout = preferences.layout == EditorWorkspaceLayout::Agent;
-        if (agentLayout) // The Console (agent session) and Inspector share a tall right column
+        if (agentLayout) { // The Console (agent session) and Inspector share a tall right column
             groups[static_cast<std::size_t>(EditorDockGroup::Right)] =
                 ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, AgentColumnRatio, nullptr, &center);
+        }
         if (BottomVisible(preferences) && !agentLayout)
             groups[static_cast<std::size_t>(EditorDockGroup::Bottom)] =
                 ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.30f, nullptr, &center);
@@ -439,8 +497,8 @@ void EditorWorkspace::GitOverlay(const EditorSnapshot& snapshot, const EditorUiA
     const auto& io = ImGui::GetIO();
     const bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
     // Escape backs out one step, unless it is the scene's or the Console's key right now.
-    if (_gitDrawer.IsOpen() && !popup && !io.WantTextInput && !_consoleFocused && !_viewportFocused &&
-        ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+    if (_gitDrawer.IsOpen() && !_agentsDrawer.IsOpen() && !popup && !io.WantTextInput && !_consoleFocused &&
+        !_viewportFocused && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
         if (git.diff && actions.git)
             actions.git(GitRequest{.kind = GitRequestKind::CloseDiff});
         else
@@ -455,8 +513,11 @@ void EditorWorkspace::GitOverlay(const EditorSnapshot& snapshot, const EditorUiA
     if (const auto text = _gitDrawer.TakeAgentText(); !text.empty())
         result.agentProblem = SendToAgent(text, true, preferences);
     const auto bringForward = [&](const char* name) {
-        // Above whichever docked panel was clicked last, and below any popup or tooltip.
-        if (popup || _marking || _agentSetup.Active()) return;
+        // Above whichever docked panel was clicked last, and below any popup or tooltip: asked after drawing, so a
+        // menu the drawer has just opened is not pushed behind it.
+        if (_marking || _agentSetup.Active() ||
+            ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel))
+            return;
         if (auto* window = ImGui::FindWindowByName(name)) ImGui::BringWindowToDisplayFront(window);
     };
     bringForward("Source control###editor.git-drawer");
@@ -477,6 +538,46 @@ void EditorWorkspace::GitOverlay(const EditorSnapshot& snapshot, const EditorUiA
         bringForward("Change###editor.git-diff");
         result.cancelViewportInput = true;
     }
+}
+
+void EditorWorkspace::AgentsOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
+                                    ImVec2 size, EditorPreferences& preferences, EditorWorkspaceResult& result) {
+    if (!_agentsDrawer.IsOpen()) return;
+    const bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
+    // Escape closes it, unless the agent's terminal, the scene or a text field has the keyboard (an agent CLI uses
+    // Escape to interrupt).
+    if (!popup && !ImGui::GetIO().WantTextInput && !_agentsDrawer.TerminalFocused() && !_viewportFocused &&
+        ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        _agentsDrawer.Close();
+        return;
+    }
+    if (_gitDrawer.IsOpen() && snapshot.git) { // Both open: side by side, Git on the left
+        const float git = std::min(GitDrawerWidth * ToolUiScale(), size.x * GitDrawerMaximumShare);
+        position.x += git;
+        size.x -= git;
+    }
+    const auto infos = _sessions.Infos();
+    _agentsDrawer.SetPreferred(preferences.agent.kind);
+    const auto request = _agentsDrawer.Draw(
+        infos, [this](std::uint64_t id) { return _sessions.Terminal(id); }, _views, snapshot, actions, position, size);
+    // Above whichever docked panel was clicked last; never over a popup, and checked after drawing, since a menu the
+    // drawer opened this frame would otherwise stay behind it
+    const bool popupNow = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
+    if (!popupNow && !_marking && !_agentSetup.Active())
+        if (auto* window = ImGui::FindWindowByName("Agents###editor.agents-drawer"))
+            ImGui::BringWindowToDisplayFront(window);
+    if (request.openConsole) {
+        _sessions.Select(*request.openConsole);
+        _agentsDrawer.Close();
+        ShowConsole(preferences);
+    }
+    if (request.sendScene) {
+        result.sendScene = true;
+        result.sendSceneSession = request.sendScene;
+    }
+    if (request.close) _sessions.Close(*request.close);
+    if (request.restart) _sessions.Revive(*request.restart, {});
+    if (request.add) result.agentProblem = AddSession(ConsoleNewSession{*request.add}, preferences, true);
 }
 
 EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
@@ -537,11 +638,33 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     const auto* viewport = ImGui::GetMainViewport();
     const float menuHeight = ImGui::GetFrameHeight();
     EditorToolbarSearch search;
-    if (menu.showActivity) _agentActivity.Show();
+    if (menu.showActivity) ShowAgents(std::nullopt, preferences);
+    // The drawer's keys: Ctrl+Shift+A opens it on the agent that waits (or closes it), the rest act inside it
+    if (menu.agents.toggle) {
+        if (_agentsDrawer.IsOpen())
+            _agentsDrawer.Close();
+        else
+            ShowAgents(std::nullopt, preferences);
+    }
+    if (menu.agents.add) {
+        if (!_agentsDrawer.IsOpen()) ShowAgents(std::nullopt, preferences);
+        _agentsDrawer.AskAdd();
+    }
+    if (menu.agents.step != 0) _agentsDrawer.Step(menu.agents.step);
+    if (menu.agents.chip) _agentsDrawer.Pick(*menu.agents.chip);
+    if (menu.agents.switchView) _agentsDrawer.SwitchView();
+    if (menu.agents.sendScene)
+        if (const auto chosen = _agentsDrawer.ChosenSession()) {
+            result.sendScene = true;
+            result.sendSceneSession = chosen;
+        }
     const float toolbarHeight =
         _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight}, viewport->Size.x, _marking,
                        search, AgentStatus(snapshot), _agentActivity);
-    if (_agentActivity.TakeOpenSession()) menu.agent = EditorAgentRequest::Open;
+    if (_agentActivity.TakeOpenAgents()) {
+        _agentsDrawer.Toggle(AgentStatusFocus());
+        if (_agentsDrawer.IsOpen()) result.cancelViewportInput = true;
+    }
     _palette.SetAnchor(search.centerX, search.top);
     _openQuickOpen = search.pressed;
     const float statusHeight =
@@ -562,7 +685,8 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             _focusBottom = panel;
             preferences.lastBottomPanel = panel;
         }
-    if (menu.showProblems || menu.toggleBottom || menu.bottomPanel || menu.layout || menu.toggleMaximize)
+    if (menu.showProblems || menu.showActivity || menu.toggleBottom || menu.bottomPanel || menu.layout ||
+        menu.toggleMaximize)
         result.cancelViewportInput = true;
     const ImVec2 workspacePosition{viewport->Pos.x, viewport->Pos.y + menuHeight + toolbarHeight};
     const ImVec2 workspaceSize{viewport->Size.x,
@@ -636,9 +760,11 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                     if (_output.TakeFixRequest()) _fixFailedBuild = true; // Handled next frame, with the other requests
                     break;
                 case EditorPanel::Profiler: _profiler.Draw(snapshot, actions); break;
-                case EditorPanel::Console:
-                    if (const auto request = _console.Draw(_sessions))
-                        result.agentProblem = AddSession(*request, preferences);
+                case EditorPanel::Console : {
+                    const auto request = _console.Draw(_sessions, _views, _agentsDrawer.Shown(_sessions.Infos()));
+                    if (request.add) result.agentProblem = AddSession(*request.add, preferences);
+                    if (request.showHere) _agentsDrawer.Close();
+                }
                     consoleDrawn = true;
                     break;
                 case EditorPanel::Assets      : _assets.Draw(snapshot, actions); break;
@@ -653,7 +779,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             if (focusedBottomDrawn) _focusBottom.reset();
         }
         _focusCatalog = false;
-        _consoleFocused = consoleDrawn && _console.Focused();
+        _consoleFocused = (consoleDrawn && _console.Focused()) || _agentsDrawer.TerminalFocused();
         if (!viewportDrawn) {
             _viewport.ReleaseFocus();
             result.interaction = {};
@@ -694,6 +820,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         }
     }
     GitOverlay(snapshot, actions, menu, workspacePosition, workspaceSize, preferences, result);
+    AgentsOverlay(snapshot, actions, workspacePosition, workspaceSize, preferences, result);
     if (_marking) MarkOverlay(snapshot, actions, menuHeight + toolbarHeight, result);
     if (result.cancelViewportInput) _viewport.ReleaseFocus();
     _viewportFocused = result.interaction.focused;
