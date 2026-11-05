@@ -393,15 +393,20 @@ verir.
 ve `Apps/Ui/Update/`'te, kullanım launcher `Docs/CoreApi.md` ve `Docs/Packaging.md`'de.
 - **Yer:** yalnız launcher penceresi. Editör launcher'ı bilmez (engine → launcher bağımlılığı olmaz) ve proje açılınca
   launcher kapandığından bildirim her oturumun başında zaten görülür.
-- **Akış:** açılışta arka planda denetim; internet yoksa sessiz. Yeni sürüm üst çubukta düğme olur, kendiliğinden panel
-  açılmaz; panelde notlar, boyut ve Update / Later / Skip this version. İndirme bitince Restart now / Later. Ayarlarda
-  açılış denetimi kapatılabilir.
+- **Akış:** açılışta arka planda denetim; internet yoksa sessiz. Yeni sürüm üst çubukta düğme olur ve paneli her
+  açılışta bir kez, başka panel ya da iş yokken kendiliğinden açılır (2026-11-05; önce açılmıyordu, yalnız düğme gözden
+  kaçtı); panelde notlar, boyut ve Update / Later / Skip this version. Later o açılış için kapatır, Skip o sürüm için.
+  İndirme bitince Restart now / Later. Ayarlarda açılış denetimi kapatılabilir.
 - **Çalışan süreçler (Q4'ün uygulaması):** `<engine>.com` ve launcher'ın ön plan işleri, kimsenin sahip olmadığı adlı bir
   mutex açık tutar: birden çok komut aynı anda tutabilir, süreç öldürülse de kalmaz. Restart bunlar bitene kadar bekler.
 - **Kaynak:** Velopack'in GitHub kaynağı değil, `DownloadFile` kullanan özel kaynak (`custom_callback`). **Neden:**
   Velopack'in indirmesi iptal edilemez ve `Job` kapanışta thread'i bekler; pencere indirme sürerken takılırdı. Sistem
-  proxy'si de böyle kullanılır. SHA-256 denetimi Velopack'te kalır. 0.x launcher pre-release'leri okur, 1.0'dan itibaren
-  yalnız kararlıları.
+  proxy'si de böyle kullanılır. SHA-256 denetimi Velopack'te kalır. **API değil indirme adresleri (2026-11-05):** feed
+  `releases/latest/download/releases.win.json`'dan, her paket kendi sürümünün `releases/download/v<sürüm>/`'ünden iner.
+  Release API'si adres başına saatte 60 istek verir; ortak ağda (yurt, kampüs) biten limit denetimi her seferinde
+  bozuyordu ve Velopack asıl hatayı "null pointer" mesajıyla gizliyordu. Son release'in feed'i önceki sürümlerin
+  paketlerini de listeler (yayın betiği önceki paketin üstüne paketler); launcher release'leri pre-release değildir, bu
+  yüzden "latest" her zaman en yeni launcher'dır. Bir kaynak hatası kullanıcıya kendi metniyle gösterilir.
 - **Sınama:** otomatik geri alma yoktur, bozuk sürüm ancak elle Setup ile düzelir. Bu yüzden `dev.py update-test` gerçek
   kurulumu yerel dosyalardan güncelleyip sınar ve `dev.py release` her yayında çalıştırır.
 - **Güven:** paketler imzasız, SHA değerleri paketle aynı yerden gelir; güvenlik GitHub organizasyonuna bağlıdır, 2FA
