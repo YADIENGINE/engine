@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-06",
+  "changes": [
+    "Editor: an Agents drawer under the agent strip runs several agent sessions, each with its live terminal or editor activity.",
+    "Scenes: Game::Effects(), Time() and RealSeconds() are public, next to Sounds() and Audio().",
+    "Agents: `python Engine api NAME|WORDS` for better token usage.",
+    "Agents: Works into the same folder now wait for each other."
+  ],
+  "breaking": []
+}
