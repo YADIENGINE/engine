@@ -1,10 +1,12 @@
 """Answer `python Engine api QUERY` from the public headers and `AgentDocs/Tasks.json`, read live on every call.
 
-A name (`StepsIn`, `CollisionWorld`, `CollisionWorld::Sweep`) is looked up in this order, stopping at the first level
-that matches: the exact name (with `Owner::` when given; every overload), the same ignoring case, then near misses
-(`StepIn`). A type prints its line range and its direct members. Anything else, a single lower-case word ("rain"), or
-a name that matches nothing is a words query: the best task routes of `Tasks.json`, then the declarations whose names,
-owners, comments and paths share the most words with it.
+A name (`StepsIn`, `CollisionWorld`, `CollisionWorld::Sweep`, also written as a call: `Game::Sounds()`) is looked up
+in this order, stopping at the first level that matches: the exact public name (with `Owner::` when given; every
+overload), the same ignoring case; a protected or private member, said to be one in a single line; an enum value
+(`InputKey::Space`); for `Owner::Name` with a known Owner, the type's closest members; near misses (`StepIn`). A type
+prints its line range and its direct members. A miss costs a few lines, never a words list for a mistyped member.
+Anything else, a single lower-case word ("rain"), or a name that still matches nothing is a words query: the best task
+routes of `Tasks.json`, then the declarations whose names, owners, comments and paths share the most words with it.
 
 The answer is at most LIMIT lines, one declaration per line as `path:line signature  // first comment sentence`.
 Paths start at the project root (`Engine/Core/...` in a game), so an agent can open the printed line range directly.
@@ -129,6 +131,51 @@ class Answer:
         return '\n'.join(shown + [f'({len(self.lines) - len(shown)} more lines; {hint})'])
 
 
+def _hidden_answer(answer: Answer, matches: list[Found]):
+    """Why a member that exists is not API: one line each, with where it is and what it is for."""
+    for item in matches:
+        declaration = item.declaration
+        who = (f'only {declaration.owner} and classes derived from it call it' if declaration.access == 'protected'
+               else f'only {declaration.owner} itself uses it')
+        comment = f' {declaration.comment}' if declaration.comment else ''
+        answer.lines.append(f'{answer.path(item.header.path)}:{declaration.line} {qualified(declaration)}'
+                            f'  // {declaration.access}: {who}.{comment}')
+
+
+def _enum_values(found: list[Found], query: str) -> list[tuple[Found, str, int]]:
+    """Enumerators named like the query (`InputKey::Space`, or `Space` alone): the enum, the value and its line."""
+    *owner, name = query.split('::')
+    wanted = '::'.join(owner)
+    for fold in (False, True):
+        hits = [(item, value, line) for item in found if item.declaration.values
+                and _owner_matches(_full_name(item.declaration), wanted, fold)
+                for value, line in item.declaration.values if (value.lower() == name.lower() if fold else value == name)]
+        if hits:
+            return hits
+    return []
+
+
+def _missing_member(answer: Answer, found: list[Found], query: str) -> bool:
+    """`Owner::Name` where Owner is a known type but has no such member: the type and its closest members, briefly,
+    instead of a words search. False when Owner is not a type."""
+    *owner, name = query.split('::')
+    wanted = '::'.join(owner)
+    types = [item for item in found if item.declaration.is_type and wanted
+             and _owner_matches(_full_name(item.declaration), wanted, fold=True)]
+    if not types:
+        return False
+    for item in types:
+        full = _full_name(item.declaration)
+        members = {member.name: member for member in item.header.declarations if member.owner == full}
+        close = difflib.get_close_matches(name, list(members), n=CLOSE_NAMES, cutoff=0.5)
+        where = f'{answer.path(item.header.path)}:{item.declaration.line}-{item.declaration.end}'
+        answer.lines.append(f'{full} ({where}) has no public member {name}'
+                            + ('; closest:' if close else f'; ask python Engine api {full} for its members.'))
+        for member in close:
+            answer.declaration(item.header, members[member], indent=True)
+    return True
+
+
 def _name_answer(answer: Answer, matches: list[Found]):
     for item in matches:
         answer.declaration(item.header, item.declaration)
@@ -204,13 +251,28 @@ def _words_answer(answer: Answer, words: list[str], found: list[Found], tasks: l
 def answer(root: Path, query: str, prefix: str = '') -> tuple[str, bool]:
     """The answer to `query` for the engine at `root`, with `prefix` before every path; and whether anything matched."""
     query = ' '.join(query.split())
-    found = [Found(header, declaration) for header in parse_public(root) for declaration in header.declarations]
+    # A call as written in code names its function: `Game::Sounds()`, `Painter::Text(...) const`.
+    query = re.sub(r'(?<=\w)\s*\(.*\)\s*(?:const)?\s*;?$', '', query) or query
+    headers = parse_public(root)
+    found = [Found(header, declaration) for header in headers for declaration in header.declarations]
     result = Answer(prefix)
     # One lower-case word ("rain") is a topic more often than a field name: the words search shows both.
     name = NAME.fullmatch(query) and not re.fullmatch(r'[a-z]+', query)
     if name and (matches := find_name(found, query)):
         _name_answer(result, matches)
         return result.text('ask Owner::Name for one member, or read the printed line range'), True
+    if name and (hidden := find_name([Found(h, d) for h in headers for d in h.hidden], query)):
+        _hidden_answer(result, hidden)
+        return result.text('ask one of them by Owner::Name'), True
+    if name and (values := _enum_values(found, query)):
+        for item, value, line in values:
+            declaration = item.declaration
+            result.lines.append(f'{result.path(item.header.path)}:{line} {_full_name(declaration)}::{value}'
+                                f'  // A value of enum {_full_name(declaration)} (lines {declaration.line}-'
+                                f'{declaration.end})')
+        return result.text('ask Enum::Value'), True
+    if name and '::' in query and _missing_member(result, found, query):
+        return result.text('ask the type for its members'), False
     if name and (close := _close_names(found, query)):
         result.lines.append(f'Nothing is named {query}; similar names:')
         for item in close:

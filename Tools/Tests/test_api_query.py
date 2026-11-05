@@ -37,6 +37,20 @@ constexpr int StepsIn(double seconds, int stepsPerSecond) { return 0; }
 // Fades the screen to black between two scenes.
 void FadeScreen(float seconds);
 '''
+GAME = '''#pragma once
+// Runtime owns the loop.
+class Game {
+public:
+    // The game's sound tables.
+    int& Sounds();
+protected:
+    // This frame's real duration.
+    float RealSeconds() const;
+private:
+    int _frames = 0;
+};
+enum class InputKey { A, Space, Enter = 4 };
+'''
 TASKS = {'tasks': [
     {'task': 'Add a scene or fade between scenes', 'files': ['Core/Animation/Timeline.h'], 'recipe': None,
      'docs': ['Docs/Runtime.md#scenes'], 'words': ['transition']},
@@ -92,6 +106,31 @@ class ApiQueryTests(unittest.TestCase):
         self.assertEqual(self.ask('CollisionWorld::Hit')[0].splitlines()[0],
                          'Core/Physics/CollisionWorld.h:11-13 struct CollisionWorld::Hit')
         self.assertIn('CollisionWorld::Move(int id)', self.ask('collisionworld::move')[0])
+
+    def test_members_that_are_not_api_say_why_in_one_line(self):
+        self.write('Core/Runtime/Game.h', GAME)
+        self.assertEqual(self.ask('Game::RealSeconds()'), (
+            'Core/Runtime/Game.h:9 float Game::RealSeconds() const  // protected: only Game and classes derived from '
+            "it call it. This frame's real duration.", True))
+        self.assertIn('// private: only Game itself uses it.', self.ask('Game::_frames')[0])
+        self.assertIn('protected', self.ask('RealSeconds')[0])
+
+    def test_enum_values_and_calls_are_names(self):
+        self.write('Core/Runtime/Game.h', GAME)
+        self.assertEqual(self.ask('InputKey::Space'),
+                         ('Core/Runtime/Game.h:13 InputKey::Space  // A value of enum InputKey (lines 13-13)', True))
+        self.assertTrue(self.ask('Game::Sounds()')[0].startswith('Core/Runtime/Game.h:6 int& Game::Sounds()'))
+        self.assertTrue(self.ask('CollisionWorld::Sweep(int shape) const')[0].startswith(
+            'Core/Physics/CollisionWorld.h:9 int CollisionWorld::Sweep(int shape) const'))
+
+    def test_a_known_type_without_the_member_answers_briefly(self):
+        self.write('Core/Runtime/Game.h', GAME)
+        self.assertEqual(self.ask('Game::Sound'), (
+            'Game (Core/Runtime/Game.h:3-12) has no public member Sound; closest:\n'
+            "  :6 int& Sounds()  // The game's sound tables.", False))
+        self.assertEqual(self.ask('Game::Zzz'), (
+            'Game (Core/Runtime/Game.h:3-12) has no public member Zzz; ask python Engine api Game for its members.',
+            False))
 
     def test_near_miss_names(self):
         text, found = self.ask('StepIn')

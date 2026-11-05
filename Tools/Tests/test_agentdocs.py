@@ -89,6 +89,10 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(found[('', 'Identity')].line, 20)
         self.assertEqual((found[('', 'Mode')].line, found[('', 'Mode')].end), (22, 22))
         self.assertTrue(widget.is_type and not found[('Widget', 'Set')].is_type)
+        self.assertEqual(found[('', 'Mode')].values, [('First', 22), ('Second', 22)])
+        # Not API, kept to say why a name is missing; members of a private nested class are not kept at all
+        self.assertEqual([(d.name, d.access, d.line) for d in header.hidden],
+                         [('Hook', 'protected', 14), ('_count', 'private', 16), ('Hidden', 'private', 17)])
 
     def test_declared_names(self):
         cases = {

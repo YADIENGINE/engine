@@ -26,6 +26,8 @@ class Declaration:
     name: str = ""  # The declared name: a function, type, alias, constant or field
     line: int = 0  # 1-based line of the declaration's first token
     end: int = 0  # Last line of a type's body; 0 for everything else
+    access: str = "public"  # protected or private for a member of `Header.hidden`
+    values: list[tuple[str, int]] = field(default_factory=list)  # An enum's values with their lines
 
     @property
     def is_type(self) -> bool:
@@ -38,6 +40,8 @@ class Header:
     summary: str = ""
     declarations: list[Declaration] = field(default_factory=list)
     skipped: int = 0
+    # Protected and private members of public classes: not API, but `api` says why a name it was asked is missing
+    hidden: list[Declaration] = field(default_factory=list)
 
 
 def _outside_angles(text: str) -> str:
@@ -164,10 +168,13 @@ def parse_header(path: str, text: str) -> Header:
             index += 1
         return index
 
-    def emit(parts: list[str], comment: str, owner: str, visible: bool, first: int,
+    def emit(parts: list[str], comment: str, owner: str, seen: str | None, first: int,
              definition: bool = False) -> Declaration | None:
-        if not visible or not parts:
+        """`seen`: the access of a statement whose enclosing scope is visible (public, protected, private); None
+        when nothing encloses it visibly. Public statements become declarations, the others `hidden`."""
+        if seen is None or not parts:
             return None
+        visible = seen == 'public'
         signature = compact(parts).rstrip(';')
         # Large aggregate constants need a name/type, not hundreds of palette or style initializer tokens.
         if 'constexpr' in parts and '(' not in parts and '{' in parts and len(signature) > 180:
@@ -179,11 +186,31 @@ def parse_header(path: str, text: str) -> Header:
         if (path, owner, signature) in UNTRANSLATED:
             comment = ''
         if len(parts) >= 2 and re.search(r'\w', signature):
-            declaration = Declaration(signature, sentence(comment), owner, declared_name(signature), line_of(first))
-            result.declarations.append(declaration)
+            declaration = Declaration(signature, sentence(comment), owner, declared_name(signature), line_of(first),
+                                      access=seen)
+            (result.declarations if visible else result.hidden).append(declaration)
             return declaration
-        result.skipped += 1
+        if visible:
+            result.skipped += 1
         return None
+
+    def enum_values(begin: int, end: int) -> list[tuple[str, int]]:
+        """Each enumerator's name and line: the first identifier of each comma-separated item."""
+        values, depth, expecting = [], 0, True
+        for index in range(begin, end):
+            token = tokens[index]
+            if token.startswith(('//', '/*')):
+                continue
+            if token in '([{<':
+                depth += 1
+            elif token in ')]}>':
+                depth -= 1
+            elif token == ',' and depth == 0:
+                expecting = True
+            elif expecting and depth == 0 and re.fullmatch(r'[A-Za-z_]\w*', token):
+                values.append((token, line_of(index)))
+                expecting = False
+        return values
 
     def scope(index: int, owner: str = '', access: str = 'public', enclosing: bool = True) -> int:
         pending: list[str] = []
@@ -218,6 +245,7 @@ def parse_header(path: str, text: str) -> Header:
                 comments.clear()
                 continue
             visible = enclosing and access == 'public'
+            seen = access if enclosing else None
             if token == '(':
                 parens += 1
             elif token == ')':
@@ -227,7 +255,7 @@ def parse_header(path: str, text: str) -> Header:
             elif token == ']':
                 brackets -= 1
             if token == ';' and parens == 0 and brackets == 0:
-                emit(pending, ' '.join(comments), owner, visible, first)
+                emit(pending, ' '.join(comments), owner, seen, first)
                 pending, comments = [], []
                 continue
             if token == '{' and parens == 0 and brackets == 0:
@@ -239,13 +267,14 @@ def parse_header(path: str, text: str) -> Header:
                     if kind[1].startswith('enum'):
                         end = balanced(index, '{', '}')
                         values = [t for t in tokens[index:end - 1] if not t.startswith(('//', '/*'))]
-                        declaration = emit(pending + ['{'] + values + ['}'], ' '.join(comments), owner, visible,
+                        declaration = emit(pending + ['{'] + values + ['}'], ' '.join(comments), owner, seen,
                                            first, definition=True)
-                        index = end
                         if declaration:
                             declaration.end = line_of(end - 1)
+                            declaration.values = enum_values(index, end - 1)
+                        index = end
                     else:
-                        declaration = emit(pending, ' '.join(comments), owner, visible, first, definition=True)
+                        declaration = emit(pending, ' '.join(comments), owner, seen, first, definition=True)
                         index = scope(index, f'{owner}::{name}'.strip(':'),
                                       'private' if kind[1] == 'class' else 'public', visible)
                         if declaration:
@@ -259,7 +288,7 @@ def parse_header(path: str, text: str) -> Header:
                         pending.extend(['{', '}'])
                         continue
                     signature = pending[:pending.index(':')] if ':' in pending else pending
-                    emit(signature, ' '.join(comments), owner, visible, first)
+                    emit(signature, ' '.join(comments), owner, seen, first)
                     index = balanced(index, '{', '}')
                     pending, comments = [], []
                 elif head.startswith('namespace'):
