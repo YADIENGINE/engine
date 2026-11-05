@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from ..agent_output import quiet, shown
+from ..build_lock import build_lock
 from ..cmake import BUILD_LOG, PYTHON_DEFINITION, clear_stale_build, read_cache, remove_build_dir, run
 from ..errors import EXIT_FAILED, EXIT_OK
 from ..msvc import msvc_env, tool
@@ -36,7 +37,8 @@ def build(project: Project, release: bool, clean: bool) -> Path:
     """Compiles the game and records the result for a launcher (Docs/ToolsContract.md, Project status files)."""
     build_dir = project.path(project.section("game").get("buildDirectory", "build"))
     try:
-        built = _compile(project, release, clean)
+        with build_lock(build_dir):
+            built = _compile(project, release, clean)
     except BaseException as failure:
         if not isinstance(failure, KeyboardInterrupt):
             write_last_build(build_dir, False)

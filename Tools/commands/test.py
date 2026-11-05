@@ -15,6 +15,7 @@ from pathlib import Path
 
 from ..agent_output import quiet, shorten, shown, tail
 from ..build_errors import summary
+from ..build_lock import build_lock
 from ..cmake import PYTHON_DEFINITION, clear_stale_build, remove_build_dir
 from ..errors import EXIT_FAILED, EXIT_INFRA, EXIT_OK
 from ..msvc import msvc_env, tool
@@ -108,10 +109,11 @@ def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, 
         return code
 
     try:
-        if execute("configure", [tool("cmake"), "--preset", settings["configurePreset"], PYTHON_DEFINITION]):
-            return exit_code
-        if execute("build", [tool("cmake"), "--build", "--preset", settings["buildPreset"]]):
-            return exit_code
+        with build_lock(build):  # Another test run may be building the same folder
+            if execute("configure", [tool("cmake"), "--preset", settings["configurePreset"], PYTHON_DEFINITION]):
+                return exit_code
+            if execute("build", [tool("cmake"), "--build", "--preset", settings["buildPreset"]]):
+                return exit_code
         selection = [tool("ctest"), "--preset", settings["testPreset"]]
         if test_filter is not None:
             selection += ["--tests-regex", test_filter]

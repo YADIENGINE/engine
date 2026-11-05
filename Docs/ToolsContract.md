@@ -48,6 +48,10 @@ use the same Python. Project root: `--project` if supplied; otherwise the engine
 Failed builds (`build`, `run`, `release`, `test`, `editor`, `refresh`) end their output with an `Errors (N):` summary of
 the distinct compiler, linker and CMake errors ([Editor automation](Editor/Automation.md#build-errors)).
 
+`build`, `run`, `release`, `test`, `sim` and `editor` build one at a time per build folder: a second command building
+the same folder (two `sim run` started together) waits for the first and says so on stderr, instead of failing on a
+file the compiler holds. The lock is in the system temp folder (`engine-build-locks/`) and ends with its process.
+
 Under a coding agent, `build`, `run`, `release`, `test`, `sim`, `editor` and `refresh` print only their result: a success
 line, or the `Errors (N):` summary (the end of the output when no error is recognized) and the path of the full log.
 Build output always goes to `build.log` in the build folder (`refresh.log` in the editor's for `refresh`); `test` keeps

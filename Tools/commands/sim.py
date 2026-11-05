@@ -12,6 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from ..build_lock import build_lock
 from ..cmake import BUILD_LOG, PYTHON_DEFINITION, clear_stale_build, read_cache, run
 from ..errors import EXIT_INFRA, ToolError
 from ..msvc import msvc_env, tool
@@ -54,6 +55,11 @@ def build_tool(project: Project, section: dict, release: bool) -> Path:
     """Compiles the console tool and returns its path. Output goes to stderr: stdout carries only the answer."""
     config = config_name(release)
     build_dir = project.path(section.get("buildDirectory", "build/simulation"))
+    with build_lock(build_dir):  # Two `sim run` at once would build the same tool together
+        return _build_tool(project, section, config, build_dir)
+
+
+def _build_tool(project: Project, section: dict, config: str, build_dir: Path) -> Path:
     prebuilt, state = prebuilt_directory(project)
     clear_stale_build(build_dir, project.root)
     write_state(project, state)
