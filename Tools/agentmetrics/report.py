@@ -41,19 +41,22 @@ def _failure_runs(tools: list[ToolCall]) -> int:
 def behaviour(session: Session, root: Path | None = None) -> dict:
     """Habits that cost tokens, counted from the tool calls (tokens are tool output):
     engine source read instead of AgentDocs; searches over the whole project or engine copy; editor commands that
-    failed (usually: no editor open); a first edit before any skill was read."""
+    failed (usually: no editor open); a first edit before any skill was read. `api` queries are the habit that should
+    replace engine searches, counted next to them."""
     def relative(path: str) -> str:
         return _normal(path, root) if root else path.replace("\\", "/")
 
     source = [call for call in session.tools if any(engine_source(relative(file)) for file in call.files)]
     wide = [call for call in session.tools if call.category == "search" and wide_search(call.roots)]
     ctl = [call for call in session.tools if (call.engine or "").startswith("ctl") and call.failed]
+    api = [call for call in session.tools if call.engine == "api"]
     first_edit = next((i for i, call in enumerate(session.tools) if call.category == "edit"), None)
     first_skill = next((i for i, call in enumerate(session.tools)
                         if any("AgentDocs/Skills/" in file.replace("\\", "/") for file in call.files)), None)
     return {
         "engineSourceReads": len(source), "engineSourceTokens": sum(call.output_tokens for call in source),
         "wideSearches": len(wide), "wideSearchTokens": sum(call.output_tokens for call in wide),
+        "apiCalls": len(api), "apiTokens": sum(call.output_tokens for call in api),
         "failedEditorCalls": len(ctl),
         "editBeforeSkill": first_edit is not None and (first_skill is None or first_edit < first_skill),
     }
@@ -175,7 +178,8 @@ def summarize(sessions: list[Session], root: Path, engine_root: Path, top: int =
 def _behaviour_totals(rows: list[dict]) -> dict:
     if not rows:
         return {}
-    totals = {key: sum(row[key] for row in rows) for key in rows[0] if key != "editBeforeSkill"}
+    keys = dict.fromkeys(key for row in rows for key in row if key != "editBeforeSkill")  # Older runs lack newer keys
+    totals = {key: sum(row.get(key, 0) for row in rows) for key in keys}
     totals["sessionsEditingBeforeSkill"] = sum(1 for row in rows if row["editBeforeSkill"])
     return totals
 
@@ -188,6 +192,8 @@ def render_behaviour(totals: dict, sessions: int) -> str:
         f"  engine source read instead of AgentDocs: {totals['engineSourceReads']} reads, "
         f"~{_k(totals['engineSourceTokens'])} tokens",
         f"  searches over the whole project or engine: {totals['wideSearches']}, ~{_k(totals['wideSearchTokens'])} tokens",
+        f"  api queries instead (python Engine api): {totals.get('apiCalls', 0)}, "
+        f"~{_k(totals.get('apiTokens', 0))} tokens",
         f"  editor commands that failed (no editor open?): {totals['failedEditorCalls']}",
         f"  sessions that edited before reading any skill: {totals['sessionsEditingBeforeSkill']} of {sessions}",
     ])

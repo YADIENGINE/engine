@@ -5,8 +5,9 @@ short on purpose. Paths start at the engine root (`Engine/` in a game); run tool
 ## Reading
 
 - Start from the matching skill below; it holds the usual example. Follow its links before searching.
-- Search only `Game/` or files you name, never all of `Engine/` or the project root. Engine `.cpp` files are not the
-  API: headers and `AgentDocs/Api/` are.
+- Find engine API with `python Engine api NAME` or `python Engine api WORDS` (task routes and declarations, with
+  lines); then read only the printed lines. Engine `.cpp` files are not the API.
+- Search only `Game/` or files you name, never all of `Engine/` or the project root.
 - Read files longer than about 200 lines by range.
 - One task per session; when it is done, say what the next session needs and stop.
 

@@ -32,7 +32,7 @@ logs are read from `CLAUDE_CONFIG_DIR` or `~/.claude/projects/`, subagents inclu
 | Engine commands | Each `python Engine ...` command: runs, failures, output tokens; the longest run of failed engine commands in a row (a build-fix loop) |
 | File reads | Files read by tools or by `cat`/`sed`/`Get-Content`, by area (game, engine source, engine Docs, AgentDocs, agent files), the largest, and those read three times or more |
 | AgentDocs | Which AgentDocs files were read and which skills were never read |
-| Behaviour | Habits that cost tokens, counted from the tool calls: engine source files read (`Engine/Core`, `Editor`, `Assets`, `Tools`, `ThirdParty`) instead of AgentDocs; searches over the whole project or the whole engine copy, with the tokens they returned; editor commands that failed (usually no editor open); sessions whose first edit came before any skill was read |
+| Behaviour | Habits that cost tokens, counted from the tool calls: engine source files read (`Engine/Core`, `Editor`, `Assets`, `Tools`, `ThirdParty`) instead of AgentDocs; searches over the whole project or the whole engine copy, with the tokens they returned; `api` queries, which should replace those searches; editor commands that failed (usually no editor open); sessions whose first edit came before any skill was read |
 | Largest tool outputs | The single biggest results, with the command or file |
 | Sessions by tokens | The heaviest sessions with requests, peak context, total and output tokens, failed engine commands |
 

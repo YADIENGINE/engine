@@ -1,4 +1,4 @@
-If you are using the engine from a game, this file is not for you; read [AgentDocs/Index.md](AgentDocs/Index.md).
+If you are using the engine from a game, this file is not for you; read [AgentDocs/Agent.md](AgentDocs/Agent.md).
 
 # Engine contributors
 
@@ -21,7 +21,7 @@ Compiler-free tools: `python -m unittest discover -s Tools/Tests -t .`.
 Notices: `python -m unittest discover -s ThirdParty/Tests`; both Python suites have CTest label `engine`.
 Run the smallest affected selection; follow [Testing](Docs/Contributing/Testing.md#writing-tests).
 Run `python . check` for include boundaries, tuning validity and AgentDocs freshness.
-`python . check --fix` formats valid tuning files, regenerates API pages and resyncs recipe snippets.
+`python . check --fix` formats valid tuning files and resyncs recipe snippets.
 
 ## Boundaries and dependencies
 
@@ -57,8 +57,8 @@ Commit messages are short, imperative and English. Manifest version changes need
 
 ## AgentDocs maintenance
 
-Public API change → regenerate the API index with `check --fix`; `check` enforces freshness.
-New public system or plausible agent task → add a routing row in `AgentDocs/Index.md`.
+Agents find public API with `python Engine api`, which reads the headers: a declaration's comment is its agent doc.
+New public system or plausible agent task → add a route to `AgentDocs/Tasks.json` (`words` for wording the task lacks).
 New agent workflow → a skill in `AgentDocs/Skills/<name>/SKILL.md` plus its row in `AgentDocs/Agent.md`; keep
 `Agent.md` short (it is loaded every session). `check` validates skills, every `python Engine ...` call, and every file and `#heading` AgentDocs points at.
 Recipe API change → keep its code compiling in the engine test build; resync snippets with `check --fix`.

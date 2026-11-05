@@ -1,14 +1,25 @@
-"""Exercise extraction and freshness with tiny files, independent of the real generated output."""
+"""Exercise extraction, snippets, skills, links and task routes with tiny files, independent of the real engine."""
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from Tools import cli
-from Tools.agentdocs.api import generate, parse_header, public_headers, sentence
+from Tools.agentdocs.api import declared_name, parse_header, public_headers, sentence
 from Tools.agentdocs.check import check_agentdocs, check_skills
 from Tools.agentdocs.links import anchor, check_links
+from Tools.agentdocs.tasks import check_tasks, load_tasks
+
+TASKS = {'tasks': [{'task': 'Run an example', 'files': ['Core/Example.h'], 'recipe': 'AgentDocs/Recipes/Example.md',
+                    'docs': ['Docs/Example.md#use'], 'words': ['demo']}]}
+
+
+def write(root: Path, path: str, text: str):
+    target = root / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding='utf-8', newline='\n')
 
 
 class ParserTests(unittest.TestCase):
@@ -63,14 +74,42 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(header.summary, '')
         self.assertEqual(header.declarations[0].comment, 'This describes a later declaration.')
 
-    def test_no_summary_placeholder_is_generated(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / 'Core').mkdir()
-            (root / 'Core/Example.h').write_text('// A declaration.\nstruct Example {};\n', encoding='utf-8')
-            content = next(iter(generate(root)[0].values()))
-        self.assertNotIn('_No leading', content)
-        self.assertEqual(content.count('A declaration.'), 1)
+    def test_lines_names_and_type_ranges(self):
+        fixture = Path(__file__).with_name('AgentDocsCases') / 'Public.h'
+        header = parse_header('Core/Widget.h', fixture.read_text(encoding='utf-8'))
+        found = {(d.owner, d.name): d for d in header.declarations}
+        widget = found[('', 'Widget')]
+        self.assertEqual((widget.line, widget.end), (3, 18))  # `#pragma once` still counts as a line
+        self.assertEqual((found[('Widget', 'Widget')].line, found[('Widget', 'Widget')].end), (6, 0))
+        self.assertEqual(found[('Widget', 'Count')].line, 8)
+        self.assertEqual((found[('Widget', 'Result')].line, found[('Widget', 'Result')].end), (12, 12))
+        self.assertEqual(found[('Widget::Result', 'value')].line, 12)
+        self.assertEqual(found[('', 'Identity')].line, 20)
+        self.assertEqual((found[('', 'Mode')].line, found[('', 'Mode')].end), (22, 22))
+        self.assertTrue(widget.is_type and not found[('Widget', 'Set')].is_type)
+
+    def test_declared_names(self):
+        cases = {
+            '[[nodiscard]] constexpr int StepsIn(double seconds, int stepsPerSecond)': 'StepsIn',
+            'template<class T, std::size_t N> constexpr T StepChoice(T current, const std::array<T, N>& c)': 'StepChoice',
+            'template<AnimationPose PoseType, class Position> class BasicAnimator': 'BasicAnimator',
+            'class Scene : public GameObject': 'Scene',
+            'struct [[nodiscard]] PaintScope': 'PaintScope',
+            'enum class Mode { First, Second }': 'Mode',
+            'using UiMeasure = std::function<Float2(float maxWidth)>': 'UiMeasure',
+            'template<class P> concept AnimationPose = std::copyable<P>': 'AnimationPose',
+            'std::function<void(const ColliderView&)> visit': 'visit',
+            'UiInsets padding = UiInsets::Symmetric(20.0f, 8.0f)': 'padding',
+            'static constexpr int Count{3}': 'Count',
+            'float values[4]': 'values',
+            'inline constexpr SoundOverlap SoundOverlap::Skip = SoundOverlap(0)': 'Skip',
+            'bool operator==(const Vec2&) const = default': 'operator==',
+            'Camera2D& operator [](std::size_t index)': 'operator[]',
+            '[[nodiscard]] explicit operator bool() const': 'operator bool',
+            'explicit Widget(int count = 2)': 'Widget',
+        }
+        for signature, name in cases.items():
+            self.assertEqual(declared_name(signature), name, signature)
 
     def test_incomplete_declaration_is_counted(self):
         self.assertEqual(parse_header('Core/X.h', 'template <').skipped, 1)
@@ -138,28 +177,29 @@ class FreshnessTests(unittest.TestCase):
                    '// [recipe:Example]\nvoid Example() {}\n// [/recipe]\n')
         self.write('AgentDocs/Recipes/Example.md',
                    'Use this example.\n<!-- recipe:Example -->\n```cpp\nold\n```\n<!-- /recipe -->\n')
+        self.write('Docs/Example.md', '# Example\n\n## Use\n')
+        self.write('AgentDocs/Tasks.json', json.dumps(TASKS))
 
     def write(self, path, text):
-        target = self.root / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text, encoding='utf-8', newline='\n')
+        write(self.root, path, text)
 
     def test_check_is_read_only_and_fix_is_idempotent(self):
-        self.assertTrue(check_agentdocs(self.root)[0])
-        self.assertFalse((self.root / 'AgentDocs/Api').exists())
-        self.assertFalse(check_agentdocs(self.root, True)[0])
+        self.assertEqual(check_agentdocs(self.root)[0], ['AgentDocs/Recipes/Example.md: stale snippet (fix: check --fix)'])
+        self.assertIn('old', (self.root / 'AgentDocs/Recipes/Example.md').read_text(encoding='utf-8'))
+        self.assertEqual(check_agentdocs(self.root, True), ([], ['AgentDocs/Recipes/Example.md']))
         self.assertEqual(check_agentdocs(self.root), ([], []))
         self.assertEqual(check_agentdocs(self.root, True), ([], []))
         self.write('Core/Example.h', '// Example.\nstruct Example { void NewApi(); };\n')
-        self.assertTrue(check_agentdocs(self.root)[0])
-        self.assertTrue(check_agentdocs(self.root, True)[1])
+        self.assertEqual(check_agentdocs(self.root), ([], []))  # Declarations are read live, never stored
+        self.assertFalse((self.root / 'AgentDocs/Api').exists())
 
-    def test_obsolete_pages_missing_regions_and_duplicates_fail(self):
+    def test_tasks_table_is_required(self):
         check_agentdocs(self.root, True)
-        self.write('AgentDocs/Api/Removed.md', 'obsolete\n')
-        self.assertTrue(check_agentdocs(self.root)[0])
+        (self.root / 'AgentDocs/Tasks.json').unlink()
+        self.assertEqual(check_agentdocs(self.root)[0], ['AgentDocs/Tasks.json: missing'])
+
+    def test_missing_regions_and_duplicates_fail(self):
         check_agentdocs(self.root, True)
-        self.assertFalse((self.root / 'AgentDocs/Api/Removed.md').exists())
         self.write('AgentDocs/Recipes/Code/Other.cpp',
                    '// [recipe:Example]\nother\n// [/recipe]\n// [recipe:Unused]\nx\n// [/recipe]\n')
         problems, _ = check_agentdocs(self.root)
@@ -183,18 +223,12 @@ class FreshnessTests(unittest.TestCase):
         check_agentdocs(self.root, True)
         self.assertIn('void Short() {}', (self.root / 'AgentDocs/Skills/demo/SKILL.md').read_text(encoding='utf-8'))
 
-    def test_header_scope_and_stable_output(self):
+    def test_header_scope(self):
         for path in ('Core/Tests/Hidden.h', 'Core/Example/Internals/Hidden.h', 'ToolUi/Hidden.h',
                      'Terminal/Hidden.h', 'Editor/Worker/Private.h', 'Editor/Api/Visible.h'):
             self.write(path, 'struct Fixture {};\n')
         paths = [p.relative_to(self.root).as_posix() for p in public_headers(self.root)]
         self.assertEqual(paths, ['Core/Example.h', 'Editor/Api/Visible.h'])
-        pages = generate(self.root)[0]
-        self.assertIn('## `Core/Example.h`\n', pages['Example.h.md'])
-        self.assertIn('## `Editor/Api/Visible.h`\n', pages['Editor.md'])
-        self.assertTrue(all('](../../' not in text for text in pages.values()))
-        self.assertEqual(generate(self.root)[0], generate(self.root)[0])
-        self.assertTrue(all('\r' not in text for text in generate(self.root)[0].values()))
 
     def test_cli_checks_engine_docs_from_a_consuming_project(self):
         with patch('Tools.cli.ENGINE_ROOT', self.root), patch('Tools.cli.violations', return_value=[]), \
@@ -269,7 +303,7 @@ class LinkTests(unittest.TestCase):
         self.assertEqual(anchor('D31. Game UI'), 'd31-game-ui')
 
     def test_existing_files_and_headings_pass(self):
-        self.write('AgentDocs/Index.md',
+        self.write('AgentDocs/Guide.md',
                    '# Index\n'
                    '| `Core/Ui/Ui.h` | `Recipes/Menu.md` | `Docs/Ui.md#sounds` | `Engine/Docs/Ui.md#sounds-1` |\n'
                    '[UI](../Docs/Ui.md#editormaincpp), [top](#index), [web](https://example.com/x#y)\n'
@@ -277,22 +311,63 @@ class LinkTests(unittest.TestCase):
         self.assertEqual(check_links(self.root), [])
 
     def test_missing_files_and_headings_fail(self):
-        self.write('AgentDocs/Index.md', 'See `Docs/Gone.md`, `Recipes/Gone.md`, `Core/Ui/Gone.h`,\n'
+        self.write('AgentDocs/Guide.md', 'See `Docs/Gone.md`, `Recipes/Gone.md`, `Core/Ui/Gone.h`,\n'
                    '`Docs/Ui.md#gone`, `Docs/Ui.md#not-a-heading` and [x](../Docs/Ui.md#gone).\n'
                    '```cpp\n// `Docs/InCode.md` is code, not a route\n```\n')
         problems = check_links(self.root)
         self.assertEqual(len(problems), 6, problems)
-        self.assertTrue(all(p.startswith('AgentDocs/Index.md:') for p in problems))
+        self.assertTrue(all(p.startswith('AgentDocs/Guide.md:') for p in problems))
         self.assertEqual(sum('heading' in p for p in problems), 3)
-
-    def test_generated_api_pages_are_not_scanned(self):
-        self.write('AgentDocs/Api/Ui.md', '`Docs/Gone.md`\n')
-        self.assertEqual(check_links(self.root), [])
 
     def test_files_left_out_of_released_copies_fail(self):
         self.write('.gitattributes', '* text=auto\n/Docs/Design export-ignore\n')
         self.write('Docs/Design/Assets.md', '# Assets\n\n## Rule\n')
-        self.write('AgentDocs/Index.md', 'See `Docs/Design/Assets.md#rule` and [rule](../Docs/Design/Assets.md#rule).\n')
+        self.write('AgentDocs/Guide.md', 'See `Docs/Design/Assets.md#rule` and [rule](../Docs/Design/Assets.md#rule).\n')
         problems = check_links(self.root)
         self.assertEqual(len(problems), 2, problems)
         self.assertTrue(all('export-ignore' in p for p in problems))
+
+
+class TasksTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        write(self.root, 'Core/Example.h', 'struct Example {};\n')
+        write(self.root, 'Core/Example/Internals/Hidden.h', 'struct Hidden {};\n')
+        write(self.root, 'Tools/commands/tool.py', '')
+        write(self.root, 'AgentDocs/Recipes/Example.md', '# Example\n')
+        write(self.root, 'Docs/Example.md', '# Example\n\n## Use\n')
+
+    def tasks(self, *tasks):
+        write(self.root, 'AgentDocs/Tasks.json', json.dumps({'tasks': list(tasks)}))
+
+    def test_valid_routes_pass_and_load(self):
+        self.tasks(TASKS['tasks'][0], {'task': 'Run a tool', 'files': ['Tools/commands/tool.py'], 'recipe': None,
+                                       'docs': ['Docs/Example.md']})
+        self.assertEqual(check_tasks(self.root), [])
+        loaded = load_tasks(self.root)
+        self.assertEqual([task.words for task in loaded], [['demo'], []])
+        self.assertIsNone(loaded[1].recipe)
+
+    def test_dead_routes_and_bad_fields_fail(self):
+        self.tasks({'task': 'Broken', 'files': ['Core/Gone.h', 'Core/Example/Internals/Hidden.h'],
+                    'recipe': 'Recipes/Example.md', 'docs': ['Docs/Example.md#gone'], 'words': ['Upper'], 'extra': 1},
+                   {'task': 'Broken', 'files': [], 'docs': ['Docs/Example.md']},
+                   'not an object')
+        problems = '\n'.join(check_tasks(self.root))
+        self.assertIn('task 1 "Broken": unknown field(s) extra', problems)
+        self.assertIn('"Core/Gone.h" points at a file that does not exist', problems)
+        self.assertIn('"Core/Example/Internals/Hidden.h" is not a public header', problems)
+        self.assertIn('"recipe" must be null or AgentDocs/Recipes/<Name>.md', problems)
+        self.assertIn('"Docs/Example.md#gone" points at a heading that does not exist', problems)
+        self.assertIn('"words" must be a list of lower-case words', problems)
+        self.assertIn('task 2 "Broken": duplicate task', problems)
+        self.assertIn('task 2 "Broken": "files" must be a non-empty list', problems)
+        self.assertIn('task 3: expected an object', problems)
+
+    def test_invalid_json_and_shape_fail(self):
+        write(self.root, 'AgentDocs/Tasks.json', '{"tasks": [}')
+        self.assertTrue(check_tasks(self.root)[0].startswith('AgentDocs/Tasks.json: invalid JSON'))
+        write(self.root, 'AgentDocs/Tasks.json', '[]')
+        self.assertEqual(check_tasks(self.root), ['AgentDocs/Tasks.json: expected an object with one "tasks" list'])

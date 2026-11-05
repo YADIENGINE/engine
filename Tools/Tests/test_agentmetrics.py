@@ -74,6 +74,7 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(engine_command('cd x && python . ctl open a --screenshot'), "ctl open")
         self.assertEqual(engine_command("python ../engine --project EditorTest ctl --json status"), "ctl status")
         self.assertEqual(engine_command('python "C:/a b/engine" sim run a.json'), "sim run")
+        self.assertEqual(engine_command('python Engine api fade between scenes'), "api")
         self.assertIsNone(engine_command("cd ../engine-atmosphere && sed -n 1,5p x.h"))
         self.assertIsNone(engine_command("python - <<EOF\nengine sim in\nEOF"))
         self.assertIsNone(engine_command("python -m unittest discover"))
@@ -128,14 +129,24 @@ class BehaviourTests(unittest.TestCase):
             ToolCall("exec", "search", "rg x", chars=4000, roots=["."]),
             ToolCall("exec", "read", "cat", chars=400, files=["Engine/Core/Simulation/Scenario.cpp"]),
             ToolCall("exec", "engine", "python Engine ctl status", failed=True, engine="ctl status"),
+            ToolCall("exec", "engine", "python Engine api Painter", chars=800, engine="api"),
             ToolCall("exec", "edit", "apply_patch"),
             ToolCall("exec", "read", "cat", files=["Engine/AgentDocs/Skills/simulation/SKILL.md"]),
         ])
         found = behaviour(session)
         self.assertEqual((found["wideSearches"], found["wideSearchTokens"]), (1, 1000))
+        self.assertEqual((found["apiCalls"], found["apiTokens"]), (1, 200))
         self.assertEqual((found["engineSourceReads"], found["engineSourceTokens"]), (1, 100))
         self.assertEqual(found["failedEditorCalls"], 1)
         self.assertTrue(found["editBeforeSkill"])
+
+    def test_behaviour_totals_accept_runs_without_newer_counts(self):
+        from Tools.agentmetrics.report import _behaviour_totals, render_behaviour
+        old = {"engineSourceReads": 1, "engineSourceTokens": 10, "wideSearches": 2, "wideSearchTokens": 20,
+               "failedEditorCalls": 0, "editBeforeSkill": True}
+        totals = _behaviour_totals([old, old | {"apiCalls": 3, "apiTokens": 300, "editBeforeSkill": False}])
+        self.assertEqual((totals["wideSearches"], totals["apiCalls"], totals["sessionsEditingBeforeSkill"]), (4, 3, 1))
+        self.assertIn("api queries instead (python Engine api): 0,", render_behaviour(_behaviour_totals([old]), 1))
 
     def test_codex_split_and_listed_reads(self):
         script = 'const cmds = [["a", "python Engine sim list"], ["b", "rg --files Game"]];\n' \

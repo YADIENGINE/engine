@@ -12,7 +12,7 @@ project-specific editor helpers stay in the game's own documentation.
 
 The engine is built to be driven by your own AI agent: [Using an AI agent](ProjectSetup.md#using-an-ai-agent) connects
 it and [Editor automation](Editor/Automation.md) lists what it can do. Agent material is in `AgentDocs/`; start at
-[AgentDocs/Index.md](../AgentDocs/Index.md).
+[AgentDocs/Agent.md](../AgentDocs/Agent.md).
 
 0. [Project setup](ProjectSetup.md): `python Engine new`, `Project.json`, commands, submodule.
 1. [First game](GettingStarted.md): CMake, factory, game, and first scene.

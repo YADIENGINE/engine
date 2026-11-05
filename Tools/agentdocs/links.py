@@ -7,8 +7,8 @@ Two kinds of reference are checked, outside code blocks:
   placeholder (`<name>`, `*`) or any other first folder, such as a project's own `Game/` or `Editor/`, is not checked.
 
 A `#heading` must match a heading of the target, with GitHub's rule for making a heading into an anchor. A target must
-also reach game projects: files that `.gitattributes` marks `export-ignore` are left out of released copies. Generated
-API pages are not scanned: they are made from the headers themselves.
+also reach game projects: files that `.gitattributes` marks `export-ignore` are left out of released copies.
+`tasks.py` checks the routes of `AgentDocs/Tasks.json` with the same rules.
 """
 
 import re
@@ -91,14 +91,33 @@ def _released(root: Path, target: Path, ignored: list[str]) -> bool:
     return not any(relative == path or relative.startswith(path + '/') for path in ignored)
 
 
+class Targets:
+    """Checks one reference at a time; remembers each Markdown file's headings and the export-ignore list."""
+
+    def __init__(self, root: Path):
+        self.root = root
+        self.ignored = export_ignored(root)
+        self.cache: dict[Path, set[str]] = {}
+
+    def problem(self, text: str, target: Path, heading: str) -> str | None:
+        """Why `text` (pointing at `target`, `#heading`) leads nowhere, or None when it is fine."""
+        if not target.exists():
+            return f'"{text}" points at a file that does not exist'
+        if not _released(self.root, target, self.ignored):
+            return f'"{text}" points at a file released copies leave out (export-ignore)'
+        if heading and target.suffix == '.md':
+            resolved = target.resolve()
+            if resolved not in self.cache:
+                self.cache[resolved] = anchors(target.read_text(encoding='utf-8'))
+            if heading not in self.cache[resolved]:
+                return f'"{text}" points at a heading that does not exist'
+        return None
+
+
 def check_links(root: Path) -> list[str]:
     problems = []
-    cache: dict[Path, set[str]] = {}
-    ignored = export_ignored(root)
-    docs = root / 'AgentDocs'
-    for source in sorted(docs.rglob('*.md')):
-        if source.parent == docs / 'Api':
-            continue
+    targets = Targets(root)
+    for source in sorted((root / 'AgentDocs').rglob('*.md')):
         where_file = source.relative_to(root).as_posix()
         for number, line in _prose_lines(source.read_text(encoding='utf-8')):
             references = []
@@ -112,15 +131,6 @@ def check_links(root: Path) -> list[str]:
                 if (target := _backtick_target(root, match[1])) is not None:
                     references.append((match[1], target, match[1].partition('#')[2].rstrip('.,;:')))
             for text, target, heading in references:
-                where = f'{where_file}:{number}'
-                if not target.exists():
-                    problems.append(f'{where}: "{text}" points at a file that does not exist')
-                elif not _released(root, target, ignored):
-                    problems.append(f'{where}: "{text}" points at a file released copies leave out (export-ignore)')
-                elif heading and target.suffix == '.md':
-                    resolved = target.resolve()
-                    if resolved not in cache:
-                        cache[resolved] = anchors(target.read_text(encoding='utf-8'))
-                    if heading not in cache[resolved]:
-                        problems.append(f'{where}: "{text}" points at a heading that does not exist')
+                if problem := targets.problem(text, target, heading):
+                    problems.append(f'{where_file}:{number}: {problem}')
     return problems

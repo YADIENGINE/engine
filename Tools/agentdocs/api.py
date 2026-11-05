@@ -1,14 +1,21 @@
-"""Heuristic C++ declaration extraction, without preprocessing or evaluating C++."""
+"""Heuristic C++ declaration extraction, without preprocessing or evaluating C++.
 
+`python Engine api` reads public declarations through this parser on every call, so there is no stored index to go
+stale; `query.py` searches the result.
+"""
+
+import bisect
 import re
-from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
 TOKEN = re.compile(r'//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|'
                    r'[A-Za-z_]\w*|\d+(?:\.\d+)?[\w]*|::|&&|->|\.\.\.|==|!=|<=|>=|\+=|-=|\*=|/=|\|\||[^\s]')
-# Keep generated material English without editing legacy header comments. Remove an entry when translated upstream.
+# Keep agent-facing material English without editing legacy header comments. Remove an entry when translated upstream.
 UNTRANSLATED = {('Core/Tuning/TuningLive.h', 'TuningReport', 'std::string source')}
+TYPE = re.compile(r'(?:class|struct|union|enum(?:\s+class|\s+struct)?)\s+(?:\[\[.*?\]\]\s*)?(\w+)')
+OPERATOR = re.compile(r'\boperator\s*(\(\)|[^\s(]+)\s*\(')
+IDENTIFIER = re.compile(r'~?[A-Za-z_]\w*')
 
 
 @dataclass
@@ -16,6 +23,13 @@ class Declaration:
     signature: str
     comment: str
     owner: str = ""
+    name: str = ""  # The declared name: a function, type, alias, constant or field
+    line: int = 0  # 1-based line of the declaration's first token
+    end: int = 0  # Last line of a type's body; 0 for everything else
+
+    @property
+    def is_type(self) -> bool:
+        return self.end > 0
 
 
 @dataclass
@@ -24,6 +38,46 @@ class Header:
     summary: str = ""
     declarations: list[Declaration] = field(default_factory=list)
     skipped: int = 0
+
+
+def _outside_angles(text: str) -> str:
+    """The text with template argument lists removed: `std::map<int, Hit> hits` gives `std::map hits`."""
+    kept, depth = [], 0
+    for char in text:
+        if char == '<':
+            depth += 1
+        elif char == '>' and depth:
+            depth -= 1
+        elif not depth:
+            kept.append(char)
+    return ''.join(kept)
+
+
+def declared_name(signature: str) -> str:
+    """The name a signature declares: before `(` for a function, after the keyword for a type, the alias of `using`
+    or `concept`, the last identifier before `=` or `{` for a constant or field."""
+    text = re.sub(r'\[\[.*?\]\]', ' ', signature).strip()
+    while re.match(r'template\s*<', text):
+        depth, index = 0, len('template')
+        for index in range(len('template'), len(text)):
+            depth += {'<': 1, '>': -1}.get(text[index], 0)
+            if depth == 0 and text[index] == '>':
+                break
+        text = text[index + 1:].strip()
+    if alias := re.match(r'(?:using|concept)\s+(\w+)\s*=', text):
+        return alias[1]
+    if kind := TYPE.match(text):
+        return kind[1]
+    if operator := OPERATOR.search(text):
+        # A conversion operator names a type: `operator bool`; the others are symbols: `operator==`, `operator[]`.
+        return 'operator' + (' ' if re.match(r'\w', operator[1]) else '') + operator[1]
+    outer = _outside_angles(text)
+    for index, char in enumerate(outer):
+        if char in '(={':
+            names = IDENTIFIER.findall(re.sub(r'\[[^\]]*\]', '', outer[:index]))
+            return names[-1] if names else ''
+    names = IDENTIFIER.findall(re.sub(r'\[[^\]]*\]', '', outer))
+    return names[-1] if names else ''
 
 
 def sentence(comment: str) -> str:
@@ -94,6 +148,11 @@ def parse_header(path: str, text: str) -> Header:
     tokens = [match[0] for match in matches]
     result = Header(path)
     result.summary, file_comment_end = file_comment(text, matches)
+    newlines = [index for index, char in enumerate(text) if char == '\n']
+
+    def line_of(index: int) -> int:
+        """Directives were blanked line for line, so a token's line is its line in the file."""
+        return bisect.bisect_left(newlines, matches[index].start()) + 1
 
     def balanced(index: int, opening: str, closing: str) -> int:
         depth = 1
@@ -105,28 +164,31 @@ def parse_header(path: str, text: str) -> Header:
             index += 1
         return index
 
-    def emit(parts: list[str], comment: str, owner: str, visible: bool, definition: bool = False):
+    def emit(parts: list[str], comment: str, owner: str, visible: bool, first: int,
+             definition: bool = False) -> Declaration | None:
         if not visible or not parts:
-            return
+            return None
         signature = compact(parts).rstrip(';')
         # Large aggregate constants need a name/type, not hundreds of palette or style initializer tokens.
         if 'constexpr' in parts and '(' not in parts and '{' in parts and len(signature) > 180:
             signature = compact(parts[:parts.index('{')])
         if parts[0] in ('friend', 'static_assert'):
-            return
+            return None
         if navigation_noise(signature, owner, definition):
-            return
+            return None
         if (path, owner, signature) in UNTRANSLATED:
             comment = ''
         if len(parts) >= 2 and re.search(r'\w', signature):
-            result.declarations.append(Declaration(signature, sentence(comment), owner))
-        else:
-            result.skipped += 1
+            declaration = Declaration(signature, sentence(comment), owner, declared_name(signature), line_of(first))
+            result.declarations.append(declaration)
+            return declaration
+        result.skipped += 1
+        return None
 
     def scope(index: int, owner: str = '', access: str = 'public', enclosing: bool = True) -> int:
         pending: list[str] = []
         comments: list[str] = []
-        parens = brackets = 0
+        parens = brackets = first = 0  # first: the token that started the pending statement
         while index < len(tokens):
             token = tokens[index]
             index += 1
@@ -165,7 +227,7 @@ def parse_header(path: str, text: str) -> Header:
             elif token == ']':
                 brackets -= 1
             if token == ';' and parens == 0 and brackets == 0:
-                emit(pending, ' '.join(comments), owner, visible)
+                emit(pending, ' '.join(comments), owner, visible, first)
                 pending, comments = [], []
                 continue
             if token == '{' and parens == 0 and brackets == 0:
@@ -177,12 +239,17 @@ def parse_header(path: str, text: str) -> Header:
                     if kind[1].startswith('enum'):
                         end = balanced(index, '{', '}')
                         values = [t for t in tokens[index:end - 1] if not t.startswith(('//', '/*'))]
-                        emit(pending + ['{'] + values + ['}'], ' '.join(comments), owner, visible, definition=True)
+                        declaration = emit(pending + ['{'] + values + ['}'], ' '.join(comments), owner, visible,
+                                           first, definition=True)
                         index = end
+                        if declaration:
+                            declaration.end = line_of(end - 1)
                     else:
-                        emit(pending, ' '.join(comments), owner, visible, definition=True)
+                        declaration = emit(pending, ' '.join(comments), owner, visible, first, definition=True)
                         index = scope(index, f'{owner}::{name}'.strip(':'),
                                       'private' if kind[1] == 'class' else 'public', visible)
+                        if declaration:
+                            declaration.end = line_of(index - 1)
                     pending, comments = [], []
                 elif ')' in head and ('=' not in pending or pending.index('(') < pending.index('=')):
                     # Function definition, including constructors with a member initializer list.
@@ -192,18 +259,22 @@ def parse_header(path: str, text: str) -> Header:
                         pending.extend(['{', '}'])
                         continue
                     signature = pending[:pending.index(':')] if ':' in pending else pending
-                    emit(signature, ' '.join(comments), owner, visible)
+                    emit(signature, ' '.join(comments), owner, visible, first)
                     index = balanced(index, '{', '}')
                     pending, comments = [], []
                 elif head.startswith('namespace'):
                     index = scope(index, owner, 'public', visible)
                     pending, comments = [], []
                 else:
+                    if not pending:
+                        first = index - 1
                     end = balanced(index, '{', '}')
                     pending.extend(['{'] + [t for t in tokens[index:end - 1]
                                             if not t.startswith(('//', '/*'))] + ['}'])
                     index = end
                 continue
+            if not pending:
+                first = index - 1
             pending.append(token)
         if pending and enclosing and access == 'public':
             result.skipped += 1
@@ -225,37 +296,7 @@ def public_headers(root: Path) -> list[Path]:
     return sorted(headers)
 
 
-def generate(root: Path) -> tuple[dict[str, str], list[Header]]:
-    headers = [parse_header(path.relative_to(root).as_posix(), path.read_text(encoding='utf-8'))
-               for path in public_headers(root)]
-    areas: dict[str, list[Header]] = defaultdict(list)
-    for header in headers:
-        parts = header.path.split('/')
-        area = parts[1] if parts[0] in ('Core', 'Assets') else 'Editor'
-        if area == 'Graphics':
-            area += '-' + Path(parts[2]).stem
-        if area == 'Modules':
-            area += '-' + parts[2]
-        areas[area].append(header)
-    output = {}
-    for area, entries in sorted(areas.items()):
-        chunks: list[list[str]] = [[]]
-        for header in entries:
-            lines = [f'## `{header.path}`', '']
-            if header.summary:
-                lines += [header.summary, '']
-            for declaration in header.declarations:
-                owner = f'`{declaration.owner}`: ' if declaration.owner else ''
-                signature = declaration.signature.replace('`', "'")
-                comment = declaration.comment.replace('\n', ' ')
-                lines.append(f'- {owner}`{signature}`' + (f' — {comment}' if comment else ''))
-            lines += ['']
-            if chunks[-1] and len(chunks[-1]) + len(lines) > 590:
-                chunks.append([])
-            chunks[-1].extend(lines)
-        for number, lines in enumerate(chunks, 1):
-            suffix = f'-{number}' if len(chunks) > 1 else ''
-            output[f'{area}{suffix}.md'] = ('Use these generated signatures to locate public declarations; open the header for details.\n\n'
-                                          '<!-- Generated by Tools/agentdocs; run python . check --fix. -->\n\n'
-                                          + '\n'.join(lines))
-    return output, headers
+def parse_public(root: Path) -> list[Header]:
+    """Every public header of the engine at `root`, parsed; paths are relative to `root`."""
+    return [parse_header(path.relative_to(root).as_posix(), path.read_text(encoding='utf-8'))
+            for path in public_headers(root)]

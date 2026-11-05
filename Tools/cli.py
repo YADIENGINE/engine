@@ -14,6 +14,8 @@ from .commands.agent_eval import add_parser as add_agent_eval_parser
 from .commands.agent_eval import agent_eval
 from .commands.agent_report import add_parser as add_agent_report_parser
 from .commands.agent_report import agent_report
+from .commands.api import add_parser as add_api_parser
+from .commands.api import api
 from .commands.build import build, run_game
 from .commands.asset import add_parser as add_asset_parser
 from .commands.asset import asset
@@ -82,6 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_asset_parser(commands)
     add_audio_parser(commands)
     add_sim_parser(commands)
+    add_api_parser(commands)
     add_agent_report_parser(commands)
     add_agent_eval_parser(commands)
 
@@ -93,8 +96,8 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--output", type=Path, required=True, help="package folder; replaced if it exists")
 
     commands.add_parser("info", help="engine and project as JSON")
-    command = commands.add_parser("check", help="check include boundaries, tuning files and AgentDocs freshness")
-    command.add_argument("--fix", action="store_true", help="format tuning files and regenerate AgentDocs")
+    command = commands.add_parser("check", help="check include boundaries, tuning files and AgentDocs")
+    command.add_argument("--fix", action="store_true", help="format tuning files and resync AgentDocs recipe snippets")
     return parser
 
 
@@ -138,6 +141,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return audio(Project(root), args)
         case "sim":
             return sim(Project(root), args)
+        case "api":
+            return api(root, args)
         case "agent-report":
             return agent_report(root, args)
         case "agent-eval":
@@ -158,7 +163,7 @@ def dispatch(args: argparse.Namespace) -> int:
                 print(line)
             print(f"Tuning files: {len(problems)} problem(s)" if problems else "Tuning files: OK")
             docs_problems, docs_fixed = check_agentdocs(ENGINE_ROOT, args.fix)
-            for line in docs_problems + [f"{path}: regenerated" for path in docs_fixed]:
+            for line in docs_problems + [f"{path}: snippets resynced" for path in docs_fixed]:
                 print(line)
             print(f"AgentDocs: {len(docs_problems)} problem(s)" if docs_problems else "AgentDocs: OK")
             return EXIT_FAILED if found or problems or docs_problems else EXIT_OK

@@ -53,7 +53,7 @@ Graphics dependency directions and ownership have one source:
 | `Tools/commands/` | Build/run, tests/reports, editor, release, setup and refresh |
 | `Tools/include_boundaries.py` | Public/private include enforcement; recipes are consumers |
 | `Tools/tuning/` | Tuning generation, validation and canonical formatting; shared cases in `Tools/Tests/TuningCases` |
-| `Tools/agentdocs/` | Deterministic public API extraction and snippet synchronization into recipes and skills |
+| `Tools/agentdocs/` | Public declaration extraction for `api`, snippet synchronization into recipes and skills, AgentDocs checks |
 | `Tools/AudioGeneration/` | Offline audio authoring; public import `AudioGeneration.SoundGenerator`; recipes/assets belong to callers |
 | `Tools/ProjectTemplate/` | Files copied by `new`; `@PROJECT_NAME@` substitution; dotless gitignore/gitattributes |
 | `Tools/Tests/` | Compiler-free unittest suite, also registered under CTest label `engine` |
@@ -68,16 +68,17 @@ examples belong in documentation, not the project template.
 | Location | Source of truth |
 | --- | --- |
 | `Docs/` | Human concepts, architecture and guides |
-| `AgentDocs/` | Task routing, compiled recipes and generated public API signatures |
+| `AgentDocs/` | Agent rules, skills, task routes (`Tasks.json`) and compiled recipes |
 | `AGENTS.md` (`CLAUDE.md` imports it) | Short contributor rules; excluded from launcher copies |
 | `Docs/Design/` | Historical decisions/plans; excluded from launcher copies |
 
-Public API change → regenerate `AgentDocs/Api/` with `python . check --fix`; `check` rejects stale output.
-New public system or plausible agent task → add a row in `AgentDocs/Index.md`.
+Public declarations are not copied into AgentDocs: `python Engine api` reads the headers on every call, so a
+declaration's comment is what agents see. New public system or plausible agent task → add a route to
+`AgentDocs/Tasks.json`; `check` validates its files, recipe and doc headings.
 Recipe API change → keep the recipe compiling in the engine test build and resync its Markdown snippet with
 `check --fix`. Recipe sources are consumers: no engine internals or raylib includes.
 AgentDocs never explains a concept already explained in Docs; link to its section instead.
-Generated pages are heuristic navigation aids; headers remain authoritative. Unsupported declarations are counted;
+The extraction is heuristic (no preprocessing); headers remain authoritative. Unsupported declarations are counted;
 undocumented declarations are reported separately by `python -m Tools.agentdocs`.
 The project template gets no `CLAUDE.md`, `AGENTS.md` or AI setting; developers opt in from their own agent file.
 `AgentDocs/` ships in launcher copies and must not be export-ignored.

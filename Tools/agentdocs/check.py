@@ -1,11 +1,12 @@
-"""Check/regenerate API pages, copy marked C++ recipe regions into recipes and skills, and validate skills.
+"""Copy marked C++ recipe regions into recipes and skills, and validate skills, links and task routes.
 
 A recipe must show at least one region; a skill may show some. JSON examples in recipes and skills must parse.
 
 Skills (`AgentDocs/Skills/<name>/SKILL.md`) need Agent Skills front matter whose name is the folder name, and a row in
 `AgentDocs/Agent.md`. Every `python Engine <command> [<action>]` written in AgentDocs must exist in the tools' parser,
 so a renamed command cannot leave an agent instruction behind. Every file and heading AgentDocs points at must exist
-(links.py).
+(links.py), and so must every route of `AgentDocs/Tasks.json` (tasks.py). Declarations are not stored anywhere:
+`python Engine api` reads the headers.
 """
 
 import argparse
@@ -13,8 +14,8 @@ import json
 import re
 from pathlib import Path
 
-from .api import generate
 from .links import check_links
+from .tasks import check_tasks
 
 REGION = re.compile(r'^// \[recipe:([\w-]+)\]\n(.*?)^// \[/recipe\]\n?', re.M | re.S)
 SNIPPET = re.compile(r'<!-- recipe:([\w-]+) -->\n```cpp\n(.*?)```\n<!-- /recipe -->', re.S)
@@ -53,8 +54,6 @@ def check_skills(root: Path, parser: argparse.ArgumentParser) -> list[str]:
             problems.append(f'AgentDocs/Agent.md: no row for {where}')
     commands = subcommands(parser)
     for path in sorted(docs.rglob('*.md')):
-        if path.parent.name == 'Api':
-            continue
         for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
             for call in TOOL_CALL.finditer(line):
                 where = f'{path.relative_to(root).as_posix()}:{number}'
@@ -68,29 +67,17 @@ def check_skills(root: Path, parser: argparse.ArgumentParser) -> list[str]:
 
 def check_agentdocs(root: Path, fix: bool = False) -> tuple[list[str], list[str]]:
     problems, fixed = [], []
-    output, _ = generate(root)
-    api = root / 'AgentDocs/Api'
 
     def sync(path: Path, expected: str):
         if path.is_file() and path.read_text(encoding='utf-8') == expected:
             return
         where = path.relative_to(root).as_posix()
         if fix:
-            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(expected, encoding='utf-8', newline='\n')
             fixed.append(where)
         else:
-            problems.append(f'{where}: stale or missing (fix: check --fix)')
+            problems.append(f'{where}: stale snippet (fix: check --fix)')
 
-    for name, content in output.items():
-        sync(api / name, content)
-    for path in sorted(api.glob('*.md')):
-        if path.name not in output:
-            if fix:
-                path.unlink()
-                fixed.append(path.relative_to(root).as_posix())
-            else:
-                problems.append(f'{path.relative_to(root).as_posix()}: obsolete generated page (fix: check --fix)')
     recipes = root / 'AgentDocs/Recipes'
     regions = {}
     for path in sorted((recipes / 'Code').glob('*')):
@@ -136,4 +123,5 @@ def check_agentdocs(root: Path, fix: bool = False) -> tuple[list[str], list[str]
     from ..cli import build_parser  # The parser module imports this checker
     problems += check_skills(root, build_parser())
     problems += check_links(root)
+    problems += check_tasks(root)
     return problems, fixed
