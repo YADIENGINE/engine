@@ -1,4 +1,5 @@
-"""Exercise extraction, snippets, skills, links and task routes with tiny files, independent of the real engine."""
+"""Exercise extraction, snippets, skills, links, task routes and API names with tiny files, independent of the real
+engine."""
 
 import json
 import tempfile
@@ -10,6 +11,7 @@ from Tools import cli
 from Tools.agentdocs.api import declared_name, parse_header, public_headers, sentence
 from Tools.agentdocs.check import check_agentdocs, check_skills
 from Tools.agentdocs.links import anchor, check_links
+from Tools.agentdocs.names import check_names
 from Tools.agentdocs.tasks import check_tasks, load_tasks
 
 TASKS = {'tasks': [{'task': 'Run an example', 'files': ['Core/Example.h'], 'recipe': 'AgentDocs/Recipes/Example.md',
@@ -371,3 +373,24 @@ class TasksTests(unittest.TestCase):
         self.assertTrue(check_tasks(self.root)[0].startswith('AgentDocs/Tasks.json: invalid JSON'))
         write(self.root, 'AgentDocs/Tasks.json', '[]')
         self.assertEqual(check_tasks(self.root), ['AgentDocs/Tasks.json: expected an object with one "tasks" list'])
+
+
+class NamesTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        write(self.root, 'Core/Timeline.h', '// Not a name: GoneInComment\nint StepsIn(double s);\n'
+                                            'struct CollisionWorld { void Sweep(); };\n')
+        write(self.root, 'AgentDocs/Recipes/Code/Menu.cpp', 'struct UiMenuScreen {};\n')
+
+    def test_known_names_pass_and_unknown_ones_fail(self):
+        write(self.root, 'AgentDocs/Skills/demo/SKILL.md',
+              'Use `StepsIn`, `CollisionWorld::Sweep`, `UiMenuScreen` and `DrawX`.\n'
+              'Paths and commands are not names: `Core/GoneHeader.h`, `python Engine api GoneName`, `GoneFile.json`.\n'
+              'Quoted text and lower-case forms are not names: `ui.Text("GoneText")`, `settings.buttons`.\n'
+              '```cpp\nGoneInCode();\n```\n'
+              'Unknown: `StepIn`, `CollisionWorld::Swept`, `GoneInComment`.\n')
+        problems = check_names(self.root)
+        self.assertEqual([p.split('`')[1] for p in problems], ['StepIn', 'Swept', 'GoneInComment'])
+        self.assertTrue(all(p.startswith('AgentDocs/Skills/demo/SKILL.md:7: ') for p in problems))

@@ -5,8 +5,8 @@ A recipe must show at least one region; a skill may show some. JSON examples in 
 Skills (`AgentDocs/Skills/<name>/SKILL.md`) need Agent Skills front matter whose name is the folder name, and a row in
 `AgentDocs/Agent.md`. Every `python Engine <command> [<action>]` written in AgentDocs must exist in the tools' parser,
 so a renamed command cannot leave an agent instruction behind. Every file and heading AgentDocs points at must exist
-(links.py), and so must every route of `AgentDocs/Tasks.json` (tasks.py). Declarations are not stored anywhere:
-`python Engine api` reads the headers.
+(links.py), every route of `AgentDocs/Tasks.json` (tasks.py) and every API name written in backticks (names.py).
+Declarations are not stored anywhere: `python Engine api` reads the headers.
 """
 
 import argparse
@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 
 from .links import check_links
+from .names import check_names
 from .tasks import check_tasks
 
 REGION = re.compile(r'^// \[recipe:([\w-]+)\]\n(.*?)^// \[/recipe\]\n?', re.M | re.S)
@@ -124,4 +125,5 @@ def check_agentdocs(root: Path, fix: bool = False) -> tuple[list[str], list[str]
     problems += check_skills(root, build_parser())
     problems += check_links(root)
     problems += check_tasks(root)
+    problems += check_names(root)
     return problems, fixed

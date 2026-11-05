@@ -79,6 +79,7 @@ Recipe API change → keep the recipe compiling in the engine test build and res
 `check --fix`. Recipe sources are consumers: no engine internals or raylib includes.
 AgentDocs never explains a concept already explained in Docs; link to its section instead.
 The extraction is heuristic (no preprocessing); headers remain authoritative. Unsupported declarations are counted;
-undocumented declarations are reported separately by `python -m Tools.agentdocs`.
+undocumented declarations are reported separately by `python -m Tools.agentdocs`. API names written in backticks in
+AgentDocs prose must exist in a public header or recipe code; `check` reports the rest.
 The project template gets no `CLAUDE.md`, `AGENTS.md` or AI setting; developers opt in from their own agent file.
 `AgentDocs/` ships in launcher copies and must not be export-ignored.
