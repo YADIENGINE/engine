@@ -17,7 +17,24 @@ An options screen is one call: `UiOptionsScreen` in `Ui/Kit`. Add the game's row
 4. Read and write the game's own values directly in the function. There is nothing to bind or refresh.
 5. A dialog or a pause screen is a `UiLayer`. Its input and cursor take care of themselves. Settings rows are `UiToggle`, `UiSlider` and `UiStepper`; pages are `UiTabs`; a long list or a grid is `UiScroll`; an explanation is `.tooltip`.
 6. A widget that does not exist is a function over `ui.Element`, with `Remember`, `Draw` and `SetVisual`. Add a look type if a second game could want it looking different.
-7. Sound: give `settings.uiSounds` once, from the game's sound table, and write no sound code on a screen. A button that means leaving says `.sound = UiSound::Back`; one whose sound the game plays says `UiSound::None`. A widget of the game's own that holds a value calls `element.ReportChange(user)` when, and only when, the value changed. Effects: read `ui.Events()` once a frame after building.
+7. A pause screen over the game:
+
+<!-- recipe:SkillUi -->
+```cpp
+// A screen is a function called between _ui.Begin(seconds) and _ui.End(); it reads and writes the game's values.
+void PauseScreen(Ui& ui, bool& paused, float& volume, bool& quit) {
+    if (auto layer = UiLayer(ui, "pause", paused, {.alignX = UiAlign::Center, .alignY = UiAlign::Center})) {
+        auto panel = UiPanel(ui, "panel", {.alignX = UiAlign::Center});
+        UiLabel(ui, "Paused");
+        (void)UiSlider(ui, "volume", "Volume", volume, 0.0f, 1.0f);
+        if (UiButton(ui, "resume", "Resume", {.width = UiFill()}) || ui.Back()) paused = false;
+        if (UiButton(ui, "quit", "Quit", {.width = UiFill()})) quit = true;
+    }
+}
+```
+<!-- /recipe -->
+
+8. Sound: give `settings.uiSounds` once, from the game's sound table, and write no sound code on a screen. A button that means leaving says `.sound = UiSound::Back`; one whose sound the game plays says `UiSound::None`. A widget of the game's own that holds a value calls `element.ReportChange(user)` when, and only when, the value changed. Effects: read `ui.Events()` once a frame after building.
 
 ## Check it
 

@@ -169,6 +169,20 @@ class FreshnessTests(unittest.TestCase):
         self.write('AgentDocs/Recipes/Code/Other.cpp', '')
         self.assertTrue(any('missing code region' in p for p in check_agentdocs(self.root)[0]))
 
+    def test_skills_show_regions_and_their_json_must_parse(self):
+        check_agentdocs(self.root, True)
+        self.write('AgentDocs/Agent.md', '| x | `AgentDocs/Skills/demo/SKILL.md` |\n')
+        self.write('AgentDocs/Skills/demo/SKILL.md', '---\nname: demo\ndescription: Demo.\n---\n\nNo example.\n')
+        self.assertEqual(check_agentdocs(self.root)[0], [])  # A skill need not show a region
+        self.write('AgentDocs/Recipes/Code/Short.cpp', '// [recipe:Short]\nvoid Short() {}\n// [/recipe]\n')
+        self.write('AgentDocs/Skills/demo/SKILL.md', '---\nname: demo\ndescription: Demo.\n---\n\n'
+                   '<!-- recipe:Short -->\n```cpp\nold\n```\n<!-- /recipe -->\n\n```json\n{ "run": 1, }\n```\n')
+        problems = check_agentdocs(self.root)[0]
+        self.assertTrue(any('SKILL.md: stale' in p for p in problems))
+        self.assertTrue(any('invalid JSON example' in p for p in problems))
+        check_agentdocs(self.root, True)
+        self.assertIn('void Short() {}', (self.root / 'AgentDocs/Skills/demo/SKILL.md').read_text(encoding='utf-8'))
+
     def test_header_scope_and_stable_output(self):
         for path in ('Core/Tests/Hidden.h', 'Core/Example/Internals/Hidden.h', 'ToolUi/Hidden.h',
                      'Terminal/Hidden.h', 'Editor/Worker/Private.h', 'Editor/Api/Visible.h'):

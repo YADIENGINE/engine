@@ -27,8 +27,8 @@ sound the settings do not name stays out of the package unless it is in `release
    live loops: `Recipes/SpatialSound.md`.
 5. **Change:** edit or regenerate the sound (`Docs/AudioGeneration.md` for generated sets), then repeat steps 1–2 and
    compare with the numbers from before.
-6. **Let the developer listen:** `python Engine ctl status` first; exit 2 means no editor is open, so say how to listen
-   instead. Otherwise `python Engine ctl audio play FILE` (add `--at SECONDS` for a moment, `--loop` for music), and
+6. **Let the developer listen:** only with an open editor (the developer said so, or you run in its Console);
+   otherwise say how to listen instead. Then `python Engine ctl audio play FILE` (add `--at SECONDS` for a moment, `--loop` for music), and
    `python Engine ctl audio` to see what plays. If Agent control is off, ask the developer to turn it on or to click the
    sound in Assets.
 7. **Report:** the numbers that changed (before → after), the waveform path, and that it is playing in Audio Preview

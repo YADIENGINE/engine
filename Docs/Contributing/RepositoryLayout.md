@@ -53,7 +53,7 @@ Graphics dependency directions and ownership have one source:
 | `Tools/commands/` | Build/run, tests/reports, editor, release, setup and refresh |
 | `Tools/include_boundaries.py` | Public/private include enforcement; recipes are consumers |
 | `Tools/tuning/` | Tuning generation, validation and canonical formatting; shared cases in `Tools/Tests/TuningCases` |
-| `Tools/agentdocs/` | Deterministic public API extraction and recipe snippet synchronization |
+| `Tools/agentdocs/` | Deterministic public API extraction and snippet synchronization into recipes and skills |
 | `Tools/AudioGeneration/` | Offline audio authoring; public import `AudioGeneration.SoundGenerator`; recipes/assets belong to callers |
 | `Tools/ProjectTemplate/` | Files copied by `new`; `@PROJECT_NAME@` substitution; dotless gitignore/gitattributes |
 | `Tools/Tests/` | Compiler-free unittest suite, also registered under CTest label `engine` |

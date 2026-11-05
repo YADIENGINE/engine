@@ -2,15 +2,25 @@ Rules for an agent working on a game built with this engine. Import this file fr
 short on purpose. Paths start at the engine root (`Engine/` in a game); run tools from the project root as
 `python Engine <command>`.
 
+## Reading
+
+- Start from the matching skill below; it holds the usual example. Follow its links before searching.
+- Search only `Game/` or files you name, never all of `Engine/` or the project root. Engine `.cpp` files are not the
+  API: headers and `AgentDocs/Api/` are.
+- Read files longer than about 200 lines by range.
+- One task per session; when it is done, say what the next session needs and stop.
+
 ## Tools
 
 - Build with `python Engine build` (Debug, must be warning-free); test with `python Engine test` (`--label`, `--filter`).
 - The developer starts the game and the editor (`python Engine run`, `python Engine editor`); do not, unless asked.
-- An editor that is already open is yours to drive: `python Engine ctl` opens scenes, sets values, seeks and takes
-  screenshots. Opening a scene is not launching anything. `python Engine ctl status` exits 2 when no editor is open.
-- After code changes while the editor is open, run `python Engine refresh`; the editor stays open.
-- Started from the editor's Console (`ENGINE_EDITOR_CONTROL` is set), report progress on longer tasks with
-  `python Engine ctl note TEXT`; add `--state waiting` when you need the developer and `--state idle` when done.
+- Assume no editor is open. Use `python Engine ctl` and `python Engine refresh` only when the request is about the
+  editor (an `[editor]` line, "show it in the editor"), the developer says it is open, or you were started from the
+  editor's Console (`ENGINE_EDITOR_CONTROL` is set). Never probe with `ctl status`.
+- An open editor is yours to drive: `ctl` opens scenes, sets values, seeks and takes screenshots; opening a scene
+  launches nothing. After code changes, `refresh` rebuilds the scenes and the editor stays open.
+- Started from the editor's Console, report progress on longer tasks with `python Engine ctl note TEXT`; add
+  `--state waiting` when you need the developer and `--state idle` when done.
 
 ## Skills
 

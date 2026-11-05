@@ -5,8 +5,9 @@ description: Make a visual or gameplay-facing change (drawing, animation, effect
 
 # Change something visual and check it
 
-1. **Editor?** `python Engine ctl status`. Exit 2: no editor. Make the change, build with `python Engine build`,
-   and tell the developer what to open; do not launch the editor unless asked.
+1. **Editor?** Only when the developer said it is open or you were started from its Console (`AgentDocs/Agent.md`).
+   Otherwise make the change, build with `python Engine build`, and tell the developer what to open; do not launch
+   the editor unless asked, and skip steps 2–4.
 2. **Preview:** for a new standalone graphic, follow the [graphic-asset skill](../graphic-asset/SKILL.md): register it
    under `Game/Assets/Graphics` and use its own viewport preview. Use a work scene only when a model, scene or interaction
    is needed: create or reuse one focused scene for this request in the project's work-scene folder

@@ -18,8 +18,9 @@ Example: [Graphic asset](../../Recipes/GraphicAsset.md).
    default values so `DrawX(paint, box, time)` draws it as intended; `X.asset.cpp` passes no colors. Fill `items` for variants,
    supply meaningful `usage` (including the variant via `{item}`), and set `thumbnailTime` when the initial frame is
    empty or unrepresentative. Keep editor registration in `X.asset.cpp`, drawing callable by game code in `X.h`.
-4. **Refresh:** `python Engine refresh`. If no editor is open, follow the
-   [visual-change skill](../visual-change/SKILL.md)'s no-editor path; do not launch it unless asked.
+4. **Refresh:** `python Engine refresh` when an editor is open (the developer said so, or you run in its Console).
+   Otherwise follow the [visual-change skill](../visual-change/SKILL.md)'s no-editor path and skip step 5; do not
+   launch it unless asked.
 5. **Preview:** `python Engine ctl find NAME`, then open the returned asset ID, for example
    `python Engine ctl open asset:Graphics/Characters/X --screenshot --scale 0.5`. Read the image; use `ctl frames` for
    motion. The asset is its own viewport preview: no separate work scene is needed. A work scene is for a model,

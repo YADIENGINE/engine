@@ -157,6 +157,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/SceneGame.cpp"
     "${recipeRoot}/SceneTransition.cpp"
     "${recipeRoot}/SimulationPlay.cpp"
+    "${recipeRoot}/SkillExamples.cpp"
     "${recipeRoot}/SoundTable.cpp"
     "${recipeRoot}/SpatialSound.cpp"
     "${recipeRoot}/TimelineBoss.cpp"

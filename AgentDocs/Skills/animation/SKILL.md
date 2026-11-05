@@ -56,7 +56,7 @@ If the design is in seconds, write `StepsIn(1.5, 60)` in a simulation.
 
 1. **Reproduce:** a scenario with `read` of the clock and the field the moment changes, one step either side.
 2. **Read it:** `python Engine sim state TAPE --step N` lists `animator.clip`, `animator.clock`, `animator.blend.clock`, and for a tween `value`, `clock`, `index`.
-3. **Look at it:** `python Engine ctl status` lists `moments`. `python Engine ctl seek --moment NAME` pauses there, and `python Engine ctl step --sim`
+3. **Look at it,** only with an open editor (`AgentDocs/Agent.md`): `python Engine ctl status` lists `moments`. `python Engine ctl seek --moment NAME` pauses there, and `python Engine ctl step --sim`
    advances one step at a time.
 4. **A moment missing from `moments`:** its start is not decided yet at this step, or `Moments` does not list that timeline.
 5. **It fires twice or not at all:** check that the clock moves once per step and that nothing else resets it. `Step` called twice in a step runs the animation at double speed.

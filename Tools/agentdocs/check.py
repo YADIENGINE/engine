@@ -1,4 +1,6 @@
-"""Check/regenerate API pages, copy marked C++ recipe regions into Markdown, and validate skills.
+"""Check/regenerate API pages, copy marked C++ recipe regions into recipes and skills, and validate skills.
+
+A recipe must show at least one region; a skill may show some. JSON examples in recipes and skills must parse.
 
 Skills (`AgentDocs/Skills/<name>/SKILL.md`) need Agent Skills front matter whose name is the folder name, and a row in
 `AgentDocs/Agent.md`. Every `python Engine <command> [<action>]` written in AgentDocs must exist in the tools' parser,
@@ -7,6 +9,7 @@ so a renamed command cannot leave an agent instruction behind. Every file and he
 """
 
 import argparse
+import json
 import re
 from pathlib import Path
 
@@ -15,6 +18,7 @@ from .links import check_links
 
 REGION = re.compile(r'^// \[recipe:([\w-]+)\]\n(.*?)^// \[/recipe\]\n?', re.M | re.S)
 SNIPPET = re.compile(r'<!-- recipe:([\w-]+) -->\n```cpp\n(.*?)```\n<!-- /recipe -->', re.S)
+JSON_BLOCK = re.compile(r'```json\n(.*?)```', re.S)
 FRONT_MATTER = re.compile(r'\A---\nname: ([^\n]*)\ndescription: ([^\n]*)\n(?:[^\n]*\n)*?---\n')
 TOOL_CALL = re.compile(r'python Engine ([a-z][\w-]*)(?: ([a-z][\w-]*))?')
 DESCRIPTION_LIMIT = 1024  # Agent Skills format
@@ -101,24 +105,31 @@ def check_agentdocs(root: Path, fix: bool = False) -> tuple[list[str], list[str]
                 problems.append(f'{path.relative_to(root).as_posix()}: duplicate region {match[1]}')
             regions[match[1]] = match[2]
     used = set()
-    for path in sorted(recipes.glob('*.md')):
+    skills = sorted((root / 'AgentDocs/Skills').glob('*/SKILL.md'))
+    for path in sorted(recipes.glob('*.md')) + skills:
         text = path.read_text(encoding='utf-8')
+        where = path.relative_to(root).as_posix()
 
         def replace(match):
             name = match[1]
             if name in used:
-                problems.append(f'{path.name}: duplicate snippet {name}')
+                problems.append(f'{where}: duplicate snippet {name}')
             used.add(name)
             if name not in regions:
-                problems.append(f'{path.name}: missing code region {name}')
+                problems.append(f'{where}: missing code region {name}')
                 return match[0]
             return f'<!-- recipe:{name} -->\n```cpp\n{regions[name]}```\n<!-- /recipe -->'
 
         expected = SNIPPET.sub(replace, text)
         if text.count('<!-- recipe:') != len(SNIPPET.findall(text)):
-            problems.append(f'{path.name}: malformed snippet marker')
-        if not SNIPPET.search(text):
-            problems.append(f'{path.name}: missing recipe snippet')
+            problems.append(f'{where}: malformed snippet marker')
+        if path.name != 'SKILL.md' and not SNIPPET.search(text):
+            problems.append(f'{where}: missing recipe snippet')
+        for block in JSON_BLOCK.finditer(text):
+            try:
+                json.loads(block[1])
+            except json.JSONDecodeError as error:
+                problems.append(f'{where}: invalid JSON example ({error.msg}, line {error.lineno})')
         sync(path, expected)
     for name in sorted(regions.keys() - used):
         problems.append(f'AgentDocs/Recipes: code region {name} has no Markdown snippet')
