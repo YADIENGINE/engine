@@ -165,6 +165,7 @@ add_library(EngineHeadless STATIC
     Fx/World/FloatingTexts.cpp
     Fx/World/Rings.cpp
     Fx/World/ShatterSpread.cpp
+    Fx/World/Bolts.cpp
     Fx/World/FlashLights.cpp
     Fx/World/Shockwaves.cpp
     GameObjects/GameObject.cpp
@@ -179,6 +180,10 @@ add_library(EngineHeadless STATIC
     Graphics/Gpu/Internals/NullDevice.cpp
     Graphics/Paint/Internals/DrawList.cpp
     Graphics/Paint/Internals/Tessellator.cpp
+    Graphics/Atmosphere/Atmosphere.cpp
+    Graphics/Atmosphere/DriftField.cpp
+    Graphics/Atmosphere/FogField.cpp
+    Graphics/Atmosphere/GroundRipples.cpp
     Graphics/Light/Debug/LightGuides.cpp
     Graphics/Light/CollisionOccluders.cpp
     Graphics/Light/LightLayer.cpp

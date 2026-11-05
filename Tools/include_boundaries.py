@@ -47,6 +47,11 @@ CAMERA_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|Camera/
 LIGHT_BRIDGE = "CollisionOccluders"
 LIGHT_RULE = re.compile(
     r'''^\s*#\s*include\s*"(?!Utilities/|Camera/CameraView\.h|Graphics/(?:Light|Paint|Surface)/)[^"]*"''')
+# The air stands on Painter as light does, and reads weather as plain data. Weather itself draws nothing, so a simulation
+# may keep it.
+ATMOSPHERE_RULE = re.compile(
+    r'''^\s*#\s*include\s*"(?!Utilities/|Camera/CameraView\.h|Weather/|Graphics/(?:Atmosphere|Draw/ParticleDraw|Paint)[/.])[^"]*"''')
+WEATHER_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|Weather/)[^"]*"''')
 PAINT_LIGHT_RULE = re.compile(r'''^\s*#\s*include\s*"Graphics/Light/[^"]*"''')
 PLATFORM_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:[^>"/]*/)*(raylib|raymath|rlgl)\.h[>"]')
 
@@ -106,7 +111,17 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                   and not source.is_relative_to(engine_root / CORE / "Camera" / "Debug"))
         light = source.is_relative_to(engine_root / CORE / "Graphics" / "Light") and source.stem != LIGHT_BRIDGE
         paint = source.is_relative_to(engine_root / CORE / "Graphics" / "Paint")
+        atmosphere = source.is_relative_to(engine_root / CORE / "Graphics" / "Atmosphere")
+        weather = source.is_relative_to(engine_root / CORE / "Weather")
         for number, line in enumerate(lines, 1):
+            if atmosphere and ATMOSPHERE_RULE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: Core/Graphics/Atmosphere includes "{line.strip()}"; only Utilities, the'
+                             ' camera\'s view, Weather, Graphics/Paint and particle shapes')
+            if weather and WEATHER_RULE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: Core/Weather includes "{line.strip()}"; only Utilities and Animation,'
+                             ' so a simulation can use it')
             if light and LIGHT_RULE.match(line):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Graphics/Light includes "{line.strip()}"; only Utilities, the'

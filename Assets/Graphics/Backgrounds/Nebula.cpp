@@ -32,21 +32,6 @@ constexpr float CellPixels = 9.0f;
 constexpr float Frequency = 1.7f; // Noise cells per short side, at the largest octave
 constexpr float DriftSpeed = 0.012f;
 
-// Smooth value noise in 0..1.
-[[nodiscard]] float ValueNoise(float x, float y, unsigned seed) {
-    const float cellX = std::floor(x);
-    const float cellY = std::floor(y);
-    const float tx = x - cellX;
-    const float ty = y - cellY;
-    const float sx = tx * tx * (3.0f - 2.0f * tx);
-    const float sy = ty * ty * (3.0f - 2.0f * ty);
-    const auto ix = static_cast<unsigned>(static_cast<int>(cellX));
-    const auto iy = static_cast<unsigned>(static_cast<int>(cellY));
-    const auto corner = [seed](unsigned px, unsigned py) { return Random01(px * 73856093U ^ py * 19349663U ^ seed); };
-    const float top = Mix(corner(ix, iy), corner(ix + 1U, iy), sx);
-    return Mix(top, Mix(corner(ix, iy + 1U), corner(ix + 1U, iy + 1U), sx), sy);
-}
-
 [[nodiscard]] float Fractal(float x, float y, unsigned seed, int octaves) {
     float sum = 0.0f;
     float weight = 0.5f;

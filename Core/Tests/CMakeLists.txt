@@ -41,6 +41,7 @@ engine_tests(EngineTests
         GameOptionsTests.cpp
         InputTests.cpp
         LifecycleTests.cpp
+        AtmosphereTests.cpp
         LightOccluderTests.cpp
         LightTests.cpp
         MathTests.cpp
@@ -137,6 +138,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/FxCues.cpp"
     "${recipeRoot}/GameCamera.cpp"
     "${recipeRoot}/Lighting.cpp"
+    "${recipeRoot}/Weather.cpp"
     "${recipeRoot}/AnalogFinish.cpp"
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"

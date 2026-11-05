@@ -1469,6 +1469,61 @@ repeats the measurement on any machine.
 
 **Out of scope:** shaders written by a game, CRT curvature, palette reduction, a separate low-resolution mode.
 
+### D42. Atmosphere and weather
+Status: implemented (2026-11-05). Usage: [Atmosphere](../Graphics/Atmosphere.md).
+
+**Decision:** `Weather` is a plain pose in `Core/Weather`. `Graphics/Atmosphere` shows it, from fields that repeat across the
+world and fog computed over the view. Lightning is a cue. There is no weather system.
+
+**Why:** a scene with nothing on it comes alive with little code, and the particle system could not do it. It emits at a point,
+each particle carries its own copy of its look and a `std::function`, and a camera that moves finds the edge of what was
+emitted.
+
+**Decided:**
+1. *One concept in two places, not two modules.* "What is the weather" is data and "what does it look like" draws, as with
+   `Camera2D` and `CameraView`. `Weather` draws nothing, so a simulation may keep it and a rule may read it; `check` holds it to
+   `Utilities` and `Animation`. If it sat beside the drawing, a rule asking "is it raining" could not compile, or would read a view
+   and break replay.
+2. *No weather class.* A change is `SecondsTween<Weather>`, a sequence is a clip, and blending comes from `PoseFields`. A
+   forecast has no second user yet. Nothing here stops one being added on top of the same value.
+3. *One field for everything that drifts.* Rain, snow, dust, ash and leaves differ only in data, so `DriftField` takes a look. A
+   game's own kind is the done test: the recipe's ash uses only the public API.
+4. *A repeating tile, not spawning.* Pieces live in a tile of the world that repeats without end. No view finds an edge, however
+   the camera moves, zooms or turns, so nothing has to be born at a border, and a split screen shares one field because `Draw` is
+   `const`. The tile is larger than a usual view, so its repeat does not show.
+5. *The amount is a count.* The first `amount x capacity` pieces show, in an order the seed made random, and the last fades in by
+   degrees. A tween then adds rain drop by drop rather than fading a full sheet of it.
+6. *Fog is a mesh, not a texture or a shader.* Value noise at a coarse grid over the view, blended by `Painter::Mesh`. It has no
+   seam or repeat, no `Surface` to redraw, and a side view's band or a camera's turn costs one line, since each point is mapped
+   to the world. `Glow` puffs would vanish with `RenderQuality::glow`, the trap of D38, and a shader would be a new paint kind for
+   what a mesh already does. If it ever looks too soft, the API stays and the inside can change. Octaves are turned against each
+   other: the first version showed the noise grid as stripes.
+7. *Behind and in front.* Fog under a character's feet is much of the effect, and one `Draw` could not give it. Two calls leave
+   the order with the game, as a `LightLayer` does.
+8. *`parallax` instead of "moves with the camera".* A layer stuck to the screen makes the world slide under the rain. `1`
+   stands in the world, `0` stays on the screen, and above `1` is nearer. `CameraView::Parallaxed` holds this, for later depth work.
+9. *Above and from the side, from one set of classes.* `TopDownAtmosphere` and `SideViewAtmosphere` are data. Ripples appear on a
+   floor seen from above; a side view's splashes need to know where the ground is, and are left until a game asks.
+10. *Lightning is a cue.* A flash through `FlashLights` (D40), a bolt and a shake already are what a cue is for, and they follow
+    the `flashes` choice. `FxBolt` joins `FlashLimit` as a third kind. The `Atmosphere` does not know lightning, and when to
+    strike is the game's. `Fx` and `Graphics/Atmosphere` do not include each other.
+11. *Air is view code.* Its own `Rng`, its own clock, and never in `State`.
+12. *`backgroundEffects` is the player's switch.* Half the pieces, a grid twice as coarse. Weather stays on: it can say something
+    the game means. A view wider than a tile thins out, so that the cost has a ceiling.
+
+**Measured (2026-11-05, Debug build, 1280 x 720, CPU time in the air's draw calls):** a storm with both fogs
+about 1.8 ms; mist about 1.0 ms; snow 0.2 ms; a storm zoomed out to 0.5 and turned about 7 ms before the ceiling was added. A
+release build and the GPU's share were not measured. One `Painter::Line` per drop is the first thing to look at if it is too much.
+
+**Found on the way:** a tween of a pose could not reach `State`: `StateVisitor::Field` took only plain values, so `SecondsTween<Weather>` or `<CameraPose>` failed to compile at its `State` call. `Field` now takes a pose, as a group of its fields.
+
+**Checking:** `NullDevice` tests cover amounts, parallax, wrapping, the band and the flash rules. Looks were checked by
+screenshots from a work scene: rain, snow, mist, side view, night with lamps, zoom and turn, split screen, lightning. Motion has
+not been judged by a person.
+
+**Out of scope:** splashes on a side view's ground, snow that settles, wet floors, wind gusts, fog that lamps scatter in, a
+forecast.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

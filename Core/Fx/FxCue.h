@@ -8,6 +8,7 @@
 #include <variant>
 #include <vector>
 #include "Fx/Particles/ParticleRecipes.h"
+#include "Fx/World/Bolts.h"
 #include "Fx/World/FlashLights.h"
 #include "Utilities/Color4.h"
 
@@ -39,6 +40,8 @@ struct FxFlash {};
 // A short light, at FxPlay::at unless it has no radius: then the whole scene. It reaches the screen through
 // FxStage::LightFlashes.
 using FxLightFlash = LightFlashStyle;
+// A bolt of lightning striking FxPlay::at from above the stage's area. FxStage::DrawWorldLayer draws it.
+using FxBolt = BoltStyle;
 struct FxBanner {
     std::string text{};
 };
@@ -68,7 +71,7 @@ struct FxSlowMotion { // Time and its look together
 };
 
 using FxAction = std::variant<FxBurst, FxParticles, FxTrail, FxDash, FxSteam, FxFloatText, FxPopText, FxRing,
-                              FxShockwave, FxFlash, FxLightFlash, FxBanner, FxToast, FxShake, FxPunch, FxKick, FxGlitch,
+                              FxShockwave, FxFlash, FxLightFlash, FxBolt, FxBanner, FxToast, FxShake, FxPunch, FxKick, FxGlitch,
                               FxHitstop, FxSlowMotion>;
 
 template <class T, class Variant> inline constexpr bool IsFxActionOf = false;

@@ -100,6 +100,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `CameraView`: `[[nodiscard]] Affine2 Transform() const`
 - `CameraView`: `[[nodiscard]] Float2 ToScreen(Float2 world) const`
 - `CameraView`: `[[nodiscard]] Float2 ToWorld(Float2 screen) const`
+- `CameraView`: `[[nodiscard]] CameraView Parallaxed(float factor) const` — The view of something nearer or farther than the world: 1 is this view, 0 stays on the screen whatever the camera does, and above 1 moves faster than the world, as what is close to the eye does.
 - `CameraView`: `[[nodiscard]] constexpr FloatRect VisibleArea() const` — The world rectangle the viewport shows, ignoring rotation; empty without a viewport or zoom.
 - `CameraView`: `[[nodiscard]] constexpr CameraView ConfinedTo(const FloatRect& limits) const` — The same view moved as little as possible so that what it shows stays inside 'limits'.
 
