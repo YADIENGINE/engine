@@ -41,6 +41,7 @@ engine_tests(EngineTests
         GameOptionsTests.cpp
         InputTests.cpp
         LifecycleTests.cpp
+        LightTests.cpp
         MathTests.cpp
         ObjectListSafetyTests.cpp
         PaintTests.cpp
@@ -132,6 +133,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/FxBurst.cpp"
     "${recipeRoot}/FxCues.cpp"
     "${recipeRoot}/GameCamera.cpp"
+    "${recipeRoot}/Lighting.cpp"
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"
     "${recipeRoot}/PopupEffects.cpp"

@@ -71,6 +71,7 @@ private:
     [[nodiscard]] int TargetHeight() const;
     void ApplyBlend(GpuBlend blend);
     void ForgetState();
+    void UnbindAttachments(const Target& target);
 
     HandlePool<GpuTextureTag, Texture> _textures;
     HandlePool<GpuTargetTag, Target> _targets;

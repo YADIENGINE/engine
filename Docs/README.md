@@ -32,6 +32,7 @@ it and [Editor automation](Editor/Automation.md) lists what it can do. Agent mat
 | Menus, dialogs, panels, HUD; widgets of your own | [UI](Ui.md) |
 | Themes and backgrounds | [Themes](Graphics/ThemesAndUi.md) |
 | Particles, cameras, transitions, and overlays | [Effects](Graphics/Effects.md) |
+| A dark world with lights in it | [Lighting](Graphics/Lighting.md) |
 | Values adjusted without building (`*.tuning.json`) | [Tuning](Tuning.md) |
 | Gameplay in fixed steps, replay, scenario tests without a window | [Simulation](Simulation.md) |
 | Overlaps, rays, fast bullets, finding what is in an area | [Collision](Collision.md) |

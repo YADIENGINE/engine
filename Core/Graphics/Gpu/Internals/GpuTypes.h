@@ -56,7 +56,7 @@ struct PremultipliedColor {
 };
 
 // Blend states. Every colour in the pipeline is premultiplied, so Premultiplied covers both normal (alpha) and
-// additive drawing (alpha 0).
+// additive drawing (alpha 0). Multiply leaves a target's bloom attachment alone.
 enum class GpuBlend { Premultiplied, Multiply, Screen, Replace };
 
 enum class GpuProgram { Paint, BloomDownsample, BloomUpsample, Compose };

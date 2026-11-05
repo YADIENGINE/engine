@@ -11,6 +11,7 @@
 #include "AgentDocs/Recipes/Code/FxBurst.h"
 #include "AgentDocs/Recipes/Code/FxCues.h"
 #include "AgentDocs/Recipes/Code/GameCamera.h"
+#include "AgentDocs/Recipes/Code/Lighting.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
 #include "AgentDocs/Recipes/Code/PopupEffects.h"
@@ -161,6 +162,22 @@ TEST_CASE("Engine.Recipes.SimulationEventsReachTheScene", "[engine][recipes]") {
     scene.Tick(time.Advance(1.0f / 60.0f));
     CHECK(scene.Sim().Score() == 1);
     CHECK(time.Advance(1.0f / 60.0f) == 0.0f);
+}
+
+TEST_CASE("Engine.Recipes.LightingDarkensTheWorldBeforeTheSign", "[engine][recipes]") {
+    PaintHarness h({1280.0f, 720.0f}, 1.0f);
+    RecipeLitView view({1280.0f, 720.0f});
+    view.Update(1.0f / 60.0f, {1.0f, 0.0f}, {800.0f, 500.0f});
+    view.SetGuides(true);
+    h.Begin();
+    view.Draw(h.paint);
+    h.End();
+    CHECK(h.list.Rejected() == 0);
+    // The world, the lights into their image, the stamp, then the sign and the guides undarkened.
+    const auto pipelines = h.device.CommandsOf(NullCommandType::SetPipeline);
+    REQUIRE(pipelines.size() >= 4);
+    CHECK(pipelines[pipelines.size() - 2]->blend == GpuBlend::Multiply);
+    CHECK(pipelines.back()->blend == GpuBlend::Premultiplied);
 }
 
 TEST_CASE("Engine.Recipes.GameCameraFramesTwoPlayersOrSplits", "[engine][recipes]") {

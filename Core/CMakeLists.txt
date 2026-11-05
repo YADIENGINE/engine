@@ -178,6 +178,8 @@ add_library(EngineHeadless STATIC
     Graphics/Gpu/Internals/NullDevice.cpp
     Graphics/Paint/Internals/DrawList.cpp
     Graphics/Paint/Internals/Tessellator.cpp
+    Graphics/Light/Debug/LightGuides.cpp
+    Graphics/Light/LightLayer.cpp
     Graphics/Paint/Painter.cpp
     Graphics/Paint/PainterText.cpp
     Graphics/Paint/Path.cpp

@@ -13,6 +13,7 @@ renderer frame. The game's scenes/Views own actual production drawing.
 | Themes and backgrounds | [Themes](ThemesAndUi.md) |
 | Menus and widgets | [UI](../Ui.md) |
 | Particles, cameras, overlays, and presentation clock | [Effects](Effects.md) |
+| Dark worlds, lights and cones | [Lighting](Lighting.md) |
 
 Lower layers take style and time as parameters; widgets are in `Ui/`, outside `Graphics/`. Icons use the shared, shape-named
 `Icon` and `DrawIcon` API in `Graphics/DefaultIcons.h` (under `Assets/`), and each icon has its own colors unless the call names others. The View maps an icon's game meaning, rather than the model.

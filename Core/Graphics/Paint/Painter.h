@@ -93,7 +93,12 @@ public:
     void FillPath(const Path& path, const ShapeStyle& style);
     void StrokePath(const Path& path, const LineStyle& style);
     // Soft round light fading from 'center' to 'radius', added on top (follows RenderQuality::glow).
-    void Glow(Float2 center, float radius, const LightStyle& light);
+    void Glow(Float2 center, float radius, const RadialGlowStyle& style);
+    // A light, added to what is below. Unlike Glow it ignores RenderQuality: a light decides what the player can see,
+    // so a setting must not remove it. Most games give lights to a LightLayer instead of drawing them here. A non-empty
+    // 'visible' limits it to that polygon, which every straight line from 'light.at' crosses once (what the light
+    // reaches past obstacles); not anti-aliased. Fewer than three points draws nothing.
+    void Light(const LightSource& light, std::span<const Float2> visible = {});
 
     // --- Images ------------------------------------------------------------------------------------------------
     void Image(const TextureRef& texture, const FloatRect& dest, const ImageStyle& style = {});
@@ -148,6 +153,8 @@ public:
     [[nodiscard]] double Time() const;
     [[nodiscard]] float Delta() const;
     [[nodiscard]] const RenderQuality& Quality() const;
+    // What following drawing goes through; identity outside every Transform and Camera scope of the current target.
+    [[nodiscard]] const Affine2& CurrentTransform() const;
     // Device pixels one unit covers under the current transform (for level-of-detail decisions).
     [[nodiscard]] float PixelScale() const;
     // Logical rectangle of the current target (the canvas or a surface) in target coordinates.

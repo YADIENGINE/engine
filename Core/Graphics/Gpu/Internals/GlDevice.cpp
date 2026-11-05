@@ -319,6 +319,21 @@ int GlDevice::TargetHeight() const {
     return _pass.target.Valid() ? _targets.Get(_pass.target).desc.height : _backBufferHeight;
 }
 
+// A texture drawn into must not stay bound for sampling, even by a draw that samples nothing: GL leaves that feedback
+// loop undefined, and a driver may then show the next sampling an image without this pass's drawing. A new target's
+// texture is still bound from its creation, and a surface drawn twice in a frame from when it was last shown.
+void GlDevice::UnbindAttachments(const Target& target) {
+    const unsigned color = _textures.Get(target.color).id;
+    const unsigned emission = target.emission.Valid() ? _textures.Get(target.emission).id : 0;
+    for (std::size_t slot = 0; slot < PaintTextureSlots; ++slot) {
+        if (_boundKnown && _bound[slot] != color && _bound[slot] != emission) continue;
+        glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(slot));
+        glBindTexture(GL_TEXTURE_2D, _white);
+        _bound[slot] = _white;
+    }
+    _boundKnown = true;
+}
+
 void GlDevice::BeginPass(const GpuPassDesc& pass) {
     _pass = pass;
     _passEmission = false;
@@ -328,6 +343,7 @@ void GlDevice::BeginPass(const GpuPassDesc& pass) {
         _passEmission = target.emission.Valid();
         constexpr std::array<GLenum, 2> Buffers{GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
         glDrawBuffers(_passEmission ? 2 : 1, Buffers.data());
+        UnbindAttachments(target);
     } else {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -338,6 +354,7 @@ void GlDevice::BeginPass(const GpuPassDesc& pass) {
     glDisable(GL_STENCIL_TEST);
     glEnable(GL_BLEND);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    _blend.reset(); // The mask above undoes part of ApplyBlend
     if (pass.clear) {
         glDisable(GL_SCISSOR_TEST);
         const std::array<GLfloat, 4> color{pass.clear->r, pass.clear->g, pass.clear->b, pass.clear->a};
@@ -356,6 +373,9 @@ void GlDevice::EndPass() {}
 
 void GlDevice::ApplyBlend(GpuBlend blend) {
     glBlendEquation(GL_FUNC_ADD);
+    // Multiply darkens the colour alone: attachment 1 is the bloom source, and its source factor would wipe it.
+    const GLboolean bloom = blend == GpuBlend::Multiply ? GL_FALSE : GL_TRUE;
+    glColorMaski(1, bloom, bloom, bloom, bloom);
     switch (blend) {
     case GpuBlend::Premultiplied:
         glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -449,6 +469,7 @@ void GlDevice::ReleaseState() {
     glActiveTexture(GL_TEXTURE0);
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     ForgetState();
 }
 

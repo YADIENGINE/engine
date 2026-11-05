@@ -40,7 +40,8 @@ Under `Utilities/Geometry/`, headless: `Float2` (operations, `Length`, `Normaliz
 | `Polygon(points, ShapeStyle)`, `Triangle` | Non-self-intersecting polygon (either winding direction) |
 | `Mesh(points, colors, indices)` | Per-vertex colored triangles, color blends across each triangle (soft areas such as light masks); no antialiasing |
 | `FillPath(path, ShapeStyle)`, `StrokePath(path, LineStyle)` | `Path`: `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ArcTo`, `Close` |
-| `Glow(center, radius, LightStyle)` | Soft, additive light |
+| `Glow(center, radius, RadialGlowStyle)` | Soft, additive decoration; follows `RenderQuality::glow` |
+| `Light(LightSource, visible)` | A light that ignores the quality setting; see [Lighting](Lighting.md) |
 
 `ShapeStyle` parts draw together, in order: halo (`glow`), fill (`fill` or `gradient`), border (`stroke`, `Inside` /
 `Center` / `Outside`). Shortcuts: `Fill(color)`, `Outline(width, color)`. `Gradient::Linear(start, end, from, to)` is
@@ -129,6 +130,7 @@ DrawField(paint); // Into the layer or straight onto the canvas
 Scopes still end in reverse order; a moved scope outliving a later one is reported when the frame ends.
 
 `Blend::Normal` and `Blend::Add` share a draw call (premultiplied alpha); `Multiply` / `Screen` split the batch.
+`Multiply` changes colour only: what feeds bloom stays.
 
 ## Post-process and quality
 

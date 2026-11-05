@@ -149,6 +149,22 @@ class BoundaryTests(unittest.TestCase):
         self.write("Engine/Core/Camera/Camera2D.cpp", '#include "Graphics/Paint/Painter.h"\n')
         self.assertIn("Core/Camera includes", self.check()[0])
 
+    def test_lighting_stands_on_paint_and_paint_does_not_know_it(self):
+        self.write("Engine/Core/Graphics/Light/LightLayer.cpp", '#include "Graphics/Light/LightLayer.h"\n'
+                   '#include "Graphics/Paint/Painter.h"\n#include "Graphics/Surface/Surface.h"\n'
+                   '#include "Camera/CameraView.h"\n#include "Utilities/Color4.h"\n')
+        self.write("Engine/Core/Graphics/Paint/Painter.cpp", '#include "Graphics/Surface/Surface.h"\n')
+        self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Graphics/Light/LightLayer.cpp", '#include "Physics/Collision/Shape.h"\n')
+        self.assertIn("Core/Graphics/Light includes", self.check()[0])
+        self.write("Engine/Core/Graphics/Light/LightLayer.cpp", '#include "Graphics/Paint/Painter.h"\n')
+        self.write("Engine/Core/Graphics/Paint/Painter.cpp", '#include "Graphics/Light/LightLayer.h"\n')
+        self.assertIn("Core/Graphics/Paint includes", self.check()[0])
+
+    def test_a_simulation_cannot_include_lighting(self):
+        self.write("Game/Simulation/Rules.cpp", '#include "Graphics/Light/LightLayer.h"\n')
+        self.assertIn("simulation code", self.check()[0])
+
     def test_a_simulation_may_keep_a_camera_but_not_draw_its_guides(self):
         self.write("Game/Simulation/Rules.cpp", '#include "Camera/Camera2D.h"\n')
         self.assertEqual(self.check(), [])

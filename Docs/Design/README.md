@@ -1307,6 +1307,46 @@ each game to stay out of the others.
 6. *Engine sounds by path.* `Engine/Audio/...` is copied beside every game and `Engine` is reserved under `Game/Assets`, so
    the path means one thing. The editor and `audio` tools read such a path from `Engine/Assets`.
 
+### D38. Lighting
+Status: implemented (2026-11-05). Usage: [Lighting](../Graphics/Lighting.md).
+
+**Decision:** `Graphics/Light/LightLayer` darkens what was drawn so far to ambient plus the lights. The lights add up in an
+image of their own, which is multiplied over the target. It is view code and decides nothing.
+
+**Why:** a game could build this from `Surface`, `Painter::Glow` and `Blend::Multiply`, and would have met three traps: a
+glow disappears when the player lowers the quality, leaving the world dark; an opaque multiply erased the bloom source; and
+the surface does not inherit the camera.
+
+**Decided:**
+1. *In `Graphics`, not a folder of its own.* Light draws and stands on `Painter`, `Surface` and the camera's view, and the
+   rule that keeps `Graphics/` out of simulations covers it for free. `check` keeps it from reaching any further, and
+   `Paint` from reaching it.
+2. *Lights are data, described every frame.* `Draw` methods are `const`, and the UI already works this way. There is no list
+   to clear and no handle to keep, and a split screen is two calls with one frame.
+3. *`Painter::Light`, not `Glow`.* A glow is decoration and follows `RenderQuality::glow`. A light decides what can be seen, so
+   no setting removes it. `LightStyle` became `RadialGlowStyle`, so that the word means one thing.
+4. *One primitive for lit and shadowed.* `Painter::Light` takes a polygon of what the light reaches. The shader computes the
+   falloff per pixel from the offset to the light, so a shadowed light is a fan of a few triangles in the same batch, with
+   no pass per light and no stencil.
+5. *`Blend::Multiply` changes colour only, for everyone.* The blend also ran on the bloom attachment, where the source's
+   emission of 0 erased it: a 50% grey multiply halved the colour and removed all bloom. No new blend state: one rule for
+   every use.
+6. *Emissive drawing goes after the layer.* The halo survives anyway; the colour does not. A mask to exempt shapes would
+   mean drawing them twice. The price, that they lie over everything before them, is written in the guide.
+7. *Half resolution by default.* Lights are soft, it costs a quarter of the pixels, and filtering softens hard edges.
+8. *No quality setting, normal maps, or brightening past a pixel's colour.* A setting needs a measured cost first. Normal
+   maps have no source in code-drawn art. Going past 1 needs a floating-point canvas, which changes every game's cost.
+9. *`Painter::CurrentTransform`.* A layer called inside a camera stamps its image in the wrong place, which an agent cannot
+   see in a test. Now it is an error at the call.
+
+**Found on the way:** a new `Surface`'s texture stayed bound from its creation while the first pass drew into it, a feedback
+loop that GL leaves undefined. An AMD driver then showed the next sampling an image without that drawing, for one frame,
+when the surface was as large as its target. `GlDevice::BeginPass` now unbinds a target's attachments.
+
+**Checking:** the `NullDevice` sees vertices and commands, not shaders or GL state, and both traps above lived there.
+`EngineGpuPixelCheck` renders with the real device in a hidden window and reads pixels back. It needs a desktop and a GPU, so
+it is not a CTest.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

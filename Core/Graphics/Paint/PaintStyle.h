@@ -2,6 +2,7 @@
 #include "Utilities/Color4.h"
 #include "Utilities/Geometry/Float2.h"
 #include "Utilities/Geometry/FloatRect.h"
+#include "Utilities/Math/Scalar.h"
 
 // How a stroke sits on a shape's edge: centred on it, entirely inside, or entirely outside.
 enum class StrokeAlign { Center, Inside, Outside };
@@ -9,8 +10,8 @@ enum class StrokeAlign { Center, Inside, Outside };
 enum class StrokeCap { Butt, Round, Square };
 // Corners of polylines and paths. Miter falls back to Bevel beyond LineStyle::miterLimit.
 enum class StrokeJoin { Miter, Bevel, Round };
-// Normal: alpha blending; Add: light adds up (glows); Multiply: darkens; Screen: lightens without saturating.
-// Normal and Add share draw calls.
+// Normal: alpha blending; Add: light adds up (glows); Multiply: darkens the colour and leaves bloom alone; Screen:
+// lightens without saturating. Normal and Add share draw calls.
 enum class Blend { Normal, Add, Multiply, Screen };
 
 struct StrokeStyle {
@@ -96,9 +97,26 @@ struct NineSliceStyle {
     Color4 tint{255, 255, 255, 255};
 };
 
-// A soft radial light (Painter::Glow).
-struct LightStyle {
+// A soft radial decoration (Painter::Glow). A light that decides what can be seen is a LightSource.
+struct RadialGlowStyle {
     Color4 color{255, 255, 255, 255};
     float strength = 1.0f;
     float emission = 0.0f;
+};
+
+// The part of a circle a LightSource reaches. The default is the whole circle.
+struct LightCone {
+    float direction = 0.0f; // Where it points; radians, clockwise on screen
+    float halfAngle = Pi;   // From the direction to the edge; Pi or more: the whole circle
+    float softEdge = 0.15f; // Inside the edge, the angle over which it fades out; radians
+};
+
+// A light (Painter::Light, or a LightFrame's list). Lengths are in the coordinates it is drawn in.
+struct LightSource {
+    Float2 at{};
+    float radius = 100.0f;            // Where it reaches zero
+    Color4 color{255, 255, 255, 255}; // Alpha dims it
+    float intensity = 1.0f;           // Multiplies the colour; above 1 saturates its channels instead of growing
+    float core = 0.0f;                // 0..1: share of the radius that stays at full strength
+    LightCone cone{};
 };

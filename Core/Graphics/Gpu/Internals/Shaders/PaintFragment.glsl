@@ -24,6 +24,7 @@ const uint KindSegment = 8u;
 const uint KindArc = 9u;
 const uint KindGlow = 10u;
 const uint KindComposite = 11u;
+const uint KindLight = 12u;
 
 const uint ModeFill = 0u;
 const uint ModeStroke = 1u;
@@ -134,6 +135,14 @@ void main() {
     if (kind == KindGlow) {
         float t = clamp(distance, 0.0, 1.0);
         coverage = 1.0 - t * t * (3.0 - 2.0 * t);
+    } else if (kind == KindLight) {
+        float reach = length(vLocal);
+        float t = clamp((reach - vShape.y) / max(vShape.x - vShape.y, 1e-5), 0.0, 1.0);
+        coverage = 1.0 - t * t * (3.0 - 2.0 * t);
+        if (vShape.z >= -1.0) {
+            float facing = reach > 1e-5 ? dot(vLocal / reach, vStyle) : 1.0;
+            coverage *= smoothstep(vShape.z, vShape.w, facing);
+        }
     } else if (shaped) {
         if (mode == ModeFill) {
             coverage = clamp(0.5 - distance / pixel, 0.0, 1.0);

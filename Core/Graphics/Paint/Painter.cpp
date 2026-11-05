@@ -53,6 +53,7 @@ struct ShapeGeometry {
     float shape0 = 0.0f;
     float shape1 = 0.0f;
     float shape2 = 0.0f;
+    float shape3 = 0.0f;
     std::uint8_t flags = 0;
 };
 
@@ -87,6 +88,7 @@ void EmitShape(PaintContext& context, const ShapeGeometry& shape, const ShapeLay
         vertex.shape0 = shape.shape0;
         vertex.shape1 = shape.shape1;
         vertex.shape2 = shape.shape2;
+        vertex.shape3 = shape.shape3;
         vertex.style0 = layer.style0;
         vertex.style1 = layer.style1;
         if (layer.linear) {
@@ -178,6 +180,28 @@ void TransformPoints(PaintContext& context, std::span<const Float2> points) {
     context.points.clear();
     for (const Float2 point : points)
         context.points.push_back(transform.Apply(point));
+}
+
+// What the shader needs to know about a light's shape.
+struct LightShading {
+    float core = 0.0f;
+    float outerCosine = -2.0f; // Below -1: no cone
+    float innerCosine = -1.0f;
+    Float2 direction{1.0f, 0.0f};
+};
+
+LightShading ShadeLight(const LightSource& light) {
+    constexpr float SmallestEdge = 0.001f;
+    LightShading shading;
+    shading.core = light.radius * std::clamp(Finite(light.core) ? light.core : 0.0f, 0.0f, 1.0f);
+    const LightCone& cone = light.cone;
+    if (!Finite(cone.direction) || !Finite(cone.halfAngle) || cone.halfAngle >= Pi) return shading;
+    const float outer = std::max(cone.halfAngle, SmallestEdge);
+    const float edge = std::clamp(Finite(cone.softEdge) ? cone.softEdge : 0.0f, SmallestEdge, outer);
+    shading.outerCosine = std::cos(outer);
+    shading.innerCosine = std::cos(outer - edge);
+    shading.direction = {std::cos(cone.direction), std::sin(cone.direction)};
+    return shading;
 }
 
 void SubmitMesh(PaintContext& context, std::uint8_t emission) {
@@ -431,9 +455,9 @@ void Painter::StrokePath(const Path& path, const LineStyle& style) {
     }
 }
 
-void Painter::Glow(Float2 center, float radius, const LightStyle& light) {
-    if (!Finite(center) || !(radius > 0.0f) || light.color.a == 0) return;
-    float strength = light.strength;
+void Painter::Glow(Float2 center, float radius, const RadialGlowStyle& style) {
+    if (!Finite(center) || !(radius > 0.0f) || style.color.a == 0) return;
+    float strength = style.strength;
     switch (_context.frame.quality.glow) {
     case GlowQuality::Full: break;
     case GlowQuality::Reduced:
@@ -449,9 +473,66 @@ void Painter::Glow(Float2 center, float radius, const LightStyle& light) {
     shape.half = {radius, radius};
     shape.shape0 = radius;
     ShapeLayer layer;
-    layer.color = _context.list.Shade(light.color, true, strength);
-    layer.emission = EmissionByte(light.emission);
+    layer.color = _context.list.Shade(style.color, true, strength);
+    layer.emission = EmissionByte(style.emission);
     EmitShape(_context, shape, layer);
+}
+
+void Painter::Light(const LightSource& light, std::span<const Float2> visible) {
+    if (!Finite(light.at) || !Finite(light.radius) || !(light.radius > 0.0f) || light.color.a == 0 ||
+        !(light.intensity > 0.0f))
+        return;
+    DrawList& list = _context.list;
+    const PaintColor color = list.Shade(light.color, true, light.intensity);
+    const LightShading shading = ShadeLight(light);
+    if (visible.empty()) {
+        ShapeGeometry shape;
+        shape.kind = PaintKind::Light;
+        shape.frame = Affine2::Translate(light.at);
+        shape.half = {light.radius, light.radius};
+        shape.shape0 = light.radius;
+        shape.shape1 = shading.core;
+        shape.shape2 = shading.outerCosine;
+        shape.shape3 = shading.innerCosine;
+        ShapeLayer layer;
+        layer.color = color;
+        layer.style0 = shading.direction.x;
+        layer.style1 = shading.direction.y;
+        EmitShape(_context, shape, layer);
+        return;
+    }
+    if (visible.size() < 3) return;
+    for (const Float2 point : visible)
+        if (!Finite(point)) return;
+    // A fan around the light. Colour comes from the shader, so its triangles need no extra points along the falloff.
+    const Affine2& transform = list.State().transform;
+    MeshBuffer& mesh = _context.mesh;
+    const auto add = [&](Float2 point) {
+        const Float2 at = transform.Apply(point);
+        const Float2 local = point - light.at;
+        mesh.vertices.push_back({.x = at.x,
+                                 .y = at.y,
+                                 .u = local.x,
+                                 .v = local.y,
+                                 .shape0 = light.radius,
+                                 .shape1 = shading.core,
+                                 .shape2 = shading.outerCosine,
+                                 .shape3 = shading.innerCosine,
+                                 .style0 = shading.direction.x,
+                                 .style1 = shading.direction.y,
+                                 .color = color,
+                                 .kind = PaintKind::Light});
+    };
+    add(light.at);
+    for (const Float2 point : visible)
+        add(point);
+    const auto rim = static_cast<std::uint32_t>(visible.size());
+    for (std::uint32_t i = 0; i < rim; ++i) {
+        mesh.indices.push_back(0);
+        mesh.indices.push_back(i + 1);
+        mesh.indices.push_back((i + 1) % rim + 1);
+    }
+    SubmitMesh(_context, 0);
 }
 
 // --- Images ---
@@ -682,6 +763,8 @@ float Painter::Delta() const { return _context.frame.delta; }
 const RenderQuality& Painter::Quality() const { return _context.frame.quality; }
 
 float Painter::PixelScale() const { return _context.list.PixelScale(); }
+
+const Affine2& Painter::CurrentTransform() const { return _context.list.State().transform; }
 
 FloatRect Painter::Bounds() const {
     const Float2 size = _context.list.CurrentTarget().size;

@@ -43,6 +43,10 @@ UI_LAYER_RULES = (
 # Core/Camera computes and draws nothing, so a simulation may keep a camera that decides gameplay; only its debug guides
 # draw (Docs/Camera.md).
 CAMERA_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|Camera/)[^"]*"''')
+# Lighting stands on Painter, like a game's own drawing, and Painter does not know it.
+LIGHT_RULE = re.compile(
+    r'''^\s*#\s*include\s*"(?!Utilities/|Camera/CameraView\.h|Graphics/(?:Light|Paint|Surface)/)[^"]*"''')
+PAINT_LIGHT_RULE = re.compile(r'''^\s*#\s*include\s*"Graphics/Light/[^"]*"''')
 PLATFORM_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:[^>"/]*/)*(raylib|raymath|rlgl)\.h[>"]')
 
 
@@ -99,7 +103,17 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                          if source.is_relative_to(engine_root / CORE / "Ui" / rule[0])), None)
         camera = (source.is_relative_to(engine_root / CORE / "Camera")
                   and not source.is_relative_to(engine_root / CORE / "Camera" / "Debug"))
+        light = source.is_relative_to(engine_root / CORE / "Graphics" / "Light")
+        paint = source.is_relative_to(engine_root / CORE / "Graphics" / "Paint")
         for number, line in enumerate(lines, 1):
+            if light and LIGHT_RULE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: Core/Graphics/Light includes "{line.strip()}"; only Utilities, the'
+                             ' camera\'s view and Graphics/Paint or Surface')
+            if paint and PAINT_LIGHT_RULE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: Core/Graphics/Paint includes "{line.strip()}"; lighting stands on'
+                             ' Painter, not the other way')
             if ui_layer and ui_layer[1].match(line):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Ui/{ui_layer[0]} includes "{line.strip()}"; {ui_layer[2]}')

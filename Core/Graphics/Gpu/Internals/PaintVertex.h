@@ -10,6 +10,7 @@
 //   Circle .. Arc   signed-distance shapes evaluated per pixel, see PaintMode
 //   Glow        radial light that fades from the centre to shape.x
 //   Composite   like Texture, and the bloom output samples the texture in slot shape.x (a rendered image's emission)
+//   Light       a LightSource; 'local' is the offset from the light, in its own units
 enum class PaintKind : std::uint8_t {
     Solid,
     Texture,
@@ -22,7 +23,8 @@ enum class PaintKind : std::uint8_t {
     Segment,
     Arc,
     Glow,
-    Composite
+    Composite,
+    Light
 };
 // How a distance shape is covered. Fill: inside; Stroke: a band around the edge; Halo: light fading outwards.
 enum class PaintMode : std::uint8_t { Fill, Stroke, Halo };
@@ -47,9 +49,10 @@ struct PaintColor {
 // already applied; 'local' is the shape's own coordinate system (distance shapes) or the texture coordinate.
 //   shape  Circle: radius | Ellipse: rx, ry | RoundRect / ChamferRect: half width, half height, corner |
 //          Segment: half length, half width | Arc: radius, half thickness, half sweep | Glow: radius |
-//          GlyphHalo: distance units per texel | Tessellated gradient: shape3 is AA coverage
+//          GlyphHalo: distance units per texel | Tessellated gradient: shape3 is AA coverage |
+//          Light: radius, core radius, cosine of the cone's outer and inner edge (outer below -1: no cone)
 //   style  Stroke: half width, centre offset | Halo: radius, strength | Fill with gradient: direction / span (linear)
-//          or 1 / radius (radial) | GlyphHalo: radius, strength
+//          or 1 / radius (radial) | GlyphHalo: radius, strength | Light: the cone's direction as a unit vector
 struct PaintVertex {
     float x = 0.0f;
     float y = 0.0f;

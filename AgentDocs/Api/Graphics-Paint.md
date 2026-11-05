@@ -24,7 +24,8 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Painter`: `void Mesh(std::span<const Float2> points, std::span<const Color4> colors, std::span<const std::uint32_t> indices, float emission = 0.0f)` — Triangles ('indices' in threes) with one colour per point, blended across each triangle: soft fields such as light masks.
 - `Painter`: `void FillPath(const Path& path, const ShapeStyle& style)`
 - `Painter`: `void StrokePath(const Path& path, const LineStyle& style)`
-- `Painter`: `void Glow(Float2 center, float radius, const LightStyle& light)` — Soft round light fading from 'center' to 'radius', added on top (follows RenderQuality::glow).
+- `Painter`: `void Glow(Float2 center, float radius, const RadialGlowStyle& style)` — Soft round light fading from 'center' to 'radius', added on top (follows RenderQuality::glow).
+- `Painter`: `void Light(const LightSource& light, std::span<const Float2> visible = { })` — A light, added to what is below.
 - `Painter`: `void Image(const TextureRef& texture, const FloatRect& dest, const ImageStyle& style = { })`
 - `Painter`: `void Image(const Surface& surface, const FloatRect& dest, const ImageStyle& style = { })` — Whole surface into 'dest'; the surface must have been drawn into this frame or earlier.
 - `Painter`: `void ImagePolygon(const Surface& surface, std::span<const Float2> points, std::span<const Float2> sources, Color4 tint = { 255, 255, 255, 255 }, float emission = 0.0f)` — Convex polygon showing part of 'surface': 'sources[i]' is where 'points[i]' samples the surface, in its logical units (as ImageStyle::source), so a piece of an image can be warped onto any convex shape (shards, ripples).
@@ -47,6 +48,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Painter`: `[[nodiscard]] double Time() const` — Presentation clock in seconds (frozen while the editor pauses) and the frame's step.
 - `Painter`: `[[nodiscard]] float Delta() const`
 - `Painter`: `[[nodiscard]] const RenderQuality& Quality() const`
+- `Painter`: `[[nodiscard]] const Affine2& CurrentTransform() const` — What following drawing goes through; identity outside every Transform and Camera scope of the current target.
 - `Painter`: `[[nodiscard]] float PixelScale() const` — Device pixels one unit covers under the current transform (for level-of-detail decisions).
 - `Painter`: `[[nodiscard]] FloatRect Bounds() const` — Logical rectangle of the current target (the canvas or a surface) in target coordinates.
 - `Painter`: `[[nodiscard]] bool Stale(const Surface& surface) const` — True when 'surface' has no up-to-date image for the current resolution and must be drawn again.
@@ -58,7 +60,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `enum class StrokeAlign { Center, Inside, Outside }` — How a stroke sits on a shape's edge: centred on it, entirely inside, or entirely outside.
 - `enum class StrokeCap { Butt, Round, Square }` — Line ends.
 - `enum class StrokeJoin { Miter, Bevel, Round }` — Corners of polylines and paths.
-- `enum class Blend { Normal, Add, Multiply, Screen }` — Normal: alpha blending; Add: light adds up (glows); Multiply: darkens; Screen: lightens without saturating.
+- `enum class Blend { Normal, Add, Multiply, Screen }` — Normal: alpha blending; Add: light adds up (glows); Multiply: darkens the colour and leaves bloom alone; Screen: lightens without saturating.
 - `struct StrokeStyle`
 - `StrokeStyle`: `float width = 0.0f` — 0: no stroke
 - `StrokeStyle`: `Color4 color { }`
@@ -107,10 +109,21 @@ Use these generated signatures to locate public declarations; open the header fo
 - `NineSliceStyle`: `float bottom = 0.0f`
 - `NineSliceStyle`: `float scale = 1.0f`
 - `NineSliceStyle`: `Color4 tint { 255, 255, 255, 255 }`
-- `struct LightStyle` — A soft radial light (Painter::Glow).
-- `LightStyle`: `Color4 color { 255, 255, 255, 255 }`
-- `LightStyle`: `float strength = 1.0f`
-- `LightStyle`: `float emission = 0.0f`
+- `struct RadialGlowStyle` — A soft radial decoration (Painter::Glow).
+- `RadialGlowStyle`: `Color4 color { 255, 255, 255, 255 }`
+- `RadialGlowStyle`: `float strength = 1.0f`
+- `RadialGlowStyle`: `float emission = 0.0f`
+- `struct LightCone` — The part of a circle a LightSource reaches.
+- `LightCone`: `float direction = 0.0f` — Where it points; radians, clockwise on screen
+- `LightCone`: `float halfAngle = Pi` — From the direction to the edge; Pi or more: the whole circle
+- `LightCone`: `float softEdge = 0.15f` — Inside the edge, the angle over which it fades out; radians
+- `struct LightSource` — A light (Painter::Light, or a LightFrame's list).
+- `LightSource`: `Float2 at { }`
+- `LightSource`: `float radius = 100.0f` — Where it reaches zero
+- `LightSource`: `Color4 color { 255, 255, 255, 255 }` — Alpha dims it
+- `LightSource`: `float intensity = 1.0f` — Multiplies the colour; above 1 saturates its channels instead of growing
+- `LightSource`: `float core = 0.0f` — 0..1: share of the radius that stays at full strength
+- `LightSource`: `LightCone cone { }`
 
 ## `Core/Graphics/Paint/Path.h`
 

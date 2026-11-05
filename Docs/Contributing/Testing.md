@@ -79,3 +79,10 @@ Shared algorithms are tested here once; consuming game tests cover their own rul
 
 Run the smallest affected selection for a behavior change. Rendering, actual input, audio,
 pause and platform setup require targeted manual checks by the developer.
+
+## What the GPU really draws
+
+Headless tests run on the `NullDevice`, which sees vertices and commands, not shaders or GL state. A change to either is
+checked by `EngineGpuPixelCheck`, a target of a tree with `ENGINE_BUILD_EDITOR_TESTS`: it renders in a hidden window with the
+real device, reads pixels back and exits non-zero on a difference. It needs a desktop and a GPU, so it is not a CTest. Add a
+check beside the shader or state you change.
