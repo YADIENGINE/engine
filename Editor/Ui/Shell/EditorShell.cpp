@@ -1,6 +1,8 @@
 #include "Editor/Ui/Shell/EditorShell.h"
 #include <algorithm>
+#include <array>
 #include <format>
+#include <span>
 #include <string>
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Style/EditorTheme.h"
@@ -16,6 +18,72 @@ constexpr ImGuiWindowFlags BarFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindo
                                       ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar |
                                       ImGuiWindowFlags_NoScrollWithMouse;
 constexpr float StatusGap = 10.0f;
+constexpr const char* ShortcutsPopup = "Keyboard shortcuts###editor.shortcuts";
+struct ShortcutHelpEntry {
+    const char* action;
+    const char* shortcut;
+};
+constexpr std::array GeneralShortcuts{
+    ShortcutHelpEntry{"Quick open", "Ctrl+P"},
+    ShortcutHelpEntry{"Command palette", "Ctrl+Shift+P"},
+    ShortcutHelpEntry{"Toggle last bottom tool", "Ctrl+J"},
+    ShortcutHelpEntry{"Toggle Console", "Ctrl+`"},
+    ShortcutHelpEntry{"Git changes", "Ctrl+Shift+G"},
+};
+constexpr std::array PlaybackShortcuts{
+    ShortcutHelpEntry{"Run / Stop / Cancel", "F5"},
+    ShortcutHelpEntry{"Pause / Resume", "F6"},
+    ShortcutHelpEntry{"Step one frame", "F7"},
+    ShortcutHelpEntry{"Reset", "Ctrl+R"},
+    ShortcutHelpEntry{"Build & Refresh", "Ctrl+Shift+B"},
+};
+constexpr std::array AgentShortcuts{
+    ShortcutHelpEntry{"Show / hide Agents", "Ctrl+Shift+A"},
+    ShortcutHelpEntry{"Send scene", "Ctrl+Shift+S"},
+    ShortcutHelpEntry{"New agent", "Ctrl+Shift+N"},
+    ShortcutHelpEntry{"Next / previous agent", "Ctrl+PageDown / Ctrl+PageUp"},
+    ShortcutHelpEntry{"Select agent 1-9", "Ctrl+1 ... Ctrl+9"},
+    ShortcutHelpEntry{"Terminal / Activity", "Ctrl+Shift+T"},
+};
+void ShortcutGroup(const char* title, std::span<const ShortcutHelpEntry> entries) {
+    ImGui::SeparatorText(title);
+    if (!ImGui::BeginTable(title, 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) return;
+    ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableSetupColumn("Shortcut", ImGuiTableColumnFlags_WidthFixed,
+                            ImGui::CalcTextSize("Ctrl+PageDown / Ctrl+PageUp").x + ImGui::GetStyle().CellPadding.x * 2);
+    for (const auto& entry : entries) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted(entry.action);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
+        ImGui::TextUnformatted(entry.shortcut);
+        ImGui::PopFont();
+    }
+    ImGui::EndTable();
+}
+bool KeyboardShortcuts(bool open) {
+    if (open) ImGui::OpenPopup(ShortcutsPopup);
+    const auto* viewport = ImGui::GetMainViewport();
+    const float scale = ToolUiScale();
+    const float width = std::max(1.0f, std::min(620.0f * scale, viewport->Size.x - 32.0f * scale));
+    const float height = std::max(1.0f, std::min(600.0f * scale, viewport->Size.y - 32.0f * scale));
+    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({width, height}, ImGuiCond_Appearing);
+    if (!ImGui::BeginPopupModal(ShortcutsPopup, nullptr,
+                                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings))
+        return false;
+    ImGui::TextWrapped("Shortcuts available throughout the editor. Agent navigation shortcuts apply while the "
+                       "Agents drawer is open.");
+    ImGui::BeginChild("shortcut-list", {0, -ImGui::GetFrameHeightWithSpacing()});
+    ShortcutGroup("General", GeneralShortcuts);
+    ShortcutGroup("Playback", PlaybackShortcuts);
+    ShortcutGroup("Agents", AgentShortcuts);
+    ImGui::EndChild();
+    if (ToolButton("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
+    return true;
+}
 bool PhaseIsWorking(const EditorSnapshot& snapshot) {
     return snapshot.profiler.busy || snapshot.building || snapshot.phase == EditorPhase::Building ||
            snapshot.phase == EditorPhase::Starting || snapshot.phase == EditorPhase::ReadingCatalog;
@@ -113,6 +181,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
                                     EditorGitBar& gitBar) const {
     EditorShellResult result;
     if (!ImGui::BeginMainMenuBar()) return result;
+    bool openShortcuts = false;
     ToolPixelText("Y", 2, ToolPalette::Accent, ImGui::GetFrameHeight());
     ImGui::SameLine();
     if (ImGui::BeginMenu("File")) {
@@ -166,6 +235,8 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
         EditorCommandMenuItem(EditorCommand::Refresh, snapshot, actions);
         EditorCommandMenuItem(EditorCommand::BuildAndPlay, snapshot, actions);
         result.openCommands = ImGui::MenuItem("Command palette", "Ctrl+Shift+P");
+        ImGui::Separator();
+        openShortcuts = ImGui::MenuItem("Keyboard shortcuts...");
         ImGui::EndMenu();
     }
     if (snapshot.git && snapshot.git->availability == GitAvailability::Ready && ImGui::BeginMenu("Git")) {
@@ -198,6 +269,7 @@ EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const Editor
         ImGui::TextDisabled("%s", projectName.c_str());
     }
     ImGui::EndMainMenuBar();
+    result.shortcutsOpen = KeyboardShortcuts(openShortcuts);
     return result;
 }
 float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position, float width,

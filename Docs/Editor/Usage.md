@@ -131,6 +131,8 @@ Reset recreates the scene in the same worker process. Use Run to restart the wor
 | Ctrl+Shift+B | Build & Refresh |
 | Ctrl+P | Quick open: scenes and their choices, graphics, sounds, commands |
 | Ctrl+Shift+P | The same window, commands only |
+| Ctrl+` | Toggle the Console |
+| Ctrl+Shift+G | Toggle Git changes |
 | Ctrl+Shift+A | Open or close the Agents drawer, on the agent that waits for you (also from a terminal) |
 | Ctrl+Shift+S | Send scene: to the drawer's chosen agent while it is open, else to the agent session |
 | Ctrl+Shift+N | New agent (the drawer's **+** menu) |
@@ -138,6 +140,8 @@ Reset recreates the scene in the same worker process. Use Run to restart the wor
 | Ctrl+1 … Ctrl+9 | In the Agents drawer: agent 1 to 9 |
 | Ctrl+Shift+T | In the Agents drawer: Terminal ↔ Activity |
 | Ctrl+J | Toggle last bottom tool panel |
+
+The same list is available in the editor from **Tools → Keyboard shortcuts**.
 
 Quick open starts with the scenes opened last, then the commands; typing finds anything by any of its words, in any
 order ("medusa boss"). Picking a scene runs it, picking one of its choices ("Boss flow · boss: Medusa") runs it with that

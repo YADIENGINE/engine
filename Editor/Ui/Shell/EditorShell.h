@@ -27,6 +27,7 @@ struct EditorShellResult {
     bool toggleMaximize = false;
     bool openCommands = false; // The palette with commands only
     bool openQuick = false;    // The palette over everything
+    bool shortcutsOpen = false;
     bool showProblems = false;
     bool showActivity = false; // The Agents drawer
     bool toggleBottom = false;

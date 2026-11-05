@@ -629,6 +629,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     }
     auto menu =
         _shell.Menu(snapshot, actions, preferences, fontSize, _maximized, _offerProjectList, _projectName, _gitBar);
+    result.cancelViewportInput |= menu.shortcutsOpen;
     result.cancelViewportInput |= Shortcuts(snapshot, actions, menu);
     if (std::exchange(_openQuickOpen, false)) menu.openQuick = true; // The toolbar's search box, last frame
     if (_palette.Draw(snapshot, actions, preferences, _maximized, menu)) {
