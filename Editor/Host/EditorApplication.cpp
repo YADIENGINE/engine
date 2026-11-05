@@ -219,6 +219,7 @@ void EditorApplication::Update(float realSeconds) {
     }
     if (_control) {
         _control->SetAgentControl(_preferences.agent.control);
+        _control->SetVisualChecks(_preferences.agent.visualChecks);
         std::map<std::string, ConsoleNote> notes;
         for (const auto& [session, activity] : _control->SessionActivity())
             notes.emplace(session, ConsoleNote{activity.note, activity.time});

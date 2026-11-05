@@ -97,6 +97,9 @@ void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorSh
     (void)ToolToggle("Agent control", agent.control);
     ToolTooltip("Allow agent tools (python Engine ctl) to change the editor.\n"
                 "Off: tools can still observe status, logs, parameters and screenshots.");
+    (void)ToolToggle("Visual checks", agent.visualChecks);
+    ToolTooltip("Allow agent tools to capture the viewport (screenshots, frame grids) and look at it.\n"
+                "Off: captures are refused and the agent tells you what to look at instead.");
     if (ImGui::BeginMenu("Agent CLI")) {
         EditorAgentChoice(agent, ImGui::GetFontSize() * 26);
         ImGui::EndMenu();

@@ -30,6 +30,7 @@ SESSION_ENVIRONMENT = "ENGINE_EDITOR_SESSION"  # Set by the editor for each Cons
 NOTE_SUBJECTS = (("file_path", True), ("notebook_path", True), ("description", False), ("pattern", False),
                  ("command", False), ("query", False), ("url", False), ("path", True))
 NOTE_TOOL_MAX_CHARS = 120
+VISUAL_CHECKS_OFF = "Visual checks are off"  # Start of the editor's refusal of captures (VisualChecksOffText)
 WORKFLOW = """typical use:
   python Engine ctl status                      is an editor open, what runs
   python Engine ctl find ice dragon             which scene shows it; prints the command that opens it
@@ -396,7 +397,14 @@ def open_scene(pipe: str, args: argparse.Namespace) -> dict:
     if args.run:
         answer |= send(pipe, {"command": "action", "id": args.run})
     if args.screenshot:
-        answer |= send(pipe, {"command": "screenshot", **({"scale": args.scale} if args.scale is not None else {})})
+        shot = {"command": "screenshot", **({"scale": args.scale} if args.scale is not None else {})}
+        try:
+            answer |= send(pipe, shot)
+        except ToolError as error:
+            if not str(error).startswith(VISUAL_CHECKS_OFF):
+                raise
+            # The scene is open; only the capture is the developer's. Say so instead of failing the whole command.
+            answer |= {"visualChecks": False, "screenshot": str(error)}
     return answer
 
 

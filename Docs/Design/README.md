@@ -700,7 +700,8 @@ an opt-in and the editor knows agent CLIs by name.
   (Claude Code, Codex or a custom command; a user preference). Agent menu / palette: open the agent, send the scene
   (with a capture), the build failure or Output lines as `[editor] ...` context, ask for a build fix. Bells mark a
   session that waits; the status bar shows the agent's state; an Agent layout puts the Console beside the Viewport.
-  "Agent control" lets the developer make the endpoint read-only. The editor never calls a model or stores keys:
+  "Agent control" lets the developer make the endpoint read-only; "Visual checks" (2026-11) refuses captures, so
+  looking stays with the developer and agents spend no tokens on images. The editor never calls a model or stores keys:
   the CLI keeps its own sessions, permissions and updates (D18's reason still holds).
 - **Deferred: Claude Code plugin.** The engine folder could be a plugin marketplace whose plugin is loaded in place
   from the project's `Engine/` (skills from `AgentDocs/Skills/`, hooks such as `ctl note`, version = the submodule

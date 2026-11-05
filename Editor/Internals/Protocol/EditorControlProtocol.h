@@ -67,6 +67,12 @@ inline constexpr std::size_t AgentSessionMaxBytes = 64;
 // Commands that change the editor (scene, playback, build). The developer's "Agent control" switch refuses them;
 // observing commands and notes still answer.
 [[nodiscard]] bool ControlCommandChangesEditor(EditorControlCommand command);
+// Commands that capture the viewport or the window as an image. The developer's "Visual checks" switch refuses them,
+// so looking at the result stays with the developer.
+[[nodiscard]] bool ControlCommandCaptures(EditorControlCommand command);
+inline constexpr std::string_view VisualChecksOffText =
+    "Visual checks are off in the editor (Agent menu): do not capture; tell the developer what to look at, or ask "
+    "them to turn visual checks on";
 
 [[nodiscard]] std::string EncodeControlAnnouncement(const EditorControlAnnouncement& announcement);
 [[nodiscard]] EditorControlAnnouncement DecodeControlAnnouncement(std::string_view json);

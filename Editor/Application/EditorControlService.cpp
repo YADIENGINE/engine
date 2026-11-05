@@ -244,11 +244,14 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
     const auto snapshot = controller.Snapshot();
     if (!_agentControl && ControlCommandChangesEditor(request.command))
         throw std::runtime_error("Agent control is off in the editor (Agent menu); ask the developer to turn it on");
+    if (!_visualChecks && ControlCommandCaptures(request.command))
+        throw std::runtime_error(std::string(VisualChecksOffText));
     switch (request.command) {
     case EditorControlCommand::Refresh: Refresh(controller); return std::nullopt;
     case EditorControlCommand::Status : {
         auto status = StatusOf(controller);
         status["control"] = _agentControl;
+        status["visualChecks"] = _visualChecks;
         return status;
     }
     case EditorControlCommand::List: {

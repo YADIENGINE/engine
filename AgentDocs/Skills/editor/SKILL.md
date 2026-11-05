@@ -11,6 +11,8 @@ Commands run from the project root. Reference: `Docs/Editor/Automation.md`.
    - Exit 2: no editor is open. Say so and suggest `python Engine editor`; do not launch it unless asked. Stop.
    - `"scene": null`: the editor is open and idle. Continue.
    - A scene runs: reuse it when it already shows the subject.
+   - `"visualChecks": false`: leave out `--screenshot`, `screenshot` and `frames`; open the subject and tell the
+     developer what to look at.
 2. **Find:** `python Engine ctl find WORDS` with the subject in the scenes' language (usually English). It searches
    names, ids, descriptions, parameters and parameter choices, and returns ready `commands`. A subject is often a
    choice of a shared scene (one enemy of a fight scene), not a scene of its own. Use `python Engine ctl describe ID`
@@ -23,7 +25,7 @@ Commands run from the project root. Reference: `Docs/Editor/Automation.md`.
    wrong (other subject, black, error text), fix the parameters and capture again. On errors read
    `python Engine ctl logs --level warning`.
 5. **Report:** what is on screen now, in one to three lines, and what the developer can change in the Inspector.
-   Never claim a result you have not seen in a capture.
+   Never claim a result you have not seen in a capture; with visual checks off, say what to check instead.
 
 ## Pasted `[editor]` lines
 

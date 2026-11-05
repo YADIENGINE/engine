@@ -30,6 +30,8 @@ struct AgentPreferences {
     std::string customCommand;
     // Off: the control endpoint refuses commands that change the editor; observing commands still answer.
     bool control = true;
+    // Off: tools may not capture the viewport (ctl screenshot, frames); the developer looks instead.
+    bool visualChecks = true;
     bool configured = false; // The developer accepted the first-run setup.
     bool operator==(const AgentPreferences&) const = default;
 };

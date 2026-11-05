@@ -19,6 +19,8 @@ short on purpose. Paths start at the engine root (`Engine/` in a game); run tool
   editor's Console (`ENGINE_EDITOR_CONTROL` is set). Never probe with `ctl status`.
 - An open editor is yours to drive: `ctl` opens scenes, sets values, seeks and takes screenshots; opening a scene
   launches nothing. After code changes, `refresh` rebuilds the scenes and the editor stays open.
+- When the developer has turned visual checks off (`"visualChecks": false`, or a capture refused), take no more
+  screenshots or frames; tell the developer what to look at.
 - Started from the editor's Console, report progress on longer tasks with `python Engine ctl note TEXT`; add
   `--state waiting` when you need the developer and `--state idle` when done.
 

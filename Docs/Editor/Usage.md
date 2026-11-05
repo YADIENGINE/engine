@@ -241,6 +241,8 @@ editor context; it never calls a model itself. The agent drives the editor back 
   - *Agent control* (on by default): off, tools may observe the editor (status, list, screenshot, inspect, logs) but
     every command that changes it (open, set, action, playback, seek, frames, refresh) is refused. The status bar shows
     "Agent control off".
+  - *Visual checks* (on by default): off, tools may not capture screenshots or frame grids; the agent tells you what
+    to look at instead. Saved with Agent control.
   - *Agent CLI* uses radio choices for Claude Code (`claude`), Codex (`codex`) or Custom; the command field is shown
     only for Custom. *Agent control* is a checkbox with a tooltip explaining read-only access.
 - **Output:** right-click → *Send Selected to Agent* pastes the selected lines.
@@ -266,5 +268,5 @@ it in its prompt.
 
 Layout, last custom layout, visibility, scale, favorites, recent opens, and Output preferences are in
 `UserDataDirectory()/EngineEditor/preferences.json` (separated by build directory + project name). The agent CLI choice,
-accepted setup and the Agent control switch belong to the user and apply to every project. Player progress / settings
+accepted setup and the Agent control and Visual checks switches belong to the user and apply to every project. Player progress / settings
 files are unaffected.

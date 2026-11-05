@@ -236,6 +236,12 @@ TEST_CASE("Editor.Control.NotesAndWhichCommandsChangeTheEditor", "[engine-editor
                                EditorControlCommand::Screenshot, EditorControlCommand::Inspect,
                                EditorControlCommand::Logs, EditorControlCommand::Note, EditorControlCommand::Audio})
         CHECK_FALSE(ControlCommandChangesEditor(command));
+    // The visual-checks switch blocks only captures
+    CHECK(ControlCommandCaptures(EditorControlCommand::Screenshot));
+    CHECK(ControlCommandCaptures(EditorControlCommand::Frames));
+    for (const auto command : {EditorControlCommand::Status, EditorControlCommand::Open, EditorControlCommand::Seek,
+                               EditorControlCommand::Inspect, EditorControlCommand::Audio})
+        CHECK_FALSE(ControlCommandCaptures(command));
 }
 
 TEST_CASE("Editor.Agent.ContextLines", "[engine-editor]") {

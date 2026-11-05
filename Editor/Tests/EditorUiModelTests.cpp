@@ -264,6 +264,24 @@ TEST_CASE("Editor.Settings.ProjectIsolationAndCorruptFileRecovery", "[engine-edi
     CHECK(font == 100);
 }
 
+TEST_CASE("Editor.Settings.AgentSwitchesAreKept", "[engine-editor]") {
+    TempDirectory directory;
+    const auto file = directory.Path() / "preferences.json";
+    EditorPreferences saved;
+    saved.agent.control = false;
+    saved.agent.visualChecks = false;
+    REQUIRE(EditorSettingsStore(file).Save("project-a", saved, 100).empty());
+    EditorPreferences restored;
+    int font = 100;
+    REQUIRE(EditorSettingsStore(file).Load("project-a", restored, font).empty());
+    CHECK_FALSE(restored.agent.control);
+    CHECK_FALSE(restored.agent.visualChecks);
+    // A file from before the switch existed keeps captures allowed
+    (void)WriteBinaryFileAtomic(file, R"({"version": 1, "agent": {"control": true}})");
+    REQUIRE(EditorSettingsStore(file).Load("project-a", restored, font).empty());
+    CHECK(restored.agent.visualChecks);
+}
+
 TEST_CASE("Editor.Settings.PanelsBySavedOrderMoveToKeys", "[engine-editor]") {
     TempDirectory directory;
     const auto file = directory.Path() / "preferences.json";

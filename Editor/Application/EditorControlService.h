@@ -51,6 +51,8 @@ public:
                                        const std::string& path, const std::string& prefix);
     // Off: commands that change the editor are refused (ControlCommandChangesEditor); the developer's switch.
     void SetAgentControl(bool allowed) { _agentControl = allowed; }
+    // Off: captures are refused (ControlCommandCaptures); the developer's "Visual checks" switch.
+    void SetVisualChecks(bool allowed) { _visualChecks = allowed; }
     void SetAudioHost(EditorAudioHost host) { _audio = std::move(host); }
     // A `ctl note`; `sequence` grows with each note.
     struct Activity {
@@ -106,6 +108,7 @@ private:
     Activity _activity;
     std::map<std::string, Activity> _sessionActivity;
     bool _agentControl = true;
+    bool _visualChecks = true;
 
 public:
     EditorControlService(const EditorControlService&) = delete;

@@ -18,7 +18,8 @@ description: Make a visual or gameplay-facing change (drawing, animation, effect
    refresh prints `Errors (N):`; fix them (`AgentDocs/Skills/build-fix/SKILL.md`).
 4. **Look:** `python Engine ctl open ID --screenshot --scale 0.5`, or `python Engine ctl frames --from A --to B` for
    motion. Read the images and fix obvious defects (broken, clipped, invisible, wrong timing) before reporting.
-   `python Engine ctl set` and `python Engine ctl seek` reach specific states.
+   `python Engine ctl set` and `python Engine ctl seek` reach specific states. If the answer says visual checks are
+   off, capture nothing more: the checklist in step 5 replaces looking.
 5. **Hand over:** leave the scene open and give the developer a short checklist; aesthetic judgment is theirs.
 6. **Finish:** if you created a work scene, when the developer says the task is done, ask: delete it, or move it to a
    permanent category? For standalone graphics, finish with the graphic-asset skill's unlisted-drawing reminder.

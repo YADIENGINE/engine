@@ -184,6 +184,9 @@ bool ControlCommandChangesEditor(EditorControlCommand command) {
     }
     return false;
 }
+bool ControlCommandCaptures(EditorControlCommand command) {
+    return command == EditorControlCommand::Screenshot || command == EditorControlCommand::Frames;
+}
 nlohmann::json ControlLogEntry(const EditorLogEntry& entry) {
     return {{"sequence", entry.sequence},
             {"level", LevelName(entry.level)},

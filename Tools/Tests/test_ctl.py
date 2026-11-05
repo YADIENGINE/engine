@@ -190,6 +190,26 @@ class OpenTests(unittest.TestCase):
         self.assertEqual(sent[-1]["scale"], 0.5)
         self.assertEqual((answer["parameters"], answer["path"]), ({"enemy": "Ice Dragon"}, "shot.png"))
 
+    def test_screenshot_refused_by_visual_checks_keeps_the_open(self):
+        def refuse(_pipe, request_data):
+            if request_data["command"] == "screenshot":
+                raise ToolError("Visual checks are off in the editor (Agent menu): do not capture", EXIT_FAILED)
+            return {"scene": "s"}
+
+        with patch("Tools.commands.ctl.send", refuse):
+            answer = open_scene("pipe", cli.build_parser().parse_args(["ctl", "open", "s", "--screenshot"]))
+        self.assertEqual(answer["scene"], "s")
+        self.assertFalse(answer["visualChecks"])
+        self.assertIn("do not capture", answer["screenshot"])
+
+        def broken(_pipe, request_data):
+            if request_data["command"] == "screenshot":
+                raise ToolError("No scene is running", EXIT_FAILED)
+            return {"scene": "s"}
+
+        with patch("Tools.commands.ctl.send", broken), self.assertRaises(ToolError):
+            open_scene("pipe", cli.build_parser().parse_args(["ctl", "open", "s", "--screenshot"]))
+
     def test_on_reset_values_reset_the_scene(self):
         _, sent = self.run_open("myproject.shop", "--set", "tab=Skins")
         self.assertEqual([request_data["command"] for request_data in sent], ["open", "set", "list", "reset"])

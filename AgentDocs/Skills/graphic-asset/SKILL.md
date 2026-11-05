@@ -23,7 +23,7 @@ Example: [Graphic asset](../../Recipes/GraphicAsset.md).
    launch it unless asked.
 5. **Preview:** `python Engine ctl find NAME`, then open the returned asset ID, for example
    `python Engine ctl open asset:Graphics/Characters/X --screenshot --scale 0.5`. Read the image; use `ctl frames` for
-   motion. The asset is its own viewport preview: no separate work scene is needed. A work scene is for a model,
+   motion. If the answer says visual checks are off, leave the asset open and ask the developer to look. The asset is its own viewport preview: no separate work scene is needed. A work scene is for a model,
    scene or interaction that the asset alone cannot show.
 6. **Use:** game code includes `#include "Assets/Graphics/Characters/X.h"` and calls the draw function directly.
 7. **Finish:** run `python Engine asset unlisted <files>` with the files you changed. Register every listed drawing

@@ -209,6 +209,13 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
                        true,
                        {},
                        [&preferences] { preferences.agent.control = !preferences.agent.control; }});
+    entries.push_back({"Agent",
+                       preferences.agent.visualChecks ? "Turn visual checks off" : "Turn visual checks on",
+                       "",
+                       "",
+                       true,
+                       {},
+                       [&preferences] { preferences.agent.visualChecks = !preferences.agent.visualChecks; }});
 
     // Empty search: the scenes opened last, then the commands. A search: the best fit, whatever its kind.
     std::map<std::string, int> recentScenes;

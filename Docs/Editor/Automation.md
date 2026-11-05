@@ -75,6 +75,11 @@ While it is off, `status` reports `"control": false` and commands that change th
 `pause`, `play`, `step`, `speed`, `reset`, `seek`, `replay`, `frames`, `refresh`, and `audio` with an action) are refused;
 `status`, `list`, `find`, `describe`, `screenshot`, `inspect`, `logs`, `note` and plain `audio` still answer.
 
+**Visual checks:** Agent → Visual checks (on by default) decides whether tools may capture images. While it is off,
+`status` reports `"visualChecks": false`, `screenshot` and `frames` are refused with a message telling the agent to
+leave the look to the developer, and `open --screenshot` opens the scene and puts that message under `screenshot`
+instead of failing. Images are the most expensive thing an agent reads, and judging a look is the developer's call.
+
 ## Finding a scene
 
 A request names a subject ("the ice dragon finale"), not a scene id. `ctl find ice dragon finale` searches every
