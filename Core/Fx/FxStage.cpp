@@ -64,6 +64,7 @@ void FxStage::SetQuality(const FxQuality& quality) {
     _camera.SetQuality(quality);
     _flash.SetQuality(quality);
     _flashLights.SetQuality(quality);
+    _bolts.SetQuality(quality);
     _announcements.SetQuality(quality);
     _pulse.SetQuality(quality);
     _shockwaves.SetQuality(quality);
@@ -95,6 +96,7 @@ void FxStage::Update(float gameSeconds, float realSeconds) {
     _camera.Update(gameSeconds);
     _flash.Update(gameSeconds);
     _flashLights.Update(gameSeconds);
+    _bolts.Update(gameSeconds);
     _pulse.Update(gameSeconds);
     _shockwaves.Update(gameSeconds);
     _glitch.Update(gameSeconds);
@@ -108,6 +110,7 @@ void FxStage::Clear() {
     _camera.Clear();
     _flash.Clear();
     _flashLights.Clear();
+    _bolts.Clear();
     _announcements.Clear();
     _pulse.Clear();
     _shockwaves.Clear();
@@ -171,6 +174,7 @@ void FxStage::Run(const FxAction& action, const Target& target) {
                 style.strength *= scale;
                 LightFlash(target.at, target.color, style);
             },
+            [&](const FxBolt& a) { Bolt(target.at, target.color, a); },
             [&](const FxBanner& a) { Banner(textOf(a.text)); },
             [&](const FxToast& a) { Toast(textOf(a.text), target.color); },
             [&](const FxShake& a) { Shake(a.amount * scale); },
@@ -210,6 +214,9 @@ void FxStage::PopText(Float2 at, const std::string& text, Color4 color, float si
     style.popSeconds = _style.textPopSeconds;
     _texts.Emit(at, text, color, style);
 }
+void FxStage::Bolt(Float2 at, Color4 color, const BoltStyle& style) {
+    _bolts.Strike(_flash.Limit(), at, _area, color, style);
+}
 void FxStage::Ring(Float2 at, Color4 color) { _rings.Emit(at, color, _style.ring); }
 void FxStage::Toast(const std::string& text, Color4 color) { _announcements.Toast(text, color, _style.toast); }
 void FxStage::Flash(Color4 color) { _flash.Flash(color, _style.flash); }
@@ -244,6 +251,7 @@ CameraView FxStage::WorldCamera(const Painter& paint, const CameraView& base,
     return _camera.Apply(camera, static_cast<float>(paint.Time()));
 }
 void FxStage::DrawWorldLayer(Painter& paint) const {
+    _bolts.Draw(paint);
     _rings.Draw(paint);
     _particles.Draw(paint);
     _texts.Draw(paint);

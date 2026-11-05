@@ -60,6 +60,7 @@ const FxCueSet& DefaultFxCues() {
          {FxBurst{ParticleRecipe::Debris, 36}, FxBurst{ParticleRecipe::Soft, 24}, FxShake{0.8f}, FxPunch{0.06f},
           {0.06f, FxShockwave{160.0f}}}},
         {"pickup", {FxBurst{ParticleRecipe::Sparkle, 10}, FxRing{}}},
+        {"lightning", {FxLightFlash{.seconds = 0.45f, .strength = 0.85f}, FxBolt{}, {0.06f, FxShake{0.2f}}}},
     };
     return cues;
 }

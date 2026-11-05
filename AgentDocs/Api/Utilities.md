@@ -172,6 +172,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `constexpr unsigned Hash(unsigned value)` — Stable pseudorandom number from a seed: the same seed gives the same result each frame (for steady decorations).
 - `constexpr float Random01(unsigned seed)` — Stable number in 0..1 (a thousand steps) from a seed.
 - `inline float NoiseHash(int a, int b)` — Stable noise in 0..1 from two integers (sine-based; for cell / particle decorations).
+- `[[nodiscard]] inline float ValueNoise(float x, float y, unsigned seed)` — Smooth noise in 0..1 over a plane, with a different field for each seed.
 - `inline float SmoothNoise(float x, unsigned seed)` — Smooth noise in -1..1 along 'x', with a different path for each seed (a shaking camera).
 
 ## `Core/Utilities/Math/Scalar.h`

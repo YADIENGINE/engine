@@ -5,6 +5,7 @@
 #include <string_view>
 #include <type_traits>
 #include <variant>
+#include "Animation/PoseFields.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Geometry/Float2.h"
 #include "Utilities/Random/Rng.h"
@@ -41,6 +42,10 @@ public:
     void Field(std::string_view name, Vec2 value);
     void Field(std::string_view name, Color4 value);
     void Field(std::string_view name, const Rng& value);
+    // A pose, as a group of its listed fields: so a tween of a pose reaches State like a tween of a number.
+    template <AnimationPose P> void Field(std::string_view name, const P& pose) {
+        Group(name, [&] { VisitPose(*this, pose); });
+    }
 
     // A named part of the state; its fields appear as name.field in dumps.
     template <class Body> void Group(std::string_view name, Body&& body) {

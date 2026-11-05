@@ -35,6 +35,7 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | `Graphics/Render` | `RenderStats`; `Internals/`: `Window`, `Renderer`, `RenderPipeline`, `FrameExecutor`, `RenderResources` | `Utilities` |
 | `Graphics/Paint`, `Text`, `Surface`, `Post`, `Gpu` | Drawing API, fonts, images, finishing and GPU backends | `Utilities`, private renderer services |
 | `Graphics/Draw` | Painter helpers (`DrawUtils.h`, `Neon.h`, `BackgroundDraw.h`, `ParticleDraw.h`) | `Paint`, `Animation` |
+| `Graphics/Atmosphere` | `Atmosphere`, `DriftField`, `FogField`, `GroundRipples` | `Paint`, `Draw/ParticleDraw`, the camera's view, `Weather` |
 | `Graphics/Style` | `Theme`, `PlainTheme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
 | `Assets/Graphics` (`EngineAssets`, above Core) | Ready-made graphics with their own look: `DefaultIcons`, `Backgrounds/` | `Draw`, `Style`; no Core system calls them |
 

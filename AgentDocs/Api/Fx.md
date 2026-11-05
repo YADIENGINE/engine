@@ -72,6 +72,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `FxShockwave`: `float reach = 0.0f` — 0: the whole area
 - `struct FxFlash`
 - `using FxLightFlash = LightFlashStyle` — A short light, at FxPlay::at unless it has no radius: then the whole scene.
+- `using FxBolt = BoltStyle` — A bolt of lightning striking FxPlay::at from above the stage's area.
 - `struct FxBanner`
 - `FxBanner`: `std::string text { }`
 - `struct FxToast`
@@ -90,7 +91,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `FxSlowMotion`: `float seconds = 0.0f`
 - `FxSlowMotion`: `float startScale = 0.25f`
 - `FxSlowMotion`: `float endScale = 1.0f`
-- `using FxAction = std::variant<FxBurst, FxParticles, FxTrail, FxDash, FxSteam, FxFloatText, FxPopText, FxRing, FxShockwave, FxFlash, FxLightFlash, FxBanner, FxToast, FxShake, FxPunch, FxKick, FxGlitch, FxHitstop, FxSlowMotion>`
+- `using FxAction = std::variant<FxBurst, FxParticles, FxTrail, FxDash, FxSteam, FxFloatText, FxPopText, FxRing, FxShockwave, FxFlash, FxLightFlash, FxBolt, FxBanner, FxToast, FxShake, FxPunch, FxKick, FxGlitch, FxHitstop, FxSlowMotion>`
 - `template<class T, class Variant> inline constexpr bool IsFxActionOf = false`
 - `template<class T, class...Actions> inline constexpr bool IsFxActionOf<T, std::variant<Actions...>> =(std::same_as<T, Actions> ||...)`
 - `template<class T> concept FxActionType = IsFxActionOf<T, FxAction>`
@@ -168,6 +169,7 @@ Public visual FX.
 - `FxStage`: `void Toast(const std::string& text, Color4 color)`
 - `FxStage`: `void Flash(Color4 color)`
 - `FxStage`: `void LightFlash(Float2 at, Color4 color, const LightFlashStyle& style)` — A short light; see LightFlashes.
+- `FxStage`: `void Bolt(Float2 at, Color4 color, const BoltStyle& style = { })` — A bolt of lightning from above the area down to 'at'.
 - `FxStage`: `void Banner(const std::string& text)`
 - `FxStage`: `void Shake(float amount)` — Adds to the shake, up to 1; see CameraEffects::Shake.
 - `FxStage`: `void Punch(float amount, std::optional<Float2> focus = std::nullopt)`
@@ -314,7 +316,7 @@ Public visual FX.
 
 ## `Core/Fx/Screen/FlashLimit.h`
 
-- `enum class FlashKind : std::uint8_t { Screen = 1, Light = 2 }` — What may light up the view at once: one start of each counts as one flash.
+- `enum class FlashKind : std::uint8_t { Screen = 1, Light = 2, Bolt = 4 }` — What may light up the view at once: one start of each counts as one flash.
 - `class FlashLimit` — For players sensitive to light, flashes start at most three times a second, on Update time.
 - `FlashLimit`: `static constexpr float MinSecondsBetween = 1.0f / 3.0f`
 - `FlashLimit`: `[[nodiscard]] bool Start(FlashKind kind)` — Whether a flash of this kind may start now.
@@ -404,6 +406,24 @@ Public visual FX.
 - `SlowMotionOverlay`: `void Update(float gameSeconds, float realSeconds)`
 - `SlowMotionOverlay`: `void Clear()`
 - `SlowMotionOverlay`: `void Draw(Painter& paint, const FloatRect& area, const FloatRect& viewArea) const`
+
+## `Core/Fx/World/Bolts.h`
+
+- `struct BoltStyle` — A bolt of lightning, bright for a moment and flickering as it goes.
+- `BoltStyle`: `float seconds = 0.26f` — How long it shows
+- `BoltStyle`: `float width = 2.5f` — Of its main line; branches are thinner
+- `BoltStyle`: `float jag = 0.16f` — How far it wanders from a straight line, against its length
+- `BoltStyle`: `int branches = 2`
+- `BoltStyle`: `float emission = 1.0f` — How strongly it feeds bloom
+- `[[nodiscard]] bool IsValid(const BoltStyle& style)`
+- `class Bolts` — Bolts from above an area down to a point.
+- `Bolts`: `static constexpr std::size_t MaxPlaying = 4` — A new one replaces the oldest
+- `Bolts`: `void SetQuality(const FxQuality& quality)`
+- `Bolts`: `void Strike(FlashLimit& limit, Float2 at, const FloatRect& area, Color4 color, const BoltStyle& style)` — Strikes 'at' from above the top of 'area', if 'limit' allows it.
+- `Bolts`: `void Update(float deltaSeconds)`
+- `Bolts`: `void Clear()`
+- `Bolts`: `void Draw(Painter& paint) const`
+- `Bolts`: `[[nodiscard]] std::size_t ActiveCount() const`
 
 ## `Core/Fx/World/FlashLights.h`
 

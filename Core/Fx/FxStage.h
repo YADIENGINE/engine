@@ -74,6 +74,8 @@ public:
     void Flash(Color4 color);
     // A short light; see LightFlashes. It shares the flash limit with Flash: starting together, they count as one.
     void LightFlash(Float2 at, Color4 color, const LightFlashStyle& style);
+    // A bolt of lightning from above the area down to 'at'. It shares the flash limit too.
+    void Bolt(Float2 at, Color4 color, const BoltStyle& style = {});
     void Banner(const std::string& text);
     // Adds to the shake, up to 1; see CameraEffects::Shake.
     void Shake(float amount);
@@ -141,6 +143,7 @@ private:
     CameraEffects _camera;
     ScreenFlash _flash;
     FlashLights _flashLights;
+    Bolts _bolts;
     Announcements _announcements;
     PulseOverlay _pulse;
     Shockwaves _shockwaves;

@@ -3,7 +3,7 @@
 #include <cstdint>
 
 // What may light up the view at once: one start of each counts as one flash.
-enum class FlashKind : std::uint8_t { Screen = 1, Light = 2 };
+enum class FlashKind : std::uint8_t { Screen = 1, Light = 2, Bolt = 4 };
 
 // For players sensitive to light, flashes start at most three times a second, on Update time. It is shared, or a
 // screen flash and a light flash taking turns would double that. One asked for sooner does not happen: delaying it

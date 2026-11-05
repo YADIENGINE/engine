@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <cmath>
 #include "Utilities/Geometry/Affine2.h"
 #include "Utilities/Geometry/Float2.h"
 #include "Utilities/Geometry/FloatRect.h"
@@ -18,6 +19,16 @@ struct CameraView {
     [[nodiscard]] Affine2 Transform() const { return Affine2::Camera(target, offset, zoom, rotation); }
     [[nodiscard]] Float2 ToScreen(Float2 world) const { return Transform().Apply(world); }
     [[nodiscard]] Float2 ToWorld(Float2 screen) const { return Transform().Inverse().Apply(screen); }
+
+    // The view of something nearer or farther than the world: 1 is this view, 0 stays on the screen whatever the camera
+    // does, and above 1 moves faster than the world, as what is close to the eye does.
+    [[nodiscard]] CameraView Parallaxed(float factor) const {
+        CameraView layer = *this;
+        layer.target = target * factor;
+        layer.zoom = std::pow(zoom, factor);
+        layer.rotation = rotation * factor;
+        return layer;
+    }
 
     // The world rectangle the viewport shows, ignoring rotation; empty without a viewport or zoom.
     [[nodiscard]] constexpr FloatRect VisibleArea() const {
