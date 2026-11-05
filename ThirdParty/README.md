@@ -13,6 +13,7 @@ building (examples, documentation, tests) are omitted.
 | `rlImGui/` | 118221c | https://github.com/raylib-extras/rlImGui/archive/118221c8a532501a3c2c236b62950877cbefc2b4.tar.gz | Editor | No |
 | `Catch2/` | 3.16.0 | https://github.com/catchorg/Catch2/archive/refs/tags/v3.16.0.tar.gz | Tests (`engine_use_catch2()`) | No |
 | `libvterm/` | 0.3.3 | https://www.leonerd.org.uk/code/libvterm/libvterm-0.3.3.tar.gz | Tools console (`EngineTerminal`) | No |
+| `miniaudio/` | 0.11.26 | https://github.com/mackron/miniaudio/tree/0.11.26 | `EngineAudio` (private) | Yes |
 | `Box2D/` | 3.2.0 | https://github.com/erincatto/box2d/archive/refs/tags/v3.2.0.tar.gz | `EnginePhysics` (private) | Yes |
 | `NotoSans/` | 2.008 | https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSans | Painter starter game/worker font (OFL 1.1) | Starter only |
 | `IBMPlex/` | Sans 3.005, Mono 2.004 | https://github.com/IBM/plex/releases (`@ibm/plex-sans@1.1.0`, `@ibm/plex-mono@1.1.0`) | ToolUi fonts (OFL 1.1) | No |
@@ -20,7 +21,9 @@ building (examples, documentation, tests) are omitted.
 Included parts: raylib `CMakeLists.txt`, `CMakeOptions.txt`, `cmake/`, `src/`, `raylib.pc.in`, license; the full
 nlohmann_json release package; imgui root `.cpp` / `.h` and license; rlImGui root sources, `extras/`, and license;
 Catch2 `CMakeLists.txt`, `CMake/`, `src/`, `extras/`, and license; libvterm `include/`, `src/` (generated `.inc` tables
-come ready in the release package), and `LICENSE`; the whole Box2D source tree, of which only `src/` and `include/` build.
+come ready in the release package), and `LICENSE`; the whole Box2D source tree, of which only `src/` and `include/` build;
+miniaudio `miniaudio.h`, `miniaudio.c`, `extras/stb_vorbis.c` and `LICENSE`. raylib's own copy of miniaudio, inside
+`raudio.c`, is left out of the build by `CMakeLists.txt`, since two copies cannot link; the file itself stays, unmodified.
 
 ## License notice
 

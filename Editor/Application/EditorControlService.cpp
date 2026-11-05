@@ -122,6 +122,8 @@ const SceneDefinition& Selected(const EditorSnapshot& snapshot) {
     if (!snapshot.selected) throw std::runtime_error("No scene is selected; open one first");
     return *snapshot.selected;
 }
+constexpr double MaxAudioCaptureSeconds = 600.0;
+
 void RequireReady(const EditorSnapshot& snapshot) {
     if (!snapshot.ready) throw std::runtime_error("The scene is not running (" + snapshot.status + "); open it first");
     if (snapshot.profiler.busy) throw std::runtime_error("A profiler run owns the scene; wait or cancel it");
@@ -477,7 +479,18 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
                               {"control", _agentControl}};
     }
     case EditorControlCommand::Audio       : return AudioStatus(controller);
-    case EditorControlCommand::AudioControl: AudioControl(arguments); return std::nullopt;
+    case EditorControlCommand::AudioControl:
+        if (Text(arguments, "action") == "capture") {
+            RequireReady(snapshot);
+            const double seconds = Number(arguments, "seconds");
+            if (seconds <= 0.0 || seconds > MaxAudioCaptureSeconds)
+                throw std::runtime_error(std::format("\"seconds\" must be above 0 and at most {}", MaxAudioCaptureSeconds));
+            controller.CaptureAudio(Text(arguments, "file"), seconds);
+            AwaitWorker(controller, WorkerTimeout, StatusOf);
+            return std::nullopt;
+        }
+        AudioControl(arguments);
+        return std::nullopt;
     case EditorControlCommand::Count       : break;
     }
     throw std::runtime_error("Unsupported command");

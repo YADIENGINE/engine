@@ -27,6 +27,8 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Game`: `[[nodiscard]] UiOptionsValues UiOptions() const` — The player's options for Ui/Kit/UiOptionsScreen.h, and applying what the screen changed.
 - `Game`: `void ApplyUiOptions(const UiOptionsValues& values)`
 - `Game`: `[[nodiscard]] SoundPlayer& Sounds()` — The game's sound tables (GameSettings::sounds).
+- `Game`: `[[nodiscard]] AudioSystem& Audio()` — Music, hand-numbered effects and the volume options.
+- `Game`: `[[nodiscard]] const AudioSystem& Audio() const`
 
 ## `Core/Runtime/GameSettings.h`
 

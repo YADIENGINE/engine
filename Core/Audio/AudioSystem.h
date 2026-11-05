@@ -1,10 +1,14 @@
 #pragma once
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
+#include "Audio/SoundBus.h"
+#include "Audio/SoundVoice.h"
 
 class GameOptions;
 
@@ -17,6 +21,8 @@ struct EffectSettings {
     std::size_t maxConcurrent = 4;
     float volume = 1.0f;
     EffectOverflow overflow = EffectOverflow::RestartNext;
+    SoundBus bus = SoundBus::World;
+    bool streamed = false; // Read from disk while it plays, not loaded into memory: for long files
 };
 // `name` is optional and only labels the asset in tools such as the editor; playback ignores it.
 struct EffectAsset {
@@ -39,11 +45,19 @@ struct AudioCatalog {
 struct AudioVolumeSettings {
     int steps = 4;
 };
+// How a track starts. With a fade, the track playing now crosses into this one.
+struct MusicPlay {
+    bool loop = true;
+    float fadeSeconds = 0.0f;
+};
+// Device plays through the sound card. Offline opens none: Render hands out the mix on demand, for tests and tools.
+enum class AudioOutput { Device, Offline };
 
-// One owned audio device. Use from the creating thread; Game owns and updates its instance.
+// One audio engine, on the device or offline. Use from the creating thread; Game owns and updates its instance.
 class AudioSystem final {
 public:
-    explicit AudioSystem(std::filesystem::path assetRoot, AudioVolumeSettings volumeSettings = {});
+    explicit AudioSystem(std::filesystem::path assetRoot, AudioVolumeSettings volumeSettings = {},
+                         AudioOutput output = AudioOutput::Device);
     ~AudioSystem();
 
     // Checks IDs, relative paths and settings without filesystem IO or an audio device.
@@ -70,17 +84,36 @@ public:
     // Whether any copy is playing; false until ready, or when the ID is absent.
     [[nodiscard]] bool IsEffectPlaying(SoundId id) const;
 
+    // One play of an effect that can still be changed. Empty when EffectOverflow::Skip dropped it. Invalid values throw
+    // std::invalid_argument. Every change glides, and a call on a voice that has ended does nothing. SoundPlayer and
+    // LiveSound are built on these, and a game's sound tables normally reach them through those.
+    [[nodiscard]] VoiceId StartVoice(SoundId id, const VoiceStart& start);
+    // True until it has ended or StopVoice was called; a paused voice is alive.
+    [[nodiscard]] bool IsVoiceAlive(VoiceId voice) const;
+    void SetVoicePlacement(VoiceId voice, float gain, float pan);
+    void SetVoicePitch(VoiceId voice, float pitch);
+    void FadeVoice(VoiceId voice, float volume, float seconds);
+    void MuffleVoice(VoiceId voice, float amount, float seconds);
+    void PauseVoice(VoiceId voice, bool paused);
+    void StopVoice(VoiceId voice, float fadeSeconds);
+    // A bus's own level and muffling, under the volume options.
+    void FadeBus(SoundBus bus, float volume, float seconds);
+    void MuffleBus(SoundBus bus, float amount, float seconds);
+    // The mix's clock, in frames at SampleRate. 0 until ready.
+    [[nodiscard]] std::uint64_t ClockFrames() const;
+    [[nodiscard]] int SampleRate() const;
+
     void LoadMusic(MusicId id, const std::filesystem::path& file, MusicVolumeGroup group = MusicVolumeGroup::Default);
     void UnloadMusic(MusicId id);
     [[nodiscard]] bool HasMusic(MusicId id) const;
-    // Stops the previous track and starts this one at pitch 1.
-    void PlayMusic(MusicId id, bool loop = true);
+    // Starts this track at pitch 1 and ends the previous one, at once or across MusicPlay::fadeSeconds.
+    void PlayMusic(MusicId id, const MusicPlay& play = {});
     void SetMusicPitch(float pitch);
     [[nodiscard]] float MusicPitch() const;
     // Includes paused or naturally ended tracks; StopMusic clears the selection.
     [[nodiscard]] std::optional<MusicId> CurrentMusic() const;
     // Safe no-ops without a current track, including during loading.
-    void StopMusic();
+    void StopMusic(float fadeSeconds = 0.0f);
     void PauseMusic();
     void ResumeMusic();
     [[nodiscard]] bool IsMusicPlaying() const;
@@ -91,8 +124,16 @@ public:
     void SeekMusic(float seconds);
     // Changes the current track's looping; a no-op without a current track.
     void SetMusicLooping(bool loop);
-    // Refills streaming buffers each frame. Game already calls this.
+    // Collects what has ended. Game already calls this every frame; playback itself does not depend on it.
     void Update();
+
+    // AudioOutput::Offline only (std::logic_error otherwise): the next frames of the mix, as interleaved stereo. A span
+    // of an odd size throws std::invalid_argument.
+    void Render(std::span<float> stereo);
+    // Writes what the device plays, for this many seconds, to a 32-bit float stereo WAV: the way to check by numbers
+    // what nobody can hear. One at a time; a new one ends the last. Throws std::runtime_error if the file cannot be made.
+    void StartCapture(const std::filesystem::path& wavFile, float seconds);
+    [[nodiscard]] bool IsCapturing() const;
 
     // Volume setters accept finite values in [0, 1]; they may be used before/during loading.
     void SetMasterVolume(float volume);

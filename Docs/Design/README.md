@@ -1370,6 +1370,59 @@ when the surface was as large as its target. `GlDevice::BeginPass` now unbinds a
 `EngineGpuPixelCheck` renders with the real device in a hidden window and reads pixels back. It needs a desktop and a GPU, so
 it is not a CTest.
 
+### D39. Spatial and layered audio
+Status: implemented (2026-11-05). Usage: [Audio](../Audio.md#sounds-in-the-world).
+
+**Decision:** sound is miniaudio's engine, with a stop of the engine's own on every voice, bus and the master. Sounds in the
+world, sounds a view keeps changing and ambience layers all start from rows of the game's sound tables. raylib's audio
+module is gone from the build.
+
+**Why:** raylib's `Sound` cannot loop, its `Music` refills on the main thread from a buffer of about 33 to 66 ms, so a long
+frame or a seek through steps leaves a hole, nothing glides, and a low-pass for one sound cannot be done cleanly: its
+stream processor callback takes no user data. `raudio` is itself a thin layer over miniaudio, built with miniaudio's
+engine, node graph and resource manager turned off, so going to miniaudio removes a layer rather than trading libraries,
+and nothing raudio does is lost but three tracker formats.
+
+**Decided:**
+1. *miniaudio, not our own mixer or another library (the user's).* Measured on 0.11.26 before choosing: a loop seam as clean as
+   the sine, a streamed loop through 1.5 s of a sleeping main thread with no silent block, 128 voices with pitch and pan at
+   38 ms of CPU per second of audio. SoLoud's last release found was 2020; OpenAL Soft is LGPL; FMOD and Wwise cannot ship
+   in an MIT engine. Public domain or MIT-0, one file, vendored unmodified, so it keeps working if left alone.
+2. *One shaper on every stop.* `AudioShaper` gives a voice, a bus or the master a gain per ear, a volume with fades and a
+   low-pass. The main thread states where things should go; the audio thread moves them there sample by sample. It knows no
+   library, so its math is tested on plain samples. miniaudio's own pan is not used: it does not glide (a jump of 0.5 per
+   change, measured) and its default law is not constant power.
+3. *The file keeps its own rate.* Converted at load, a file not at the device's rate begins with a few zero frames that come
+   back at every loop (measured on 44.1 kHz files). Kept at its rate, the voice resamples as it plays and the seam is clean.
+4. *Constant power everywhere.* Pan gives each ear `√2·cos` and `√2·sin`, so a sound moving across keeps its loudness, and
+   fades cross on a sine so that two layers trading places do not dip. The master keeps 1/√2 of headroom, which puts a
+   sound in the middle at 0.707: raylib's mix gave 0.6875 there, so games sound as they did.
+5. *A state variable filter for muffling.* The usual biquad clicked at 7% of full scale when its cutoff moved under a sine;
+   the topology-preserving form (Simper) stays under 0.6%. The cutoff moves from 20 kHz to 300 Hz on a logarithmic scale,
+   and the filter is out of the path, bit for bit, at 0.
+6. *A view's sound, never a simulation's.* `LiveSound` and `SoundLayers` follow what a view reads from the state each frame;
+   `check` keeps `Audio/` out of simulations. Fades run in real seconds on the audio thread, so a hitstop, slow motion or a
+   catch-up does not stretch or break them, and the state hash cannot change.
+7. *A handle owns its sound.* Dropping a `LiveSound` fades it out: a forgotten loop cannot play forever, and a row with
+   `.loop` cannot go through `Play`. The handle holds a weak link to the player, so it may outlive it, and a voice's ID is
+   never given out twice, so a stale handle does nothing.
+8. *The listener is plain data.* A camera feeds it, so does a character; `Audio` includes nothing but Utilities, Animation
+   and itself (`check`). Several listeners serve split screen, and the one who hears a sound best decides.
+9. *Distance with a row's `SoundFalloff`.* Full, then a `Curve`, then silent: the same curves as everything else, and a sound
+   past `silentBeyond` costs nothing to hear. miniaudio's 3D spatializer is not used; its inverse law never reaches silence.
+10. *Three buses, set on purpose.* World, Ui and Music, each with a level and muffling under the volume options. The world's
+    live sounds pause with the game's time; menus and music go on. More buses wait for a game that asks.
+11. *Loops and layers are rows.* Their files reach `GameAssetManifest`, which `release` uses, so nothing started late falls out
+    of the package (D37). A test holds it.
+12. *Voices are kept and reused.* A voice stopped part-way is rebuilt before its next start, because miniaudio's seek keeps
+    the frames it has read ahead (about 1.3 ms of the old place played first, measured).
+13. *Offline output and capture.* `AudioOutput::Offline` runs the real mix with no device for tests; `StartCapture` and
+    `ctl audio capture` write what the device plays, so an agent judges by numbers what it cannot hear.
+
+**Left out, and why:** HRTF and real 3D, reverb, music sequencing and a mixing editor: outside this record's scope.
+miniaudio has a reverb and a delay among its nodes, so reverb would be a node on a bus. A limiter: no game has clipped yet.
+Doppler and occlusion from colliders: a game can set muffle from its own ray, as the recipe's indoors flag does.
+
 ### D40. Light polish: flicker, short flashes, soft shadows
 Status: implemented (2026-11-05). Usage: [Lighting](../Graphics/Lighting.md).
 

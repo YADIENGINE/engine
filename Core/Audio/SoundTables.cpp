@@ -32,6 +32,10 @@ SoundTableRow SoundTables::EraseRow(const SoundFiles& files, const SoundOptions&
     row.pitch = options.pitch;
     row.cooldown = options.cooldown;
     row.whenPlaying = options.whenPlaying;
+    row.loop = options.loop;
+    row.streamed = options.streamed;
+    row.bus = options.bus;
+    row.falloff = options.falloff;
     row.label = options.label;
     return row;
 }
@@ -62,7 +66,9 @@ AudioCatalog CatalogWithSounds(const AudioCatalog& catalog, const SoundTables& t
             const EffectSettings settings{.maxConcurrent = row.whenPlaying.Voices(),
                                           .volume = row.volume,
                                           .overflow = row.whenPlaying.IsSkip() ? EffectOverflow::Skip
-                                                                               : EffectOverflow::RestartNext};
+                                                                               : EffectOverflow::RestartNext,
+                                          .bus = row.bus,
+                                          .streamed = row.streamed};
             for (std::size_t i = 0; i < row.files.size(); ++i)
                 full.effects.push_back({SoundId{static_cast<std::size_t>(row.firstId) + i}, row.files[i], settings,
                                         VariantLabel(row.label, i, row.files.size())});

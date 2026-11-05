@@ -75,6 +75,8 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Handle pointer collections or dragging | `Core/Input/CollectionPointer.h`<br>`Core/Input/DragPointer.h` | - | `Docs/Input.md#collections-and-drag-and-drop` |
 | Add a game's sound effects: variants, pitch range, cooldown, no overlap; a stored sound key | `Core/Audio/SoundRow.h`<br>`Core/Audio/SoundTables.h`<br>`Core/Audio/SoundPlayer.h`<br>`Core/Audio/SoundKey.h` | `Recipes/SoundTable.md` | `Docs/Audio.md#sound-tables` |
 | Load/play music; effects numbered by hand | `Core/Audio/AudioSystem.h` | - | `Docs/Audio.md#setting-up-a-catalog` |
+| A sound from a place on screen, a loop that follows a moving thing, a heartbeat that quickens, ambience that crosses, muffling behind a wall | `Core/Audio/SoundPlayer.h`<br>`Core/Audio/LiveSound.h`<br>`Core/Audio/SoundLayers.h`<br>`Core/Audio/SoundSpace.h` | `Recipes/SpatialSound.md` | `Docs/Audio.md#sounds-in-the-world` |
+| Lower or muffle the world under a pause menu; pause loops with the game | `Core/Audio/SoundPlayer.h`<br>`Core/Audio/SoundBus.h` | - | `Docs/Audio.md#buses` |
 | Persist options or game progress | `Core/Options/GameOptions.h`<br>`Core/Modules/Persistence/Persistence.h` | `Recipes/SaveProgress.md` | `Docs/OptionsAndSaves.md#saves` |
 | Tune values without rebuilding | `Core/Tuning/Tuning.h`<br>`Core/Tuning/TuningFile.h`<br>`Core/Tuning/TuningLive.h` | `Recipes/TuningValue.md` | `Docs/Tuning.md#setup` |
 | Parse, write, gzip or encrypt JSON | `Core/Modules/JsonIO/JsonIO.h` | - | `Docs/Modules/JsonIO/README.md#public-api` |
@@ -104,6 +106,7 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Check a sound without hearing it: length, loudness, silent edges, clipping, waveform image (`audio info`, `audio waveform`) | `Tools/commands/audio.py` | - | `Docs/AudioTools.md#audio-files-and-catalog` |
 | Find unused sound files, missing catalog files, or which catalog ID plays a file (`audio usage`, `audio catalog`) | `Tools/commands/audio.py` | - | `Docs/AudioTools.md#audio-files-and-catalog` |
 | Play a sound for the developer in the editor's Audio Preview (`ctl audio play FILE`) | `Tools/commands/ctl.py` | - | `Docs/AudioTools.md#ctl-audio-playing-for-the-developer` |
+| Record what the open scene plays to a WAV and measure it (`ctl audio capture`) | `Tools/commands/ctl.py` | - | `Docs/AudioTools.md#ctl-audio-playing-for-the-developer` |
 | Load or decode a sound file outside the asset root (tools only) | `Core/Audio/AudioFiles.h` | - | `Docs/Audio.md#tools-and-source-files` |
 
 ## API index

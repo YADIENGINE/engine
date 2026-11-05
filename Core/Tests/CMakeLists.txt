@@ -30,6 +30,7 @@ endfunction()
 engine_tests(EngineTests
     SOURCES
         AudioTests.cpp
+        LiveSoundTests.cpp
         CameraDrawTests.cpp
         SoundTableTests.cpp
         ColliderDrawTests.cpp
@@ -67,6 +68,15 @@ engine_tests(EngineTests
         UiTransformTests.cpp
     LINKS EngineAssets EngineHeadless EngineStorage
 )
+# The real audio engine on no device (AudioOutput::Offline), which no other test executable links.
+engine_tests(EngineAudioTests
+    SOURCES
+        Audio/AudioGraphTests.cpp
+        Audio/AudioShaperTests.cpp
+    LINKS EngineAudio
+)
+target_compile_definitions(EngineAudioTests PRIVATE
+    ENGINE_AUDIO_TEST_FILES="${CMAKE_CURRENT_SOURCE_DIR}/Audio/Files")
 engine_add_tuning(EngineTests ROOT Tuning)
 target_compile_definitions(EngineTests PRIVATE
     ENGINE_TUNING_TEST_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Tuning/TestValues.tuning.json"
@@ -148,6 +158,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/SceneTransition.cpp"
     "${recipeRoot}/SimulationPlay.cpp"
     "${recipeRoot}/SoundTable.cpp"
+    "${recipeRoot}/SpatialSound.cpp"
     "${recipeRoot}/TimelineBoss.cpp"
     "${recipeRoot}/SpriteLayer.cpp"
     "${recipeRoot}/TextLayout.cpp"

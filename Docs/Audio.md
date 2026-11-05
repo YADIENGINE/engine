@@ -1,12 +1,15 @@
 # Audio
 
-The engine owns the audio device and resources; the game decides what plays and when. The single public entry point is
-[AudioSystem.h](../Core/Audio/AudioSystem.h): the service, IDs, catalog, and settings are in this header. The header
-includes neither raylib nor the loading thread. `Audio/Internals/` is not supported API; games and editors use only the
-public header. Audio is an engine runtime service, not a separate opt-in module.
+The engine owns the audio device and resources; the game decides what plays and when. A game's sounds belong in
+[sound tables](#sound-tables), played through `game.Sounds()`: one-shots, [sounds in the world](#sounds-in-the-world),
+[live sounds](#live-sounds) a view keeps changing, and [layers](#layers). Music, and any effect a game prefers to number by
+hand, goes in a [catalog](#setting-up-a-catalog) played by [AudioSystem.h](../Core/Audio/AudioSystem.h).
 
-A game's sound effects belong in [sound tables](#sound-tables); `AudioSystem` underneath plays them. Music, and any effect
-a game prefers to number by hand, goes in a [catalog](#setting-up-a-catalog).
+The mix is miniaudio's engine, with the engine's own stops on its way: every sound goes through a voice, a
+[bus](#buses) and the master, and each of those has a gain per ear, a volume with fades and a low-pass filter. It runs on
+the audio thread: fades, loops and streams go on while the main thread is busy, so a long frame or a seek does not break
+a live sound. Public headers include neither miniaudio nor raylib; `Audio/Internals/` is not supported API, and `check`
+keeps the audio library there. Why miniaudio, and what was measured: [D39](Design/README.md#d39-spatial-and-layered-audio).
 
 ## Sound tables
 
@@ -71,6 +74,90 @@ tested with no device; `Game` connects it to `AudioSystem`. A simulation cannot 
 
 **Not here:** [D32](Design/README.md#d32-sound-tables) says what was left out and why.
 
+### Row options for what goes on
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `loop` | false | Plays until stopped. Such a row only starts with `Start`, which hands back the sound: `Play` throws, since nothing could stop it |
+| `streamed` | false | Read from disk while it plays instead of held in memory. For ambience and other long files; a decoded minute of 48 kHz stereo is 23 MB |
+| `bus` | `SoundBus::World` | Where it is mixed: `World`, `Ui` or `Music` ([buses](#buses)) |
+| `falloff` | 160 to 1280 units, `InQuad` | How it fades with distance when played at a place ([sounds in the world](#sounds-in-the-world)) |
+
+`Play(key, {...})` takes a `SoundPlay`: `volume`, `pitch` (times the row's), `at` (a place in the world), `pan` (for a
+sound that is not in the world), `muffle`, `fadeIn` and `startAt` (seconds into the file).
+
+## Sounds in the world
+
+```cpp
+sounds.SetListener({.position = view.target, .rotation = view.rotation, .panWidth = view.VisibleArea().width / 2});
+sounds.Play(Sfx::Door, {.at = door});           // Pan and distance from the listener
+```
+
+A `SoundListener` is plain data: a position, a rotation (radians, clockwise, as `CameraView`), `panWidth` (world units to
+the side at which a sound reaches `maxPan`), `maxPan` (0.8, so a sound far to one side is never silent in the other ear)
+and `distanceScale` (below 1 hears further, for a zoomed-out view). A camera feeds it as above, or a player's character
+does; nothing in `Audio` knows the camera. Before the first call one listener stands at the origin. Split screen:
+`SetListeners`, and for each sound the listener who hears it best decides.
+
+A row's `SoundFalloff` is full within `fullWithin`, silent beyond `silentBeyond`, and its `curve` between, read from far
+(0) to near (1). Pan is constant power: in the middle both ears get 1, at one side that ear gets √2, so a sound moving
+across keeps its loudness. [SoundSpace.h](../Core/Audio/SoundSpace.h) holds the math (`PlaceSound`, `FalloffGain`,
+`PanEars`), header-only, so a test or a game can ask the same question. Moving the listener moves every live sound at
+once.
+
+## Live sounds
+
+```cpp
+LiveSound _hum = sounds.Start(Noise::Hum, {.at = ghost});   // A member: it lives as long as the handle
+_hum.SetPosition(ghost);                                   // Every frame, from the state
+_hum.SetPitch(1.0f + closeness);
+_hum.SetVolume(closeness, 0.2f);                           // Seconds of fade
+_hum.SetMuffle(behindWall ? 0.9f : 0.0f, 0.15f);
+```
+
+`Start` begins a row and returns a `LiveSound`. Cooldown and overlap rules do not apply to it, and it does not count
+towards a row's copies. Every change glides, however often it comes: a value set every frame does not click, and `seconds`
+lengthens the glide. `SetPan` takes it out of the world again. When the handle goes away, or at `Stop(fade)`, the sound
+fades out and ends. A row without `.loop` ends by itself, after which the handle reports `Playing() == false` and every
+call does nothing; a handle may outlive the player. Invalid values throw `std::invalid_argument` whether or not anything
+plays. `StartTogether(keys)` starts several rows on the same sample, for files that must stay in step.
+
+## Layers
+
+```cpp
+SoundLayers ambience(sounds, 2.0f);                        // Default fade in seconds
+ambience.Set(Ambience::Wind, 0.8f);
+ambience.Mix({{Ambience::Rain, 0.8f}, {Ambience::Drip, 0.3f}}); // Exactly this; the others fade to 0
+ambience.Silence();                                        // And Restore(): the mix is remembered
+ambience.SetMuffle(0.8f);                                  // All layers, behind a door
+```
+
+A layer is a row, started silent the first time it is named and kept running afterwards, so it never jumps back to its
+start. Fades cross at constant power: two layers trading places do not dip. `Prepare(keys)` starts stems sample-aligned.
+`Stop` ends them; going away does too. Nothing needs calling every frame.
+
+## Buses
+
+`SoundBus::World` is what happens in the game, `Ui` is menus, `Music` is music and music-like layers. The effects volume
+option scales World and Ui, the music options scale Music. On top of that, each bus has a level and muffling a game sets
+on purpose, under the options and without changing them:
+
+```cpp
+sounds.FadeBus(SoundBus::World, 0.25f, 0.3f);              // A pause menu lowers the world
+sounds.MuffleBus(SoundBus::World, 0.7f, 0.3f);             // And muffles it
+```
+
+`muffle` is a low-pass filter from 20 kHz at 0 to 300 Hz at 1, moving on a logarithmic scale; it can change while a sound
+plays without a click.
+
+## Pausing and catching up
+
+`Game` pauses the live sounds of `SoundBus::World` while the game's time is paused, and lets them go on from the same
+place; menus and music keep playing. One-shots already playing finish. The editor's pause, and every seek, hold all live
+sounds the same way. Sounds are view code: a simulation never starts one, so its state hash and replays do not change,
+and a catch-up of many steps leaves live sounds alone: they go on in real time on the audio thread. Events a seek passes
+over are silent (N1, `SilenceEventsUntil`).
+
 ## Ready-made sounds
 
 The engine ships menu sounds in `Assets/Audio/Ui`. A game names them under `Engine/`, with no file to copy:
@@ -126,8 +213,7 @@ background loading completes and `FinishLoading()` succeeds. Volume values can b
 handover. File/device loading failures are reported as exceptions. `Game::Start()` may run before audio is ready; normal
 scene update/input starts after loading.
 
-With your own service, keep the waiting screen active while `FinishLoading()` is false; on success, resources are
-transferred to the main thread:
+With your own service, keep the waiting screen active while `FinishLoading()` is false:
 
 | State | Behavior |
 | --- | --- |
@@ -139,21 +225,21 @@ transferred to the main thread:
 An instance makes one loading attempt; a second `BeginLoading` throws `std::logic_error`. If catalog validation fails,
 loading has not started; fix the catalog and retry. To retry after a worker failure, destroy and recreate the service.
 
-AudioSystem reserves the process-wide device on construction; a second live instance throws `std::logic_error`. Use the
-service from the thread that created it; the public API is not a generally thread-safe service. Direct raylib audio
-calls and parallel device ownership are unsupported. The loading worker uses only private resources; the main thread
-takes them over after joining. The destructor requests loading cancellation and waits for the worker. Resources use
-RAII; aliases are released before their source sample, and all resources before the device. References from
-`Game::Audio()` and the editor must not outlive the service owner.
+Use the service from the thread that created it; the public API is not a thread-safe service. The loading worker owns
+the device and resources until `FinishLoading` joins it. The destructor requests loading cancellation and waits for the
+worker; every voice goes before the device. References from `Game::Audio()` and the editor must not outlive the service
+owner. Each `AudioSystem` opens its own device, so a tool may hold one beside a game's.
 
 ## Playback
 
-- `Audio().PlayEffect(Click)`: selects an idle voice first. `EffectSettings` defaults to four concurrent copies, volume
-  1, and `EffectOverflow::RestartNext`. If every copy is busy, the next restarts; `EffectOverflow::Skip` drops the new
-  request. Configure each effect through catalog `EffectAsset::settings` or dynamic `LoadEffect(id, file, settings)`.
+- `Audio().PlayEffect(Click)`: `EffectSettings` defaults to four concurrent copies, volume 1, and
+  `EffectOverflow::RestartNext`. If every copy is busy, the oldest fades out in a few milliseconds beside the new one;
+  `EffectOverflow::Skip` drops the new request. `bus` and `streamed` mean what the row options do. Configure each effect
+  through catalog `EffectAsset::settings` or dynamic `LoadEffect(id, file, settings)`.
 - `PlayEffectIfIdle`: drops the new request if already playing; it does not queue requests.
 - `StopEffect`: stops all copies of that ID.
-- `PlayMusic`: stops the current track and starts the new track at normal pitch; looping is enabled by default.
+- `PlayMusic(id, {.loop, .fadeSeconds})`: starts the track at normal pitch, from the top, looping by default, and ends
+  the current one, at once or crossing into the new one over `fadeSeconds`. `StopMusic(fadeSeconds)` fades too.
 - Pitch for `PlayEffect`, `PlayEffectIfIdle`, and `SetMusicPitch` must be finite and positive; otherwise
   `std::invalid_argument` is thrown. Speed and pitch change together.
 - `CurrentMusic` also reports paused or naturally finished tracks; `IsMusicPlaying` reports actual playback.
@@ -193,9 +279,23 @@ it does not change stored levels. Master and mute are not persistent preferences
 saves them at save points; the game does not create a second settings key for them. Missing/invalid saved levels each
 fall back to 100%.
 
+## Formats
+
+WAV, OGG (Vorbis), FLAC and MP3 load, decoded or streamed. Every voice keeps its file's own sample rate and resamples as it
+plays, so a loop has no seam whatever the file's rate. For loops prefer OGG, FLAC or WAV: MP3 adds padding at the start
+and end of a file in most encoders, which a loop may make audible (one test file showed none; a file from another encoder
+can). `.qoa`, `.xm` and `.mod`, which raylib read, do not load.
+
+## Checking by numbers
+
+Nobody can hear in a test. `AudioSystem(root, {}, AudioOutput::Offline)` opens no device: `Render(stereo)` hands out the
+next frames of the real mix, so a test measures pan, fades, seams and muffling on what a device would have played
+(`Core/Tests/Audio`). In a running game or the editor, `StartCapture(file, seconds)` writes what the device plays to a
+WAV file; `python Engine ctl audio capture SECONDS` does it for the open scene ([Audio tools](AudioTools.md)).
+
 ## Dependencies and validation
 
-The backend is raylib 5.5 and stays in the `Engine` target. Catalog validation and private volume policy build
-headlessly in `EngineHeadless`; the public header alone does not require raylib. The engine audio infrastructure knows
-no game IDs, asset paths, or playback choreography. Headless audio tests use the `[audio]` tag; actual playback and
-streaming are checked manually by the developer.
+The backend is miniaudio 0.11.26 with stb_vorbis, in the `EngineAudio` target, which needs no window; `Engine` links it.
+raylib's own audio module is left out of the build. `SoundPlayer`, `LiveSound`, `SoundLayers` and the volume policy build
+in `EngineHeadless` and reach the device only through `SoundOutput`, so their decisions are tested with a fake. The
+engine audio knows no game IDs, asset paths, or playback choreography. Audio tests use the `[audio]` tag.

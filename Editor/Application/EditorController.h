@@ -36,6 +36,8 @@ public:
     void Action(const std::string& id);
     void Playback(double speed, bool step);
     void SetPaused(bool paused);
+    // Has the worker write what the device plays to a WAV file.
+    void CaptureAudio(const std::string& file, double seconds);
     // Pauses and advances the playback clock to `seconds`, or by `seconds` when relative (replaying from 0 to go back).
     void Seek(double seconds, bool relative = false);
     // The same in the open simulation's steps.

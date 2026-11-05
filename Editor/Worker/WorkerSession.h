@@ -37,6 +37,8 @@ public:
     [[nodiscard]] float Advance(float realSeconds);
 
 private:
+    AudioSystem& _audio;
+    SoundPlayer& _sounds;
     // A seek in progress: playback advances in fixed steps, unthrottled and without frame readback, until the clock
     // or the simulation's step counter reaches the target; commands after it wait (their replies then describe the
     // arrived state).

@@ -179,6 +179,30 @@ class BoundaryTests(unittest.TestCase):
         self.write("Game/Simulation/Rules.cpp", '#include "Camera/Debug/CameraGuides.h"\n')
         self.assertIn("simulation code", self.check()[0])
 
+    def test_the_audio_library_stays_behind_audio_internals(self):
+        self.write("Engine/Core/Audio/Internals/Graph.cpp", '#include <miniaudio.h>\n#include <extras/stb_vorbis.c>\n')
+        self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Runtime/Game.cpp", '#include <miniaudio.h>\n')
+        self.write("Engine/Core/Audio/Player.h", '#include "miniaudio.h"\n')
+        found = self.check()
+        self.assertTrue(any("Runtime/Game.cpp:1" in line and "audio library" in line for line in found))
+        self.assertTrue(any("Audio/Player.h:1" in line and "audio library" in line for line in found))
+
+    def test_audio_does_not_use_raylib(self):
+        self.write("Engine/Core/Audio/Internals/Device.cpp", '#include <raylib.h>\n')
+        self.assertTrue(any("audio does not use raylib" in line for line in self.check()))
+
+    def test_public_audio_headers_stand_low(self):
+        self.write("Engine/Core/Audio/Sound.h", '#include "Audio/SoundBus.h"\n#include "Utilities/Geometry/Float2.h"\n'
+                   '#include "Animation/Curve.h"\n')
+        self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Audio/Other.h", '#include "Camera/CameraView.h"\n')
+        self.assertTrue(any("Audio/Other.h:1" in line and "public audio header" in line for line in self.check()))
+
+    def test_a_simulation_cannot_include_a_live_sound(self):
+        self.write("Game/Simulation/Rules.cpp", '#include "Audio/LiveSound.h"\n')
+        self.assertTrue(any("simulation code" in line for line in self.check()))
+
     def test_a_simulation_cannot_include_the_ui(self):
         self.write("Engine/Core/Simulation/Rules.cpp", '#include "Ui/Kernel/Ui.h"\n')
         self.assertIn("simulation code", self.check()[0])

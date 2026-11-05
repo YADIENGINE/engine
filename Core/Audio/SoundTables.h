@@ -19,6 +19,10 @@ struct SoundTableRow {
     SoundPitch pitch{};
     float cooldown = 0.0f;
     SoundOverlap whenPlaying = SoundOverlap::Copies(4);
+    bool loop = false;
+    bool streamed = false;
+    SoundBus bus = SoundBus::World;
+    SoundFalloff falloff{};
     std::string label; // The row's own, or generated
 };
 struct SoundTable {

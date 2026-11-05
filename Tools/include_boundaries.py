@@ -53,6 +53,10 @@ ATMOSPHERE_RULE = re.compile(
     r'''^\s*#\s*include\s*"(?!Utilities/|Camera/CameraView\.h|Weather/|Graphics/(?:Atmosphere|Draw/ParticleDraw|Paint)[/.])[^"]*"''')
 WEATHER_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|Weather/)[^"]*"''')
 PAINT_LIGHT_RULE = re.compile(r'''^\s*#\s*include\s*"Graphics/Light/[^"]*"''')
+# The audio library stays behind Core/Audio/Internals, so that public audio headers read the same whatever plays them, and
+# no audio code touches raylib. What a public audio header includes stays low enough for a tool to use it (Docs/Audio.md).
+AUDIO_LIBRARY_INCLUDE = re.compile(r'''^\s*#\s*include\s*[<"](?:[^>"/]*/)*(?:miniaudio\.h|stb_vorbis\.c)[>"]''')
+AUDIO_PUBLIC_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|Audio/)[^"]*"''')
 PLATFORM_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:[^>"/]*/)*(raylib|raymath|rlgl)\.h[>"]')
 
 
@@ -113,6 +117,9 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
         paint = source.is_relative_to(engine_root / CORE / "Graphics" / "Paint")
         atmosphere = source.is_relative_to(engine_root / CORE / "Graphics" / "Atmosphere")
         weather = source.is_relative_to(engine_root / CORE / "Weather")
+        audio = source.is_relative_to(engine_root / CORE / "Audio")
+        audio_internal = source.is_relative_to(engine_root / CORE / "Audio" / "Internals")
+        engine_code = source.is_relative_to(engine_root)
         for number, line in enumerate(lines, 1):
             if atmosphere and ATMOSPHERE_RULE.match(line):
                 where = source.relative_to(project_root).as_posix()
@@ -122,6 +129,17 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Weather includes "{line.strip()}"; only Utilities and Animation,'
                              ' so a simulation can use it')
+            if engine_code and not audio_internal and AUDIO_LIBRARY_INCLUDE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: includes "{line.strip()}"; the audio library stays in'
+                             ' Core/Audio/Internals')
+            if audio and PLATFORM_INCLUDE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: Core/Audio includes "{line.strip()}"; audio does not use raylib')
+            if audio and not audio_internal and AUDIO_PUBLIC_RULE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: Core/Audio includes "{line.strip()}"; a public audio header stands on'
+                             ' Utilities, Animation and Audio')
             if light and LIGHT_RULE.match(line):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Graphics/Light includes "{line.strip()}"; only Utilities, the'

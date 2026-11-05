@@ -43,5 +43,10 @@ new file needs no Build & Refresh; the running scene is not touched. `ctl audio`
 and the catalog entries that play it. Other actions: `pause`, `resume`, `stop`, `seek S`, `volume V` (0–1),
 `loop on|off`. All of them except plain `ctl audio` need Agent control on.
 
+`ctl audio capture SECONDS [--out WAV]` records what the open scene plays, through the real device, to a 32-bit float
+stereo WAV (by default `audio-report/capture.wav` in the editor build), waits until it is written and prints `path`.
+`audio info` and `audio waveform` then read it like any file: loudness per channel, clipping, silences. It needs a
+running scene and Agent control on.
+
 Use it to let the developer hear a sound you changed or picked, then ask what they think; your own judgement comes
 from `audio info` and `audio waveform`.

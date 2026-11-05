@@ -15,11 +15,13 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 from ..errors import EXIT_FAILED, EXIT_OK, ToolError
 from ..project import Project
-from .audio import editor_recipe, resolve_sound
+from .audio import REPORT_FOLDER, editor_recipe, resolve_sound
+from .editor import editor_build_dir
 from .refresh import VERSION, connect, editor_pipe, replies
 
 
@@ -35,6 +37,9 @@ WORKFLOW = """typical use:
   python Engine ctl frames --from 0 --to 2      an animation as one grid image
   python Engine ctl audio play Audio/hit.ogg    play a sound for the developer in Audio Preview
 answers are one JSON object on stdout; exit 2 means no editor is open (Docs/Editor/Automation.md)"""
+
+
+CAPTURE_MARGIN_SECONDS = 0.5
 
 
 def add_parser(commands) -> None:
@@ -104,6 +109,9 @@ def add_parser(commands) -> None:
     sound.add_parser("seek", help="go to a time; a stopped sound starts there").add_argument("seconds", type=float)
     sound.add_parser("volume", help="preview volume 0-1").add_argument("volume", type=float)
     sound.add_parser("loop", help="loop the sound or not").add_argument("state", choices=("on", "off"))
+    capture = sound.add_parser("capture", help="record what the running scene plays to a WAV file, and wait for it")
+    capture.add_argument("seconds", type=float)
+    capture.add_argument("--out", help="WAV path (default: audio-report/capture.wav in the editor build)")
     action = actions.add_parser("note", help="report what the agent is doing; shown in the editor's toolbar")
     action.add_argument("text", nargs="*", metavar="WORD")
     action.add_argument("--state", choices=("working", "waiting", "idle"), default="working")
@@ -332,6 +340,12 @@ def request_of(args: argparse.Namespace) -> dict:
     return request
 
 
+def capture_path(project: Project, out: str | None) -> str:
+    path = Path(out).resolve() if out else editor_build_dir(project) / REPORT_FOLDER / "capture.wav"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return str(path)
+
+
 def audio_request(args: argparse.Namespace) -> dict:
     """`ctl audio ...`: "audio" reads the panel; the others are "audio-control" with an action."""
     action = args.audio_action or "status"
@@ -351,6 +365,8 @@ def audio_request(args: argparse.Namespace) -> dict:
             request["volume"] = args.volume
         case "loop":
             request["on"] = args.state == "on"
+        case "capture":
+            request.update(seconds=args.seconds, file=args.out)  # Made absolute by ctl() before sending
     return request
 
 
@@ -424,10 +440,15 @@ def ctl(project: Project, args: argparse.Namespace) -> int:
     if args.action == "audio" and args.audio_action == "play":
         recipe = editor_recipe(project)
         args.file = str(resolve_sound(args.file, project, Path(recipe["assetsDirectory"]).resolve()))
+    if args.action == "audio" and args.audio_action == "capture":
+        args.out = capture_path(project, args.out)
     if args.action == "open":
         answer = open_scene(pipe, args)
     else:
         answer = send(pipe, request_of(args))
+    if args.action == "audio" and args.audio_action == "capture":
+        time.sleep(args.seconds + CAPTURE_MARGIN_SECONDS)  # The device plays in real time; the worker finishes the file
+        answer = {"path": args.out, "seconds": args.seconds}
     match args.action:
         case "status":
             answer = with_hint(answer)

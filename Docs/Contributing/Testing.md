@@ -8,6 +8,7 @@ They never link the consuming game's core or include its source headers.
 | --- | --- | --- | --- |
 | EngineTests | Engine/Core/Tests/*.cpp | EngineHeadless, EngineStorage | engine + subsystem |
 | EngineSimulationTests | Engine/Core/Tests/Simulation/*.cpp | EngineToySimulation (only low-level targets, so reaching drawing or audio fails to build) | engine + simulation |
+| EngineAudioTests | Engine/Core/Tests/Audio/*.cpp | EngineAudio: the real mix on no device (`AudioOutput::Offline`) | engine, audio |
 | EnginePhysicsTests | Engine/Core/Tests/Physics/*.cpp | EnginePhysics (only low-level targets, so reaching drawing or audio fails to build) | engine, physics |
 | Engine.SimulationToolCollision | The same tool running `ToyCollisionScenario.json`, whose rules use collision | EngineToySimulationTool | engine |
 | Engine.SimulationTool | The toy simulation's console tool running `ToyScenario.json` | EngineToySimulationTool | engine |
