@@ -3,9 +3,12 @@
 #include <array>
 #include <cmath>
 #include <memory>
+#include "Animation/Flicker.h"
+#include "Fx/FxCue.h"
 #include "Graphics/Light/CollisionOccluders.h"
 #include "Graphics/Light/Debug/LightGuides.h"
 #include "Graphics/Paint/Painter.h"
+#include "Graphics/Style/Theme.h"
 #include "Input/Input.h"
 #include "Physics/Collision/Shape.h"
 
@@ -16,6 +19,8 @@ constexpr Color4 Neon = Rgb(0x30e0ff);
 constexpr Color4 Night = Rgb(0x10121c);
 constexpr Color4 LanternColor = Rgb(0xffd9a0);
 constexpr Color4 TorchColor = Rgb(0xff8a3c);
+constexpr Color4 LightningColor = Rgb(0xb8ccff);
+constexpr unsigned TorchSeed = 1U;
 constexpr FloatRect Room{0.0f, 0.0f, 1600.0f, 1000.0f};
 constexpr Float2 Torch{1100.0f, 300.0f};
 constexpr Float2 Sign{500.0f, 280.0f};
@@ -29,14 +34,26 @@ enum class Layer { Wall };
 RecipeLitView::RecipeLitView(Float2 canvas)
     : _canvas(canvas)
     , _player(Room.Center())
-    , _aim(Room.Center() + Float2{100.0f, 0.0f}) {
+    , _aim(Room.Center() + Float2{100.0f, 0.0f})
+    , _fx(FloatRect{0.0f, 0.0f, canvas.x, canvas.y}, FloatRect{0.0f, 0.0f, canvas.x, canvas.y}, CurrentTheme().fx) {
     (void)_colliders.Add(Shape::Box(CrateHalf.x, CrateHalf.y), {CrateAt}, MaskOf(Layer::Wall));
     // Here light stops where the player stops. Anything else, such as a sprite's outline, goes in LightOccluders by hand.
     AddOccluders(_walls, _colliders, MaskOf(Layer::Wall));
 }
 
+void RecipeLitView::SetEffects(const FxQuality& effects) {
+    _flashes = effects.flashes;
+    _fx.SetQuality(effects);
+}
+
+void RecipeLitView::Lightning() {
+    // No radius: the whole scene, for a moment. Usually one line of a named cue.
+    _fx.Play(FxCue{FxLightFlash{.seconds = 0.45f, .strength = 0.8f}}, {.color = LightningColor});
+}
+
 void RecipeLitView::Update(float seconds, Float2 move, Float2 mouse) {
     _time += seconds;
+    _fx.Update(seconds, seconds);
     _player += move * (PlayerSpeed * seconds);
     _aim = View().ToWorld(mouse);
 }
@@ -56,15 +73,18 @@ void RecipeLitView::Draw(Painter& paint) const {
         DrawWorld(paint);
     }
 
-    // A light's strength can be any function of time: this one flickers. A tween or a clip can drive it too.
-    const float flicker = 0.85f + 0.15f * std::sin(_time * 13.0f) * std::sin(_time * 7.3f);
     const Float2 aimed = _aim - _player;
     const std::array lights{
         LightSource{.at = _player, .radius = 160.0f, .color = LanternColor, .intensity = 0.7f},
         LightSource{.at = _player,
                     .radius = 520.0f,
                     .cone = {.direction = std::atan2(aimed.y, aimed.x), .halfAngle = 0.35f}},
-        LightSource{.at = Torch, .radius = 300.0f * flicker, .color = TorchColor, .core = 0.15f},
+        // A light's strength can be any function of time. Flicker needs the player's choice, so it cannot be forgotten.
+        LightSource{.at = Torch,
+                    .radius = 300.0f,
+                    .color = TorchColor,
+                    .intensity = Flicker(_time, FlickerStyle::Candle(), TorchSeed, _flashes),
+                    .core = 0.15f},
     };
     // What moves gives its outline from where it is drawn, so its shadow does not lag behind it. The player's own
     // lights stand inside this outline, so it stops only the torch.
@@ -74,7 +94,7 @@ void RecipeLitView::Draw(Painter& paint) const {
     moving.Outline(body, Affine2::Translate(_player) * Affine2::Scale(PlayerRadius));
     const std::array<const LightOccluders*, 2> occluders{&_walls, &moving};
 
-    const LightFrame frame{.ambient = Night, .lights = lights, .occluders = occluders};
+    const LightFrame frame{.ambient = Night, .lights = lights, .occluders = occluders, .flashes = _fx.LightFlashes()};
     _lights.Draw(paint, frame, view); // Outside paint.Camera, with the view the world was drawn through
 
     {
@@ -101,6 +121,7 @@ void RecipeLitScene::HandleInput(const DeviceInput& input) {
         return (input.Down(positive) ? 1.0f : 0.0f) - (input.Down(negative) ? 1.0f : 0.0f);
     };
     _move = {axis(InputKey::A, InputKey::D), axis(InputKey::W, InputKey::S)};
+    _lightning = input.Pressed(InputKey::Space);
     if (input.mousePosition)
         _mouse = {static_cast<float>(input.mousePosition->x), static_cast<float>(input.mousePosition->y)};
 }
@@ -110,7 +131,11 @@ std::string RecipeLitScene::ApplyParameter(const std::string& id, const SceneVal
     return {};
 }
 
-void RecipeLitScene::Update(float seconds) { _view.Update(seconds, _move, _mouse); }
+void RecipeLitScene::Update(float seconds) {
+    if (_lightning) _view.Lightning();
+    _lightning = false;
+    _view.Update(seconds, _move, _mouse);
+}
 
 void RecipeLitScene::Draw(Painter& paint) const { _view.Draw(paint); }
 

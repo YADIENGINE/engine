@@ -9,6 +9,7 @@
 #include "Diagnostics/DevelopmentChecks.h"
 #include "Graphics/Light/Debug/LightGuides.h"
 #include "Graphics/Light/LightLayer.h"
+#include "Graphics/Light/LightOccluders.h"
 #include "Tests/PaintHarness.h"
 
 using Catch::Approx;
@@ -312,6 +313,94 @@ TEST_CASE("Engine.LightLayer.FollowsTheTargetSize", "[engine][paint][light]") {
     REQUIRE(passes.size() == 2);
     CHECK(passes[0]->pass.viewSize == Size);
     CHECK(passes[1]->pass.viewSize == Float2{100.0f, 50.0f});
+}
+
+namespace {
+int BlurDraws(const PaintHarness& h) {
+    int blurs = 0;
+    for (std::size_t i = 0; i < h.Draws().size(); ++i)
+        if (h.Drawn(i).at(0).kind == PaintKind::Blur) ++blurs;
+    return blurs;
+}
+int DrawnFrameBlurs(const LightLayerOptions& options, Float2 lightAt, float zoom = 1.0f, float scale = 1.0f) {
+    PaintHarness h(Size, scale);
+    const LightLayer layer(options);
+    const std::array lights{LightSource{.at = lightAt, .radius = 40.0f}};
+    LightOccluders wall;
+    const std::array<Float2, 2> line{Float2{100.0f, 40.0f}, Float2{100.0f, 60.0f}};
+    wall.Line(line);
+    const std::array<const LightOccluders*, 1> sets{&wall};
+    h.Begin();
+    layer.Draw(h.paint, {.ambient = Dark, .lights = lights, .occluders = sets},
+               {.offset = Size * 0.5f, .target = Size * 0.5f, .zoom = zoom});
+    h.End();
+    return BlurDraws(h);
+}
+constexpr Float2 BesideTheWall{80.0f, 50.0f};
+constexpr Float2 FarFromTheWall{300.0f, 150.0f};
+} // namespace
+
+TEST_CASE("Engine.LightLayer.SoftensOnlyWhenAShadowFalls", "[engine][paint][light]") {
+    CHECK(DrawnFrameBlurs({}, BesideTheWall) == 2);    // Across and down
+    CHECK(DrawnFrameBlurs({}, FarFromTheWall) == 0);   // The wall is out of reach
+    CHECK(DrawnFrameBlurs({.softness = 0.0f}, BesideTheWall) == 0);
+}
+
+TEST_CASE("Engine.LightLayer.AWideSpreadGoesOverItsSamplesAgain", "[engine][paint][light]") {
+    CHECK(DrawnFrameBlurs({.softness = 8.0f}, BesideTheWall, 1.0f, 1.0f) == 2);
+    CHECK(DrawnFrameBlurs({.softness = 8.0f}, BesideTheWall, 4.0f, 1.0f) == 4);
+    CHECK(DrawnFrameBlurs({.softness = 8.0f}, BesideTheWall, 1.0f, 4.0f) == 4); // More device pixels per unit
+}
+
+TEST_CASE("Engine.LightLayer.SpreadFollowsTheZoomAndLogicalUnits", "[engine][paint][light]") {
+    PaintHarness h(Size, 1.0f);
+    const LightLayer layer({.resolution = 0.5f, .softness = 6.0f});
+    const std::array lights{LightSource{.at = BesideTheWall, .radius = 40.0f}};
+    LightOccluders wall;
+    const std::array<Float2, 2> line{Float2{100.0f, 40.0f}, Float2{100.0f, 60.0f}};
+    wall.Line(line);
+    const std::array<const LightOccluders*, 1> sets{&wall};
+    h.Begin();
+    layer.Draw(h.paint, {.ambient = Dark, .lights = lights, .occluders = sets},
+               {.offset = Size * 0.5f, .target = Size * 0.5f, .zoom = 2.0f});
+    h.End();
+    const auto first = h.Drawn(1);
+    REQUIRE(first.at(0).kind == PaintKind::Blur);
+    // 6 world units, twice as large on the target, half that in the image, over a 200 wide image and four steps.
+    CHECK(first[0].style0 == Approx(6.0f / 200.0f / 4.0f));
+    CHECK(first[0].style1 == Approx(0.0f));
+    CHECK(h.Drawn(2).at(0).style0 == Approx(0.0f));
+    CHECK(h.Drawn(2).at(0).style1 == Approx(6.0f / 100.0f / 4.0f));
+}
+
+TEST_CASE("Engine.LightLayer.FlashesAddToAmbientAndToTheLights", "[engine][paint][light]") {
+    PaintHarness h(Size, 2.0f);
+    const LightLayer layer;
+    const std::array flashes{LightSource{.at = {100.0f, 50.0f}, .radius = 40.0f}};
+    h.Begin();
+    layer.Draw(h.paint, {.ambient = Dark, .flashes = {.ambient = {10, 240, 5, 255}, .lights = flashes}});
+    h.End();
+    const auto passes = ImagePasses(h);
+    REQUIRE(passes.size() == 1);
+    CHECK(passes[0]->pass.clear->r == Approx(30.0f / 255.0f));
+    CHECK(passes[0]->pass.clear->g == Approx(1.0f)); // Saturates instead of wrapping around
+    CHECK(passes[0]->pass.clear->b == Approx(45.0f / 255.0f));
+    CHECK(h.Drawn(0).at(0).kind == PaintKind::Light);
+}
+
+TEST_CASE("Engine.Painter.BlurredImageRefusesAnInfiniteSpread", "[engine][paint][light]") {
+    PaintHarness h(Size, 2.0f);
+    Surface surface({10.0f, 10.0f});
+    h.Begin();
+    {
+        auto into = h.paint.Target(surface);
+        h.paint.Rect({0.0f, 0.0f, 10.0f, 10.0f}, Fill({255, 255, 255, 255}));
+    }
+    if (DevelopmentChecks())
+        CHECK_THROWS_AS(h.paint.BlurredImage(surface, {0.0f, 0.0f, 10.0f, 10.0f},
+                                             {std::numeric_limits<float>::infinity(), 0.0f}),
+                        std::invalid_argument);
+    h.End();
 }
 
 TEST_CASE("Engine.LightGuides.DrawInCanvasUnitsWithoutChangingTheFrame", "[engine][paint][light]") {

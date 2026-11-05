@@ -318,7 +318,7 @@ void SurfaceShowsItsFirstDrawing(PixelCheck& check) {
 
 // Everything through the layer at full resolution, on white under black ambient: a pixel shows only the light it gets.
 void LitBy(PixelCheck& check, Surface& world, const LightSource& light, const LightOccluders& occluders) {
-    const LightLayer layer({.resolution = 1.0f});
+    const LightLayer layer({.resolution = 1.0f, .softness = 0.0f});
     const std::array lights{light};
     const std::array<const LightOccluders*, 1> sets{&occluders};
     check.Frame([&](Painter& paint) {
@@ -398,6 +398,109 @@ void AFanFallsOffLikeAPlainLight(PixelCheck& check) {
                    1);
 }
 
+// A wall's shadow along y = 64 past x = 64, on white under black ambient.
+void SoftenedBy(PixelCheck& check, Surface& world, const LightLayer& layer, const CameraView& view) {
+    constexpr LightSource Light{.at = {30.0f, 64.0f}, .radius = 120.0f, .core = 0.8f};
+    LightOccluders wall;
+    const std::vector<Float2> line{{64.0f, 64.0f}, {64.0f, 200.0f}};
+    wall.Line(line);
+    const std::array lights{Light};
+    const std::array<const LightOccluders*, 1> sets{&wall};
+    check.Frame([&](Painter& paint) {
+        auto into = paint.Target(world, White);
+        layer.Draw(paint, {.ambient = Black, .lights = lights, .occluders = sets}, view);
+    });
+}
+
+void ShadowEdgesAreSoft(PixelCheck& check) {
+    Surface world({128.0f, 128.0f});
+    const CameraView still{};
+    const LightLayer layer({.resolution = 1.0f, .softness = 8.0f});
+    SoftenedBy(check, world, layer, still);
+    check.Near("far from a soft edge on the lit side", check.Read(world, 100, 50).r, 255);
+    check.Near("on a soft edge it is half lit", check.Read(world, 100, 64).r, 128, 30);
+    check.Above("the edge falls gradually", check.Read(world, 100, 61).r - check.Read(world, 100, 64).r, 20);
+    check.Above("and on", check.Read(world, 100, 64).r - check.Read(world, 100, 67).r, 20);
+    check.Near("far from a soft edge in the shadow", check.Read(world, 100, 78).r, 0);
+    check.Near("light does not go far through a wall", check.Read(world, 80, 100).r, 0);
+
+    const LightLayer hard({.resolution = 1.0f, .softness = 0.0f});
+    SoftenedBy(check, world, hard, still);
+    check.Near("softness 0: lit just before the edge", check.Read(world, 100, 62).r, 255);
+    check.Near("softness 0: dark just after it", check.Read(world, 100, 66).r, 0);
+}
+
+// A wide spread passes twice; the nine samples of one pass alone would show as steps.
+void AWideSoftEdgeHasNoSteps(PixelCheck& check) {
+    Surface world({128.0f, 128.0f});
+    const LightLayer layer({.resolution = 1.0f, .softness = 30.0f});
+    SoftenedBy(check, world, layer, {});
+    int largestStep = 0;
+    int total = 0;
+    for (int y = 40; y < 90; ++y) {
+        const int step = std::abs(check.Read(world, 100, y).r - check.Read(world, 100, y + 1).r);
+        largestStep = std::max(largestStep, step);
+        total += step;
+    }
+    check.Above("a wide edge goes all the way down", total, 200);
+    check.Near("and has no jump", largestStep, 0, 22);
+}
+
+void FlashesLightTheWorld(PixelCheck& check) {
+    Surface world({128.0f, 128.0f});
+    const LightLayer layer({.resolution = 1.0f});
+    const std::array flashes{LightSource{.at = {30.0f, 64.0f}, .radius = 40.0f, .core = 0.9f}};
+    check.Frame([&](Painter& paint) {
+        auto into = paint.Target(world, White);
+        layer.Draw(paint, {.ambient = Black, .flashes = {.ambient = Gray, .lights = flashes}});
+    });
+    check.Near("a whole-scene flash raises the ambient", check.Read(world, 110, 110).r, 128);
+    check.Near("a flash with a place adds its light", check.Read(world, 30, 64).r, 255);
+}
+
+// Not a check: what shadows and softening add on this GPU, at a common size, with half-resolution light.
+void ReportCost(PixelCheck& check) {
+    constexpr Float2 Size{1280.0f, 720.0f};
+    constexpr int Frames = 120;
+    Surface world(Size);
+    std::array<LightSource, 6> lights{};
+    for (std::size_t i = 0; i < lights.size(); ++i)
+        lights[i] = {.at = {200.0f + static_cast<float>(i) * 170.0f, 360.0f}, .radius = 300.0f};
+    LightOccluders walls;
+    for (int i = 0; i < 12; ++i) {
+        const float x = 100.0f + static_cast<float>(i) * 100.0f;
+        const std::vector<Float2> line{{x, 200.0f}, {x + 40.0f, 240.0f}};
+        walls.Line(line);
+    }
+    const std::array<const LightOccluders*, 1> sets{&walls};
+    const auto cost = [&](const char* name, const LightLayer& layer, bool shadows) {
+        GLuint query = 0;
+        glGenQueries(1, &query);
+        GLuint64 total = 0;
+        for (int frame = 0; frame < Frames; ++frame) {
+            glBeginQuery(GL_TIME_ELAPSED, query);
+            check.Frame([&](Painter& paint) {
+                auto into = paint.Target(world, White);
+                LightFrame light{.ambient = Black, .lights = lights};
+                if (shadows) light.occluders = sets;
+                layer.Draw(paint, light);
+            });
+            glEndQuery(GL_TIME_ELAPSED);
+            GLuint64 elapsed = 0;
+            glGetQueryObjectui64v(query, GL_QUERY_RESULT, &elapsed);
+            if (frame >= Frames / 4) total += elapsed;
+        }
+        glDeleteQueries(1, &query);
+        std::cout << "cost  " << name << ": " << static_cast<double>(total) / (Frames - Frames / 4) / 1e6
+                  << " ms per frame\n";
+    };
+    const LightLayer soft;
+    const LightLayer hard({.softness = 0.0f});
+    cost("no shadows", soft, false);
+    cost("hard shadows", hard, true);
+    cost("soft shadows", soft, true);
+}
+
 // The whole chain, through the canvas: bloom is computed after the light layer and still sees the emissive drawing.
 void BloomShinesThroughTheDark(PixelCheck& check) {
     const LightLayer layer;
@@ -440,7 +543,11 @@ int main() {
         LayerFollowsTheCamera(check);
         ViewportsDarkenOnlyTheirPart(check);
         BloomShinesThroughTheDark(check);
+        ShadowEdgesAreSoft(check);
+        AWideSoftEdgeHasNoSteps(check);
+        FlashesLightTheWorld(check);
         failures = check.Failures();
+        ReportCost(check);
     }
     CloseWindow();
     std::cout << "GPU pixel checks: " << failures << " failures\n";

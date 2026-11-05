@@ -28,6 +28,7 @@ menu. Design record: `Docs/Design/README.md` → D28 (engine repository).
 | `Animation/Curve.h`, `Easing.h` | `Curve` and `Ease`; the same curves as functions, and small time helpers |
 | `Simulation/TimelineMoments.h` | `AppendMoments`: a timeline's moments for `ctl seek --moment` |
 | `Animation/SpringPoint.h`, `AnimatedCounter.h`, `ButtonAnim.h` | [Helpers for views](#helpers-for-views) |
+| `Animation/Flicker.h` | `Flicker`: a lamp's strength from the time, [with no state](Graphics/Lighting.md#flicker) |
 
 Any type can be animated if it has a `Mix(a, b, t)` beside it, as `float`, `Float2` and `Color4` do. Whole numbers, flags and enums
 have no "between": they hold, then change.

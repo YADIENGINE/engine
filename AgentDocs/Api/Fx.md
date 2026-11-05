@@ -71,6 +71,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `struct FxShockwave`
 - `FxShockwave`: `float reach = 0.0f` — 0: the whole area
 - `struct FxFlash`
+- `using FxLightFlash = LightFlashStyle` — A short light, at FxPlay::at unless it has no radius: then the whole scene.
 - `struct FxBanner`
 - `FxBanner`: `std::string text { }`
 - `struct FxToast`
@@ -89,7 +90,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `FxSlowMotion`: `float seconds = 0.0f`
 - `FxSlowMotion`: `float startScale = 0.25f`
 - `FxSlowMotion`: `float endScale = 1.0f`
-- `using FxAction = std::variant<FxBurst, FxParticles, FxTrail, FxDash, FxSteam, FxFloatText, FxPopText, FxRing, FxShockwave, FxFlash, FxBanner, FxToast, FxShake, FxPunch, FxKick, FxGlitch, FxHitstop, FxSlowMotion>`
+- `using FxAction = std::variant<FxBurst, FxParticles, FxTrail, FxDash, FxSteam, FxFloatText, FxPopText, FxRing, FxShockwave, FxFlash, FxLightFlash, FxBanner, FxToast, FxShake, FxPunch, FxKick, FxGlitch, FxHitstop, FxSlowMotion>`
 - `template<class T, class Variant> inline constexpr bool IsFxActionOf = false`
 - `template<class T, class...Actions> inline constexpr bool IsFxActionOf<T, std::variant<Actions...>> =(std::same_as<T, Actions> ||...)`
 - `template<class T> concept FxActionType = IsFxActionOf<T, FxAction>`
@@ -134,7 +135,7 @@ Public visual FX.
 - `FxQuality`: `int particlePercent = 100` — Share of emitted particles, 0..100
 - `FxQuality`: `EffectLevel shake = EffectLevel::Full` — Camera shake, punch and kick
 - `FxQuality`: `bool motion = true` — Speed effects: camera lead and speed lines, slow motion's too (games: their own trails)
-- `FxQuality`: `bool flashes = true` — Screen flashes, glitches, shockwaves, a banner's curtain, slow motion's tint and the pulse's beat.
+- `FxQuality`: `bool flashes = true` — Screen and light flashes, glitches, shockwaves, a banner's curtain, slow motion's tint and the pulse's beat.
 - `FxQuality`: `[[nodiscard]] constexpr float ShakeScale() const` — Shake amplitude multiplier (Full 1, Reduced milder, Off 0).
 - `FxQuality`: `[[nodiscard]] constexpr int ParticleCount(int count) const` — 'count' scaled by particlePercent; a non-zero request makes at least one particle.
 
@@ -145,7 +146,7 @@ Public visual FX.
 - `FxPlay`: `Color4 color { 255, 255, 255, 255 }`
 - `FxPlay`: `Float2 facing { 1.0f, 0.0f }`
 - `FxPlay`: `std::string_view text { }`
-- `FxPlay`: `float intensity = 1.0f` — How big this one is: scales particle counts, shake, punch, kick, ring and reach sizes and a flash's opacity.
+- `FxPlay`: `float intensity = 1.0f` — How big this one is: scales particle counts, shake, punch, kick, ring and reach sizes, a flash's opacity and a light flash's strength.
 - `class FxStage` — Ready-made effects stage for a game field: particles, flying text, rings, shockwaves, camera (shake, punch, kick, motion, cinematic shot), flash / banner / toast, pulse, glitch and the look of slow motion.
 - `FxStage`: `FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle& style)`
 - `FxStage`: `void SetQuality(const FxQuality& quality)` — The player's effect choice (Game::Effects()), for every effect here.
@@ -166,6 +167,7 @@ Public visual FX.
 - `FxStage`: `void Ring(Float2 at, Color4 color)`
 - `FxStage`: `void Toast(const std::string& text, Color4 color)`
 - `FxStage`: `void Flash(Color4 color)`
+- `FxStage`: `void LightFlash(Float2 at, Color4 color, const LightFlashStyle& style)` — A short light; see LightFlashes.
 - `FxStage`: `void Banner(const std::string& text)`
 - `FxStage`: `void Shake(float amount)` — Adds to the shake, up to 1; see CameraEffects::Shake.
 - `FxStage`: `void Punch(float amount, std::optional<Float2> focus = std::nullopt)`
@@ -178,6 +180,7 @@ Public visual FX.
 - `FxStage`: `void SetShot(const CameraShot& shot)` — Each frame: cinematic camera shot; weight 0 gives the normal camera.
 - `FxStage`: `[[nodiscard]] CameraView WorldCamera(const Painter& paint) const` — Field camera: shot + shake / punch / kick / motion; draw with paint.Camera(view).
 - `FxStage`: `[[nodiscard]] CameraView WorldCamera(const Painter& paint, const CameraView& base, const std::optional<FloatRect>& limits = std::nullopt) const` — The same over a game camera (Camera2D::View), one that follows or scrolls: effect positions are then world positions.
+- `FxStage`: `[[nodiscard]] LightFlashFrame LightFlashes() const` — The short lights playing now, for LightFrame::flashes.
 - `FxStage`: `void DrawWorldLayer(Painter& paint) const` — Inside the world camera, over the field's objects.
 - `FxStage`: `void DrawOverlay(Painter& paint) const` — Without the camera, over the viewport.
 
@@ -309,6 +312,15 @@ Public visual FX.
 - `Announcements`: `void Draw(Painter& paint, const FloatRect& bounds, const FloatRect& fillBounds) const` — Banner, then toast.
 - `Announcements`: `void Draw(Painter& paint, const FloatRect& bounds) const`
 
+## `Core/Fx/Screen/FlashLimit.h`
+
+- `enum class FlashKind : std::uint8_t { Screen = 1, Light = 2 }` — What may light up the view at once: one start of each counts as one flash.
+- `class FlashLimit` — For players sensitive to light, flashes start at most three times a second, on Update time.
+- `FlashLimit`: `static constexpr float MinSecondsBetween = 1.0f / 3.0f`
+- `FlashLimit`: `[[nodiscard]] bool Start(FlashKind kind)` — Whether a flash of this kind may start now.
+- `FlashLimit`: `void Update(float deltaSeconds)`
+- `FlashLimit`: `void Clear()`
+
 ## `Core/Fx/Screen/PulseOverlay.h`
 
 - `struct PulseOverlayStyle` — Color overlay and edge darkening pulsing twice like a heartbeat; intensity rises at 'fadeSpeed' while active.
@@ -340,12 +352,13 @@ Public visual FX.
 - `FlashStyle`: `Curve curve = Curve::Linear` — How it fades
 - `[[nodiscard]] bool IsValid(const FlashStyle& style)`
 - `class ScreenFlash` — A colour over the whole view that fades away.
-- `ScreenFlash`: `static constexpr float MinSecondsBetween = 1.0f / 3.0f`
+- `ScreenFlash`: `static constexpr float MinSecondsBetween = FlashLimit::MinSecondsBetween`
 - `ScreenFlash`: `void SetQuality(const FxQuality& quality)` — Flashes off: Flash does nothing.
 - `ScreenFlash`: `void Flash(Color4 color, const FlashStyle& style)` — An invalid style throws invalid_argument.
 - `ScreenFlash`: `void Update(float deltaSeconds)`
 - `ScreenFlash`: `void Clear()`
 - `ScreenFlash`: `void Draw(Painter& paint, const FloatRect& bounds) const`
+- `ScreenFlash`: `[[nodiscard]] FlashLimit& Limit()` — What other flashes of the same view share with this one.
 
 ## `Core/Fx/Screen/ScreenGlitch.h`
 
@@ -391,6 +404,21 @@ Public visual FX.
 - `SlowMotionOverlay`: `void Update(float gameSeconds, float realSeconds)`
 - `SlowMotionOverlay`: `void Clear()`
 - `SlowMotionOverlay`: `void Draw(Painter& paint, const FloatRect& area, const FloatRect& viewArea) const`
+
+## `Core/Fx/World/FlashLights.h`
+
+- `struct LightFlashStyle` — A short light: an explosion's, or with no radius the whole scene's (lightning).
+- `LightFlashStyle`: `float radius = 0.0f` — Where it reaches zero; 0: the whole scene, by raising the ambient, so nothing stops it
+- `LightFlashStyle`: `float seconds = 0.3f` — How long it lasts
+- `LightFlashStyle`: `float strength = 1.0f` — At its start; multiplies the colour
+- `[[nodiscard]] bool IsValid(const LightFlashStyle& style)`
+- `class FlashLights` — The short lights playing now, as data for a LightFrame.
+- `FlashLights`: `static constexpr std::size_t MaxPlaying = 8` — A new one replaces the oldest
+- `FlashLights`: `void SetQuality(const FxQuality& quality)`
+- `FlashLights`: `void Start(FlashLimit& limit, Float2 at, Color4 color, const LightFlashStyle& style)` — Plays if 'limit' allows it.
+- `FlashLights`: `void Update(float deltaSeconds)`
+- `FlashLights`: `void Clear()`
+- `FlashLights`: `[[nodiscard]] LightFlashFrame Frame() const`
 
 ## `Core/Fx/World/FloatingTexts.h`
 

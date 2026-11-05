@@ -11,6 +11,7 @@
 //   Glow        radial light that fades from the centre to shape.x
 //   Composite   like Texture, and the bloom output samples the texture in slot shape.x (a rendered image's emission)
 //   Light       a LightSource; 'local' is the offset from the light, in its own units
+//   Blur        a Gaussian of the texture along style, the texture coordinates between two of its samples
 enum class PaintKind : std::uint8_t {
     Solid,
     Texture,
@@ -24,7 +25,8 @@ enum class PaintKind : std::uint8_t {
     Arc,
     Glow,
     Composite,
-    Light
+    Light,
+    Blur
 };
 // How a distance shape is covered. Fill: inside; Stroke: a band around the edge; Halo: light fading outwards.
 enum class PaintMode : std::uint8_t { Fill, Stroke, Halo };
@@ -52,7 +54,8 @@ struct PaintColor {
 //          GlyphHalo: distance units per texel | Tessellated gradient: shape3 is AA coverage |
 //          Light: radius, core radius, cosine of the cone's outer and inner edge (outer below -1: no cone)
 //   style  Stroke: half width, centre offset | Halo: radius, strength | Fill with gradient: direction / span (linear)
-//          or 1 / radius (radial) | GlyphHalo: radius, strength | Light: the cone's direction as a unit vector
+//          or 1 / radius (radial) | GlyphHalo: radius, strength | Light: the cone's direction as a unit vector |
+//          Blur: step
 struct PaintVertex {
     float x = 0.0f;
     float y = 0.0f;

@@ -75,7 +75,7 @@ paint.Image(_background, field);
 ```
 
 `ImageStyle`: source region, rotation around the center, tint. `NineSlice(texture, dest, style)` draws a panel with
-fixed edges. `ImagePolygon(surface, points, sources)` maps part of a surface onto a convex polygon (broken mirror
+fixed edges. `BlurredImage(surface, dest, along)` draws a surface blurred along one axis; two of them crossing, through a second surface, are a full blur. `ImagePolygon(surface, points, sources)` maps part of a surface onto a convex polygon (broken mirror
 pieces, rippling areas); sources use the surface's logical units. A Surface must not outlive the game's renderer (its
 owner is a scene / View).
 

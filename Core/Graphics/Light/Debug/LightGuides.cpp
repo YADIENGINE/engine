@@ -27,8 +27,8 @@ void DrawLightGuides(Painter& paint, const LightFrame& frame, const CameraView& 
         for (const VisibilityEdge& edge : occluders->Edges())
             paint.Line(edge.a, edge.b, stops);
     }
-    for (const LightSource& light : frame.lights) {
-        if (!(light.radius > 0.0f)) continue;
+    const auto drawLight = [&](const LightSource& light) {
+        if (!(light.radius > 0.0f)) return;
         const Float2 at = light.at;
         paint.Line(at - Float2{mark, mark}, at + Float2{mark, mark}, reach);
         paint.Line(at - Float2{mark, -mark}, at + Float2{mark, -mark}, reach);
@@ -45,10 +45,14 @@ void DrawLightGuides(Painter& paint, const LightFrame& frame, const CameraView& 
         }
         if (whole) {
             paint.Circle(at, light.radius, Outline(width, style.reach));
-            continue;
+            return;
         }
         paint.Arc(at, light.radius, cone.direction - cone.halfAngle, cone.halfAngle * 2.0f, reach);
         paint.Line(at, at + Float2::FromAngle(cone.direction - cone.halfAngle, light.radius), reach);
         paint.Line(at, at + Float2::FromAngle(cone.direction + cone.halfAngle, light.radius), reach);
-    }
+    };
+    for (const LightSource& light : frame.lights)
+        drawLight(light);
+    for (const LightSource& light : frame.flashes.lights)
+        drawLight(light);
 }

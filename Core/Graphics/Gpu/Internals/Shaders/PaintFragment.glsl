@@ -25,6 +25,7 @@ const uint KindArc = 9u;
 const uint KindGlow = 10u;
 const uint KindComposite = 11u;
 const uint KindLight = 12u;
+const uint KindBlur = 13u;
 
 const uint ModeFill = 0u;
 const uint ModeStroke = 1u;
@@ -48,6 +49,16 @@ vec4 SampleSlot(uint slot, vec2 uv) {
     case 7: return textureLod(uTextures[7], uv, 0.0);
     }
     return vec4(0.0);
+}
+
+// Nine samples of a Gaussian whose standard deviation is two of its steps.
+vec4 BlurSlot(uint slot, vec2 uv, vec2 step) {
+    vec4 sum = SampleSlot(slot, uv) * 0.2042;
+    sum += (SampleSlot(slot, uv + step) + SampleSlot(slot, uv - step)) * 0.1802;
+    sum += (SampleSlot(slot, uv + step * 2.0) + SampleSlot(slot, uv - step * 2.0)) * 0.1238;
+    sum += (SampleSlot(slot, uv + step * 3.0) + SampleSlot(slot, uv - step * 3.0)) * 0.0663;
+    sum += (SampleSlot(slot, uv + step * 4.0) + SampleSlot(slot, uv - step * 4.0)) * 0.0276;
+    return sum;
 }
 
 // Signed distances: negative inside, in the shape's local units.
@@ -102,6 +113,8 @@ void main() {
     bool shaped = false;
     if (kind == KindTexture || kind == KindComposite) {
         texel = SampleSlot(slot, vLocal);
+    } else if (kind == KindBlur) {
+        texel = BlurSlot(slot, vLocal, vStyle);
     } else if (kind == KindGlyph) {
         texel = vec4(SampleSlot(slot, vLocal).r);
     } else if (kind == KindGlyphHalo) {

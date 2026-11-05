@@ -22,7 +22,8 @@ struct FxPlay {
     Color4 color{255, 255, 255, 255};
     Float2 facing{1.0f, 0.0f};
     std::string_view text{};
-    // How big this one is: scales particle counts, shake, punch, kick, ring and reach sizes and a flash's opacity.
+    // How big this one is: scales particle counts, shake, punch, kick, ring and reach sizes, a flash's opacity and a
+    // light flash's strength.
     // Times, texts and colours stay. 0 plays nothing.
     float intensity = 1.0f;
 };
@@ -71,6 +72,8 @@ public:
     void Ring(Float2 at, Color4 color);
     void Toast(const std::string& text, Color4 color);
     void Flash(Color4 color);
+    // A short light; see LightFlashes. It shares the flash limit with Flash: starting together, they count as one.
+    void LightFlash(Float2 at, Color4 color, const LightFlashStyle& style);
     void Banner(const std::string& text);
     // Adds to the shake, up to 1; see CameraEffects::Shake.
     void Shake(float amount);
@@ -95,6 +98,8 @@ public:
     // camera's (Camera2D::Settings().limits).
     [[nodiscard]] CameraView WorldCamera(const Painter& paint, const CameraView& base,
                                          const std::optional<FloatRect>& limits = std::nullopt) const;
+    // The short lights playing now, for LightFrame::flashes. Valid until the next call that changes the stage.
+    [[nodiscard]] LightFlashFrame LightFlashes() const { return _flashLights.Frame(); }
     // Inside the world camera, over the field's objects.
     void DrawWorldLayer(Painter& paint) const;
     // Without the camera, over the viewport.
@@ -135,6 +140,7 @@ private:
     Rings _rings;
     CameraEffects _camera;
     ScreenFlash _flash;
+    FlashLights _flashLights;
     Announcements _announcements;
     PulseOverlay _pulse;
     Shockwaves _shockwaves;

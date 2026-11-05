@@ -165,6 +165,7 @@ add_library(EngineHeadless STATIC
     Fx/World/FloatingTexts.cpp
     Fx/World/Rings.cpp
     Fx/World/ShatterSpread.cpp
+    Fx/World/FlashLights.cpp
     Fx/World/Shockwaves.cpp
     GameObjects/GameObject.cpp
     GameObjects/ObjectList.cpp

@@ -19,7 +19,9 @@
 #include "Fx/FxStage.h"
 #include "Fx/Particles/ParticleSystem.h"
 #include "Fx/Screen/Announcements.h"
+#include "Fx/Screen/FlashLimit.h"
 #include "Fx/Screen/ScreenFlash.h"
+#include "Fx/World/FlashLights.h"
 #include "Fx/World/FloatingTexts.h"
 #include "Graphics/Style/NeonArcadeTheme.h"
 #include "Graphics/Text/FontFace.h"
@@ -395,6 +397,97 @@ TEST_CASE("Engine.Fx.ABrighterFlashWinsAndFlashesAreRationed", "[engine][fx]") {
     rationed.Update(ScreenFlash::MinSecondsBetween + 0.01f);
     rationed.Flash(Pink, strong);
     CHECK(strength(rationed) == bright);
+}
+
+TEST_CASE("Engine.FxStage.ALightFlashIsAtItsPlaceOrOverTheWholeScene", "[engine][fx]") {
+    FxStage stage = MakeStage();
+    stage.Play(FxCue{FxLightFlash{.radius = 300.0f, .seconds = 1.0f}}, {.at = {50.0f, 60.0f}, .color = Pink});
+    REQUIRE(stage.LightFlashes().lights.size() == 1);
+    const LightSource light = stage.LightFlashes().lights[0];
+    CHECK(light.at == Float2{50.0f, 60.0f});
+    CHECK(light.radius == Approx(300.0f));
+    CHECK(light.color == Pink);
+    CHECK(light.intensity == Approx(1.0f));
+    CHECK(stage.LightFlashes().ambient == Color4{0, 0, 0, 255});
+
+    stage.Clear();
+    stage.Play(FxCue{FxLightFlash{.seconds = 1.0f, .strength = 0.5f}}, {.color = {200, 100, 0, 255}});
+    CHECK(stage.LightFlashes().lights.empty());
+    CHECK(stage.LightFlashes().ambient == Color4{100, 50, 0, 255});
+}
+
+TEST_CASE("Engine.FxStage.ALightFlashFadesOnGameTimeAndEnds", "[engine][fx]") {
+    FxStage stage = MakeStage();
+    stage.LightFlash({}, Pink, {.radius = 100.0f, .seconds = 1.0f});
+    stage.Update(0.0f, 0.5f); // A hitstop holds it, as real time goes on
+    CHECK(stage.LightFlashes().lights[0].intensity == Approx(1.0f));
+    stage.Update(0.5f, 0.5f);
+    CHECK(stage.LightFlashes().lights[0].intensity == Approx(0.25f)); // Falls away quickly
+    stage.Update(0.5f, 0.5f);
+    CHECK(stage.LightFlashes().lights.empty());
+}
+
+TEST_CASE("Engine.FxStage.IntensityScalesALightFlashesStrengthNotItsTime", "[engine][fx]") {
+    FxStage stage = MakeStage();
+    stage.Play(FxCue{FxLightFlash{.radius = 100.0f, .seconds = 1.0f}}, {.intensity = 0.5f});
+    REQUIRE(stage.LightFlashes().lights.size() == 1);
+    CHECK(stage.LightFlashes().lights[0].intensity == Approx(0.5f));
+    CHECK(stage.LightFlashes().lights[0].radius == Approx(100.0f));
+    stage.Update(0.999f, 0.999f);
+    CHECK(stage.LightFlashes().lights.size() == 1);
+}
+
+TEST_CASE("Engine.FxStage.WithFlashesOffThereAreNoLightFlashes", "[engine][fx]") {
+    FxStage stage = MakeStage();
+    stage.Play(FxCue{FxLightFlash{.radius = 100.0f}}, {.color = Pink});
+    REQUIRE(stage.LightFlashes().lights.size() == 1);
+    stage.SetQuality({.flashes = false}); // One showing goes with the choice
+    CHECK(stage.LightFlashes().lights.empty());
+    stage.Update(1.0f, 1.0f);
+    stage.Play(FxCue{FxLightFlash{.radius = 100.0f}}, {.color = Pink});
+    stage.Play(FxCue{FxLightFlash{.seconds = 1.0f}}, {.color = Pink});
+    CHECK(stage.LightFlashes().lights.empty());
+    CHECK(stage.LightFlashes().ambient == Color4{0, 0, 0, 255});
+}
+
+TEST_CASE("Engine.FxStage.LightFlashesAreRationedWithScreenFlashes", "[engine][fx]") {
+    const LightFlashStyle flash{.radius = 100.0f, .seconds = 5.0f};
+    FxStage stage = MakeStage();
+    stage.LightFlash({}, Pink, flash);
+    stage.LightFlash({}, Pink, flash); // Too soon
+    CHECK(stage.LightFlashes().lights.size() == 1);
+    stage.Update(0.1f, 0.1f);
+    stage.LightFlash({}, Pink, flash);
+    CHECK(stage.LightFlashes().lights.size() == 1);
+    stage.Update(FlashLimit::MinSecondsBetween, FlashLimit::MinSecondsBetween);
+    stage.LightFlash({}, Pink, flash);
+    CHECK(stage.LightFlashes().lights.size() == 2);
+
+    // A screen flash counts, or the two taking turns would double the limit.
+    FxStage turns = MakeStage();
+    turns.Flash(Pink);
+    turns.Update(0.1f, 0.1f);
+    turns.LightFlash({}, Pink, flash);
+    CHECK(turns.LightFlashes().lights.empty());
+
+    // Together they are one flash.
+    FxStage together = MakeStage();
+    together.Play(FxCue{FxFlash{}, FxLightFlash{flash}}, {.color = Pink});
+    CHECK(together.LightFlashes().lights.size() == 1);
+    CHECK(OverlayVertices(together) > 0);
+}
+
+TEST_CASE("Engine.Fx.FlashLightsKeepTheNewestAndRefuseWhatIsWrong", "[engine][fx]") {
+    FlashLights lights;
+    FlashLimit limit;
+    for (std::size_t i = 0; i <= FlashLights::MaxPlaying; ++i) {
+        lights.Start(limit, {static_cast<float>(i), 0.0f}, Pink, {.radius = 10.0f, .seconds = 100.0f});
+        limit.Update(FlashLimit::MinSecondsBetween + 0.01f);
+    }
+    REQUIRE(lights.Frame().lights.size() == FlashLights::MaxPlaying);
+    CHECK(lights.Frame().lights[0].at.x == Approx(1.0f));
+    CHECK_THROWS_AS(lights.Start(limit, {}, Pink, {.seconds = 0.0f}), std::invalid_argument);
+    CHECK_THROWS_AS(FxCue{FxLightFlash{.radius = -1.0f}}, std::invalid_argument);
 }
 
 TEST_CASE("Engine.FxStage.FlashesOffAlsoCoversWavesAndCurtains", "[engine][fx]") {

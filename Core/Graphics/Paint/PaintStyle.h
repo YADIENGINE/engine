@@ -1,4 +1,5 @@
 #pragma once
+#include <span>
 #include "Utilities/Color4.h"
 #include "Utilities/Geometry/Float2.h"
 #include "Utilities/Geometry/FloatRect.h"
@@ -120,4 +121,10 @@ struct LightSource {
     float core = 0.0f;                // 0..1: share of the radius that stays at full strength
     LightCone cone{};
     bool shadows = true; // Whether a LightFrame's occluders stop it
+};
+
+// The short lights effects are playing (FxStage::LightFlashes), for LightFrame::flashes.
+struct LightFlashFrame {
+    Color4 ambient{0, 0, 0, 255}; // Added to the frame's ambient: flashes that light the whole scene
+    std::span<const LightSource> lights;
 };

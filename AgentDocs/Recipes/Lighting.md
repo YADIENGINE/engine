@@ -1,8 +1,8 @@
 # Lighting recipe
 
-A dark room with a lantern, a flashlight that follows the mouse, a flickering torch, shadows from a crate and from the player, and a neon sign that shines by itself.
+A dark room with a lantern, a flashlight that follows the mouse, a flickering torch, lightning on the space bar, soft shadows from a crate and from the player, and a neon sign that shines by itself.
 
-APIs: Core/Graphics/Light/LightLayer.h, Core/Graphics/Light/LightOccluders.h, Core/Graphics/Light/CollisionOccluders.h, Core/Graphics/Light/Debug/LightGuides.h, Core/Graphics/Paint/PaintStyle.h (`LightSource`, `LightCone`). Concepts: [Lighting](../../Docs/Graphics/Lighting.md).
+APIs: Core/Graphics/Light/LightLayer.h, Core/Graphics/Light/LightOccluders.h, Core/Graphics/Light/CollisionOccluders.h, Core/Graphics/Light/Debug/LightGuides.h, Core/Graphics/Paint/PaintStyle.h (`LightSource`, `LightCone`), Core/Animation/Flicker.h, Core/Fx/FxStage.h (`LightFlashes`). Concepts: [Lighting](../../Docs/Graphics/Lighting.md).
 
 The order in `Draw` is the whole recipe: the world, the layer, what shines by itself, the HUD.
 
@@ -12,17 +12,22 @@ The order in `Draw` is the whole recipe: the world, the layer, what shines by it
 #include <string>
 #include "Editor/Api/EditorScene.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Fx/FxStage.h"
 #include "Graphics/Light/LightLayer.h"
 #include "Graphics/Light/LightOccluders.h"
 #include "Physics/Collision/CollisionWorld.h"
 #include "Utilities/Geometry/Float2.h"
 
-// A dark room: the player carries a lantern and aims a flashlight, a torch flickers on the wall, walls cast shadows, and
-// a neon sign shines by itself. Lights are view code on seconds and decide nothing.
+// A dark room: the player carries a lantern and aims a flashlight, a torch flickers on the wall, lightning lights it
+// all for a moment, walls cast shadows, and a neon sign shines by itself. Lights are view code on seconds and decide
+// nothing.
 class RecipeLitView {
 public:
     explicit RecipeLitView(Float2 canvas);
     void SetGuides(bool shown) { _guides = shown; }
+    // The player's choice, Game::Effects(): the stage and the flicker both honour it.
+    void SetEffects(const FxQuality& effects);
+    void Lightning();
     // Each frame: how the player moves (-1..1 per axis) and the mouse on the canvas, which the flashlight follows.
     void Update(float seconds, Float2 move, Float2 mouse);
     void Draw(Painter& paint) const;
@@ -36,6 +41,8 @@ private:
     Float2 _aim;
     float _time = 0.0f;
     bool _guides = false;
+    bool _flashes = true;
+    FxStage _fx;
     LightLayer _lights; // Keeps only an image's memory: the lights are described in Draw, every frame
     CollisionWorld _colliders; // In a game: the simulation's, read by the view
     LightOccluders _walls;     // Built once from the colliders: walls stand still
@@ -53,6 +60,7 @@ private:
     RecipeLitView _view;
     Float2 _move;
     Float2 _mouse;
+    bool _lightning = false;
 };
 
 [[nodiscard]] SceneDefinition RecipeLitSceneDefinition();
@@ -65,9 +73,12 @@ private:
 #include <array>
 #include <cmath>
 #include <memory>
+#include "Animation/Flicker.h"
+#include "Fx/FxCue.h"
 #include "Graphics/Light/CollisionOccluders.h"
 #include "Graphics/Light/Debug/LightGuides.h"
 #include "Graphics/Paint/Painter.h"
+#include "Graphics/Style/Theme.h"
 #include "Input/Input.h"
 #include "Physics/Collision/Shape.h"
 
@@ -78,6 +89,8 @@ constexpr Color4 Neon = Rgb(0x30e0ff);
 constexpr Color4 Night = Rgb(0x10121c);
 constexpr Color4 LanternColor = Rgb(0xffd9a0);
 constexpr Color4 TorchColor = Rgb(0xff8a3c);
+constexpr Color4 LightningColor = Rgb(0xb8ccff);
+constexpr unsigned TorchSeed = 1U;
 constexpr FloatRect Room{0.0f, 0.0f, 1600.0f, 1000.0f};
 constexpr Float2 Torch{1100.0f, 300.0f};
 constexpr Float2 Sign{500.0f, 280.0f};
@@ -91,14 +104,26 @@ enum class Layer { Wall };
 RecipeLitView::RecipeLitView(Float2 canvas)
     : _canvas(canvas)
     , _player(Room.Center())
-    , _aim(Room.Center() + Float2{100.0f, 0.0f}) {
+    , _aim(Room.Center() + Float2{100.0f, 0.0f})
+    , _fx(FloatRect{0.0f, 0.0f, canvas.x, canvas.y}, FloatRect{0.0f, 0.0f, canvas.x, canvas.y}, CurrentTheme().fx) {
     (void)_colliders.Add(Shape::Box(CrateHalf.x, CrateHalf.y), {CrateAt}, MaskOf(Layer::Wall));
     // Here light stops where the player stops. Anything else, such as a sprite's outline, goes in LightOccluders by hand.
     AddOccluders(_walls, _colliders, MaskOf(Layer::Wall));
 }
 
+void RecipeLitView::SetEffects(const FxQuality& effects) {
+    _flashes = effects.flashes;
+    _fx.SetQuality(effects);
+}
+
+void RecipeLitView::Lightning() {
+    // No radius: the whole scene, for a moment. Usually one line of a named cue.
+    _fx.Play(FxCue{FxLightFlash{.seconds = 0.45f, .strength = 0.8f}}, {.color = LightningColor});
+}
+
 void RecipeLitView::Update(float seconds, Float2 move, Float2 mouse) {
     _time += seconds;
+    _fx.Update(seconds, seconds);
     _player += move * (PlayerSpeed * seconds);
     _aim = View().ToWorld(mouse);
 }
@@ -118,15 +143,18 @@ void RecipeLitView::Draw(Painter& paint) const {
         DrawWorld(paint);
     }
 
-    // A light's strength can be any function of time: this one flickers. A tween or a clip can drive it too.
-    const float flicker = 0.85f + 0.15f * std::sin(_time * 13.0f) * std::sin(_time * 7.3f);
     const Float2 aimed = _aim - _player;
     const std::array lights{
         LightSource{.at = _player, .radius = 160.0f, .color = LanternColor, .intensity = 0.7f},
         LightSource{.at = _player,
                     .radius = 520.0f,
                     .cone = {.direction = std::atan2(aimed.y, aimed.x), .halfAngle = 0.35f}},
-        LightSource{.at = Torch, .radius = 300.0f * flicker, .color = TorchColor, .core = 0.15f},
+        // A light's strength can be any function of time. Flicker needs the player's choice, so it cannot be forgotten.
+        LightSource{.at = Torch,
+                    .radius = 300.0f,
+                    .color = TorchColor,
+                    .intensity = Flicker(_time, FlickerStyle::Candle(), TorchSeed, _flashes),
+                    .core = 0.15f},
     };
     // What moves gives its outline from where it is drawn, so its shadow does not lag behind it. The player's own
     // lights stand inside this outline, so it stops only the torch.
@@ -136,7 +164,7 @@ void RecipeLitView::Draw(Painter& paint) const {
     moving.Outline(body, Affine2::Translate(_player) * Affine2::Scale(PlayerRadius));
     const std::array<const LightOccluders*, 2> occluders{&_walls, &moving};
 
-    const LightFrame frame{.ambient = Night, .lights = lights, .occluders = occluders};
+    const LightFrame frame{.ambient = Night, .lights = lights, .occluders = occluders, .flashes = _fx.LightFlashes()};
     _lights.Draw(paint, frame, view); // Outside paint.Camera, with the view the world was drawn through
 
     {
@@ -163,6 +191,7 @@ void RecipeLitScene::HandleInput(const DeviceInput& input) {
         return (input.Down(positive) ? 1.0f : 0.0f) - (input.Down(negative) ? 1.0f : 0.0f);
     };
     _move = {axis(InputKey::A, InputKey::D), axis(InputKey::W, InputKey::S)};
+    _lightning = input.Pressed(InputKey::Space);
     if (input.mousePosition)
         _mouse = {static_cast<float>(input.mousePosition->x), static_cast<float>(input.mousePosition->y)};
 }
@@ -172,7 +201,11 @@ std::string RecipeLitScene::ApplyParameter(const std::string& id, const SceneVal
     return {};
 }
 
-void RecipeLitScene::Update(float seconds) { _view.Update(seconds, _move, _mouse); }
+void RecipeLitScene::Update(float seconds) {
+    if (_lightning) _view.Lightning();
+    _lightning = false;
+    _view.Update(seconds, _move, _mouse);
+}
 
 void RecipeLitScene::Draw(Painter& paint) const { _view.Draw(paint); }
 
@@ -192,4 +225,4 @@ SceneDefinition RecipeLitSceneDefinition() {
 
 Look at it: `python Engine ctl open myproject.lighting --set guides=true --screenshot`; `guides` shows where each light stands, how far it reaches and what stops it.
 
-Pitfalls: Call `LightLayer::Draw` outside `paint.Camera`, and give it the view the world was drawn through, shake included (`FxStage::WorldCamera`), or the lights slide off the world. Draw emissive shapes after the layer: before it their bloom stays but their colour goes dark. Move a light and a moving outline with the position the view draws (`StepSmoothed::At(alpha)`); a collider stands at the last step, so a shadow from `AddOccluders` lags on anything that moves. Do not add a collision layer only for light: layers are part of a simulation's state, so a look would change the replay hash. Lighting decides nothing: "can the guard see the player" belongs in the simulation, asked with `CollisionWorld::Raycast`. Use `Painter::Glow` for decoration that a low quality setting may remove, and a `LightSource` for anything the player needs to see.
+Pitfalls: Call `LightLayer::Draw` outside `paint.Camera`, and give it the view the world was drawn through, shake included (`FxStage::WorldCamera`), or the lights slide off the world. Draw emissive shapes after the layer: before it their bloom stays but their colour goes dark. Move a light and a moving outline with the position the view draws (`StepSmoothed::At(alpha)`); a collider stands at the last step, so a shadow from `AddOccluders` lags on anything that moves. Give `.flashes = _fx.LightFlashes()` to the frame, or `FxLightFlash` plays and nothing shows. Pass `Game::Effects().flashes` to `Flicker` and `SetQuality` to the stage, so a player sensitive to light is spared both. Do not add a collision layer only for light: layers are part of a simulation's state, so a look would change the replay hash. Lighting decides nothing: "can the guard see the player" belongs in the simulation, asked with `CollisionWorld::Raycast`. Use `Painter::Glow` for decoration that a low quality setting may remove, and a `LightSource` for anything the player needs to see.

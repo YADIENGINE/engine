@@ -104,6 +104,10 @@ public:
     void Image(const TextureRef& texture, const FloatRect& dest, const ImageStyle& style = {});
     // Whole surface into 'dest'; the surface must have been drawn into this frame or earlier.
     void Image(const Surface& surface, const FloatRect& dest, const ImageStyle& style = {});
+    // 'surface' over 'dest', blurred along one axis: 'along' is how far it spreads to each side, in the surface's
+    // logical units. A full blur is two of these crossing, through a second surface; bloom is left out. A spread wider
+    // than about eight device pixels shows its samples: go over it again with a smaller one.
+    void BlurredImage(const Surface& surface, const FloatRect& dest, Float2 along);
     // Convex polygon showing part of 'surface': 'sources[i]' is where 'points[i]' samples the surface, in its logical
     // units (as ImageStyle::source), so a piece of an image can be warped onto any convex shape (shards, ripples).
     // Not anti-aliased. Point and source counts must match (invalid_argument); fewer than three draws nothing.

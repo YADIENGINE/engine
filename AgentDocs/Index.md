@@ -50,6 +50,8 @@ Workflow rules, skills and hard invariants: [Agent.md](Agent.md).
 | Add pop text, toast, banner or speed lines | `Core/Fx/World/FloatingTexts.h`<br>`Core/Fx/FxText.h`<br>`Core/Fx/Screen/Announcements.h`<br>`Core/Graphics/Draw/SpeedLines.h` | - | `Docs/Graphics/Effects.md#graphics-and-fx` |
 | Animate arbitrary popup drawing or emit numeric feedback | `Core/Modules/Popup/Popup.h`<br>`Core/Modules/NumberPopup/NumberPopup.h` | `Recipes/PopupEffects.md` | `Docs/Modules/Popup/README.md`<br>`Docs/Modules/NumberPopup/README.md` |
 | Darken a world and light it: point lights, cones, flicker, what shines by itself | `Core/Graphics/Light/LightLayer.h`<br>`Core/Graphics/Light/Debug/LightGuides.h`<br>`Core/Graphics/Paint/PaintStyle.h` | `Recipes/Lighting.md` | `Docs/Graphics/Lighting.md` |
+| Make a lamp flicker: a candle, a failing tube | `Core/Animation/Flicker.h` | `Recipes/Lighting.md` | `Docs/Graphics/Lighting.md#flicker` |
+| Light up a moment: lightning, an explosion | `Core/Fx/FxCue.h`<br>`Core/Fx/FxStage.h`<br>`Core/Fx/World/FlashLights.h` | `Recipes/Lighting.md` | `Docs/Graphics/Lighting.md#short-flashes` |
 | Make walls and characters cast shadows; decide whether a collider stops light | `Core/Graphics/Light/LightOccluders.h`<br>`Core/Graphics/Light/CollisionOccluders.h` | `Recipes/Lighting.md` | `Docs/Graphics/Lighting.md#shadows` |
 | Draw what a point can see past walls: a guard's view | `Core/Utilities/Geometry/Visibility.h` | - | `Docs/Graphics/Lighting.md` |
 | Add rings, shockwaves, a flash, glitch or a pulse | `Core/Fx/Screen/ScreenFlash.h`<br>`Core/Fx/World/Rings.h`<br>`Core/Fx/World/Shockwaves.h`<br>`Core/Fx/Screen/ScreenGlitch.h`<br>`Core/Fx/Screen/PulseOverlay.h` | - | `Docs/Graphics/Effects.md#cinematic-camera-and-configurable-overlays` |

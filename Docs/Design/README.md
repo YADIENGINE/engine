@@ -1370,6 +1370,61 @@ when the surface was as large as its target. `GlDevice::BeginPass` now unbinds a
 `EngineGpuPixelCheck` renders with the real device in a hidden window and reads pixels back. It needs a desktop and a GPU, so
 it is not a CTest.
 
+### D40. Light polish: flicker, short flashes, soft shadows
+Status: implemented (2026-11-05). Usage: [Lighting](../Graphics/Lighting.md).
+
+**Decision:** three additions to D38. `Flicker` computes a lamp's strength from the time; `FxLightFlash` is a cue whose light
+reaches a `LightFrame` as data; `LightLayer` blurs its image when a shadow falls. Light stays view code: no hash or replay
+changes.
+
+**Flicker:**
+1. *A function in `Animation`, with `flashes` a required argument.* It keeps nothing, so `LightSource` stays plain data.
+   `Animation` cannot see `FxQuality`, so something has to carry the choice. A check left to each game could be forgotten, and
+   then someone who turned flashes off keeps flickering where no test looks. Going through `FxStage` would apply it by
+   itself, but a candle should not need a stage. A required argument cannot be forgotten and needs nothing; the price is one
+   argument per call, as with the two clocks of D30.
+2. *Without flashes, slow rather than still.* Nothing cuts out, and the wander slows to one change a second. A candle's sway is
+   what makes it a candle and does not flash. A tube's wander is so shallow that it then burns steadily. With flashes on, cuts
+   are not rationed: the player has allowed them, and `ScreenGlitch` keeps its fast pattern behind the same setting (D30).
+
+**Short flashes:**
+3. *The game connects them in one line: `.flashes = _fx.LightFlashes()`.* `Light` and `Fx` do not include each other, as
+   `LightSource` is in `Paint`, which both see. `_fx.WithFlashes(frame)` would make `Fx` depend on `Light` and keep a merged list
+   inside it. `Draw(paint, frame, view, _fx)` would make `Light` depend on `Fx`, and a game with no stage would meet it too.
+   Forgetting the line shows no flash, which is visible and risks nothing.
+4. *No radius means the whole scene, by raising the ambient.* The same meaning as `FxShockwave::reach`. Lightning lights what
+   is behind a wall, so no occluder stops it. A flash with a radius is an ordinary light, so its shadows come free.
+5. *Clocks and scale as for `FxFlash`.* Game time, so a hitstop holds a hit's parts together. `intensity` scales the strength and
+   not the time.
+6. *One limit, shared.* `ScreenFlash`'s rule became `FlashLimit`, and `FlashLights` uses the same one, or the two taking turns
+   would make six starts a second. A start of each kind since the last `Update` counts as one, since a cue with both is one event.
+   A consequence that was accepted: a double strike loses its second half, and of ten explosions in a second, three give light.
+7. *Turning flashes off also ends one showing.* The player has just asked for this.
+
+**Soft shadows:** the steps are the image's pixels, drawn without anti-aliasing and doubled by half resolution, so they stay
+two screen pixels wide at every zoom.
+
+| Way | Good | Bad |
+| --- | --- | --- |
+| Blur the image (chosen) | Every edge, including where light stops on an object; cost does not grow with lights; no special cases | Same spread near and far; a thin wall leaks that much |
+| Several samples per light | Spreads with distance, as in life | Cost times samples per light; steps between samples; each sample's share of 8 bits loses the dark range, where a dark game lives |
+| Fans of a soft wedge at each silhouette | No extra pass, spreads with distance | Leaks through the next wall unless each wedge is cast again; leaves steps where light stops on an object |
+| Distance field marched per pixel | The best look | A new occluder image and a heavy shader for each light, for a look few 2D games need |
+| Higher resolution | Nothing to write | Steps remain, and it costs four times the pixels |
+
+8. *The chosen blur stands on public `Painter`.* `BlurredImage` is a new paint kind in the existing shader, so `LightLayer` keeps
+   to `Painter` and `Surface`, and any game can use it.
+9. *In world units, scaled by the zoom.* A close-up is softer on the screen and the same in the world. At least one image unit,
+   or the steps return when zoomed out; at most 24.
+10. *A wide spread passes twice.* Nine samples spread over many pixels show as bands, so past about eight device pixels a
+    narrower pass goes over them. A pixel check compares neighbouring rows.
+11. *No cost without a shadow.* The passes run only in a frame where a light was actually cut, and the second image gets no
+    memory before the first such frame. Measured with `EngineGpuPixelCheck` on one desktop GPU, with six shadowed lights at
+    1280 x 720 and half resolution: about 0.04 ms a frame with hard edges and 0.07 ms with soft ones. Other GPUs are not measured.
+
+**Left out:** normal maps, brightening past a pixel's colour, a quality screen, and colliders stopping light by themselves (D38).
+A penumbra that grows with distance can come later behind the same option.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

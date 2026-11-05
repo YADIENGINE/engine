@@ -28,6 +28,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `Painter`: `void Light(const LightSource& light, std::span<const Float2> visible = { })` — A light, added to what is below.
 - `Painter`: `void Image(const TextureRef& texture, const FloatRect& dest, const ImageStyle& style = { })`
 - `Painter`: `void Image(const Surface& surface, const FloatRect& dest, const ImageStyle& style = { })` — Whole surface into 'dest'; the surface must have been drawn into this frame or earlier.
+- `Painter`: `void BlurredImage(const Surface& surface, const FloatRect& dest, Float2 along)` — 'surface' over 'dest', blurred along one axis: 'along' is how far it spreads to each side, in the surface's logical units.
 - `Painter`: `void ImagePolygon(const Surface& surface, std::span<const Float2> points, std::span<const Float2> sources, Color4 tint = { 255, 255, 255, 255 }, float emission = 0.0f)` — Convex polygon showing part of 'surface': 'sources[i]' is where 'points[i]' samples the surface, in its logical units (as ImageStyle::source), so a piece of an image can be warped onto any convex shape (shards, ripples).
 - `Painter`: `void NineSlice(const TextureRef& texture, const FloatRect& dest, const NineSliceStyle& style)`
 - `Painter`: `Float2 Text(std::string_view text, Float2 position, const TextStyle& style)` — 'position' is the top of the first line; horizontally the line's left end, centre or right end (style.align).
@@ -125,6 +126,9 @@ Use these generated signatures to locate public declarations; open the header fo
 - `LightSource`: `float core = 0.0f` — 0..1: share of the radius that stays at full strength
 - `LightSource`: `LightCone cone { }`
 - `LightSource`: `bool shadows = true` — Whether a LightFrame's occluders stop it
+- `struct LightFlashFrame` — The short lights effects are playing (FxStage::LightFlashes), for LightFrame::flashes.
+- `LightFlashFrame`: `Color4 ambient { 0, 0, 0, 255 }` — Added to the frame's ambient: flashes that light the whole scene
+- `LightFlashFrame`: `std::span<const LightSource> lights`
 
 ## `Core/Graphics/Paint/Path.h`
 

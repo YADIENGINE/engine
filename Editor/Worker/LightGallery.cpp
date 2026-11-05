@@ -4,11 +4,15 @@
 #include <cmath>
 #include <memory>
 #include <string>
+#include "Animation/Flicker.h"
+#include "Fx/FxCue.h"
+#include "Fx/FxStage.h"
 #include "Graphics/Light/CollisionOccluders.h"
 #include "Graphics/Light/Debug/LightGuides.h"
 #include "Graphics/Light/LightLayer.h"
 #include "Graphics/Light/LightOccluders.h"
 #include "Graphics/Paint/Painter.h"
+#include "Graphics/Style/Theme.h"
 #include "Physics/Collision/CollisionWorld.h"
 #include "Physics/Collision/Shape.h"
 #include "Graphics/Text/TextStyle.h"
@@ -21,6 +25,14 @@ constexpr Color4 Warm = Rgb(0xffc98a);
 constexpr Color4 Cold = Rgb(0x8ab8ff);
 constexpr Color4 Green = Rgb(0x9dff8a);
 constexpr Color4 Neon = Rgb(0xff3fa4);
+constexpr Color4 CandleColor = Rgb(0xff9a4a);
+constexpr Color4 TubeColor = Rgb(0xd8f4ff);
+constexpr Color4 FireColor = Rgb(0xffa040);
+constexpr Color4 SkyColor = Rgb(0xb8ccff);
+constexpr unsigned CandleSeed = 1U;
+constexpr unsigned TubeSeed = 2U;
+constexpr LightFlashStyle Lightning{.seconds = 0.45f, .strength = 0.8f};
+constexpr LightFlashStyle Explosion{.radius = 360.0f, .seconds = 0.5f, .strength = 1.5f};
 constexpr Color4 WallColor = Rgb(0x5a5f73);
 constexpr Color4 CrateColor = Rgb(0xb5793a);
 constexpr float Tile = 80.0f;
@@ -30,7 +42,8 @@ enum class Layer { Wall };
 class LightGallery final : public EditorScene {
 public:
     LightGallery(const SceneServices& services, const SceneParameters& parameters)
-        : _size(static_cast<float>(services.canvas.x), static_cast<float>(services.canvas.y)) {
+        : _size(static_cast<float>(services.canvas.x), static_cast<float>(services.canvas.y))
+        , _fx(FloatRect{0.0f, 0.0f, _size.x, _size.y}, FloatRect{0.0f, 0.0f, _size.x, _size.y}, CurrentTheme().fx) {
         for (const auto& [id, value] : parameters)
             (void)ApplyParameter(id, value);
         // Walls that stand still come from their colliders.
@@ -55,14 +68,33 @@ public:
         if (id == "bloom") _bloom = static_cast<float>(std::get<double>(value));
         if (id == "zoom") _zoom = static_cast<float>(std::get<double>(value));
         if (id == "turn") _turn = static_cast<float>(std::get<double>(value));
-        if (id == "resolution") _layer = LightLayer({.resolution = static_cast<float>(std::get<double>(value))});
+        if (id == "flashes") {
+            _flashes = std::get<bool>(value);
+            _fx.SetQuality({.flashes = _flashes});
+        }
+        if (id == "resolution" || id == "softness") {
+            (id == "resolution" ? _resolution : _softness) = static_cast<float>(std::get<double>(value));
+            _layer = LightLayer({.resolution = _resolution, .softness = _softness});
+        }
+        return {};
+    }
+
+    std::string ExecuteAction(const std::string& id) override {
+        const Float2 center = _size * 0.5f;
+        // Cues, as a game would play them. The explosion stands behind a wall, so its shadow shows.
+        if (id == "lightning") _fx.Play(FxCue{FxLightFlash{Lightning}}, {.color = SkyColor});
+        if (id == "explosion")
+            _fx.Play(FxCue{FxLightFlash{Explosion}}, {.at = center + Float2{-20.0f, -40.0f}, .color = FireColor});
         return {};
     }
 
 private:
+    void Update(float seconds) override { _fx.Update(seconds, seconds); }
+
     void Draw(Painter& paint) const override {
         paint.Post().bloom.intensity = _bloom;
         const float time = _animate ? static_cast<float>(paint.Time()) : 0.0f;
+        const double flicker = _animate ? paint.Time() : 0.0;
         const Float2 center = _size * 0.5f;
         const std::array lights{
             LightSource{.at = center + Float2::FromAngle(time * 0.7f, 220.0f), .radius = 240.0f, .color = Warm},
@@ -71,6 +103,14 @@ private:
                         .color = Cold,
                         .cone = {.direction = -0.5f + std::sin(time * 0.6f) * 0.6f, .halfAngle = 0.45f}},
             LightSource{.at = {center.x + 360.0f, center.y - 120.0f}, .radius = 170.0f, .color = Green, .core = 0.6f},
+            LightSource{.at = {center.x - 40.0f, center.y + 240.0f},
+                        .radius = 150.0f,
+                        .color = CandleColor,
+                        .intensity = Flicker(flicker, FlickerStyle::Candle(), CandleSeed, _flashes)},
+            LightSource{.at = {center.x + 420.0f, center.y + 230.0f},
+                        .radius = 190.0f,
+                        .color = TubeColor,
+                        .intensity = Flicker(flicker, FlickerStyle::DeadFluorescent(), TubeSeed, _flashes)},
         };
         if (!_split) {
             DrawView(paint, {.offset = center, .target = center, .rotation = _turn, .zoom = _zoom}, lights, time);
@@ -110,7 +150,7 @@ private:
         LightOccluders moving;
         moving.Outline(crateOutline, crateAt);
         const std::array<const LightOccluders*, 2> sets{&_walls, &moving};
-        LightFrame frame{.ambient = Ambient(), .lights = lights};
+        LightFrame frame{.ambient = Ambient(), .lights = lights, .flashes = _fx.LightFlashes()};
         if (_shadows) frame.occluders = sets;
         _layer.Draw(paint, frame, view);
         {
@@ -164,6 +204,7 @@ private:
     }
 
     Float2 _size;
+    FxStage _fx;
     LightLayer _layer;
     CollisionWorld _colliders;
     LightOccluders _walls;
@@ -171,6 +212,9 @@ private:
     bool _guides = false;
     bool _split = false;
     bool _shadows = true;
+    bool _flashes = true;
+    float _resolution = 0.5f;
+    float _softness = 8.0f;
     float _ambient = 0.12f;
     float _bloom = 0.8f;
     float _zoom = 1.0f;
@@ -193,19 +237,24 @@ SceneDefinition LightGalleryDefinition() {
     definition.name = "Light Gallery";
     definition.category = "Engine";
     definition.description = "The light layer: point lights, a cone and a core over a floor, walls from colliders and "
-                             "a moving crate that cast shadows, a sign that shines by itself before and after the "
-                             "layer, camera and split screen.";
+                             "a moving crate that cast shadows with soft edges, a candle and a failing tube that "
+                             "flicker, lightning and an explosion played as cues, a sign that shines by itself before "
+                             "and after the layer, camera and split screen.";
     definition.parameters = {
         {.id = "animate", .label = "Animate", .kind = SceneParameterKind::Boolean, .initial = true},
         {.id = "guides", .label = "Guides", .kind = SceneParameterKind::Boolean, .initial = false},
         {.id = "split", .label = "Split screen", .kind = SceneParameterKind::Boolean, .initial = false},
         {.id = "shadows", .label = "Shadows", .kind = SceneParameterKind::Boolean, .initial = true},
+        {.id = "flashes", .label = "Flashes", .kind = SceneParameterKind::Boolean, .initial = true},
+        Slider("softness", "Shadow softness", 8.0, 0.0, 30.0),
         Slider("ambient", "Ambient", 0.12, 0.0, 1.0),
         Slider("resolution", "Resolution", 0.5, 0.25, 1.0),
         Slider("bloom", "Bloom", 0.8, 0.0, 2.0),
         Slider("zoom", "Zoom", 1.0, 0.25, 3.0),
         Slider("turn", "Turn", 0.0, -3.2, 3.2),
     };
+    definition.actions = {{"lightning", "Lightning", "A short light over the whole scene.", true},
+                          {"explosion", "Explosion", "A short light in one place, with shadows."}};
     definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
         return std::make_unique<LightGallery>(services, parameters);
     };

@@ -146,6 +146,19 @@ What can be animated, and how a position is checked.
 - `inline float DecayFactor(float rate, float seconds)` — What remains of a value decaying at 'rate' per second after 'seconds'.
 - `inline bool BlinkOff(float remaining, float threshold, float period)` — Blinks every 'period' during the last 'threshold' seconds of a duration; true in the dim half.
 
+## `Core/Animation/Flicker.h`
+
+- `struct FlickerStyle` — How a lamp's strength moves: a smooth wander, and for a failing lamp stretches of fast hard cuts.
+- `FlickerStyle`: `float depth = 0.25f` — How far the wander dips below full, 0..1
+- `FlickerStyle`: `float speed = 4.0f` — Changes of the wander per second
+- `FlickerStyle`: `float stutterShare = 0.0f` — Share of the stretches that stutter, 0..1; 0: never
+- `FlickerStyle`: `float stutterEvery = 2.0f` — Seconds per stretch
+- `FlickerStyle`: `float stutterRate = 14.0f` — Chances per second to cut out, while stuttering
+- `FlickerStyle`: `float stutterLevel = 0.05f` — Strength while cut out, 0..1
+- `FlickerStyle`: `[[nodiscard]] static constexpr FlickerStyle Candle()`
+- `FlickerStyle`: `[[nodiscard]] static constexpr FlickerStyle DeadFluorescent()`
+- `[[nodiscard]] inline float Flicker(double seconds, const FlickerStyle& style, unsigned seed, bool flashes)` — A strength in 0..1 from the time alone, for LightSource::intensity or anything else that shines.
+
 ## `Core/Animation/PoseFields.h`
 
 - `template<class PoseType, class T> struct PoseFieldEntry` — A pose is a game's own plain struct of what animates: an arm's angle, a scale, a tint, a sprite frame.

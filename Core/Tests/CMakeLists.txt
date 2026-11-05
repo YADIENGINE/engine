@@ -95,6 +95,7 @@ engine_tests(EngineSimulationTests
         Animation/AnimationReplayTests.cpp
         Animation/AnimatorTests.cpp
         Animation/EasingTests.cpp
+        Animation/FlickerTests.cpp
         Animation/SmoothDampTests.cpp
         Animation/TimelineTests.cpp
         Animation/TrackAndClipTests.cpp

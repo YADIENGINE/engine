@@ -17,10 +17,12 @@ struct LightFrame {
     std::span<const LightSource> lights;
     std::span<const LightOccluders* const> occluders; // What stops the lights; usually a set that stands still and one
                                                       // filled for what moves
+    LightFlashFrame flashes{}; // Short lights from effects: usually FxStage::LightFlashes()
 };
 
 struct LightLayerOptions {
     float resolution = 0.5f; // Size of the light image against the target, 0.25..1. Lower is cheaper and softer.
+    float softness = 8.0f;   // How far a shadow's edge spreads to each side, in world units; 0: hard edges
 };
 
 // Darkens what was drawn so far to 'ambient plus the lights'. Light can only reveal what is there: it never brightens a
@@ -37,8 +39,12 @@ public:
     void Draw(Painter& paint, const LightFrame& frame, const CameraView& view = {}) const;
 
 private:
+    void Soften(Painter& paint, Float2 size, float spread) const;
+
     float _resolution;
-    mutable Surface _image; // Holds nothing between frames; only its size and GPU memory are kept
+    float _softness;
+    mutable Surface _image;     // Holds nothing between frames; only its size and GPU memory are kept
+    mutable Surface _softening; // The same, for frames with shadows; it takes no memory before the first
     mutable VisibilityPolygon _visibility;
     mutable std::vector<VisibilityEdge> _blocking;
 };

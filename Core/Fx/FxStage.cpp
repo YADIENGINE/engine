@@ -63,6 +63,7 @@ void FxStage::SetQuality(const FxQuality& quality) {
     _particles.SetQuality(quality);
     _camera.SetQuality(quality);
     _flash.SetQuality(quality);
+    _flashLights.SetQuality(quality);
     _announcements.SetQuality(quality);
     _pulse.SetQuality(quality);
     _shockwaves.SetQuality(quality);
@@ -93,6 +94,7 @@ void FxStage::Update(float gameSeconds, float realSeconds) {
     _rings.Update(gameSeconds);
     _camera.Update(gameSeconds);
     _flash.Update(gameSeconds);
+    _flashLights.Update(gameSeconds);
     _pulse.Update(gameSeconds);
     _shockwaves.Update(gameSeconds);
     _glitch.Update(gameSeconds);
@@ -105,6 +107,7 @@ void FxStage::Clear() {
     _rings.Clear();
     _camera.Clear();
     _flash.Clear();
+    _flashLights.Clear();
     _announcements.Clear();
     _pulse.Clear();
     _shockwaves.Clear();
@@ -163,6 +166,11 @@ void FxStage::Run(const FxAction& action, const Target& target) {
                 style.opacity *= std::min(scale, 1.0f);
                 _flash.Flash(target.color, style);
             },
+            [&](const FxLightFlash& a) {
+                LightFlashStyle style = a;
+                style.strength *= scale;
+                LightFlash(target.at, target.color, style);
+            },
             [&](const FxBanner& a) { Banner(textOf(a.text)); },
             [&](const FxToast& a) { Toast(textOf(a.text), target.color); },
             [&](const FxShake& a) { Shake(a.amount * scale); },
@@ -205,6 +213,9 @@ void FxStage::PopText(Float2 at, const std::string& text, Color4 color, float si
 void FxStage::Ring(Float2 at, Color4 color) { _rings.Emit(at, color, _style.ring); }
 void FxStage::Toast(const std::string& text, Color4 color) { _announcements.Toast(text, color, _style.toast); }
 void FxStage::Flash(Color4 color) { _flash.Flash(color, _style.flash); }
+void FxStage::LightFlash(Float2 at, Color4 color, const LightFlashStyle& style) {
+    _flashLights.Start(_flash.Limit(), at, color, style);
+}
 void FxStage::Banner(const std::string& text) { _announcements.Banner(text, _style.banner); }
 void FxStage::Shake(float seconds) { _camera.Shake(seconds); }
 void FxStage::Punch(float amount, std::optional<Float2> focus) { _camera.Punch(amount, focus); }

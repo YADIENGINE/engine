@@ -9,7 +9,7 @@ Most games need one `FxStage` and a few [cues](#cues). The parts below it are th
 
 ## Graphics and FX
 
-`ParticleSystem`, `FloatingTexts`, `Rings`, `Shockwaves`, `ScreenFlash`, `ScreenGlitch`, `Announcements`, `PulseOverlay`,
+`ParticleSystem`, `FloatingTexts`, `Rings`, `Shockwaves`, `FlashLights`, `ScreenFlash`, `ScreenGlitch`, `Announcements`, `PulseOverlay`,
 `SlowMotionOverlay` and `CameraEffects` can be used independently. They share one shape:
 
 - `Update(dt)` with the chosen time domain, `Clear()` on scene/run reset, a const `Draw`. `Announcements` wants real time,
@@ -86,8 +86,8 @@ effect sits in a folder named for what it acts on:
 | --- | --- |
 | `Fx/Particles` | `ParticleSystem`, `ParticleRecipes` |
 | `Fx/Camera` | `CameraEffects`, `CameraShot` |
-| `Fx/World` | `Rings`, `Shockwaves`, `FloatingTexts`: at a point in the field |
-| `Fx/Screen` | `ScreenFlash`, `ScreenGlitch`, `PulseOverlay`, `SlowMotionOverlay`, `Announcements`: over the view |
+| `Fx/World` | `Rings`, `Shockwaves`, `FloatingTexts`, `FlashLights`: at a point in the field |
+| `Fx/Screen` | `ScreenFlash`, `FlashLimit`, `ScreenGlitch`, `PulseOverlay`, `SlowMotionOverlay`, `Announcements`: over the view |
 
 `Fx/FxStage` bundles every component above for one play area. Construct it with the play area, the view area for edge
 effects and an `FxStyle` (`Fx/FxStyle.h`), normally `CurrentTheme().fx`. Positions are canvas coordinates; the game adapts
@@ -117,8 +117,8 @@ fx.DrawOverlay(paint); // No camera: vignette, speed lines, flash / banner / toa
 ```
 
 `SetQuality` is one call for the whole stage, and every owner has to make it. With flashes off there are also no
-shockwaves and no banner curtain. Flashes start at most three times a second whatever the setting, and a new one takes over
-only if it is as bright as the one showing. `FxStage::SlowMotionLook` is only how slow
+shockwaves, no banner curtain and no [light flashes](Lighting.md#short-flashes). Flashes and light flashes share one limit of
+three starts a second whatever the setting (`FlashLimit`), and a new flash takes over only if it is as bright as the one showing. `FxStage::SlowMotionLook` is only how slow
 motion looks, and `TimeScale::SlowMo` only slows time; `FxSlowMotion` in a cue does both.
 
 `Fx/Particles/ParticleRecipes` holds what the bursts are. `ParticleRecipe` names six (Soft, Spark, Sparkle, Debris,
@@ -149,7 +149,7 @@ Bad values throw when the cue is made. An unknown name throws where it plays, an
 `SetTime`, before any of it plays. A stage starts with `DefaultFxCues()`: `hit`, `explosion`, `pickup`. Effects with
 parameters of their own stay methods (`fx.Shake(0.3f)`), so the compiler checks them: names are for cues only.
 
-`FxPlay::intensity` sizes one play of a cue: particle counts, shake, punch, kick, ring and reach sizes and a flash's opacity.
+`FxPlay::intensity` sizes one play of a cue: particle counts, shake, punch, kick, ring and reach sizes, a flash's opacity and a light flash's strength.
 Times, texts and colours stay. A cooldown, the third value of a set's entry, keeps a name from playing again for that many
 seconds of game time: `Play` returns false, and fifty hits in a frame look like one instead of fifty flashes.
 

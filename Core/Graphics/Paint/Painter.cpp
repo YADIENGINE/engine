@@ -568,6 +568,34 @@ void Painter::Image(const Surface& surface, const FloatRect& dest, const ImageSt
     }
 }
 
+void Painter::BlurredImage(const Surface& surface, const FloatRect& dest, Float2 along) {
+    if (!Finite(along)) return _context.list.Reject("BlurredImage needs a finite spread");
+    const SurfaceAccess::State& state = SurfaceAccess::Of(surface);
+    if (!state.drawn || !Drawable(dest)) return;
+    constexpr float StepsToEachSide = 4.0f; // Paint shader, BlurSlot
+    const Float2 step{along.x / state.size.x / StepsToEachSide, along.y / state.size.y / StepsToEachSide};
+    const Affine2 toTarget = _context.list.State().transform * Affine2::Translate(dest.Center());
+    const Float2 half = dest.Size() * 0.5f;
+    const std::array<Float2, 4> local{Float2{-half.x, -half.y}, Float2{half.x, -half.y}, Float2{half.x, half.y},
+                                      Float2{-half.x, half.y}};
+    const std::array<Float2, 4> coords{Float2{0.0f, 1.0f}, Float2{1.0f, 1.0f}, Float2{1.0f, 0.0f}, Float2{0.0f, 0.0f}};
+    const PaintColor tint = _context.list.Shade(Color4{255, 255, 255, 255}); // Surfaces are stored bottom-up: 'coords'
+    std::array<PaintVertex, 4> corners{};
+    for (std::size_t i = 0; i < corners.size(); ++i) {
+        const Float2 position = toTarget.Apply(local[i]);
+        corners[i] = {.x = position.x,
+                      .y = position.y,
+                      .u = coords[i].x,
+                      .v = coords[i].y,
+                      .style0 = step.x,
+                      .style1 = step.y,
+                      .color = tint,
+                      .kind = PaintKind::Blur};
+    }
+    const std::array textures{state.color};
+    _context.list.AddQuad(corners, textures);
+}
+
 void Painter::ImagePolygon(const Surface& surface, std::span<const Float2> points, std::span<const Float2> sources,
                            Color4 tint, float emission) {
     DrawList& list = _context.list;

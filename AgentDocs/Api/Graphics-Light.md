@@ -21,8 +21,10 @@ Use these generated signatures to locate public declarations; open the header fo
 - `LightFrame`: `Color4 ambient { 255, 255, 255, 255 }` — The light everything gets; white: lights change nothing.
 - `LightFrame`: `std::span<const LightSource> lights`
 - `LightFrame`: `std::span<const LightOccluders* const> occluders` — What stops the lights; usually a set that stands still and one
+- `LightFrame`: `LightFlashFrame flashes { }` — filled for what moves
 - `struct LightLayerOptions`
 - `LightLayerOptions`: `float resolution = 0.5f` — Size of the light image against the target, 0.25..1.
+- `LightLayerOptions`: `float softness = 8.0f` — How far a shadow's edge spreads to each side, in world units; 0: hard edges
 - `class LightLayer` — Darkens what was drawn so far to 'ambient plus the lights'.
 - `LightLayer`: `explicit LightLayer(const LightLayerOptions& options = { })`
 - `LightLayer`: `void Draw(Painter& paint, const LightFrame& frame, const CameraView& view = { }) const` — Call it outside paint.Camera and paint.Transform, and give it the view the world was drawn through, shake included: the lights land on the same places.

@@ -8,6 +8,7 @@
 #include <variant>
 #include <vector>
 #include "Fx/Particles/ParticleRecipes.h"
+#include "Fx/World/FlashLights.h"
 #include "Utilities/Color4.h"
 
 // What a cue can do. Each is one FxStage call, as plain data: where it happens, its colour and its direction come from
@@ -35,6 +36,9 @@ struct FxShockwave {
     float reach = 0.0f; // 0: the whole area
 };
 struct FxFlash {};
+// A short light, at FxPlay::at unless it has no radius: then the whole scene. It reaches the screen through
+// FxStage::LightFlashes.
+using FxLightFlash = LightFlashStyle;
 struct FxBanner {
     std::string text{};
 };
@@ -64,8 +68,8 @@ struct FxSlowMotion { // Time and its look together
 };
 
 using FxAction = std::variant<FxBurst, FxParticles, FxTrail, FxDash, FxSteam, FxFloatText, FxPopText, FxRing,
-                              FxShockwave, FxFlash, FxBanner, FxToast, FxShake, FxPunch, FxKick, FxGlitch, FxHitstop,
-                              FxSlowMotion>;
+                              FxShockwave, FxFlash, FxLightFlash, FxBanner, FxToast, FxShake, FxPunch, FxKick, FxGlitch,
+                              FxHitstop, FxSlowMotion>;
 
 template <class T, class Variant> inline constexpr bool IsFxActionOf = false;
 template <class T, class... Actions>

@@ -10,6 +10,8 @@ A dark world with lights and shadows in it. Design record: `Docs/Design/README.m
 | `Graphics/Light/LightOccluders.h` | `LightOccluders`: what stops light, as outlines and lines |
 | `Graphics/Light/CollisionOccluders.h` | `AddOccluders`: colliders as occluders, for walls |
 | `Graphics/Paint/Painter.h` | `Painter::Light`: one light drawn directly, for your own light images |
+| `Animation/Flicker.h` | `Flicker`, `FlickerStyle`: a lamp's strength over time |
+| `Fx/FxStage.h`, `Fx/FxCue.h` | `FxLightFlash`, `FxStage::LightFlashes`: short lights |
 | `Utilities/Geometry/Visibility.h` | `VisibilityPolygon`: what a point can see past edges, for a guard's view or your own light |
 | `Graphics/Light/Debug/LightGuides.h` | `DrawLightGuides`: where each light stands, how far it reaches, what stops it |
 
@@ -56,8 +58,43 @@ LightSource{.at = position,                // Where it stands, in the coordinate
             .cone = {.direction = angle, .halfAngle = 0.4f, .softEdge = 0.15f}}; // Omit for a whole circle
 ```
 
-A flicker or a pulse is a value you compute: a sum of sines, a [tween](../Animation.md), a clip. Move a light with the
-position the view draws (`StepSmoothed::At(alpha)`).
+A pulse is a value you compute: a sum of sines, a [tween](../Animation.md), a clip. Move a light with the position the view
+draws (`StepSmoothed::At(alpha)`).
+
+## Flicker
+
+```cpp
+.intensity = Flicker(paint.Time(), FlickerStyle::Candle(), seed, game.Effects().flashes)
+```
+
+`Flicker` (`Animation/Flicker.h`) computes a strength in 0..1 from the time alone. It keeps nothing, so a light stays plain data,
+a paused view stays still and a seek lands on the right look. `seed` keeps lamps apart. `FlickerStyle::Candle` wanders;
+`DeadFluorescent` also has stretches of hard cuts, and every number of a `FlickerStyle` is yours to change.
+
+The last argument is the player's choice, and it is required, because a forgotten check would keep flickering for someone who
+turned flashes off, and no test would notice. Without flashes nothing cuts out and the wander slows to one change a second: a
+candle sways and a failing tube burns steadily. It works without an `FxStage`.
+
+## Short flashes
+
+An explosion or lightning is a cue, and the frame takes what is playing:
+
+```cpp
+FxCue blast{FxLightFlash{.radius = 300.0f, .seconds = 0.25f}, FxShake{0.5f}}; // At FxPlay::at
+FxCue lightning{FxLightFlash{.seconds = 0.4f}};                               // No radius: the whole scene
+
+_lights.Draw(paint, {.ambient = dark, .lights = lights, .occluders = sets, .flashes = _fx.LightFlashes()}, view);
+```
+
+A flash with a radius is a light, so walls cast its shadows. One without raises the ambient, so nothing stops it. Effects know
+light only as data: `Fx` hands over a `LightFlashFrame`, and neither folder includes the other. Forgetting the field shows no
+flash at all, which is visible and harmless.
+
+They follow [the effects' rules](Effects.md#graphics-and-fx): game time, so a hitstop holds them; `FxPlay::intensity` scales
+the strength and leaves the time; flashes off removes them. Starts are rationed with `FxFlash`, at three a second in all, or the
+two taking turns would double it. A flash and a light flash starting together count as one, and one asked for too soon is lost.
+So lightning strikes once rather than twice in a tenth of a second, and of ten explosions in a second, three give light while
+their particles and shake still play.
 
 `ambient` is the light everything gets. White changes nothing, so a day-night cycle can reach it and the layer then costs
 nothing. Fade the whole effect with `paint.Opacity` around `Draw`.
@@ -100,8 +137,9 @@ How light meets an outline:
 - **Nothing leaks** between shapes that touch or overlap.
 - **`.shadows = false`** on a light makes it pass through everything.
 
-Shadow edges are hard, softened only by the light image's filtering: a higher `resolution` is sharper and shows more steps. An
-outline need not be convex and has no limit on its points, unlike a collision `Shape`.
+`LightLayerOptions::softness` (default 8) is how far a shadow's edge spreads to each side, in world units; 0 leaves the steps of
+the image's pixels. The whole light image is blurred, so a thin wall lets that much light past it, and the spread is the same
+near an object and far from it. An outline need not be convex and has no limit on its points, unlike a collision `Shape`.
 
 ## What shines by itself
 
@@ -127,6 +165,10 @@ A shadowed light costs CPU, growing with the square of the edges within its reac
 Measured on one desktop in an optimized build, with walls placed at random: about 10 µs per light at 25 edges, 40 µs at 50, 160
 µs at 100, 630 µs at 200. So 20 lights among 50 walls' edges take under a millisecond. Give a small light a small radius, and
 turn `.shadows` off on those that do not need it.
+
+Softening takes two more passes over the light image, whatever the number of lights, and a second image of the same size. A
+spread over about eight device pixels takes two more. A frame in which no shadow falls takes none of it, and a layer that never
+has a shadow never allocates the image. Measured on one desktop GPU with six shadowed lights at 1280 x 720: about 0.03 ms a frame.
 
 ## Lighting decides nothing
 
