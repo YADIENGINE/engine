@@ -360,8 +360,8 @@ verir.
   kökü bütünüyle sildiği deneme paketinde doğrulanır. **Neden:** temiz kaldırma; kaybolan liste tek taramayla
   kurulur. `%APPDATA%` (Roaming) iz bırakır ve etki alanı hesaplarında var olmayan proje yollarını taşır.
 - **Sürüm (2026-10-31):** paketin sürümü launcher'ınkidir (`LAUNCHER_VERSION`, kendi semver'i; Velopack'in
-  güncelleme karşılaştırması, exe adı `<Engine>-Setup-<sürüm>.exe`, Uygulamalar listesi). Yeni engine kopyası,
-  launcher düzeltmesi ya da araç yükseltmesi onu artırır. Taşınan engine sürümleri Engines sekmesinde ve release
+  güncelleme karşılaştırması, exe adı `<Engine>-Setup-<sürüm>.exe`, Uygulamalar listesi). Launcher düzeltmesi, araç
+  yükseltmesi ya da taşınan engine'in değişmesi onu artırır; yeni engine sürümü tek başına artırmaz (D16). Taşınan engine sürümleri Engines sekmesinde ve release
   metninde ("içerir: engine 0.1.1, 0.2.0") görünür; launcher'ın kendi değişiklikleri release metnindedir, engine
   notları manifest'te kalır (D16). **Neden:** engine sürümüne bağlansa yalnız launcher'ı değiştiren yayının numarası
   olmazdı ve iki seri taşınırken numara yanıltırdı.
@@ -585,6 +585,15 @@ Durum: kabul edildi.
 - **Otomatik kod düzeltme yok** (ileride `python Engine migrate` olabilir). Rapor AI'a verilecek metin olarak kopyalanır.
 
 Durum: kabul edildi, uygulandı.
+
+**Engine sürümü launcher sürümünü artırmaz (2026-11-05):** yeni engine yalnız engine olarak yayınlanır; kurulu
+launcher'lar onu Yeni proje listesinde en üstte, varsayılan olarak "(download)" ile gösterir (liste panel açılınca da
+okunur). `LauncherManifest.json` `engine` yalnız launcher yayınında değişir: launcher'ın derlendiği ve kurulumla gelen
+(internetsiz ilk proje) sürümdür. Launcher'ın sürebildiği contract'lar `LauncherManifest.json` `toolsContracts`'tadır
+(kod da oradan okur); `dev.py release`, son yayımlanmış launcher'ın sürmediği `toolsContract`'lı engine'i tek başına
+yayınlamaz, ikisi birlikte çıkar. Launcher yalnız kendi değişikliği, contract, launcher'a yansıması istenen `ToolUi`
+değişikliği ya da taşınan engine'in değişmesi için yayınlanır. **Neden:** launcher numarası her engine'de artınca
+değişmeyen launcher'ın güncellemesi kullanıcıya boşuna iner ve numara bir şey söylemez.
 
 ### D17. Render sistemi: kendi GPU katmanı üstünde yeni 2D çizim sistemi
 **Karar:** Çizim raylib'in anlık API'sinden alınır. Engine'e ait, raylib'siz bir `Painter` API'si çağrıları kare

@@ -132,5 +132,6 @@ Error messages are written to stderr as `error: ...`.
 - Adding a command, option, or field to `info` does not break the contract.
 - Adding a manifest field does not break it.
 - Removing or changing the meaning of commands / options, or changing exit codes, `info`, or manifest fields, breaks the
-  contract: increment `EngineManifest.json` `toolsContract` and update this document in the same commit.
+  contract: increment `EngineManifest.json` `toolsContract` and update this document in the same commit. Such an engine
+  is released together with a launcher that lists the new contract in `LauncherManifest.json` `toolsContracts`.
 - Contract test: `Tools/Tests/test_cli.py` (command and option lists, `info`, exit codes).
