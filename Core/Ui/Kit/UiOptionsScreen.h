@@ -23,6 +23,7 @@ struct UiOptionsTexts {
     std::string_view motion = "Motion effects";
     std::string_view flashes = "Screen flashes";
     std::string_view background = "Background effects";
+    std::string_view screenMotion = "Screen distortion";
     std::string_view full = "Full";
     std::string_view reduced = "Reduced";
     std::string_view off = "Off";

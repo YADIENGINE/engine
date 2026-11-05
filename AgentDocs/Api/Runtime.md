@@ -37,7 +37,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `GameSettings`: `Color4 background { 0, 0, 0, 255 }`
 - `GameSettings`: `Color4 letterbox { 0, 0, 0, 255 }`
 - `GameSettings`: `bool smoothCanvas = true`
-- `GameSettings`: `PostSettings post` — Full-screen finish (bloom, vignette, scanlines); a frame may change it through Painter::Post.
+- `GameSettings`: `PostSettings post` — Full-screen finish (bloom, vignette, grain, tint...); a frame may change it through Painter::Post.
 - `GameSettings`: `std::filesystem::path applicationId = "Game"`
 - `GameSettings`: `std::filesystem::path font`
 - `GameSettings`: `std::vector<std::filesystem::path> assets`
@@ -57,7 +57,7 @@ Use these generated signatures to locate public declarations; open the header fo
 - `GraphicsSettings`: `int renderHeight = 0` — Height limit of the canvas texture; 0: the window's resolution
 - `GraphicsSettings`: `bool vsync = false`
 - `GraphicsSettings`: `bool showFps = false` — Frame rate and frame time in the corner
-- `GraphicsSettings`: `RenderQuality render` — Glows, bloom, background animation (the Painter applies it)
+- `GraphicsSettings`: `RenderQuality render` — Glows, bloom, background animation, screen motion (the Painter and renderer apply it)
 - `GraphicsSettings`: `FxQuality fx` — Particles, shake, motion, flashes (Game::Effects(); the Fx classes apply it)
 
 ## `Core/Runtime/RuntimeImport.h`

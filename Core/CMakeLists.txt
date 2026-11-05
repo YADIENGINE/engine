@@ -185,6 +185,7 @@ add_library(EngineHeadless STATIC
     Graphics/Paint/Painter.cpp
     Graphics/Paint/PainterText.cpp
     Graphics/Paint/Path.cpp
+    Graphics/Post/PostSettings.cpp
     Graphics/Render/Internals/FrameExecutor.cpp
     Graphics/Render/Internals/PostChain.cpp
     Graphics/Render/Internals/RenderPipeline.cpp

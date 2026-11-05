@@ -50,6 +50,7 @@ engine_tests(EngineTests
         PaintTextTests.cpp
         PaintWidgetTests.cpp
         BackgroundAssetTests.cpp
+        PostSettingsTests.cpp
         RenderPipelineTests.cpp
         SceneManagerTests.cpp
         SceneObjectsTests.cpp
@@ -135,6 +136,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/FxCues.cpp"
     "${recipeRoot}/GameCamera.cpp"
     "${recipeRoot}/Lighting.cpp"
+    "${recipeRoot}/AnalogFinish.cpp"
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"
     "${recipeRoot}/PopupEffects.cpp"

@@ -139,9 +139,41 @@ default): bloom (`intensity`, `radius`), `vignette`, `scanlines`, `aberration`. 
 `emission` > 0 (`ShapeStyle::emission`, `LineStyle::emission`, `TextStyle::emission` ...). When a frame first requests
 bloom, the canvas retains the bloom layer starting with the next frame.
 
-`paint.Quality()` is the player's choice (`GlowQuality`, `BloomQuality`, `backgroundEffects`). Painter applies halos and
+`paint.Quality()` is the player's choice (`GlowQuality`, `BloomQuality`, `backgroundEffects`, `screenMotion`). Painter applies halos and
 bloom itself; callers read it only to skip purely decorative work. `paint.Time()` / `paint.Delta()` are the presentation
 clock (editor Pause freezes it); `paint.PixelScale()` gives device pixels per unit.
+
+### Analog finish
+
+More fields of `PostSettings`, each usable alone and free at 0:
+
+| Field | What it does | A place to start |
+|---|---|---|
+| `grain` (`amount`, `size`) | Film grain that never repeats; stronger in the dark than on bright things | `amount` 0.06 for a constant texture, 0.3 for a heavy one |
+| `fade` | Drains colour toward grey | 0.3 to 0.7 |
+| `tint` (`color`, `amount`) | Multiplies a colour over the image; a dark, cold colour gives a dark, cold look | `Rgb(0x8c9ccc)` at 0.8 |
+| `wobble` (`amount`, `speed`) | Bends and tilts the image slowly | `amount` 3 is uneasy, 12 is hard to read |
+| `tape` (`band`, `shift`, `speed`) | A tracking band that rolls down the image, and lines that jump sideways | `band` 0.5; `shift` up to 2 keeps text readable |
+
+They all cover what is on the canvas, the HUD too, so readability limits them. Wobble fades out toward the edges, so a HUD
+along them stays still. Grain is weak on bright text. Check small text in the middle of the screen, where the wobble is
+strongest, and text in the corners with vignette and tint together: they multiply.
+
+`Mix(calm, disturbed, amount)` gives the finish between two others, so one number can drive all of it:
+`paint.Post() = Mix(calm, disturbed, danger);`. Drive that number from what the game knows, or with a `SecondsTween<float>`
+for a shock that fades. `SecondsTween<PostSettings>`, clips and timelines also work directly, through the same `Mix`. An
+effect that is off on one side keeps the other side's colour, size and speed. A speed may change at any moment without a
+jump, because the renderer adds the rhythm up frame by frame.
+
+**The player's switch:** `RenderQuality::screenMotion` (saved with the options; a row in `UiOptionsScreen`) turns grain,
+wobble and tape off. Fade, tint, vignette and scanlines stay, since they do not move. The renderer applies it; a game does
+not check it, and needs no option of its own. If a game's own options screen does not use `UiOptionsScreen`, it should
+offer this row.
+
+All of this is view code on the presentation clock (`paint.Time()`), so pausing holds the image, and a hitstop does not. It
+uses no `Rng` and never reaches a simulation. Rewinding in the editor leaves the wobble and the tape where they are, so the
+same second can look different. An example: [recipe](../../AgentDocs/Recipes/AnalogFinish.md); every effect alone:
+the editor scene `engine.post.gallery`. A burst that ends by itself is `FxStage::Glitch`, drawn on the canvas.
 
 ## Helpers and theme
 

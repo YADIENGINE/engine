@@ -29,6 +29,7 @@ constexpr std::array EngineOptionRows{
     EngineOptionRow{EngineOption::Flashes, "graphics.flashes"},
     EngineOptionRow{EngineOption::BackgroundEffects, "graphics.background_effects"},
     EngineOptionRow{EngineOption::Bloom, "graphics.bloom"},
+    EngineOptionRow{EngineOption::ScreenMotion, "graphics.screen_motion"},
 };
 static_assert(RowsInIdOrder(EngineOptionRows));
 

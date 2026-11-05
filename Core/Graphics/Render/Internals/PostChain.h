@@ -6,7 +6,8 @@
 #include "Graphics/Post/RenderQuality.h"
 
 // Full-screen finish of the canvas: bloom from its emission attachment (a down / up sampling chain), then one compose
-// pass (colour + bloom, vignette, scanlines, chromatic aberration) into the image that is presented.
+// pass (colour + bloom, vignette, scanlines, chromatic aberration, and the analog finish: fade, tint, grain, wobble,
+// tape) into the image that is presented.
 class PostChain {
 public:
     explicit PostChain(GpuDevice& device);
@@ -16,9 +17,10 @@ public:
     [[nodiscard]] static bool Active(const PostSettings& settings, const RenderQuality& quality);
     [[nodiscard]] static bool Blooms(const PostSettings& settings, const RenderQuality& quality);
     // Runs on 'canvas' (width x height device pixels; with an emission attachment when Blooms). 'canvasHeight' is the
-    // canvas's logical height (scanline count). Returns the composed image (owned by the chain).
+    // canvas's logical height (scanline count). 'time' is the presentation clock in seconds: stopping it stops the
+    // grain, the wobble and the tape. Returns the composed image (owned by the chain).
     [[nodiscard]] GpuTarget Run(GpuTarget canvas, int width, int height, float canvasHeight,
-                                const PostSettings& settings, const RenderQuality& quality, float time);
+                                const PostSettings& settings, const RenderQuality& quality, double time);
 
 private:
     struct Level {
@@ -35,6 +37,10 @@ private:
     Level _composed;
     std::vector<Level> _bloom; // Largest first
     BloomQuality _bloomQuality = BloomQuality::Off;
+    // Rhythms are added up frame by frame: multiplying the clock by a speed would jump whenever the speed changes.
+    double _lastTime = 0.0;
+    double _wobblePhase = 0.0;
+    double _tapeRoll = 0.0;
 
 public:
     PostChain(const PostChain&) = delete;

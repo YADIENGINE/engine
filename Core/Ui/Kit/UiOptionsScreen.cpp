@@ -80,6 +80,7 @@ enum class Tab { Audio, Display, Effects, Extra };
     changed |= UiToggle(ui, "motion", texts.motion, graphics.fx.motion);
     changed |= UiToggle(ui, "flashes", texts.flashes, graphics.fx.flashes);
     changed |= UiToggle(ui, "background", texts.background, graphics.render.backgroundEffects);
+    changed |= UiToggle(ui, "screen-motion", texts.screenMotion, graphics.render.screenMotion);
     return changed;
 }
 

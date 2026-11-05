@@ -121,6 +121,7 @@ void WorkerProfiler::Start(const WorkerMessage& message) {
     metadata.graphics = nlohmann::json{{"glow", graphics.render.glow},
                                        {"bloom", graphics.render.bloom},
                                        {"background", graphics.render.backgroundEffects},
+                                       {"screenMotion", graphics.render.screenMotion},
                                        {"particles", graphics.fx.particlePercent},
                                        {"shake", graphics.fx.shake},
                                        {"motion", graphics.fx.motion},

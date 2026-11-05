@@ -78,6 +78,20 @@ struct PostUniforms {
     float scanlineCount = 0.0f;  // Compose: scanlines over the full height
     float aberration = 0.0f;     // Compose: chromatic offset in source texels at the edges
     float time = 0.0f;
+    float fade = 0.0f;           // Compose: colour drained toward grey 0..1
+    float tintRed = 1.0f;        // Compose: colour multiplied over the image
+    float tintGreen = 1.0f;
+    float tintBlue = 1.0f;
+    float grain = 0.0f;          // Compose: grain strength 0..1
+    float grainCell = 1.0f;      // Compose: one grain, in source texels
+    float noiseFrame = 0.0f;     // Compose: a whole number that picks this moment's noise
+    float wobble = 0.0f;         // Compose: largest move, in source texels
+    float wobblePhase = 0.0f;    // Compose: where the wobble's rhythm is
+    float tapeBand = 0.0f;       // Compose: tracking band strength 0..1
+    float tapePush = 0.0f;       // Compose: how far the band pushes the image, in source texels
+    float tapeShift = 0.0f;      // Compose: largest sideways jump of a line, in source texels
+    float tapeRoll = 0.0f;       // Compose: where the band is, 0..1
+    float tapeLine = 1.0f;       // Compose: one tape line, in source texels
 };
 
 // Where an upload starts inside the device's streaming buffers.
