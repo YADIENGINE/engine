@@ -97,7 +97,9 @@ work but does not advance the UpdateReal callback.
 if a closing animation finishes that frame, the game tick can resume that frame. Game's `SetPaused` decision is ORed
 with it; for example, while a paused game is in the background on another screen, the application can freeze the shared
 game clock. TimeScale.Advance is not called while paused; hitstop/slow motion durations are preserved too. Pausing
-real-time menus requires a separate policy. `Time()` applies hitstop/slow motion. `FrameSeconds` customizes the host
+real-time menus requires a separate policy. `Time()` applies hitstop/slow motion. A scene holding a `Game&` reaches what
+its feedback needs through public members: `Sounds()`, `Effects()` (the player's effect choice), `Time()` and
+`RealSeconds()` (this frame's real duration, also `UpdateReal`'s argument). `FrameSeconds` customizes the host
 frame duration; `DrawSeconds` customizes presentation time. Decorative View drawing uses
 [Painter::Time](Graphics/Painter.md). UpdateReal also receives time after the FrameSeconds transformation; editor scene
 pause/speed/single-step apply to this hook.

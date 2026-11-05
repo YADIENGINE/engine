@@ -51,6 +51,14 @@ public:
     // Music, hand-numbered effects and the volume options. Public for the same reason.
     [[nodiscard]] AudioSystem& Audio() { return _audio; }
     [[nodiscard]] const AudioSystem& Audio() const { return _audio; }
+    // The applied effect choice; scenes hand it to their Fx (FxStage::SetQuality and the Fx classes' SetQuality).
+    // Public, like the services above, so that a scene with only a Game& reaches what its effects need.
+    [[nodiscard]] const FxQuality& Effects() const { return _effects; }
+    // Game time's scale: hitstop, slow motion and pauses (FxStage::SetTime for cues that change it).
+    [[nodiscard]] TimeScale& Time() { return _timeScale; }
+    // This frame's real duration: what a hitstop, slow motion or a pause does not change (FxStage::Update's second
+    // clock). Inside Scene::UpdateReal the same value arrives as its argument.
+    [[nodiscard]] float RealSeconds() const { return _frameSeconds; }
 
 protected:
     explicit Game(const GameSettings& settings);
@@ -61,9 +69,6 @@ protected:
     void RequestQuit() { _quitRequested = true; }
     // Application pause supplements the current scene's GameTimePaused request.
     void SetPaused(bool paused) { _paused = paused; }
-    [[nodiscard]] TimeScale& Time() { return _timeScale; }
-    // This frame's real duration: what a hitstop, slow motion or a pause does not change.
-    [[nodiscard]] float RealSeconds() const { return _frameSeconds; }
     // The game's font (GameSettings::font) for Painter::Text; throws logic_error when the game has none.
     [[nodiscard]] const FontFace& Font() const;
     [[nodiscard]] bool HasFont() const { return _font.has_value(); }
@@ -82,8 +87,6 @@ protected:
     // persisted. Invalid saved values fall back to defaults.
     void SetGraphics(const GraphicsSettings& graphics);
     [[nodiscard]] GraphicsSettings Graphics() const;
-    // The applied effect choice; scenes hand it to their Fx (FxStage::SetQuality and the Fx classes' SetQuality).
-    [[nodiscard]] const FxQuality& Effects() const { return _effects; }
 
     // The options file (settings.json) loads at setup; audio, FPS, display and graphics belong to the engine.
     // The game writes its own keys to Options(); the engine saves changes on scene transitions and after Stop.
