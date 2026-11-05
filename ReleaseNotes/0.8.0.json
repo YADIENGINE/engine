@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-05",
+  "changes": [
+    "Lighting: ambient light, point lights, cones and shadows, with flicker, short light flashes and soft shadow edges.",
+    "Audio: sound now runs on miniaudio, with positioned sounds, live sounds, ambience layers, muffling, buses and music cross-fade.",
+    "Screen finish: film grain, colour fade and tint, wobble and tape distortion, mixable by one amount.",
+    "Atmosphere: rain, snow, dust, fog and lightning, driven by a Weather value.",
+    "Options screen: a Screen distortion row turns off grain, wobble and tape.",
+    "Editor: ctl audio capture, and ctl open with --set and --screenshot no longer fails on a busy editor."
+  ],
+  "breaking": [
+    {
+      "change": "SoundPlayer::Play(key, pitch) and PlayMusic(id, loop) take option structs.",
+      "migrate": "Write Play(key, {.pitch = x}) and PlayMusic(id, {.loop = x})."
+    },
+    {
+      "change": "SoundOutput has voice calls instead of Play.",
+      "migrate": "Only a SoundOutput of your own needs changes; see Docs/Audio.md."
+    },
+    {
+      "change": ".qoa, .xm and .mod files no longer load.",
+      "migrate": "Convert them to WAV, OGG, MP3 or FLAC."
+    },
+    {
+      "change": "Sounds mix slightly differently: a centred sound is 0.26 dB louder, and RestartNext fades the oldest copy out over 5 ms.",
+      "migrate": "Nothing to do unless a mix was tuned to the decibel."
+    },
+    {
+      "change": "LightStyle is now RadialGlowStyle, and Blend::Multiply no longer changes what feeds bloom.",
+      "migrate": "Rename the type."
+    },
+    {
+      "change": "LightLayer softens shadow edges by default.",
+      "migrate": "For hard edges, use LightLayerOptions{.softness = 0.0f}."
+    },
+    {
+      "change": "FxAction has new cases: FxLightFlash and FxBolt.",
+      "migrate": "A std::visit of your own over FxAction needs a case for each."
+    }
+  ]
+}
