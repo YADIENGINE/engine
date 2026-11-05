@@ -7,6 +7,7 @@ It talks to the editor's control endpoint (Engine/Editor/Internals/Protocol/Edit
 announces a named pipe in its build directory; a request and the replies are JSON objects, one per line.
 """
 
+import errno
 import json
 import os
 import time
@@ -22,7 +23,7 @@ ENVIRONMENT = "ENGINE_EDITOR_CONTROL"  # Set by the editor for its console: that
 VERSION = 3
 CONNECT_TIMEOUT = 5.0  # Seconds to wait while another client holds the endpoint
 CONNECT_RETRY = 0.1
-PIPE_BUSY = 231  # ERROR_PIPE_BUSY
+PIPE_BUSY = errno.EINVAL  # How open() reports ERROR_PIPE_BUSY: the C runtime maps it to this, and winerror stays empty
 
 
 def endpoint(build_dir: Path) -> str:
@@ -52,7 +53,7 @@ def connect(pipe: str):
         except FileNotFoundError as error:  # The announcement outlived its editor (crash)
             raise ToolError("No editor is open for this project; start it with: python Engine editor") from error
         except OSError as error:
-            if getattr(error, "winerror", None) != PIPE_BUSY or time.monotonic() >= deadline:
+            if error.errno != PIPE_BUSY or time.monotonic() >= deadline:
                 raise ToolError(f"Cannot reach the editor: {error}") from error
             time.sleep(CONNECT_RETRY)
 
