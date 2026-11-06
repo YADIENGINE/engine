@@ -5,6 +5,7 @@
 #include "Graphics/Text/TextStyle.h"
 #include "Input/Input.h"
 #include "Input/InputNavigation.h"
+#include "Runtime/TimeScale.h"
 #include "Simulation/ArenaRules.h"
 #include "Ui/Widgets/UiButton.h"
 #include "Ui/Widgets/UiLabel.h"
@@ -40,9 +41,10 @@ InputBindings MakeBindings() {
 }
 } // namespace
 
-PlayScene::PlayScene(Game& game, std::uint64_t seed)
+PlayScene::PlayScene(const SceneServices& services, std::uint64_t seed)
     : Scene(TimeDomain::Game)
-    , _game(game)
+    , _time(services.time)
+    , _font(services.font)
     , _start{.seed = seed, .players = 1}
     , _simulation(_start)
     , _runner(_simulation, ArenaSettings(), _start)
@@ -65,14 +67,14 @@ void PlayScene::HandleInput(const DeviceInput& input) {
 void PlayScene::InputCancelled() { _runner.CancelInput(); }
 
 void PlayScene::Update(float seconds) {
-    if (_game.HasFont()) _ui.SetFont(&_game.Font());
+    if (_font) _ui.SetFont(_font);
     _ui.Begin(seconds);
     PauseMenu();
     _ui.End();
     if (_paused) return;
     (void)_runner.Advance(seconds);
     for (const auto& happened : _events.Read(_simulation.Events(), _runner))
-        std::visit(Overloaded{[](const CoinTaken&) {}, [&](const PlayerHit&) { _game.Time().Hitstop(HitstopSeconds); },
+        std::visit(Overloaded{[](const CoinTaken&) {}, [&](const PlayerHit&) { _time.Hitstop(HitstopSeconds); },
                               [](const GameOver&) {}},
                    happened.event);
 }
@@ -104,6 +106,6 @@ void PlayScene::PauseMenu() {
         auto panel = UiPanel(_ui, "panel", {.alignX = UiAlign::Center});
         UiLabel(_ui, "Paused", {.size = TitleSize});
         if (UiButton(_ui, "resume", "Resume", {.width = UiFill()}) || _ui.Back()) _paused = false;
-        if (UiButton(_ui, "quit", "Quit", {.width = UiFill()})) _game.RequestQuit();
+        if (UiButton(_ui, "quit", "Quit", {.width = UiFill()})) _quit = true;
     }
 }

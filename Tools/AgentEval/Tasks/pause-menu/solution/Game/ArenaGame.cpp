@@ -17,12 +17,16 @@ class ArenaGame final : public Game {
 public:
     ArenaGame()
         : Game(Settings())
-        , _play(*this, Seed) {}
+        , _play(Services(), Seed) {}
 
 private:
     void Start() override {
         RegisterScene(_play);
         SetScene(_play);
+    }
+    void Update(float realSeconds) override {
+        Game::Update(realSeconds);
+        if (_play.QuitRequested()) RequestQuit();
     }
 
     PlayScene _play;
