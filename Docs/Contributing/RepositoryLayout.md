@@ -13,6 +13,7 @@
 | `Core/Ui/` | Game UI: Layout, Kernel, Looks, Widgets, Kit, Sound ([UI](../Ui.md)) |
 | `Core/Input/`, `Core/Audio/`, `Core/Platform/` | Public services and private platform backends |
 | `Core/Fx/`, `Core/Gameplay/`, `Core/Progress/` | Headless effects and reusable gameplay/view logic |
+| `Core/Stage/` | A scene's view side in one fixed order (`Stage`, `StageView`, `DepthOrder`), in `EngineHeadless`; view code that never reaches a simulation ([Stage](../Graphics/Stage.md)) |
 | `Core/Utilities/` | Foundation types and helpers, grouped under `Geometry/`, `Math/` and `Random/`. `Random/` (seeded numbers, tables, scattering, noise) builds as `EngineRandom`, with precise floats; the other `.cpp` files belong to `EngineHeadless` |
 | `Core/Diagnostics/` | Cross-cutting development checks and frame instrumentation contracts |
 | `Core/Diagnostics/Internals/` | `EngineDiagnostics` process capture and the separate `EngineCrashReporter`; no window or game dependency |

@@ -1,8 +1,8 @@
 # Game camera recipe
 
-A camera that follows two players on one screen or splits it, turns the mouse into a world point and carries the effects; and a camera inside the rules that never scrolls back and wakes enemies as it reaches them.
+A camera that follows two players on one screen or splits it, turns the mouse into a world point and carries the effects; and a camera inside the rules that never scrolls back and wakes enemies as it reaches them. Both are drawn by a `Stage`: its own cameras in part 1, the rules' camera handed to it each frame in part 2.
 
-APIs: Core/Camera/Camera2D.h, Core/Camera/Cameras.h, Core/Camera/CameraSettings.h, Core/Camera/Debug/CameraGuides.h, Core/Graphics/Paint/Painter.h (`Camera`), Core/Fx/FxStage.h (`WorldCamera`). Concepts: [Camera](../../Docs/Camera.md).
+APIs: Core/Camera/Camera2D.h, Core/Camera/Cameras.h, Core/Camera/CameraSettings.h, Core/Camera/Debug/CameraGuides.h, Core/Stage/Stage.h (`Cameras`, `Update` with views, `SetGuides`). Concepts: [Camera](../../Docs/Camera.md), [Stage](../../Docs/Graphics/Stage.md).
 
 Most games want part 1: the camera is view code on seconds and decides nothing. Use part 2 only when what the camera shows changes the rules; then it lives in Game/Simulation/ like any other rule.
 
@@ -13,42 +13,41 @@ Most games want part 1: the camera is view code on seconds and decides nothing. 
 #include <cstddef>
 #include <optional>
 #include "Camera/Camera2D.h"
-#include "Camera/Cameras.h"
-#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
-#include "Scene/Scene.h"
-#include "Fx/FxStage.h"
 #include "Input/InputBindings.h"
+#include "Scene/Scene.h"
+#include "Simulation/HostedSimulation.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationRegistry.h"
 #include "Simulation/StepSmoothed.h"
+#include "Stage/Stage.h"
 
 // 1. A camera in the view: two players share one screen, framed together, or split it. The camera decides nothing,
-// so it lives on seconds, beside the effects.
-class RecipeCameraView {
+// so it lives on seconds in the stage, beside the effects; each view of a split draws through the same passes.
+class RecipeCameraView final : public StageView {
 public:
-    explicit RecipeCameraView(const FloatRect& canvas);
+    explicit RecipeCameraView(const SceneServices& services);
     void SetSplit(bool split);
-    void SetGuides(bool shown) { _guides = shown; }
-    // Each frame: how each player moves (-1..1 per axis), the mouse on the canvas, and a click.
+    void SetGuides(bool shown) { _stage.SetGuides({.cameras = shown}); }
+    // Each frame, from the scene's two hooks: real time, and game time with how each player moves (-1..1 per axis),
+    // the mouse on the canvas, and a click.
+    void UpdateReal(float realSeconds) { _stage.UpdateReal(realSeconds); }
     void Update(float seconds, const std::array<Float2, 2>& moves, std::optional<Float2> mouse, bool fire);
-    void Draw(Painter& paint) const;
-    [[nodiscard]] const Cameras& Views() const { return _cameras; }
+    void Draw(Painter& paint) const { _stage.Draw(paint, *this); }
+    [[nodiscard]] const Cameras& Views() const { return _stage.Cameras(); }
     [[nodiscard]] Float2 Player(std::size_t index) const { return _players[index]; }
     [[nodiscard]] Float2 Aim() const { return _aim; }
 
 private:
-    void DrawWorld(Painter& paint) const;
+    void DrawWorld(Painter& paint, const StagePass& pass) const override;
     std::array<Float2, 2> _players;
     Float2 _aim{};
-    Cameras _cameras;
-    FxStage _fx;
+    Stage _stage;
     bool _split = false;
-    bool _guides = false;
 };
 
 // 2. A camera in the rules: the view never scrolls back, and enemies wake when it first shows them. It decides
-// gameplay, so it steps with the simulation, goes into State, and is drawn between steps.
+// gameplay, so it steps with the simulation, goes into State, and the stage draws through its view between steps.
 enum class RecipeScrollButton { Left, Right };
 class RecipeScrollerSimulation final : public Simulation {
 public:
@@ -69,8 +68,6 @@ private:
     std::array<bool, EnemyCount> _awake{};
 };
 [[nodiscard]] SimulationDefinition RecipeScrollerDefinition();
-// The view of the scroller: the world through the rules' camera, at the runner's alpha.
-void DrawRecipeScroller(Painter& paint, const RecipeScrollerSimulation& simulation, float alpha, bool guides);
 
 // The scenes the game shows and the editor opens. Parameters switch split screen and the camera's guides.
 class RecipeCameraScene final : public Scene {
@@ -82,6 +79,7 @@ private:
     void HandleInput(const DeviceInput& input) override;
     void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
+    void UpdateReal(float realSeconds) override { _view.UpdateReal(realSeconds); }
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
     RecipeCameraView _view;
@@ -89,19 +87,26 @@ private:
     std::optional<Float2> _mouse;
     bool _fire = false;
 };
-class RecipeScrollerScene final : public Scene {
+// The scroller's view of the rules: the stage draws the world through the simulation's camera, at the runner's alpha.
+class RecipeScrollerScene final : public Scene, StageView {
 public:
     RecipeScrollerScene(const SceneServices& services, bool guides);
     ~RecipeScrollerScene() override { ShutdownNoThrow(); }
+    [[nodiscard]] const RecipeScrollerSimulation& Rules() const { return _hosted.Sim(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
     void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
+    void UpdateReal(float realSeconds) override { _stage.UpdateReal(realSeconds); }
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
+    void DrawWorld(Painter& paint, const StagePass& pass) const override;
+    void DrawHud(Painter& paint) const override;
+    void ShowRules();
     HostedSimulation<RecipeScrollerSimulation> _hosted;
     InputBindings _bindings;
+    Stage _stage;
     bool _guides;
 };
 [[nodiscard]] SceneDefinition RecipeCameraSceneDefinition();
@@ -117,7 +122,6 @@ private:
 #include <memory>
 #include "Camera/Debug/CameraGuides.h"
 #include "Graphics/Paint/Painter.h"
-#include "Graphics/Style/Theme.h"
 #include "Input/Input.h"
 #include "Simulation/StateVisitor.h"
 
@@ -130,7 +134,8 @@ constexpr Color4 GridColor{60, 70, 90, 255};
 constexpr std::array<Color4, 2> PlayerColors{Color4{120, 220, 255, 255}, Color4{255, 150, 120, 255}};
 constexpr Color4 AimColor{255, 230, 120, 255};
 
-// Both players framed together; each camera of a split follows one with the same settings.
+// Both players framed together; each camera of a split follows one with the same settings. The limits are also where
+// the stage's effects play.
 CameraSettings FieldCamera() {
     return {.follow = {.deadZone = {0.1f, 0.1f}, .smoothTime = 0.25f, .lookAhead = {0.25f, 0.15f}},
             .zoom = {.fit = true, .min = 0.45f, .max = 1.0f, .padding = 120.0f},
@@ -151,17 +156,17 @@ constexpr std::array<float, RecipeScrollerSimulation::EnemyCount> EnemyX{1500.0f
                                                                        4200.0f, 4900.0f, 5700.0f, 6500.0f};
 } // namespace
 
-RecipeCameraView::RecipeCameraView(const FloatRect& canvas)
+RecipeCameraView::RecipeCameraView(const SceneServices& services)
     : _players{Float2{1400.0f, 900.0f}, Float2{1800.0f, 900.0f}}
-    , _cameras(canvas, FieldCamera())
-    , _fx(Field, canvas, CurrentTheme().fx) {
-    _cameras.Main().Follow(
+    , _stage(services, {.camera = FieldCamera()}) {
+    _stage.Cameras().Main().Follow(
         {{.position = _players[0], .radius = PlayerRadius}, {.position = _players[1], .radius = PlayerRadius}});
-    _cameras.Snap(); // Start framed, not sliding in from the canvas's corner
+    _stage.Cameras().Snap(); // Start framed, not sliding in from the canvas's corner
 }
 void RecipeCameraView::SetSplit(bool split) {
     _split = split;
-    _cameras.Split(split ? 2 : 1, CameraSplit::SideBySide, 6.0f); // A new view starts as a copy of the main one
+    // A new view starts as a copy of the main one; the stage draws each through the same passes and hears from each.
+    _stage.Cameras().Split(split ? 2 : 1, CameraSplit::SideBySide, 6.0f);
 }
 void RecipeCameraView::Update(float seconds, const std::array<Float2, 2>& moves, std::optional<Float2> mouse,
                               bool fire) {
@@ -169,33 +174,21 @@ void RecipeCameraView::Update(float seconds, const std::array<Float2, 2>& moves,
         const Float2 moved = _players[i] + moves[i] * PlayerSpeed * seconds;
         _players[i] = {std::clamp(moved.x, Field.x, Field.Right()), std::clamp(moved.y, Field.y, Field.Bottom())};
     }
+    Cameras& cameras = _stage.Cameras();
     if (_split) {
-        _cameras[0].Follow({{.position = _players[0], .radius = PlayerRadius}});
-        _cameras[1].Follow({{.position = _players[1], .radius = PlayerRadius}});
+        cameras[0].Follow({{.position = _players[0], .radius = PlayerRadius}});
+        cameras[1].Follow({{.position = _players[1], .radius = PlayerRadius}});
     } else {
-        _cameras.Main().Follow(
+        cameras.Main().Follow(
             {{.position = _players[0], .radius = PlayerRadius}, {.position = _players[1], .radius = PlayerRadius}});
     }
-    _cameras.Update(seconds);
+    _stage.Update(seconds);
     // The mouse in the world, through whichever view it is over: Camera.main.ScreenToWorldPoint in Unity.
     if (mouse)
-        if (const Camera2D* under = _cameras.At(*mouse)) _aim = under->ToWorld(*mouse);
-    if (fire) _fx.Play("explosion", {.at = _aim}); // Effect positions are world positions under a game camera
-    _fx.Update(seconds, seconds);
+        if (const Camera2D* under = cameras.At(*mouse)) _aim = under->ToWorld(*mouse);
+    if (fire) _stage.Fx().Play("explosion", {.at = _aim}); // Effect positions are world positions under a game camera
 }
-void RecipeCameraView::Draw(Painter& paint) const {
-    for (const Camera2D& camera : _cameras) {
-        {
-            // Follow, then the effects' shot and shake on top; clipped to this camera's part of the canvas.
-            auto world = paint.Camera(_fx.WorldCamera(paint, camera.View(), camera.Settings().limits));
-            DrawWorld(paint);
-            _fx.DrawWorldLayer(paint);
-        }
-        if (_guides) DrawCameraGuides(paint, camera);
-    }
-    _fx.DrawOverlay(paint);
-}
-void RecipeCameraView::DrawWorld(Painter& paint) const {
+void RecipeCameraView::DrawWorld(Painter& paint, const StagePass&) const {
     const LineStyle grid{.width = 2.0f, .color = GridColor};
     for (float x = Field.x; x <= Field.Right(); x += GridStep)
         paint.Line({x, Field.y}, {x, Field.Bottom()}, grid);
@@ -243,23 +236,9 @@ SimulationDefinition RecipeScrollerDefinition() {
     definition.create = [](const SimulationStart& start) { return std::make_unique<RecipeScrollerSimulation>(start); };
     return definition;
 }
-void DrawRecipeScroller(Painter& paint, const RecipeScrollerSimulation& simulation, float alpha, bool guides) {
-    {
-        auto world = paint.Camera(simulation.Camera().View(alpha)); // Between steps, like StepSmoothed
-        const LineStyle grid{.width = 2.0f, .color = GridColor};
-        for (float x = 0.0f; x <= LevelLength; x += GridStep)
-            paint.Line({x, 0.0f}, {x, ScrollerView.height}, grid);
-        for (std::size_t i = 0; i < EnemyX.size(); ++i) {
-            const Color4 color = simulation.Awake(i) ? Color4{255, 110, 110, 255} : Color4{110, 110, 130, 255};
-            paint.Circle({EnemyX[i], ShipY}, EnemyRadius, Fill(color));
-        }
-        paint.Circle({simulation.ShipX(alpha), ShipY}, PlayerRadius, Fill(PlayerColors[0]));
-    }
-    if (guides) DrawCameraGuides(paint, simulation.Camera());
-}
 
 RecipeCameraScene::RecipeCameraScene(const SceneServices& services, bool split, bool guides)
-    : _view(FloatRect::FromCorners({}, ToFloat2(services.canvas))) {
+    : _view(services) {
     _view.SetSplit(split);
     _view.SetGuides(guides);
 }
@@ -287,9 +266,17 @@ void RecipeCameraScene::Draw(Painter& paint) const { _view.Draw(paint); }
 RecipeScrollerScene::RecipeScrollerScene(const SceneServices& services, bool guides)
     : _hosted(services.simulation, RecipeScrollerDefinition().settings, SimulationStart{.players = 1})
     , _bindings(1)
+    // The level is the world the effects play in; the stage's own cameras stay unused.
+    , _stage(services, {.camera = {.limits = FloatRect{0.0f, 0.0f, LevelLength, ScrollerView.height}}})
     , _guides(guides) {
     _bindings.Bind(0, RecipeScrollButton::Left, InputKey::A);
     _bindings.Bind(0, RecipeScrollButton::Right, InputKey::D);
+    ShowRules(); // From the first frame
+}
+// The rules' camera between its last two steps, like StepSmoothed: the stage draws and hears through it.
+void RecipeScrollerScene::ShowRules() {
+    const std::array views{Rules().Camera().View(_hosted.Runner().Alpha())};
+    _stage.SetViews(views);
 }
 void RecipeScrollerScene::HandleInput(const DeviceInput& input) { _hosted.Runner().Feed(_bindings.Read(input)); }
 void RecipeScrollerScene::InputCancelled() { _hosted.Runner().CancelInput(); }
@@ -297,9 +284,25 @@ std::string RecipeScrollerScene::ApplyParameter(const std::string& id, const Sce
     if (id == "guides") _guides = std::get<bool>(value);
     return {};
 }
-void RecipeScrollerScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
-void RecipeScrollerScene::Draw(Painter& paint) const {
-    DrawRecipeScroller(paint, _hosted.Sim(), _hosted.Runner().Alpha(), _guides);
+void RecipeScrollerScene::Update(float seconds) {
+    (void)_hosted.Runner().Advance(seconds);
+    ShowRules();
+    _stage.Update(seconds);
+}
+void RecipeScrollerScene::Draw(Painter& paint) const { _stage.Draw(paint, *this); }
+void RecipeScrollerScene::DrawWorld(Painter& paint, const StagePass&) const {
+    const float alpha = _hosted.Runner().Alpha();
+    const LineStyle grid{.width = 2.0f, .color = GridColor};
+    for (float x = 0.0f; x <= LevelLength; x += GridStep)
+        paint.Line({x, 0.0f}, {x, ScrollerView.height}, grid);
+    for (std::size_t i = 0; i < EnemyX.size(); ++i) {
+        const Color4 color = Rules().Awake(i) ? Color4{255, 110, 110, 255} : Color4{110, 110, 130, 255};
+        paint.Circle({EnemyX[i], ShipY}, EnemyRadius, Fill(color));
+    }
+    paint.Circle({Rules().ShipX(alpha), ShipY}, PlayerRadius, Fill(PlayerColors[0]));
+}
+void RecipeScrollerScene::DrawHud(Painter& paint) const {
+    if (_guides) DrawCameraGuides(paint, Rules().Camera()); // The stage shows guides only for its own cameras
 }
 
 SceneDefinition RecipeCameraSceneDefinition() {
@@ -333,4 +336,4 @@ SceneDefinition RecipeScrollerSceneDefinition() {
 
 Look at it: `python Engine ctl open myproject.camera --set split=true --screenshot`; `guides` shows the dead zone, limits and targets.
 
-Pitfalls: Call Follow with the positions the view draws (StepSmoothed::At(alpha)) before each Update, then Update with the scene's seconds. Call Snap after the first Follow of a level or a teleport, or the camera slides in from where it was. A camera that decides gameplay goes in the simulation: Update(step.seconds), its State in the simulation's State, View(runner.Alpha()) to draw; limits the rules change come from state they name. Draw the guides and the screen overlay outside paint.Camera, in canvas coordinates. Cameras::At is null over a split's gap.
+Pitfalls: Call Follow with the positions the view draws (StepSmoothed::At(alpha)) before each Update, then `Update` the stage; its `UpdateReal` goes in the scene's `UpdateReal`. Call Snap after the first Follow of a level or a teleport, or the camera slides in from where it was. A camera that decides gameplay goes in the simulation: Update(step.seconds), its State in the simulation's State, View(runner.Alpha()) handed to `Stage::SetViews` after `Advance`, and in the constructor so the first frame already looks through it; limits the rules change come from state they name. The stage shows guides only for its own cameras: draw a simulation camera's in `DrawHud`. Cameras::At is null over a split's gap.

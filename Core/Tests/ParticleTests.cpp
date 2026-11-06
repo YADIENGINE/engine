@@ -255,7 +255,8 @@ TEST_CASE("Engine.Particles.TheStageRunsEmittersAndPassesACuesVelocity", "[engin
     ParticleEmitter smoke(NeonArcadeParticles.smoke);
     for (int frame = 0; frame < 60; ++frame) {
         stage.Emit(smoke, {100.0f, 150.0f}, Pink, 1.0f / 60.0f);
-        stage.Update(1.0f / 60.0f, 1.0f / 60.0f);
+        stage.UpdateReal(1.0f / 60.0f);
+        stage.Update(1.0f / 60.0f);
     }
     PaintHarness h;
     h.Begin();
@@ -271,7 +272,8 @@ TEST_CASE("Engine.Particles.TheStageRunsEmittersAndPassesACuesVelocity", "[engin
     stage.Burst({{50.0f, 50.0f}, {40.0f, 0.0f}}, Pink, 3, carried, record);
     stage.SetCues(FxCueSet{{"carried", {FxParticles{carried, 2}}}});
     stage.Play("carried", {.at = {50.0f, 50.0f}, .velocity = {0.0f, 30.0f}});
-    stage.Update(1.0f, 1.0f);
+    stage.UpdateReal(1.0f);
+    stage.Update(1.0f);
     PaintHarness again({400.0f, 200.0f}, 1.0f);
     again.Begin();
     stage.DrawWorldLayer(again.paint);

@@ -176,6 +176,19 @@ class BoundaryTests(unittest.TestCase):
         self.write("Engine/Core/Graphics/Paint/Painter.cpp", '#include "Graphics/Light/LightLayer.h"\n')
         self.assertIn("Core/Graphics/Paint includes", self.check()[0])
 
+    def test_a_stage_assembles_view_systems_and_never_reaches_a_simulation(self):
+        self.write("Engine/Core/Stage/Stage.cpp", '#include "Stage/Stage.h"\n#include "Camera/Debug/CameraGuides.h"\n'
+                   '#include "Fx/FxStage.h"\n#include "Graphics/Light/LightLayer.h"\n#include "Weather/Weather.h"\n'
+                   '#include "Audio/SoundPlayer.h"\n#include "Scene/SceneServices.h"\n#include "Animation/Tween.h"\n')
+        self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Stage/Stage.cpp", '#include "Simulation/Simulation.h"\n')
+        self.assertIn("Core/Stage includes", self.check()[0])
+        self.write("Engine/Core/Stage/Stage.cpp", '#include "Scene/Scene.h"\n')
+        self.assertIn("Core/Stage includes", self.check()[0])
+        self.write("Engine/Core/Stage/Stage.cpp", '#include "Stage/Stage.h"\n')
+        self.write("Game/Simulation/Rules.cpp", '#include "Stage/DepthOrder.h"\n')
+        self.assertIn("simulation code", self.check()[0])
+
     def test_a_simulation_cannot_include_lighting(self):
         self.write("Game/Simulation/Rules.cpp", '#include "Graphics/Light/LightLayer.h"\n')
         self.assertIn("simulation code", self.check()[0])

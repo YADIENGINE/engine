@@ -4,7 +4,7 @@
 #include "Audio/LiveSound.h"
 #include "Audio/SoundLayers.h"
 #include "Audio/SoundRow.h"
-#include "Camera/CameraView.h"
+#include "Utilities/Geometry/Float2.h"
 #include "Utilities/EnumTable.h"
 
 class SoundPlayer;
@@ -37,11 +37,10 @@ class RecipeHauntSounds {
 public:
     explicit RecipeHauntSounds(SoundPlayer& sounds);
     // Every frame, after the simulation advanced. Nothing here needs the events of N1: it follows the state.
-    void Update(const RecipeHauntState& state, const CameraView& view);
+    void Update(const RecipeHauntState& state);
     [[nodiscard]] float BeatsPerSecond() const { return _beats; }
 
 private:
-    SoundPlayer& _sounds;
     LiveSound _hum;
     LiveSound _heart;
     SoundLayers _ambience;

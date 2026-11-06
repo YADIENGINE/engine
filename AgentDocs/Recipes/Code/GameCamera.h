@@ -4,42 +4,41 @@
 #include <cstddef>
 #include <optional>
 #include "Camera/Camera2D.h"
-#include "Camera/Cameras.h"
-#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
-#include "Scene/Scene.h"
-#include "Fx/FxStage.h"
 #include "Input/InputBindings.h"
+#include "Scene/Scene.h"
+#include "Simulation/HostedSimulation.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationRegistry.h"
 #include "Simulation/StepSmoothed.h"
+#include "Stage/Stage.h"
 
 // 1. A camera in the view: two players share one screen, framed together, or split it. The camera decides nothing,
-// so it lives on seconds, beside the effects.
-class RecipeCameraView {
+// so it lives on seconds in the stage, beside the effects; each view of a split draws through the same passes.
+class RecipeCameraView final : public StageView {
 public:
-    explicit RecipeCameraView(const FloatRect& canvas);
+    explicit RecipeCameraView(const SceneServices& services);
     void SetSplit(bool split);
-    void SetGuides(bool shown) { _guides = shown; }
-    // Each frame: how each player moves (-1..1 per axis), the mouse on the canvas, and a click.
+    void SetGuides(bool shown) { _stage.SetGuides({.cameras = shown}); }
+    // Each frame, from the scene's two hooks: real time, and game time with how each player moves (-1..1 per axis),
+    // the mouse on the canvas, and a click.
+    void UpdateReal(float realSeconds) { _stage.UpdateReal(realSeconds); }
     void Update(float seconds, const std::array<Float2, 2>& moves, std::optional<Float2> mouse, bool fire);
-    void Draw(Painter& paint) const;
-    [[nodiscard]] const Cameras& Views() const { return _cameras; }
+    void Draw(Painter& paint) const { _stage.Draw(paint, *this); }
+    [[nodiscard]] const Cameras& Views() const { return _stage.Cameras(); }
     [[nodiscard]] Float2 Player(std::size_t index) const { return _players[index]; }
     [[nodiscard]] Float2 Aim() const { return _aim; }
 
 private:
-    void DrawWorld(Painter& paint) const;
+    void DrawWorld(Painter& paint, const StagePass& pass) const override;
     std::array<Float2, 2> _players;
     Float2 _aim{};
-    Cameras _cameras;
-    FxStage _fx;
+    Stage _stage;
     bool _split = false;
-    bool _guides = false;
 };
 
 // 2. A camera in the rules: the view never scrolls back, and enemies wake when it first shows them. It decides
-// gameplay, so it steps with the simulation, goes into State, and is drawn between steps.
+// gameplay, so it steps with the simulation, goes into State, and the stage draws through its view between steps.
 enum class RecipeScrollButton { Left, Right };
 class RecipeScrollerSimulation final : public Simulation {
 public:
@@ -60,8 +59,6 @@ private:
     std::array<bool, EnemyCount> _awake{};
 };
 [[nodiscard]] SimulationDefinition RecipeScrollerDefinition();
-// The view of the scroller: the world through the rules' camera, at the runner's alpha.
-void DrawRecipeScroller(Painter& paint, const RecipeScrollerSimulation& simulation, float alpha, bool guides);
 
 // The scenes the game shows and the editor opens. Parameters switch split screen and the camera's guides.
 class RecipeCameraScene final : public Scene {
@@ -73,6 +70,7 @@ private:
     void HandleInput(const DeviceInput& input) override;
     void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
+    void UpdateReal(float realSeconds) override { _view.UpdateReal(realSeconds); }
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
     RecipeCameraView _view;
@@ -80,19 +78,26 @@ private:
     std::optional<Float2> _mouse;
     bool _fire = false;
 };
-class RecipeScrollerScene final : public Scene {
+// The scroller's view of the rules: the stage draws the world through the simulation's camera, at the runner's alpha.
+class RecipeScrollerScene final : public Scene, StageView {
 public:
     RecipeScrollerScene(const SceneServices& services, bool guides);
     ~RecipeScrollerScene() override { ShutdownNoThrow(); }
+    [[nodiscard]] const RecipeScrollerSimulation& Rules() const { return _hosted.Sim(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
     void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
+    void UpdateReal(float realSeconds) override { _stage.UpdateReal(realSeconds); }
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
+    void DrawWorld(Painter& paint, const StagePass& pass) const override;
+    void DrawHud(Painter& paint) const override;
+    void ShowRules();
     HostedSimulation<RecipeScrollerSimulation> _hosted;
     InputBindings _bindings;
+    Stage _stage;
     bool _guides;
 };
 [[nodiscard]] SceneDefinition RecipeCameraSceneDefinition();

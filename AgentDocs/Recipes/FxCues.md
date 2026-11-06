@@ -2,33 +2,35 @@
 
 Name what an event looks like, in one place: a burst, a shake, a flash and a late shockwave become `fx.Play("player_hit", ...)`. An animation's moments and a game's rules can both play them.
 
-APIs: Core/Fx/FxCue.h, Core/Fx/FxCueSet.h, Core/Fx/FxStage.h, Core/Runtime/TimeScale.h. Concepts: `Docs/Graphics/Effects.md#cues`.
+APIs: Core/Fx/FxCue.h, Core/Fx/FxCueSet.h, Core/Fx/FxStage.h, Core/Stage/Stage.h (`Fx`). Concepts: `Docs/Graphics/Effects.md#cues`.
 
 <!-- recipe:FxCues-header -->
 ```cpp
 #pragma once
 #include "Animation/Animator.h"
-#include "Fx/FxStage.h"
-
-class TimeScale;
+#include "Stage/Stage.h"
 
 struct RecipeSwingPose {
     float arm = 0.0f;
 };
 
-// A view that names what events look like, and lets an animation's moments play them.
-class RecipeCueView {
+// A view that names what events look like, and lets an animation's moments play them. The stage's effects follow the
+// player's choice and use the scene's time scale for the hitstop.
+class RecipeCueView final : public StageView {
 public:
-    RecipeCueView(const FloatRect& area, TimeScale& time);
-    void SetQuality(const FxQuality& quality) { _fx.SetQuality(quality); }
+    explicit RecipeCueView(const SceneServices& services);
     void Swing() { _swing.Play("swing", {.restart = true}); }
-    // 'hits' is what a game's rules counted so far, a simulation's for example: comparing a total cannot miss one.
-    void Update(float gameSeconds, float realSeconds, int hits);
-    void Draw(Painter& paint) const;
+    // Each frame, from the scene's UpdateReal.
+    void UpdateReal(float realSeconds) { _stage.UpdateReal(realSeconds); }
+    // Each frame, from the scene's Update. 'hits' is what a game's rules counted so far, a simulation's for example:
+    // comparing a total cannot miss one.
+    void Update(float seconds, int hits);
+    void Draw(Painter& paint) const { _stage.Draw(paint, *this); }
 
 private:
+    void DrawWorld(Painter& paint, const StagePass& pass) const override;
     Float2 _at;
-    FxStage _fx;
+    Stage _stage;
     SecondsAnimator<RecipeSwingPose> _swing;
     int _hitsSeen = 0;
 };
@@ -38,10 +40,11 @@ private:
 <!-- recipe:FxCues -->
 ```cpp
 #include "AgentDocs/Recipes/Code/FxCues.h"
+#include <cmath>
 #include "Animation/Clip.h"
 #include "Animation/ClipSet.h"
 #include "Graphics/Paint/Painter.h"
-#include "Graphics/Style/Theme.h"
+#include "Scene/SceneServices.h"
 
 namespace {
 constexpr Color4 HitColor = Rgb(0xff5040);
@@ -66,33 +69,28 @@ SecondsClipSet<RecipeSwingPose> SwingClips() {
 }
 } // namespace
 
-RecipeCueView::RecipeCueView(const FloatRect& area, TimeScale& time)
-    : _at(area.Center())
-    , _fx(area, area, CurrentTheme().fx)
+RecipeCueView::RecipeCueView(const SceneServices& services)
+    : _at(ToFloat2(services.canvas) * 0.5f)
+    , _stage(services)
     , _swing(SwingClips(), "rest") {
-    _fx.SetCues(RecipeCues());
-    _fx.SetTime(&time); // "player_hit" asks for a hitstop
+    _stage.Fx().SetCues(RecipeCues());
 }
-void RecipeCueView::Update(float gameSeconds, float realSeconds, int hits) {
+void RecipeCueView::Update(float seconds, int hits) {
     if (hits != _hitsSeen) {
         _hitsSeen = hits;
-        _fx.Play("player_hit", {.at = _at, .color = HitColor});
+        _stage.Fx().Play("player_hit", {.at = _at, .color = HitColor});
     }
     // A moment with a cue of the same name plays it, at the frame the animation reaches it.
-    _swing.Update(gameSeconds, [&](std::string_view moment) {
-        if (_fx.Cues().Contains(moment)) _fx.Play(moment, {.at = _at, .color = SwingColor});
+    _swing.Update(seconds, [&](std::string_view moment) {
+        if (_stage.Fx().Cues().Contains(moment)) _stage.Fx().Play(moment, {.at = _at, .color = SwingColor});
     });
-    _fx.Update(gameSeconds, realSeconds);
+    _stage.Update(seconds);
 }
-void RecipeCueView::Draw(Painter& paint) const {
-    {
-        auto camera = paint.Transform(_fx.WorldCamera(paint).Transform());
-        // Draw the world here, using _swing.Pose().arm.
-        _fx.DrawWorldLayer(paint);
-    }
-    _fx.DrawOverlay(paint);
+void RecipeCueView::DrawWorld(Painter& paint, const StagePass&) const {
+    const Float2 hand = _at + Float2{std::cos(_swing.Pose().arm), std::sin(_swing.Pose().arm)} * 60.0f;
+    paint.Line(_at, hand, {.width = 8.0f, .color = SwingColor});
 }
 ```
 <!-- /recipe -->
 
-Pitfalls: A cue with FxHitstop or FxSlowMotion throws without SetTime. A misspelled name throws where it plays, so a scenario or test should reach each one. A simulation never calls Fx: it emits events (Simulation recipe) and the view plays cues for them. Without a simulation, comparing a total, as here, cannot play one twice. A cue's delays and cooldown run on game time, so a hitstop holds them. FxPlay::intensity sizes one play. Update takes both clocks, the scene's delta and Game::RealSeconds(). Pass Game::Effects() to SetQuality.
+Pitfalls: A stage gives its effects the scene's time scale, so FxHitstop and FxSlowMotion work; an FxStage of your own throws without SetTime. A misspelled name throws where it plays, so a scenario or test should reach each one. A simulation never calls Fx: it emits events (Simulation recipe) and the view plays cues for them. Without a simulation, comparing a total, as here, cannot play one twice. A cue's delays and cooldown run on game time, so a hitstop holds them. FxPlay::intensity sizes one play. The stage has two calls, `UpdateReal` from the scene's `UpdateReal` (it runs in a hitstop, so banners and toasts go on) and `Update` from its `Update`, and follows the player's effect choice by itself.

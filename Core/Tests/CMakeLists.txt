@@ -108,6 +108,9 @@ target_compile_definitions(EngineTests PRIVATE
     ENGINE_TEST_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf"
     ENGINE_TEST_SCRIPT_FONTS="${ENGINE_THIRD_PARTY_DIR}/NotoSansScripts")
 
+# A stage borrows the scene's services, whose audio is the real engine on no device (AudioOutput::Offline).
+engine_tests(EngineStageTests SOURCES StageTests.cpp LINKS EngineAudio)
+
 # Links only the physics target, so collision code that reaches drawing or audio fails to build here.
 engine_tests(EnginePhysicsTests
     SOURCES
@@ -185,6 +188,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/CharacterObject.cpp"
     "${recipeRoot}/CharacterScene.cpp"
     "${recipeRoot}/CollisionBullets.cpp"
+    "${recipeRoot}/DepthStage.cpp"
     "${recipeRoot}/FxBurst.cpp"
     "${recipeRoot}/FxCues.cpp"
     "${recipeRoot}/FxStream.cpp"

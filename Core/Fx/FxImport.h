@@ -17,6 +17,7 @@
 #include "Fx/Screen/SlowMotionOverlay.h"
 #include "Fx/World/FlashLights.h"
 #include "Fx/World/FloatingTexts.h"
+#include "Fx/World/Marks.h"
 #include "Fx/World/Rings.h"
 #include "Fx/World/Shockwaves.h"
 #include "Graphics/Draw/IrisTransition.h"

@@ -189,7 +189,8 @@ TEST_CASE("Engine.Fx.StageDrawsItsLayersAndHonoursFlashSetting", "[engine][fx]")
     stage.FloatText({100.0f, 100.0f}, "+10", Pink);
     stage.Toast("Combo", Pink);
     stage.Flash(Pink);
-    stage.Update(0.1f, 0.1f);
+    stage.UpdateReal(0.1f);
+    stage.Update(0.1f);
 
     for (const bool overlay : {false, true}) {
         PaintHarness h({400.0f, 200.0f});
@@ -207,7 +208,8 @@ TEST_CASE("Engine.Fx.StageDrawsItsLayersAndHonoursFlashSetting", "[engine][fx]")
     quiet.SetQuality({.flashes = false});
     quiet.Flash(Pink);
     quiet.Glitch(0.5f);
-    quiet.Update(0.05f, 0.05f);
+    quiet.UpdateReal(0.05f);
+    quiet.Update(0.05f);
     PaintHarness q({400.0f, 200.0f});
     q.Begin();
     quiet.DrawOverlay(q.paint);
@@ -245,4 +247,35 @@ TEST_CASE("Engine.FxQuality.ScalesParticlesAndShake", "[engine][graphics]") {
     CHECK(beyond.ParticleCount(40) == 40); // Clamped to 100%
     CHECK(beyond.ShakeScale() == 0.0f);
     CHECK(FxQuality{.particlePercent = 0}.ParticleCount(40) == 0);
+}
+
+TEST_CASE("Engine.Fx.MarksLieOnTheGroundGrowFadeAndMakeRoom", "[engine][fx]") {
+    Marks marks;
+    CHECK_THROWS_AS(marks.Leave({}, Pink, {.radius = 0.0f}), std::invalid_argument);
+    marks.Leave({10.0f, 10.0f}, Pink, {.radius = 20.0f, .seconds = 2.0f, .fadeSeconds = 1.0f, .growSeconds = 0.5f});
+    marks.Update(1.9f);
+    CHECK(marks.Count() == 1);
+    marks.Update(0.2f);
+    CHECK(marks.Count() == 0);
+    for (std::size_t i = 0; i < Marks::MaxLying + 3; ++i)
+        marks.Leave({}, Pink, {});
+    CHECK(marks.Count() == Marks::MaxLying); // The oldest gave way
+
+    // A cue leaves one where it plays, sized by the intensity; the ground layer draws it, the world layer does not.
+    FxStage fx(Area, Area, TestFx());
+    CHECK_THROWS_AS(FxCue{FxMark{.seconds = -1.0f}}, std::invalid_argument);
+    fx.Play(FxCue{FxMark{.radius = 12.0f}}, {.at = {100.0f, 100.0f}, .color = Pink, .intensity = 2.0f});
+    PaintHarness h;
+    h.Begin();
+    fx.DrawWorldLayer(h.paint);
+    h.End();
+    CHECK(h.Draws().empty());
+    h.Begin();
+    fx.DrawGroundLayer(h.paint);
+    h.End();
+    REQUIRE(h.Draws().size() == 1);
+    float right = 0.0f;
+    for (const PaintVertex& vertex : h.Drawn())
+        right = std::max(right, vertex.x);
+    CHECK(right == Approx(124.0f).margin(1.5f)); // Radius 12 at intensity 2
 }

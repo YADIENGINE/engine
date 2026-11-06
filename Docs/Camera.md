@@ -89,7 +89,9 @@ if (const Camera2D* under = _cameras.At(mouse)) aim = under->ToWorld(mouse);
 ```
 
 The world is drawn once per camera. `SetCanvas` follows a window that changed size. Screen overlays (`FxStage::DrawOverlay`,
-the HUD) are drawn once, after the loop, in canvas coordinates.
+the HUD) are drawn once, after the loop, in canvas coordinates. A [Stage](Graphics/Stage.md) owns a scene's `Cameras` and
+runs this loop itself, with every pass (floor, world, light, effects) in its fixed order for each camera, and puts a sound
+listener on each.
 
 ## Effects over a game camera
 
@@ -101,7 +103,8 @@ canvas, so each part of a split screen keeps its own; with `keepInArena` it stay
 auto world = paint.Camera(_fx.WorldCamera(paint, camera.View(), camera.Settings().limits));
 ```
 
-The stage has one shake, so every view of a split screen shakes together.
+The stage has one shake, so every view of a split screen shakes together. A [Stage](Graphics/Stage.md) does this for
+each of its views, with the camera's limits.
 
 ## A camera in the rules
 
@@ -114,7 +117,9 @@ in the simulation, and replays must reproduce it:
 - Name it in `State`: `state.Field("camera", _camera);`, or keep it in the simulation's [state struct](Simulation.md#state). Settings are data; if the rules change
   them (moving limits), derive them from state the simulation already names.
 - Read `VisibleArea()` or `Shows(point, radius)` in the rules.
-- Draw with `camera.View(runner.Alpha())`, between the last two steps, as `StepSmoothed` does.
+- Draw with `camera.View(runner.Alpha())`, between the last two steps, as `StepSmoothed` does: hand it to
+  `Stage::SetViews(views)`, and the stage draws and hears through it
+  ([views from elsewhere](Graphics/Stage.md#views-from-elsewhere)).
 
 ## Seeing it
 

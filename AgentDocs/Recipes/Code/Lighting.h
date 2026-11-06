@@ -2,41 +2,34 @@
 #pragma once
 #include <string>
 #include "Editor/Api/SceneRegistry.h"
-#include "Fx/FxStage.h"
-#include "Graphics/Light/LightLayer.h"
-#include "Graphics/Light/LightOccluders.h"
 #include "Physics/Collision/CollisionWorld.h"
 #include "Scene/Scene.h"
+#include "Stage/Stage.h"
 #include "Utilities/Geometry/Float2.h"
 
 // A dark room: the player carries a lantern and aims a flashlight, a torch flickers on the wall, lightning lights it
 // all for a moment, walls cast shadows, and a neon sign shines by itself. Lights are view code on seconds and decide
-// nothing.
-class RecipeLitView {
+// nothing: the stage asks for them every frame (DescribeLight) and darkens the world before the glow pass.
+class RecipeLitView final : public StageView {
 public:
-    explicit RecipeLitView(Float2 canvas);
-    void SetGuides(bool shown) { _guides = shown; }
-    // The player's choice, Game::Effects(): the stage and the flicker both honour it.
-    void SetEffects(const FxQuality& effects);
+    explicit RecipeLitView(const SceneServices& services);
+    void SetGuides(bool shown) { _stage.SetGuides({.lights = shown}); }
     void Lightning();
-    // Each frame: how the player moves (-1..1 per axis) and the mouse on the canvas, which the flashlight follows.
+    // Each frame, from the scene's two hooks: real time, and game time with how the player moves (-1..1 per axis) and
+    // the mouse, which the flashlight follows.
+    void UpdateReal(float realSeconds) { _stage.UpdateReal(realSeconds); }
     void Update(float seconds, Float2 move, Float2 mouse);
-    void Draw(Painter& paint) const;
+    void Draw(Painter& paint) const { _stage.Draw(paint, *this); }
 
 private:
-    [[nodiscard]] CameraView View() const;
-    void DrawWorld(Painter& paint) const;
+    void DrawWorld(Painter& paint, const StagePass& pass) const override;
+    void DrawGlow(Painter& paint, const StagePass& pass) const override;
+    void DescribeLight(const Painter& paint, StageLight& light) const override;
 
-    Float2 _canvas;
+    Stage _stage;
     Float2 _player;
     Float2 _aim;
-    float _time = 0.0f;
-    bool _guides = false;
-    bool _flashes = true;
-    FxStage _fx;
-    LightLayer _lights; // Keeps only an image's memory: the lights are described in Draw, every frame
     CollisionWorld _colliders; // In a game: the simulation's, read by the view
-    LightOccluders _walls;     // Built once from the colliders: walls stand still
 };
 
 class RecipeLitScene final : public Scene {
@@ -48,6 +41,7 @@ private:
     void HandleInput(const DeviceInput& input) override;
     void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
+    void UpdateReal(float realSeconds) override { _view.UpdateReal(realSeconds); }
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
     RecipeLitView _view;

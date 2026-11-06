@@ -1,5 +1,18 @@
 # Cumulative migration notes
 
+## Stage (D54)
+
+A scene's view side can be one `Stage` (`Stage/Stage.h`) that draws in a fixed order. Moving to it is optional, but the
+recipes and docs now use it. `FxStage::Update` changed: it now takes one clock per call.
+
+| Old | New | How to migrate |
+| --- | --- | --- |
+| A view owning `Cameras`, `FxStage`, `LightLayer`, `Atmosphere` and writing the passes in `Draw` | `Stage` member + `StageView` passes | Build the stage from `SceneServices` with `StageSettings` (`light`, `atmosphere`); move each block of `Draw` into `DrawFloor`, `DrawWorld`, `DrawGlow`, `DrawHud`; give lights in `DescribeLight`; call `_stage.Draw(paint, *this)`. |
+| `FxStage::Update(gameSeconds, realSeconds)` | `UpdateReal(realSeconds)` + `Update(gameSeconds)` | Call `UpdateReal` from the scene's `UpdateReal` (it runs in a hitstop and a pause) and `Update` from its `Update`; the stage has the same pair. `SlowMotionOverlay` is split the same way. |
+| `fx.SetQuality(effects)`, `fx.SetTime(&time)`, `sounds.SetListener(...)` from the camera | Done by the stage | Delete the calls; set `StageSettings::listeners = false` to keep placing your own listener. |
+| A simulation camera drawn with `paint.Camera(camera.View(alpha))` | `_stage.SetViews(views)` | Set the views after `Advance`, and in the constructor for the first frame. |
+| A `std::visit` over `FxAction` with a case per action | Add a case for `FxMark` | The new action leaves a mark on the ground (`FxStage::Mark`, `DrawGroundLayer`). |
+
 ## One scene type (D53)
 
 The editor's catalog opens the game's own `Scene`; the separate editor scene type is gone. Write each screen once:

@@ -11,7 +11,7 @@ APIs: Core/Audio/SoundPlayer.h, Core/Audio/LiveSound.h, Core/Audio/SoundLayers.h
 #include "Audio/LiveSound.h"
 #include "Audio/SoundLayers.h"
 #include "Audio/SoundRow.h"
-#include "Camera/CameraView.h"
+#include "Utilities/Geometry/Float2.h"
 #include "Utilities/EnumTable.h"
 
 class SoundPlayer;
@@ -44,11 +44,10 @@ class RecipeHauntSounds {
 public:
     explicit RecipeHauntSounds(SoundPlayer& sounds);
     // Every frame, after the simulation advanced. Nothing here needs the events of N1: it follows the state.
-    void Update(const RecipeHauntState& state, const CameraView& view);
+    void Update(const RecipeHauntState& state);
     [[nodiscard]] float BeatsPerSecond() const { return _beats; }
 
 private:
-    SoundPlayer& _sounds;
     LiveSound _hum;
     LiveSound _heart;
     SoundLayers _ambience;
@@ -69,16 +68,15 @@ private:
 void AddRecipeNoises(GameSettings& settings) { settings.sounds = RecipeNoiseTable; }
 
 RecipeHauntSounds::RecipeHauntSounds(SoundPlayer& sounds)
-    : _sounds(sounds)
-    , _hum(sounds.Start(RecipeNoise::Hum, {.fadeIn = 1.0f}))
+    : _hum(sounds.Start(RecipeNoise::Hum, {.fadeIn = 1.0f}))
     , _heart(sounds.Start(RecipeNoise::Heart, {.volume = 0.0f}))
     , _ambience(sounds, 2.0f) {
     _ambience.Set(RecipeNoise::Wind, 0.8f);
 }
 
-void RecipeHauntSounds::Update(const RecipeHauntState& state, const CameraView& view) {
-    // The listener is the camera: what is right of the screen's middle is heard on the right.
-    _sounds.SetListener({.position = view.target, .rotation = view.rotation, .panWidth = view.VisibleArea().width / 2.0f});
+void RecipeHauntSounds::Update(const RecipeHauntState& state) {
+    // Heard from the camera: the scene's Stage puts a listener on each of its views, so what is right of the screen's
+    // middle is heard on the right. A sound placed in the world only says where it is.
     _hum.SetPosition(state.ghost);
 
     const float distance = std::hypot(state.ghost.x - state.player.x, state.ghost.y - state.player.y);
@@ -98,4 +96,4 @@ void RecipeHauntSounds::Update(const RecipeHauntState& state, const CameraView& 
 
 A one-shot at a place needs no handle: `sounds.Play(Sfx::Door, {.at = doorPosition})`. Stems of one piece of music that must stay in step: `layers.Prepare({Music::Drums, Music::Bass})`, then `Set` each.
 
-Pitfalls: a row with `.loop` cannot go through `Play`, which would leave it running forever; use `Start` and keep the handle. A dropped `LiveSound` fades out and stops, so keep it as a member, not a local. Without a `SetListener` call the listener stands at the origin. A long file belongs in a row with `.streamed = true`, or it is held whole in memory. MP3 adds padding at its ends, so loop OGG, FLAC or WAV. Every loop and layer is a table row, which is what keeps its file in the release package; a file loaded by hand is left out. Never start or change a sound inside a simulation step: read the state in the view, after `Advance`.
+Pitfalls: a row with `.loop` cannot go through `Play`, which would leave it running forever; use `Start` and keep the handle. A dropped `LiveSound` fades out and stops, so keep it as a member, not a local. A `Stage` puts one listener on each of its views every frame (`StageSettings::listeners`); without one, call `SetListener`, or the listener stands at the origin. A long file belongs in a row with `.streamed = true`, or it is held whole in memory. MP3 adds padding at its ends, so loop OGG, FLAC or WAV. Every loop and layer is a table row, which is what keeps its file in the release package; a file loaded by hand is left out. Never start or change a sound inside a simulation step: read the state in the view, after `Advance`.

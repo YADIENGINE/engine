@@ -13,7 +13,7 @@ Most games need one `FxStage` and a few [cues](#cues). The parts below it are th
 `SlowMotionOverlay` and `CameraEffects` can be used independently. They share one shape:
 
 - `Update(dt)` with the chosen time domain, `Clear()` on scene/run reset, a const `Draw`. `Announcements` wants real time,
-  and `SlowMotionOverlay` takes both clocks.
+  and `SlowMotionOverlay` has both: `UpdateReal` for how long it shows, `Update` for its trails.
 - An effect that happens at an event takes its style with the event, so two sizes of one effect can run together. A
   single continuous device, `CameraEffects` or `PulseOverlay`, takes its style at construction.
 - An invalid style or time throws `std::invalid_argument` before changing state, in every configuration, and each style
@@ -99,16 +99,20 @@ effect sits in a folder named for what it acts on:
 | --- | --- |
 | `Fx/Particles` | `ParticleSystem`, `ParticleRecipes` |
 | `Fx/Camera` | `CameraEffects`, `CameraShot` |
-| `Fx/World` | `Rings`, `Shockwaves`, `FloatingTexts`, `FlashLights`: at a point in the field |
+| `Fx/World` | `Rings`, `Shockwaves`, `FloatingTexts`, `FlashLights`, `Marks`: at a point in the field |
 | `Fx/Screen` | `ScreenFlash`, `FlashLimit`, `ScreenGlitch`, `PulseOverlay`, `SlowMotionOverlay`, `Announcements`: over the view |
 
-`Fx/FxStage` bundles every component above for one play area. Construct it with the play area, the view area for edge
+`Fx/FxStage` bundles every component above for one play area. In a scene it usually comes with a
+[Stage](Stage.md) (`Stage::Fx()`), which updates it on its two clocks, follows the player's choice, gives it the time scale
+and draws its layers in their places for every view; the rest of this section is what that does underneath. Construct it with the play area, the view area for edge
 effects and an `FxStyle` (`Fx/FxStyle.h`), normally `CurrentTheme().fx`. Positions are canvas coordinates; the game adapts
 its own grid. An invalid style throws here, naming the part, not when that effect first plays.
 
-`Update(gameSeconds, realSeconds)` takes both clocks, usually the scene's delta and `Game::RealSeconds()`. Effects in the
-world, cue delays and cooldowns run on game time, so a hitstop holds them. Banners and toasts run on real time, since reading
-does not slow down with the game, and so does how long slow motion's look lasts, so it ends when `TimeScale` does.
+Two calls a frame, one per clock, from the scene's two hooks: `UpdateReal(realSeconds)` from `Scene::UpdateReal`, which runs
+in a hitstop and a pause too, and `Update(gameSeconds)` from `Scene::Update`. Effects in the world, cue delays and cooldowns
+run on game time, so a hitstop holds them. Banners and toasts run on real time, since reading does not slow down with the
+game, and so does how long slow motion's look lasts, so it ends when `TimeScale` does. Each call moves only its own clock's
+parts, so a scene in `TimeDomain::Real`, whose hooks both get real seconds, moves nothing twice.
 
 A game whose camera follows or scrolls passes its view as `fx.WorldCamera(paint, camera.View(), camera.Settings().limits)`
 ([Camera](../Camera.md#effects-over-a-game-camera)). Effect positions are then world positions; a shot blends from that view
@@ -123,13 +127,19 @@ fx.PopText(at, "x3", yellow, 40.0f);               // One effect
 {
     auto clip = paint.Clip(viewArea);
     auto camera = paint.Transform(fx.WorldCamera(paint).Transform());
+    DrawFloor(paint);
+    fx.DrawGroundLayer(paint); // Inside the world camera, under the objects: marks
     DrawWorld(paint);
     fx.DrawWorldLayer(paint); // Inside the world camera, over the objects
 }
 fx.DrawOverlay(paint); // No camera: vignette, speed lines, flash / banner / toast, glitch
 ```
 
-`SetQuality` is one call for the whole stage, and every owner has to make it. With flashes off there are also no
+`Mark(at, color, style)` (the cue action `FxMark`) leaves a mark on the ground: a scorch, a splash, the dust of a landing,
+or with `growSeconds` the shadow of something about to fall. It lies under everything that stands, fades over
+`fadeSeconds` and runs on game time; the oldest gives way past `Marks::MaxLying`.
+
+`SetQuality` is one call for the whole stage, and every owner without a `Stage` has to make it. With flashes off there are also no
 shockwaves, no banner curtain and no [light flashes](Lighting.md#short-flashes). Flashes and light flashes share one limit of
 three starts a second whatever the setting (`FlashLimit`), and a new flash takes over only if it is as bright as the one showing. `FxStage::SlowMotionLook` is only how slow
 motion looks, and `TimeScale::SlowMo` only slows time; `FxSlowMotion` in a cue does both.

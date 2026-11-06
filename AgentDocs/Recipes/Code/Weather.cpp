@@ -1,8 +1,7 @@
 // [recipe:Weather]
 #include "AgentDocs/Recipes/Code/Weather.h"
-#include <array>
 #include "Graphics/Paint/Painter.h"
-#include "Graphics/Style/Theme.h"
+#include "Scene/SceneServices.h"
 
 namespace {
 constexpr Color4 Floor = Rgb(0x6c7a66);
@@ -30,39 +29,36 @@ DriftLook AshLook() {
 }
 } // namespace
 
-RecipeWeatherView::RecipeWeatherView(Float2 canvas)
-    : _canvas(canvas)
-    , _air(YardLook())
-    , _ash(AshLook())
-    , _fx(FloatRect{0.0f, 0.0f, canvas.x, canvas.y}, FloatRect{0.0f, 0.0f, canvas.x, canvas.y}, CurrentTheme().fx) {}
-
-void RecipeWeatherView::StartStorm() { _weather.To(Weather::Storm(), StormSeconds, Curve::InOutSine); }
-
-void RecipeWeatherView::Lightning(Float2 at) { _fx.Play("lightning", {.at = at, .color = LightningColor}); }
-
-void RecipeWeatherView::Update(float seconds) {
-    _weather.Update(seconds);
-    _air.Update(seconds, _weather);
-    _ash.Update(seconds, _weather.Value().wind);
-    _fx.Update(seconds, seconds);
+RecipeWeatherView::RecipeWeatherView(const SceneServices& services)
+    : _hero(ToFloat2(services.canvas) * 0.5f)
+    // Light and air are switched on here. The air is drawn before the light, so it is lit like the world: fog and dust
+    // show where the lamp falls, and lightning shows them all.
+    , _stage(services, {.light = LightLayerOptions{}, .atmosphere = YardLook()})
+    , _ash(AshLook()) {
+    _stage.Weather().Snap(Weather::Mist());
+    _stage.Cameras().Main().Follow(_hero);
+    _stage.Cameras().Snap();
 }
 
-void RecipeWeatherView::Draw(Painter& paint, const CameraView& view) const {
-    {
-        auto world = paint.Camera(view);
-        paint.Rect({-4000.0f, -4000.0f, 8000.0f, 8000.0f}, Fill(Floor));
-    }
-    _air.DrawBehind(paint, view); // Ripples and low fog pass under the characters
-    {
-        auto world = paint.Camera(view);
-        paint.Circle(_canvas * 0.5f, 24.0f, Fill(Hero));
-    }
-    _ash.Draw(paint, 1.0f, view);
-    _air.DrawFront(paint, view);
-    // All of the above is lit like the world: fog and dust show where the lamp falls, and lightning shows them all.
-    const std::array lamps{LightSource{.at = _canvas * 0.5f, .radius = 300.0f, .color = LampColor}};
-    _lights.Draw(paint, {.ambient = Night, .lights = lamps, .flashes = _fx.LightFlashes()}, view);
-    auto world = paint.Camera(view);
-    _fx.DrawWorldLayer(paint); // The bolt shines by itself
+void RecipeWeatherView::StartStorm() { _stage.Weather().To(Weather::Storm(), StormSeconds, Curve::InOutSine); }
+
+void RecipeWeatherView::Lightning(Float2 at) { _stage.Fx().Play("lightning", {.at = at, .color = LightningColor}); }
+
+void RecipeWeatherView::Update(float seconds) {
+    _stage.Update(seconds); // Moves the weather, the air and the bolt
+    _ash.Update(seconds, _stage.Weather().Value().wind);
+}
+
+void RecipeWeatherView::DrawFloor(Painter& paint, const StagePass&) const {
+    paint.Rect({-4000.0f, -4000.0f, 8000.0f, 8000.0f}, Fill(Floor)); // Ripples and low fog pass over it
+}
+
+void RecipeWeatherView::DrawWorld(Painter& paint, const StagePass&) const { paint.Circle(_hero, 24.0f, Fill(Hero)); }
+
+void RecipeWeatherView::DrawAir(Painter& paint, const StagePass& pass) const { _ash.Draw(paint, 1.0f, pass.view); }
+
+void RecipeWeatherView::DescribeLight(const Painter&, StageLight& light) const {
+    light.ambient = Night;
+    light.lights.push_back({.at = _hero, .radius = 300.0f, .color = LampColor});
 }
 // [/recipe]

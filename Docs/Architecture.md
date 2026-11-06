@@ -35,12 +35,17 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 | --- | --- | --- |
 | `Graphics/Render` | `RenderStats`; `Internals/`: `Window`, `Renderer`, `RenderPipeline`, `FrameExecutor`, `RenderResources` | `Utilities` |
 | `Graphics/Paint`, `Text`, `Surface`, `Post`, `Gpu` | Drawing API, fonts, images, finishing and GPU backends | `Utilities`, private renderer services |
-| `Graphics/Draw` | Painter helpers (`DrawUtils.h`, `Neon.h`, `BackgroundDraw.h`, `ParticleDraw.h`) | `Paint`, `Animation` |
+| `Graphics/Draw` | Painter helpers (`DrawUtils.h`, `Neon.h`, `BackgroundDraw.h`, `ParticleDraw.h`, `Elevation.h`) | `Paint`, `Animation` |
 | `Graphics/Atmosphere` | `Atmosphere`, `DriftField`, `FogField`, `GroundRipples` | `Paint`, `Draw/ParticleDraw`, the camera's view, `Weather` |
 | `Graphics/Style` | `Theme`, `PlainTheme`, `NeonArcadeTheme` | `Draw`, `Fx` (style types) |
 | `Assets/Graphics` (`EngineAssets`, above Core) | Ready-made graphics with their own look: `DefaultIcons`, `Backgrounds/` | `Draw`, `Style`; no Core system calls them |
 
 Game UI is outside `Graphics/`, in `Ui/` ([UI](Ui.md)).
+
+`Stage/` assembles a scene's view side above these folders ([Stage](Graphics/Stage.md)): `Cameras`, `FxStage`, an optional
+`LightLayer` and `Atmosphere`, and the sound listeners, drawn in one fixed order through a `StageView` the scene passes to
+each `Draw`. It stands on Camera, Fx, Graphics, Weather and the sound player, borrows the scene's `SceneServices`, and never
+reaches a simulation, collision, input or the runtime; `check` enforces that. Each part stays usable without it.
 
 Particle shape drawing is shared by `Fx/Particles/ParticleSystem` and static catalog scenes through
 `Graphics/Draw/ParticleDraw`; it accepts explicit pose/style and never reads a theme.
@@ -69,6 +74,8 @@ rather than in the game.
   depends only on `Utilities` ([Animation](Animation.md)).
 - `Animation`, basic geometry, and gameplay helpers are available headlessly.
 - `Graphics/Draw` → Render/Animation; `Assets/Graphics` → Draw/Style, and Core never includes it; Fx → Draw/Paint/Animation (headless); Style → Draw/Fx style types.
+- `Stage` → Camera, Fx, Graphics, Weather, the sound player and `Scene/SceneServices.h`; nothing below includes it, and a
+  simulation cannot.
 - `Ui/Layout` → Utilities; `Ui/Kernel` → Layout/Input/Paint; `Ui/Looks` → Kernel/Style/Draw; `Ui/Widgets` → Looks/Kernel;
   `Ui/Kit` → Widgets.
 - Engine → Game, module → another module's Internals, and circular module dependencies are forbidden.
@@ -85,7 +92,7 @@ Game code that uses several components can include a focused umbrella header:
 
 | Header | Public components |
 | --- | --- |
-| `Fx/FxImport.h` | FX stage, cues, particle recipes, particles, floating text, rings, shockwaves, flash, glitch, pulse, announcements, camera effects, speed lines, iris drawing |
+| `Fx/FxImport.h` | FX stage, cues, particle recipes, particles, floating text, rings, marks, shockwaves, flash, glitch, pulse, announcements, camera effects, speed lines, iris drawing |
 | `Runtime/RuntimeImport.h` | Game, GameSettings, GameObject, Scene |
 
 These are explicit include lists, not effect registration or object creation. Add a new public component's header to the

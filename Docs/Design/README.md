@@ -289,8 +289,9 @@ Names belong to cues, not effects. An `FxCue` is constant data: typed actions wi
 ### D30. Effects: two clocks, shake as an amount, cues with a size
 Usage: [Effects](../Graphics/Effects.md).
 
-1. *`Update(gameSeconds, realSeconds)`,* no one-clock form. Slow motion's look and toasts run on real time; a flash keeps
-   game time so a hitstop holds a hit together. `Game::RealSeconds()` provides it.
+1. *`UpdateReal(realSeconds)` and `Update(gameSeconds)`,* one call per clock from the scene's two hooks (D54), since a
+   scene's `Update` does not run while game time stands still. Slow motion's look and toasts run on real time; a flash
+   keeps game time so a hitstop holds a hit together.
 2. *Trauma instead of seconds:* a shake is an amount that adds up to 1 and shows squared, with smooth noise.
 3. *Styles are checked when a stage is made* (`IsValid` per style).
 4. *`intensity` scales sizes, not times.*
@@ -762,6 +763,35 @@ written twice (once for the game, once for the editor).
 
 Left out: a separate editor interface found by `dynamic_cast`, switching scenes from the editor (still `Game::SetScene`
 in a Game Flow), the scene-held `Profiler` pointer and application command (nothing read them).
+
+### D54. Stage
+Usage: [Stage](../Graphics/Stage.md).
+
+`Core/Stage`: a `Stage` owns a scene's view side (`Cameras`, `FxStage`, an optional `LightLayer` with still occluders, an
+optional `Atmosphere` with its `Weather` tween, the sound listeners) and draws it in one fixed order. The scene says what
+is there through a `StageView`; recipes no longer write the passes by hand.
+
+1. *Fixed passes per view:* background, floor, ground effects, atmosphere behind, world, air, atmosphere in front, light,
+   glow, world effects; then the overlay and the HUD once. One order means a new pass reaches every scene unchanged.
+2. *A `StageView` passed to `Draw`, never kept:* virtual passes with empty defaults, only `DrawWorld` required. Stored
+   lambdas break D28, and a list of layer objects is a node tree in disguise.
+3. *Optional parts are off by default* (`StageSettings::light`, `atmosphere`); asking for one that is off throws.
+4. *Two clocks, two calls:* `UpdateReal(realSeconds)` from the scene's `UpdateReal`, which runs in a hitstop and a pause,
+   and `Update(gameSeconds)` from its `Update`, which does not. Each moves only its own clock's parts, so a
+   `TimeDomain::Real` scene moves nothing twice. One combined call froze banners and toasts in every hitstop.
+5. *Built from `SceneServices` and borrowing them:* the effect choice is reapplied when it changes, the time scale serves
+   cues, the sound player gets one listener per view (`listeners` turns that off).
+6. *Views from elsewhere:* `SetViews` copies a simulation camera's `View(alpha)` (D35) until the next call; an empty
+   span returns to the own cameras. Callable in a constructor, so the first frame is right. Split screen runs the same
+   passes per view.
+7. *Depth without a scene graph:* `DepthOrder` sorts keys by ground y with a stable order; `Raised` and
+   `DrawGroundShadow` give height; `FxStage::Mark` is the ground layer's first effect; parallax is
+   `CameraView::Parallaxed` in the background pass.
+8. *Lights are described once a frame* with the Painter for its clock; every view shows the same light.
+9. *`check` keeps `Stage` above Camera, Fx, Graphics, Weather and the sound player,* and out of simulations.
+
+Left out: the projection core (3D point to screen, wireframe), per-view effects, guides for cameras the stage does not
+own, changing the canvas size.
 
 ### D55. Pool and handles
 Usage: [Simulation](../Simulation.md#things-that-come-and-go), [Collision](../Collision.md#items-in-a-pool).

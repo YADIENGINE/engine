@@ -12,6 +12,7 @@ record: `Docs/Design/README.md` → D42 (engine repository). Worked example:
 | `Graphics/Atmosphere/FogField.h` | `FogField`: one sheet of fog |
 | `Graphics/Atmosphere/GroundRipples.h` | `GroundRipples`: rings on a floor seen from above |
 | `Fx/World/Bolts.h`, `Fx/FxCue.h` | `FxBolt` and the default `lightning` cue |
+| `Stage/Stage.h` | `StageSettings::atmosphere`: a scene's air and its `Weather()` tween, drawn in their places in the frame |
 
 ## Two questions, two places
 
@@ -37,6 +38,10 @@ state and let the view read it. Its fields are listed for `State`, so it reaches
 `Atmosphere`: it is view code on a view's clock.
 
 ## How a frame goes
+
+In a scene, a [Stage](Stage.md) with `StageSettings::atmosphere` owns the `Atmosphere` and a `SecondsTween<Weather>`
+(`Weather()`), moves both on game time and draws the air around the world and before the light, for every view. A kind of
+the game's own goes in `StageView::DrawAir`. Underneath, and for the air alone:
 
 ```cpp
 { auto world = paint.Camera(view); DrawFloor(paint); }

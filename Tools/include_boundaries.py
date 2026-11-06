@@ -23,7 +23,7 @@ SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".inl"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
 CONSUMER_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]')
 SIMULATION_FORBIDDEN = re.compile(
-    r'''^\s*#\s*include\s*(?:"(?:Graphics|Audio|Fx|Scene|Runtime|GameObjects|Input|Ui|Options|Platform|Editor'''
+    r'''^\s*#\s*include\s*(?:"(?:Graphics|Audio|Fx|Scene|Stage|Runtime|GameObjects|Input|Ui|Options|Platform|Editor'''
     r'''|Terminal|ToolUi|Physics/Debug|Camera/Debug)/[^"]*"'''
     r'''|[<"](?:[^>"/]*/)*(?:raylib|raymath|rlgl)\.h[>"]|<(?:random|chrono|ctime|time\.h|thread|future|mutex)>)''')
 PROJECT_SIMULATION_FOLDER = "Game/Simulation"
@@ -54,6 +54,10 @@ LIGHT_RULE = re.compile(
 ATMOSPHERE_RULE = re.compile(
     r'''^\s*#\s*include\s*"(?!Utilities/|Camera/CameraView\.h|Weather/|Graphics/(?:Atmosphere|Draw/ParticleDraw|Paint)[/.])[^"]*"''')
 WEATHER_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|Weather/)[^"]*"''')
+# A stage assembles view systems (cameras, effects, light, air, listeners) and borrows the scene's services. It is view
+# code, so it never reaches a simulation, collision, input or the runtime (Docs/Graphics/Stage.md).
+STAGE_RULE = re.compile(
+    r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|Camera/|Fx/|Graphics/|Weather/|Audio/Sound(?:Player|Space)\.h|Scene/SceneServices\.h|Stage/)[^"]*"''')
 PAINT_LIGHT_RULE = re.compile(r'''^\s*#\s*include\s*"Graphics/Light/[^"]*"''')
 # The audio library stays behind Core/Audio/Internals, so that public audio headers read the same whatever plays them, and
 # no audio code touches raylib. What a public audio header includes stays low enough for a tool to use it (Docs/Audio.md).
@@ -125,6 +129,7 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
         paint = source.is_relative_to(engine_root / CORE / "Graphics" / "Paint")
         atmosphere = source.is_relative_to(engine_root / CORE / "Graphics" / "Atmosphere")
         weather = source.is_relative_to(engine_root / CORE / "Weather")
+        stage = source.is_relative_to(engine_root / CORE / "Stage")
         audio = source.is_relative_to(engine_root / CORE / "Audio")
         audio_internal = source.is_relative_to(engine_root / CORE / "Audio" / "Internals")
         engine_code = source.is_relative_to(engine_root)
@@ -135,6 +140,10 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Graphics/Atmosphere includes "{line.strip()}"; only Utilities, the'
                              ' camera\'s view, Weather, Graphics/Paint and particle shapes')
+            if stage and STAGE_RULE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: Core/Stage includes "{line.strip()}"; only view systems (Utilities,'
+                             ' Animation, Camera, Fx, Graphics, Weather), the sound player and SceneServices')
             if weather and WEATHER_RULE.match(line):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Weather includes "{line.strip()}"; only Utilities and Animation,'

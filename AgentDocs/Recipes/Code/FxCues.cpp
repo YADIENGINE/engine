@@ -1,9 +1,10 @@
 // [recipe:FxCues]
 #include "AgentDocs/Recipes/Code/FxCues.h"
+#include <cmath>
 #include "Animation/Clip.h"
 #include "Animation/ClipSet.h"
 #include "Graphics/Paint/Painter.h"
-#include "Graphics/Style/Theme.h"
+#include "Scene/SceneServices.h"
 
 namespace {
 constexpr Color4 HitColor = Rgb(0xff5040);
@@ -28,30 +29,25 @@ SecondsClipSet<RecipeSwingPose> SwingClips() {
 }
 } // namespace
 
-RecipeCueView::RecipeCueView(const FloatRect& area, TimeScale& time)
-    : _at(area.Center())
-    , _fx(area, area, CurrentTheme().fx)
+RecipeCueView::RecipeCueView(const SceneServices& services)
+    : _at(ToFloat2(services.canvas) * 0.5f)
+    , _stage(services)
     , _swing(SwingClips(), "rest") {
-    _fx.SetCues(RecipeCues());
-    _fx.SetTime(&time); // "player_hit" asks for a hitstop
+    _stage.Fx().SetCues(RecipeCues());
 }
-void RecipeCueView::Update(float gameSeconds, float realSeconds, int hits) {
+void RecipeCueView::Update(float seconds, int hits) {
     if (hits != _hitsSeen) {
         _hitsSeen = hits;
-        _fx.Play("player_hit", {.at = _at, .color = HitColor});
+        _stage.Fx().Play("player_hit", {.at = _at, .color = HitColor});
     }
     // A moment with a cue of the same name plays it, at the frame the animation reaches it.
-    _swing.Update(gameSeconds, [&](std::string_view moment) {
-        if (_fx.Cues().Contains(moment)) _fx.Play(moment, {.at = _at, .color = SwingColor});
+    _swing.Update(seconds, [&](std::string_view moment) {
+        if (_stage.Fx().Cues().Contains(moment)) _stage.Fx().Play(moment, {.at = _at, .color = SwingColor});
     });
-    _fx.Update(gameSeconds, realSeconds);
+    _stage.Update(seconds);
 }
-void RecipeCueView::Draw(Painter& paint) const {
-    {
-        auto camera = paint.Transform(_fx.WorldCamera(paint).Transform());
-        // Draw the world here, using _swing.Pose().arm.
-        _fx.DrawWorldLayer(paint);
-    }
-    _fx.DrawOverlay(paint);
+void RecipeCueView::DrawWorld(Painter& paint, const StagePass&) const {
+    const Float2 hand = _at + Float2{std::cos(_swing.Pose().arm), std::sin(_swing.Pose().arm)} * 60.0f;
+    paint.Line(_at, hand, {.width = 8.0f, .color = SwingColor});
 }
 // [/recipe]

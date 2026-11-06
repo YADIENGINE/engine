@@ -99,8 +99,9 @@ with it; for example, while a paused game is in the background on another screen
 game clock. TimeScale.Advance is not called while paused; hitstop/slow motion durations are preserved too. Pausing
 real-time menus requires a separate policy. `Time()` applies hitstop/slow motion. A scene reaches what its feedback needs
 through the `SceneServices` its constructor takes (`Game::Services()`): `sounds`, `effects` (the player's effect choice),
-`time`, `audio`, `font` and `canvas`; `UpdateReal`'s argument is this frame's real duration (`Game::RealSeconds()`). `FrameSeconds` customizes the host
-frame duration; `DrawSeconds` customizes presentation time. Decorative View drawing uses
+`time`, `audio`, `font` and `canvas`; `UpdateReal`'s argument is this frame's real duration (`Game::RealSeconds()`). A
+[Stage](Graphics/Stage.md) or an `FxStage` takes it there (`UpdateReal`) and game time in `Update`, since `Update` does not
+run while game time stands still. `FrameSeconds` customizes the host frame duration; `DrawSeconds` customizes presentation time. Decorative View drawing uses
 [Painter::Time](Graphics/Painter.md). UpdateReal also receives time after the FrameSeconds transformation; the editor's
 pause/speed/single-step apply to this hook.
 

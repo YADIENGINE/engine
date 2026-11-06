@@ -2,41 +2,38 @@
 
 A night yard that turns from mist into a storm over eight seconds, with ash of the game's own, a lamp that shows the fog, and lightning.
 
-APIs: Core/Weather/Weather.h, Core/Graphics/Atmosphere/Atmosphere.h, Core/Graphics/Atmosphere/DriftField.h, Core/Graphics/Atmosphere/FogField.h, Core/Animation/Tween.h, Core/Fx/FxStage.h (`lightning` cue). Concepts: [Atmosphere](../../Docs/Graphics/Atmosphere.md).
+APIs: Core/Stage/Stage.h (`StageSettings::atmosphere`, `Weather`), Core/Stage/StageView.h (`DrawAir`), Core/Weather/Weather.h, Core/Graphics/Atmosphere/Atmosphere.h, Core/Graphics/Atmosphere/DriftField.h, Core/Graphics/Atmosphere/FogField.h, Core/Animation/Tween.h, Core/Fx/FxStage.h (`lightning` cue). Concepts: [Atmosphere](../../Docs/Graphics/Atmosphere.md), [Stage](../../Docs/Graphics/Stage.md).
 
-The order in `Draw` is the recipe: the floor, what lies behind, what stands, what lies in front, the light, what shines by itself.
+The stage keeps the order: the floor, what lies behind, what stands, the game's own air, what lies in front, the light, what shines by itself. The view only fills its passes.
 
 <!-- recipe:Weather-header -->
 ```cpp
 #pragma once
-#include "Animation/Tween.h"
-#include "Camera/CameraView.h"
-#include "Fx/FxStage.h"
-#include "Graphics/Atmosphere/Atmosphere.h"
 #include "Graphics/Atmosphere/DriftField.h"
-#include "Graphics/Light/LightLayer.h"
+#include "Stage/Stage.h"
 #include "Utilities/Geometry/Float2.h"
-#include "Weather/Weather.h"
 
 // A night yard that goes from mist into a storm, with ash of the game's own, a lamp that shows the fog, and lightning.
-// All of it is view code on seconds and decides nothing.
-class RecipeWeatherView {
+// All of it is view code on seconds and decides nothing: the stage draws the air around the world and lights it.
+class RecipeWeatherView final : public StageView {
 public:
-    explicit RecipeWeatherView(Float2 canvas);
-    // The player's choice, Game::Effects(): lightning follows it through the stage.
-    void SetEffects(const FxQuality& effects) { _fx.SetQuality(effects); }
+    explicit RecipeWeatherView(const SceneServices& services);
     void StartStorm();
     void Lightning(Float2 at);
+    // Each frame, from the scene's UpdateReal and Update.
+    void UpdateReal(float realSeconds) { _stage.UpdateReal(realSeconds); }
     void Update(float seconds);
-    void Draw(Painter& paint, const CameraView& view) const;
+    void Draw(Painter& paint) const { _stage.Draw(paint, *this); }
 
 private:
-    Float2 _canvas;
-    SecondsTween<Weather> _weather{Weather::Mist()}; // In a game whose rules care: the simulation's, read by the view
-    Atmosphere _air;
+    void DrawFloor(Painter& paint, const StagePass& pass) const override;
+    void DrawWorld(Painter& paint, const StagePass& pass) const override;
+    void DrawAir(Painter& paint, const StagePass& pass) const override;
+    void DescribeLight(const Painter& paint, StageLight& light) const override;
+
+    Float2 _hero;
+    Stage _stage;    // Its Weather() is the amount; in a game whose rules care, the simulation's, snapped each frame
     DriftField _ash; // A kind of the game's own: the same field, other data
-    LightLayer _lights;
-    FxStage _fx;
 };
 ```
 <!-- /recipe -->
@@ -44,9 +41,8 @@ private:
 <!-- recipe:Weather -->
 ```cpp
 #include "AgentDocs/Recipes/Code/Weather.h"
-#include <array>
 #include "Graphics/Paint/Painter.h"
-#include "Graphics/Style/Theme.h"
+#include "Scene/SceneServices.h"
 
 namespace {
 constexpr Color4 Floor = Rgb(0x6c7a66);
@@ -74,42 +70,39 @@ DriftLook AshLook() {
 }
 } // namespace
 
-RecipeWeatherView::RecipeWeatherView(Float2 canvas)
-    : _canvas(canvas)
-    , _air(YardLook())
-    , _ash(AshLook())
-    , _fx(FloatRect{0.0f, 0.0f, canvas.x, canvas.y}, FloatRect{0.0f, 0.0f, canvas.x, canvas.y}, CurrentTheme().fx) {}
-
-void RecipeWeatherView::StartStorm() { _weather.To(Weather::Storm(), StormSeconds, Curve::InOutSine); }
-
-void RecipeWeatherView::Lightning(Float2 at) { _fx.Play("lightning", {.at = at, .color = LightningColor}); }
-
-void RecipeWeatherView::Update(float seconds) {
-    _weather.Update(seconds);
-    _air.Update(seconds, _weather);
-    _ash.Update(seconds, _weather.Value().wind);
-    _fx.Update(seconds, seconds);
+RecipeWeatherView::RecipeWeatherView(const SceneServices& services)
+    : _hero(ToFloat2(services.canvas) * 0.5f)
+    // Light and air are switched on here. The air is drawn before the light, so it is lit like the world: fog and dust
+    // show where the lamp falls, and lightning shows them all.
+    , _stage(services, {.light = LightLayerOptions{}, .atmosphere = YardLook()})
+    , _ash(AshLook()) {
+    _stage.Weather().Snap(Weather::Mist());
+    _stage.Cameras().Main().Follow(_hero);
+    _stage.Cameras().Snap();
 }
 
-void RecipeWeatherView::Draw(Painter& paint, const CameraView& view) const {
-    {
-        auto world = paint.Camera(view);
-        paint.Rect({-4000.0f, -4000.0f, 8000.0f, 8000.0f}, Fill(Floor));
-    }
-    _air.DrawBehind(paint, view); // Ripples and low fog pass under the characters
-    {
-        auto world = paint.Camera(view);
-        paint.Circle(_canvas * 0.5f, 24.0f, Fill(Hero));
-    }
-    _ash.Draw(paint, 1.0f, view);
-    _air.DrawFront(paint, view);
-    // All of the above is lit like the world: fog and dust show where the lamp falls, and lightning shows them all.
-    const std::array lamps{LightSource{.at = _canvas * 0.5f, .radius = 300.0f, .color = LampColor}};
-    _lights.Draw(paint, {.ambient = Night, .lights = lamps, .flashes = _fx.LightFlashes()}, view);
-    auto world = paint.Camera(view);
-    _fx.DrawWorldLayer(paint); // The bolt shines by itself
+void RecipeWeatherView::StartStorm() { _stage.Weather().To(Weather::Storm(), StormSeconds, Curve::InOutSine); }
+
+void RecipeWeatherView::Lightning(Float2 at) { _stage.Fx().Play("lightning", {.at = at, .color = LightningColor}); }
+
+void RecipeWeatherView::Update(float seconds) {
+    _stage.Update(seconds); // Moves the weather, the air and the bolt
+    _ash.Update(seconds, _stage.Weather().Value().wind);
+}
+
+void RecipeWeatherView::DrawFloor(Painter& paint, const StagePass&) const {
+    paint.Rect({-4000.0f, -4000.0f, 8000.0f, 8000.0f}, Fill(Floor)); // Ripples and low fog pass over it
+}
+
+void RecipeWeatherView::DrawWorld(Painter& paint, const StagePass&) const { paint.Circle(_hero, 24.0f, Fill(Hero)); }
+
+void RecipeWeatherView::DrawAir(Painter& paint, const StagePass& pass) const { _ash.Draw(paint, 1.0f, pass.view); }
+
+void RecipeWeatherView::DescribeLight(const Painter&, StageLight& light) const {
+    light.ambient = Night;
+    light.lights.push_back({.at = _hero, .radius = 300.0f, .color = LampColor});
 }
 ```
 <!-- /recipe -->
 
-Pitfalls: Call `DrawBehind` and `DrawFront` outside `paint.Camera`, with the view the world was drawn through, shake included. Draw the air before the `LightLayer` so it is lit like the world; after it, fog and rain would glow in the dark. Give `.flashes = _fx.LightFlashes()` to the frame, or the `lightning` cue shows a bolt and lights nothing. Draw the stage's world layer after the `LightLayer`, or the bolt goes dark with the world. Use `SideViewAtmosphere(groundY)` for a world seen from the side, or fog covers the sky and ripples spread on the air. A rule that depends on the weather reads the `Weather` the game keeps, in its simulation, never the `Atmosphere`: a simulation cannot include it, and its clock is the view's. For a short burst at a point use `ParticleSystem`; a `DriftField` is for what fills the view.
+Pitfalls: Change the amount through `Weather()` (`To` over time, `Snap` for a simulation's weather each frame); the stage moves the air with it on game time. A kind of the game's own goes in `DrawAir`, outside `paint.Camera`, with `pass.view`, and its own `Update`. Use `SideViewAtmosphere(groundY)` for a world seen from the side, or fog covers the sky and ripples spread on the air. A rule that depends on the weather reads the `Weather` the game keeps, in its simulation, never the `Atmosphere`: a simulation cannot include it, and its clock is the view's. For a short burst at a point use `ParticleSystem`; a `DriftField` is for what fills the view.

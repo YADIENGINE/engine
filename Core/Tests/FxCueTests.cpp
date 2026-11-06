@@ -113,17 +113,20 @@ TEST_CASE("Engine.FxStage.PlaysNamedCuesWithTheirDelays", "[engine][fx]") {
 
     stage.Play("late", {.at = {100.0f, 100.0f}, .color = Pink});
     CHECK(WorldVertices(stage) == 0);
-    stage.Update(0.25f, 0.25f);
+    stage.UpdateReal(0.25f);
+    stage.Update(0.25f);
     CHECK(WorldVertices(stage) == 0); // The burst is still waiting
-    stage.Update(0.0f, 0.0f);               // Frozen time, as in a hitstop, moves nothing
+    stage.Update(0.0f); // Frozen time, as in a hitstop, moves nothing
     CHECK(WorldVertices(stage) == 0);
-    stage.Update(0.25f, 0.25f);
+    stage.UpdateReal(0.25f);
+    stage.Update(0.25f);
     CHECK(WorldVertices(stage) > 0);
 
     stage.Clear();
     stage.Play("late", {.at = {100.0f, 100.0f}, .color = Pink});
     stage.Clear(); // Forgets what was waiting too
-    stage.Update(1.0f, 1.0f);
+    stage.UpdateReal(1.0f);
+    stage.Update(1.0f);
     CHECK(WorldVertices(stage) == 0);
 }
 
@@ -132,7 +135,8 @@ TEST_CASE("Engine.FxStage.DefaultCuesWorkWithAnyStageAndTheTheme", "[engine][fx]
         CHECK_FALSE(DefaultFxCues().Get(name).UsesTime());
         FxStage stage = MakeStage();
         stage.Play(name, {.at = {100.0f, 100.0f}, .color = Pink});
-        stage.Update(0.1f, 0.1f);
+        stage.UpdateReal(0.1f);
+        stage.Update(0.1f);
         CHECK(WorldVertices(stage) > 0);
     }
 }
@@ -145,7 +149,8 @@ TEST_CASE("Engine.FxStage.TextAndColoursComeFromTheCueOrThePlay", "[engine][fx]"
                            {"given", {FxPopText{20.0f}}},
                            {"white", {{FxFlash{}, Color4{255, 255, 255, 255}}}}});
     stage.Play("given", {.at = {50.0f, 50.0f}, .color = Pink, .text = "+10"});
-    stage.Update(0.1f, 0.1f); // A popping text starts at size 0
+    stage.UpdateReal(0.1f);
+    stage.Update(0.1f); // A popping text starts at size 0
     CHECK(WorldVertices(stage) > 0);
     stage.Clear();
     stage.Play("own", {.at = {50.0f, 50.0f}, .color = Pink});
@@ -175,7 +180,8 @@ TEST_CASE("Engine.FxStage.CuesThatChangeTimeNeedATimeScale", "[engine][fx]") {
 
     stage.Play("slow", {.color = Pink});
     CHECK(time.Advance(0.1f) == Approx(0.05f)); // Time slows ...
-    stage.Update(0.05f, 0.05f);
+    stage.UpdateReal(0.05f);
+    stage.Update(0.05f);
     CHECK(OverlayVertices(stage) > 0); // ... and it shows
 }
 
@@ -186,7 +192,8 @@ TEST_CASE("Engine.FxStage.HonoursThePlayersChoiceOnSlowMotion", "[engine][fx]") 
         FxStage stage(Area, Area, fx);
         stage.SetQuality(quality);
         stage.SlowMotionLook(1.0f, Pink);
-        stage.Update(0.1f, 0.1f);
+        stage.UpdateReal(0.1f);
+        stage.Update(0.1f);
         return OverlayVertices(stage);
     };
     const std::size_t all = drawn({});
@@ -205,9 +212,12 @@ TEST_CASE("Engine.FxStage.PulseKeepsItsGlowButNotItsBeatWithoutFlashes", "[engin
         FxStage stage(Area, Area, fx);
         stage.SetQuality(quality);
         stage.SetPulse(true, Pink);
-        for (int i = 0; i < 200; ++i)
-            stage.Update(0.01f, 0.01f); // Full intensity
-        stage.Update(seconds, seconds);
+        for (int i = 0; i < 200; ++i) {
+            stage.UpdateReal(0.01f);
+            stage.Update(0.01f); // Full intensity
+        }
+        stage.UpdateReal(seconds);
+        stage.Update(seconds);
         PaintHarness h({400.0f, 200.0f});
         h.Begin();
         stage.DrawOverlay(h.paint);
@@ -272,7 +282,8 @@ TEST_CASE("Engine.FxStage.SlowMotionsLookEndsWithSlowMotion", "[engine][fx]") {
     const auto step = [&](int frames) {
         for (int i = 0; i < frames; ++i) {
             const float real = 0.05f;
-            stage.Update(time.Advance(real), real);
+            stage.UpdateReal(real);
+            stage.Update(time.Advance(real));
         }
     };
     step(30); // 1.5 of 2 real seconds
@@ -289,9 +300,9 @@ TEST_CASE("Engine.FxStage.AnnouncementsKeepRealTime", "[engine][fx]") {
     stage.Toast("Combo", Pink);
     stage.Banner("Round 2");
     CHECK(OverlayVertices(stage) > 0);
-    stage.Update(0.0f, 0.5f); // A hitstop: nothing else moves
+    stage.UpdateReal(0.5f); // A hitstop: nothing else moves
     CHECK(OverlayVertices(stage) > 0);
-    stage.Update(0.0f, 2.0f);
+    stage.UpdateReal(2.0f);
     CHECK(OverlayVertices(stage) == 0);
 }
 
@@ -351,8 +362,8 @@ TEST_CASE("Engine.FxStage.AWaitingActionThatThrowsThrowsOnce", "[engine][fx]") {
     stage.SetCues(FxCueSet{{"late", {{0.1f, FxHitstop{0.1f}}}}});
     stage.Play("late");
     stage.SetTime(nullptr);
-    CHECK_THROWS_AS(stage.Update(0.2f, 0.2f), std::invalid_argument);
-    CHECK_NOTHROW(stage.Update(0.2f, 0.2f));
+    CHECK_THROWS_AS(stage.Update(0.2f), std::invalid_argument);
+    CHECK_NOTHROW(stage.Update(0.2f));
 }
 
 TEST_CASE("Engine.Fx.FullParticlesMakeRoomForNewOnes", "[engine][fx]") {
@@ -418,11 +429,13 @@ TEST_CASE("Engine.FxStage.ALightFlashIsAtItsPlaceOrOverTheWholeScene", "[engine]
 TEST_CASE("Engine.FxStage.ALightFlashFadesOnGameTimeAndEnds", "[engine][fx]") {
     FxStage stage = MakeStage();
     stage.LightFlash({}, Pink, {.radius = 100.0f, .seconds = 1.0f});
-    stage.Update(0.0f, 0.5f); // A hitstop holds it, as real time goes on
+    stage.UpdateReal(0.5f); // A hitstop holds it, as real time goes on
     CHECK(stage.LightFlashes().lights[0].intensity == Approx(1.0f));
-    stage.Update(0.5f, 0.5f);
+    stage.UpdateReal(0.5f);
+    stage.Update(0.5f);
     CHECK(stage.LightFlashes().lights[0].intensity == Approx(0.25f)); // Falls away quickly
-    stage.Update(0.5f, 0.5f);
+    stage.UpdateReal(0.5f);
+    stage.Update(0.5f);
     CHECK(stage.LightFlashes().lights.empty());
 }
 
@@ -432,7 +445,8 @@ TEST_CASE("Engine.FxStage.IntensityScalesALightFlashesStrengthNotItsTime", "[eng
     REQUIRE(stage.LightFlashes().lights.size() == 1);
     CHECK(stage.LightFlashes().lights[0].intensity == Approx(0.5f));
     CHECK(stage.LightFlashes().lights[0].radius == Approx(100.0f));
-    stage.Update(0.999f, 0.999f);
+    stage.UpdateReal(0.999f);
+    stage.Update(0.999f);
     CHECK(stage.LightFlashes().lights.size() == 1);
 }
 
@@ -442,7 +456,8 @@ TEST_CASE("Engine.FxStage.WithFlashesOffThereAreNoLightFlashes", "[engine][fx]")
     REQUIRE(stage.LightFlashes().lights.size() == 1);
     stage.SetQuality({.flashes = false}); // One showing goes with the choice
     CHECK(stage.LightFlashes().lights.empty());
-    stage.Update(1.0f, 1.0f);
+    stage.UpdateReal(1.0f);
+    stage.Update(1.0f);
     stage.Play(FxCue{FxLightFlash{.radius = 100.0f}}, {.color = Pink});
     stage.Play(FxCue{FxLightFlash{.seconds = 1.0f}}, {.color = Pink});
     CHECK(stage.LightFlashes().lights.empty());
@@ -455,17 +470,19 @@ TEST_CASE("Engine.FxStage.LightFlashesAreRationedWithScreenFlashes", "[engine][f
     stage.LightFlash({}, Pink, flash);
     stage.LightFlash({}, Pink, flash); // Too soon
     CHECK(stage.LightFlashes().lights.size() == 1);
-    stage.Update(0.1f, 0.1f);
+    stage.UpdateReal(0.1f);
+    stage.Update(0.1f);
     stage.LightFlash({}, Pink, flash);
     CHECK(stage.LightFlashes().lights.size() == 1);
-    stage.Update(FlashLimit::MinSecondsBetween, FlashLimit::MinSecondsBetween);
+    stage.UpdateReal(FlashLimit::MinSecondsBetween);
+    stage.Update(FlashLimit::MinSecondsBetween);
     stage.LightFlash({}, Pink, flash);
     CHECK(stage.LightFlashes().lights.size() == 2);
 
     // A screen flash counts, or the two taking turns would double the limit.
     FxStage turns = MakeStage();
     turns.Flash(Pink);
-    turns.Update(0.1f, 0.1f);
+    turns.Update(0.1f);
     turns.LightFlash({}, Pink, flash);
     CHECK(turns.LightFlashes().lights.empty());
 
@@ -495,7 +512,8 @@ TEST_CASE("Engine.FxStage.FlashesOffAlsoCoversWavesAndCurtains", "[engine][fx]")
     FxStage stage(Area, Area, fx);
     stage.SetQuality({.flashes = false});
     stage.Shockwave({100.0f, 100.0f}, Pink);
-    stage.Update(0.1f, 0.1f);
+    stage.UpdateReal(0.1f);
+    stage.Update(0.1f);
     CHECK(WorldVertices(stage) == 0);
 
     Announcements plain(1);
@@ -579,7 +597,8 @@ TEST_CASE("Engine.FxStage.WorldCameraWorksOnAGamesOwnCamera", "[engine][fx]") {
     CHECK(still.zoom == follow.zoom);
 
     stage.Kick({1.0f, 0.0f});
-    stage.Update(1.0f / 60.0f, 1.0f / 60.0f);
+    stage.UpdateReal(1.0f / 60.0f);
+    stage.Update(1.0f / 60.0f);
     CHECK(stage.WorldCamera(h.paint, follow).offset.x > follow.offset.x);
     CHECK(stage.WorldCamera(h.paint, follow).target == follow.target);
     stage.Clear();
@@ -611,7 +630,7 @@ TEST_CASE("Engine.FxStage.IntensitySizesOnePlay", "[engine][fx]") {
         FxStage late(Area, Area, NeonArcadeFx);
         late.SetCues(FxCueSet{{"late", {{0.1f, FxBurst{ParticleRecipe::Spark, 40}}}}});
         late.Play("late", {.at = {100.0f, 100.0f}, .color = Pink, .intensity = intensity});
-        late.Update(0.11f, 0.11f);
+        late.Update(0.11f);
         return WorldVertices(late);
     };
     CHECK(delayed(0.25f) < delayed(1.0f)); // Waiting keeps it
@@ -625,9 +644,10 @@ TEST_CASE("Engine.FxStage.CooldownLimitsACueByName", "[engine][fx]") {
     CHECK_FALSE(stage.Play("hit", play));
     CHECK(stage.Play("free", play)); // Another name, and no cooldown
     CHECK(stage.Play("free", play));
-    stage.Update(0.0f, 1.0f); // A hitstop holds it
+    stage.UpdateReal(1.0f); // A hitstop holds it
     CHECK_FALSE(stage.Play("hit", play));
-    stage.Update(0.11f, 0.11f);
+    stage.UpdateReal(0.11f);
+    stage.Update(0.11f);
     CHECK(stage.Play("hit", play));
     stage.Clear();
     CHECK(stage.Play("hit", play));

@@ -37,6 +37,11 @@
       "new": "    TimeScale& _time;\n    SoundPlayer& _sounds;\n    FxStage _fx;\n"
     },
     {
+      "file": "Game/Scenes/PlayScene.h",
+      "old": "    void Update(float seconds) override;\n",
+      "new": "    void UpdateReal(float realSeconds) override { _fx.UpdateReal(realSeconds); }\n    void Update(float seconds) override;\n"
+    },
+    {
       "file": "Game/Scenes/PlayScene.cpp",
       "old": "#include \"Utilities/Overloaded.h\"\n",
       "new": "#include \"ArenaSounds.h\"\n#include \"Graphics/Style/Theme.h\"\n#include \"Utilities/Overloaded.h\"\n"
@@ -59,7 +64,7 @@
     {
       "file": "Game/Scenes/PlayScene.cpp",
       "old": "    (void)_runner.Advance(seconds);\n",
-      "new": "    (void)_runner.Advance(seconds);\n    _fx.Update(seconds, seconds);\n"
+      "new": "    (void)_runner.Advance(seconds);\n    _fx.Update(seconds);\n"
     },
     {
       "file": "Game/Scenes/PlayScene.cpp",

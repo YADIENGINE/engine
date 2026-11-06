@@ -20,9 +20,11 @@ void SlowMotionOverlay::Trigger(float seconds, Color4 color, const SlowMotionSty
     _strength.Snap(1.0f);
     _strength.Wait(hold).Then(0.0f, seconds - hold, style.fadeCurve);
 }
-void SlowMotionOverlay::Update(float gameSeconds, float realSeconds) {
-    if (gameSeconds > 0.0f && std::isfinite(gameSeconds)) _age += gameSeconds;
+void SlowMotionOverlay::UpdateReal(float realSeconds) {
     if (realSeconds > 0.0f && std::isfinite(realSeconds)) _strength.Update(realSeconds);
+}
+void SlowMotionOverlay::Update(float gameSeconds) {
+    if (gameSeconds > 0.0f && std::isfinite(gameSeconds)) _age += gameSeconds;
 }
 void SlowMotionOverlay::Clear() {
     _age = 0.0f;

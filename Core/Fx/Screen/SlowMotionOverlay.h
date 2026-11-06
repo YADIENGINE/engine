@@ -29,7 +29,10 @@ public:
     void SetQuality(const FxQuality& quality) { _quality = quality; }
     // Invalid times throw invalid_argument.
     void Trigger(float seconds, Color4 color, const SlowMotionStyle& style);
-    void Update(float gameSeconds, float realSeconds);
+    // How long it shows: real time, so a hitstop or a pause does not hold it.
+    void UpdateReal(float realSeconds);
+    // Its trails: game time.
+    void Update(float gameSeconds);
     void Clear();
     void Draw(Painter& paint, const FloatRect& area, const FloatRect& viewArea) const;
 

@@ -6,9 +6,7 @@
 #include "Animation/Flicker.h"
 #include "Fx/FxCue.h"
 #include "Graphics/Light/CollisionOccluders.h"
-#include "Graphics/Light/Debug/LightGuides.h"
 #include "Graphics/Paint/Painter.h"
-#include "Graphics/Style/Theme.h"
 #include "Input/Input.h"
 #include "Physics/Collision/Shape.h"
 
@@ -31,84 +29,68 @@ constexpr float PlayerRadius = 18.0f;
 enum class Layer { Wall };
 } // namespace
 
-RecipeLitView::RecipeLitView(Float2 canvas)
-    : _canvas(canvas)
+RecipeLitView::RecipeLitView(const SceneServices& services)
+    // A light layer is switched on here; a stage without one pays nothing for light.
+    : _stage(services, {.camera = {.follow = {.smoothTime = 0.0f}}, .light = LightLayerOptions{}})
     , _player(Room.Center())
-    , _aim(Room.Center() + Float2{100.0f, 0.0f})
-    , _fx(FloatRect{0.0f, 0.0f, canvas.x, canvas.y}, FloatRect{0.0f, 0.0f, canvas.x, canvas.y}, CurrentTheme().fx) {
+    , _aim(Room.Center() + Float2{100.0f, 0.0f}) {
     (void)_colliders.Add(Shape::Box(CrateHalf.x, CrateHalf.y), {CrateAt}, MaskOf(Layer::Wall));
-    // Here light stops where the player stops. Anything else, such as a sprite's outline, goes in LightOccluders by hand.
-    AddOccluders(_walls, _colliders, MaskOf(Layer::Wall));
-}
-
-void RecipeLitView::SetEffects(const FxQuality& effects) {
-    _flashes = effects.flashes;
-    _fx.SetQuality(effects);
+    // Walls stand still: their outlines go in once. Here light stops where the player stops; anything else, such as a
+    // sprite's outline, goes in LightOccluders by hand.
+    AddOccluders(_stage.Occluders(), _colliders, MaskOf(Layer::Wall));
+    _stage.Cameras().Main().Follow(_player);
+    _stage.Cameras().Snap();
 }
 
 void RecipeLitView::Lightning() {
     // No radius: the whole scene, for a moment. Usually one line of a named cue.
-    _fx.Play(FxCue{FxLightFlash{.seconds = 0.45f, .strength = 0.8f}}, {.color = LightningColor});
+    _stage.Fx().Play(FxCue{FxLightFlash{.seconds = 0.45f, .strength = 0.8f}}, {.color = LightningColor});
 }
 
 void RecipeLitView::Update(float seconds, Float2 move, Float2 mouse) {
-    _time += seconds;
-    _fx.Update(seconds, seconds);
     _player += move * (PlayerSpeed * seconds);
-    _aim = View().ToWorld(mouse);
+    _stage.Cameras().Main().Follow(_player);
+    _stage.Update(seconds);
+    _aim = _stage.Cameras().Main().ToWorld(mouse);
 }
 
-CameraView RecipeLitView::View() const { return {.offset = _canvas * 0.5f, .target = _player}; }
-
-void RecipeLitView::DrawWorld(Painter& paint) const {
+void RecipeLitView::DrawWorld(Painter& paint, const StagePass&) const {
     paint.Rect(Room, Fill(Floor));
     paint.Rect(FloatRect::FromCenter(CrateAt, CrateHalf * 2.0f), Fill(Crate));
     paint.Circle(_player, PlayerRadius, Fill(Rgb(0xe8ecff)));
 }
 
-void RecipeLitView::Draw(Painter& paint) const {
-    const CameraView view = View();
-    {
-        auto world = paint.Camera(view);
-        DrawWorld(paint);
-    }
-
+void RecipeLitView::DescribeLight(const Painter& paint, StageLight& light) const {
     const Float2 aimed = _aim - _player;
-    const std::array lights{
+    const bool flashes = _stage.Fx().Quality().flashes; // The player's choice
+    light.ambient = Night;
+    light.lights = {
         LightSource{.at = _player, .radius = 160.0f, .color = LanternColor, .intensity = 0.7f},
         LightSource{.at = _player,
                     .radius = 520.0f,
                     .cone = {.direction = std::atan2(aimed.y, aimed.x), .halfAngle = 0.35f}},
-        // A light's strength can be any function of time. Flicker needs the player's choice, so it cannot be forgotten.
+        // A light's strength can be any function of the drawing clock. Flicker needs the player's choice, so it cannot
+        // be forgotten.
         LightSource{.at = Torch,
                     .radius = 300.0f,
                     .color = TorchColor,
-                    .intensity = Flicker(_time, FlickerStyle::Candle(), TorchSeed, _flashes),
+                    .intensity = Flicker(paint.Time(), FlickerStyle::Candle(), TorchSeed, flashes),
                     .core = 0.15f},
     };
     // What moves gives its outline from where it is drawn, so its shadow does not lag behind it. The player's own
     // lights stand inside this outline, so it stops only the torch.
-    LightOccluders moving;
     const std::array<Float2, 8> body{Float2{1.0f, 0.0f}, {0.7f, 0.7f},  {0.0f, 1.0f},   {-0.7f, 0.7f},
                                      {-1.0f, 0.0f},      {-0.7f, -0.7f}, {0.0f, -1.0f}, {0.7f, -0.7f}};
-    moving.Outline(body, Affine2::Translate(_player) * Affine2::Scale(PlayerRadius));
-    const std::array<const LightOccluders*, 2> occluders{&_walls, &moving};
+    light.moving.Outline(body, Affine2::Translate(_player) * Affine2::Scale(PlayerRadius));
+}
 
-    const LightFrame frame{.ambient = Night, .lights = lights, .occluders = occluders, .flashes = _fx.LightFlashes()};
-    _lights.Draw(paint, frame, view); // Outside paint.Camera, with the view the world was drawn through
-
-    {
-        // What shines by itself goes after the layer, so the dark does not touch its colour.
-        auto world = paint.Camera(view);
-        paint.RoundRect(FloatRect::FromCenter(Sign, {180.0f, 60.0f}), 12.0f,
-                        {.stroke = {5.0f, Neon}, .emission = 1.0f});
-    }
-    if (_guides) DrawLightGuides(paint, frame, view);
-    // The HUD comes last, in canvas coordinates: light does not reach it.
+void RecipeLitView::DrawGlow(Painter& paint, const StagePass&) const {
+    // What shines by itself comes after the light, so the dark does not touch its colour. The HUD comes later still.
+    paint.RoundRect(FloatRect::FromCenter(Sign, {180.0f, 60.0f}), 12.0f, {.stroke = {5.0f, Neon}, .emission = 1.0f});
 }
 
 RecipeLitScene::RecipeLitScene(const SceneServices& services, bool guides)
-    : _view({static_cast<float>(services.canvas.x), static_cast<float>(services.canvas.y)}) {
+    : _view(services) {
     _view.SetGuides(guides);
 }
 

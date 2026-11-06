@@ -14,8 +14,13 @@ A dark world with lights and shadows in it. Design record: `Docs/Design/README.m
 | `Fx/FxStage.h`, `Fx/FxCue.h` | `FxLightFlash`, `FxStage::LightFlashes`: short lights |
 | `Utilities/Geometry/Visibility.h` | `VisibilityPolygon`: what a point can see past edges, for a guard's view or your own light |
 | `Graphics/Light/Debug/LightGuides.h` | `DrawLightGuides`: where each light stands, how far it reaches, what stops it |
+| `Stage/Stage.h` | `StageSettings::light`: a scene's layer in its place in the frame, with still occluders and flashes |
 
 ## How a frame goes
+
+In a scene, a [Stage](Stage.md) with `StageSettings::light` keeps this order for every view: the scene gives the ambient,
+the lights and what moves in `StageView::DescribeLight` and what shines by itself in `DrawGlow`; the stage adds its still
+occluders and the effects' flashes. The rest of this page is what happens underneath, and how to use the layer alone.
 
 ```
 shown colour = world colour x (ambient + the sum of the lights), each channel at most 1

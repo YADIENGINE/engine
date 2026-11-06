@@ -209,6 +209,7 @@ draw text with the game's font:
 | `Graphics/Draw/DrawUtils.h` | `DrawStar`, `DrawDiamond`, `DrawRegularPolygon`, `DrawRotatedRect`, `DrawLightning`, `DrawTabOutline`, `DrawTabbedPanelOutline`, `RowSlot` |
 | `Graphics/Draw/Neon.h` | Explicit-style neon shapes and styles: `DrawNeonFrame/Text/Panel/Chip/Ring`, `DrawArcadeButton(Body)`, `DrawRoundButton`, `DrawKeyCap`, `DrawProgressBar` |
 | `Graphics/Draw/BackgroundDraw.h` | `DrawGrid2D`, `DrawScanlines`, `DrawVignette`, `DrawBackdrop*` with `BackdropStyle` |
+| `Graphics/Draw/Elevation.h` | Height in a 2.5D world: `Raised` (a scope that lifts what follows) and `DrawGroundShadow` with `GroundShadow` ([Stage](Stage.md#depth)) |
 | `Graphics/Backgrounds/Backdrops.h` | Theme background roles: `DrawBackdropGrid(paint, BackdropRole::Menu, area)` ... |
 | `Graphics/Backgrounds/` scenes | Whole-screen scenes with their own look: [ready-made scenes](ThemesAndUi.md#ready-made-scenes) |
 | `Graphics/DefaultIcons.h` | Shared icon set in its own colors: `DrawIcon(paint, Icon::Star, center, size)`; override with `{.color = gold}` |

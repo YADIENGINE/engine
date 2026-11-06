@@ -18,7 +18,7 @@ bool Valid(const FxAction& action) {
                 return FxPositive(a.size);
             else if constexpr (std::same_as<A, FxShockwave>)
                 return FxNotNegative(a.reach);
-            else if constexpr (std::same_as<A, FxLightFlash> || std::same_as<A, FxBolt>)
+            else if constexpr (std::same_as<A, FxLightFlash> || std::same_as<A, FxBolt> || std::same_as<A, FxMark>)
                 return IsValid(a);
             else if constexpr (std::same_as<A, FxPunch>)
                 return FxNotNegative(a.amount);

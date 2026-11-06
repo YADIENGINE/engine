@@ -10,6 +10,7 @@
 #include "Fx/Particles/ParticleRecipes.h"
 #include "Fx/World/Bolts.h"
 #include "Fx/World/FlashLights.h"
+#include "Fx/World/Marks.h"
 #include "Utilities/Color4.h"
 
 // What a cue can do. Each is one FxStage call, as plain data: where it happens, its colour and its direction come from
@@ -41,6 +42,9 @@ struct FxFlash {};
 using FxLightFlash = LightFlashStyle;
 // A bolt of lightning striking FxPlay::at from above the stage's area. FxStage::DrawWorldLayer draws it.
 using FxBolt = BoltStyle;
+// A mark left on the ground at FxPlay::at, in FxPlay::color, its radius scaled by the intensity.
+// FxStage::DrawGroundLayer draws it.
+using FxMark = MarkStyle;
 struct FxBanner {
     std::string text{};
 };
@@ -69,9 +73,9 @@ struct FxSlowMotion { // Time and its look together
     float endScale = 1.0f;
 };
 
-using FxAction = std::variant<FxBurst, FxParticles, FxDash, FxSteam, FxFloatText, FxPopText, FxRing,
-                              FxShockwave, FxFlash, FxLightFlash, FxBolt, FxBanner, FxToast, FxShake, FxPunch, FxKick, FxGlitch,
-                              FxHitstop, FxSlowMotion>;
+using FxAction = std::variant<FxBurst, FxParticles, FxDash, FxSteam, FxFloatText, FxPopText, FxRing, FxShockwave,
+                              FxFlash, FxLightFlash, FxBolt, FxMark, FxBanner, FxToast, FxShake, FxPunch, FxKick,
+                              FxGlitch, FxHitstop, FxSlowMotion>;
 
 template <class T, class Variant> inline constexpr bool IsFxActionOf = false;
 template <class T, class... Actions>

@@ -1,14 +1,12 @@
-Emit themed particles, camera shake and a flash in one Fx stage.
+Emit themed particles, camera shake and a flash on a stage's effects.
 
-APIs: Core/Fx/FxStage.h, Core/Graphics/Style/Theme.h, Core/Graphics/Paint/Painter.h.
+APIs: Core/Fx/FxStage.h, Core/Stage/Stage.h (`Fx`), Core/Graphics/Style/Theme.h.
 
-Own MakeRecipeFx(area) in the View; trigger on an event, update with the chosen time domain, draw world then overlay.
+Trigger on an event with `TriggerRecipeFx(_stage.Fx(), at)`. The scene's `Stage` updates the effects on their clocks (`UpdateReal`, `Update`) and draws them in its passes: the burst over the world, the shake in every view, the flash over the canvas.
 
 <!-- recipe:FxBurst -->
 ```cpp
 #include "AgentDocs/Recipes/Code/FxBurst.h"
-#include "Graphics/Paint/Painter.h"
-#include "Graphics/Style/Theme.h"
 
 namespace {
 constexpr Color4 BurstColor = Rgb(0xffa040);
@@ -17,25 +15,16 @@ constexpr float ShakeAmount = 0.5f;
 constexpr Color4 FlashColor = Rgb(0xffffff);
 } // namespace
 
-FxStage MakeRecipeFx(const FloatRect& area) { return FxStage(area, area, CurrentTheme().fx); }
+// On an event, at a world position: the stage's UpdateReal and Update move them on their clocks, and its Draw puts the
+// burst over the world, the shake into every view and the flash over the canvas.
 void TriggerRecipeFx(FxStage& fx, Float2 at) {
     fx.Burst(at, BurstColor, BurstCount, ParticleRecipe::Debris);
     fx.Shake(ShakeAmount);
     fx.Flash(FlashColor);
 }
-// Owner calls fx.SetQuality(Effects()), fx.Update(delta, RealSeconds()), and fx.Clear() on reset.
-void DrawRecipeFx(Painter& paint, const FxStage& fx, const FloatRect& viewArea) {
-    {
-        auto clip = paint.Clip(viewArea);
-        auto camera = paint.Transform(fx.WorldCamera(paint).Transform());
-        // Draw production world objects here, before the world effects.
-        fx.DrawWorldLayer(paint);
-    }
-    fx.DrawOverlay(paint);
-}
 ```
 <!-- /recipe -->
 
-Pitfalls: Pass Game::Effects() to SetQuality. Clip before applying the rotated camera. Overlay drawing stays outside the camera; Clear on scene/run reset.
+Pitfalls: Positions are world positions under a game camera. The stage follows Game::Effects() by itself. Call `Fx().Clear()` on a scene or run reset. An FxStage without a Stage draws `DrawGroundLayer` and `DrawWorldLayer` inside the world camera (`WorldCamera`) and `DrawOverlay` after it.
 
 Concept: `Docs/Graphics/Effects.md#effect-stage-and-particle-recipes`.

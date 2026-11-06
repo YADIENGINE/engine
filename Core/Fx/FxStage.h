@@ -44,15 +44,20 @@ public:
     FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle& style);
     // The player's effect choice (Game::Effects()), for every effect here.
     void SetQuality(const FxQuality& quality);
+    // The choice last set: a Flicker beside the stage takes its `flashes`.
+    [[nodiscard]] const FxQuality& Quality() const { return _quality; }
     // The cues Play finds by name; DefaultFxCues() until set.
     void SetCues(const FxCueSet& cues);
     [[nodiscard]] const FxCueSet& Cues() const { return _cues; }
     // What cues with FxHitstop or FxSlowMotion change, usually Game::Time(). It must outlive the stage; nullptr unsets
     // it.
     void SetTime(TimeScale* time) { _time = time; }
-    // Each frame, with both clocks: usually the scene's delta and Game::RealSeconds(). A view with no TimeScale passes
-    // the same value twice.
-    void Update(float gameSeconds, float realSeconds);
+    // Each frame from the scene's UpdateReal, which runs in a hitstop and a pause too: banners, toasts and how long
+    // slow motion looks slow, which reading and TimeScale need on real time.
+    void UpdateReal(float realSeconds);
+    // Each frame from the scene's Update: lifetimes, cue delays and cooldowns on game time, so a hitstop holds them.
+    // Each clock moves only its own parts, so a scene whose hooks both get real seconds moves nothing twice.
+    void Update(float gameSeconds);
     // Also forgets cue actions still waiting and cooldowns.
     void Clear();
 
@@ -76,6 +81,8 @@ public:
     // Flying text of 'size' with a popping entrance.
     void PopText(Float2 at, const std::string& text, Color4 color, float size);
     void Ring(Float2 at, Color4 color);
+    // A mark left on the ground (a scorch, a splash, a falling thing's shadow); see DrawGroundLayer.
+    void Mark(Float2 at, Color4 color, const MarkStyle& style = {});
     void Toast(const std::string& text, Color4 color);
     void Flash(Color4 color);
     // A short light; see LightFlashes. It shares the flash limit with Flash: starting together, they count as one.
@@ -102,12 +109,14 @@ public:
     [[nodiscard]] CameraView WorldCamera(const Painter& paint) const;
     // The same over a game camera (Camera2D::View), one that follows or scrolls: effect positions are then world
     // positions. A shot blends from it by its weight, in world positions too, and stays at the view's place on the
-    // canvas, so each view of a split screen keeps its own. With keepInArena the shot stays inside 'limits', usually the
-    // camera's (Camera2D::Settings().limits).
+    // canvas, so each view of a split screen keeps its own. With keepInArena the shot stays inside 'limits', usually
+    // the camera's (Camera2D::Settings().limits).
     [[nodiscard]] CameraView WorldCamera(const Painter& paint, const CameraView& base,
                                          const std::optional<FloatRect>& limits = std::nullopt) const;
     // The short lights playing now, for LightFrame::flashes. Valid until the next call that changes the stage.
     [[nodiscard]] LightFlashFrame LightFlashes() const { return _flashLights.Frame(); }
+    // Inside the world camera, over the floor and under the field's objects: marks.
+    void DrawGroundLayer(Painter& paint) const;
     // Inside the world camera, over the field's objects.
     void DrawWorldLayer(Painter& paint) const;
     // Without the camera, over the viewport.
@@ -142,12 +151,14 @@ private:
     FloatRect _viewArea;
     FxStyle _style;
     FxCueSet _cues;
+    FxQuality _quality;
     TimeScale* _time = nullptr;
     std::vector<Waiting> _waiting;
     std::vector<Cooling> _cooling;
     ParticleSystem _particles;
     FloatingTexts _texts;
     Rings _rings;
+    Marks _marks;
     CameraEffects _camera;
     ScreenFlash _flash;
     FlashLights _flashLights;

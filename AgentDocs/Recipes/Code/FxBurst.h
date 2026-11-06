@@ -1,6 +1,5 @@
 #pragma once
 #include "Fx/FxStage.h"
 
-[[nodiscard]] FxStage MakeRecipeFx(const FloatRect& area);
+// Usually on a Stage's effects: TriggerRecipeFx(_stage.Fx(), at). The stage updates and draws them.
 void TriggerRecipeFx(FxStage& fx, Float2 at);
-void DrawRecipeFx(Painter& paint, const FxStage& fx, const FloatRect& viewArea);

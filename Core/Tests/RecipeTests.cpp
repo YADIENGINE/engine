@@ -1,9 +1,11 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include "AgentDocs/Recipes/Code/AnimatedCharacter.h"
 #include "AgentDocs/Recipes/Code/CharacterScene.h"
 #include "AgentDocs/Recipes/Code/AnimatorFighter.h"
 #include "AgentDocs/Recipes/Code/CollisionBullets.h"
+#include "AgentDocs/Recipes/Code/DepthStage.h"
 #include "AgentDocs/Recipes/Code/TimelineBoss.h"
 #include "AgentDocs/Recipes/Code/TweenMenu.h"
 #include "AgentDocs/Recipes/Code/UiMenu.h"
@@ -26,6 +28,7 @@
 #include "AgentDocs/Recipes/Code/TextLayout.h"
 #include "AgentDocs/Recipes/Code/TuningValue.h"
 #include "AgentDocs/Recipes/Code/UiSounds.h"
+#include "AgentDocs/Recipes/Code/Weather.h"
 #include "Audio/SoundPlayer.h"
 #include "Graphics/Surface/Surface.h"
 #include "Graphics/Text/FontFace.h"
@@ -231,7 +234,10 @@ TEST_CASE("Engine.Recipes.OneSceneRunsInTheGameAndInTheCatalog", "[engine][recip
 
 TEST_CASE("Engine.Recipes.LightingDarkensTheWorldBeforeTheSign", "[engine][recipes]") {
     PaintHarness h({1280.0f, 720.0f}, 1.0f);
-    RecipeLitView view({1280.0f, 720.0f});
+    TestSceneServices services;
+    RecipeLitView view(services.services);
+    view.Lightning();
+    view.UpdateReal(1.0f / 60.0f);
     view.Update(1.0f / 60.0f, {1.0f, 0.0f}, {800.0f, 500.0f});
     view.SetGuides(true);
     h.Begin();
@@ -242,13 +248,30 @@ TEST_CASE("Engine.Recipes.LightingDarkensTheWorldBeforeTheSign", "[engine][recip
     CHECK_FALSE(h.Draws().empty());
     const auto pipelines = h.device.CommandsOf(NullCommandType::SetPipeline);
     REQUIRE(pipelines.size() >= 4);
-    CHECK(pipelines[pipelines.size() - 2]->blend == GpuBlend::Multiply);
+    CHECK(std::ranges::count_if(pipelines, [](const NullCommand* p) { return p->blend == GpuBlend::Multiply; }) == 1);
     CHECK(pipelines.back()->blend == GpuBlend::Premultiplied);
 }
 
+TEST_CASE("Engine.Recipes.WeatherTurnsIntoAStormAndLightningDraws", "[engine][recipes]") {
+    TestSceneServices services;
+    RecipeWeatherView view(services.services);
+    view.StartStorm();
+    view.Lightning({640.0f, 300.0f});
+    for (int frame = 0; frame < 60; ++frame) {
+        view.UpdateReal(1.0f / 60.0f);
+        view.Update(1.0f / 60.0f);
+    }
+    PaintHarness harness({1280.0f, 720.0f}, 1.0f);
+    harness.Begin();
+    view.Draw(harness.paint);
+    harness.End();
+    CHECK(harness.list.Rejected() == 0);
+    CHECK_FALSE(harness.Draws().empty());
+}
+
 TEST_CASE("Engine.Recipes.GameCameraFramesTwoPlayersOrSplits", "[engine][recipes]") {
-    const FloatRect canvas{0.0f, 0.0f, 1280.0f, 720.0f};
-    RecipeCameraView view(canvas);
+    TestSceneServices services;
+    RecipeCameraView view(services.services);
     for (int frame = 0; frame < 120; ++frame) // The players run apart
         view.Update(1.0f / 60.0f, {Float2{-1.0f, 0.0f}, Float2{1.0f, 0.3f}}, std::nullopt, false);
     const Camera2D& main = view.Views().Main();
@@ -265,6 +288,7 @@ TEST_CASE("Engine.Recipes.GameCameraFramesTwoPlayersOrSplits", "[engine][recipes
     CHECK(view.Views()[1].Shows(view.Player(1), 22.0f));
     const Float2 aim = view.Views()[1].ToWorld({900.0f, 300.0f}); // The mouse is over the right view
     CHECK(view.Aim().x == Catch::Approx(aim.x));
+    REQUIRE(services.sounds.Listeners().size() == 2); // Each view hears
 
     view.SetGuides(true);
     PaintHarness harness({1280.0f, 720.0f}, 1.0f);
@@ -297,12 +321,57 @@ TEST_CASE("Engine.Recipes.CameraInTheRulesReplays", "[engine][recipes]") {
     const auto replay = VerifyTape(definition, scenario.Tape());
     CHECK_FALSE(replay.mismatch);
     CHECK(replay.hash == scenario.Hash());
+}
 
+TEST_CASE("Engine.Recipes.TheStageDrawsThroughTheRulesCamera", "[engine][recipes]") {
+    TestSceneServices services;
+    RecipeScrollerScene scene(services.services, true);
+    scene.Activate();
+    DeviceInput right;
+    right.keysDown[static_cast<std::size_t>(InputKey::D)] = true;
+    for (int frame = 0; frame < 240; ++frame) {
+        scene.ReadInput(right);
+        scene.TickReal(1.0f / 60.0f);
+        scene.Tick(1.0f / 60.0f);
+    }
+    // The stage hears from the rules' camera, which has scrolled on.
+    REQUIRE(services.sounds.Listeners().size() == 1);
+    CHECK(services.sounds.Listeners()[0].position.x > 640.0f);
+    CHECK(scene.Rules().ScrolledTo() > 0.0f);
     PaintHarness harness({1280.0f, 720.0f}, 1.0f);
     harness.Begin();
-    DrawRecipeScroller(harness.paint, rules, 0.5f, true);
+    scene.Render(harness.paint);
     harness.End();
     CHECK(harness.list.Rejected() == 0);
+    CHECK_FALSE(harness.Draws().empty());
+    scene.Shutdown();
+}
+
+TEST_CASE("Engine.Recipes.StreetSortsByDepthJumpsAndSplits", "[engine][recipes]") {
+    TestSceneServices services;
+    const auto definition = RecipeStreetSceneDefinition();
+    auto opened = definition.create(services.services, SceneDefaults(definition));
+    auto& street = dynamic_cast<RecipeStreetScene&>(*opened);
+    street.Activate();
+    DeviceInput jump;
+    jump.keysPressed[static_cast<std::size_t>(InputKey::Space)] = true;
+    street.ReadInput(jump);
+    street.Tick(1.0f / 60.0f);
+    CHECK(street.Walker(0).height > 0.0f);
+    street.ReadInput({});
+    for (int frame = 0; frame < 120; ++frame)
+        street.Tick(1.0f / 60.0f);
+    CHECK(street.Walker(0).height == 0.0f); // Landed
+    CHECK(opened->ApplyParameter("split", true).empty());
+    CHECK(street.Views().Count() == 2);
+    street.Tick(1.0f / 60.0f);
+    PaintHarness harness({1280.0f, 720.0f}, 1.0f);
+    harness.Begin();
+    street.Render(harness.paint);
+    harness.End();
+    CHECK(harness.list.Rejected() == 0);
+    CHECK_FALSE(harness.Draws().empty());
+    street.Shutdown();
 }
 
 TEST_CASE("Engine.Recipes.ProceduralLevelReplaysEveryLayout", "[engine][recipes]") {
@@ -579,8 +648,9 @@ TEST_CASE("Engine.Recipes.SavedProgressSurvivesReopening", "[engine][recipes]") 
 }
 
 TEST_CASE("Engine.Recipes.CuesPlayFromRulesAndMoments", "[engine][recipes]") {
-    TimeScale time;
-    RecipeCueView view({0.0f, 0.0f, 400.0f, 200.0f}, time);
+    TestSceneServices services;
+    TimeScale& time = services.time;
+    RecipeCueView view(services.services);
     const auto drawn = [&] {
         PaintHarness harness;
         harness.Begin();
@@ -588,16 +658,18 @@ TEST_CASE("Engine.Recipes.CuesPlayFromRulesAndMoments", "[engine][recipes]") {
         harness.End();
         return !harness.Draws().empty();
     };
-    view.Update(0.1f, 0.1f, 0);
+    view.UpdateReal(0.1f);
+    view.Update(0.1f, 0);
     CHECK(time.Advance(0.01f) == 0.01f);
-    view.Update(0.1f, 0.1f, 1); // The count went up: "player_hit" and its hitstop
+    view.UpdateReal(0.1f);
+    view.Update(0.1f, 1); // The count went up: "player_hit" and its hitstop
     CHECK(time.Advance(0.01f) == 0.0f);
     CHECK(drawn());
 
-    RecipeCueView swinging({0.0f, 0.0f, 400.0f, 200.0f}, time);
+    RecipeCueView swinging(services.services);
     swinging.Swing();
-    swinging.Update(0.1f, 0.1f, 0);
-    swinging.Update(0.15f, 0.15f, 0); // Crosses the moment "swing_land"
+    swinging.Update(0.1f, 0);
+    swinging.Update(0.15f, 0); // Crosses the moment "swing_land"
     PaintHarness harness;
     harness.Begin();
     swinging.Draw(harness.paint);
@@ -610,9 +682,14 @@ TEST_CASE("Engine.Recipes.ViewsRecordAndCachedLayerInvalidates", "[engine][recip
     RecipeCharacterView character;
     character.Pose({12.0f, 0.0f}, 0.1f);
     Surface layer({320.0f, 240.0f});
-    auto fx = MakeRecipeFx({0.0f, 0.0f, 400.0f, 200.0f});
-    TriggerRecipeFx(fx, {160.0f, 100.0f});
-    fx.Update(0.01f, 0.01f);
+    TestSceneServices services;
+    Stage stage(services.services);
+    TriggerRecipeFx(stage.Fx(), {160.0f, 100.0f});
+    stage.UpdateReal(0.01f);
+    stage.Update(0.01f);
+    struct Field final : StageView {
+        void DrawWorld(Painter&, const StagePass&) const override {} // The burst is the whole world here
+    };
     harness.Begin();
     CHECK(harness.paint.Stale(layer));
     DrawRecipeLayer(harness.paint, layer, harness.paint.Bounds(), 0.5f);
@@ -620,7 +697,7 @@ TEST_CASE("Engine.Recipes.ViewsRecordAndCachedLayerInvalidates", "[engine][recip
     DrawRecipeIcons(harness.paint, {200.0f, 100.0f}, 16.0f, Rgb(0xffffff));
     DrawGoblin(harness.paint, {240.0f, 20.0f, 60.0f, 100.0f}, GoblinKind::Forest, 0.5f);
     DrawGoblin(harness.paint, {240.0f, 120.0f, 100.0f, 60.0f}, GoblinKind::Ice, 0.5f);
-    DrawRecipeFx(harness.paint, fx, harness.paint.Bounds());
+    stage.Draw(harness.paint, Field{});
     harness.End();
     CHECK_FALSE(harness.Draws().empty());
     harness.Begin();
@@ -630,7 +707,7 @@ TEST_CASE("Engine.Recipes.ViewsRecordAndCachedLayerInvalidates", "[engine][recip
     harness.Begin();
     CHECK(harness.paint.Stale(layer));
     harness.End();
-    fx.Clear();
+    stage.Fx().Clear();
 }
 
 TEST_CASE("Engine.Recipes.SceneAndTextWorkWithoutWindow", "[engine][recipes]") {
@@ -759,16 +836,17 @@ TEST_CASE("Engine.Recipes.SpatialSoundFollowsTheState", "[engine][recipes]") {
     view.offset = {640.0f, 360.0f};
     view.viewport = {0.0f, 0.0f, 1280.0f, 720.0f};
 
-    haunt.Update({.player = {0.0f, 0.0f}, .ghost = {600.0f, 0.0f}}, view);
+    sounds.SetListener({.position = view.target, .panWidth = view.VisibleArea().width / 2.0f}); // A Stage does this
+    haunt.Update({.player = {0.0f, 0.0f}, .ghost = {600.0f, 0.0f}});
     CHECK(output.Of(0).pan > 0.0f); // Right of the camera, heard on the right
     CHECK(output.Of(1).volume == 0.0f);
     CHECK(haunt.BeatsPerSecond() == Catch::Approx(0.9f));
-    haunt.Update({.player = {0.0f, 0.0f}, .ghost = {-50.0f, 0.0f}}, view);
+    haunt.Update({.player = {0.0f, 0.0f}, .ghost = {-50.0f, 0.0f}});
     CHECK(output.Of(0).pan < 0.0f);
     CHECK(output.Of(1).volume > 0.9f);
     CHECK(output.Of(1).pitch > 2.0f);
 
-    haunt.Update({.player = {0.0f, 0.0f}, .ghost = {-50.0f, 0.0f}, .indoors = true}, view);
+    haunt.Update({.player = {0.0f, 0.0f}, .ghost = {-50.0f, 0.0f}, .indoors = true});
     REQUIRE(output.started.size() == 4); // Rain joined
     CHECK(output.Of(2).volume == 0.0f);  // Wind out
     CHECK(output.Of(3).volume == 0.8f);

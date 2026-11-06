@@ -60,8 +60,8 @@ public:
     // What a scene takes in its constructor: canvas, audio, sound tables, time scale, effect choice, font and log.
     // The editor's worker fills the same set from its own Game, adding its simulation host.
     [[nodiscard]] const SceneServices& Services() const { return _services; }
-    // This frame's real duration: what a hitstop, slow motion or a pause does not change (FxStage::Update's second
-    // clock). Inside Scene::UpdateReal the same value arrives as its argument.
+    // This frame's real duration: what a hitstop, slow motion or a pause does not change. Inside Scene::UpdateReal the
+    // same value arrives as its argument, which is where Stage::UpdateReal and FxStage::UpdateReal take it.
     [[nodiscard]] float RealSeconds() const { return _frameSeconds; }
 
 protected:

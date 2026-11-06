@@ -60,6 +60,7 @@ FxStage::FxStage(const FloatRect& area, const FloatRect& viewArea, const FxStyle
     _style.text.text.maxWidth = area.width;
 }
 void FxStage::SetQuality(const FxQuality& quality) {
+    _quality = quality;
     _particles.SetQuality(quality);
     _camera.SetQuality(quality);
     _flash.SetQuality(quality);
@@ -75,9 +76,12 @@ void FxStage::SetCues(const FxCueSet& cues) {
     _cues = cues;
     _cooling.clear();
 }
-void FxStage::Update(float gameSeconds, float realSeconds) {
+void FxStage::UpdateReal(float realSeconds) {
     _announcements.Update(realSeconds);
-    _slowMotion.Update(gameSeconds, realSeconds);
+    _slowMotion.UpdateReal(realSeconds);
+}
+void FxStage::Update(float gameSeconds) {
+    _slowMotion.Update(gameSeconds);
     if (!(gameSeconds > 0.0f) || !std::isfinite(gameSeconds)) return;
     for (Cooling& cooling : _cooling)
         cooling.seconds -= gameSeconds;
@@ -94,6 +98,7 @@ void FxStage::Update(float gameSeconds, float realSeconds) {
     _particles.Update(gameSeconds);
     _texts.Update(gameSeconds);
     _rings.Update(gameSeconds);
+    _marks.Update(gameSeconds);
     _camera.Update(gameSeconds);
     _flash.Update(gameSeconds);
     _flashLights.Update(gameSeconds);
@@ -108,6 +113,7 @@ void FxStage::Clear() {
     _particles.Clear();
     _texts.Clear();
     _rings.Clear();
+    _marks.Clear();
     _camera.Clear();
     _flash.Clear();
     _flashLights.Clear();
@@ -176,6 +182,11 @@ void FxStage::Run(const FxAction& action, const Target& target) {
                 LightFlash(target.at, target.color, style);
             },
             [&](const FxBolt& a) { Bolt(target.at, target.color, a); },
+            [&](const FxMark& a) {
+                MarkStyle style = a;
+                style.radius *= scale;
+                Mark(target.at, target.color, style);
+            },
             [&](const FxBanner& a) { Banner(textOf(a.text)); },
             [&](const FxToast& a) { Toast(textOf(a.text), target.color); },
             [&](const FxShake& a) { Shake(a.amount * scale); },
@@ -220,6 +231,7 @@ void FxStage::Bolt(Float2 at, Color4 color, const BoltStyle& style) {
     _bolts.Strike(_flash.Limit(), at, _area, color, style);
 }
 void FxStage::Ring(Float2 at, Color4 color) { _rings.Emit(at, color, _style.ring); }
+void FxStage::Mark(Float2 at, Color4 color, const MarkStyle& style) { _marks.Leave(at, color, style); }
 void FxStage::Toast(const std::string& text, Color4 color) { _announcements.Toast(text, color, _style.toast); }
 void FxStage::Flash(Color4 color) { _flash.Flash(color, _style.flash); }
 void FxStage::LightFlash(Float2 at, Color4 color, const LightFlashStyle& style) {
@@ -252,6 +264,7 @@ CameraView FxStage::WorldCamera(const Painter& paint, const CameraView& base,
     }
     return _camera.Apply(camera, static_cast<float>(paint.Time()));
 }
+void FxStage::DrawGroundLayer(Painter& paint) const { _marks.Draw(paint); }
 void FxStage::DrawWorldLayer(Painter& paint) const {
     _bolts.Draw(paint);
     _rings.Draw(paint);

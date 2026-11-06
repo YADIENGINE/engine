@@ -90,7 +90,8 @@ public:
     }
 
 private:
-    void Update(float seconds) override { _fx.Update(seconds, seconds); }
+    void UpdateReal(float seconds) override { _fx.UpdateReal(seconds); }
+    void Update(float seconds) override { _fx.Update(seconds); }
 
     void Draw(Painter& paint) const override {
         paint.Post().bloom.intensity = _bloom;

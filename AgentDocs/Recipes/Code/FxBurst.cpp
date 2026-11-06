@@ -1,7 +1,5 @@
 // [recipe:FxBurst]
 #include "AgentDocs/Recipes/Code/FxBurst.h"
-#include "Graphics/Paint/Painter.h"
-#include "Graphics/Style/Theme.h"
 
 namespace {
 constexpr Color4 BurstColor = Rgb(0xffa040);
@@ -10,20 +8,11 @@ constexpr float ShakeAmount = 0.5f;
 constexpr Color4 FlashColor = Rgb(0xffffff);
 } // namespace
 
-FxStage MakeRecipeFx(const FloatRect& area) { return FxStage(area, area, CurrentTheme().fx); }
+// On an event, at a world position: the stage's UpdateReal and Update move them on their clocks, and its Draw puts the
+// burst over the world, the shake into every view and the flash over the canvas.
 void TriggerRecipeFx(FxStage& fx, Float2 at) {
     fx.Burst(at, BurstColor, BurstCount, ParticleRecipe::Debris);
     fx.Shake(ShakeAmount);
     fx.Flash(FlashColor);
-}
-// Owner calls fx.SetQuality(Effects()), fx.Update(delta, RealSeconds()), and fx.Clear() on reset.
-void DrawRecipeFx(Painter& paint, const FxStage& fx, const FloatRect& viewArea) {
-    {
-        auto clip = paint.Clip(viewArea);
-        auto camera = paint.Transform(fx.WorldCamera(paint).Transform());
-        // Draw production world objects here, before the world effects.
-        fx.DrawWorldLayer(paint);
-    }
-    fx.DrawOverlay(paint);
 }
 // [/recipe]

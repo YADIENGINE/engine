@@ -230,12 +230,14 @@ add_library(EngineHeadless STATIC
     Fx/World/Rings.cpp
     Fx/World/ShatterSpread.cpp
     Fx/World/Bolts.cpp
+    Fx/World/Marks.cpp
     Fx/World/FlashLights.cpp
     Fx/World/Shockwaves.cpp
     GameObjects/GameObject.cpp
     GameObjects/ObjectList.cpp
     Graphics/Draw/BackgroundDraw.cpp
     Graphics/Draw/DrawUtils.cpp
+    Graphics/Draw/Elevation.cpp
     Graphics/Draw/IrisTransition.cpp
     Graphics/Draw/Neon.cpp
     Graphics/Draw/ParticleDraw.cpp
@@ -288,6 +290,7 @@ add_library(EngineHeadless STATIC
     Scene/Scene.cpp
     Scene/SceneParameter.cpp
     Scene/TransitionClock.cpp
+    Stage/Stage.cpp
     Ui/Kernel/Internals/UiFocusSearch.cpp
     Ui/Kernel/Internals/UiKernel.cpp
     Ui/Kernel/Ui.cpp

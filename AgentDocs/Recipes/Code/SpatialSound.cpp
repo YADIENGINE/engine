@@ -8,16 +8,15 @@
 void AddRecipeNoises(GameSettings& settings) { settings.sounds = RecipeNoiseTable; }
 
 RecipeHauntSounds::RecipeHauntSounds(SoundPlayer& sounds)
-    : _sounds(sounds)
-    , _hum(sounds.Start(RecipeNoise::Hum, {.fadeIn = 1.0f}))
+    : _hum(sounds.Start(RecipeNoise::Hum, {.fadeIn = 1.0f}))
     , _heart(sounds.Start(RecipeNoise::Heart, {.volume = 0.0f}))
     , _ambience(sounds, 2.0f) {
     _ambience.Set(RecipeNoise::Wind, 0.8f);
 }
 
-void RecipeHauntSounds::Update(const RecipeHauntState& state, const CameraView& view) {
-    // The listener is the camera: what is right of the screen's middle is heard on the right.
-    _sounds.SetListener({.position = view.target, .rotation = view.rotation, .panWidth = view.VisibleArea().width / 2.0f});
+void RecipeHauntSounds::Update(const RecipeHauntState& state) {
+    // Heard from the camera: the scene's Stage puts a listener on each of its views, so what is right of the screen's
+    // middle is heard on the right. A sound placed in the world only says where it is.
     _hum.SetPosition(state.ghost);
 
     const float distance = std::hypot(state.ghost.x - state.player.x, state.ghost.y - state.player.y);
