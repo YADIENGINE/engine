@@ -53,6 +53,7 @@ struct EditorAction {
     std::string tooltip; // What it does, when the label needs more
     EditorActionCheck check = EditorActionCheck::None;
     bool checked = false;
+    bool closeMenuOnSelect = true;
     bool palette = true;           // Also offered by the command palette
     bool inMenu = true;            // False: only its key runs it (the Agents drawer's navigation)
     std::function<void()> run;     // An item

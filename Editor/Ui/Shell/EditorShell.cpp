@@ -129,9 +129,11 @@ void DrawMenu(EditorMenu menu, std::span<const EditorAction> list) {
                 action.content();
                 ImGui::EndMenu();
             }
-        } else if (ImGui::MenuItem(action.label.c_str(), action.shortcut, action.checked, action.enabled) &&
-                   action.run) {
-            action.run();
+        } else {
+            ImGui::PushItemFlag(ImGuiItemFlags_AutoClosePopups, action.closeMenuOnSelect);
+            const bool selected = ImGui::MenuItem(action.label.c_str(), action.shortcut, action.checked, action.enabled);
+            ImGui::PopItemFlag();
+            if (selected && action.run) action.run();
         }
         if (*help) ToolTooltip(help);
     }

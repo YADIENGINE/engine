@@ -174,6 +174,7 @@ void ViewActions(const EditorActionContext& context, std::vector<EditorAction>& 
                         .label = palette.title,
                         .check = EditorActionCheck::Radio,
                         .checked = preferences.theme == palette.id,
+                        .closeMenuOnSelect = false,
                         .run = [&preferences, id = palette.id] { preferences.theme = id; }});
     for (const int percent : EditorFontSizes)
         list.push_back({.menu = EditorMenu::View,
