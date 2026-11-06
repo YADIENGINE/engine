@@ -7,7 +7,7 @@ scene routing; the engine owns the main loop and services.
 
 | Module | Responsibility |
 | --- | --- |
-| `EngineHeadless` | Object lifecycle, scenes, scaled time, transition timing, game UI, text layout, pointer gestures, player options (`GameOptions`) and run JSON storage, geometry, shatter patterns, UI transforms and [gameplay helpers](GameplayHelpers.md) |
+| `EngineHeadless` | Scenes, scaled time, transition timing, game UI, text layout, pointer gestures, player options (`GameOptions`) and run JSON storage, geometry, shatter patterns, UI transforms and [gameplay helpers](GameplayHelpers.md) |
 | `Engine` | Window/canvas, drawing, fonts, input sampling, audio, effects and iris drawing, asset preparation, application loop |
 | `EngineLocalization` | Standalone [Localization module](../Core/Modules/Localization/README.md): authored languages, native names, translation fallback, placeholders and number formatting |
 | `EngineScoreBoard` | Standalone [ScoreBoard module](../Core/Modules/ScoreBoard/README.md): game-defined validation, durable score history, top-N and per-player ranking |
@@ -26,6 +26,41 @@ adding editor or UI dependencies to Engine/EngineHeadless. There is one scene ty
 game's own `Scene` classes, so a screen is written once (D53). The catalog (`Editor/Api`) is not in games. Transient applications can set
 `GameSettings::persistentOptions=false` to use supplied window settings without loading/writing preferences.
 `WindowSettings::visible=false` keeps a graphics context hidden; `alwaysRun=true` keeps it ticking while minimized.
+
+### Core folders by layer
+
+Each folder of `Core/` belongs to one layer, listed bottom up: a folder builds on its own layer and those before it.
+`check` enforces the boundaries that matter most: a simulation never reaches the view or the application side.
+
+| Layer | Folder | Role |
+| --- | --- | --- |
+| Foundation | `Utilities/` | Plain types and helpers: geometry, math, colors, random numbers and noise, `Pool<T>`, reflection |
+| Foundation | `Animation/` | Values over time: tweens, clips, animators, timelines, curves; headers only, nothing draws |
+| Foundation | `Tuning/` | Tuning files and live values (`Tuning<T>()`) |
+| Foundation | `Diagnostics/` | Development checks, frame instrumentation contracts, crash capture |
+| Foundation | `Platform/` | Shell actions behind a raylib-free facade; the platform layer in `Internals/` |
+| Simulation | `Simulation/` | Deterministic gameplay: simulations, the runner, input tape, replay checks, state hashing, events |
+| Simulation | `Physics/` | Collision over Box2D; `Debug/` draws and belongs to the view side |
+| Simulation | `Camera/` | Game cameras and their views; math only, so a simulation may keep one |
+| Simulation | `Procedural/` | Generated layouts over `Grid<MapCell>`: rooms, caves, random walks, floor regions |
+| Simulation | `Weather/` | What the weather is, as data; `Graphics/Atmosphere` draws it |
+| Simulation | `Gameplay/` | Rule helpers: stat sheets, timed effects, tiered goals, pickup credit in flight ([helpers](GameplayHelpers.md)) |
+| View | `Graphics/` | Painter, text, surfaces, post, light, atmosphere, draw helpers, styles and the renderer |
+| View | `Fx/` | Effects and cues: particles, screen and world effects, `FxStage` |
+| View | `Audio/` | Sound playback: the audio engine, sound tables, buses, live and spatial sounds |
+| View | `Ui/` | Game UI: layout, kernel, looks, widgets, kit and UI sounds ([UI](Ui.md)) |
+| View | `Input/` | What the player presses: device input, bindings and the input map, pointer gestures ([Input](Input.md)) |
+| View | `Stage/` | A scene's view side drawn in one fixed order ([Stage](Graphics/Stage.md)) |
+| Application | `Options/` | The player's options, saved through Persistence |
+| Application | `Scene/` | `Scene`: a screen's lifecycle, its services and the editor hooks; the scene manager in `Internals/` |
+| Application | `Runtime/` | `Game`: settings, services, the loop, time scale and the entry point |
+| Per module | `Modules/` | Opt-in systems with their own targets ([modules](../Core/Modules/README.md)); each sits where its dependencies put it |
+
+`Modules/JsonIO` and `Modules/Persistence` serve every layer (a tape is JSON; options and tiered goals are saved), while
+`Profiler` and `RunTracking` stand on the application. The other reaches upward are small and deliberate: Fx cues use
+`Runtime/TimeScale`, `Stage` borrows `Scene/SceneServices`, the audio volume and the options screen use the option
+types, and `Camera/Debug` and `Physics/Debug` draw, so they build with the view (`EngineHeadless`). `Tests/` holds the
+core tests.
 
 ### Graphics layout
 
@@ -63,13 +98,13 @@ rather than in the game.
 - `Runtime/Game`: renderer, font, input, audio, options, and clock; the derived game's scenes are value members.
 - `Scene/Internals/SceneManager` (Engine-private): scene reference registrations, active/pending target, transitions,
   and shutdown; headless.
-- `Scene/Scene`: its own object list, real-time hook, pause decision and the editor hooks (parameters, actions,
-  inspection; the game never calls them); models may remain independent of lifecycle. Its constructor takes
-  `SceneServices` (`Game::Services()`; the editor's worker fills the same set) plus its own values.
+- `Scene/Scene`: its lifecycle hooks, real-time hook, pause decision and the editor hooks (parameters, actions,
+  inspection; the game never calls them). Its simulation and views are value members it calls itself; there is no
+  object list. Its constructor takes `SceneServices` (`Game::Services()`; the editor's worker fills the same set) plus
+  its own values. Its host shuts it down while it is alive, so it needs no destructor.
 - `Simulation/HostedSimulation`: a scene's simulation; the editor's `SimulationHost` keeps its tape, a null host just runs.
-- `GameObjects/`: GameObject and ObjectList; ordered lifecycle with reference registration or dynamic object ownership.
-- Dependency direction is Runtime → Scene → GameObjects; SceneManager, Scene, GameObject, and ObjectList are in
-  EngineHeadless, while Game is in the raylib-based Engine target.
+- Dependency direction is Runtime → Scene; SceneManager and Scene are in EngineHeadless, while Game is in the
+  raylib-based Engine target.
 - `Animation` (tweens, clips, animators, timelines, curves) computes values over time and `Graphics` draws. It stands outside `Graphics` so that a simulation can use it, and
   depends only on `Utilities` ([Animation](Animation.md)).
 - `Animation`, basic geometry, and gameplay helpers are available headlessly.
@@ -93,7 +128,7 @@ Game code that uses several components can include a focused umbrella header:
 | Header | Public components |
 | --- | --- |
 | `Fx/FxImport.h` | FX stage, cues, particle recipes, particles, floating text, rings, marks, shockwaves, flash, glitch, pulse, announcements, camera effects, speed lines, iris drawing |
-| `Runtime/RuntimeImport.h` | Game, GameSettings, GameObject, Scene |
+| `Runtime/RuntimeImport.h` | Game, GameSettings, Scene |
 
 These are explicit include lists, not effect registration or object creation. Add a new public component's header to the
 relevant umbrella and its `.cpp` to `Engine/CMakeLists.txt` when needed. Keep game presets and views outside engine
@@ -104,7 +139,7 @@ Include `Utilities/Geometry/Float2.h` for vector operations (`Length`, `Distance
 `Perpendicular`, `Float2::FromAngle`) and the focused `.h` drawing header for each helper.
 
 Specific headers remain supported and should be used inside Engine and by headless consumers. In particular, include
-`Runtime/TimeScale.h`, `Scene/TransitionClock.h`, `Scene/Scene.h`, or `GameObjects/GameObject.h` directly when using only those
+`Runtime/TimeScale.h`, `Scene/TransitionClock.h` or `Scene/Scene.h` directly when using only those
 components without raylib. Input has explicit headless public headers (`Input.h`, `InputNavigation.h`,
 `DragPointer.h`, `CollectionPointer.h`); device sampling and gesture implementation stay private in
 `Input/Internals/`. See [Input](Input.md). There is no global EngineImport header.

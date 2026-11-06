@@ -44,8 +44,6 @@ PlayScene::PlayScene(TimeScale& time, std::uint64_t seed)
     , _runner(_simulation, ArenaSettings(), _start)
     , _bindings(MakeBindings()) {}
 
-PlayScene::~PlayScene() { ShutdownNoThrow(); }
-
 void PlayScene::HandleInput(const DeviceInput& input) {
     if (_simulation.Over() && InputNavigation(input).Confirm()) _runner.Command("restart", 0);
     _runner.Feed(_bindings.Read(input));

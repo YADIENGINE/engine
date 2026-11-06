@@ -27,7 +27,6 @@ struct RecipeStreetThing {
 class RecipeStreetScene final : public Scene, StageView {
 public:
     RecipeStreetScene(const SceneServices& services, bool split);
-    ~RecipeStreetScene() override { ShutdownNoThrow(); }
     [[nodiscard]] const RecipeWalker& Walker(std::size_t player) const { return _walkers[player]; }
     [[nodiscard]] const Cameras& Views() const { return _stage.Cameras(); }
 

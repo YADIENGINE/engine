@@ -49,7 +49,6 @@ void DrawRecipeBoss(Painter& paint, const RecipeBossSimulation& simulation, floa
 class RecipeBossScene final : public Scene {
 public:
     RecipeBossScene(const SceneServices& services, std::uint64_t seed);
-    ~RecipeBossScene() override { ShutdownNoThrow(); }
 
 private:
     void Update(float seconds) override;

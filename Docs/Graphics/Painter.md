@@ -5,8 +5,8 @@ OpenGL 3.3 device at frame end. Frame and surface ownership: [Rendering](Renderi
 
 ## Where it comes from
 
-Each `GameObject` draws in `Draw(Painter& paint) const`; `Scene::Render`, `Game::Draw(Painter&)`, and
-`Game::DrawWindow(Painter&)` pass the same Painter. Do not copy or retain Painter; use it only for the duration of the
+A scene draws in `Draw(Painter& paint) const` and hands the Painter to its views; `Scene::Render`, `Game::Draw(Painter&)`,
+and `Game::DrawWindow(Painter&)` pass the same Painter. Do not copy or retain Painter; use it only for the duration of the
 call.
 
 ```cpp

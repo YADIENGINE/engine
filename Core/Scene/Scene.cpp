@@ -1,24 +1,26 @@
 #include "Scene/Scene.h"
-#include <cstdio>
+#include <cassert>
 #include <exception>
 #include <stdexcept>
 #include <utility>
 #include "Input/Input.h"
 
 Scene::Scene(TimeDomain time)
-    : _time(time) {
-    _self.Add(*this);
+    : _time(time) {}
+Scene::~Scene() {
+    // Exit and Stop need the derived scene, which is gone here: its host shuts it down first.
+    assert((!_started || _shutdown) && "A started scene is shut down by its host before it is destroyed");
 }
-void Scene::AddObject(GameObject& object) { _objects.Add(object); }
-GameObject& Scene::AddObject(std::unique_ptr<GameObject> object) { return _objects.Add(std::move(object)); }
-void Scene::RemoveObject(GameObject& object) { _objects.Remove(object); }
-void Scene::ClearObjects() { _objects.Clear(); }
-void Scene::UpdateReal(float realSeconds) { (void)realSeconds; }
-bool Scene::GameTimePaused() const { return false; }
+void Scene::Start() {}
 void Scene::Enter() {}
-void Scene::Exit() {}
+void Scene::UpdateReal(float realSeconds) { (void)realSeconds; }
+void Scene::Update(float deltaSeconds) { (void)deltaSeconds; }
+void Scene::Draw(Painter& paint) const { (void)paint; }
 void Scene::HandleInput(const DeviceInput& input) { (void)input; }
 void Scene::InputCancelled() {}
+void Scene::Exit() {}
+void Scene::Stop() {}
+bool Scene::GameTimePaused() const { return false; }
 std::string Scene::ApplyParameter(const std::string& id, const SceneValue& value) {
     (void)value;
     return "Unsupported parameter: " + id;
@@ -30,16 +32,17 @@ void Scene::CheckDispatch() const {
     if (_dispatching) throw std::logic_error("Cannot dispatch a scene recursively");
 }
 bool Scene::EnsureEntered() {
-    if (!_active || _shutdown || !Enabled()) return false;
+    if (!_active || _shutdown) return false;
+    // Flags first: a hook that throws is not retried, and Stop/Exit still pair with it at shutdown.
+    if (!_started) {
+        _started = true;
+        Start();
+    }
     if (!_entered) {
-        _self.Start();
-        if (!Enabled()) return false;
-        _objects.Start();
-        if (!Enabled()) return false;
         _entered = true;
         Enter();
     }
-    return Enabled();
+    return true;
 }
 void Scene::Activate() {
     CheckDispatch();
@@ -137,10 +140,7 @@ void Scene::Tick(float deltaSeconds) {
     CheckDispatch();
     _dispatching = true;
     try {
-        if (EnsureEntered()) {
-            _objects.Update(deltaSeconds);
-            if (Enabled()) _self.Update(deltaSeconds);
-        }
+        if (EnsureEntered() && deltaSeconds > 0.0f) Update(deltaSeconds);
     } catch (...) {
         _dispatching = false;
         throw;
@@ -149,11 +149,10 @@ void Scene::Tick(float deltaSeconds) {
 }
 void Scene::Render(Painter& paint) const {
     CheckDispatch();
-    if (!_active || !_entered || !Enabled()) return;
+    if (!_active || !_entered) return;
     _dispatching = true;
     try {
-        _objects.Draw(paint);
-        if (Enabled()) _self.Draw(paint);
+        Draw(paint);
     } catch (...) {
         _dispatching = false;
         throw;
@@ -171,25 +170,13 @@ void Scene::Shutdown() {
     } catch (...) {
         failure = std::current_exception();
     }
-    try {
-        _objects.Stop();
-    } catch (...) {
-        if (!failure) failure = std::current_exception();
-    }
-    try {
-        _self.Stop();
-    } catch (...) {
-        if (!failure) failure = std::current_exception();
+    if (_started) {
+        try {
+            Stop();
+        } catch (...) {
+            if (!failure) failure = std::current_exception();
+        }
     }
     _dispatching = false;
     if (failure) std::rethrow_exception(failure);
-}
-void Scene::ShutdownNoThrow() noexcept {
-    try {
-        Shutdown();
-    } catch (const std::exception& error) {
-        std::fprintf(stderr, "Scene shutdown failed: %s\n", error.what());
-    } catch (...) {
-        std::fputs("Scene shutdown failed with an unknown exception\n", stderr);
-    }
 }

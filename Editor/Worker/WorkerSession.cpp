@@ -65,7 +65,6 @@ WorkerSession::~WorkerSession() {
         _profiler.Cancel(false, false);
     } catch (...) {
     }
-    _scene.ShutdownNoThrow();
 }
 float WorkerSession::Advance(float realSeconds) {
     if (_profiler.Busy()) return _profiler.Advance();

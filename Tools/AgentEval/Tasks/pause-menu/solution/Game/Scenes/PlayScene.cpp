@@ -48,8 +48,6 @@ PlayScene::PlayScene(Game& game, std::uint64_t seed)
     , _runner(_simulation, ArenaSettings(), _start)
     , _bindings(MakeBindings()) {}
 
-PlayScene::~PlayScene() { ShutdownNoThrow(); }
-
 void PlayScene::HandleInput(const DeviceInput& input) {
     if (_paused) {
         _ui.Input(input);

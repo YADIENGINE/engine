@@ -213,7 +213,6 @@ public:
     StagedScene(const SceneServices& services, TimeDomain clock)
         : Scene(clock)
         , stage(services) {}
-    ~StagedScene() override { ShutdownNoThrow(); }
     Stage stage;
 
 private:

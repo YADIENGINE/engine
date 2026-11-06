@@ -282,7 +282,7 @@ Names belong to cues, not effects. An `FxCue` is constant data: typed actions wi
 6. *`CameraShot` is a pose.*
 7. *`ParticleRecipes` is data;* a game's own burst is the same kind of thing.
 8. *Event effects take a style per event;* continuous devices take it at construction. Invalid values throw.
-9. *Not effects:* `TimeScale` is in `Runtime/`, `TransitionClock` in `Scene/`, `CollectFlights` in `Progress/`.
+9. *Not effects:* `TimeScale` is in `Runtime/`, `TransitionClock` in `Scene/`, `CollectFlights` in `Gameplay/`.
 10. *Particles get a fixed default seed* on `Rng`, so `ctl frames` is repeatable.
 11. *Folders by what an effect acts on:* `Particles/`, `Camera/`, `World/`, `Screen/`.
 
@@ -758,8 +758,7 @@ written twice (once for the game, once for the editor).
    Step and speed reach both clocks, and the scene's `TimeDomain` and `GameTimePaused` hold. Reset stops and destroys
    the old instance before the factory runs.
 6. *The catalog stays in `Editor/Api`:* `SceneDefinition`, the registry and auto-registration, so Release carries none.
-7. *Destructors still call `ShutdownNoThrow()`:* a derived game's constructor can throw after its scene members exist,
-   and no owner can shut those down while they are alive.
+7. *Destructors called `ShutdownNoThrow()`* while a scene could hold registered objects; D56 removed both.
 
 Left out: a separate editor interface found by `dynamic_cast`, switching scenes from the editor (still `Game::SetScene`
 in a Game Flow), the scene-held `Profiler` pointer and application command (nothing read them).
@@ -825,3 +824,29 @@ D27 stays: the world is an index, the game owns positions.
 Left out: component storage / ECS (revisit with the swarm and bullet kit, system 6). If ever adopted: EnTT only inside
 simulations, no signals, observers or meta, a `StateVisitor` adapter that names component types, a pinned version.
 Also left out: a stored callback on removal, and `Clear` (`RemoveIf` removes everything and keeps old handles stale).
+
+### D56. Scenes without an object list
+Usage: [Runtime](../Runtime.md#lifecycle), [recipe](../../AgentDocs/Recipes/SceneMembers.md).
+
+`GameObject`, `ObjectList` and `Scene::AddObject` / `RemoveObject` / `ClearObjects` are gone. A `Scene` keeps its
+simulation and views as value members and calls them from its own hooks; things that come and go live in a `Pool<T>`
+(D55). `Scene` owns its lifecycle directly: Start once, Enter per visit, Update by its clock, Draw, Exit, Stop once.
+
+1. *One lifecycle type:* the only real subclass of `GameObject` was `Scene` itself, registered in its own list. The
+   list was a node tree in disguise and did nothing a member call does not.
+2. *The guarantees stay:* no re-entrant dispatch, a failing hook leaves a consistent state and is not retried (its
+   pairing flag is set first, so Exit and Stop still run), input may be cancelled from an input callback, and
+   `Shutdown` finishes every step before rethrowing the first failure.
+3. *No destructor in a scene:* nothing can be registered with a scene, so only its own Exit and Stop need it alive, and
+   the host runs them: `Game::Run` shuts every scene down before it returns or rethrows; a scene is never started
+   before `Run`, so one destroyed earlier (a derived game's constructor throwing) has nothing to undo. `ShutdownNoThrow`
+   is gone. Debug builds assert when a started scene dies without `Shutdown`.
+4. *`WorkerScene` holds content only between its Start and Stop,* so its Stop always shuts the hosted scene down; `Open`
+   throws otherwise. A hosted scene whose activation fails is shut down before it dies.
+5. *Input is cancelled once at the worker's shutdown:* the worker no longer forwards its own cancellation then, because
+   the hosted scene's shutdown cancels it.
+6. *`Enabled` / `SetEnabled` are gone:* no host or scene used them.
+7. *`Core/Progress` joined `Core/Gameplay`;* `Docs/Architecture.md` places every `Core` folder in a layer.
+
+Left out: a view-side selectable object for the editor (pick, inspect, move a thing in the viewport), to be designed
+when a real need appears.

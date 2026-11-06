@@ -2,7 +2,7 @@ Set up a game factory and queue a scene change behind a fade.
 
 APIs: Core/Runtime/Game.h, Core/Runtime/EntryPoint.h, Core/Scene/TransitionClock.h; scene: AgentDocs/Recipes/Code/SceneTransition.h.
 
-Use `Recipes/SceneObjects.md` for RecipeScene; compile this factory once in the game target created by engine_add_game.
+Use `Recipes/SceneMembers.md` for RecipeScene; compile this factory once in the game target created by engine_add_game.
 
 <!-- recipe:SceneGame-header -->
 ```cpp

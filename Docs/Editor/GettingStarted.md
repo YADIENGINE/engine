@@ -41,7 +41,6 @@ with `engine_add_game`, because that helper adds the game's entry point.
 class FirstScene final : public Scene {
 public:
     FirstScene(const SceneServices& services, const SceneParameters& parameters);
-    ~FirstScene() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
 
 private:
@@ -63,7 +62,6 @@ private:
 
 FirstScene::FirstScene(const SceneServices&, const SceneParameters& parameters)
     : _radius(static_cast<float>(std::get<double>(parameters.at("radius")))) {}
-FirstScene::~FirstScene() { ShutdownNoThrow(); }
 
 std::string FirstScene::ApplyParameter(const std::string& id, const SceneValue& value) {
     if (id != "radius") return "Unknown parameter";

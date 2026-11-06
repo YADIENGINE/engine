@@ -233,8 +233,6 @@ add_library(EngineHeadless STATIC
     Fx/World/Marks.cpp
     Fx/World/FlashLights.cpp
     Fx/World/Shockwaves.cpp
-    GameObjects/GameObject.cpp
-    GameObjects/ObjectList.cpp
     Graphics/Draw/BackgroundDraw.cpp
     Graphics/Draw/DrawUtils.cpp
     Graphics/Draw/Elevation.cpp

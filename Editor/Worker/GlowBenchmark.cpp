@@ -25,7 +25,6 @@ public:
                                  (static_cast<float>(i / columns) + 0.5f) * height / gridRows});
         }
     }
-    ~GlowBenchmark() override { ShutdownNoThrow(); }
 
 private:
     void Draw(Painter& paint) const override {

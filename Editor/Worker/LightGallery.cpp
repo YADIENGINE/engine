@@ -58,7 +58,6 @@ public:
                              {center + Float2{-420.0f, -100.0f}, -0.6f}, wall);
         AddOccluders(_walls, _colliders, wall);
     }
-    ~LightGallery() override { ShutdownNoThrow(); }
 
     std::string ApplyParameter(const std::string& id, const SceneValue& value) override {
         if (id == "animate") _animate = std::get<bool>(value);

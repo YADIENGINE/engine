@@ -19,7 +19,6 @@ public:
         _stage.Cameras().Main().Follow(_player);
         _stage.Cameras().Snap();
     }
-    ~MyScene() override { ShutdownNoThrow(); }
 
 private:
     void UpdateReal(float seconds) override { _stage.UpdateReal(seconds); } // Even in a hitstop or a pause

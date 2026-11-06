@@ -19,7 +19,6 @@ constexpr Color4 HintColor{130, 130, 130, 255};
 class StarterWorker final : public Scene {
 public:
     explicit StarterWorker(const SceneServices&) {}
-    ~StarterWorker() override { ShutdownNoThrow(); }
 
 private:
     void Draw(Painter& paint) const override {

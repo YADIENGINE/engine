@@ -8,7 +8,6 @@ WorkerGame::WorkerGame(const GameSettings& settings, const SceneRegistry& regist
           {[this] { RequestQuit(); }, [this] { Time().Clear(); }, [this](WorkerScene& scene) { SetScene(scene); }}) {
     RegisterScene(_session.Scene());
 }
-WorkerGame::~WorkerGame() { _session.Scene().ShutdownNoThrow(); }
 void WorkerGame::Start() { SetScene(_session.Scene()); }
 void WorkerGame::PrepareFrame() { _session.PrepareFrame(); }
 DeviceInput WorkerGame::ReadInput() { return _session.ReadInput(); }

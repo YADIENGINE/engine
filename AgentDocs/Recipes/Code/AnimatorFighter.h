@@ -47,7 +47,6 @@ void DrawRecipeFighter(Painter& paint, const RecipeFighterSimulation& simulation
 class RecipeFighterScene final : public Scene {
 public:
     RecipeFighterScene(const SceneServices& services, std::uint64_t seed);
-    ~RecipeFighterScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;

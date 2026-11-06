@@ -99,7 +99,7 @@ class ParserTests(unittest.TestCase):
             '[[nodiscard]] constexpr int StepsIn(double seconds, int stepsPerSecond)': 'StepsIn',
             'template<class T, std::size_t N> constexpr T StepChoice(T current, const std::array<T, N>& c)': 'StepChoice',
             'template<AnimationPose PoseType, class Position> class BasicAnimator': 'BasicAnimator',
-            'class Scene : public GameObject': 'Scene',
+            'class WorkerScene : public Scene': 'WorkerScene',
             'struct [[nodiscard]] PaintScope': 'PaintScope',
             'enum class Mode { First, Second }': 'Mode',
             'using UiMeasure = std::function<Float2(float maxWidth)>': 'UiMeasure',

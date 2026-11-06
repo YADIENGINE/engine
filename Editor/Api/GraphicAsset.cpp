@@ -42,7 +42,6 @@ public:
         : _asset(std::move(asset))
         , _item(item)
         , _box(PreviewBox(services.canvas)) {}
-    ~GraphicAssetScene() override { ShutdownNoThrow(); }
     [[nodiscard]] SceneInspection Inspect() const override {
         SceneInspection inspection;
         inspection.focus = SceneContentBounds{static_cast<int>(_box.x), static_cast<int>(_box.y),

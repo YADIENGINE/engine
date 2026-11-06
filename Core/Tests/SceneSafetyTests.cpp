@@ -9,44 +9,16 @@
 #include "Tests/PaintHarness.h"
 
 namespace {
-class SceneSafetyChild final : public GameObject {
-public:
-    explicit SceneSafetyChild(std::vector<std::string>& log)
-        : _log(log) {}
-    std::function<void()> duringStart;
-    std::function<void()> duringUpdate;
-    std::function<void()> duringStop;
-
-private:
-    void Start() override {
-        _log.push_back("child.start");
-        if (duringStart) duringStart();
-    }
-    void Update(float seconds) override {
-        (void)seconds;
-        _log.push_back("child.update");
-        if (duringUpdate) duringUpdate();
-    }
-    void Stop() override {
-        _log.push_back("child.stop");
-        if (duringStop) duringStop();
-    }
-    std::vector<std::string>& _log;
-};
-
 class SceneSafetyProbe final : public Scene {
 public:
     explicit SceneSafetyProbe(std::vector<std::string>& log)
-        : _log(log)
-        , _child(log) {
-        AddObject(_child);
-    }
-    ~SceneSafetyProbe() override { ShutdownNoThrow(); }
-    [[nodiscard]] SceneSafetyChild& Child() { return _child; }
+        : _log(log) {}
     std::function<void()> duringStart;
     std::function<void()> duringEnter;
     std::function<void()> duringInput;
     std::function<void()> duringCancel;
+    std::function<void()> duringUpdate;
+    std::function<void()> duringDraw;
     std::function<void()> duringExit;
     std::function<void()> duringStop;
 
@@ -75,64 +47,110 @@ private:
     void Update(float seconds) override {
         (void)seconds;
         _log.push_back("scene.update");
+        if (duringUpdate) duringUpdate();
     }
-    void Draw(Painter&) const override { _log.push_back("scene.draw"); }
+    void Draw(Painter&) const override {
+        _log.push_back("scene.draw");
+        if (duringDraw) duringDraw();
+    }
     void Stop() override {
         _log.push_back("scene.stop");
         if (duringStop) duringStop();
     }
     std::vector<std::string>& _log;
-    SceneSafetyChild _child;
 };
 } // namespace
 
-TEST_CASE("Engine.Scene.DisabledActivationDefersInitializationBeforeInput", "[engine][lifecycle]") {
+TEST_CASE("Engine.Scene.HooksCannotReenterLifecycleDispatch", "[engine][lifecycle]") {
     std::vector<std::string> log;
     SceneSafetyProbe scene(log);
-    scene.SetEnabled(false);
-    scene.Activate();
-    scene.Tick(0.1f);
-    PaintFrame([&](Painter& paint) { scene.Render(paint); });
-    CHECK(log.empty());
-    scene.SetEnabled(true);
-    scene.ReadInput({});
-    CHECK(log == std::vector<std::string>{"scene.start", "child.start", "scene.enter", "scene.input"});
+    int checks = 0;
+    const auto checkBlocked = [&] {
+        CHECK_THROWS_AS(scene.Activate(), std::logic_error);
+        CHECK_THROWS_AS(scene.Deactivate(), std::logic_error);
+        CHECK_THROWS_AS(scene.ReadInput({}), std::logic_error);
+        CHECK_THROWS_AS(scene.TickReal(0.1f), std::logic_error);
+        CHECK_THROWS_AS(scene.Tick(0.1f), std::logic_error);
+        CHECK_THROWS_AS(PaintFrame([&](Painter& paint) { scene.Render(paint); }), std::logic_error);
+        CHECK_THROWS_AS(scene.Shutdown(), std::logic_error);
+        ++checks;
+    };
+
+    SECTION("Start") {
+        scene.duringStart = checkBlocked;
+        CHECK_NOTHROW(scene.Activate());
+    }
+    SECTION("Enter") {
+        scene.duringEnter = checkBlocked;
+        CHECK_NOTHROW(scene.Activate());
+    }
+    SECTION("Update") {
+        scene.Activate();
+        scene.duringUpdate = checkBlocked;
+        CHECK_NOTHROW(scene.Tick(0.1f));
+    }
+    SECTION("Draw") {
+        scene.Activate();
+        scene.duringDraw = checkBlocked;
+        CHECK_NOTHROW(PaintFrame([&](Painter& paint) { scene.Render(paint); }));
+    }
+    SECTION("Exit") {
+        scene.Activate();
+        scene.duringExit = checkBlocked;
+        CHECK_NOTHROW(scene.Deactivate());
+    }
+    SECTION("Stop") {
+        scene.Activate();
+        scene.duringStop = checkBlocked;
+        CHECK_NOTHROW(scene.Shutdown());
+    }
+    CHECK(checks == 1);
+    scene.duringStop = {};
+    CHECK_NOTHROW(scene.Shutdown());
+    CHECK(scene.IsShutdown());
 }
 
-TEST_CASE("Engine.Scene.DisablingDuringInitializationDefersRemainingCallbacks", "[engine][lifecycle]") {
+TEST_CASE("Engine.Scene.HookFailureReleasesTheDispatchGuard", "[engine][lifecycle]") {
     std::vector<std::string> log;
     SceneSafetyProbe scene(log);
-    SECTION("Scene Start disables the scene") {
-        scene.duringStart = [&] { scene.SetEnabled(false); };
-        scene.Activate();
-        CHECK(log == std::vector<std::string>{"scene.start"});
-    }
-    SECTION("Child Start disables the scene") {
-        scene.Child().duringStart = [&] { scene.SetEnabled(false); };
-        scene.Activate();
-        CHECK(log == std::vector<std::string>{"scene.start", "child.start"});
-    }
-    SECTION("Enter disables the scene") {
-        scene.duringEnter = [&] { scene.SetEnabled(false); };
-        scene.Activate();
-        CHECK(log == std::vector<std::string>{"scene.start", "child.start", "scene.enter"});
-    }
-    scene.SetEnabled(true);
-    scene.ReadInput({});
-    CHECK(log == std::vector<std::string>{"scene.start", "child.start", "scene.enter", "scene.input"});
-}
+    const auto fail = [] { throw std::runtime_error("hook failure"); };
 
-TEST_CASE("Engine.Scene.ChildCallbacksCannotReenterLifecycleDispatch", "[engine][lifecycle]") {
-    std::vector<std::string> log;
-    SceneSafetyProbe scene(log);
-    scene.Activate();
-    scene.Child().duringUpdate = [&] { scene.Deactivate(); };
-    CHECK_THROWS_AS(scene.Tick(0.1f), std::logic_error);
-    CHECK_FALSE(scene.IsShutdown());
-    scene.Child().duringUpdate = {};
+    SECTION("Start is not retried; Enter follows on the next dispatch") {
+        scene.duringStart = fail;
+        CHECK_THROWS_AS(scene.Activate(), std::runtime_error);
+        CHECK_NOTHROW(scene.Tick(0.1f));
+        CHECK(log == std::vector<std::string>{"scene.start", "scene.enter", "scene.update"});
+    }
+    SECTION("Enter is not retried; the visit counts as entered") {
+        scene.duringEnter = fail;
+        CHECK_THROWS_AS(scene.Activate(), std::runtime_error);
+        CHECK_NOTHROW(scene.Tick(0.1f));
+        CHECK(log == std::vector<std::string>{"scene.start", "scene.enter", "scene.update"});
+    }
+    SECTION("Update") {
+        scene.Activate();
+        scene.duringUpdate = fail;
+        CHECK_THROWS_AS(scene.Tick(0.1f), std::runtime_error);
+        scene.duringUpdate = {};
+        CHECK_NOTHROW(scene.Tick(0.1f));
+    }
+    SECTION("Draw") {
+        scene.Activate();
+        scene.duringDraw = fail;
+        CHECK_THROWS_AS(PaintFrame([&](Painter& paint) { scene.Render(paint); }), std::runtime_error);
+        scene.duringDraw = {};
+        CHECK_NOTHROW(PaintFrame([&](Painter& paint) { scene.Render(paint); }));
+    }
+    SECTION("Input") {
+        scene.Activate();
+        scene.duringInput = fail;
+        CHECK_THROWS_AS(scene.ReadInput({}), std::runtime_error);
+        scene.duringInput = {};
+        CHECK_NOTHROW(scene.ReadInput({}));
+    }
     log.clear();
-    CHECK_NOTHROW(scene.Tick(0.1f));
-    CHECK(log == std::vector<std::string>{"child.update", "scene.update"});
+    CHECK_NOTHROW(scene.Shutdown());
+    CHECK(log == std::vector<std::string>{"scene.cancel", "scene.exit", "scene.stop"}); // Paired with what began
 }
 
 TEST_CASE("Engine.Scene.CancellationConsumesInputAndAllowsNestedCancellation", "[engine][lifecycle][input]") {
@@ -157,6 +175,7 @@ TEST_CASE("Engine.Scene.CancellationConsumesInputAndAllowsNestedCancellation", "
         CHECK(log == std::vector<std::string>{"scene.input", "scene.cancel"});
         scene.duringCancel = {};
     }
+    scene.Shutdown();
 }
 
 TEST_CASE("Engine.Scene.ShutdownCompletesCleanupBeforeRethrowingFirstFailure", "[engine][lifecycle]") {
@@ -166,23 +185,21 @@ TEST_CASE("Engine.Scene.ShutdownCompletesCleanupBeforeRethrowingFirstFailure", "
     log.clear();
     scene.duringCancel = [] { throw std::runtime_error("cancel failed"); };
     scene.duringExit = [] { throw std::runtime_error("exit failed"); };
-    scene.Child().duringStop = [] { throw std::runtime_error("child failed"); };
     scene.duringStop = [] { throw std::runtime_error("scene failed"); };
     CHECK_THROWS_WITH(scene.Shutdown(), "cancel failed");
-    CHECK(log == std::vector<std::string>{"scene.cancel", "scene.exit", "child.stop", "scene.stop"});
+    CHECK(log == std::vector<std::string>{"scene.cancel", "scene.exit", "scene.stop"});
     CHECK(scene.IsShutdown());
     CHECK_NOTHROW(scene.Shutdown());
     CHECK_THROWS_AS(scene.Activate(), std::logic_error);
+    CHECK(log.size() == 3);
 }
 
-TEST_CASE("Engine.Scene.DestructorCleanupDoesNotPropagateCallbackFailures", "[engine][lifecycle]") {
+TEST_CASE("Engine.Scene.ShutdownOfAnInactiveSceneStopsWithoutExit", "[engine][lifecycle]") {
     std::vector<std::string> log;
-    {
-        SceneSafetyProbe scene(log);
-        scene.Activate();
-        log.clear();
-        scene.duringExit = [] { throw std::runtime_error("exit failed"); };
-        scene.Child().duringStop = [] { throw std::runtime_error("child failed"); };
-    }
-    CHECK(log == std::vector<std::string>{"scene.cancel", "scene.exit", "child.stop", "scene.stop"});
+    SceneSafetyProbe scene(log);
+    scene.Activate();
+    scene.Deactivate();
+    log.clear();
+    scene.Shutdown();
+    CHECK(log == std::vector<std::string>{"scene.stop"});
 }

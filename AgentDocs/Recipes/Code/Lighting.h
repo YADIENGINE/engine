@@ -35,7 +35,6 @@ private:
 class RecipeLitScene final : public Scene {
 public:
     RecipeLitScene(const SceneServices& services, bool guides);
-    ~RecipeLitScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;

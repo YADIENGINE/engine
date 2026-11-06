@@ -18,7 +18,8 @@ Dependency versions and IPC limits are in [API](Api.md).
 
 The editor first starts the worker in catalog mode; the registry supplies only metadata, without setting up
 GL/fonts/audio. Opening a scene makes RunEditorWorker set up services and WorkerGame; Game::Run is the only loop.
-WorkerScene manages the content instance through ObjectList. Reset replaces the instance.
+WorkerScene hosts the content instance through `Scene`'s public lifecycle, only between its own Start and Stop, so its
+Stop always shuts the instance down. Reset shuts the instance down and replaces it.
 
 - **Snapshots** (`Internals/Session/WorkerSnapshots`): workers run from an immutable copy of each successful build, not
   from build output (`<worker>.live-<n>/` retains EXE/PDB/reporter together; the asset working folder stays).

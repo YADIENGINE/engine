@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <functional>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -14,12 +15,6 @@ public:
     ManagedScene(std::vector<std::string>& log, std::string name)
         : _log(log)
         , _name(std::move(name)) {}
-    ~ManagedScene() override {
-        duringEnter = {};
-        duringExit = {};
-        duringStop = {};
-        ShutdownNoThrow();
-    }
     std::function<void()> duringEnter;
     std::function<void()> duringExit;
     std::function<void()> duringStop;
@@ -168,4 +163,61 @@ TEST_CASE("Engine.SceneManager.ActivationFailureCanBeCleanedUpAndPendingShutdown
         CHECK_THROWS_AS(scenes.Request(scene), std::logic_error);
         CHECK_NOTHROW(scenes.Shutdown());
     }
+}
+
+namespace {
+// Game's shape: the base owns the scene manager, the derived game owns its scenes as value members.
+class GameShape {
+public:
+    GameShape()
+        : _scenes(std::make_unique<SceneManager>()) {}
+    virtual ~GameShape() = default; // Like ~Game: never touches the borrowed scenes
+
+protected:
+    SceneManager& Scenes() { return *_scenes; }
+
+private:
+    std::unique_ptr<SceneManager> _scenes;
+};
+
+class ThrowingGame final : public GameShape {
+public:
+    explicit ThrowingGame(std::vector<std::string>& log)
+        : _title(log, "title")
+        , _play(log, "play") {
+        Scenes().Register(_title);
+        Scenes().Register(_play);
+        Scenes().Request(_title);
+        throw std::runtime_error("derived game failed");
+    }
+
+private:
+    ManagedScene _title;
+    ManagedScene _play;
+};
+} // namespace
+
+TEST_CASE("Engine.SceneManager.AGameConstructorThrowingAfterItsScenesExistLeavesNothingToUndo", "[engine][scene]") {
+    // Game's constructor never commits a scene (Run does), so the scenes die before any hook ran, and their
+    // destruction needs no shutdown. Debug builds assert in ~Scene if a started scene was not shut down.
+    std::vector<std::string> log;
+    CHECK_THROWS_WITH(ThrowingGame(log), "derived game failed");
+    CHECK(log.empty());
+}
+
+TEST_CASE("Engine.SceneManager.ShutdownRunsEveryStartedScenesHooksWhileTheyAreAlive", "[engine][scene]") {
+    std::vector<std::string> log;
+    SceneManager scenes;
+    ManagedScene visited(log, "visited"), current(log, "current"), never(log, "never");
+    scenes.Register(visited);
+    scenes.Register(current);
+    scenes.Register(never);
+    scenes.Request(visited);
+    CHECK(scenes.Commit({}));
+    scenes.Request(current);
+    CHECK(scenes.Commit({}));
+    log.clear();
+    scenes.Shutdown(); // Game::Run's last step, and its failure path
+    CHECK(log == std::vector<std::string>{"current.cancel", "current.exit", "current.stop", "visited.stop"});
+    CHECK(never.IsShutdown());
 }

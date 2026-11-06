@@ -73,7 +73,6 @@ private:
 class RecipeCameraScene final : public Scene {
 public:
     RecipeCameraScene(const SceneServices& services, bool split, bool guides);
-    ~RecipeCameraScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
@@ -91,7 +90,6 @@ private:
 class RecipeScrollerScene final : public Scene, StageView {
 public:
     RecipeScrollerScene(const SceneServices& services, bool guides);
-    ~RecipeScrollerScene() override { ShutdownNoThrow(); }
     [[nodiscard]] const RecipeScrollerSimulation& Rules() const { return _hosted.Sim(); }
 
 private:

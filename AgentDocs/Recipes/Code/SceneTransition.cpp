@@ -1,11 +1,12 @@
 // [recipe:SceneTransition]
 #include "AgentDocs/Recipes/Code/SceneTransition.h"
-#include <memory>
-#include "AgentDocs/Recipes/Code/CharacterObject.h"
+
+namespace {
+constexpr Float2 PoseOffset{12.0f, 0.0f};
+} // namespace
 
 RecipeScene::RecipeScene(const SceneServices&)
-    : Scene(TimeDomain::Game) {
-    AddObject(std::make_unique<RecipeCharacterObject>());
-}
-RecipeScene::~RecipeScene() { ShutdownNoThrow(); }
+    : Scene(TimeDomain::Game) {}
+void RecipeScene::Update(float deltaSeconds) { _character.Pose(PoseOffset, deltaSeconds); }
+void RecipeScene::Draw(Painter& paint) const { _character.Draw(paint); }
 // [/recipe]

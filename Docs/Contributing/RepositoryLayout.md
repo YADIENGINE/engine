@@ -6,13 +6,13 @@
 | --- | --- |
 | `Core/` | Shipping engine code and include root (`Runtime/Game.h`); targets in `Core/CMakeLists.txt` |
 | `Core/Runtime/` | Game, settings, loop and services; `Core/Main.cpp` calls the project's `CreateGame()` |
-| `Core/GameObjects/`, `Core/Scene/` | Headless object/scene lifecycle and optional object ownership |
+| `Core/Scene/` | Headless scene lifecycle, services and editor hooks; the scene manager is in `Internals/` |
 | `Core/Graphics/` | Paint, Text, Surface, Post, Light; GPU/render implementation; Draw and Style helpers |
 | `Assets/Graphics/` | `EngineAssets`: ready-made graphics with their own look, plus their editor registrations; include root `Assets/` |
 | `Assets/Audio/` | Ready-made sounds as files, copied beside every game as `Assets/Engine/Audio`; `release` packages those a game uses |
 | `Core/Ui/` | Game UI: Layout, Kernel, Looks, Widgets, Kit, Sound ([UI](../Ui.md)) |
 | `Core/Input/`, `Core/Audio/`, `Core/Platform/` | Public services and private platform backends |
-| `Core/Fx/`, `Core/Gameplay/`, `Core/Progress/` | Headless effects and reusable gameplay/view logic |
+| `Core/Fx/`, `Core/Gameplay/` | Headless effects and reusable gameplay helpers (stats, timed effects, tiered goals, pickup flights) |
 | `Core/Stage/` | A scene's view side in one fixed order (`Stage`, `StageView`, `DepthOrder`), in `EngineHeadless`; view code that never reaches a simulation ([Stage](../Graphics/Stage.md)) |
 | `Core/Utilities/` | Foundation types and helpers, grouped under `Geometry/`, `Math/` and `Random/`. `Random/` (seeded numbers, tables, scattering, noise) builds as `EngineRandom`, with precise floats; the other `.cpp` files belong to `EngineHeadless` |
 | `Core/Diagnostics/` | Cross-cutting development checks and frame instrumentation contracts |

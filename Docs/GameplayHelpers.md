@@ -9,8 +9,8 @@ never names game types. Input navigation is a compiled borrowed view.
 | --- | --- |
 | `Gameplay/StatSheet.h` | `StatSheet<Id, Rules>`: value = (`Rules::Base` + ΣAdd + bonus) × ΠMultiply, then `Rules::Finalize` (clamps). `StatModifierOf<Id>`, `ModOp` |
 | `Gameplay/TimedEffectSet.h` | Re-added timed effects add their time and gain a stack (up to `maxStacks`), persistent ones are separate copies; `RefreshTimed` refills active timers with an optional excluded ID; `Update` reports expiry; `FirstTimed` |
-| `Progress/TieredProgress.h` | Tiered goals (achievements): tier / seen / carried progress, saved as `<key>.tier/seen/progress` with clamps |
-| `Progress/CollectFlights.h` | Pickup-to-counter flights; `Pending(kind)` keeps credit off a counter until arrival |
+| `Gameplay/TieredProgress.h` | Tiered goals (achievements): tier / seen / carried progress, saved as `<key>.tier/seen/progress` with clamps |
+| `Gameplay/CollectFlights.h` | Pickup-to-counter flights; `Pending(kind)` keeps credit off a counter until arrival |
 | `Utilities/Random/Rng.h` | `Rng`: the engine's seeded generator (PCG32); the same seed gives the same sequence in every build |
 | `Utilities/Random/WeightedPick.h` | `WeightedIndex(weights, rng)`: index in proportion to the weights, from an `Rng` |
 | `Utilities/Random/DrawTable.h` | `DrawTable`: weighted draws with no-repeat and pity, remembered in a `DrawMemory` ([Procedural](Procedural.md#tables-that-remember)) |
@@ -77,6 +77,6 @@ const int notifications = goals.UnseenCount();
 goals.MarkSeen();
 ```
 
-Also include `Progress/TieredProgress.h` for this example. Save, RNG, and UI policies stay outside these helpers.
+Also include `Gameplay/TieredProgress.h` for this example. Save, RNG, and UI policies stay outside these helpers.
 Collection navigation is described in [Input](Input.md), and counter animation in [Themes and
 UI](Graphics/ThemesAndUi.md).

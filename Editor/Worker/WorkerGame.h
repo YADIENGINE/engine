@@ -6,7 +6,6 @@ class WorkerGame : public Game {
 public:
     WorkerGame(const GameSettings& settings, const SceneRegistry& registry, ControlChannel& channel,
                const std::string& session);
-    ~WorkerGame() override;
 
 protected:
     void Start() override;

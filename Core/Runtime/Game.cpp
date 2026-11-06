@@ -425,7 +425,7 @@ void Game::Run() {
                 Scene* scene = _sceneManager->Current();
                 if (scene) scene->TickReal(realSeconds);
                 if (scene && scene->Clock() == TimeDomain::Real) scene->Tick(realSeconds);
-                const bool paused = _paused || (scene && scene->Enabled() && scene->GameTimePaused());
+                const bool paused = _paused || (scene && scene->GameTimePaused());
                 const float gameSeconds = paused ? 0.0f : _timeScale.Advance(realSeconds);
                 _sounds.SetBusPaused(SoundBus::World, paused);
                 if (scene && scene->Clock() == TimeDomain::Game) scene->Tick(gameSeconds);

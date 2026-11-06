@@ -1,171 +1,82 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <functional>
-#include <memory>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Runtime/TimeScale.h"
 #include "Scene/TransitionClock.h"
-#include "GameObjects/ObjectList.h"
 #include "Scene/Scene.h"
 #include "Tests/PaintHarness.h"
 
 namespace {
-class Probe final : public GameObject {
+class ProbeScene final : public Scene {
 public:
-    Probe(std::vector<std::string>& log, std::string name)
-        : _log(log)
+    ProbeScene(std::vector<std::string>& log, std::string name, TimeDomain time = TimeDomain::Real)
+        : Scene(time)
+        , _log(log)
         , _name(std::move(name)) {}
-    ~Probe() override { _log.push_back(_name + ".destroy"); }
-    std::function<void()> duringUpdate;
 
 private:
     void Start() override { _log.push_back(_name + ".start"); }
+    void Enter() override { _log.push_back(_name + ".enter"); }
+    void Exit() override { _log.push_back(_name + ".exit"); }
     void Update(float seconds) override {
         (void)seconds;
         _log.push_back(_name + ".update");
-        if (duringUpdate) duringUpdate();
     }
     void Draw(Painter&) const override { _log.push_back(_name + ".draw"); }
     void Stop() override { _log.push_back(_name + ".stop"); }
     std::vector<std::string>& _log;
     std::string _name;
 };
-
-class ProbeScene final : public Scene {
-public:
-    explicit ProbeScene(std::vector<std::string>& log)
-        : _log(log)
-        , _child(log, "child") {
-        AddObject(_child);
-    }
-    ~ProbeScene() override { ShutdownNoThrow(); }
-
-private:
-    void Start() override { _log.push_back("scene.start"); }
-    void Enter() override { _log.push_back("scene.enter"); }
-    void Exit() override { _log.push_back("scene.exit"); }
-    void Update(float seconds) override {
-        (void)seconds;
-        _log.push_back("scene.update");
-    }
-    void Stop() override { _log.push_back("scene.stop"); }
-    std::vector<std::string>& _log;
-    Probe _child;
-};
 } // namespace
 
-TEST_CASE("Engine.Lifecycle.StartsOnceAndDisabledObjectsSkipCallbacks", "[engine]") {
+TEST_CASE("Engine.Scene.ReentryKeepsStartAndStopOnce", "[engine]") {
     std::vector<std::string> log;
-    Probe object(log, "object");
-    ObjectList objects;
-    object.SetEnabled(false);
-    objects.Add(object);
-    ObjectList other;
-    CHECK_THROWS_AS(other.Add(object), std::logic_error);
-    objects.Start();
-    objects.Update(0.1f);
-    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
-    CHECK(log.empty());
-    object.SetEnabled(true);
-    objects.Update(0.1f);
-    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
-    object.SetEnabled(false);
-    objects.Update(0.1f);
-    object.SetEnabled(true);
-    objects.Update(0.1f);
-    objects.Stop();
-    objects.Stop();
-    objects.Update(0.1f);
-    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
-    CHECK(log ==
-          std::vector<std::string>{"object.start", "object.update", "object.draw", "object.update", "object.stop"});
-    CHECK_THROWS_AS(other.Add(object), std::logic_error);
-}
-
-TEST_CASE("Engine.Lifecycle.RemovalStopsOwnedObjectsBeforeDestruction", "[engine]") {
-    std::vector<std::string> log;
-    ObjectList objects;
-    auto owned = std::make_unique<Probe>(log, "owned");
-    Probe& object = *owned;
-    object.duringUpdate = [&] { objects.Remove(object); };
-    objects.Add(std::move(owned));
-    objects.Update(0.1f);
-    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
-    CHECK(log == std::vector<std::string>{"owned.start", "owned.update"});
-    objects.Update(0.1f);
-    CHECK(log == std::vector<std::string>{"owned.start", "owned.update", "owned.stop", "owned.destroy"});
-}
-
-TEST_CASE("Engine.Lifecycle.EnablingDuringUpdateStartsBeforeTheNextUpdate", "[engine]") {
-    std::vector<std::string> log;
-    Probe first(log, "first");
-    Probe second(log, "second");
-    ObjectList objects;
-    second.SetEnabled(false);
-    first.duringUpdate = [&] { second.SetEnabled(true); };
-    objects.Add(first);
-    objects.Add(second);
-    objects.Update(0.1f);
-    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
-    CHECK(log == std::vector<std::string>{"first.start", "first.update", "first.draw"});
-    log.clear();
-    objects.Update(0.1f);
-    CHECK(log == std::vector<std::string>{"second.start", "first.update", "second.update"});
-}
-
-TEST_CASE("Engine.Lifecycle.NewObjectsStartOnTheNextDispatch", "[engine]") {
-    std::vector<std::string> log;
-    Probe first(log, "first");
-    Probe second(log, "second");
-    ObjectList objects;
-    bool added = false;
-    first.duringUpdate = [&] {
-        if (!added) {
-            objects.Add(second);
-            added = true;
-        }
-    };
-    objects.Add(first);
-    objects.Update(0.1f);
-    PaintFrame([&](Painter& paint) { objects.Draw(paint); });
-    CHECK(log == std::vector<std::string>{"first.start", "first.update", "first.draw"});
-    log.clear();
-    objects.Update(0.1f);
-    CHECK(log == std::vector<std::string>{"second.start", "first.update", "second.update"});
-}
-
-TEST_CASE("Engine.Scene.ReentryKeepsStartOnceAndChildrenPrecedeSimulation", "[engine]") {
-    std::vector<std::string> log;
-    ProbeScene scene(log);
+    ProbeScene scene(log, "scene");
     scene.Activate();
     scene.Tick(0.1f);
     scene.Deactivate();
     scene.Tick(0.1f);
+    PaintFrame([&](Painter& paint) { scene.Render(paint); });
     scene.Activate();
     scene.Tick(0.1f);
     scene.Shutdown();
-    CHECK(log == std::vector<std::string>{"scene.start", "child.start", "scene.enter", "child.update", "scene.update",
-                                          "scene.exit", "scene.enter", "child.update", "scene.update", "scene.exit",
-                                          "child.stop", "scene.stop"});
+    scene.Shutdown();
+    scene.Tick(0.1f);
+    PaintFrame([&](Painter& paint) { scene.Render(paint); });
+    CHECK(log == std::vector<std::string>{"scene.start", "scene.enter", "scene.update", "scene.exit", "scene.enter",
+                                          "scene.update", "scene.exit", "scene.stop"});
 }
 
-TEST_CASE("Engine.Time.ZeroGameTimeKeepsDrawingAndRealTimeObjectsAdvance", "[engine]") {
+TEST_CASE("Engine.Scene.NeverActivatedSceneRunsNoHooks", "[engine]") {
     std::vector<std::string> log;
-    Probe visual(log, "visual");
-    Probe transition(log, "transition");
-    ObjectList game;
-    ObjectList real;
-    game.Add(visual);
-    real.Add(transition);
+    {
+        ProbeScene scene(log, "scene");
+        scene.Tick(0.1f);
+        PaintFrame([&](Painter& paint) { scene.Render(paint); });
+        scene.Deactivate();
+    } // Nothing started, so nothing is left to undo and the scene needs no shutdown.
+    ProbeScene shut(log, "shut");
+    shut.Shutdown();
+    CHECK(log.empty());
+}
+
+TEST_CASE("Engine.Time.ZeroGameTimeKeepsDrawingAndRealTimeScenesAdvance", "[engine]") {
+    std::vector<std::string> log;
+    ProbeScene game(log, "game", TimeDomain::Game);
+    ProbeScene real(log, "real");
+    game.Activate();
+    real.Activate();
+    log.clear();
     TimeScale time;
     time.Hitstop(0.5f);
-    game.Update(time.Advance(0.1f));
-    real.Update(0.1f);
-    PaintFrame([&](Painter& paint) { game.Draw(paint); });
-    CHECK(log == std::vector<std::string>{"visual.start", "transition.start", "transition.update", "visual.draw"});
+    game.Tick(time.Advance(0.1f));
+    real.Tick(0.1f);
+    PaintFrame([&](Painter& paint) { game.Render(paint); });
+    CHECK(log == std::vector<std::string>{"real.update", "game.draw"});
+    game.Shutdown();
+    real.Shutdown();
 }
 
 TEST_CASE("Engine.Time.HitstopFreezesAndKeepsLongerRequest", "[engine][time]") {

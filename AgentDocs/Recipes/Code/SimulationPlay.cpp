@@ -68,7 +68,6 @@ RecipePlayScene::RecipePlayScene(const SceneServices& services, std::uint64_t se
     , _time(services.time)
     , _hosted(services.simulation, RecipePlaySettings(), SimulationStart{.seed = seed, .players = 1})
     , _bindings(MakeBindings()) {}
-RecipePlayScene::~RecipePlayScene() { ShutdownNoThrow(); }
 std::string RecipePlayScene::ExecuteAction(const std::string& id) {
     if (id == "add_score") _hosted.Runner().Command("add_score", 5); // On the tape, so a rewind plays it again
     return {};

@@ -1,5 +1,20 @@
 # Cumulative migration notes
 
+## Scenes without an object list (D56)
+
+A scene keeps its parts as value members and calls them from its own hooks; the host shuts it down, so it needs no
+destructor.
+
+| Old | New | How to migrate |
+| --- | --- | --- |
+| `GameObject` subclass registered with `AddObject` (`GameObjects/GameObject.h`) | A value member of the scene | Make it a plain class; call its update and draw from the scene's `Update` and `Draw`, its setup from `Start` or `Enter`, its cleanup from `Exit` or `Stop`. |
+| `AddObject(std::unique_ptr<GameObject>)`, `RemoveObject`, `ClearObjects` | `Pool<T>` (`Utilities/Pool.h`) | Keep things that come and go in a pool member and loop over it in `Update` and `Draw`. |
+| `ObjectList` | Removed | Call the members in the order you want. |
+| `~X() override { ShutdownNoThrow(); }` | No destructor | Delete it. Code that drives a scene itself (a test) calls `Shutdown()` before the scene dies. |
+| `Scene::SetEnabled`, `Scene::Enabled` | Removed | Keep a flag of your own and check it in your hooks. |
+| `Progress/TieredProgress.h`, `Progress/CollectFlights.h` | `Gameplay/TieredProgress.h`, `Gameplay/CollectFlights.h` | Change the include. |
+| `WorkerScene::Open` before the worker scene started | Throws `std::logic_error` | Worker code only: open content once the worker scene runs. |
+
 ## Stage (D54)
 
 A scene's view side can be one `Stage` (`Stage/Stage.h`) that draws in a fixed order. Moving to it is optional, but the
@@ -16,13 +31,12 @@ recipes and docs now use it. `FxStage::Update` changed: it now takes one clock p
 ## One scene type (D53)
 
 The editor's catalog opens the game's own `Scene`; the separate editor scene type is gone. Write each screen once:
-derive it from `Scene`, take `const SceneServices&` plus its own values in the constructor, and call
-`ShutdownNoThrow()` in its destructor. The game builds it from `Game::Services()`, the catalog's factory from the
+derive it from `Scene` and take `const SceneServices&` plus its own values in the constructor. The game builds it from `Game::Services()`, the catalog's factory from the
 services it receives.
 
 | Old | New | How to migrate |
 | --- | --- | --- |
-| `EditorScene` (`Editor/Api/EditorScene.h`) | `Scene` (`Scene/Scene.h`) | Derive from `Scene`; add `~X() override { ShutdownNoThrow(); }`. A game scene and its editor copy become one class. |
+| `EditorScene` (`Editor/Api/EditorScene.h`) | `Scene` (`Scene/Scene.h`) | Derive from `Scene` (since D56 without a destructor). A game scene and its editor copy become one class. |
 | `HandleInput` with `input.cancelled` | `InputCancelled()` | Move the cancelled branch into an `InputCancelled` override; `HandleInput` no longer sees cancelled input. |
 | `SceneDefinition::create` returning `std::unique_ptr<EditorScene>` | `std::unique_ptr<Scene>` | Return the game's scene class. |
 | `Editor/Api/SceneParameter.h`, `SceneInspection.h`, `SceneServices.h` | `Scene/SceneParameter.h`, `Scene/SceneInspection.h`, `Scene/SceneServices.h` | Change the include. |

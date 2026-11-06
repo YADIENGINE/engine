@@ -12,7 +12,6 @@
 class PlayScene final : public Scene {
 public:
     PlayScene(Game& game, std::uint64_t seed);
-    ~PlayScene() override;
 
 protected:
     void HandleInput(const DeviceInput& input) override;

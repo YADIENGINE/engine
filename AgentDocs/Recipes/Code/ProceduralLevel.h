@@ -56,7 +56,6 @@ void DrawRecipeDungeon(Painter& paint, const RecipeDungeonSimulation& simulation
 class RecipeDungeonScene final : public Scene {
 public:
     RecipeDungeonScene(const SceneServices& services, std::uint64_t seed, const std::string& layout);
-    ~RecipeDungeonScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;

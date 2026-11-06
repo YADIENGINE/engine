@@ -1,6 +1,8 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include "Editor/Api/SceneRegistry.h"
@@ -25,10 +27,7 @@ public:
         , _hosted(services.simulation, ToyDefinition().settings, SimulationStart{.seed = 1, .players = 2}) {
         _journal.push_back("construct");
     }
-    ~ToyScene() override {
-        ShutdownNoThrow();
-        _journal.push_back("destroy");
-    }
+    ~ToyScene() override { _journal.push_back("destroy"); }
     [[nodiscard]] std::string ExecuteAction(const std::string& id) override {
         if (id != "bonus") return Scene::ExecuteAction(id);
         _hosted.Runner().Command("bonus", 3);
@@ -38,12 +37,16 @@ public:
     [[nodiscard]] const SimulationRunner& Runner() const { return _hosted.Runner(); }
 
     bool paused = false;
+    bool failEnter = false;
     float realSeconds = 0.0f;
     float updateSeconds = 0.0f;
 
 protected:
     void Start() override { _journal.push_back("start"); }
-    void Enter() override { _journal.push_back("enter"); }
+    void Enter() override {
+        _journal.push_back("enter");
+        if (failEnter) throw std::runtime_error("enter failed");
+    }
     void HandleInput(const DeviceInput&) override { _journal.push_back("input"); }
     void InputCancelled() override {
         _hosted.Runner().CancelInput();
@@ -137,7 +140,7 @@ TEST_CASE("Editor.OneScene.TheWorkerHostsTheSameClass", "[engine-editor][scene]"
 
         journal.clear();
         host.Shutdown();
-        CHECK(journal == Journal{"cancel", "cancel", "stop", "destroy"}); // The worker's input, then the scene's own
+        CHECK(journal == Journal{"cancel", "stop", "destroy"}); // Once: the hosted scene's shutdown cancels it
         CHECK_FALSE(host.HasContent());
         CHECK(worker.Runner() == nullptr);
     }
@@ -156,18 +159,48 @@ TEST_CASE("Editor.OneScene.TheWorkerKeepsTheScenesClock", "[engine-editor][scene
     host.Tick(0.05f);
     CHECK(made->realSeconds == Catch::Approx(0.1f));
     CHECK(made->updateSeconds == Catch::Approx(0.1f));
+    host.Shutdown();
 }
 
-TEST_CASE("Editor.OneScene.AnUnstartedWorkerStillStopsItsScene", "[engine-editor][scene]") {
+TEST_CASE("Editor.OneScene.TheWorkerHoldsContentOnlyWhileItRuns", "[engine-editor][scene]") {
     WorkerSimulation worker;
     TestSceneServices editor(&worker);
     Journal journal;
     ToyScene* made = nullptr;
     const auto definition = ToyEntry(journal, made);
     {
-        WorkerScene host(editor.services); // Never activated: its own Stop never runs
-        host.Open(definition, {});
+        WorkerScene host(editor.services); // Never activated: no content, so nothing to shut down
+        CHECK_THROWS_AS(host.Open(definition, {}), std::logic_error);
+        CHECK_FALSE(host.HasContent());
     }
-    CHECK(journal == Journal{"construct", "start", "enter", "cancel", "stop", "destroy"});
+    CHECK(journal.empty());
+    WorkerScene host(editor.services);
+    host.Activate();
+    host.Open(definition, {});
+    host.Deactivate(); // Content stays until the worker stops
+    CHECK(host.HasContent());
+    journal.clear();
+    host.Shutdown();
+    CHECK(journal == Journal{"cancel", "stop", "destroy"});
+    CHECK_THROWS_AS(host.Reset(), std::logic_error);
     CHECK(worker.Runner() == nullptr);
+}
+
+TEST_CASE("Editor.OneScene.AFailedActivationIsShutDownBeforeTheInstanceDies", "[engine-editor][scene]") {
+    WorkerSimulation worker;
+    TestSceneServices editor(&worker);
+    Journal journal;
+    ToyScene* made = nullptr;
+    auto definition = ToyEntry(journal, made);
+    definition.create = [&journal](const SceneServices& services, const SceneParameters&) {
+        auto scene = std::make_unique<ToyScene>(services, journal);
+        scene->failEnter = true;
+        return scene;
+    };
+    WorkerScene host(editor.services);
+    host.Activate();
+    CHECK_THROWS_WITH(host.Open(definition, {}), "enter failed");
+    CHECK(journal == Journal{"construct", "start", "enter", "cancel", "stop", "destroy"});
+    CHECK_FALSE(host.HasContent());
+    host.Shutdown();
 }

@@ -31,7 +31,6 @@ public:
         for (const auto& [id, value] : parameters)
             (void)ApplyParameter(id, value);
     }
-    ~RenderGallery() override { ShutdownNoThrow(); }
 
     std::string ApplyParameter(const std::string& id, const SceneValue& value) override {
         if (id == "animate") _animate = std::get<bool>(value);

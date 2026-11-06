@@ -73,7 +73,6 @@ void DrawRecipeShooter(Painter& paint, const RecipeShooterSimulation& simulation
 class RecipeShooterScene final : public Scene {
 public:
     RecipeShooterScene(const SceneServices& services, std::uint64_t seed, bool showColliders);
-    ~RecipeShooterScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;

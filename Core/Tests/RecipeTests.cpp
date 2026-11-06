@@ -138,6 +138,7 @@ TEST_CASE("Engine.Recipes.SimulationPlaysInASceneAndWithoutOne", "[engine][recip
     const auto replay = VerifyTape(definition, scene.Runner().Tape());
     CHECK_FALSE(replay.mismatch);
     CHECK(replay.hash == HashState(scene.Sim()));
+    scene.Shutdown();
 }
 
 TEST_CASE("Engine.Recipes.SimulationEventsReachTheScene", "[engine][recipes]") {
@@ -172,6 +173,7 @@ TEST_CASE("Engine.Recipes.SimulationEventsReachTheScene", "[engine][recipes]") {
     scene.Tick(host.time.Advance(1.0f / 60.0f));
     CHECK(scene.Sim().Score() == 1);
     CHECK(host.time.Advance(1.0f / 60.0f) == 0.0f);
+    scene.Shutdown();
 }
 
 namespace {

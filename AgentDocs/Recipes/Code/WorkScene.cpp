@@ -19,7 +19,6 @@ public:
             _randomOffset = std::uniform_real_distribution<float>(-RandomPoseRange, RandomPoseRange)(random);
         }
     }
-    ~CharacterWorkScene() override { ShutdownNoThrow(); }
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override {
         if (id != "offset") return "Unknown parameter";
         _offset = static_cast<float>(std::get<double>(value));

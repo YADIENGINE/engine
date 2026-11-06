@@ -65,7 +65,6 @@ engine_tests(EngineTests
         LightTests.cpp
         MathTests.cpp
         NoiseFieldTests.cpp
-        ObjectListSafetyTests.cpp
         PaintTests.cpp
         PaintGeometryTests.cpp
         PaintTextTests.cpp
@@ -74,7 +73,6 @@ engine_tests(EngineTests
         PostSettingsTests.cpp
         RenderPipelineTests.cpp
         SceneManagerTests.cpp
-        SceneObjectsTests.cpp
         SceneSafetyTests.cpp
         UiLayoutTests.cpp
         UiSoundTests.cpp
@@ -185,7 +183,6 @@ set(recipeRoot "${CMAKE_CURRENT_SOURCE_DIR}/../../AgentDocs/Recipes/Code")
 add_library(EngineRecipes STATIC
     "${recipeRoot}/AnimatedCharacter.cpp"
     "${recipeRoot}/AnimatorFighter.cpp"
-    "${recipeRoot}/CharacterObject.cpp"
     "${recipeRoot}/CharacterScene.cpp"
     "${recipeRoot}/CollisionBullets.cpp"
     "${recipeRoot}/DepthStage.cpp"

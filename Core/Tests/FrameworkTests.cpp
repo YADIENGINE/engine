@@ -5,11 +5,11 @@
 #include <string>
 #include <vector>
 #include "Tests/Support/TempDirectory.h"
-#include "Progress/CollectFlights.h"
+#include "Gameplay/CollectFlights.h"
 #include "Gameplay/StatSheet.h"
+#include "Gameplay/TieredProgress.h"
 #include "Gameplay/TimedEffectSet.h"
 #include "Modules/Persistence/Persistence.h"
-#include "Progress/TieredProgress.h"
 #include "Options/ChoiceList.h"
 #include "Utilities/EnumTable.h"
 #include "Utilities/Random/WeightedPick.h"

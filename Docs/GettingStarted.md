@@ -45,7 +45,6 @@ beside the desktop executable. Do not add your own `main` function.
 class MyScene final : public Scene {
 public:
     explicit MyScene(const SceneServices& services);
-    ~MyScene() override;
 
 private:
     void Enter() override;
@@ -76,7 +75,6 @@ constexpr float CanvasWidth = 1280.0f;
 
 MyScene::MyScene(const SceneServices&)
     : Scene(TimeDomain::Game) {}
-MyScene::~MyScene() { ShutdownNoThrow(); }
 void MyScene::Enter() { _x = StartX; }
 void MyScene::HandleInput(const DeviceInput& input) { _direction = InputNavigation(input).Horizontal(); }
 void MyScene::Update(float seconds) {
@@ -151,8 +149,7 @@ std::unique_ptr<Game> CreateGame() { return std::make_unique<MyGame>(); }
 `Game/Game.settings.json` holds the title, the canvas size and `applicationId`, the user-data folder name (options,
 saves); keep the id once the game is released. Edit it under Project → Project settings in the editor ([Project
 settings](ProjectSettings.md)). The scene is
-a value member of the game. Call `ShutdownNoThrow()` in the concrete scene's destructor; the same ownership rule applies
-when adding child objects.
+a value member of the game; `Game::Run` shuts it down while it is alive, so the scene needs no destructor.
 
 ## Building and trying it as a developer
 

@@ -9,28 +9,11 @@
 #include "Tests/PaintHarness.h"
 
 namespace {
-class TimeSceneChild final : public GameObject {
-public:
-    explicit TimeSceneChild(std::vector<std::string>& log)
-        : _log(log) {}
-
-private:
-    void Update(float seconds) override {
-        (void)seconds;
-        _log.push_back("child.update");
-    }
-    std::vector<std::string>& _log;
-};
-
 class TimeScene final : public Scene {
 public:
     explicit TimeScene(std::vector<std::string>& log)
         : Scene(TimeDomain::Game)
-        , _log(log)
-        , _child(log) {
-        AddObject(_child);
-    }
-    ~TimeScene() override { ShutdownNoThrow(); }
+        , _log(log) {}
     [[nodiscard]] bool GameTimePaused() const override { return paused; }
     bool paused = true;
     float realElapsed = 0.0f;
@@ -51,7 +34,6 @@ private:
     }
     void Draw(Painter&) const override { _log.push_back("scene.draw"); }
     std::vector<std::string>& _log;
-    TimeSceneChild _child;
 };
 } // namespace
 
@@ -73,8 +55,9 @@ TEST_CASE("Engine.Scene.RealUpdateRunsWhileGameTimeIsFrozenAndCanReleasePause", 
     scene.TickReal(0.1f);
     CHECK_FALSE(scene.GameTimePaused());
     scene.Tick(0.1f);
-    CHECK(log == std::vector<std::string>{"scene.real", "child.update", "scene.update"});
+    CHECK(log == std::vector<std::string>{"scene.real", "scene.update"});
     CHECK(scene.gameElapsed == Catch::Approx(0.1f));
+    scene.Shutdown();
 }
 
 TEST_CASE("Engine.Scene.ZeroHostTimeInitializesWithoutAdvancingEitherUpdate", "[engine][scene][time]") {
@@ -92,16 +75,15 @@ TEST_CASE("Engine.Scene.ZeroHostTimeInitializesWithoutAdvancingEitherUpdate", "[
     scene.Tick(0.05f);
     CHECK(scene.realElapsed == Catch::Approx(0.2f));
     CHECK(scene.gameElapsed == Catch::Approx(0.05f));
+    scene.Shutdown();
 }
 
 TEST_CASE("Engine.Scene.RealUpdateRespectsActivationAndReleasesItsDispatchGuardOnFailure", "[engine][scene][time]") {
     std::vector<std::string> log;
     TimeScene scene(log);
-    scene.SetEnabled(false);
-    scene.Activate();
     scene.TickReal(0.1f);
     CHECK(log.empty());
-    scene.SetEnabled(true);
+    scene.Activate();
     scene.duringReal = [&] {
         CHECK_THROWS_AS(scene.TickReal(0.1f), std::logic_error);
         CHECK_THROWS_AS(scene.Tick(0.1f), std::logic_error);
@@ -117,4 +99,5 @@ TEST_CASE("Engine.Scene.RealUpdateRespectsActivationAndReleasesItsDispatchGuardO
     scene.Deactivate();
     scene.TickReal(0.1f);
     CHECK(log.empty());
+    scene.Shutdown();
 }

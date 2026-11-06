@@ -11,7 +11,6 @@
 class PlayScene final : public Scene {
 public:
     PlayScene(TimeScale& time, std::uint64_t seed);
-    ~PlayScene() override;
 
 protected:
     void HandleInput(const DeviceInput& input) override;

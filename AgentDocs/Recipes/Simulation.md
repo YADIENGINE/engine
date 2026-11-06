@@ -73,7 +73,6 @@ private:
 class RecipePlayScene final : public Scene {
 public:
     RecipePlayScene(const SceneServices& services, std::uint64_t seed);
-    ~RecipePlayScene() override;
     [[nodiscard]] const RecipePlaySimulation& Sim() const { return _hosted.Sim(); }
     [[nodiscard]] const SimulationRunner& Runner() const { return _hosted.Runner(); }
     // The editor's action: a command on the tape, so a rewind plays it again.
@@ -166,7 +165,6 @@ RecipePlayScene::RecipePlayScene(const SceneServices& services, std::uint64_t se
     , _time(services.time)
     , _hosted(services.simulation, RecipePlaySettings(), SimulationStart{.seed = seed, .players = 1})
     , _bindings(MakeBindings()) {}
-RecipePlayScene::~RecipePlayScene() { ShutdownNoThrow(); }
 std::string RecipePlayScene::ExecuteAction(const std::string& id) {
     if (id == "add_score") _hosted.Runner().Command("add_score", 5); // On the tape, so a rewind plays it again
     return {};

@@ -66,7 +66,6 @@ private:
 class RecipePlayScene final : public Scene {
 public:
     RecipePlayScene(const SceneServices& services, std::uint64_t seed);
-    ~RecipePlayScene() override;
     [[nodiscard]] const RecipePlaySimulation& Sim() const { return _hosted.Sim(); }
     [[nodiscard]] const SimulationRunner& Runner() const { return _hosted.Runner(); }
     // The editor's action: a command on the tape, so a rewind plays it again.

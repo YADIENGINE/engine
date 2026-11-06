@@ -47,7 +47,6 @@ public:
         bindings.Bind(0, Button::Jump, InputKey::Up);
         bindings.Bind(1, Button::Fire, InputKey::Enter);
     }
-    ~PlayScene() override { ShutdownNoThrow(); }
     CountingSimulation simulation;
     SimulationRunner runner;
     InputBindings bindings;
@@ -89,6 +88,7 @@ TEST_CASE("Engine.Simulation.Scene.HitstopStopsStepsButKeepsThePress", "[engine]
         Frame(scene, time, FrameSeconds);
     CHECK(scene.simulation.steps > 1);
     CHECK(scene.simulation.fired == 1);
+    scene.Shutdown();
 }
 TEST_CASE("Engine.Simulation.Scene.SlowMotionLowersStepsPerSecond", "[engine][simulation]") {
     PlayScene scene;
@@ -102,6 +102,7 @@ TEST_CASE("Engine.Simulation.Scene.SlowMotionLowersStepsPerSecond", "[engine][si
     for (int i = 0; i < 60; ++i)
         Frame(scene, time, FrameSeconds);
     CHECK(scene.simulation.steps >= 89);
+    scene.Shutdown();
 }
 TEST_CASE("Engine.Simulation.Scene.TimeEffectsLeaveTheTapeAlone", "[engine][simulation]") {
     const auto play = [](bool effects) {
@@ -120,7 +121,9 @@ TEST_CASE("Engine.Simulation.Scene.TimeEffectsLeaveTheTapeAlone", "[engine][simu
             }
             Frame(scene, time, FrameSeconds, input);
         }
-        return std::pair{scene.runner.Tape().changes, HashState(scene.simulation)};
+        auto result = std::pair{scene.runner.Tape().changes, HashState(scene.simulation)};
+        scene.Shutdown();
+        return result;
     };
     const auto plain = play(false), scaled = play(true);
     CHECK(plain.second == scaled.second);
@@ -138,6 +141,7 @@ TEST_CASE("Engine.Simulation.Scene.CancelReleasesHeldActions", "[engine][simulat
     scene.Tick(time.Advance(FrameSeconds));
     CHECK(scene.simulation.steps == 2);
     CHECK(scene.simulation.jumping == 1);
+    scene.Shutdown();
 }
 TEST_CASE("Engine.InputBindings.MapsKeysToPlayers", "[engine][input]") {
     InputBindings bindings(2);
