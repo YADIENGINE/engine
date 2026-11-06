@@ -269,7 +269,7 @@ TEST_CASE("Editor.Settings.ThemeBelongsToTheUserAndMalformedThemeKeepsOtherPrefe
     const auto file = directory.Path() / "preferences.json";
     EditorSettingsStore store(file);
     EditorPreferences a;
-    a.theme = "slate";
+    a.theme = EditorTheme::Slate;
     a.layout = EditorWorkspaceLayout::Inspect;
     a.followOutput = false;
     a.ToggleFavorite("sample");
@@ -278,27 +278,30 @@ TEST_CASE("Editor.Settings.ThemeBelongsToTheUserAndMalformedThemeKeepsOtherPrefe
     int font = 100;
     EditorSettingsStore reopened(file);
     REQUIRE(reopened.Load("project-b", restored, font).empty());
-    CHECK(restored.theme == "slate");
+    CHECK(restored.theme == EditorTheme::Slate);
     CHECK(restored.layout == EditorWorkspaceLayout::Develop);
-    restored.theme = "paper";
+    restored.theme = EditorTheme::Paper;
     REQUIRE(reopened.Save("project-b", restored, font).empty());
     REQUIRE(reopened.Load("project-a", restored, font).empty());
-    a.theme = "paper";
+    a.theme = EditorTheme::Paper;
     CHECK(restored == a);
     auto document = nlohmann::json::parse(ReadBinaryFile(file, 1 << 20));
     CHECK(document.at("version") == 1);
     CHECK(document.at("theme") == "paper");
-    for (const bool missing : {false, true}) {
-        if (missing)
+    for (const auto& theme :
+         {nlohmann::json("future-palette"), nlohmann::json(""), nlohmann::json(42), nlohmann::json(nullptr)}) {
+        if (theme.is_null())
             document.erase("theme");
         else
-            document["theme"] = 42;
+            document["theme"] = theme;
         (void)WriteBinaryFileAtomic(file, document.dump());
         REQUIRE(EditorSettingsStore(file).Load("project-a", restored, font).empty());
-        a.theme = "cabinet";
+        a.theme = EditorTheme::Cabinet;
         CHECK(restored == a);
         CHECK(font == 125);
     }
+    REQUIRE(EditorSettingsStore(file).Save("project-a", restored, font).empty());
+    CHECK(nlohmann::json::parse(ReadBinaryFile(file, 1 << 20)).at("theme") == "cabinet");
 }
 
 TEST_CASE("Editor.Settings.AgentSwitchesAreKept", "[engine-editor]") {

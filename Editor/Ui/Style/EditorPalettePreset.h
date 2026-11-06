@@ -1,15 +1,15 @@
 #pragma once
 #include <span>
-#include <string_view>
+#include "Editor/Internals/Settings/EditorTheme.h"
 #include "ToolUi/ToolColorPalette.h"
 
 struct EditorPalettePreset {
-    const char* id;
+    EditorTheme id;
+    const char* key;
     const char* title;
     ToolColorPalette colors;
 };
 
-// A single catalog feeds the menu, command palette and saved-id resolution.
+// Metadata comes from the UI-independent EditorThemes table; colors stay in the UI layer.
 [[nodiscard]] std::span<const EditorPalettePreset> EditorPalettePresets();
-// Missing and unknown ids resolve to Cabinet without discarding other preferences.
-[[nodiscard]] const EditorPalettePreset& ResolveEditorPalette(std::string_view id);
+[[nodiscard]] const EditorPalettePreset& ResolveEditorPalette(EditorTheme theme);

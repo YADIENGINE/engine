@@ -655,7 +655,7 @@ protected:
         const auto& style = ImGui::GetStyle();
         if (!std::equal(_expectedColors.begin(), _expectedColors.end(), std::begin(style.Colors),
                         [](ImVec4 a, ImVec4 b) { return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w; })) {
-            std::cerr << stage.name << ": palette lost after BeginFrame (" << _palette.id << ")\n";
+            std::cerr << stage.name << ": palette lost after BeginFrame (" << _palette.key << ")\n";
             ++_failures;
         }
         if (stage.panel) {
@@ -782,12 +782,12 @@ int main(int argc, char** argv) {
     const auto output = std::filesystem::absolute(argv[1]);
     std::filesystem::create_directories(output);
     std::filesystem::path image;
-    std::string theme = "cabinet";
+    EditorTheme theme = EditorTheme::Cabinet;
     std::string filter;
     for (int i = 2; i < argc; ++i) {
         const std::string_view argument(argv[i]);
         if (argument.starts_with("--theme="))
-            theme = argument.substr(8);
+            theme = ParseEditorTheme(argument.substr(8));
         else if (argument.starts_with("--stages="))
             filter = "," + std::string(argument.substr(9)) + ",";
         else

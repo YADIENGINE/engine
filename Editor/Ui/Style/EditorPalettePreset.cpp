@@ -69,16 +69,19 @@ ToolColorPalette Paper() {
     colors.navWindowingDim = {0.20f, 0.20f, 0.20f, 0.20f};
     return colors;
 }
+EditorPalettePreset Preset(EditorTheme theme, const ToolColorPalette& colors) {
+    const auto& definition = EditorThemeInfo(theme);
+    return {definition.id, definition.key, definition.title, colors};
+}
 } // namespace
 
 std::span<const EditorPalettePreset> EditorPalettePresets() {
-    static const std::array Presets{EditorPalettePreset{"cabinet", "Cabinet", {}},
-                                    EditorPalettePreset{"slate", "Slate", Slate()},
-                                    EditorPalettePreset{"paper", "Paper", Paper()}};
+    static const std::array Presets{Preset(EditorTheme::Cabinet, {}), Preset(EditorTheme::Slate, Slate()),
+                                    Preset(EditorTheme::Paper, Paper())};
     return Presets;
 }
-const EditorPalettePreset& ResolveEditorPalette(std::string_view id) {
+const EditorPalettePreset& ResolveEditorPalette(EditorTheme theme) {
     const auto presets = EditorPalettePresets();
-    const auto found = std::ranges::find(presets, id, &EditorPalettePreset::id);
+    const auto found = std::ranges::find(presets, theme, &EditorPalettePreset::id);
     return found == presets.end() ? presets.front() : *found;
 }

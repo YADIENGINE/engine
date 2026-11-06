@@ -5,6 +5,7 @@
 #include "Editor/Internals/Agent/AgentProfile.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
 #include "Editor/Internals/Settings/EditorPanel.h"
+#include "Editor/Internals/Settings/EditorTheme.h"
 
 inline constexpr std::array EditorFontSizes{75, 100, 125, 150};
 struct EditorPreferences {
@@ -19,8 +20,8 @@ struct EditorPreferences {
     EditorLogFilter outputFilter;
     bool followOutput = true;
     bool showMetrics = false;
-    AgentPreferences agent;        // Saved for the user across projects
-    std::string theme = "cabinet"; // User-wide, independent of project layouts and interface scale
+    AgentPreferences agent;                   // Saved for the user across projects
+    EditorTheme theme = EditorTheme::Cabinet; // User-wide, independent of project layouts and interface scale
     [[nodiscard]] bool& Visible(EditorPanel panel) { return visible[static_cast<std::size_t>(panel)]; }
     [[nodiscard]] bool IsFavorite(const std::string& id) const;
     void ToggleFavorite(const std::string& id);

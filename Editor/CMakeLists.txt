@@ -53,6 +53,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Diagnostics/EditorDiagnostics.cpp
     Internals/Settings/EditorPreferences.cpp
     Internals/Settings/EditorSettingsStore.cpp
+    Internals/Settings/EditorTheme.cpp
 )
 target_link_libraries(EngineEditorSupport PUBLIC EngineEditorApi EngineProfiler nlohmann_json::nlohmann_json PRIVATE EngineStorage)
 engine_warnings(EngineEditorSupport)

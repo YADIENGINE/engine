@@ -58,7 +58,7 @@ TEST_CASE("Editor.Theme.ChangesOnlyColorsAndReturnsExactlyToCabinet", "[engine-e
     // Compare the same object's bytes outside Colors; no struct-copy padding or cosmetic hash is involved.
     constexpr auto ColorBegin = offsetof(ImGuiStyle, Colors);
     constexpr auto ColorEnd = ColorBegin + sizeof(style.Colors);
-    for (const auto* id : {"slate", "paper", "cabinet"}) {
+    for (const auto id : {EditorTheme::Slate, EditorTheme::Paper, EditorTheme::Cabinet}) {
         fixture.Apply(ResolveEditorPalette(id).colors);
         std::array<unsigned char, sizeof(ImGuiStyle)> after;
         std::memcpy(after.data(), &style, sizeof(style));
@@ -75,7 +75,7 @@ TEST_CASE("Editor.Theme.ChangesOnlyColorsAndReturnsExactlyToCabinet", "[engine-e
 
 TEST_CASE("Editor.Theme.CustomColorDataReachesWidgetsAndSemanticRoles", "[engine-editor]") {
     PaletteFixture fixture;
-    auto custom = ResolveEditorPalette("paper").colors;
+    auto custom = ResolveEditorPalette(EditorTheme::Paper).colors;
     custom.accent = {0.12f, 0.34f, 0.56f, 1};
     custom.warning = {0.67f, 0.45f, 0.23f, 1};
     custom.agent = {0.45f, 0.23f, 0.67f, 1};
@@ -94,8 +94,6 @@ TEST_CASE("Editor.Theme.CustomColorDataReachesWidgetsAndSemanticRoles", "[engine
     CheckColor(ToolColors().accent, custom.accent);
     RegisterToolColors(nullptr);
     CheckColor(ToolColors().window, ToolPalette::Window);
-    CHECK(std::string(ResolveEditorPalette("future-palette").id) == "cabinet");
-    CHECK(std::string(ResolveEditorPalette("").id) == "cabinet");
 }
 
 TEST_CASE("Editor.Theme.WorkspaceGeometryDockingAndPreferencesStayTheSame", "[engine-editor]") {

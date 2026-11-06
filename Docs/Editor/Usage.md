@@ -364,7 +364,9 @@ accepted setup, theme and the Agent control and Visual checks switches belong to
 files are unaffected.
 
 Theme ids are saved as the top-level `theme` string in the existing version 1 preferences file. Missing, malformed or
-unknown ids fall back to Cabinet without resetting other preferences. Built-in palettes live in the single
-`Editor/Ui/Style/EditorPalettePreset.cpp` catalog: adding an id, title and `ToolColorPalette` also adds its menu and command
-palette entries. Color data is independent of style dimensions; a future custom-color editor can supply the same value
+unknown ids fall back to Cabinet during settings loading without resetting other preferences. Runtime selection uses
+`EditorTheme`; its enum, stable keys and titles live in the UI-independent `Editor/Internals/Settings/EditorTheme.h`.
+To add a built-in palette, extend that definition table and add its `ToolColorPalette` to
+`Editor/Ui/Style/EditorPalettePreset.cpp`; the menu and command palette entries follow automatically.
+Color data is independent of style dimensions; a future custom-color editor can supply the same value
 to `ToolUiContext::SetPalette`. Fixed `ToolPalette` constants retain Cabinet for existing tool callers and content backdrops.

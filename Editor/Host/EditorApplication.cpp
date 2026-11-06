@@ -88,7 +88,6 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     } catch (const std::exception& error) {
         _controller.Log(error.what(), EditorLogLevel::Warning);
     }
-    _preferences.theme = ResolveEditorPalette(_preferences.theme).id;
     _observedPreferences = _preferences;
     _observedFontSize = _fontSize;
     _launcher = LauncherFromEnvironment();
@@ -366,7 +365,6 @@ void EditorApplication::DrawToolOverlay() const {
     }
     if (_appliedTheme != _preferences.theme) {
         const auto& palette = ResolveEditorPalette(_preferences.theme);
-        _preferences.theme = palette.id;
         _ui.SetPalette(palette.colors);
         _appliedTheme = palette.id;
     }

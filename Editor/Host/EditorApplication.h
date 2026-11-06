@@ -57,7 +57,7 @@ private:
     std::shared_ptr<const GitSnapshot> _gitSnapshot; // Kept alive for the frame's drawing
     mutable EditorWorkspace _workspace;
     mutable EditorPreferences _preferences;
-    mutable std::string _appliedTheme;
+    mutable std::optional<EditorTheme> _appliedTheme;
     std::optional<EditorSettingsStore> _settings;
     EditorPreferences _observedPreferences;
     std::string _projectKey;

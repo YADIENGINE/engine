@@ -96,7 +96,9 @@ TEST_CASE("Editor.Actions.RunWritesTheirRequest", "[engine-editor]") {
 
 TEST_CASE("Editor.Actions.ThemeChoicesOnlyChangeThePalettePreference", "[engine-editor]") {
     Fixture fixture;
-    for (const auto& palette : EditorPalettePresets()) {
+    for (const auto& theme : EditorThemes) {
+        const auto& palette = ResolveEditorPalette(theme.id);
+        REQUIRE(palette.id == theme.id);
         const auto list = fixture.List();
         const auto* item = Find(list, EditorMenu::View, palette.title);
         REQUIRE(item);
