@@ -10,9 +10,12 @@ docs it reads, the output of its tools, the code it needs to write. Two commands
 
 ## When to measure
 
-Run `agent-eval` before and after a change to what agents read or run: `AgentDocs/`, tool output, command names,
-public API names a task touches. Report the comparison in the change. Use `--smoke` while iterating and a full run
-(three attempts per task) before the change is merged; make it the baseline when it is.
+`agent-eval run` starts real agent sessions and spends tokens, so it runs only when the maintainer asks for it;
+contributors and agents never start it on their own. Changes worth measuring are those to what agents read or run:
+`AgentDocs/`, tool output, command names, public API names a task touches. Say when a change is one of them and offer
+a run. When the maintainer asks, measure before and after and report the comparison: `--smoke` while iterating, a full
+run (three attempts per task) before the change is merged, made the baseline when it is. `list`, `verify`, `show` and
+`compare` start no agent and need no request.
 
 ## agent-report
 

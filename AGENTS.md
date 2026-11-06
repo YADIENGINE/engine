@@ -63,7 +63,7 @@ New agent workflow → a skill in `AgentDocs/Skills/<name>/SKILL.md` plus its ro
 `Agent.md` short (it is loaded every session). `check` validates skills, every `python Engine ...` call, and every file and `#heading` AgentDocs points at.
 Recipe API change → keep its code compiling in the engine test build; resync snippets with `check --fix`.
 `AgentDocs/` links to concepts in `Docs/`; never duplicate concept explanations.
-A change to what agents read or run (AgentDocs, tool output, command or API names) is measured with
-`python . agent-eval` before and after; report the comparison: [Agent metrics](Docs/Contributing/AgentMetrics.md#when-to-measure).
+`python . agent-eval` runs real agent sessions and spends tokens: run it only when the maintainer asks. When a change
+touches what agents read or run, say so and offer it: [Agent metrics](Docs/Contributing/AgentMetrics.md#when-to-measure).
 The project template contains no AI file/settings; developers opt in from their own agent file.
 Detailed maintenance: [Documentation ownership](Docs/Contributing/RepositoryLayout.md#documentation-ownership).
