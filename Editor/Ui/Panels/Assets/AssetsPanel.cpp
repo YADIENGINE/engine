@@ -8,6 +8,7 @@
 #include <functional>
 #include "Editor/Internals/Session/AudioUsage.h"
 #include "Editor/Internals/Session/GraphicAssetCatalog.h"
+#include "Editor/Internals/Session/QuickOpen.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "ToolUi/ToolTheme.h"
@@ -375,13 +376,18 @@ void AssetsPanel::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions&
     const float controlBorder = std::max(1.0f, ToolUiScale());
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, controlBorder);
     ImGui::PushStyleColor(ImGuiCol_Border, ToolPalette::Border);
-    ImGui::InputTextWithHint("##asset-search", ICON_FA_MAGNIFYING_GLASS "  Search assets (Ctrl+F)", _search.data(),
+    ImGui::InputTextWithHint("##asset-search", ICON_FA_MAGNIFYING_GLASS "  Search all asset folders", _search.data(),
                              _search.size());
+    ToolTooltip(
+        "Searches all project and engine asset folders, including folders outside the current location (Ctrl+F).");
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     if (hasText) {
         ImGui::SameLine();
-        if (ToolIconButton("clear-search", ICON_FA_XMARK, "Clear search")) _search.fill('\0');
+        if (ToolIconButton("clear-search", ICON_FA_XMARK, "Clear search")) {
+            _search.fill('\0');
+            _focusSearch = true;
+        }
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(sliderWidth);
@@ -494,7 +500,8 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
     // What the project's audio catalog plays the sound as; a project sound it does not list is dimmed. The engine's own
     // sounds are a shelf to choose from, so not using one says nothing.
     const bool catalogKnown = sound && snapshot.audioUsage && snapshot.audioUsage->reported;
-    const auto asset = catalogKnown ? AssetPathOf(node.path, _engineDirectory, _assetsDirectory) : std::filesystem::path();
+    const auto asset =
+        catalogKnown ? AssetPathOf(node.path, _engineDirectory, _assetsDirectory) : std::filesystem::path();
     const auto uses = catalogKnown ? AudioUseLabels(AudioUsesOf(*snapshot.audioUsage, asset)) : std::string();
     const bool unused = catalogKnown && uses.empty() && !node.readOnly;
     const char* icon = count > 1 ? ICON_FA_LAYER_GROUP : playing ? ICON_FA_VOLUME_HIGH : KindIcon(node.kind);
@@ -549,20 +556,29 @@ void AssetsPanel::Grid(const EditorSnapshot& snapshot, const EditorUiActions& ac
     _tileIndex = 0;
     const auto query = EditorSearchText(_search.data());
     if (!query.empty()) {
+        ImGui::TextWrapped("Searching all asset folders");
+        ToolTooltip(
+            "Results include all project and engine asset folders. Clear the search to return to the current folder.");
         std::vector<const AssetNode*> nodes;
         CollectFiles(_roots, nodes);
         for (const auto* node : nodes) {
             const auto found = scenes.find(AssetPathKey(node->path));
             const bool isSet = found != scenes.end() && found->second.size() > 1;
-            if (EditorSearchText(node->name).find(query) != std::string::npos) {
+            if (QuickOpenScore(node->name, {}, query) >= 0) {
                 NodeTile(*node, snapshot, actions, scenes);
             } else if (isSet) {
                 for (const auto* scene : found->second)
-                    if (EditorSearchText(scene->name + " " + scene->description).find(query) != std::string::npos)
+                    if (QuickOpenScore(scene->name, scene->description, query) >= 0)
                         SceneTile(*scene, scene->asset->item, *node, snapshot, actions);
             }
         }
-        if (_tileIndex == 0) ToolEmptyState("No matching assets", "Try another name or tag.");
+        if (_tileIndex == 0) {
+            ToolEmptyState("No matching assets", "No matches in any asset folder. Try a different asset name.");
+            if (ToolButton("Clear search")) {
+                _search.fill('\0');
+                _focusSearch = true;
+            }
+        }
         return;
     }
     if (const auto& set = _navigation.Location().set; !set.empty()) {

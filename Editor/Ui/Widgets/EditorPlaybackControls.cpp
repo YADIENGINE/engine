@@ -77,7 +77,9 @@ void SearchBox(float width, EditorToolbarSearch& search) {
         right -= shortcutWidth + inset;
     }
     ImGui::PopFont();
-    draw->AddText({textX, textY}, muted, ToolClipText("Search everything", std::max(1.0f, right - textX)).c_str());
+    constexpr const char* Hint = "Search scenes, graphics, sounds & commands";
+    const char* hint = ImGui::CalcTextSize(Hint).x <= right - textX ? Hint : "Quick open";
+    draw->AddText({textX, textY}, muted, ToolClipText(hint, std::max(1.0f, right - textX)).c_str());
     ToolTooltip("Scenes, their choices, graphics, sounds and commands (Ctrl+P)");
 }
 } // namespace

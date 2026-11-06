@@ -10,10 +10,16 @@ standalone game in Debug through the project tools, then opens it in its own win
 Build output and errors appear in Output; cancellation or a failed build never launches the game. It requires
 the recipe's Python, engine and source paths plus a game configuration in `Project.json`.
 
+Quick open (Ctrl+P) searches scenes, their choices, graphics, sounds and commands. Its toolbar hint shortens to
+**Quick open** when space is limited. Quick open and the Scenes, Inspector/tuning and Assets searches match every
+space-separated word in any order, ignoring case; panel result ordering is preserved.
+
 - **Left (Scenes):** Favorites and Recent filters, search beside them, categories with their scene count. Single-click
   runs content. A newly selected scene opens its category and scrolls into view once; collapsing
   it afterwards stays collapsed. A row's star appears on hover (always on favorites) and toggles the favorite. Recent
   keeps the last 10 successful opens.
+  Active Favorites / Recent scopes are named above the results. The search's **x** clears only its text and returns
+  typing focus; **Reset filters** clears the text and scope together. Empty results explain the active scope.
 - **Center (Viewport):** the worker's actual image on a neutral background. The dropdown at its top left ("Fit · 56%")
   names the view mode and the image's real scale, screen pixels per canvas pixel. Fit shows the whole canvas, Focus
   content shows the area reported by content, and Actual size shows it at 100%. Zoom in the same menu or Ctrl+wheel
@@ -36,6 +42,8 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
   letter by letter, with full text in tooltips. Advanced groups start collapsed; search and Modified filters expand
   matching groups. Live information shows numbers right-aligned in technical font, short statuses as badges, and
   explanations wrapped.
+  Search's **x** keeps Modified active; **Reset filters** clears both. Empty results say when Modified is limiting
+  the matches and offer the corresponding clear/reset actions.
   Two kinds of values share these widgets, and each says which it is on hover. **Scene controls** (the scene's
   parameter groups) last for the session and are never saved; their reset restores the default. **Tuning files**
   ([Tuning](../Tuning.md)) follow them, one section per file the running scene has read, and are saved: a dragged number
@@ -76,6 +84,8 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
   Show in Explorer. The + button or a right-click creates a folder or graphic; dragging onto a folder moves it, updating
   includes. The Engine root is read-only. A graphic not built yet is dimmed; Build & Refresh also renews thumbnails.
   Registering assets: [Api](Api.md#graphic-assets).
+  Search covers all project and engine asset folders; **Searching all asset folders** appears above its results.
+  Clearing search returns to the current folder and restores typing focus (Ctrl+F focuses the asset search).
 - **Audio Preview:** the sound picked in Assets, beside it in the bottom dock by default. It shows the file name,
   folder, length, format, size, sample rate and channels; whether the audio catalog uses it, as `Effect <name>` or
   `Music <name>`, or `#<id>` when the catalog entry has no `name`; and a waveform (a plain bar until it has been decoded

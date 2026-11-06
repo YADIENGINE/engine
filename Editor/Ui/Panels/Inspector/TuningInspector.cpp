@@ -5,6 +5,7 @@
 #include <vector>
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
 #include "Editor/Internals/Session/AgentContext.h"
+#include "Editor/Internals/Session/QuickOpen.h"
 #include "Editor/Ui/Widgets/InspectorWidgets.h"
 #include "Editor/Ui/Widgets/PropertyWidgets.h"
 #include "ToolUi/ToolTheme.h"
@@ -51,9 +52,9 @@ bool Modified(const TuningFileState& file, const TuningField& field, const Tunin
 bool Matches(const TuningFileState& file, const TuningField& field, const std::string& query, bool modifiedOnly) {
     if (modifiedOnly && !Modified(file, field)) return false;
     if (query.empty()) return true;
-    return EditorSearchText(field.name + " " + PropertyLabel(field.name) + " " + field.group + " " + field.note + " " +
-                            file.label)
-               .find(query) != std::string::npos;
+    return QuickOpenScore(field.name,
+                          PropertyLabel(field.name) + " " + field.group + " " + field.note + " " + file.label,
+                          query) >= 0;
 }
 
 std::string ValuesText(const TuningSpec& spec, const std::vector<TuningValue>& values) {

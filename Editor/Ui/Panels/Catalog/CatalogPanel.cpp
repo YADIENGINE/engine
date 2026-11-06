@@ -4,6 +4,7 @@
 #include <array>
 #include <map>
 #include <string>
+#include "Editor/Internals/Session/QuickOpen.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "ToolUi/ToolTheme.h"
@@ -72,8 +73,8 @@ void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& sna
     const float starWidth = ImGui::GetFrameHeight();
     const float rowWidth = ImGui::GetContentRegionAvail().x;
     ImGui::BeginDisabled(!enabled);
-    const bool clicked = ToolWrappedSelectable(entry.name.c_str(), selected, ImGuiSelectableFlags_None,
-                                               starWidth + starInset);
+    const bool clicked =
+        ToolWrappedSelectable(entry.name.c_str(), selected, ImGuiSelectableFlags_None, starWidth + starInset);
     ToolTooltip(entry.description.c_str());
     if (selected && _reveal && !ImGui::IsItemVisible()) ImGui::SetScrollHereY(0.5f);
     if (enabled && clicked) {
@@ -87,14 +88,15 @@ void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& sna
     const auto rowEnd = ImVec2{rowStart.x + rowWidth, ImGui::GetItemRectMax().y};
     const bool hovered = ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(rowStart, rowEnd);
     if (selected || hovered)
-        ImGui::GetWindowDrawList()->AddRectFilled({selectableEnd.x, rowStart.y}, rowEnd,
-                                                  ImGui::GetColorU32(selected ? ImGuiCol_Header
-                                                                             : ImGuiCol_HeaderHovered));
+        ImGui::GetWindowDrawList()->AddRectFilled(
+            {selectableEnd.x, rowStart.y}, rowEnd,
+            ImGui::GetColorU32(selected ? ImGuiCol_Header : ImGuiCol_HeaderHovered));
     const auto after = ImGui::GetCursorScreenPos();
     ImGui::SetCursorScreenPos(
         {rowEnd.x - starWidth - starInset, rowStart.y + (rowEnd.y - rowStart.y - starWidth) * 0.5f});
-    ImGui::PushStyleColor(ImGuiCol_Text,
-                          favorite ? ToolPalette::Accent : hovered ? ToolPalette::Muted : ImVec4{0, 0, 0, 0});
+    ImGui::PushStyleColor(ImGuiCol_Text, favorite  ? ToolPalette::Accent
+                                         : hovered ? ToolPalette::Muted
+                                                   : ImVec4{0, 0, 0, 0});
     if (EditorIconButton("favorite", EditorGlyph::Star, favorite ? "Remove favorite" : "Add favorite"))
         preferences.ToggleFavorite(entry.id);
     ImGui::PopStyleColor();
@@ -120,19 +122,30 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
                             _view == 2 ? "Recent on. Click to show all scenes." : "Show recent scenes.", _view == 2))
         _view = _view == 2 ? 0 : 2;
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(std::max(1.0f, ImGui::GetContentRegionAvail().x));
-    ImGui::InputTextWithHint("##search", "Search scenes", _search.data(), _search.size());
+    EditorSearchInput("##search", "Search scenes", _search.data(), _search.size(), ImGui::GetContentRegionAvail().x,
+                      _focusSearch);
+    if (_view != 0) {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("%s", _view == 1 ? "Favorites" : "Recent");
+        ContinueToolToolbar("Reset filters");
+        if (ToolButton("Reset filters", {std::max(1.0f, ImGui::GetContentRegionAvail().x), 0})) {
+            _search.fill('\0');
+            _view = 0;
+        }
+        ToolTooltip("Clear the search and show all scenes.");
+    }
     ImGui::PopStyleVar();
     std::vector<const SceneDefinition*> entries;
     const auto query = EditorSearchText(_search.data());
+    std::size_t sceneCount = 0;
+    std::size_t scopeCount = 0;
     for (const auto& entry : snapshot.catalog) {
         if (entry.asset) continue; // The Assets panel's
+        ++sceneCount;
         if (_view == 1 && !preferences.IsFavorite(entry.id)) continue;
         if (_view == 2 && std::ranges::find(preferences.recent, entry.id) == preferences.recent.end()) continue;
-        if (!query.empty() &&
-            EditorSearchText(entry.name + " " + entry.description + " " + entry.category).find(query) ==
-                std::string::npos)
-            continue;
+        ++scopeCount;
+        if (QuickOpenScore(entry.name, entry.description + " " + entry.category, query) < 0) continue;
         entries.push_back(&entry);
     }
     if (_view == 2) {
@@ -179,22 +192,33 @@ void CatalogPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& a
         }
         _reveal = false;
         if (entries.empty()) {
-            if (snapshot.catalog.empty()) {
+            if (sceneCount == 0) {
                 ToolEmptyState("No scenes available", "Check Output for details, or refresh the scene catalog.");
                 ImGui::BeginDisabled(!snapshot.capabilities.Can(EditorCommand::Refresh));
                 if (ToolButton("Build & refresh")) actions.command(EditorCommand::Refresh);
                 ImGui::EndDisabled();
             } else {
-                const char* detail = !query.empty() ? "Try a different name, description, or category."
-                                     : _view == 1   ? "Star a scene to keep it here."
-                                                    : "Scenes you open will appear here.";
-                ToolEmptyState(!query.empty() ? "No matching scenes"
-                               : _view == 1   ? "No favorites yet"
-                                              : "No recent scenes",
-                               detail);
-                if (ToolButton(!query.empty() ? "Clear search" : "Show all scenes")) {
+                const char* title = scopeCount == 0 ? (_view == 1 ? "No favorites yet" : "No recent scenes")
+                                    : _view == 1    ? "No matching favorite scenes"
+                                    : _view == 2    ? "No matching recent scenes"
+                                                    : "No matching scenes";
+                const char* detail = scopeCount == 0 ? (_view == 1 ? "Star a scene to keep it here."
+                                                                   : "Scenes you open will appear here.")
+                                     : _view == 1    ? "Your search is limited to Favorites."
+                                     : _view == 2    ? "Your search is limited to Recent."
+                                                     : "Try a different name, description, or category.";
+                ToolEmptyState(title, detail);
+                if (!query.empty() && ToolButton("Clear search")) {
                     _search.fill('\0');
-                    if (query.empty()) _view = 0;
+                    _focusSearch = true;
+                }
+                if (_view != 0) {
+                    if (!query.empty()) ContinueToolToolbar("Reset filters");
+                    if (ToolButton("Reset filters", {std::max(1.0f, ImGui::GetContentRegionAvail().x), 0})) {
+                        _search.fill('\0');
+                        _view = 0;
+                    }
+                    ToolTooltip("Clear the search and show all scenes.");
                 }
             }
         }

@@ -22,7 +22,8 @@ private:
     void Filters(std::size_t count, std::size_t modified);
     // A list of the project's tuning files; picking one shows it in the Inspector.
     void FilePicker(const EditorSnapshot& snapshot, const EditorUiActions& actions, const char* preview);
-    void ResetFilters();
+    void ResetFilters(bool hideSearch = false);
+    void EmptyResults();
 
     TuningInspector _tuning;
     std::array<char, 128> _search{};
@@ -31,4 +32,5 @@ private:
     std::string _agentText;
     bool _modifiedOnly = false;
     bool _searchVisible = false;
+    bool _focusSearch = false;
 };

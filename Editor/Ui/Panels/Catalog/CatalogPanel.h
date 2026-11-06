@@ -15,4 +15,5 @@ private:
     int _view = 0;
     std::string _revealedScene; // A newly selected scene opens its category once; collapsing it afterwards sticks
     bool _reveal = false;
+    bool _focusSearch = false;
 };

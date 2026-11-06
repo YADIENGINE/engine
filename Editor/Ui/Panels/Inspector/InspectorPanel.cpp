@@ -2,6 +2,8 @@
 #include <imgui.h>
 #include <algorithm>
 #include "Editor/Internals/Session/AgentContext.h"
+#include "Editor/Internals/Session/QuickOpen.h"
+#include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "Editor/Ui/Widgets/InspectorWidgets.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
@@ -37,11 +39,29 @@ std::vector<const TuningFileState*> UsedFiles(const EditorSnapshot& snapshot) {
 }
 } // namespace
 
-void InspectorPanel::ResetFilters() {
+void InspectorPanel::ResetFilters(bool hideSearch) {
     _contextParameter.clear();
     _search.fill('\0');
     _modifiedOnly = false;
-    _searchVisible = false;
+    if (hideSearch) _searchVisible = false;
+    _focusSearch = false;
+}
+
+void InspectorPanel::EmptyResults() {
+    const bool hasSearch = _search.front() != '\0';
+    ToolEmptyState(_modifiedOnly ? (hasSearch ? "No modified properties match your search" : "No modified properties")
+                                 : "No matching properties",
+                   _modifiedOnly ? "Modified only is active. Clear the search or reset filters to see more properties."
+                                 : "Try a different property name, group, or description.");
+    if (hasSearch && ToolButton("Clear search")) {
+        _search.fill('\0');
+        _focusSearch = true;
+    }
+    if (_modifiedOnly) {
+        if (hasSearch) ContinueToolToolbar("Reset filters");
+        if (ToolButton("Reset filters", {std::max(1.0f, ImGui::GetContentRegionAvail().x), 0})) ResetFilters();
+        ToolTooltip("Clear the search and turn off Modified only.");
+    }
 }
 
 void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
@@ -92,12 +112,11 @@ void InspectorPanel::Filters(std::size_t count, std::size_t modified) {
         ImGui::CalcTextSize(modifiedLabel.c_str(), nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2;
     ImGui::PopFont();
     const bool compactSearch = count <= SearchThreshold;
-    bool focusSearch = false;
     if (compactSearch) {
         if (ToolSegment("Search", _searchVisible)) {
             _searchVisible = !_searchVisible;
             if (!_searchVisible) _search.fill('\0');
-            focusSearch = _searchVisible;
+            _focusSearch = _searchVisible;
         }
         if (ImGui::GetContentRegionAvail().x >= ImGui::GetItemRectSize().x + gap + filterWidth) ImGui::SameLine();
     }
@@ -105,17 +124,21 @@ void InspectorPanel::Filters(std::size_t count, std::size_t modified) {
     const bool inlineSearch =
         !compactSearch && ImGui::GetContentRegionAvail().x >= MinimumSearchWidth * ToolUiScale() + filterWidth + gap;
     if (inlineSearch) {
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - filterWidth - gap);
-        ImGui::InputTextWithHint("##property-search", "Search properties...", _search.data(), _search.size());
+        EditorSearchInput("##property-search", "Search properties...", _search.data(), _search.size(),
+                          ImGui::GetContentRegionAvail().x - filterWidth - gap, _focusSearch);
         ImGui::SameLine();
     }
     if (ToolSegment(modifiedLabel.c_str(), _modifiedOnly)) _modifiedOnly = !_modifiedOnly;
     ToolTooltip("Show only properties that differ: scene controls from their defaults, tuning values from the last "
                 "commit.");
     if (searchShown && !inlineSearch) {
-        ImGui::SetNextItemWidth(-1);
-        if (focusSearch) ImGui::SetKeyboardFocusHere();
-        ImGui::InputTextWithHint("##property-search", "Search properties...", _search.data(), _search.size());
+        EditorSearchInput("##property-search", "Search properties...", _search.data(), _search.size(),
+                          ImGui::GetContentRegionAvail().x, _focusSearch);
+    }
+    if (_modifiedOnly) {
+        ContinueToolToolbar("Reset filters");
+        if (ToolButton("Reset filters", {std::max(1.0f, ImGui::GetContentRegionAvail().x), 0})) ResetFilters();
+        ToolTooltip("Clear the search and turn off Modified only.");
     }
 }
 
@@ -124,7 +147,7 @@ void InspectorPanel::File(const TuningFileState& file, const EditorSnapshot& sna
     const bool changed = _shown != key;
     if (changed) {
         _shown = key;
-        ResetFilters();
+        ResetFilters(true);
     }
     ImGui::PushID(key.c_str());
     if (snapshot.selected) {
@@ -143,8 +166,7 @@ void InspectorPanel::File(const TuningFileState& file, const EditorSnapshot& sna
     if (ImGui::BeginChild("##inspector-content")) {
         if (changed) ImGui::SetScrollY(0);
         _tuning.File(file, snapshot, actions, query, _modifiedOnly, true);
-        if ((!query.empty() || _modifiedOnly) && !TuningInspector::Shows(file, query, _modifiedOnly))
-            ToolEmptyState("No matching properties", "Change the search or turn off Modified only.");
+        if ((!query.empty() || _modifiedOnly) && !TuningInspector::Shows(file, query, _modifiedOnly)) EmptyResults();
     }
     ImGui::EndChild();
     ImGui::PopID();
@@ -155,7 +177,7 @@ void InspectorPanel::Scene(const EditorSnapshot& snapshot, const EditorUiActions
     const bool changedScene = _shown != selected.id;
     if (changedScene) {
         _shown = selected.id;
-        ResetFilters();
+        ResetFilters(true);
     }
     const auto hidden = [&](const std::string& id) {
         return std::ranges::find(snapshot.inspection.hiddenParameters, id) !=
@@ -193,9 +215,8 @@ void InspectorPanel::Scene(const EditorSnapshot& snapshot, const EditorUiActions
         const auto found = snapshot.parameters.find(parameter.id);
         if (found == snapshot.parameters.end()) return false;
         if (_modifiedOnly && found->second == parameter.initial) return false;
-        return query.empty() || EditorSearchText(parameter.label + " " + parameter.id + " " + parameter.group + " " +
-                                                 parameter.description)
-                                        .find(query) != std::string::npos;
+        return QuickOpenScore(parameter.label, parameter.id + " " + parameter.group + " " + parameter.description,
+                              query) >= 0;
     };
     std::vector<std::string> groups;
     for (const auto& parameter : selected.parameters) {
@@ -274,8 +295,7 @@ void InspectorPanel::Scene(const EditorSnapshot& snapshot, const EditorUiActions
             ToolTooltip(("Tuning file: saved in " + file->relative + ". Ctrl+Z undoes an edit made here.").c_str());
             _tuning.File(*file, snapshot, actions, query, _modifiedOnly, false);
         }
-        if (groups.empty() && !tuningShown && (_search.front() != '\0' || _modifiedOnly))
-            ToolEmptyState("No matching properties", "Change the search or turn off Modified only.");
+        if (groups.empty() && !tuningShown && (_search.front() != '\0' || _modifiedOnly)) EmptyResults();
         if (query.empty() && !_modifiedOnly && snapshot.tuning && !snapshot.tuning->Files().empty())
             FilePicker(snapshot, actions, used.empty() ? "Tuning files..." : "Other tuning files...");
         ImGui::BeginDisabled(!snapshot.ready);

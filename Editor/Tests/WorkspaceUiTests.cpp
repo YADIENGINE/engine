@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <algorithm>
+#include <fstream>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <memory>
@@ -8,6 +10,7 @@
 #include "Editor/Ui/Panels/Assets/AssetsPanel.h"
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
+#include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
 #include "ToolUi/ToolTheme.h"
@@ -964,4 +967,200 @@ TEST_CASE("Editor.Assets.TreeRowsLeaveNoGapBetweenThem", "[engine-editor]") {
     REQUIRE(firstRow >= 0);
     CHECK(misses == 0);
     CHECK(lastRow - firstRow > 100); // Five rows: Engine, Graphics, Game, Audio, Graphics
+}
+
+TEST_CASE("Editor.Search.ClearTextKeepsScopeAndResetRestoresAll", "[engine-editor]") {
+    const bool inspector = GENERATE(false, true);
+    CAPTURE(inspector);
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {800, 600};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    SceneDefinition glow;
+    glow.id = "myproject.glow";
+    glow.name = "Glow Red";
+    glow.category = "Effects";
+    glow.parameters = {{"glow", "Glow Red", SceneParameterKind::Float, 1.0, 0, 4},
+                       {"blue", "Unchanged Blue", SceneParameterKind::Float, 0.0, 0, 4}};
+    auto blue = glow;
+    blue.id = "myproject.blue";
+    blue.name = "Unchanged Blue";
+    const std::vector catalog{glow, blue};
+    auto parameters = SceneDefaults(glow);
+    parameters["glow"] = 2.0;
+    const EditorDiagnostics diagnostics;
+    const std::string status;
+    EditorSnapshot snapshot{catalog, &catalog.front(), parameters, {}, diagnostics, {}, EditorPhase::Ready, status};
+    snapshot.ready = true;
+    EditorPreferences preferences;
+    preferences.ToggleFavorite(glow.id);
+    CatalogPanel scenes;
+    InspectorPanel properties;
+    int edits = 0;
+    EditorUiActions actions;
+    actions.parameter = [&](const std::string&, const SceneValue&) { ++edits; };
+    actions.command = [&](EditorCommand) { ++edits; };
+    ImGuiID search = 0, scope = 0, showSearch = 0;
+    ImVec2 clearPosition, resetPosition;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({0, 0});
+        ImGui::SetNextWindowSize({600, 580});
+        ImGui::Begin("Search test");
+        ImGui::LogToBuffer();
+        if (inspector)
+            properties.Draw(snapshot, actions);
+        else
+            scenes.Draw(snapshot, actions, preferences);
+        const std::string text = ImGui::GetCurrentContext()->LogBuffer.c_str();
+        ImGui::LogFinish();
+        if (inspector) ImGui::PushID(glow.id.c_str());
+        const char* field = inspector ? "##property-search" : "##search";
+        search = ImGui::GetID(field);
+        const auto& gui = *ImGui::GetCurrentContext();
+        if (gui.NavWindow && gui.NavId == search) {
+            auto rect = gui.NavWindow->NavRectRel[ImGuiNavLayer_Main];
+            rect.Translate(gui.NavWindow->Pos);
+            clearPosition = {rect.Max.x + ImGui::GetStyle().ItemSpacing.x + rect.GetHeight() * 0.5f,
+                             rect.GetCenter().y};
+        }
+        auto* window = ImGui::GetCurrentWindow();
+        for (auto* child : window->DC.ChildWindows)
+            if (child->ChildId == window->GetID(inspector ? "##inspector-content" : "catalog-entries"))
+                resetPosition = {child->DC.CursorPosPrevLine.x - 4,
+                                 child->DC.CursorPosPrevLine.y + ImGui::GetFrameHeight() * 0.5f};
+        ImGui::PushID(inspector ? "Modified (1)###modified" : "favorites-filter");
+        scope = ImGui::GetID(inspector ? "##segment" : "##filter");
+        ImGui::PopID();
+        ImGui::PushID("Search");
+        showSearch = ImGui::GetID("##segment");
+        ImGui::PopID();
+        if (inspector) ImGui::PopID();
+        ImGui::End();
+        ImGui::Render();
+        return text;
+    };
+    const auto click = [&](ImVec2 position) {
+        io.AddMousePosEvent(position.x, position.y);
+        (void)frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+        (void)frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+        (void)frame();
+    };
+    (void)frame();
+    ImGui::ActivateItemByID(scope);
+    CHECK(frame().find("Reset filters") != std::string::npos);
+    if (inspector) {
+        ImGui::ActivateItemByID(showSearch);
+        (void)frame();
+        (void)frame(); // Apply the newly opened field's focus before typing.
+    }
+    ImGui::ActivateItemByID(search);
+    (void)frame();
+    io.AddInputCharactersUTF8("red glow");
+    const auto matches = frame();
+    CHECK(matches.find("No matching") == std::string::npos);
+    CHECK(matches.find("No modified") == std::string::npos);
+    io.AddInputCharactersUTF8(" absent");
+    const auto noMatches = frame();
+    CHECK(noMatches.find(inspector ? "No modified properties match your search" : "No matching favorite scenes") !=
+          std::string::npos);
+    click(clearPosition);
+    CHECK(frame().find("Reset filters") != std::string::npos);
+    // Clear returns focus to the field; the unchanged / non-favorite entry remains outside the scope.
+    io.AddInputCharactersUTF8("blue");
+    CHECK(frame().find(inspector ? "No modified properties match your search" : "No matching favorite scenes") !=
+          std::string::npos);
+    click(resetPosition);
+    const auto all = frame();
+    CHECK(all.find("Reset filters") == std::string::npos);
+    CHECK(all.find("No matching") == std::string::npos);
+    CHECK(all.find("No modified") == std::string::npos);
+    CHECK(preferences.IsFavorite(glow.id));
+    CHECK(edits == 0);
+}
+
+TEST_CASE("Editor.Assets.SearchCoversBothRootsAndClearReturnsToFolder", "[engine-editor]") {
+    TempDirectory temp;
+    const auto engine = temp.Path() / "Engine";
+    const auto assets = temp.Path() / "Game" / "Assets";
+    std::filesystem::create_directories(engine / "Assets" / "Audio");
+    std::filesystem::create_directories(assets / "Graphics");
+    std::ofstream(engine / "Assets" / "Audio" / "Glow Red.wav") << "x";
+    std::ofstream(assets / "Graphics" / "Glow Red.asset.cpp") << "x";
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {1000, 700};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    const std::vector<SceneDefinition> catalog;
+    const SceneParameters parameters;
+    const EditorDiagnostics diagnostics;
+    const std::string status;
+    EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};
+    AssetsPanel panel;
+    panel.SetRoots(engine, assets);
+    ImGuiID search = 0;
+    ImVec2 clearPosition;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({0, 0});
+        ImGui::SetNextWindowSize(io.DisplaySize);
+        ImGui::Begin("Assets");
+        ImGui::LogToBuffer();
+        panel.Draw(snapshot, {});
+        const std::string text = ImGui::GetCurrentContext()->LogBuffer.c_str();
+        ImGui::LogFinish();
+        auto* window = ImGui::GetCurrentWindow();
+        for (auto* child : window->DC.ChildWindows)
+            if (child->ChildId == window->GetID("asset-toolbar")) {
+                search = child->GetID("##asset-search");
+            }
+        const auto& gui = *ImGui::GetCurrentContext();
+        if (gui.NavWindow && gui.NavId == search) {
+            auto rect = gui.NavWindow->NavRectRel[ImGuiNavLayer_Main];
+            rect.Translate(gui.NavWindow->Pos);
+            clearPosition = {rect.Max.x + ImGui::GetStyle().ItemSpacing.x + rect.GetHeight() * 0.5f,
+                             rect.GetCenter().y};
+        }
+        ImGui::End();
+        ImGui::Render();
+        return text;
+    };
+    CHECK(frame().find("1 item") != std::string::npos);
+    REQUIRE(search != 0);
+    ImGui::ActivateItemByID(search);
+    (void)frame();
+    io.AddInputCharactersUTF8("red glow");
+    const auto results = frame();
+    CHECK(results.find("Searching all asset folders") != std::string::npos);
+    CHECK(results.find("2 items") != std::string::npos);
+    (void)frame(); // The clear button reserves its space on the frame after the first character.
+    io.AddMousePosEvent(clearPosition.x, clearPosition.y);
+    (void)frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    (void)frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    (void)frame();
+    const auto folder = frame();
+    CHECK(folder.find("Searching all asset folders") == std::string::npos);
+    CHECK(folder.find("1 item") != std::string::npos);
 }
