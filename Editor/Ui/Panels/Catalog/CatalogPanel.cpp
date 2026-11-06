@@ -41,14 +41,14 @@ bool CatalogFilterButton(const char* id, CatalogFilterIcon icon, const char* too
     const float size = ImGui::GetFrameHeight();
     ImGui::PushID(id);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {0, 0});
-    ImGui::PushStyleColor(ImGuiCol_Button, selected ? ToolPalette::Selected : ImVec4{0, 0, 0, 0});
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, selected ? ToolPalette::Selected : ToolPalette::Hover);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ToolPalette::Pressed);
+    ImGui::PushStyleColor(ImGuiCol_Button, selected ? ToolColors().selected : ImVec4{0, 0, 0, 0});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, selected ? ToolColors().selected : ToolColors().hover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ToolColors().pressed);
     const bool pressed = ImGui::Button("##filter", {size, size});
     const auto start = ImGui::GetItemRectMin();
     const auto end = ImGui::GetItemRectMax();
     DrawCatalogFilterIcon(icon, {(start.x + end.x) * 0.5f, (start.y + end.y) * 0.5f}, ToolUiScale(),
-                          ImGui::GetColorU32(selected ? ToolPalette::Accent : ToolPalette::Muted));
+                          ImGui::GetColorU32(selected ? ToolColors().accent : ToolColors().muted));
     ToolTooltip(tooltip);
     ImGui::PopStyleColor(3);
     ImGui::PopStyleVar();
@@ -94,8 +94,8 @@ void CatalogPanel::Entry(const SceneDefinition& entry, const EditorSnapshot& sna
     const auto after = ImGui::GetCursorScreenPos();
     ImGui::SetCursorScreenPos(
         {rowEnd.x - starWidth - starInset, rowStart.y + (rowEnd.y - rowStart.y - starWidth) * 0.5f});
-    ImGui::PushStyleColor(ImGuiCol_Text, favorite  ? ToolPalette::Accent
-                                         : hovered ? ToolPalette::Muted
+    ImGui::PushStyleColor(ImGuiCol_Text, favorite  ? ToolColors().accent
+                                         : hovered ? ToolColors().muted
                                                    : ImVec4{0, 0, 0, 0});
     if (EditorIconButton("favorite", EditorGlyph::Star, favorite ? "Remove favorite" : "Add favorite"))
         preferences.ToggleFavorite(entry.id);

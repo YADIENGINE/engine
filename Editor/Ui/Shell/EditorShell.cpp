@@ -167,7 +167,7 @@ void EditorShell::Menu(const EditorActionContext& context, std::span<const Edito
                        const std::string& projectName, EditorGitBar& gitBar) const {
     auto& result = context.result;
     if (ImGui::BeginMainMenuBar()) {
-        ToolPixelText("Y", 2, ToolPalette::Accent, ImGui::GetFrameHeight());
+        ToolPixelText("Y", 2, ToolColors().accent, ImGui::GetFrameHeight());
         ImGui::SameLine();
         for (int index = 0; index < static_cast<int>(EditorMenu::Count); ++index) {
             const auto menu = static_cast<EditorMenu>(index);
@@ -205,7 +205,7 @@ float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions
     ImGui::SetNextWindowSize({width, height});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
                         {EditorToolbarMetrics::PaddingX * scale, EditorToolbarMetrics::PaddingY * scale});
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Window);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolColors().window);
     if (ImGui::Begin("Toolbar###editor.toolbar", nullptr, BarFlags))
         DrawEditorPlaybackControls(snapshot, actions, marking, search, agent, activity, markTarget);
     ImGui::End();
@@ -222,7 +222,7 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
     ImGui::SetNextWindowSize({width, height});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8.0f * scale, 2.0f * scale});
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {6.0f * scale, 2.0f * scale});
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Window);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolColors().window);
     if (ImGui::Begin("Status###editor.status", nullptr, BarFlags)) {
         const auto errors = snapshot.diagnostics.UnreadErrors();
         const auto warnings = snapshot.diagnostics.UnreadWarnings();
@@ -288,11 +288,11 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
                                                      progress->total, snapshot.diagnostics.AttemptSeconds())
                                        : snapshot.status;
             const auto detail = ToolClipText(text.c_str(), detailWidth - gap);
-            draw->AddText({cursor.x + gap * 0.5f, textY}, ImGui::GetColorU32(ToolPalette::Muted), detail.c_str());
+            draw->AddText({cursor.x + gap * 0.5f, textY}, ImGui::GetColorU32(ToolColors().muted), detail.c_str());
             ToolTooltip(text.c_str());
         }
         if (!metrics.empty() && metricsWidth < available.x)
-            draw->AddText({cursor.x + available.x - metricsWidth + gap, textY}, ImGui::GetColorU32(ToolPalette::Muted),
+            draw->AddText({cursor.x + available.x - metricsWidth + gap, textY}, ImGui::GetColorU32(ToolColors().muted),
                           metrics.c_str());
         ImGui::PopFont();
     }

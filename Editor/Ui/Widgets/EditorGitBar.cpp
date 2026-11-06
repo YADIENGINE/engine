@@ -39,15 +39,15 @@ float ButtonWidth(const std::string& label) {
 // `loadingIcon`: the label's leading icon, which the activity indicator replaces in place so nothing shifts.
 bool BarButton(const std::string& label, bool enabled, BarLook look, float width, const std::string& tooltip,
                const char* loadingIcon = nullptr) {
-    const auto tone = look == BarLook::Rose ? ToolToneColor(ToolTone::Error) : ToolPalette::Accent;
+    const auto tone = look == BarLook::Rose ? ToolToneColor(ToolTone::Error) : ToolColors().accent;
     const float amount = look == BarLook::Pulse ? EditorAttentionPulse() : look == BarLook::Quiet ? 0.0f : SteadyTint;
     ImGui::BeginDisabled(!enabled);
     const bool tinted = enabled && look != BarLook::Quiet;
     if (tinted) {
-        ImGui::PushStyleColor(ImGuiCol_Button, EditorTintSurface(ToolPalette::Control, tone, amount));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorTintSurface(ToolPalette::Control, tone, amount + 0.1f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorTintSurface(ToolPalette::Control, tone, amount * 0.6f));
-        ImGui::PushStyleColor(ImGuiCol_Text, look == BarLook::Rose ? EditorStopTextColor() : ToolPalette::Accent);
+        ImGui::PushStyleColor(ImGuiCol_Button, EditorTintSurface(ToolColors().control, tone, amount));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorTintSurface(ToolColors().control, tone, amount + 0.1f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorTintSurface(ToolColors().control, tone, amount * 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_Text, look == BarLook::Rose ? EditorStopTextColor() : ToolColors().accent);
     }
     const auto idMark = label.find("###");
     const bool pressed =
@@ -62,12 +62,12 @@ bool BarButton(const std::string& label, bool enabled, BarLook look, float width
         const float iconWidth = ImGui::CalcTextSize(loadingIcon).x;
         const float x = from.x + (to.x - from.x - size.x) * 0.5f;
         const float side = ToolActivitySide();
-        auto color = enabled ? ImGui::GetStyleColorVec4(ImGuiCol_Text) : ToolPalette::Disabled;
+        auto color = enabled ? ImGui::GetStyleColorVec4(ImGuiCol_Text) : ToolColors().disabled;
         if (!enabled)
             color.w /= std::max(ImGui::GetStyle().Alpha, 0.001f); // As ToolButton's disabled text: no second fade
         auto* draw = ImGui::GetWindowDrawList();
         // The engine's activity amber, full strength on a disabled button too: the work is running either way.
-        auto activity = ToolPalette::Accent;
+        auto activity = ToolColors().accent;
         activity.w /= std::max(ImGui::GetStyle().Alpha, 0.001f);
         ToolDrawActivity(*draw, {x + (iconWidth - side) * 0.5f, (from.y + to.y - side) * 0.5f}, activity, true);
         draw->AddText({x + iconWidth, (from.y + to.y - size.y) * 0.5f}, ImGui::GetColorU32(color),
@@ -194,10 +194,10 @@ EditorGitBarResult EditorGitBar::Draw(const GitSnapshot& git, const EditorUiActi
         if (!message.empty()) width += groupGap + ImGui::CalcTextSize(message.c_str()).x + gap + ButtonWidth(button);
         if (width > available) return result;
         rightAlign(width);
-        BarText(projectName, ToolPalette::Muted);
+        BarText(projectName, ToolColors().muted);
         if (!message.empty()) {
             ImGui::SameLine(0, groupGap);
-            BarText(message, ToolPalette::Secondary);
+            BarText(message, ToolColors().secondary);
             ImGui::SameLine(0, gap);
             const std::string tooltip = git.availability == GitAvailability::Missing
                                             ? "Opens the download page. The editor notices when you come back."
@@ -288,7 +288,7 @@ EditorGitBarResult EditorGitBar::Draw(const GitSnapshot& git, const EditorUiActi
     const std::string name = repository->name;
     const std::string branchName = detached ? "detached " + branch.oid.substr(0, 7) : branch.head;
     std::string status;
-    auto statusColor = ToolPalette::Muted;
+    auto statusColor = ToolColors().muted;
     bool showAction = false;                  // Sign in again
     if (!git.busy.empty() && !git.fetching) { // A fetch shows on the buttons instead
         status = git.busy;
@@ -301,7 +301,7 @@ EditorGitBarResult EditorGitBar::Draw(const GitSnapshot& git, const EditorUiActi
         statusColor = ToolToneColor(ToolTone::Success);
     } else if (git.fetchProblem.kind == GitProblemKind::Authentication) {
         status = "Sign-in needed";
-        statusColor = ToolPalette::Accent;
+        statusColor = ToolColors().accent;
         showAction = true;
     } else if (git.fetchProblem.kind != GitProblemKind::None) {
         status = "Offline";
@@ -329,19 +329,19 @@ EditorGitBarResult EditorGitBar::Draw(const GitSnapshot& git, const EditorUiActi
     rightAlign(total);
 
     const auto stateColor = resolving                                       ? ToolToneColor(ToolTone::Error)
-                            : git.fetchProblem.kind != GitProblemKind::None ? ToolPalette::Muted
+                            : git.fetchProblem.kind != GitProblemKind::None ? ToolColors().muted
                             : step == GitStep::None                         ? ToolToneColor(ToolTone::Success)
-                                                                            : ToolPalette::Accent;
+                                                                            : ToolColors().accent;
     CenteredCell(stateColor);
     if (showName) {
-        BarText(name, ToolPalette::Secondary);
+        BarText(name, ToolColors().secondary);
         ImGui::SameLine(0, gap);
     }
     // The branch: its menu holds the repository's submodules and the other branches.
     const auto branchLabel =
         std::string(ICON_FA_CODE_BRANCH " ") + branchName + " " ICON_FA_CHEVRON_DOWN "###git-branch";
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0, 0, 0, 0});
-    ImGui::PushStyleColor(ImGuiCol_Text, detached ? ToolPalette::Accent : ToolPalette::Text);
+    ImGui::PushStyleColor(ImGuiCol_Text, detached ? ToolColors().accent : ToolColors().text);
     if (ToolButton(branchLabel.c_str())) {
         ImGui::OpenPopup("git-repositories");
         Send(actions, GitRequestKind::Refresh);

@@ -12,6 +12,8 @@
 class ConsoleViews {
 public:
     [[nodiscard]] TerminalView& View(std::uint64_t id);
+    // Both hosts keep terminal selection at its Cabinet color, independent of the editor palette.
+    void Draw(std::uint64_t id, TerminalSession& terminal);
     // Forgets the views of sessions that are gone.
     void Prune(const std::vector<ConsoleSessionInfo>& sessions);
 

@@ -34,7 +34,6 @@ constexpr float MaxTileSize = 160;
 constexpr float TileWheelStep = 8;
 constexpr float TileIconShare = 0.42f; // Of the tile's width
 constexpr int BackMouseButton = 3;
-constexpr ImVec4 FontKindColor{0xd0 / 255.0f, 0xcb / 255.0f, 0x7c / 255.0f, 1.0f};
 
 const char* KindIcon(AssetKind kind) {
     switch (kind) {
@@ -53,11 +52,11 @@ ImVec4 KindColor(AssetKind kind) {
     case AssetKind::Folder : return ToolToneColor(ToolTone::Warning);
     case AssetKind::Graphic: return EditorInfoColor();
     case AssetKind::Audio  : return ToolToneColor(ToolTone::Success);
-    case AssetKind::Font   : return FontKindColor;
+    case AssetKind::Font   : return ToolColors().assetFont;
     case AssetKind::Code   :
-    case AssetKind::File   : return ToolPalette::Secondary;
+    case AssetKind::File   : return ToolColors().secondary;
     }
-    return ToolPalette::Secondary;
+    return ToolColors().secondary;
 }
 
 const char* KindLabel(AssetKind kind) {
@@ -101,14 +100,14 @@ bool DrawTile(const TileLook& look, float size) {
     const auto end = ImGui::GetItemRectMax();
     auto* draw = ImGui::GetWindowDrawList();
     if (look.selected || hovered)
-        draw->AddRectFilled(start, end, ImGui::GetColorU32(look.selected ? ToolPalette::Selected : ToolPalette::Hover),
+        draw->AddRectFilled(start, end, ImGui::GetColorU32(look.selected ? ToolColors().selected : ToolColors().hover),
                             radius);
-    if (look.selected) draw->AddRect(start, end, ImGui::GetColorU32(ToolPalette::Accent), radius, 0, scale);
+    if (look.selected) draw->AddRect(start, end, ImGui::GetColorU32(ToolColors().accent), radius, 0, scale);
     if (look.thumbnail) {
         draw->AddImageRounded(ImTextureID(look.thumbnail), {start.x + pad, start.y + pad},
                               {start.x + side - pad, start.y + side - pad}, {0, 0}, {1, 1}, IM_COL32_WHITE, radius);
     } else {
-        const auto iconColor = look.dimmed ? ToolPalette::Disabled : look.color;
+        const auto iconColor = look.dimmed ? ToolColors().disabled : look.color;
         const float iconSize = side * TileIconShare;
         const auto iconExtent = ImGui::GetFont()->CalcTextSizeA(iconSize, FLT_MAX, 0.0f, look.icon);
         draw->AddText(ImGui::GetFont(), iconSize,
@@ -121,7 +120,7 @@ bool DrawTile(const TileLook& look, float size) {
         const ImVec2 badgeEnd{end.x - pad, start.y + pad + extent.y + pad};
         draw->AddRectFilled({badgeEnd.x - extent.x - pad * 2, start.y + pad}, badgeEnd,
                             ImGui::GetColorU32(ToolToneColor(ToolTone::Accent)), radius);
-        draw->AddText({badgeEnd.x - extent.x - pad, start.y + pad * 1.5f}, ImGui::GetColorU32(ToolPalette::Window),
+        draw->AddText({badgeEnd.x - extent.x - pad, start.y + pad * 1.5f}, ImGui::GetColorU32(ToolColors().window),
                       text.c_str());
     }
     const float labelY = start.y + side;
@@ -130,7 +129,7 @@ bool DrawTile(const TileLook& look, float size) {
     const float labelWidth = ImGui::CalcTextSize(look.label).x;
     // Centered when it fits; a long name starts at the tile's edge and ends in an ellipsis.
     const float labelX = std::max(labelStart, start.x + (side - labelWidth) * 0.5f);
-    ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Text);
+    ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().text);
     ImGui::RenderTextEllipsis(draw, {labelX, labelY}, {labelEnd, labelY + ImGui::GetTextLineHeight()}, labelEnd,
                               look.label, nullptr, nullptr);
     ImGui::PopStyleColor();
@@ -138,9 +137,9 @@ bool DrawTile(const TileLook& look, float size) {
     const float captionWidth = std::max(1.0f, side - pad * 2);
     const float captionY = labelY + labelHeight;
     draw->PushClipRect({labelStart, captionY}, {labelEnd, end.y}, true);
-    draw->AddText({labelStart, captionY}, ImGui::GetColorU32(ToolPalette::Secondary),
+    draw->AddText({labelStart, captionY}, ImGui::GetColorU32(ToolColors().secondary),
                   ToolClipText(look.kind, captionWidth).c_str());
-    const auto statusColor = look.dimmed ? ToolToneColor(ToolTone::Warning) : ToolPalette::Muted;
+    const auto statusColor = look.dimmed ? ToolToneColor(ToolTone::Warning) : ToolColors().muted;
     draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), {labelStart, captionY + captionHeight},
                   ImGui::GetColorU32(statusColor), look.status.c_str(), nullptr, captionWidth);
     draw->PopClipRect();
@@ -176,13 +175,13 @@ TreeClick DrawTreeRow(const TreeRow& row) {
     const auto end = ImGui::GetItemRectMax();
     auto* draw = ImGui::GetWindowDrawList();
     const float radius = ToolMetrics::Radius * scale;
-    if (row.root) draw->AddRectFilled(start, end, ImGui::GetColorU32(ToolPalette::Control), radius);
+    if (row.root) draw->AddRectFilled(start, end, ImGui::GetColorU32(ToolColors().control), radius);
     if (row.selected || hovered)
-        draw->AddRectFilled(start, end, ImGui::GetColorU32(row.selected ? ToolPalette::Selected : ToolPalette::Hover),
+        draw->AddRectFilled(start, end, ImGui::GetColorU32(row.selected ? ToolColors().selected : ToolColors().hover),
                             radius);
     for (int level = 0; level < row.depth; ++level) {
         const float x = start.x + indent * static_cast<float>(level) + arrowWidth * 0.5f;
-        draw->AddLine({x, start.y}, {x, end.y}, ImGui::GetColorU32(ToolPalette::Separator), scale);
+        draw->AddLine({x, start.y}, {x, end.y}, ImGui::GetColorU32(ToolColors().separator), scale);
     }
     const float arrowX = start.x + indent * static_cast<float>(row.depth);
     const float textY = start.y + (height - ImGui::GetTextLineHeight()) * 0.5f;
@@ -191,13 +190,13 @@ TreeClick DrawTreeRow(const TreeRow& row) {
         const auto extent = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize() * 0.75f, FLT_MAX, 0.0f, arrow);
         draw->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.75f,
                       {arrowX + (arrowWidth - extent.x) * 0.5f, start.y + (height - extent.y) * 0.5f},
-                      ImGui::GetColorU32(ToolPalette::Secondary), arrow);
+                      ImGui::GetColorU32(ToolColors().secondary), arrow);
     }
     const float iconX = arrowX + arrowWidth;
     draw->AddText({iconX, textY}, ImGui::GetColorU32(row.iconColor), row.icon);
     const float labelX = iconX + ImGui::GetFontSize() + gap;
-    ImGui::PushStyleColor(ImGuiCol_Text, row.root ? ToolPalette::Text : ToolPalette::Secondary);
-    if (row.selected) ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Text);
+    ImGui::PushStyleColor(ImGuiCol_Text, row.root ? ToolColors().text : ToolColors().secondary);
+    if (row.selected) ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().text);
     ImGui::RenderTextEllipsis(draw, {labelX, textY}, {end.x - gap, textY + ImGui::GetTextLineHeight()}, end.x - gap,
                               row.label, nullptr, nullptr);
     if (row.selected) ImGui::PopStyleColor();
@@ -510,7 +509,7 @@ void AssetsPanel::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions&
     }
     const float controlBorder = std::max(1.0f, ToolUiScale());
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, controlBorder);
-    ImGui::PushStyleColor(ImGuiCol_Border, ToolPalette::Border);
+    ImGui::PushStyleColor(ImGuiCol_Border, ToolColors().border);
     ImGui::InputTextWithHint("##asset-search", ICON_FA_MAGNIFYING_GLASS "  Search all asset folders", _search.data(),
                              _search.size());
     ToolTooltip(
@@ -527,10 +526,10 @@ void AssetsPanel::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions&
     ImGui::SameLine();
     ImGui::SetNextItemWidth(sliderWidth);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, controlBorder);
-    ImGui::PushStyleColor(ImGuiCol_Border, ToolPalette::Border);
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ToolPalette::Panel);
-    const auto tileFill = EditorTintSurface(ToolPalette::Control, ToolPalette::Accent, 0.38f);
-    const auto tileHover = EditorTintSurface(ToolPalette::Hover, ToolPalette::AccentHover, 0.48f);
+    ImGui::PushStyleColor(ImGuiCol_Border, ToolColors().border);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ToolColors().panel);
+    const auto tileFill = EditorTintSurface(ToolColors().control, ToolColors().accent, 0.38f);
+    const auto tileHover = EditorTintSurface(ToolColors().hover, ToolColors().accentHover, 0.48f);
     (void)ToolSlider("##tile-size", _tileSize, MinTileSize, MaxTileSize, "", tileFill, tileHover);
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar();
@@ -557,7 +556,7 @@ void AssetsPanel::TreeNode(const AssetNode& node, int depth, const EditorSnapsho
                        : expanded              ? ICON_FA_FOLDER_OPEN
                                                : ICON_FA_FOLDER;
     const auto iconColor = isSet  ? KindColor(AssetKind::Graphic)
-                           : root ? ToolPalette::Secondary
+                           : root ? ToolColors().secondary
                                   : KindColor(AssetKind::Folder);
     ImGui::PushID(key.c_str());
     const std::string label = root ? (node.readOnly ? "Engine (read-only)" : "Project") : node.name;
@@ -657,7 +656,7 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
     std::string status = notBuilt ? "Needs build" : unused ? "Not in catalog" : "";
     if (node.readOnly) status += status.empty() ? "Read-only" : "\nRead-only";
     const bool pressed = DrawTile(
-        {key.c_str(), node.name.c_str(), icon, inspectTuning ? ToolPalette::Accent : KindColor(node.kind), previewed,
+        {key.c_str(), node.name.c_str(), icon, inspectTuning ? ToolColors().accent : KindColor(node.kind), previewed,
          notBuilt || unused, inspectTuning ? 0 : count,
          !inspectTuning && count > 1 && actions.assetThumbnail ? actions.assetThumbnail(found->second.front()->id) : 0,
          kind, status},
@@ -761,7 +760,7 @@ void AssetsPanel::Footer(bool readOnly) {
     ImGui::AlignTextToFramePadding();
     const auto text =
         std::format("{} {}{}", _tileIndex, _tileIndex == 1 ? "item" : "items", readOnly ? "  \xC2\xB7  Read-only" : "");
-    ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Muted);
+    ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().muted);
     ImGui::TextWrapped("%s", text.c_str());
     ImGui::PopStyleColor();
 }

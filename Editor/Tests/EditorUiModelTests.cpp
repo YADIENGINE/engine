@@ -264,6 +264,43 @@ TEST_CASE("Editor.Settings.ProjectIsolationAndCorruptFileRecovery", "[engine-edi
     CHECK(font == 100);
 }
 
+TEST_CASE("Editor.Settings.ThemeBelongsToTheUserAndMalformedThemeKeepsOtherPreferences", "[engine-editor]") {
+    TempDirectory directory;
+    const auto file = directory.Path() / "preferences.json";
+    EditorSettingsStore store(file);
+    EditorPreferences a;
+    a.theme = "slate";
+    a.layout = EditorWorkspaceLayout::Inspect;
+    a.followOutput = false;
+    a.ToggleFavorite("sample");
+    REQUIRE(store.Save("project-a", a, 125).empty());
+    EditorPreferences restored;
+    int font = 100;
+    EditorSettingsStore reopened(file);
+    REQUIRE(reopened.Load("project-b", restored, font).empty());
+    CHECK(restored.theme == "slate");
+    CHECK(restored.layout == EditorWorkspaceLayout::Develop);
+    restored.theme = "paper";
+    REQUIRE(reopened.Save("project-b", restored, font).empty());
+    REQUIRE(reopened.Load("project-a", restored, font).empty());
+    a.theme = "paper";
+    CHECK(restored == a);
+    auto document = nlohmann::json::parse(ReadBinaryFile(file, 1 << 20));
+    CHECK(document.at("version") == 1);
+    CHECK(document.at("theme") == "paper");
+    for (const bool missing : {false, true}) {
+        if (missing)
+            document.erase("theme");
+        else
+            document["theme"] = 42;
+        (void)WriteBinaryFileAtomic(file, document.dump());
+        REQUIRE(EditorSettingsStore(file).Load("project-a", restored, font).empty());
+        a.theme = "cabinet";
+        CHECK(restored == a);
+        CHECK(font == 125);
+    }
+}
+
 TEST_CASE("Editor.Settings.AgentSwitchesAreKept", "[engine-editor]") {
     TempDirectory directory;
     const auto file = directory.Path() / "preferences.json";

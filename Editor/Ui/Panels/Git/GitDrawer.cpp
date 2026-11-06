@@ -53,7 +53,7 @@ ImVec4 KindColor(const GitChange& change) {
     case GitChangeKind::Untracked : return ToolToneColor(ToolTone::Success);
     case GitChangeKind::Deleted   :
     case GitChangeKind::Conflicted: return ToolToneColor(ToolTone::Error);
-    default                       : return ToolPalette::Accent;
+    default                       : return ToolColors().accent;
     }
 }
 std::string TimeAgo(std::int64_t time) {
@@ -74,17 +74,17 @@ bool Tick(const char* id, bool on, bool mixed) {
     const ImVec2 from{start.x, start.y + (height - side) * 0.5f};
     const ImVec2 to{from.x + side, from.y + side};
     auto* draw = ImGui::GetWindowDrawList();
-    draw->AddRectFilled(from, to, ImGui::GetColorU32(hovered ? ToolPalette::Hover : ToolPalette::Control),
+    draw->AddRectFilled(from, to, ImGui::GetColorU32(hovered ? ToolColors().hover : ToolColors().control),
                         ToolMetrics::Radius * ToolUiScale());
     if (on) {
         const float inset = side * 0.22f;
         draw->AddRectFilled({from.x + inset, from.y + inset}, {to.x - inset, to.y - inset},
-                            ImGui::GetColorU32(ToolPalette::Accent));
+                            ImGui::GetColorU32(ToolColors().accent));
     } else if (mixed) {
         const float inset = side * 0.22f;
         const float middle = (from.y + to.y) * 0.5f;
         draw->AddRectFilled({from.x + inset, middle - 1 * ToolUiScale()}, {to.x - inset, middle + 1 * ToolUiScale()},
-                            ImGui::GetColorU32(ToolPalette::Accent));
+                            ImGui::GetColorU32(ToolColors().accent));
     }
     return pressed;
 }
@@ -97,7 +97,7 @@ void AgentButtonStart() { PushEditorTintedButton(EditorAgentColor(), EditorAgent
 // The drawer's main action: a tint, so the Inspector's primary button stays the screen's one strong amber (D23).
 bool MainButton(const char* label, ImVec2 size) {
     const bool enabled = !(ImGui::GetItemFlags() & ImGuiItemFlags_Disabled);
-    if (enabled) PushEditorTintedButton(ToolPalette::Accent, ToolPalette::Accent);
+    if (enabled) PushEditorTintedButton(ToolColors().accent, ToolColors().accent);
     const bool pressed = ToolButton(label, size);
     if (enabled) PopEditorButton();
     return pressed;
@@ -123,7 +123,7 @@ void GitDrawer::Toggle(GitDrawerTab tab) {
 }
 
 void GitDrawer::IdentityForm(const EditorUiActions& actions) {
-    Note("Git records a name and email with every commit.", ToolPalette::Secondary);
+    Note("Git records a name and email with every commit.", ToolColors().secondary);
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##git-name", "Your name", _name.data(), _name.size());
     ImGui::SetNextItemWidth(-1);
@@ -139,7 +139,7 @@ void GitDrawer::IdentityForm(const EditorUiActions& actions) {
 void GitDrawer::RemoteForm(const EditorUiActions& actions) {
     Note("This project is only on this computer. Create an empty repository on GitHub or another host, then paste its "
          "address.",
-         ToolPalette::Secondary);
+         ToolColors().secondary);
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##git-remote", "https://github.com/you/project.git", _remote.data(), _remote.size());
     ImGui::BeginDisabled(_remote[0] == '\0');
@@ -153,20 +153,20 @@ void GitDrawer::Problem(const GitSnapshot& git, const EditorUiActions& actions) 
     if (problem.kind == GitProblemKind::None) return;
     const auto tone = problem.kind == GitProblemKind::Failed || problem.kind == GitProblemKind::Conflicts
                           ? ToolToneColor(ToolTone::Error)
-                          : ToolPalette::Accent;
+                          : ToolColors().accent;
     Note(problem.title.c_str(), tone);
     for (int index = 0; index < static_cast<int>(problem.files.size()); ++index) {
         if (index == MaximumProblemFiles) {
-            ImGui::TextColored(ToolPalette::Muted, "... and %d more", static_cast<int>(problem.files.size()) - index);
+            ImGui::TextColored(ToolColors().muted, "... and %d more", static_cast<int>(problem.files.size()) - index);
             break;
         }
         ImGui::TextColored(
-            ToolPalette::Secondary, "%s",
+            ToolColors().secondary, "%s",
             ToolClipMiddle(problem.files[static_cast<std::size_t>(index)].c_str(), ImGui::GetContentRegionAvail().x)
                 .c_str());
     }
     if (problem.kind == GitProblemKind::Failed && !problem.detail.empty()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Muted);
+        ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().muted);
         ImGui::PushTextWrapPos(0);
         const auto lines = SplitGitLines(problem.detail);
         ImGui::TextUnformatted(lines.empty() ? "" : lines.front().c_str());
@@ -225,7 +225,7 @@ void GitDrawer::Problem(const GitSnapshot& git, const EditorUiActions& actions) 
 
 void GitDrawer::Conflicts(const GitRepositoryState& repository, const EditorUiActions& actions, bool busy) {
     Note("These files changed on both sides. Choose one side, or edit the file and mark it resolved.",
-         ToolPalette::Secondary);
+         ToolColors().secondary);
     AgentButtonStart();
     if (ToolButton("Fix with agent")) _agentText = ConflictPrompt(repository);
     PopEditorButton();
@@ -276,7 +276,7 @@ void GitDrawer::CommitForm(const GitSnapshot& git, const GitRepositoryState& rep
     }
     if (detached) {
         Note("Not on a branch. Choose a branch from the bar before committing, or the commit is easy to lose.",
-             ToolPalette::Accent);
+             ToolColors().accent);
         return;
     }
     const auto count = _selected.size();
@@ -286,7 +286,7 @@ void GitDrawer::CommitForm(const GitSnapshot& git, const GitRepositoryState& rep
         const auto start = ImGui::GetItemRectMin();
         ImGui::GetWindowDrawList()->AddText(
             {start.x + ImGui::GetStyle().FramePadding.x, start.y + ImGui::GetStyle().FramePadding.y},
-            ImGui::GetColorU32(ToolPalette::Muted), merging ? "Merge message (optional)" : "What changed, and why");
+            ImGui::GetColorU32(ToolColors().muted), merging ? "Merge message (optional)" : "What changed, and why");
     }
     const bool hasMessage = _message[0] != '\0';
     const bool can = git.busy.empty() && conflicts == 0 && (merging || (count > 0 && hasMessage));
@@ -320,7 +320,7 @@ void GitDrawer::Changes(const GitSnapshot& git, const GitRepositoryState& reposi
             : repository.sequence == GitSequence::CherryPick ? "A cherry-pick is in progress. Finish it in the Console."
             : repository.sequence == GitSequence::Revert     ? "A revert is in progress. Finish it in the Console."
                                                              : "A bisect is in progress. Finish it in the Console.";
-        Note(what, ToolPalette::Accent);
+        Note(what, ToolColors().accent);
         if (repository.sequence != GitSequence::Bisect) {
             ImGui::BeginDisabled(busy);
             if (ToolButton("Cancel it")) Send(actions, GitRequestKind::AbortSequence);
@@ -360,7 +360,7 @@ void GitDrawer::Changes(const GitSnapshot& git, const GitRepositoryState& reposi
             ToolTooltip("Select all. Check the list first when an agent or a teammate shares this folder.");
             ImGui::SameLine();
             ImGui::AlignTextToFramePadding();
-            ImGui::TextColored(ToolPalette::Muted, "%zu of %zu selected", _selected.size(), repository.changes.size());
+            ImGui::TextColored(ToolColors().muted, "%zu of %zu selected", _selected.size(), repository.changes.size());
         }
         std::vector<Row> rows;
         rows.reserve(changes.size() + 8);
@@ -413,7 +413,7 @@ void GitDrawer::Changes(const GitSnapshot& git, const GitRepositoryState& reposi
                         }
                         ImGui::AlignTextToFramePadding();
                         const auto text = row.folder.empty() ? std::string("Project root") : row.folder;
-                        ImGui::TextColored(ToolPalette::Muted, "%s",
+                        ImGui::TextColored(ToolColors().muted, "%s",
                                            ToolClipMiddle(text.c_str(), ImGui::GetContentRegionAvail().x).c_str());
                     } else {
                         const auto& change = *row.change;
@@ -481,14 +481,14 @@ void GitDrawer::Incoming(const GitSnapshot& git, const GitRepositoryState& repos
                          "together and may ask you to resolve conflicts.",
                          branch.ahead, branch.ahead == 1 ? "" : "s", branch.behind)
                  .c_str(),
-             ToolPalette::Accent);
+             ToolColors().accent);
     } else if (overlapping) {
         Note(std::format("{} of your changed file{} also changed there. Git would refuse to overwrite them.",
                          repository.incoming.overlapping.size(), repository.incoming.overlapping.size() == 1 ? "" : "s")
                  .c_str(),
-             ToolPalette::Accent);
+             ToolColors().accent);
     } else {
-        Note("Fast-forward. Your changes stay as they are.", ToolPalette::Secondary);
+        Note("Fast-forward. Your changes stay as they are.", ToolColors().secondary);
     }
     ImGui::BeginDisabled(!can);
     const float width = ImGui::GetContentRegionAvail().x;
@@ -505,7 +505,7 @@ void GitDrawer::Incoming(const GitSnapshot& git, const GitRepositoryState& repos
     ImGui::Spacing();
     if (overlapping) {
         for (const auto& file : repository.incoming.overlapping)
-            ImGui::TextColored(ToolPalette::Secondary, "%s",
+            ImGui::TextColored(ToolColors().secondary, "%s",
                                ToolClipMiddle(file.c_str(), ImGui::GetContentRegionAvail().x).c_str());
         ImGui::Spacing();
     }
@@ -516,13 +516,13 @@ void GitDrawer::Incoming(const GitSnapshot& git, const GitRepositoryState& repos
             ImGui::PushTextWrapPos(0);
             ImGui::TextUnformatted(commit.subject.c_str());
             ImGui::PopTextWrapPos();
-            ImGui::TextColored(ToolPalette::Muted, "%s  \xC2\xB7  %s  \xC2\xB7  %s", commit.hash.c_str(),
+            ImGui::TextColored(ToolColors().muted, "%s  \xC2\xB7  %s  \xC2\xB7  %s", commit.hash.c_str(),
                                commit.author.c_str(), TimeAgo(commit.time).c_str());
             ImGui::Spacing();
             ImGui::PopID();
         }
         if (branch.behind > static_cast<int>(repository.incoming.commits.size()))
-            ImGui::TextColored(ToolPalette::Muted, "... and %d more",
+            ImGui::TextColored(ToolColors().muted, "... and %d more",
                                branch.behind - static_cast<int>(repository.incoming.commits.size()));
     }
     ImGui::EndChild();
@@ -542,8 +542,8 @@ void GitDrawer::Draw(const GitSnapshot& git, const EditorUiActions& actions, ImV
     ImGui::SetNextWindowSize(size);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {Padding * scale, Padding * scale});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Panel);
-    ImGui::PushStyleColor(ImGuiCol_Border, ToolPalette::Border);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolColors().panel);
+    ImGui::PushStyleColor(ImGuiCol_Border, ToolColors().border);
     if (ImGui::Begin("Source control###editor.git-drawer", nullptr, DrawerFlags)) {
         const auto* repository = git.Active();
         const auto changes = repository ? repository->changes.size() : 0;
@@ -560,7 +560,7 @@ void GitDrawer::Draw(const GitSnapshot& git, const EditorUiActions& actions, ImV
         if (ToolIconButton("git-close", ICON_FA_XMARK, "Close  (Esc)")) _open = false;
         ImGui::Spacing();
         if (repository && repository->isSubmodule)
-            ImGui::TextColored(ToolPalette::Muted, "Submodule %s", repository->name.c_str());
+            ImGui::TextColored(ToolColors().muted, "Submodule %s", repository->name.c_str());
         Problem(git, actions);
         if (git.busy.size() > 0) {
             ToolActivity();

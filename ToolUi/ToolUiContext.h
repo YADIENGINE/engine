@@ -1,5 +1,6 @@
 #pragma once
 #include <imgui.h>
+#include "ToolUi/ToolColorPalette.h"
 
 struct ToolUiOptions {
     bool docking = false;            // ImGui docking (the editor's workspace)
@@ -12,11 +13,14 @@ class ToolUiContext {
 public:
     explicit ToolUiContext(const ToolUiOptions& options = {});
     ~ToolUiContext();
+    // Call between frames. Updates only colors (including the unscaled baseline and native caption).
+    void SetPalette(const ToolColorPalette& palette);
     // scalePercent: the user's interface size; 100 is the default scale, multiplied by the monitor's DPI.
     void BeginFrame(int scalePercent);
     void EndFrame() const;
 
 private:
+    ToolColorPalette _palette;
     ImGuiStyle _baseStyle;
     float _scale = 0;
 

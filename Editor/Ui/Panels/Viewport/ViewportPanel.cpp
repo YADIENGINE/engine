@@ -52,8 +52,8 @@ bool RecentRow(const SceneDefinition& scene, float width) {
     const float categoryWidth = ImGui::CalcTextSize(scene.category.c_str()).x;
     const float inset = ToolMetrics::Space * ToolUiScale();
     const auto name = ToolClipText(scene.name.c_str(), std::max(1.0f, width - categoryWidth - inset * 4));
-    draw->AddText({start.x + inset, start.y}, ImGui::GetColorU32(ToolPalette::Text), name.c_str());
-    draw->AddText({start.x + width - categoryWidth - inset, start.y}, ImGui::GetColorU32(ToolPalette::Muted),
+    draw->AddText({start.x + inset, start.y}, ImGui::GetColorU32(ToolColors().text), name.c_str());
+    draw->AddText({start.x + width - categoryWidth - inset, start.y}, ImGui::GetColorU32(ToolColors().muted),
                   scene.category.c_str());
     ImGui::PopID();
     return pressed;
@@ -86,7 +86,7 @@ EmptyViewportChoice DrawEmptyViewport(const char* title, const char* detail, con
     const float width = std::max(1.0f, area.x);
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + std::max(0.0f, (area.y - block) * 0.5f));
     CenterNext(ToolPixelTextSize("Y", cell).x, width, originX);
-    ToolPixelText("Y", EmptyMarkCell, ToolPalette::Accent);
+    ToolPixelText("Y", EmptyMarkCell, ToolColors().accent);
     ImGui::Dummy({0, EmptyGap * scale - style.ItemSpacing.y});
     ImGui::PushFont(ToolFont(ToolFontRole::Heading), ToolMetrics::HeadingSize);
     const auto titleText = ToolClipText(title, width);
@@ -95,7 +95,7 @@ EmptyViewportChoice DrawEmptyViewport(const char* title, const char* detail, con
     ImGui::PopFont();
     const auto detailText = ToolClipText(detail, width);
     CenterNext(ImGui::CalcTextSize(detailText.c_str()).x, width, originX);
-    ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Secondary);
+    ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().secondary);
     ImGui::TextUnformatted(detailText.c_str());
     ImGui::PopStyleColor();
     if (*detail && detailText != detail) ToolTooltip(detail);
@@ -113,7 +113,7 @@ EmptyViewportChoice DrawEmptyViewport(const char* title, const char* detail, con
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0, ToolMetrics::Space * scale});
         CenterNext(listWidth, width, originX);
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ToolMetrics::Space * scale);
-        ImGui::TextColored(ToolPalette::Muted, "Recent");
+        ImGui::TextColored(ToolColors().muted, "Recent");
         for (const auto* scene : recent) {
             CenterNext(listWidth, width, originX);
             if (RecentRow(*scene, listWidth)) choice.recent = scene;
@@ -131,10 +131,10 @@ EmptyViewportChoice DrawEmptyViewport(const char* title, const char* detail, con
         for (const auto& hint : Hints) {
             ImGui::SetCursorPosX(start);
             ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
-            ImGui::TextColored(ToolPalette::Muted, "%s", hint.keys);
+            ImGui::TextColored(ToolColors().muted, "%s", hint.keys);
             ImGui::PopFont();
             ImGui::SameLine(start + keyColumn);
-            ImGui::TextColored(ToolPalette::Secondary, "%s", hint.action);
+            ImGui::TextColored(ToolColors().secondary, "%s", hint.action);
         }
         ImGui::PopStyleVar();
     }
@@ -154,7 +154,7 @@ bool ViewportPanel::Toolbar(bool maximized) {
     ImGui::SetNextItemWidth(ImGui::CalcTextSize((mode + "  \xC2\xB7  400%").c_str()).x + style.FramePadding.x * 2 +
                             ImGui::GetFontSize() * 1.5f);
     ImGui::PushStyleColor(ImGuiCol_FrameBg, {0, 0, 0, 0});
-    ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Secondary);
+    ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().secondary);
     const bool open = ToolBeginCombo("##viewport-view", view.c_str());
     ImGui::PopStyleColor(2);
     if (open) {

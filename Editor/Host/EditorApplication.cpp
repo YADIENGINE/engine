@@ -16,6 +16,7 @@
 #include "Editor/Host/ProjectListLauncher.h"
 #include "Editor/Internals/Session/AgentContext.h"
 #include "Editor/Internals/Session/ViewportMark.h"
+#include "Editor/Ui/Style/EditorPalettePreset.h"
 #include "Input/Internals/InputReader.h"
 #include "Platform/Internals/UserData.h"
 #include "Platform/Shell.h"
@@ -87,6 +88,7 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     } catch (const std::exception& error) {
         _controller.Log(error.what(), EditorLogLevel::Warning);
     }
+    _preferences.theme = ResolveEditorPalette(_preferences.theme).id;
     _observedPreferences = _preferences;
     _observedFontSize = _fontSize;
     _launcher = LauncherFromEnvironment();
@@ -361,6 +363,12 @@ void EditorApplication::DrawToolOverlay() const {
         if (timed)
             _controller.HostTransfer(
                 std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - transferStarted).count());
+    }
+    if (_appliedTheme != _preferences.theme) {
+        const auto& palette = ResolveEditorPalette(_preferences.theme);
+        _preferences.theme = palette.id;
+        _ui.SetPalette(palette.colors);
+        _appliedTheme = palette.id;
     }
     _ui.BeginFrame(_fontSize);
     // Defer mutations until all panels have consumed the same borrowed snapshot.

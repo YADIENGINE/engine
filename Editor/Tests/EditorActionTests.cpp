@@ -8,6 +8,7 @@
 #include "Editor/Application/EditorCommandState.h"
 #include "Editor/Ui/Commands/EditorActions.h"
 #include "Editor/Ui/Commands/EditorCommands.h"
+#include "Editor/Ui/Style/EditorPalettePreset.h"
 
 namespace {
 struct Fixture {
@@ -91,6 +92,27 @@ TEST_CASE("Editor.Actions.RunWritesTheirRequest", "[engine-editor]") {
     CHECK(fixture.fontSize == 150);
     Find(list, EditorMenu::Agent, "New agent")->run();
     CHECK(fixture.result.agents.add);
+}
+
+TEST_CASE("Editor.Actions.ThemeChoicesOnlyChangeThePalettePreference", "[engine-editor]") {
+    Fixture fixture;
+    for (const auto& palette : EditorPalettePresets()) {
+        const auto list = fixture.List();
+        const auto* item = Find(list, EditorMenu::View, palette.title);
+        REQUIRE(item);
+        CHECK(std::string(item->submenu) == "Theme");
+        CHECK(item->palette);
+        CHECK(item->check == EditorActionCheck::Radio);
+        CHECK(item->checked == (fixture.preferences.theme == palette.id));
+        CHECK(item->key == EditorKey::None);
+        auto expected = fixture.preferences;
+        expected.theme = palette.id;
+        item->run();
+        CHECK(fixture.preferences == expected);
+        CHECK(fixture.fontSize == 100);
+        const auto updated = fixture.List();
+        CHECK(Find(updated, EditorMenu::View, palette.title)->checked);
+    }
 }
 
 TEST_CASE("Editor.Actions.GitMenuFollowsAvailability", "[engine-editor]") {

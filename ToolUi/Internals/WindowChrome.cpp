@@ -20,7 +20,7 @@ COLORREF ToColorRef(ImVec4 color) {
 void ApplyToolWindowChrome(void* windowHandle, ImVec4 caption, ImVec4 text) {
     const auto window = static_cast<HWND>(windowHandle);
     if (!window) return;
-    const BOOL dark = TRUE;
+    const BOOL dark = caption.x * 0.2126f + caption.y * 0.7152f + caption.z * 0.0722f < 0.5f;
     (void)DwmSetWindowAttribute(window, UseImmersiveDarkMode, &dark, sizeof(dark));
     const COLORREF captionColor = ToColorRef(caption);
     const COLORREF textColor = ToColorRef(text);

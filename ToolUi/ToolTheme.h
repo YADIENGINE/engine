@@ -1,5 +1,6 @@
 #pragma once
 #include <imgui.h>
+#include "ToolUi/ToolColorPalette.h"
 
 // Shared design tokens are logical pixels at 100% interface size and 96 DPI.
 struct ToolMetrics {
@@ -23,7 +24,7 @@ enum class ToolFontRole { Ui, Medium, Heading, Technical };
 enum class ToolTone { Accent, Success, Warning, Error, Information };
 enum class ToolSurface { Header, Toolbar, Workspace, Content, Utility, Status, PanelHeader };
 
-// Cabinet: warm graphite surfaces separated by tone instead of lines, one amber light.
+// Fixed Cabinet colors retained for existing tools and content backdrops. New themed UI uses ToolColors().
 struct ToolPalette {
     static const ImVec4 Window;   // The darkest frame: bars, and the gaps between panes
     static const ImVec4 Panel;    // Panes
@@ -45,6 +46,10 @@ struct ToolPalette {
     static const ImVec4 Separator;
 };
 void ApplyToolTheme();
+// The active context's palette, or Cabinet for contexts without a ToolUiContext.
+[[nodiscard]] const ToolColorPalette& ToolColors();
+// Context lifetime binding, owned by ToolUiContext just like the font roles below.
+void RegisterToolColors(const ToolColorPalette* colors);
 // The single ToolUiContext owns these non-owning roles and clears them before its ImGui context is destroyed.
 void RegisterToolFonts(ImFont* ui, ImFont* technical, ImFont* medium = nullptr, ImFont* heading = nullptr);
 void ClearToolFonts();

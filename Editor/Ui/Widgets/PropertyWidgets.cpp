@@ -127,9 +127,9 @@ bool ChoiceValue(const PropertySpec& spec, std::size_t& index) {
                 ImGui::TableNextColumn();
                 ImGui::PushID(static_cast<int>(i)); // Choice names come from the project and may repeat.
                 const bool selected = i == index;
-                ImGui::PushStyleColor(ImGuiCol_Button, selected ? ToolPalette::Selected : ToolPalette::Control);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, selected ? ToolPalette::Selected : ToolPalette::Hover);
-                ImGui::PushStyleColor(ImGuiCol_Text, selected ? ToolPalette::Accent : ToolPalette::Secondary);
+                ImGui::PushStyleColor(ImGuiCol_Button, selected ? ToolColors().selected : ToolColors().control);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, selected ? ToolColors().selected : ToolColors().hover);
+                ImGui::PushStyleColor(ImGuiCol_Text, selected ? ToolColors().accent : ToolColors().secondary);
                 if (ToolSingleLineButton(spec.choices[i].c_str()) && !selected) {
                     index = i;
                     changed = true;

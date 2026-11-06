@@ -41,8 +41,8 @@ void DrawWaveform(ImDrawList& draw, const AudioWaveform& waveform, ImVec2 start,
     const auto columns = static_cast<std::size_t>(std::max(1.0f, (end.x - start.x) / scale));
     const auto count = waveform.peaks.size();
     const auto playedColor = ToolToneColor(ToolTone::Success);
-    const auto restColor = WithAlpha(ToolPalette::Secondary, UnplayedAlpha);
-    draw.AddLine({start.x, middle}, {end.x, middle}, ImGui::GetColorU32(ToolPalette::Separator), scale);
+    const auto restColor = WithAlpha(ToolColors().secondary, UnplayedAlpha);
+    draw.AddLine({start.x, middle}, {end.x, middle}, ImGui::GetColorU32(ToolColors().separator), scale);
     for (std::size_t column = 0; column < columns; ++column) {
         const std::size_t first = column * count / columns;
         const std::size_t last = (column + 1) * count / columns;
@@ -63,7 +63,7 @@ void DrawFlatBar(ImDrawList& draw, ImVec2 start, ImVec2 end, float played) {
     const float middle = (start.y + end.y) * 0.5f;
     const float half = FlatBarHeight * scale * 0.5f;
     const float radius = half;
-    draw.AddRectFilled({start.x, middle - half}, {end.x, middle + half}, ImGui::GetColorU32(ToolPalette::Control),
+    draw.AddRectFilled({start.x, middle - half}, {end.x, middle + half}, ImGui::GetColorU32(ToolColors().control),
                        radius);
     if (played > 0)
         draw.AddRectFilled({start.x, middle - half}, {start.x + (end.x - start.x) * played, middle + half},
@@ -116,7 +116,7 @@ void AudioPreviewPanel::Header(const AudioPreviewState& audio, const AudioUsage*
     if (audio.waveform.waveform)
         details += std::format("  ·  {} Hz  ·  {}", audio.waveform.waveform->sampleRate,
                                ChannelName(audio.waveform.waveform->channels));
-    ImGui::TextColored(ToolPalette::Secondary, "%s", details.c_str());
+    ImGui::TextColored(ToolColors().secondary, "%s", details.c_str());
     const auto asset = AssetPathOf(audio.file, _engineDirectory, _assetsDirectory);
     if (usage && usage->reported && !asset.empty()) {
         const auto labels = AudioUseLabels(AudioUsesOf(*usage, asset));
@@ -152,7 +152,7 @@ void AudioPreviewPanel::Timeline(const AudioPreviewState& audio, const EditorUiA
     const float position = _scrub.value_or(audio.position);
     const float played = length > 0 ? std::clamp(position / length, 0.0f, 1.0f) : 0.0f;
     auto& draw = *ImGui::GetWindowDrawList();
-    draw.AddRectFilled(start, end, ImGui::GetColorU32(ToolPalette::Content), ToolMetrics::Radius * scale);
+    draw.AddRectFilled(start, end, ImGui::GetColorU32(ToolColors().content), ToolMetrics::Radius * scale);
     const float inset = ToolMetrics::Gap * scale;
     const ImVec2 innerStart{start.x + inset, start.y + inset};
     const ImVec2 innerEnd{end.x - inset, end.y - inset};
@@ -163,11 +163,11 @@ void AudioPreviewPanel::Timeline(const AudioPreviewState& audio, const EditorUiA
     if (length > 0) {
         const float x = innerStart.x + (innerEnd.x - innerStart.x) * played;
         draw.AddRectFilled({x - PlayheadWidth * scale * 0.5f, start.y}, {x + PlayheadWidth * scale * 0.5f, end.y},
-                           ImGui::GetColorU32(ToolPalette::Text));
+                           ImGui::GetColorU32(ToolColors().text));
     }
     if (ImGui::IsItemHovered() && length > 0) {
         const float x = std::clamp(ImGui::GetMousePos().x, innerStart.x, innerEnd.x);
-        draw.AddLine({x, start.y}, {x, end.y}, ImGui::GetColorU32(ToolPalette::Secondary), scale);
+        draw.AddLine({x, start.y}, {x, end.y}, ImGui::GetColorU32(ToolColors().secondary), scale);
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         const float seconds = std::clamp((x - innerStart.x) / (innerEnd.x - innerStart.x), 0.0f, 1.0f) * length;
         ToolTooltip(FormatAudioTime(seconds).c_str());
@@ -187,7 +187,7 @@ void AudioPreviewPanel::Transport(const AudioPreviewState& audio, const EditorUi
     ImGui::SameLine();
     const bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput;
     const bool space = focused && ImGui::IsKeyPressed(ImGuiKey_Space, false);
-    ImGui::PushStyleColor(ImGuiCol_Text, audio.playing ? ToolPalette::Text : ToolToneColor(ToolTone::Success));
+    ImGui::PushStyleColor(ImGuiCol_Text, audio.playing ? ToolColors().text : ToolToneColor(ToolTone::Success));
     const bool playPressed = ToolIconButton("play", audio.playing ? ICON_FA_PAUSE : ICON_FA_PLAY,
                                             audio.playing ? "Pause (Space)" : "Play (Space)");
     ImGui::PopStyleColor();

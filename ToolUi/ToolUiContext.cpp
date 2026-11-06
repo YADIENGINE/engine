@@ -85,6 +85,7 @@ ToolUiContext::ToolUiContext(const ToolUiOptions& options) {
     rlImGuiBeginInitImGui();
     LoadToolFonts(*ImGui::GetIO().Fonts);
     rlImGuiEndInitImGui();
+    RegisterToolColors(&_palette);
     ApplyToolTheme();
     ApplyToolWindowChrome(GetWindowHandle(), ToolPalette::Window, ToolPalette::Secondary);
     _baseStyle = ImGui::GetStyle();
@@ -99,8 +100,15 @@ ToolUiContext::ToolUiContext(const ToolUiOptions& options) {
 #endif
 }
 ToolUiContext::~ToolUiContext() {
+    RegisterToolColors(nullptr);
     ClearToolFonts();
     rlImGuiShutdown();
+}
+void ToolUiContext::SetPalette(const ToolColorPalette& palette) {
+    _palette = palette;
+    ApplyToolPalette(_baseStyle.Colors, _palette);
+    ApplyToolPalette(ImGui::GetStyle().Colors, _palette);
+    ApplyToolWindowChrome(GetWindowHandle(), _palette.window, _palette.secondary);
 }
 void ToolUiContext::BeginFrame(int scalePercent) {
     const float dpi = std::max(1.0f, GetWindowScaleDPI().x);

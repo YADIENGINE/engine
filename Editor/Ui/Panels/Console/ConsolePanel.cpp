@@ -42,7 +42,7 @@ bool ConsolePanel::DrawSessionRow(ConsoleSessions& sessions, const ConsoleSessio
                          ImGui::IsMouseHoveringRect(start, end);
     auto* draw = ImGui::GetWindowDrawList();
     if (info.selected || hovered)
-        draw->AddRectFilled(start, end, ImGui::GetColorU32(info.selected ? ToolPalette::Selected : ToolPalette::Hover),
+        draw->AddRectFilled(start, end, ImGui::GetColorU32(info.selected ? ToolColors().selected : ToolColors().hover),
                             ToolMetrics::Radius * ToolUiScale());
     // State and close share one trailing slot; closing a row does not also select it.
     ImGui::PushStyleColor(ImGuiCol_Header, {0, 0, 0, 0});
@@ -56,10 +56,10 @@ bool ConsolePanel::DrawSessionRow(ConsoleSessions& sessions, const ConsoleSessio
                         (info.activity.empty() ? std::string() : "\n" + info.activity);
     ToolTooltip(detail.c_str());
     const bool exited = info.state == SessionState::Exited;
-    const auto textColor = exited ? ToolPalette::Disabled : ToolPalette::Text;
-    const auto kindColor = exited          ? ToolPalette::Disabled
-                           : info.selected ? ToolPalette::Accent
-                                           : ToolPalette::Secondary;
+    const auto textColor = exited ? ToolColors().disabled : ToolColors().text;
+    const auto kindColor = exited          ? ToolColors().disabled
+                           : info.selected ? ToolColors().accent
+                                           : ToolColors().secondary;
     const float textY = start.y + (height - ImGui::GetTextLineHeight()) * 0.5f;
     draw->AddText({start.x + gap * 2, textY}, ImGui::GetColorU32(kindColor),
                   info.agent ? ICON_FA_ROBOT : ICON_FA_TERMINAL);
@@ -76,7 +76,7 @@ bool ConsolePanel::DrawSessionRow(ConsoleSessions& sessions, const ConsoleSessio
     bool close = false;
     if (hovered || ImGui::IsItemFocused()) {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0);
-        ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Secondary);
+        ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().secondary);
         close = ToolIconButton("close", ICON_FA_XMARK, "Close session");
         ImGui::PopStyleColor();
         ImGui::PopStyleVar();
@@ -129,7 +129,7 @@ ConsoleRequest ConsolePanel::Draw(ConsoleSessions& sessions, ConsoleViews& views
     const float splitterX = originScreen.x + terminalWidth + splitterWidth * 0.5f;
     ImGui::GetWindowDrawList()->AddLine(
         {splitterX, originScreen.y}, {splitterX, originScreen.y + available.y},
-        ImGui::GetColorU32(resizing || resizeHovered ? ToolPalette::Accent : ToolPalette::Separator));
+        ImGui::GetColorU32(resizing || resizeHovered ? ToolColors().accent : ToolColors().separator));
     ImGui::SetCursorPos({origin.x + terminalWidth + splitterWidth, origin.y});
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0);
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0);
@@ -187,7 +187,7 @@ ConsoleRequest ConsolePanel::Draw(ConsoleSessions& sessions, ConsoleViews& views
             if (ToolButton(label)) request.showHere = true;
         } else if (auto* terminal = sessions.Terminal(id)) {
             auto& view = views.View(id);
-            view.Draw(*terminal);
+            views.Draw(id, *terminal);
             _focused = view.Focused();
         }
     }

@@ -10,23 +10,23 @@ float EditorAttentionPulse() {
         static_cast<float>(0.5 + 0.5 * std::sin(ImGui::GetTime() * 2 * std::numbers::pi / PeriodSeconds));
     return 0.12f + (0.48f - 0.12f) * pulse;
 }
-ImVec4 EditorAgentColor() { return {0xa3 / 255.0f, 0xae / 255.0f, 0xf5 / 255.0f, 1.0f}; }
+ImVec4 EditorAgentColor() { return ToolColors().agent; }
 ImVec4 EditorTintSurface(ImVec4 base, ImVec4 tone, float amount) {
     return {base.x + (tone.x - base.x) * amount, base.y + (tone.y - base.y) * amount,
             base.z + (tone.z - base.z) * amount, base.w};
 }
-ImVec4 EditorInfoColor() { return {0x83 / 255.0f, 0xc4 / 255.0f, 0xd6 / 255.0f, 1.0f}; }
-ImVec4 EditorStopTextColor() { return {0xf4 / 255.0f, 0xc5 / 255.0f, 0xca / 255.0f, 1.0f}; }
+ImVec4 EditorInfoColor() { return ToolColors().activity; }
+ImVec4 EditorStopTextColor() { return ToolColors().stopText; }
 void PushEditorGoButton() {
     ImGui::PushStyleColor(ImGuiCol_Button, ToolToneColor(ToolTone::Success));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0xa5 / 255.0f, 0xd6 / 255.0f, 0xaf / 255.0f, 1.0f});
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0x7a / 255.0f, 0xb3 / 255.0f, 0x86 / 255.0f, 1.0f});
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{0x14 / 255.0f, 0x25 / 255.0f, 0x1a / 255.0f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ToolColors().successHover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ToolColors().successPressed);
+    ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().successText);
 }
 void PushEditorTintedButton(ImVec4 tone, ImVec4 textColor) {
-    ImGui::PushStyleColor(ImGuiCol_Button, EditorTintSurface(ToolPalette::Control, tone, 0.16f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorTintSurface(ToolPalette::Control, tone, 0.26f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorTintSurface(ToolPalette::Control, tone, 0.10f));
+    ImGui::PushStyleColor(ImGuiCol_Button, EditorTintSurface(ToolColors().control, tone, 0.16f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorTintSurface(ToolColors().control, tone, 0.26f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorTintSurface(ToolColors().control, tone, 0.10f));
     ImGui::PushStyleColor(ImGuiCol_Text, textColor);
 }
 void PopEditorButton() { ImGui::PopStyleColor(4); }
@@ -50,10 +50,10 @@ ImVec4 EditorSessionStateColor(SessionState state) {
         return color;
     }
     case SessionState::Done  : return ToolToneColor(ToolTone::Success);
-    case SessionState::Exited: return ToolPalette::Disabled;
-    case SessionState::Idle  : return ToolPalette::Secondary;
+    case SessionState::Exited: return ToolColors().disabled;
+    case SessionState::Idle  : return ToolColors().secondary;
     }
-    return ToolPalette::Secondary;
+    return ToolColors().secondary;
 }
 
 ImVec4 EditorPhaseColor(EditorPhase phase) {

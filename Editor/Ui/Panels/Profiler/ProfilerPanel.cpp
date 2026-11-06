@@ -48,9 +48,9 @@ void FrameGraph(const std::vector<Profiler::FrameSample>& frames, int& selected)
         slowest = std::max(slowest, frame.intervalMs);
     const auto heightOf = [&](double ms) { return static_cast<float>(ms / slowest) * height; };
     auto* draw = ImGui::GetWindowDrawList();
-    draw->AddRectFilled(start, {start.x + width, start.y + height}, ImGui::GetColorU32(ToolPalette::Content),
+    draw->AddRectFilled(start, {start.x + width, start.y + height}, ImGui::GetColorU32(ToolColors().content),
                         ToolMetrics::Radius * scale);
-    const auto muted = ImGui::GetColorU32(ToolPalette::Muted);
+    const auto muted = ImGui::GetColorU32(ToolColors().muted);
     const auto over = ImGui::GetColorU32(ToolToneColor(ToolTone::Error));
     const auto accent = ImGui::GetColorU32(ToolToneColor(ToolTone::Accent));
     int first = 0;
@@ -71,7 +71,7 @@ void FrameGraph(const std::vector<Profiler::FrameSample>& frames, int& selected)
                                                     : muted);
     }
     const float budgetY = start.y + height - heightOf(FrameBudgetMs);
-    draw->AddLine({start.x, budgetY}, {start.x + width, budgetY}, ImGui::GetColorU32(ToolPalette::Separator), scale);
+    draw->AddLine({start.x, budgetY}, {start.x + width, budgetY}, ImGui::GetColorU32(ToolColors().separator), scale);
     ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
     constexpr const char* BudgetLabel = "16.7 ms";
     draw->AddText({start.x + width - ImGui::CalcTextSize(BudgetLabel).x - ToolMetrics::Space * scale,
@@ -110,12 +110,12 @@ void ScopeStrip(const Profiler::Capture& capture, const Profiler::FrameSample& f
         const float share = width * static_cast<float>(scope.selfMs / total);
         const ImVec2 from{x, start.y};
         const ImVec2 to{x + std::max(1.0f, share - scale), start.y + height};
-        draw->AddRectFilled(from, to, ImGui::GetColorU32(index == 0 ? ToolPalette::Selected : ToolPalette::Control));
+        draw->AddRectFilled(from, to, ImGui::GetColorU32(index == 0 ? ToolColors().selected : ToolColors().control));
         const auto label = std::format("{} {:.1f}", capture.scopes[scope.id], scope.selfMs);
         const auto shown = ToolClipText(label.c_str(), share - ToolMetrics::Space * scale * 2);
         if (!shown.empty())
             draw->AddText({x + ToolMetrics::Space * scale, start.y + (height - ImGui::GetTextLineHeight()) * 0.5f},
-                          ImGui::GetColorU32(ToolPalette::Secondary), shown.c_str());
+                          ImGui::GetColorU32(ToolColors().secondary), shown.c_str());
         x += share;
     }
     ImGui::PopFont();
@@ -231,7 +231,7 @@ void ProfilerPanel::Live(const EditorSnapshot& snapshot, const EditorUiActions& 
                 "performance comparisons.");
     ContinueToolToolbar("Stream FPS 60.0 | readback 0.00 | publish 0.00 | host upload 0.00 ms", true);
     ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(ToolPalette::Muted, "Stream FPS %.1f | readback %.2f | publish %.2f | host upload %.2f ms",
+    ImGui::TextColored(ToolColors().muted, "Stream FPS %.1f | readback %.2f | publish %.2f | host upload %.2f ms",
                        snapshot.streamFps, snapshot.captureMs, snapshot.publishMs, snapshot.hostTransferMs);
     if (snapshot.profiler.live) Frames(*snapshot.profiler.live);
     if (snapshot.profiler.liveSummary)

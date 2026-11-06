@@ -45,17 +45,17 @@ bool DrawRow(const PaletteEntry& entry, bool selected) {
     if (entry.shortcut && *entry.shortcut) {
         ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
         const float shortcutWidth = ImGui::CalcTextSize(entry.shortcut).x;
-        draw->AddText({right - shortcutWidth, start.y}, ImGui::GetColorU32(ToolPalette::Muted), entry.shortcut);
+        draw->AddText({right - shortcutWidth, start.y}, ImGui::GetColorU32(ToolColors().muted), entry.shortcut);
         right -= shortcutWidth + inset * 2;
         ImGui::PopFont();
     }
-    draw->AddText({start.x + inset, start.y}, ImGui::GetColorU32(ToolPalette::Muted), entry.kind);
+    draw->AddText({start.x + inset, start.y}, ImGui::GetColorU32(ToolColors().muted), entry.kind);
     const auto label = ToolClipText(entry.label.c_str(), std::max(1.0f, right - labelX));
     draw->AddText({labelX, start.y}, ImGui::GetColorU32(ImGuiCol_Text), label.c_str());
     if (!entry.detail.empty()) {
         const float detailX = labelX + ImGui::CalcTextSize(label.c_str()).x + inset * 2;
         if (const auto detail = ToolClipText(entry.detail.c_str(), right - detailX); detailX < right && !detail.empty())
-            draw->AddText({detailX, start.y}, ImGui::GetColorU32(ToolPalette::Muted), detail.c_str());
+            draw->AddText({detailX, start.y}, ImGui::GetColorU32(ToolColors().muted), detail.c_str());
     }
     return pressed;
 }

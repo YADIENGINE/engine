@@ -92,6 +92,7 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Commands/EditorCommands.cpp
         Ui/Commands/EditorCommandPalette.cpp
         Ui/Style/EditorTheme.cpp
+        Ui/Style/EditorPalettePreset.cpp
         Ui/Widgets/EditorWidgets.cpp
         Ui/Widgets/EditorAgentSetup.cpp
         Ui/Widgets/InspectorWidgets.cpp

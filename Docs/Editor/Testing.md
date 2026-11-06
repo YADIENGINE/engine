@@ -15,6 +15,13 @@ only the changed section.
 
 ## Editor UI
 
+Theme checks use the existing UI test target and hidden-window smoke tool. For a small visual selection, run
+`EngineEditorUiSmoke <snapshot-folder> [viewport-image.png] --theme=paper --stages=running,narrow-150,assets,agents`;
+use separate folders for `cabinet`, `slate` and `paper`. The smoke checks that palette colors survive interface scaling.
+Compare text, hover/pressed/disabled controls and native caption colors; Console/Agents terminal contents, scene pixels
+and thumbnail/image content must keep their own colors. `Editor.Theme.*` covers non-color style storage and workspace
+geometry, `Editor.Settings.*` preference compatibility, and `Editor.Actions.*` the shared menu/command choices.
+
 1. Initial preferences use Develop: Project / Viewport / Inspector open, Output / Profiler closed. Dock panels / combine
    tabs; close and reopen from View → Panels. View → Layouts manages preset / custom layouts; View → Panels → Toggle
    last bottom tool and Ctrl+J manage the last bottom panel. Fit / Focus content / Actual size and zoom work in

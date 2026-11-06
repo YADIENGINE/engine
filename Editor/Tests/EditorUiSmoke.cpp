@@ -1,6 +1,6 @@
 // Opt-in look at the editor's real panels: a hidden window draws EditorWorkspace with made-up scenes and writes one PNG
 // per stage. No worker, project or user settings are involved. Not a CTest: it needs a desktop/GPU.
-//   EngineEditorUiSmoke <snapshot-folder> [viewport-image.png]
+//   EngineEditorUiSmoke <snapshot-folder> [viewport-image.png] [--theme=id] [--stages=running,assets,...]
 #include <imgui_internal.h>
 #include <raylib.h>
 #include <rlgl.h>
@@ -22,6 +22,7 @@
 #include "Editor/Ui/Panels/Agents/AgentsDrawer.h"
 #include "Terminal/TerminalSession.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
+#include "Editor/Ui/Style/EditorPalettePreset.h"
 #include "Runtime/Game.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolUiContext.h"
@@ -447,12 +448,18 @@ EditorCapabilities Capabilities(EditorPhase phase) {
 
 class EditorUiSmoke final : public Game {
 public:
-    EditorUiSmoke(std::filesystem::path output, const std::filesystem::path& image)
+    EditorUiSmoke(std::filesystem::path output, const std::filesystem::path& image, const EditorPalettePreset& palette,
+                  std::vector<SmokeStage> stages)
         : Game(SmokeSettings())
         , _output(std::move(output))
+        , _stages(std::move(stages))
+        , _palette(palette)
         , _catalog(SampleCatalog())
         , _parameters(SceneDefaults(_catalog.front()))
         , _ui(ToolUiOptions{.docking = true}) {
+        _preferences.theme = palette.id;
+        _ui.SetPalette(palette.colors);
+        ApplyToolPalette(_expectedColors, palette.colors);
         _parameters["level"] = std::int64_t{7};
         _status = "Scene running";
         FailBuild();
@@ -556,15 +563,15 @@ protected:
             ++_stage;
             _frameIndex = 0;
         }
-        if (_stage == Stages.size()) {
+        if (_stage == _stages.size()) {
             RequestQuit();
             return;
         }
-        if (_frameIndex == 0) SetWindowSize({Stages[_stage].width, Stages[_stage].height});
+        if (_frameIndex == 0) SetWindowSize({_stages[_stage].width, _stages[_stage].height});
         _agentTerminal.Pump();
         // The drawer's terminal shows its text once the program has written and ended (a few frames are not enough)
-        if (Stages[_stage].view == SmokeView::Agents && _frameIndex == FramesPerStage - 1 && _agentTerminal.Running() &&
-            _agentWaits++ < 200) {
+        if (_stages[_stage].view == SmokeView::Agents && _frameIndex == FramesPerStage - 1 &&
+            _agentTerminal.Running() && _agentWaits++ < 200) {
             std::this_thread::sleep_for(std::chrono::milliseconds(25));
             return;
         }
@@ -572,8 +579,8 @@ protected:
         _tuning.Poll();
     }
     void DrawToolOverlay() const override {
-        if (_stage == Stages.size()) return;
-        const auto& stage = Stages[_stage];
+        if (_stage == _stages.size()) return;
+        const auto& stage = _stages[_stage];
         // A new failure, so the workspace reacts to it as it does to one the developer started.
         if (stage.view == SmokeView::BuildFailed && _frameIndex == 2) FailBuild();
         const auto phase = stage.view == SmokeView::Idle       ? EditorPhase::Stopped
@@ -612,22 +619,31 @@ protected:
         snapshot.git = &git;
         // Escape closes what the last stage opened, then the keys that open this stage's palette.
         auto& io = ImGui::GetIO();
-        if (stage.git == SmokeGit::Changes && _frameIndex <= 2) {
-            io.AddKeyEvent(ImGuiMod_Ctrl, _frameIndex == 1);
-            io.AddKeyEvent(ImGuiMod_Shift, _frameIndex == 1);
-            io.AddKeyEvent(ImGuiKey_G, _frameIndex == 1);
+        const bool gitDrawerStage = stage.git == SmokeGit::Changes || stage.git == SmokeGit::Problem ||
+                                    stage.git == SmokeGit::Conflict || stage.git == SmokeGit::TextDiff ||
+                                    stage.git == SmokeGit::ImageDiff || stage.git == SmokeGit::Incoming;
+        if (gitDrawerStage && _frameIndex == 3) {
+            const auto* drawer = ImGui::FindWindowByName("Source control###editor.git-drawer");
+            _openingGit = !drawer || !drawer->WasActive;
         }
-        if (stage.git == SmokeGit::Incoming && _frameIndex >= 2 && _frameIndex <= 4) {
+        if (gitDrawerStage && _openingGit && _frameIndex >= 3 && _frameIndex <= 4) {
+            io.AddKeyEvent(ImGuiMod_Ctrl, _frameIndex == 3);
+            io.AddKeyEvent(ImGuiMod_Shift, _frameIndex == 3);
+            io.AddKeyEvent(ImGuiKey_G, _frameIndex == 3);
+        }
+        if (stage.git == SmokeGit::Incoming && _frameIndex >= 4 && _frameIndex <= 6) {
             // The drawer's second tab, by where it sits.
             if (const auto* drawer = ImGui::FindWindowByName("Source control###editor.git-drawer")) {
                 constexpr ImVec2 TabOffset{130, 24};
                 io.AddMousePosEvent(drawer->Pos.x + TabOffset.x, drawer->Pos.y + TabOffset.y);
-                if (_frameIndex > 2) io.AddMouseButtonEvent(ImGuiMouseButton_Left, _frameIndex == 3);
+                if (_frameIndex > 4) io.AddMouseButtonEvent(ImGuiMouseButton_Left, _frameIndex == 5);
             }
         }
+        // A filtered run can jump straight from Quick open to a non-popup stage.
         const bool floating = stage.view == SmokeView::QuickOpen || stage.view == SmokeView::Palette ||
                               stage.view == SmokeView::BuildFailed;
-        if (floating && _frameIndex <= 2) io.AddKeyEvent(ImGuiKey_Escape, _frameIndex == 1);
+        const bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
+        if (_frameIndex <= 2) io.AddKeyEvent(ImGuiKey_Escape, _frameIndex == 1 && (floating || popup));
         if ((stage.view == SmokeView::QuickOpen || stage.view == SmokeView::Palette) && _frameIndex >= 3 &&
             _frameIndex <= 4) {
             io.AddKeyEvent(ImGuiMod_Ctrl, _frameIndex == 3);
@@ -635,6 +651,13 @@ protected:
             io.AddKeyEvent(ImGuiKey_P, _frameIndex == 3);
         }
         _ui.BeginFrame(stage.scale);
+        // Real ToolUiContext coverage: a later scale change must not restore Cabinet's baseline colors.
+        const auto& style = ImGui::GetStyle();
+        if (!std::equal(_expectedColors.begin(), _expectedColors.end(), std::begin(style.Colors),
+                        [](ImVec4 a, ImVec4 b) { return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w; })) {
+            std::cerr << stage.name << ": palette lost after BeginFrame (" << _palette.id << ")\n";
+            ++_failures;
+        }
         if (stage.panel) {
             _preferences.Visible(*stage.panel) = true;
             SelectTab(EditorPanelInfo(*stage.panel).window);
@@ -715,6 +738,9 @@ private:
     }
 
     std::filesystem::path _output;
+    std::vector<SmokeStage> _stages;
+    const EditorPalettePreset& _palette;
+    std::array<ImVec4, ImGuiCol_COUNT> _expectedColors;
     std::vector<SceneDefinition> _catalog;
     SceneParameters _parameters;
     mutable EditorDiagnostics _diagnostics;
@@ -741,6 +767,7 @@ private:
     int _agentWaits = 0;
     mutable int _fontSize = 100;
     mutable int _failures = 0;
+    mutable bool _openingGit = false;
     mutable ToolUiContext _ui;
     std::size_t _stage = 0;
     int _frameIndex = 0;
@@ -749,12 +776,32 @@ private:
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cerr << "Usage: EngineEditorUiSmoke <snapshot-folder> [viewport-image.png]\n";
+        std::cerr << "Usage: EngineEditorUiSmoke <snapshot-folder> [viewport-image.png] [--theme=id] [--stages=a,b]\n";
         return 2;
     }
     const auto output = std::filesystem::absolute(argv[1]);
     std::filesystem::create_directories(output);
-    EditorUiSmoke smoke(output, argc > 2 ? std::filesystem::path(argv[2]) : std::filesystem::path{});
+    std::filesystem::path image;
+    std::string theme = "cabinet";
+    std::string filter;
+    for (int i = 2; i < argc; ++i) {
+        const std::string_view argument(argv[i]);
+        if (argument.starts_with("--theme="))
+            theme = argument.substr(8);
+        else if (argument.starts_with("--stages="))
+            filter = "," + std::string(argument.substr(9)) + ",";
+        else
+            image = argv[i];
+    }
+    std::vector<SmokeStage> stages;
+    for (const auto& stage : Stages)
+        if (filter.empty() || filter.find("," + std::string(stage.name) + ",") != std::string::npos)
+            stages.push_back(stage);
+    if (stages.empty()) {
+        std::cerr << "No matching smoke stages\n";
+        return 2;
+    }
+    EditorUiSmoke smoke(output, image, ResolveEditorPalette(theme), std::move(stages));
     smoke.Run();
     std::cout << "UI checks: " << smoke.Failures() << " failures\n";
     return smoke.Failures() == 0 ? 0 : 1;

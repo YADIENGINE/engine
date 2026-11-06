@@ -22,7 +22,7 @@ constexpr float SliderEdgeWidth = 2.0f;
 bool ItemDisabled() { return (ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled) != 0; }
 bool PushDisabledTextColor() {
     if (!ItemDisabled()) return false;
-    auto color = ToolPalette::Disabled;
+    auto color = ToolColors().disabled;
     // Preserve the disabled surface fade without applying a second fade to its explicit text color.
     color.w /= std::max(ImGui::GetStyle().Alpha, 0.001f);
     ImGui::PushStyleColor(ImGuiCol_Text, color);
@@ -31,10 +31,10 @@ bool PushDisabledTextColor() {
 // A disabled main action looks like any disabled control: a faded amber is the least readable state there is.
 bool PushPrimaryButton() {
     if (ItemDisabled()) return false;
-    ImGui::PushStyleColor(ImGuiCol_Button, ToolPalette::Accent);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ToolPalette::AccentHover);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ToolPalette::AccentPressed);
-    ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::AccentText);
+    ImGui::PushStyleColor(ImGuiCol_Button, ToolColors().accent);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ToolColors().accentHover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ToolColors().accentPressed);
+    ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().accentText);
     return true;
 }
 void DrawChevron(ImDrawList& draw, ImVec2 center, float size, ImU32 color, bool down) {
@@ -72,7 +72,7 @@ std::size_t NextCharacter(std::string_view text, std::size_t start) {
 // beneath them on a lower channel, so the value stays on top.
 template <typename T>
 bool DrawSlider(const char* label, ImGuiDataType type, T& value, T minimum, T maximum, const char* format,
-                ImVec4 fill = ToolPalette::Control, ImVec4 hoveredFill = ToolPalette::Hover) {
+                ImVec4 fill = ToolColors().control, ImVec4 hoveredFill = ToolColors().hover) {
     auto* draw = ImGui::GetWindowDrawList();
     const auto well = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
     constexpr ImVec4 Clear{0, 0, 0, 0};
@@ -101,7 +101,7 @@ bool DrawSlider(const char* label, ImGuiDataType type, T& value, T minimum, T ma
         if (active) {
             const float width = std::max(1.0f, std::round(SliderEdgeWidth * ToolUiScale()));
             draw->AddRectFilled({std::max(start.x, edge - width), start.y}, {edge, end.y},
-                                ImGui::GetColorU32(ToolPalette::Accent));
+                                ImGui::GetColorU32(ToolColors().accent));
         }
     }
     draw->ChannelsMerge();
@@ -202,7 +202,7 @@ bool ToolSectionHeader(const char* label, bool defaultOpen, bool forceOpen, cons
     if (hovered)
         draw->AddRectFilled(start, {start.x + width, start.y + height}, ImGui::GetColorU32(ImGuiCol_HeaderHovered),
                             ToolMetrics::Radius * scale);
-    const auto color = ImGui::GetColorU32(hovered ? ToolPalette::Text : ToolPalette::Secondary);
+    const auto color = ImGui::GetColorU32(hovered ? ToolColors().text : ToolColors().secondary);
     DrawChevron(*draw, {start.x + chevron * 0.5f + scale, start.y + height * 0.5f}, chevron, color, open);
     // RenderText, not AddText: an open ImGui log (tests, copy) records it.
     ImGui::PushStyleColor(ImGuiCol_Text, color);
@@ -210,7 +210,7 @@ bool ToolSectionHeader(const char* label, bool defaultOpen, bool forceOpen, cons
     ImGui::PopStyleColor();
     if (detail && detailWidth + textStart < width)
         draw->AddText({start.x + width - detailWidth, start.y + SectionPaddingY * scale},
-                      ImGui::GetColorU32(ToolPalette::Muted), detail);
+                      ImGui::GetColorU32(ToolColors().muted), detail);
     ImGui::PopFont();
     return open;
 }
@@ -261,10 +261,10 @@ bool ToolButton(const char* label, ImVec2 size, bool primary) {
 bool ToolSegment(const char* label, bool selected, ImVec4 attention) {
     ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
     ImGui::PushStyleColor(ImGuiCol_Button, attention);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, attention.w > 0 ? attention : ToolPalette::Elevated);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, attention.w > 0 ? attention : ToolPalette::Pressed);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, attention.w > 0 ? attention : ToolColors().elevated);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, attention.w > 0 ? attention : ToolColors().pressed);
     ImGui::PushStyleColor(ImGuiCol_Text,
-                          selected ? ToolPalette::Text : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+                          selected ? ToolColors().text : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
     const bool disabledText = PushDisabledTextColor();
     const auto padding = ImGui::GetStyle().FramePadding;
     const std::string_view fullLabel(label);
@@ -324,15 +324,15 @@ bool ToolToggle(const char* label, bool& value) {
     auto* draw = ImGui::GetWindowDrawList();
     const float radius = 2 * scale;
     const ImVec2 trackStart{std::floor(start.x), std::floor(start.y + (itemHeight - track.y) * 0.5f)};
-    const ImVec4 trackColor = value ? (hovered ? ToolPalette::AccentHover : ToolPalette::Accent)
-                                    : (hovered ? ToolPalette::Hover : ToolPalette::Control);
+    const ImVec4 trackColor = value ? (hovered ? ToolColors().accentHover : ToolColors().accent)
+                                    : (hovered ? ToolColors().hover : ToolColors().control);
     draw->AddRectFilled(trackStart, {trackStart.x + track.x, trackStart.y + track.y}, ImGui::GetColorU32(trackColor),
                         radius);
     const float inset = std::max(1.0f, std::round(ToggleInset * scale));
     const float knob = track.y - inset * 2;
     const float knobX = value ? trackStart.x + track.x - inset - knob : trackStart.x + inset;
     draw->AddRectFilled({knobX, trackStart.y + inset}, {knobX + knob, trackStart.y + inset + knob},
-                        ImGui::GetColorU32(value ? ToolPalette::AccentText : ToolPalette::Muted), radius * 0.5f);
+                        ImGui::GetColorU32(value ? ToolColors().accentText : ToolColors().muted), radius * 0.5f);
     if (const char* textEnd = ImGui::FindRenderedTextEnd(label); textEnd != label) {
         const float textY = start.y + (itemHeight - ImGui::GetTextLineHeight()) * 0.5f;
         ImGui::RenderText({trackStart.x + track.x + ImGui::GetStyle().ItemInnerSpacing.x, textY}, label, textEnd);
@@ -347,7 +347,7 @@ bool ToolBeginCombo(const char* label, const char* preview, ImGuiComboFlags flag
     const float chevron = ChevronSize * scale;
     const auto start = ImGui::GetCursorScreenPos();
     const auto display = ToolClipText(preview, std::max(1.0f, width - paddingX * 2 - chevron - ToolMetrics::Space));
-    const auto color = ImGui::GetColorU32(ToolPalette::Secondary);
+    const auto color = ImGui::GetColorU32(ToolColors().secondary);
     auto* draw = ImGui::GetWindowDrawList();
     const bool open = ImGui::BeginCombo(label, display.c_str(), flags | ImGuiComboFlags_NoArrowButton);
     // The parent's list: BeginCombo may have switched to the popup's window.

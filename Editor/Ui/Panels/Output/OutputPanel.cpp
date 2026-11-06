@@ -86,7 +86,7 @@ void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiAct
     const auto errors = diagnostics.ProblemErrors();
     const auto warnings = problems.size() - errors;
     ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(ToolPalette::Muted, "%s",
+    ImGui::TextColored(ToolColors().muted, "%s",
                        std::format("{} error{}, {} warning{}  \xC2\xB7  {}  \xC2\xB7  {:.1f} s", errors,
                                    errors == 1 ? "" : "s", warnings, warnings == 1 ? "" : "s",
                                    ResultLabel(attempt.result), diagnostics.AttemptSeconds())
@@ -146,7 +146,7 @@ void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiAct
             draw->AddText({textX, top}, ImGui::GetColorU32(ImGuiCol_Text),
                           ToolClipText(message.c_str(), textWidth).c_str());
             ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
-            draw->AddText({textX, top + lineHeight}, ImGui::GetColorU32(ToolPalette::Muted),
+            draw->AddText({textX, top + lineHeight}, ImGui::GetColorU32(ToolColors().muted),
                           ToolClipMiddle(where.c_str(), textWidth).c_str());
             ImGui::PopFont();
             if (hovered && problem.level == BuildProblemLevel::Error) {
@@ -263,7 +263,7 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
     ToolTooltip("Open the complete log file for this scope. Clear only removes the Full view's buffered lines.");
     if (_lastAttempt) {
         ImGui::PushTextWrapPos(0);
-        ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Muted);
+        ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().muted);
         if (attempt.id) {
             auto summary = "Attempt #" + std::to_string(attempt.id) + "  \xC2\xB7  " + TimeLabel(attempt.started) +
                            "  \xC2\xB7  " + std::format("{:.1f} s", diagnostics.AttemptSeconds()) + "  \xC2\xB7  " +

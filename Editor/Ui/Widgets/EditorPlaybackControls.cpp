@@ -60,11 +60,11 @@ void SearchBox(float width, EditorToolbarSearch& search) {
     const bool hovered = ImGui::IsItemHovered();
     auto* draw = ImGui::GetWindowDrawList();
     draw->AddRectFilled(start, {start.x + width, start.y + height},
-                        ImGui::GetColorU32(hovered ? ToolPalette::Elevated : ToolPalette::Panel),
+                        ImGui::GetColorU32(hovered ? ToolColors().elevated : ToolColors().panel),
                         ToolMetrics::Radius * scale);
     const float inset = EditorToolbarMetrics::ButtonPadding * scale;
     const float textY = start.y + (height - ImGui::GetTextLineHeight()) * 0.5f;
-    const auto muted = ImGui::GetColorU32(ToolPalette::Muted);
+    const auto muted = ImGui::GetColorU32(ToolColors().muted);
     constexpr const char* Icon = ICON_FA_MAGNIFYING_GLASS;
     draw->AddText({start.x + inset, textY}, muted, Icon);
     const float textX = start.x + inset + ImGui::CalcTextSize(Icon).x + inset * 0.75f;

@@ -21,7 +21,7 @@ void ToolEmptyState(const char* title, const char* detail);
 void ToolStatusBadge(const char* label, ImVec4 color);
 // Medium-weight labels with the same sizing, hover, pressed, disabled and keyboard focus behavior.
 [[nodiscard]] bool ToolButton(const char* label, ImVec2 size = {}, bool primary = false);
-// Text with an amber underline when selected. `attention`: a fill behind it for "look here" states; alpha 0 for none.
+// Text with an accent underline when selected. `attention`: a fill behind it for "look here" states; alpha 0 for none.
 [[nodiscard]] bool ToolSegment(const char* label, bool selected, ImVec4 attention = {0, 0, 0, 0});
 // `icon` is a Font Awesome glyph (ICON_FA_* from <extras/IconsFontAwesome6.h>), merged into the Ui font.
 [[nodiscard]] bool ToolIconButton(const char* id, const char* icon, const char* tooltip, bool selected = false);

@@ -351,7 +351,20 @@ it in its prompt.
 
 ## Preferences
 
+**View → Theme** selects Cabinet (the original warm dark palette), Slate (neutral dark with a blue accent), or Paper
+(neutral light with a blue accent). The same choices are in the command palette. Changes apply together at the start
+of the next frame, without restarting. Only colors change: fonts, interface scale, spacing, panel layout, input and
+animation timing stay the same. Success remains green, warning amber and error red independently of the accent.
+The native caption follows the palette; terminal contents in Console and Agents keep their original colors, including
+selection. Scene pixels, authored colors and asset/thumbnail images keep their own colors.
+
 Layout, last custom layout, visibility, scale, favorites, recent opens, and Output preferences are in
 `UserDataDirectory()/EngineEditor/preferences.json` (separated by build directory + project name). The agent CLI choice,
-accepted setup and the Agent control and Visual checks switches belong to the user and apply to every project. Player progress / settings
+accepted setup, theme and the Agent control and Visual checks switches belong to the user and apply to every project. Player progress / settings
 files are unaffected.
+
+Theme ids are saved as the top-level `theme` string in the existing version 1 preferences file. Missing, malformed or
+unknown ids fall back to Cabinet without resetting other preferences. Built-in palettes live in the single
+`Editor/Ui/Style/EditorPalettePreset.cpp` catalog: adding an id, title and `ToolColorPalette` also adds its menu and command
+palette entries. Color data is independent of style dimensions; a future custom-color editor can supply the same value
+to `ToolUiContext::SetPalette`. Fixed `ToolPalette` constants retain Cabinet for existing tool callers and content backdrops.

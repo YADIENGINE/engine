@@ -117,8 +117,8 @@ bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, 
     if (starts) PushEditorGoButton();
     if (stops) PushEditorTintedButton(ToolToneColor(ToolTone::Error), EditorStopTextColor());
     if (active) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ToolPalette::Selected);
-        ImGui::PushStyleColor(ImGuiCol_Text, ToolPalette::Accent);
+        ImGui::PushStyleColor(ImGuiCol_Button, ToolColors().selected);
+        ImGui::PushStyleColor(ImGuiCol_Text, ToolColors().accent);
     }
     const bool centerPauseGlyph = command == EditorCommand::Pause && !showLabel;
     std::string label;
@@ -135,9 +135,8 @@ bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, 
         const auto end = ImGui::GetItemRectMax();
         const char* glyph = EditorGlyphText(CommandGlyph(command, snapshot));
         const auto extent = ImGui::CalcTextSize(glyph);
-        ImGui::GetWindowDrawList()->AddText(
-            {(start.x + end.x - extent.x) * 0.5f, (start.y + end.y - extent.y) * 0.5f},
-            ImGui::GetColorU32(ImGuiCol_Text), glyph);
+        ImGui::GetWindowDrawList()->AddText({(start.x + end.x - extent.x) * 0.5f, (start.y + end.y - extent.y) * 0.5f},
+                                            ImGui::GetColorU32(ImGuiCol_Text), glyph);
     }
     if (active) ImGui::PopStyleColor(2);
     if (starts || stops) PopEditorButton();
@@ -159,7 +158,7 @@ bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, 
         const auto end = ImGui::GetItemRectMax();
         const float size = ImGui::GetFontSize();
         const float x = showLabel ? start.x + ImGui::GetStyle().FramePadding.x : (start.x + end.x - size) * 0.5f;
-        DrawInvader({x, (start.y + end.y - size * 8.0f / 11.0f) * 0.5f}, size, ImGui::GetColorU32(ToolPalette::Accent));
+        DrawInvader({x, (start.y + end.y - size * 8.0f / 11.0f) * 0.5f}, size, ImGui::GetColorU32(ToolColors().accent));
         if (showLabel)
             ImGui::GetWindowDrawList()->AddText(
                 {x + size + ImGui::CalcTextSize("  ").x, ImGui::GetItemRectMin().y + ImGui::GetStyle().FramePadding.y},

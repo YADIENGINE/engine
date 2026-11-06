@@ -385,7 +385,7 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
     ImGui::SetNextWindowSize(size);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Window);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolColors().window);
     ImGui::Begin("Workspace###editor.workspace", nullptr, HostFlags);
     ImGui::PopStyleColor();
     const ImGuiID dock = ImGui::GetID("editor.dockspace");
@@ -474,7 +474,7 @@ void EditorWorkspace::DockHost(ImVec2 position, ImVec2 size, bool reset, const E
     }
     // Panes are told apart by their gaps: the splitters take the frame's color until touched. A tab closes itself on
     // hover, so the tab bar's own close button would only repeat it.
-    ImGui::PushStyleColor(ImGuiCol_Separator, ToolPalette::Window);
+    ImGui::PushStyleColor(ImGuiCol_Separator, ToolColors().window);
     ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_NoCloseButton;
     if (_maximized) dockFlags |= ImGuiDockNodeFlags_KeepAliveOnly;
     ImGui::DockSpace(dock, {}, dockFlags);
@@ -744,7 +744,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         ImGui::SetNextWindowSize(workspaceSize);
         constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar;
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Content);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolColors().content);
         if (ImGui::Begin("Viewport###editor.maximized", nullptr, flags))
             result.interaction =
                 _viewport.Draw(snapshot, actions, image, preferences.recent, preferences.showMetrics, true, !_marking);
@@ -767,7 +767,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
             if (edgeToEdge) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, headerPadding);
             // The game sits on a neutral well: a tinted frame would change how its colors read.
-            if (panel.id == EditorPanel::Viewport) ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Content);
+            if (panel.id == EditorPanel::Viewport) ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolColors().content);
             const bool drawPanel =
                 ImGui::Begin(panel.window, &preferences.Visible(panel.id),
                              flags | (panel.id == EditorPanel::Viewport || panel.id == EditorPanel::Inspector ||

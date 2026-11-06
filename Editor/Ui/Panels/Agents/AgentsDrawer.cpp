@@ -196,13 +196,13 @@ bool DrawChip(const Row& row, bool selected, bool& menu) {
     const bool waiting = row.state == SessionState::Waiting;
     // A waiting agent's chip glows, so it is found without reading
     const auto fill =
-        selected  ? ToolPalette::Selected
-        : waiting ? EditorTintSurface(ToolPalette::Control, ToolToneColor(ToolTone::Warning), EditorAttentionPulse())
-        : hovered ? ToolPalette::Hover
-                  : ToolPalette::Control;
+        selected  ? ToolColors().selected
+        : waiting ? EditorTintSurface(ToolColors().control, ToolToneColor(ToolTone::Warning), EditorAttentionPulse())
+        : hovered ? ToolColors().hover
+                  : ToolColors().control;
     draw->AddRectFilled(start, end, ImGui::GetColorU32(fill), ToolMetrics::Radius * scale);
     const float centerY = start.y + height * 0.5f;
-    const auto dotColor = row.state == SessionState::Idle ? ToolPalette::Muted : EditorSessionStateColor(row.state);
+    const auto dotColor = row.state == SessionState::Idle ? ToolColors().muted : EditorSessionStateColor(row.state);
     if (row.id)
         draw->AddCircleFilled({start.x + pad + dot, centerY}, dot, ImGui::GetColorU32(dotColor));
     else
@@ -210,7 +210,7 @@ bool DrawChip(const Row& row, bool selected, bool& menu) {
     float x = start.x + pad + dot * 2 + ToolMetrics::Space * 2 * scale;
     const float textY = start.y + (height - ImGui::GetTextLineHeight()) * 0.5f;
     const bool exited = row.state == SessionState::Exited;
-    Label({x, textY}, exited ? ToolPalette::Disabled : selected ? ToolPalette::Text : ToolPalette::Secondary, name);
+    Label({x, textY}, exited ? ToolColors().disabled : selected ? ToolColors().text : ToolColors().secondary, name);
     x += ImGui::CalcTextSize(name.c_str()).x + ToolMetrics::Space * scale;
     if (row.holds) Label({x, textY}, EditorAgentColor(), ICON_FA_LOCK);
     if (hovered) {
@@ -227,15 +227,15 @@ void DrawTool(const AgentToolUse& tool) {
     const float startX = ImGui::GetCursorPosX();
     ImGui::AlignTextToFramePadding();
     ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
-    ImGui::TextColored(ToolPalette::Muted, "%s", Clock(tool.time).c_str());
+    ImGui::TextColored(ToolColors().muted, "%s", Clock(tool.time).c_str());
     ImGui::PopFont();
     ImGui::SameLine(startX + Scaled(TimeColumnWidth));
     ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(ToolPalette::Disabled, "%s", ICON_FA_WRENCH);
+    ImGui::TextColored(ToolColors().disabled, "%s", ICON_FA_WRENCH);
     ImGui::SameLine(startX + Scaled(TimeColumnWidth + IconColumnWidth));
     const auto text = ToolClipText(tool.text.c_str(), ImGui::GetContentRegionAvail().x);
     ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(ToolPalette::Secondary, "%s", text.c_str());
+    ImGui::TextColored(ToolColors().secondary, "%s", text.c_str());
     if (text != tool.text) ToolTooltip(tool.text.c_str());
 }
 } // namespace
@@ -314,8 +314,8 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, ToolMetrics::Radius * 2 * scale);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Panel);
-    ImGui::PushStyleColor(ImGuiCol_Border, ToolPalette::Border);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolColors().panel);
+    ImGui::PushStyleColor(ImGuiCol_Border, ToolColors().border);
     const bool visible = ImGui::Begin("Agents###editor.agents-drawer", nullptr, DrawerFlags);
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar(3);
@@ -372,7 +372,7 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
         const float summaryRoom = headerRight - ImGui::GetCursorScreenPos().x;
         if (summaryRoom > ImGui::GetFontSize() * 3) {
             ImGui::AlignTextToFramePadding();
-            ImGui::TextColored(ToolPalette::Muted, "%s", ToolClipText(summary.c_str(), summaryRoom).c_str());
+            ImGui::TextColored(ToolColors().muted, "%s", ToolClipText(summary.c_str(), summaryRoom).c_str());
         }
     }
     ImGui::SetCursorScreenPos({closeX, origin.y + gap});
@@ -439,7 +439,7 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
         ImGui::EndChild();
         top += rowHeight + Scaled(ToolMetrics::Space);
     }
-    draw->AddLine({origin.x, top}, {origin.x + width, top}, ImGui::GetColorU32(ToolPalette::Separator));
+    draw->AddLine({origin.x, top}, {origin.x + width, top}, ImGui::GetColorU32(ToolColors().separator));
     const float bodyHeight = origin.y + height - top;
 
     if (rows.empty()) {
@@ -465,12 +465,12 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
         y += iconSize.y + gap * 1.5f;
         ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::HeadingSize);
         const char* title = "No agent running";
-        Label({centerX - ImGui::CalcTextSize(title).x * 0.5f, y}, ToolPalette::Text, title);
+        Label({centerX - ImGui::CalcTextSize(title).x * 0.5f, y}, ToolColors().text, title);
         y += ImGui::GetTextLineHeight() + gap;
         ImGui::PopFont();
         for (const char* line : {"Start one in this project. Its terminal opens here,",
                                  "so you can talk to it while you work in the scene."}) {
-            Label({centerX - ImGui::CalcTextSize(line).x * 0.5f, y}, ToolPalette::Muted, line);
+            Label({centerX - ImGui::CalcTextSize(line).x * 0.5f, y}, ToolColors().muted, line);
             y += lineHeight;
         }
         y += gap * 1.5f;
@@ -522,7 +522,7 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
         const float stateRoom = origin.x + width - pad - buttons - gap - ImGui::GetCursorScreenPos().x;
         if (stateRoom > ImGui::GetFontSize() * 3) {
             ImGui::AlignTextToFramePadding();
-            ImGui::TextColored(chosen->state == SessionState::Idle ? ToolPalette::Muted
+            ImGui::TextColored(chosen->state == SessionState::Idle ? ToolColors().muted
                                                                    : EditorSessionStateColor(chosen->state),
                                "%s", ToolClipText(state.c_str(), stateRoom).c_str());
         } else {
@@ -547,7 +547,7 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
         if (chosen->id) {
             const auto target = SessionContextTarget(sessions, chosen->id);
             ImGui::TextWrapped("Scene context to: %s", target.title.c_str());
-            ImGui::TextColored(ToolPalette::Muted, "Paste only \xC2\xB7 You submit");
+            ImGui::TextColored(ToolColors().muted, "Paste only \xC2\xB7 You submit");
             ContinueToolToolbar(send, true);
             if (exited) {
                 if (ToolButton(send, {}, true)) request.restart = chosen->id;
@@ -580,7 +580,7 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
                 if (ImGui::BeginChild("agents-terminal", {width - inset * 2, body.y},
                                       ImGuiChildFlags_AlwaysUseWindowPadding, StillChild)) {
                     auto& terminalView = views.View(*chosen->id);
-                    terminalView.Draw(*terminal);
+                    views.Draw(*chosen->id, *terminal);
                     _terminalFocused = terminalView.Focused();
                 }
                 ImGui::EndChild();
@@ -615,7 +615,7 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
                 ImGui::SetCursorPosX(pad);
                 if (ImGui::BeginChild("agents-timeline", {body.x - pad * 2, 0})) {
                     if (entries.empty())
-                        ImGui::TextColored(ToolPalette::Muted, "%s",
+                        ImGui::TextColored(ToolColors().muted, "%s",
                                            _filter == Filter::Tools
                                                ? "Tools the agent uses appear here (Claude Code hooks)."
                                                : "What the agent does in the editor appears here.");
@@ -645,7 +645,7 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
         for (int line = 1; line <= 2; ++line) {
             const float inset = grip * 0.3f * static_cast<float>(line);
             draw->AddLine({corner.x + grip * 0.15f, corner.y + inset},
-                          {corner.x + grip - inset, corner.y + grip * 0.85f}, ImGui::GetColorU32(ToolPalette::Accent),
+                          {corner.x + grip - inset, corner.y + grip * 0.85f}, ImGui::GetColorU32(ToolColors().accent),
                           1.5f * scale);
         }
     }

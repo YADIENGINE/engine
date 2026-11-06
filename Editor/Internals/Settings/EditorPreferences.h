@@ -19,7 +19,8 @@ struct EditorPreferences {
     EditorLogFilter outputFilter;
     bool followOutput = true;
     bool showMetrics = false;
-    AgentPreferences agent; // Saved for the user across projects
+    AgentPreferences agent;        // Saved for the user across projects
+    std::string theme = "cabinet"; // User-wide, independent of project layouts and interface scale
     [[nodiscard]] bool& Visible(EditorPanel panel) { return visible[static_cast<std::size_t>(panel)]; }
     [[nodiscard]] bool IsFavorite(const std::string& id) const;
     void ToggleFavorite(const std::string& id);

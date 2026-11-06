@@ -4,6 +4,7 @@
 #include <system_error>
 #include "Editor/Internals/Agent/AgentProfile.h"
 #include "Editor/Ui/Commands/EditorCommands.h"
+#include "Editor/Ui/Style/EditorPalettePreset.h"
 #include "Editor/Ui/Widgets/EditorAgentSetup.h"
 
 namespace {
@@ -166,6 +167,14 @@ void ViewActions(const EditorActionContext& context, std::vector<EditorAction>& 
                         .checked = preferences.layout == id,
                         .run = [&result, id] { result.layout = id; }});
     }
+    for (const auto& palette : EditorPalettePresets())
+        list.push_back({.menu = EditorMenu::View,
+                        .section = "look",
+                        .submenu = "Theme",
+                        .label = palette.title,
+                        .check = EditorActionCheck::Radio,
+                        .checked = preferences.theme == palette.id,
+                        .run = [&preferences, id = palette.id] { preferences.theme = id; }});
     for (const int percent : EditorFontSizes)
         list.push_back({.menu = EditorMenu::View,
                         .section = "look",

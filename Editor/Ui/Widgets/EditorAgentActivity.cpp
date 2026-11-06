@@ -70,13 +70,13 @@ void DrawEditorAgentEventRow(const EditorControlEvent& event, const EditorSnapsh
     const float startX = ImGui::GetCursorPosX();
     ImGui::AlignTextToFramePadding();
     ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
-    ImGui::TextColored(ToolPalette::Muted, "%s", TimeLabel(event.time).c_str());
+    ImGui::TextColored(ToolColors().muted, "%s", TimeLabel(event.time).c_str());
     ImGui::PopFont();
     ImGui::SameLine(startX + TimeColumnWidth * scale);
     const bool change = event.previous.has_value();
     const bool shot = !event.file.empty();
     ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(change || shot ? EditorAgentColor() : ToolPalette::Muted, "%s",
+    ImGui::TextColored(change || shot ? EditorAgentColor() : ToolColors().muted, "%s",
                        change ? ICON_FA_SLIDERS
                        : shot ? ICON_FA_CAMERA
                               : ICON_FA_COMMENT);
@@ -148,14 +148,14 @@ void EditorAgentActivity::Draw(const EditorSnapshot& snapshot, const EditorUiAct
 
     auto* draw = ImGui::GetWindowDrawList();
     draw->AddRectFilled(start, end,
-                        ImGui::GetColorU32(EditorTintSurface(ToolPalette::Panel, tone,
+                        ImGui::GetColorU32(EditorTintSurface(ToolColors().panel, tone,
                                                              tint + (hovered || agent.drawerOpen ? HoverTint : 0) +
                                                                  (agent.drawerOpen ? HoverTint : 0))),
                         ToolMetrics::Radius * scale);
     const float padding = Padding * scale;
     const float gap = Gap * scale;
     const float side = ToolActivitySide();
-    ToolDrawActivity(*draw, {start.x + padding, start.y + (height - side) * 0.5f}, quiet ? ToolPalette::Muted : tone,
+    ToolDrawActivity(*draw, {start.x + padding, start.y + (height - side) * 0.5f}, quiet ? ToolColors().muted : tone,
                      state == SessionState::Working);
     float lineStart = start.x + padding + side + gap;
     float right = end.x - padding;
@@ -171,7 +171,7 @@ void EditorAgentActivity::Draw(const EditorSnapshot& snapshot, const EditorUiAct
         for (std::size_t index = 0; index < shown; ++index) {
             const auto& dot = agent.sessions[index];
             const auto color =
-                dot.state == SessionState::Idle ? ToolPalette::Muted : EditorSessionStateColor(dot.state);
+                dot.state == SessionState::Idle ? ToolColors().muted : EditorSessionStateColor(dot.state);
             draw->AddCircleFilled({x, centerY}, radius, ImGui::GetColorU32(color));
             if (dot.holds)
                 draw->AddCircle({x, centerY}, radius + 2.0f * scale, ImGui::GetColorU32(EditorAgentColor()), 0,
@@ -182,7 +182,7 @@ void EditorAgentActivity::Draw(const EditorSnapshot& snapshot, const EditorUiAct
             ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
             const auto more = std::format("+{}", agent.sessions.size() - shown);
             const auto size = ImGui::CalcTextSize(more.c_str());
-            draw->AddText({x - radius, centerY - size.y * 0.5f}, ImGui::GetColorU32(ToolPalette::Muted), more.c_str());
+            draw->AddText({x - radius, centerY - size.y * 0.5f}, ImGui::GetColorU32(ToolColors().muted), more.c_str());
             x += size.x;
             ImGui::PopFont();
         }
@@ -193,7 +193,7 @@ void EditorAgentActivity::Draw(const EditorSnapshot& snapshot, const EditorUiAct
     if (!compact) {
         const char* open = agent.drawerOpen ? ICON_FA_CHEVRON_UP : ICON_FA_CHEVRON_DOWN;
         const auto size = ImGui::CalcTextSize(open);
-        draw->AddText({right - size.x, start.y + (height - size.y) * 0.5f}, ImGui::GetColorU32(ToolPalette::Muted),
+        draw->AddText({right - size.x, start.y + (height - size.y) * 0.5f}, ImGui::GetColorU32(ToolColors().muted),
                       open);
         right -= size.x + gap;
     }
@@ -211,15 +211,15 @@ void EditorAgentActivity::Draw(const EditorSnapshot& snapshot, const EditorUiAct
         const float top = start.y + (height - size.y) * 0.5f;
         const ImVec2 from{right - size.x - countPadding * 2, top - 1 * scale};
         draw->AddRectFilled(from, {right, top + size.y + 1 * scale},
-                            ImGui::GetColorU32(unseen ? (quiet ? EditorAgentColor() : tone) : ToolPalette::Window),
+                            ImGui::GetColorU32(unseen ? (quiet ? EditorAgentColor() : tone) : ToolColors().window),
                             ToolMetrics::Radius * scale);
         draw->AddText({from.x + countPadding, top},
-                      ImGui::GetColorU32(unseen ? ToolPalette::Window : ToolPalette::Muted), earlier.c_str());
+                      ImGui::GetColorU32(unseen ? ToolColors().window : ToolColors().muted), earlier.c_str());
         right = from.x - gap;
     }
     if (!compact && !age.empty()) {
         const auto size = ImGui::CalcTextSize(age.c_str());
-        draw->AddText({right - size.x, start.y + (height - size.y) * 0.5f}, ImGui::GetColorU32(ToolPalette::Muted),
+        draw->AddText({right - size.x, start.y + (height - size.y) * 0.5f}, ImGui::GetColorU32(ToolColors().muted),
                       age.c_str());
         right -= size.x + gap;
     }
@@ -233,7 +233,7 @@ void EditorAgentActivity::Draw(const EditorSnapshot& snapshot, const EditorUiAct
                                                                               : agent.title + ": " + line;
         const auto clipped = ToolClipText(said.c_str(), right - lineStart);
         draw->AddText({lineStart, start.y + (height - ImGui::GetTextLineHeight()) * 0.5f},
-                      ImGui::GetColorU32(quiet && !last ? ToolPalette::Muted : ToolPalette::Text), clipped.c_str());
+                      ImGui::GetColorU32(quiet && !last ? ToolColors().muted : ToolColors().text), clipped.c_str());
     }
     ToolTooltip(((agent.session ? agent.title + ": " : std::string()) + line +
                  (heldByOther ? "\nAnother session holds the editor." : "") + "\n\nClick for Agents")

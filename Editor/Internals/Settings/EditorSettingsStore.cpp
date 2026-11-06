@@ -62,6 +62,9 @@ std::string EditorSettingsStore::Load(const std::string& project, EditorPreferen
             throw std::runtime_error("Unsupported settings format");
         const int font = document.value("fontSize", 100);
         EditorPreferences loaded;
+        if (const auto theme = document.find("theme"); theme != document.end() && theme->is_string())
+            loaded.theme =
+                theme->get<std::string>(); // The UI catalog resolves unknown ids without a UI dependency here.
         const auto projects = document.value("projects", nlohmann::json::object());
         if (!projects.is_object()) throw std::runtime_error("Invalid project preferences");
         if (const auto found = projects.find(project); found != projects.end()) {
@@ -127,6 +130,7 @@ std::string EditorSettingsStore::Save(const std::string& project, const EditorPr
         auto document = _document;
         document["version"] = 1;
         document["fontSize"] = ValidFontSize(fontSize) ? fontSize : 100;
+        document["theme"] = preferences.theme;
         document["agent"] = {{"kind", AgentKindInfo(preferences.agent.kind).key},
                              {"customCommand", preferences.agent.customCommand},
                              {"control", preferences.agent.control},

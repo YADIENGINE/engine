@@ -31,13 +31,13 @@ void TextDiff(const GitDiff& diff) {
             for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index) {
                 const auto& line = diff.lines[static_cast<std::size_t>(index)];
                 const auto start = ImGui::GetCursorScreenPos();
-                ImVec4 color = ToolPalette::Secondary;
+                ImVec4 color = ToolColors().secondary;
                 if (line.kind == GitDiffLineKind::Added || line.kind == GitDiffLineKind::Removed) {
                     const auto tone =
                         ToolToneColor(line.kind == GitDiffLineKind::Added ? ToolTone::Success : ToolTone::Error);
                     draw->AddRectFilled(start, {start.x + width, start.y + height},
-                                        ImGui::GetColorU32(EditorTintSurface(ToolPalette::Content, tone, LineTint)));
-                    color = ToolPalette::Text;
+                                        ImGui::GetColorU32(EditorTintSurface(ToolColors().content, tone, LineTint)));
+                    color = ToolColors().text;
                 } else if (line.kind == GitDiffLineKind::Hunk) {
                     color = EditorInfoColor();
                 }
@@ -47,19 +47,19 @@ void TextDiff(const GitDiff& diff) {
                 ImGui::SetCursorScreenPos({start.x, start.y + height});
             }
         ImGui::Dummy({width, 0});
-        if (diff.truncated) ImGui::TextColored(ToolPalette::Muted, "The change is longer than this view shows.");
+        if (diff.truncated) ImGui::TextColored(ToolColors().muted, "The change is longer than this view shows.");
         ImGui::PopFont();
     }
     ImGui::EndChild();
 }
 void Picture(const char* title, const std::filesystem::path& file, const EditorUiActions& actions, ImVec2 area) {
     if (ImGui::BeginChild(title, area)) {
-        ImGui::TextColored(ToolPalette::Muted, "%s", title);
+        ImGui::TextColored(ToolColors().muted, "%s", title);
         const auto room = ImGui::GetContentRegionAvail();
         if (file.empty()) {
-            ImGui::TextColored(ToolPalette::Muted, "No file on this side.");
+            ImGui::TextColored(ToolColors().muted, "No file on this side.");
         } else if (const auto image = actions.gitImage ? actions.gitImage(file) : EditorGitImage{}; !image.texture) {
-            ImGui::TextColored(ToolPalette::Muted, "Could not load this picture.");
+            ImGui::TextColored(ToolColors().muted, "Could not load this picture.");
         } else {
             const float zoom =
                 std::min(room.x / static_cast<float>(image.width), room.y / static_cast<float>(image.height));
@@ -93,7 +93,7 @@ void GitDiffView::Draw(const GitDiff& diff, const EditorUiActions& actions, ImVe
     ImGui::SetNextWindowSize(size);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {Padding * scale, Padding * scale});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Content);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolColors().content);
     if (ImGui::Begin("Change###editor.git-diff", nullptr, DiffFlags)) {
         const float closeWidth = ImGui::GetFrameHeight();
         ImGui::AlignTextToFramePadding();
@@ -117,7 +117,7 @@ void GitDiffView::Draw(const GitDiff& diff, const EditorUiActions& actions, ImVe
             break;
         }
         case GitDiffKind::Audio:
-            ImGui::TextColored(ToolPalette::Secondary, "Listen to both versions.");
+            ImGui::TextColored(ToolColors().secondary, "Listen to both versions.");
             ImGui::Spacing();
             Sound("Before", diff.before, actions);
             ImGui::SameLine();

@@ -13,7 +13,7 @@ target_include_directories(EngineToolImGui SYSTEM PUBLIC "${tool_imgui_dir}" "${
 target_compile_definitions(EngineToolImGui PRIVATE NO_FONT_AWESOME)
 target_link_libraries(EngineToolImGui PRIVATE Engine)
 
-add_library(EngineToolUi STATIC EXCLUDE_FROM_ALL Internals/WindowChrome.cpp ToolPixel.cpp ToolTheme.cpp
+add_library(EngineToolUi STATIC EXCLUDE_FROM_ALL Internals/WindowChrome.cpp ToolColorPalette.cpp ToolPixel.cpp ToolTheme.cpp
     ToolUiContext.cpp ToolWidgets.cpp ToolWindow.cpp)
 # Embed the unmodified OFL fonts: tools look the same everywhere and do not depend on installed fonts or asset paths.
 set(tool_font_header "// Generated from ThirdParty/IBMPlex; do not edit.\n")
