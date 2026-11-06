@@ -1,0 +1,8 @@
+{
+  "date": "2026-11-06",
+  "changes": [
+    "Third party: Paint triangulates shapes with earcut and resolves overlapping areas with Clipper2; paths take a FillRule.",
+    "Third party: smooth noise comes from FastNoiseLite behind NoiseField.h."
+  ],
+  "breaking": []
+}
