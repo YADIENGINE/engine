@@ -31,6 +31,7 @@ Read the matching skill before acting. Each one is a short procedure; follow its
 
 | When the request is to | Read |
 | --- | --- |
+| diagnose a game, worker or native test crash; a `Crash report:` path | `AgentDocs/Skills/crash/SKILL.md` |
 | show, open, look at, inspect or explain something in the editor; an `[editor] ...` line | `AgentDocs/Skills/editor/SKILL.md` |
 | draw a new character, enemy, item, prop, icon or other standalone graphic | `AgentDocs/Skills/graphic-asset/SKILL.md` |
 | change something visual or gameplay-facing and check it | `AgentDocs/Skills/visual-change/SKILL.md` |

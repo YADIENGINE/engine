@@ -1,4 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <array>
 #include <fstream>
 #include <iterator>
@@ -435,19 +438,32 @@ TEST_CASE("Editor.Snapshots.WorkersRunFromCopiesOfTheBuild", "[engine-editor]") 
         return std::string(std::istreambuf_iterator<char>(input), {});
     };
     write(built.executable, "first");
+    write(directory.Path() / "MyGameWorker.pdb", "first-symbols");
+    write(directory.Path() / "EngineCrashReporter.exe", "reporter");
     snapshots.Capture();
     const auto first = snapshots.Current()->executable;
     CHECK(first != built.executable);
-    CHECK(first.parent_path() == built.executable.parent_path()); // Assets resolve as for the build output
+    CHECK(first.parent_path().parent_path() == built.executable.parent_path());
+    CHECK(read(first.parent_path() / "MyGameWorker.pdb") == "first-symbols");
     CHECK(snapshots.Current()->directory == built.directory);
     CHECK(read(first) == "first");
 
     write(built.executable, "second"); // The next build overwrites only the output
+    write(directory.Path() / "MyGameWorker.pdb", "second-symbols");
     snapshots.Capture();
     const auto second = snapshots.Current()->executable;
     CHECK(second != first);
     CHECK(read(first) == "first");
     CHECK(read(second) == "second");
+    CHECK(read(first.parent_path() / "MyGameWorker.pdb") == "first-symbols");
+    CHECK(read(second.parent_path() / "MyGameWorker.pdb") == "second-symbols");
+
+    NativeHandle lease(CreateFileW((first.parent_path() / "snapshot.lock").c_str(), GENERIC_READ, FILE_SHARE_READ,
+                                   nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+    REQUIRE(lease);
+    snapshots.Prune();
+    CHECK(std::filesystem::exists(first.parent_path() / "MyGameWorker.pdb"));
+    lease.Reset();
 
     write(directory.Path() / "Unrelated.live-3.exe", "other");
     snapshots.Prune();

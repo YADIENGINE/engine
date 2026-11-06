@@ -14,6 +14,7 @@ from Tools.manifest import ENGINE_ROOT, load_manifest
 
 # Komutlar ve seçenekleri launcher'ın güvendiği sözleşmedir; buradan bir şey silmek toolsContract'ı artırır.
 CONTRACT = {
+    "crash": ["report.json", "--symbols", "Symbols", "--json"],
     "build": ["--release", "--clean"],
     "run": ["--release"],
     "release": [],

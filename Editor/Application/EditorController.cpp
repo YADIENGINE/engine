@@ -542,7 +542,7 @@ void EditorController::Send(const std::string& type, nlohmann::json data) {
 void EditorController::TickActive() {
     if (!_active) return;
     for (const auto& line : _active->DrainOutput())
-        Log(line, EditorLogLevel::Info, EditorLogSource::Worker);
+        Log(line, ClassifyWorkerOutput(line), EditorLogSource::Worker);
     for (const auto& message : _active->Poll())
         Receive(message);
     if (_active->ConnectionLost()) throw std::runtime_error("Scene control connection lost");
@@ -554,7 +554,7 @@ void EditorController::TickActive() {
     if (const auto code = _active->ExitCode()) {
         const auto mode = _active->Mode();
         for (const auto& line : _active->DrainOutput())
-            Log(line, EditorLogLevel::Info, EditorLogSource::Worker);
+            Log(line, ClassifyWorkerOutput(line), EditorLogSource::Worker);
         _active.reset();
         ActiveExited(mode, *code);
     } else if (_active->StartupTimedOut())
@@ -764,14 +764,14 @@ void EditorController::TickReplacement() {
     try {
         auto& worker = *_replacement->worker;
         for (const auto& line : worker.DrainOutput())
-            Log(line, EditorLogLevel::Info, EditorLogSource::Worker);
+            Log(line, ClassifyWorkerOutput(line), EditorLogSource::Worker);
         for (const auto& message : worker.Poll()) {
             ReceiveReplacement(message);
             if (!_replacement) return;
         }
         if (const auto code = worker.ExitCode()) {
             for (const auto& line : worker.DrainOutput())
-                Log(line, EditorLogLevel::Info, EditorLogSource::Worker);
+                Log(line, ClassifyWorkerOutput(line), EditorLogSource::Worker);
             if (*code == 0 && _replacement->selectionMissing) {
                 CommitCatalogOnly();
                 return;
@@ -870,7 +870,7 @@ void EditorController::TickRetired() {
                 if (message.type == "log")
                     Log(message.data.at("text").get<std::string>(), EditorLogLevel::Info, EditorLogSource::Worker);
             for (const auto& line : (*worker)->DrainOutput())
-                Log(line, EditorLogLevel::Info, EditorLogSource::Worker);
+                Log(line, ClassifyWorkerOutput(line), EditorLogSource::Worker);
             if ((*worker)->EnforceShutdown())
                 Log("A stopped scene did not exit in time; terminating its process tree.", EditorLogLevel::Warning);
         } catch (const std::exception& error) {
@@ -879,7 +879,7 @@ void EditorController::TickRetired() {
         }
         if (const auto code = (*worker)->ExitCode()) {
             for (const auto& line : (*worker)->DrainOutput())
-                Log(line, EditorLogLevel::Info, EditorLogSource::Worker);
+                Log(line, ClassifyWorkerOutput(line), EditorLogSource::Worker);
             Log("Worker process exited (" + std::to_string(*code) + ").");
             worker = _retired.erase(worker);
             exited = true;

@@ -27,6 +27,7 @@ from .commands.editor import editor
 from .commands.new import new
 from .commands.prebuilt import prebuilt
 from .commands.refresh import refresh
+from .commands.crash import crash
 from .commands.release import package
 from .commands.sim import add_parser as add_sim_parser
 from .commands.sim import sim
@@ -80,6 +81,10 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--clean", action="store_true", help="delete the editor's build folder first")
 
     commands.add_parser("refresh", help="Build & Refresh in the project's open editor; the scene stays live")
+    crash_parser = commands.add_parser("crash", help="Read a local crash report, optionally with matching symbols")
+    crash_parser.add_argument("report")
+    crash_parser.add_argument("--symbols")
+    crash_parser.add_argument("--json", action="store_true")
     add_ctl_parser(commands)
     add_asset_parser(commands)
     add_audio_parser(commands)
@@ -133,6 +138,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return prebuilt(args.output)
         case "refresh":
             return refresh(Project(root))
+        case "crash":
+            return crash(args)
         case "ctl":
             return ctl(Project(root), args)
         case "asset":

@@ -3,6 +3,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from Tools import cli
 from Tools.commands.sim import has_sources, sim, tool_arguments
@@ -68,3 +69,14 @@ class ProjectTests(unittest.TestCase):
         self.assertFalse(has_sources(project, {"sources": "Game/Simulation"}))
         (folder / "Rules.cpp").write_text("", encoding="utf-8")
         self.assertTrue(has_sources(project, {"sources": "Game/Simulation"}))
+
+    def test_native_fault_uses_failure_code_and_usage_code_is_preserved(self):
+        project = self.project(', "simulation": {"configurePreset": "simulation"}')
+        folder = self.root / "Game/Simulation"
+        folder.mkdir(parents=True)
+        (folder / "Rules.cpp").write_text("")
+        with patch("Tools.commands.sim.build_tool", return_value=self.root / "Sim.exe"), \
+                patch("Tools.commands.sim.run_native", return_value=0xC0000005) as execute:
+            self.assertEqual(sim(project, parsed("list")), 1)
+            execute.return_value = 2
+            self.assertEqual(sim(project, parsed("list")), 2)

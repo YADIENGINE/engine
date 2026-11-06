@@ -19,6 +19,7 @@
 #include "Simulation/ScenarioScript.h"
 #include "Simulation/SimulationRegistry.h"
 #include "Simulation/StateHash.h"
+#include "Diagnostics/Internals/CrashSession.h"
 
 namespace {
 constexpr int ExitOk = 0, ExitFailed = 1, ExitUsage = 2;
@@ -161,16 +162,16 @@ int Dispatch(const std::vector<std::string_view>& arguments) {
 } // namespace
 
 int main(int argc, char** argv) {
-    try {
-        return Dispatch(std::vector<std::string_view>(argv + 1, argv + argc));
-    } catch (const std::invalid_argument& error) { // A bad request: usage, a script, or a tape that cannot play
-        std::fprintf(stderr, "error: %s\n", error.what());
-        return ExitUsage;
-    } catch (const JsonIO::Error& error) { // An unreadable file
-        std::fprintf(stderr, "error: %s\n", error.what());
-        return ExitUsage;
-    } catch (const std::exception& error) { // The simulation itself failed
-        std::fprintf(stderr, "error: %s\n", error.what());
-        return ExitFailed;
-    }
+    const CrashSession crash("simulation-tool");
+    return RunCrashBoundary([&] {
+        try {
+            return Dispatch(std::vector<std::string_view>(argv + 1, argv + argc));
+        } catch (const std::invalid_argument& error) { // A bad request: usage, a script, or a tape that cannot play
+            std::fprintf(stderr, "error: %s\n", error.what());
+            return ExitUsage;
+        } catch (const JsonIO::Error& error) { // An unreadable file
+            std::fprintf(stderr, "error: %s\n", error.what());
+            return ExitUsage;
+        }
+    });
 }

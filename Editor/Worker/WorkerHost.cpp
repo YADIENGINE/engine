@@ -20,6 +20,7 @@
 #include "Editor/Worker/PostGallery.h"
 #include "Editor/Worker/RenderGallery.h"
 #include "Tuning/TuningLive.h"
+#include "Diagnostics/Internals/CrashSession.h"
 
 namespace {
 WorkerTuningState StateOf(TuningOutcome outcome) {
@@ -80,7 +81,8 @@ Color4 ParseThumbnailBackground(const std::string& hex) {
 int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistry&)>& registerScenes,
                     GameSettings settings, WorkerApplicationFactory createApplication) {
     std::unique_ptr<ControlChannel> channel;
-    try {
+    const CrashSession crash("worker");
+    return RunCrashBoundary([&]() -> int {
         std::string session;
         bool catalogOnly = false;
         std::optional<std::filesystem::path> thumbnails;
@@ -145,15 +147,5 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
         if (!game) throw std::runtime_error("Worker application factory returned no Game");
         game->Run();
         return 0;
-    } catch (const std::exception& error) {
-        std::fprintf(stderr, "WorkerHost: %s\n", error.what());
-        if (channel && !channel->Closed()) {
-            try {
-                channel->Send({{}, 0, 0, "fatal", {{"text", error.what()}}});
-                (void)channel->Poll();
-            } catch (...) {
-            }
-        }
-        return 1;
-    }
+    });
 }

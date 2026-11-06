@@ -19,6 +19,7 @@ from ..build_lock import build_lock
 from ..cmake import PYTHON_DEFINITION, clear_stale_build, remove_build_dir
 from ..errors import EXIT_FAILED, EXIT_INFRA, EXIT_OK
 from ..msvc import msvc_env, tool
+from ..crash_reports import reports as crash_reports, summary as crash_summary
 
 
 def _execute(command: list[str], root: Path, log: Path, env: dict[str, str]) -> int:
@@ -83,6 +84,7 @@ def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:8]
     report_dir = build / "reports" / run_id
     report_dir.mkdir(parents=True)
+    env = env | {"ENGINE_CRASH_DIRECTORY": str((report_dir / "crashes").resolve())}
     report = {
         "schema_version": 1, "run_id": run_id,
         "command": command
@@ -154,6 +156,14 @@ def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, 
         report["diagnostics"] = f"{error}\n" + report["diagnostics"]
         return exit_code
     finally:
+        crashes = crash_reports(report_dir / "crashes")
+        if crashes:
+            report["crash_reports"] = [file.relative_to(report_dir).as_posix() for file, _ in crashes]
+            for test in report["tests"]:
+                associated = [file.relative_to(report_dir).as_posix() for file, crash in crashes
+                              if crash.get("context") == test["name"]]
+                if associated:
+                    test["crash_reports"] = associated
         report["duration_seconds"] = time.monotonic() - started
         (report_dir / "results.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         counts = report["counts"]
@@ -176,3 +186,5 @@ def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, 
             else:
                 print(report["diagnostics"])
         print(f"Report: {report_dir / 'results.json'}")
+        for file, crash in crashes:
+            print(crash_summary(file, crash))

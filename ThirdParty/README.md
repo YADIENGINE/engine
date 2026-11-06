@@ -6,6 +6,7 @@ building (examples, documentation, tests) are omitted.
 
 | Folder | Version | Source | Used by | Ships in games |
 | --- | --- | --- | --- | --- |
+| `cpptrace/` | 1.0.4 | https://github.com/jeremy-rifkin/cpptrace/archive/refs/tags/v1.0.4.tar.gz | `EngineDiagnostics` (private exception capture) | Yes |
 | `raylib/` | 5.5 | https://github.com/raysan5/raylib/archive/refs/tags/5.5.tar.gz | `Engine` | Yes |
 | `nlohmann_json/` | 3.12.0 | https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz | `EngineJsonIO` | Yes |
 | `Monocypher/` | 4.0.3 | https://monocypher.org | `EngineJsonIO` (private) | Yes |
@@ -36,6 +37,10 @@ header includes, and only `Core/Utilities/Reflection.h` may (`check` enforces it
 `raudio.c`, is left out of the build by `CMakeLists.txt`, since two copies cannot link; the file itself stays, unmodified.
 
 ## License notice
+
+cpptrace includes its unmodified `CMakeLists.txt`, `cmake/`, `include/`, `src/`, README and license. Its WinAPI unwind
+and no-symbol backend are selected explicitly, so it downloads no dependencies. Only diagnostics includes its headers;
+DbgHelp symbol resolution runs in the engine's separate reporter.
 
 Components shipped in games ("Yes" in the table) enter the engine section of every game's `ThirdPartyNotices.txt`:
 

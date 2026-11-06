@@ -17,6 +17,7 @@ from ..agent_output import quiet, shown, tail, write_log
 from ..build_errors import summary
 from ..errors import EXIT_FAILED, EXIT_INFRA, EXIT_OK, ToolError
 from ..project import Project
+from ..crash_reports import output_summaries
 from .editor import editor_build_dir
 
 ANNOUNCEMENT = "EngineEditor.control.json"
@@ -103,7 +104,8 @@ def refresh(project: Project) -> int:
                     write_log(log, output)
                     code = exit_code(reply["result"])
                     if code != EXIT_OK:
-                        for line in summary(output, project.root) or (tail(output) if agent else []):
+                        failures = output_summaries(output) if agent else []
+                        for line in failures or summary(output, project.root) or (tail(output) if agent else []):
                             print(line, flush=True)
                     where = f" (log: {shown(log)})" if agent else ""
                     print(f"> Build & Refresh: {reply['result']}{where}", flush=True)

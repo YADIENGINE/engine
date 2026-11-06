@@ -4,9 +4,8 @@
 #include "Editor/Internals/Process/ProcessCommand.h"
 
 // Workers never run from the build output: every successful build is copied to an immutable snapshot, so the next
-// build can overwrite the output while a worker still runs from the previous one. A snapshot sits beside the built
-// executable (`<name>.live-<n>.exe`), so assets and the working directory resolve exactly as for the build output.
-// Debug symbols stay with the build output and match the latest snapshot.
+// build can overwrite the output while a worker still runs from the previous one. Each <name>.live-<n>/ directory
+// holds the executable, its PDB, and the reporter together. Assets still use the original working directory.
 class WorkerSnapshots {
 public:
     explicit WorkerSnapshots(ProcessCommand built);

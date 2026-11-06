@@ -1,6 +1,8 @@
 #include "Editor/Application/WorkerProcess.h"
+#include <windows.h>
 #include <stdexcept>
 #include <utility>
+#include "Diagnostics/Internals/CrashSession.h"
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
 
 namespace {
@@ -14,9 +16,17 @@ WorkerProcess::WorkerProcess(const ProcessCommand& command, WorkerProcessMode mo
     : _mode(mode) {
     AwaitReady();
     const auto session = NewWorkerSession();
+    _crashSession = session;
     _channel = std::make_unique<ControlChannel>(session, true);
     if (mode == WorkerProcessMode::Scene) _frames = std::make_unique<SharedFrames>(session, true);
     auto launch = command;
+    launch.environment["ENGINE_CRASH_SESSION"] = session;
+    const auto crashDirectory = command.directory / "crashes";
+    const auto utf8 = crashDirectory.u8string();
+    launch.environment["ENGINE_CRASH_DIRECTORY"] = {reinterpret_cast<const char*>(utf8.data()), utf8.size()};
+    _snapshotLease.Reset(CreateFileW((command.executable.parent_path() / "snapshot.lock").c_str(), GENERIC_READ,
+                                     FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+    if (!_snapshotLease) throw std::runtime_error("Worker snapshot is unavailable or being pruned");
     launch.arguments.insert(launch.arguments.end(), {"--session", session});
     if (mode == WorkerProcessMode::Catalog) launch.arguments.push_back("--catalog");
     _process.Start(launch);
@@ -32,14 +42,17 @@ void WorkerProcess::Send(std::uint64_t generation, std::uint64_t request, const 
     _channel->Send({{}, generation, request, type, std::move(data)});
 }
 bool WorkerProcess::ConnectionLost() {
-    if (!_channel->Closed() || !Running() || ShuttingDown() || _mode == WorkerProcessMode::Catalog) return false;
+    if (!_channel->Closed() || !Running() || ShuttingDown() || _mode == WorkerProcessMode::Catalog ||
+        WorkerCrashPending(_crashSession))
+        return false;
     const auto now = std::chrono::steady_clock::now();
     if (!_closedAt) _closedAt = now;
     return now - *_closedAt > ClosedConnectionGrace;
 }
 void WorkerProcess::AwaitReady() { _startupDeadline = std::chrono::steady_clock::now() + StartupLimit; }
 bool WorkerProcess::StartupTimedOut() const {
-    return _startupDeadline && !ShuttingDown() && std::chrono::steady_clock::now() > *_startupDeadline;
+    return _startupDeadline && !ShuttingDown() && !WorkerCrashPending(_crashSession) &&
+           std::chrono::steady_clock::now() > *_startupDeadline;
 }
 void WorkerProcess::Shutdown() {
     if (ShuttingDown()) return;

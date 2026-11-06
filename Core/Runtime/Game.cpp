@@ -10,6 +10,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "Diagnostics/Internals/CrashSession.h"
 #include "Animation/Easing.h"
 #include "Platform/Internals/ApplicationFiles.h"
 #include "Graphics/Paint/Painter.h"
@@ -98,7 +99,7 @@ Game::Game(const GameSettings& settings)
     , _sceneManager(std::make_unique<SceneManager>()) {
     _frameExecution.fpsLimit = settings.window.targetFps;
     _renderer->SetFont(_font ? &*_font : nullptr); // _font, renderer'dan önce yıkılır; o sırada kare çizilmez
-    SetTheme(settings.theme);            // Türeyen oyunun View ve Ui üyeleri kurulurken tema etkin olmalı
+    SetTheme(settings.theme);                      // Türeyen oyunun View ve Ui üyeleri kurulurken tema etkin olmalı
     CheckUiSounds(settings.uiSounds, _sounds, "GameSettings::uiSounds");
     UiLooks uiLooks = settings.uiLooks;
     uiLooks.Set(settings.uiSounds);
@@ -356,70 +357,71 @@ void Game::RevealWindow() {
 void Game::Run() {
     if (_ran) throw std::logic_error("A game can only run once");
     _ran = true;
-    try {
-        StartupTimer::Mark("Game constructed");
-        {
-            const StartupTimer timer("Start + first scene");
-            Start();
-            CommitScene();
-        }
-        const bool loaded = ShowLoading();
-        while (loaded && !_quitRequested && !_renderer->ShouldClose()) {
-            PrepareFrame();
-            if (_quitRequested) break;
-            PollTuning(); // Değişen tuning dosyaları karenin başında, ya hep ya hiç uygulanır
-            _frameStart = Window::ClockSeconds();
-            FrameObserver* observer = _frameObserver;
-            if (observer) {
-                observer->BeginFrame();
-                observer->BeginRegion(FrameRegion::Input);
+    RunWithCrashCleanup(
+        [&] {
+            StartupTimer::Mark("Game constructed");
+            {
+                const StartupTimer timer("Start + first scene");
+                Start();
+                CommitScene();
             }
-            const DeviceInput input = ReadInput();
-            if (input.cancelled) {
-                if (Scene* scene = _sceneManager->Current()) scene->ReadInput(input);
-            } else {
-                HandleInput(input);
+            const bool loaded = ShowLoading();
+            while (loaded && !_quitRequested && !_renderer->ShouldClose()) {
+                PrepareFrame();
+                if (_quitRequested) break;
+                PollTuning(); // Değişen tuning dosyaları karenin başında, ya hep ya hiç uygulanır
+                _frameStart = Window::ClockSeconds();
+                FrameObserver* observer = _frameObserver;
+                if (observer) {
+                    observer->BeginFrame();
+                    observer->BeginRegion(FrameRegion::Input);
+                }
+                const DeviceInput input = ReadInput();
+                if (input.cancelled) {
+                    if (Scene* scene = _sceneManager->Current()) scene->ReadInput(input);
+                } else {
+                    HandleInput(input);
+                }
+                if (observer) observer->EndRegion(FrameRegion::Input);
+                float realSeconds = Window::FrameSeconds();
+                if (observer) observer->BeginRegion(FrameRegion::Audio);
+                _audio.Update();
+                _sounds.Update(realSeconds); // Before a host may scale this time: cooldowns are real seconds
+                if (observer) {
+                    observer->EndRegion(FrameRegion::Audio);
+                    observer->BeginRegion(FrameRegion::Application);
+                }
+                realSeconds = FrameSeconds(realSeconds);
+                _frameSeconds = realSeconds;
+                Update(realSeconds);
+                CommitScene();
+                if (observer) {
+                    observer->EndRegion(FrameRegion::Application);
+                    observer->BeginRegion(FrameRegion::Scene);
+                }
+                Scene* scene = _sceneManager->Current();
+                if (scene) scene->TickReal(realSeconds);
+                if (scene && scene->Clock() == TimeDomain::Real) scene->Tick(realSeconds);
+                const bool paused = _paused || (scene && scene->Enabled() && scene->GameTimePaused());
+                const float gameSeconds = paused ? 0.0f : _timeScale.Advance(realSeconds);
+                _sounds.SetBusPaused(SoundBus::World, paused);
+                if (scene && scene->Clock() == TimeDomain::Game) scene->Tick(gameSeconds);
+                if (observer) observer->EndRegion(FrameRegion::Scene);
+                Present();
+                if (observer) observer->EndFrame();
+                RevealWindow();
             }
-            if (observer) observer->EndRegion(FrameRegion::Input);
-            float realSeconds = Window::FrameSeconds();
-            if (observer) observer->BeginRegion(FrameRegion::Audio);
-            _audio.Update();
-            _sounds.Update(realSeconds); // Before a host may scale this time: cooldowns are real seconds
-            if (observer) {
-                observer->EndRegion(FrameRegion::Audio);
-                observer->BeginRegion(FrameRegion::Application);
+            Stop(); // The project settles its run while scene data and services are still alive.
+            SaveOptions();
+        },
+        [&] {
+            try {
+                _sceneManager->Shutdown();
+            } catch (const std::exception& error) {
+                std::fprintf(stderr, "Game shutdown failed while handling another error: %s\n", error.what());
+            } catch (...) {
+                std::fputs("Game shutdown failed while handling another error\n", stderr);
             }
-            realSeconds = FrameSeconds(realSeconds);
-            _frameSeconds = realSeconds;
-            Update(realSeconds);
-            CommitScene();
-            if (observer) {
-                observer->EndRegion(FrameRegion::Application);
-                observer->BeginRegion(FrameRegion::Scene);
-            }
-            Scene* scene = _sceneManager->Current();
-            if (scene) scene->TickReal(realSeconds);
-            if (scene && scene->Clock() == TimeDomain::Real) scene->Tick(realSeconds);
-            const bool paused = _paused || (scene && scene->Enabled() && scene->GameTimePaused());
-            const float gameSeconds = paused ? 0.0f : _timeScale.Advance(realSeconds);
-            _sounds.SetBusPaused(SoundBus::World, paused);
-            if (scene && scene->Clock() == TimeDomain::Game) scene->Tick(gameSeconds);
-            if (observer) observer->EndRegion(FrameRegion::Scene);
-            Present();
-            if (observer) observer->EndFrame();
-            RevealWindow();
-        }
-        Stop(); // The project settles its run while scene data and services are still alive.
-        SaveOptions();
-    } catch (...) {
-        try {
-            _sceneManager->Shutdown();
-        } catch (const std::exception& error) {
-            std::fprintf(stderr, "Game shutdown failed while handling another error: %s\n", error.what());
-        } catch (...) {
-            std::fputs("Game shutdown failed while handling another error\n", stderr);
-        }
-        throw;
-    }
+        });
     _sceneManager->Shutdown();
 }

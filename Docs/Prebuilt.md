@@ -12,9 +12,13 @@ the compiler reads the headers, and developers and AI agents read the rest.
 ```text
 Lib/                  The libraries a project can link, optional modules included
 Editor/EngineEditor.exe
+Diagnostics/EngineCrashReporter.exe
 EngineTargets.cmake   The same target names as a source build, as imported libraries
 Prebuilt.json         Engine version and compiler version
 ```
+
+Static libraries retain embedded debug information for the final game's PDB. Game/worker targets copy the prebuilt
+reporter beside their executable; it also ships in Release packages. See [Crash reports](Debugging.md).
 
 Each engine release publishes it beside its record, so a new engine brings its package without a launcher release. The
 launcher downloads it with the engine, carries the one for the engine it ships, and passes the folder as

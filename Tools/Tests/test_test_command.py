@@ -18,7 +18,7 @@ MODULE = "Tools.commands.test"
 
 class RunnerTests(unittest.TestCase):
     def simulate(self, *, build_code=0, tests=None, junit=None, test_code=0,
-                 test_filter=None, label=None, list_only=False):
+                 test_filter=None, label=None, list_only=False, crash=None):
         with tempfile.TemporaryDirectory(prefix="EngineRunner-") as directory:
             root = Path(directory)
 
@@ -30,6 +30,10 @@ class RunnerTests(unittest.TestCase):
                 if log.stem == "discover":
                     log.write_text(json.dumps({"tests": [{"name": name} for name in (tests or [])]}), encoding="utf-8")
                 if log.stem == "test":
+                    if crash is not None:
+                        destination = log.parent / "crashes" / "incident"
+                        destination.mkdir(parents=True)
+                        (destination / "report.json").write_text(json.dumps(crash), encoding="utf-8")
                     if junit is not None:
                         (log.parent / "junit.xml").write_text(junit, encoding="utf-8")
                     return test_code
@@ -77,6 +81,15 @@ class RunnerTests(unittest.TestCase):
                 code, report = self.simulate(tests=["Fixture"], test_code=8, junit=f'<testsuite><testcase name="Fixture"><failure message="{diagnostic}"/></testcase></testsuite>')
                 self.assertEqual(code, 1)
                 self.assertIn(diagnostic, report["tests"][0]["diagnostics"])
+
+    def test_native_crash_artifact_is_linked_to_its_case(self):
+        crash = {"schema_version": 1, "kind": "test", "message": "native fault", "context": "Fixture",
+                 "status": "partial", "frames": [], "modules": []}
+        code, report = self.simulate(tests=["Fixture"], test_code=8, crash=crash,
+            junit='<testsuite><testcase name="Fixture"><failure message="native fault"/></testcase></testsuite>')
+        self.assertEqual(code, 1)
+        self.assertEqual(report["crash_reports"], ["crashes/incident/report.json"])
+        self.assertEqual(report["tests"][0]["crash_reports"], report["crash_reports"])
 
     def test_skipped_is_not_success(self):
         code, report = self.simulate(tests=["Fixture"], junit='<testsuite><testcase name="Fixture"><skipped>not run</skipped></testcase></testsuite>')

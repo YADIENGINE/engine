@@ -11,6 +11,7 @@
 #include "Editor/Internals/Viewport/ViewportInputRouter.h"
 #include "Runtime/Game.h"
 #include "Tuning/TuningLive.h"
+#include "Diagnostics/Internals/CrashSession.h"
 
 namespace {
 constexpr double StepSeconds = 1.0 / 60.0; // One Step, and one seek step
@@ -222,6 +223,7 @@ void WorkerSession::Command(const WorkerMessage& message) {
         if (!message.generation || message.generation <= _generation)
             throw std::runtime_error("Invalid open generation");
         const auto state = DecodeWorkerOpen(message.data);
+        SetCrashContext(state.id);
         const auto* definition = _registry.Find(state.id);
         if (!definition) throw std::runtime_error("Selected scene is missing from the new catalog");
         _generation = message.generation;

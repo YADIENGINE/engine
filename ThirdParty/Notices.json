@@ -3,6 +3,13 @@
   "intro": "Components linked into this application or shipped with its assets. raylib's bundled libraries are listed conservatively, including its audio module and optional file format readers that are not linked into the executable.",
   "components": [
     {
+      "name": "cpptrace",
+      "version": "1.0.4",
+      "text": "Notices/cpptrace.txt",
+      "pin": { "file": "cpptrace/CMakeLists.txt", "contains": "VERSION {version}" },
+      "license": "cpptrace/LICENSE"
+    },
+    {
       "name": "nlohmann/json",
       "version": "3.12.0",
       "text": "Notices/nlohmann-json.txt",

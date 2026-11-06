@@ -5,6 +5,8 @@ description: Fix a failed build, test run or editor refresh, or compiler warning
 
 # Fix a build, test or refresh
 
+For `Crash report:` output or an access violation, use `AgentDocs/Skills/crash/SKILL.md` first.
+
 1. **Reproduce with the smallest command:** `python Engine build` (game), `python Engine refresh` (editor scenes
    while the editor is open) or `python Engine test --filter NAME` / `--label LABEL`.
 2. **Read the summary, not the log:** failed builds end with `Errors (N):`, one `file:line:column: CODE message` per

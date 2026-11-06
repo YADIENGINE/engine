@@ -25,6 +25,12 @@ use the same Python. Project root: `--project` if supplied; otherwise the engine
 
 ## Commands
 
+`crash REPORT [--symbols DIR] [--json]` inspects a report directory or `report.json` without modifying it; missing
+symbols return a readable partial report (0), invalid input or unavailable resolution tools return 2.
+
+Local crash artifacts: [Debugging](Debugging.md). `run`, `sim`, `refresh` and `test` expose only their own process
+failures. `build` compiles without starting the game or scanning historical reports.
+
 | Command | Options | Job |
 | --- | --- | --- |
 | `build` | `--release`, `--clean` | Builds the game (Debug; Release with `--release`). `--clean` removes the build folder first |
@@ -105,6 +111,11 @@ cannot increase without notes. The launcher's engine copy has a generated `Engin
 commit, file hashes); tools read only its `files`, to tell whether a prebuilt engine still matches the copy.
 
 ## Environment variables
+
+Diagnostics also uses `ENGINE_CRASH_DIRECTORY` (a launch-owned artifact root, suppressing player notification),
+`ENGINE_CRASH_SESSION` (the editor's unique worker-session id), and `ENGINE_CRASH_REPORTER` (an explicit helper path
+for diagnostic probes). Tools set these for their children; they are not project settings. An inherited crash
+directory must not be reused to infer which command failed.
 
 | Variable | Reader | Meaning |
 | --- | --- | --- |

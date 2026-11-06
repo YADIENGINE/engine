@@ -21,7 +21,7 @@ GL/fonts/audio. Opening a scene makes RunEditorWorker set up services and Worker
 WorkerScene manages the content instance through ObjectList. Reset replaces the instance.
 
 - **Snapshots** (`Internals/Session/WorkerSnapshots`): workers run from an immutable copy of each successful build, not
-  from build output (`<worker>.live-<n>.exe`, beside the output: Assets and the working folder resolve identically).
+  from build output (`<worker>.live-<n>/` retains EXE/PDB/reporter together; the asset working folder stays).
   Builds never write to a running executable; unused copies are removed. Debug symbols remain in build output and match
   the latest snapshot.
 - **Worker instances** (`Application/WorkerProcess`): process + its own session (control channel, frame transfer) +

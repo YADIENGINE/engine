@@ -3,15 +3,20 @@
 #include <iostream>
 #include <stdexcept>
 #include "Runtime/Game.h"
+#include "Diagnostics/Internals/CrashSession.h"
 
 int main(int, char*[]) {
-    try {
+    const CrashSession crash("game",
+#ifdef NDEBUG
+                             true
+#else
+                             false
+#endif
+    );
+    return RunCrashBoundary([] {
         auto game = CreateGame();
         if (!game) throw std::runtime_error("CreateGame returned an empty game");
         game->Run();
         return 0;
-    } catch (const std::exception& error) {
-        std::cerr << error.what() << '\n';
-        return 1;
-    }
+    });
 }

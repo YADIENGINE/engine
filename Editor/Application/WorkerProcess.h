@@ -40,6 +40,8 @@ public:
 
 private:
     WorkerProcessMode _mode;
+    std::string _crashSession;
+    NativeHandle _snapshotLease;
     ChildProcess _process;
     std::unique_ptr<ControlChannel> _channel;
     std::unique_ptr<SharedFrames> _frames;

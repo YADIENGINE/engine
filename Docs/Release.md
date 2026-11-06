@@ -7,13 +7,19 @@ work; settings are in the `Project.json` `release` section. Every project produc
 Release/                     (not tracked by git; in the template's .gitignore)
   MyGame/
     MyGame.exe
+    EngineCrashReporter.exe  local crash capture; no network access
     Assets/                  every built asset but unused sounds, or what the package_assets hook selects
     ThirdPartyNotices.txt    GENERATED: Part 1 Engine + Part 2 game
     <release.files>          additional game texts (e.g. Credits.txt)
   MyGame.zip                 same folder, file delivered to the store/player
+  Symbols/<build-id>/        exact EXE/PDB/reporter and Symbols.json; retained separately, never added to the ZIP
 ```
 
 ## Project.json
+
+Release remains optimized and also produces matching debug symbols. Packaging checks their PDB GUID/age before
+replacing the player package. Retain the separate symbol directories for published builds:
+[Crash reports](Debugging.md#release-symbols).
 
 ```json
 "release": {
@@ -33,6 +39,8 @@ Release/                     (not tracked by git; in the template's .gitignore)
 | `keepAssets` | `[]` | sound files or folders, relative to `Assets/`, packaged though the game's settings do not name them |
 
 A file named `ThirdPartyNotices.txt` cannot be listed in `files`; that name belongs to the generated notice.
+`EngineCrashReporter.exe` is supplied by the build and cannot be replaced through `files`. The player package's name
+must not overlap the retained `Symbols` directory, so packaging cannot erase a previous build's debug information.
 
 ## Only the sounds a game uses
 

@@ -28,6 +28,7 @@ it and [Editor automation](Editor/Automation.md) lists what it can do. Agent mat
 
 | Need | Document |
 | --- | --- |
+| A game, worker or native test crashed | [Crash reports](Debugging.md) |
 | Window, canvas, layers, and clipping | [Rendering](Graphics/Rendering.md) |
 | Fonts, Unicode, measurement, and line layout | [Text](Graphics/Text.md) |
 | Menus, dialogs, panels, HUD; widgets of your own | [UI](Ui.md) |

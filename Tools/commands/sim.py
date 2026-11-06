@@ -8,13 +8,13 @@ Settings come from the Project.json "simulation" section (Docs/ProjectSetup.md).
 """
 
 import contextlib
-import subprocess
 import sys
 from pathlib import Path
 
 from ..build_lock import build_lock
 from ..cmake import BUILD_LOG, PYTHON_DEFINITION, clear_stale_build, read_cache, run
-from ..errors import EXIT_INFRA, ToolError
+from ..crash_reports import run_native
+from ..errors import EXIT_FAILED, EXIT_INFRA, ToolError
 from ..msvc import msvc_env, tool
 from ..prebuilt import cache_definition, prebuilt_directory, write_state
 from ..project import Project
@@ -98,4 +98,5 @@ def sim(project: Project, args) -> int:
         raise ToolError(f"No simulation sources under {section.get('sources', 'Game/Simulation')}; "
                         "see Engine/Docs/Simulation.md", EXIT_INFRA)
     executable = build_tool(project, section, args.release)
-    return subprocess.run([str(executable), *tool_arguments(args)]).returncode
+    code = run_native(executable, tool_arguments(args), project.path(section.get("buildDirectory", "build")) / "crashes")
+    return code if code in (0, 1, 2) else EXIT_FAILED

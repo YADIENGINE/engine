@@ -43,12 +43,13 @@ side by side. The launcher-project contract (`Project.json`, `Engine/Tools` entr
 Commands that let an agent see the result of a change itself are a strategic priority and must not be made harder by
 other decisions. The editor side is D20; [Agent API](AgentApi.md) holds the older headless plan.
 
-### D6. One CLI, and the open editor owns the build
+### D6. One CLI; explicit worker refresh
 - The launcher executable runs commands when given arguments. Its own commands are `<engine> launcher <job>`; everything
   else is passed unchanged to the project's engine (`python Engine <args>`), so new engine commands need no launcher
   change. The engine never adds a command named `launcher`.
-- If the project's editor is open, a build goes to it (`refresh`): the editor stops the worker, builds and restarts it.
-  Two builds in one `build/` folder would collide, and Windows will not overwrite a running worker (`LNK1104`).
+- `build` compiles the game; `refresh` explicitly asks the open editor to build and replace its worker. They are
+  separate commands, not an automatic redirect. Immutable worker snapshots keep the old process alive while the new
+  build overwrites its output; the editor owns that worker build and its build-folder lock.
 - No file watcher: building is an explicit trigger.
 - Project discovery: `--project ROOT`, else the first folder upward with `Project.json`.
 - The launcher reads `Engine/EngineManifest.json` directly, so its fields are part of the [tools contract](../ToolsContract.md).
@@ -79,8 +80,21 @@ Positions, rectangles and paths in tuning are numbers. Later, if wanted: `point`
 handles that write the JSON. Things whose count changes stay in code.
 
 ### D12. Debugging through existing tools
-No debugger of our own. Planned at the end of v1: VS Code `tasks.json` / `launch.json` in the template, a "wait for
-debugger" switch for new workers, and text crash reports (DbgHelp stack) in Output, a file and command output.
+Usage: [Crash reports](../Debugging.md). No debugger of our own.
+
+1. *Local reports also ship in Release:* text, versioned JSON and a small dump; no upload or symbol server.
+2. *cpptrace 1.0.4 stays private:* ordinary exceptions retain throw frames through engine cleanup; terminate/abort use
+   the best available fatal-handler trace. Handled errors are not crashes.
+3. *A helper starts while healthy:* native handlers capture fixed exception/context data and signal it. DbgHelp,
+   JSON and dump writing run outside the failed process, with a ten-second limit.
+4. *PDB GUID/age identify symbols:* optimized Release and prebuilt libraries retain debug information. Player packages
+   carry the helper; exact EXE/PDB archives remain separate and preserved.
+5. *Worker snapshots own EXE/PDB/reporter together:* a lease protects the whole snapshot during execution and capture.
+6. *Each tool owns its process reports:* Output, run/sim/refresh and test results expose current crash paths. `crash`
+   resolves JSON without editing it. `build` only compiles and does not redisplay old crashes.
+
+Left out: VS Code template tasks/launch and "wait for debugger" (remaining D12 work), Tracy, a general logger,
+remote collection, arbitrary minidump analysis, and guarantees for pre-main/fail-fast/externally killed processes.
 
 ### D13. Windows desktop only
 

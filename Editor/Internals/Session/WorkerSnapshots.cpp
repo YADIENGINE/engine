@@ -5,25 +5,25 @@
 #include <string>
 #include <system_error>
 #include <utility>
+#include <windows.h>
 
 namespace {
 constexpr std::wstring_view SnapshotMarker = L".live-";
 constexpr int MaxCaptureAttempts = 16; // Another editor of the same project may take a number at the same moment
 std::optional<unsigned long> SnapshotNumber(const std::filesystem::path& file, const std::filesystem::path& built) {
-    if (file.extension() != built.extension()) return std::nullopt;
-    const auto stem = file.stem().wstring();
+    const auto stem = file.filename().wstring();
     const auto prefix = built.stem().wstring() + std::wstring(SnapshotMarker);
     if (!stem.starts_with(prefix) || stem.size() == prefix.size()) return std::nullopt;
     unsigned long number = 0;
     for (const wchar_t digit : std::wstring_view(stem).substr(prefix.size())) {
-        if (!std::iswdigit(digit) || number > 99'999'999) return std::nullopt;
+        if (digit < L'0' || digit > L'9' || number > 99'999'999) return std::nullopt;
         number = number * 10 + static_cast<unsigned long>(digit - L'0');
     }
     return number;
 }
 std::filesystem::path SnapshotPath(const std::filesystem::path& built, unsigned long number) {
     auto name = built.stem().wstring() + std::wstring(SnapshotMarker) + std::to_wstring(number);
-    return built.parent_path() / (name + built.extension().wstring());
+    return built.parent_path() / name;
 }
 } // namespace
 
@@ -42,10 +42,27 @@ void WorkerSnapshots::Capture() {
     for (int attempt = 0; attempt < MaxCaptureAttempts; ++attempt, ++next) {
         const auto snapshot = SnapshotPath(_built.executable, next);
         std::error_code error;
-        if (std::filesystem::copy_file(_built.executable, snapshot, std::filesystem::copy_options::none, error)) {
-            _current = _built;
-            _current->executable = snapshot;
-            return;
+        if (std::filesystem::create_directory(snapshot, error)) {
+            try {
+                std::filesystem::copy_file(_built.executable, snapshot / _built.executable.filename());
+                auto pdb = _built.executable;
+                pdb.replace_extension(".pdb");
+                std::filesystem::copy_file(pdb, snapshot / pdb.filename());
+                std::filesystem::copy_file(_built.executable.parent_path() / "EngineCrashReporter.exe",
+                                           snapshot / "EngineCrashReporter.exe");
+                HANDLE lock = CreateFileW((snapshot / "snapshot.lock").c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+                                          CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+                if (lock == INVALID_HANDLE_VALUE) throw std::runtime_error("Cannot reserve snapshot lease");
+                CloseHandle(lock);
+                _current = _built;
+                _current->executable = snapshot / _built.executable.filename();
+                return;
+            } catch (...) {
+                // This exact child was reserved above; never remove a caller-supplied directory.
+                if (snapshot.parent_path() == _built.executable.parent_path())
+                    std::filesystem::remove_all(snapshot, error);
+                throw;
+            }
         }
         if (error != std::errc::file_exists)
             throw std::filesystem::filesystem_error("Snapshot the worker executable", _built.executable, snapshot,
@@ -58,8 +75,22 @@ void WorkerSnapshots::Prune() const {
     std::filesystem::directory_iterator entries(_built.executable.parent_path(), error);
     for (std::filesystem::directory_iterator end; !error && entries != end; entries.increment(error)) {
         const auto& file = entries->path();
-        if (!IsSnapshot(file) || (_current && file == _current->executable)) continue;
+        if (!entries->is_directory(error) || entries->is_symlink(error) || !IsSnapshot(file) ||
+            (_current && file == _current->executable.parent_path()))
+            continue;
+        // A running worker's owner holds this lease without delete sharing; test it BEFORE deleting any PDB.
+        HANDLE lease = CreateFileW((file / "snapshot.lock").c_str(), DELETE,
+                                   FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING,
+                                   FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (lease == INVALID_HANDLE_VALUE) continue;
         std::error_code ignored;
-        std::filesystem::remove(file, ignored); // A file a worker still runs from is locked; a later Prune takes it.
+        if (std::filesystem::absolute(file).lexically_normal().parent_path() ==
+            std::filesystem::absolute(_built.executable.parent_path()).lexically_normal())
+            std::filesystem::remove_all(file, ignored);
+        CloseHandle(lease);
+        // Windows can defer deletion of the locked marker until the handle closes.
+        if (std::filesystem::absolute(file).lexically_normal().parent_path() ==
+            std::filesystem::absolute(_built.executable.parent_path()).lexically_normal())
+            std::filesystem::remove(file, ignored);
     }
 }

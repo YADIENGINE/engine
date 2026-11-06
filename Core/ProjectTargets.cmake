@@ -1,4 +1,5 @@
 # Functions a project calls to add its targets; loaded for both a source and a prebuilt engine.
+include("${CMAKE_CURRENT_LIST_DIR}/Diagnostics/CrashTargets.cmake")
 
 # engine_add_tuning(<target> ROOT <folder>): each *.tuning.json under ROOT generates
 # <build>/Tuning/<target>/<path relative to ROOT>.tuning.h at build time; that folder is a PUBLIC include directory,
@@ -170,6 +171,7 @@ function(engine_add_simulation target)
     set_target_properties(${target}Tool PROPERTIES CXX_EXTENSIONS OFF
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>")
     engine_warnings(${target}Tool)
+    engine_enable_crash_reports(${target}Tool)
 endfunction()
 
 # A project supplies CreateGame, its source list, and an optional asset directory.
@@ -188,9 +190,11 @@ function(engine_add_game target)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     engine_warnings(${target})
     if(GAME_ASSETS)
+        # Diagnostics is initialized by Core/Main.cpp, before CreateGame.
         engine_copy_assets(${target} "${GAME_ASSETS}")
     endif()
     engine_copy_engine_audio(${target})
+    engine_enable_crash_reports(${target})
     if(useStarter)
         engine_copy_starter_font(${target})
     endif()

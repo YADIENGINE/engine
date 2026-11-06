@@ -39,6 +39,14 @@ std::string EditorSearchText(std::string text) {
     std::ranges::transform(text, text.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return text;
 }
+EditorLogLevel ClassifyWorkerOutput(std::string_view text) {
+    if (text.starts_with("Crash:") || text.starts_with("Crash report:") || text.starts_with("code=") ||
+        text.starts_with("Context:") ||
+        (text.size() > 2 && text[0] == '#' && std::isdigit(static_cast<unsigned char>(text[1]))))
+        return EditorLogLevel::Error;
+    if (text.starts_with("Crash reporting partial:")) return EditorLogLevel::Warning;
+    return EditorLogLevel::Info;
+}
 bool EditorLogFilter::Matches(const EditorLogEntry& entry) const {
     const bool enabled = entry.level == EditorLogLevel::Info      ? info
                          : entry.level == EditorLogLevel::Warning ? warning

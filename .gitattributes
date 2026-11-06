@@ -17,6 +17,7 @@
 
 # Preserve vendored sources byte for byte from upstream (ThirdParty/README.md)
 /ThirdParty/raylib/** -text
+/ThirdParty/cpptrace/** -text
 /ThirdParty/nlohmann_json/** -text
 /ThirdParty/imgui/** -text
 /ThirdParty/rlImGui/** -text

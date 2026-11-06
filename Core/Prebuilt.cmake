@@ -72,7 +72,7 @@ function(engine_export_prebuilt output)
                     get_filename_component(value "${location}" NAME)
                 endif()
             endif()
-            if(value AND property STREQUAL "INTERFACE_INCLUDE_DIRECTORIES")
+            if(value AND (property STREQUAL "INTERFACE_INCLUDE_DIRECTORIES" OR property STREQUAL "INTERFACE_SYSTEM_INCLUDE_DIRECTORIES"))
                 # A dependency's own build folder (Box2D's generated headers) means nothing in a package.
                 set(entries "${value}")
                 set(value)
@@ -97,6 +97,8 @@ function(engine_export_prebuilt output)
         endforeach()
     endforeach()
     get_property(scoped GLOBAL PROPERTY ENGINE_PREBUILT_SCOPED)
+    string(APPEND text "add_executable(EngineCrashReporter IMPORTED GLOBAL)\nset_target_properties(EngineCrashReporter "
+        "PROPERTIES IMPORTED_LOCATION \"\${ENGINE_PREBUILT_DIR}/Diagnostics/EngineCrashReporter.exe\")\n")
     list(REMOVE_DUPLICATES scoped)
     foreach(name IN LISTS scoped)
         string(APPEND text "add_library(${name} INTERFACE IMPORTED GLOBAL)\n")
@@ -118,10 +120,11 @@ function(engine_export_prebuilt output)
 }
 ")
     add_custom_target(EnginePrebuiltPackage ALL
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${output}/Lib" "${output}/Editor"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${output}/Lib" "${output}/Editor" "${output}/Diagnostics"
         ${copies}
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:EngineEditor>" "${output}/Editor"
-        DEPENDS ${ENGINE_PREBUILT_ROOTS} EngineEditor VERBATIM)
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:EngineCrashReporter>" "${output}/Diagnostics"
+        DEPENDS ${ENGINE_PREBUILT_ROOTS} EngineEditor EngineCrashReporter VERBATIM)
 endfunction()
 
 # Sets `usable` to whether this project can link the package at ENGINE_PREBUILT_DIR; a reason goes to the output.
@@ -130,6 +133,11 @@ function(_engine_prebuilt_usable usable)
     set(package "${ENGINE_PREBUILT_DIR}/Prebuilt.json")
     if(NOT EXISTS "${package}")
         message(STATUS "Prebuilt engine: ${package} not found; building the engine from source")
+        return()
+    endif()
+    if(NOT EXISTS "${ENGINE_PREBUILT_DIR}/Diagnostics/EngineCrashReporter.exe" OR
+       NOT EXISTS "${ENGINE_PREBUILT_DIR}/Lib/EngineDiagnostics.lib")
+        message(STATUS "Prebuilt engine: diagnostics are missing; building the engine from source")
         return()
     endif()
     if(NOT MSVC)

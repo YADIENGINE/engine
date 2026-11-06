@@ -21,6 +21,14 @@ class PackageTests(unittest.TestCase):
         self.exe = self.root / "build" / "Release" / "MyGame.exe"
         self.exe.parent.mkdir(parents=True)
         self.exe.write_bytes(b"exe")
+        self.pdb = self.exe.with_suffix(".pdb")
+        self.pdb.write_bytes(b"symbols")
+        self.reporter = self.exe.parent / "EngineCrashReporter.exe"
+        self.reporter.write_bytes(b"reporter")
+        patch = mock.patch("Tools.commands.release.symbol_inputs", return_value=(
+            {"guid": "TEST", "age": 1, "name": self.pdb.name}, self.pdb, self.reporter))
+        patch.start()
+        self.addCleanup(patch.stop)
         (self.exe.parent / "Assets" / "Fonts").mkdir(parents=True)
         (self.exe.parent / "Assets" / "Fonts" / "OFL.txt").write_text("font license", encoding="utf-8")
         (self.root / "Game" / "Distribution").mkdir(parents=True)
@@ -59,6 +67,15 @@ class PackageTests(unittest.TestCase):
         self.assertTrue((target / "Assets" / "Fonts" / "OFL.txt").is_file())
         with zipfile.ZipFile(self.root / "Release" / "MyGame.zip") as archive:
             self.assertIn(f"MyGame/{NOTICES_FILE}", archive.namelist())
+
+    def test_package_name_cannot_delete_retained_symbol_archives(self):
+        retained = self.root / "Release/Symbols/previous/Game.pdb"
+        retained.parent.mkdir(parents=True)
+        retained.write_bytes(b"previous-symbols")
+        with self.assertRaises(ToolError) as raised:
+            package(self.project(name="Symbols"), self.exe)
+        self.assertEqual(raised.exception.exit_code, 1)
+        self.assertEqual(retained.read_bytes(), b"previous-symbols")
 
     def sounds(self, *names: str) -> None:
         for name in names:

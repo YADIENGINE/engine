@@ -3,7 +3,6 @@
 Ayarlar Project.json "game" bölümünden (bkz. Docs/ProjectSetup.md).
 """
 
-import subprocess
 import sys
 from pathlib import Path
 
@@ -11,6 +10,7 @@ from ..agent_output import quiet, shown
 from ..build_lock import build_lock
 from ..cmake import BUILD_LOG, PYTHON_DEFINITION, clear_stale_build, read_cache, remove_build_dir, run
 from ..errors import EXIT_FAILED, EXIT_OK
+from ..crash_reports import run_native
 from ..msvc import msvc_env, tool
 from ..prebuilt import cache_definition, prebuilt_directory, write_state
 from ..project import Project
@@ -77,4 +77,5 @@ def _compile(project: Project, release: bool, clean: bool) -> Path:
 def run_game(exe: Path) -> int:
     """Oyunu kendi klasöründe başlatır ve kapanmasını bekler."""
     print(f"> {exe}", flush=True)
-    return EXIT_OK if subprocess.run([str(exe)], cwd=exe.parent).returncode == 0 else EXIT_FAILED
+    exe = exe.resolve()
+    return EXIT_OK if run_native(exe, [], exe.parent.parent / "crashes", cwd=exe.parent) == 0 else EXIT_FAILED

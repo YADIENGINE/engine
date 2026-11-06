@@ -86,4 +86,5 @@ private:
 };
 
 [[nodiscard]] EditorLogLevel ClassifyBuildOutput(std::string_view text);
+[[nodiscard]] EditorLogLevel ClassifyWorkerOutput(std::string_view text);
 [[nodiscard]] std::string EditorSearchText(std::string text);

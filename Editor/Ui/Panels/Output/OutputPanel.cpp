@@ -330,9 +330,13 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
                         _anchor = entry.sequence;
                     }
                     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                        _detail.assign(entry.text.begin(), entry.text.end());
-                        _detail.push_back(0);
-                        openDetail = true;
+                        if (entry.text.starts_with("Crash report: ")) {
+                            actions.openSource(entry.text.substr(std::string_view("Crash report: ").size()), 1);
+                        } else {
+                            _detail.assign(entry.text.begin(), entry.text.end());
+                            _detail.push_back(0);
+                            openDetail = true;
+                        }
                     }
                 }
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Right) && !_selected.contains(entry.sequence)) {

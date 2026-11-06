@@ -11,6 +11,22 @@ engine_warnings(EngineTestSupport)
 
 # Builds every Engine test executable; the root test preset builds it with the game tests.
 add_custom_target(EngineTestSuite)
+if(WIN32)
+    add_executable(EngineCrashProbe Diagnostics/CrashProbe.cpp)
+    engine_enable_crash_reports(EngineCrashProbe)
+    engine_warnings(EngineCrashProbe)
+    add_dependencies(EngineTestSuite EngineCrashProbe)
+    add_executable(EngineCrashCatchProbe Diagnostics/CrashCatchProbe.cpp)
+    target_link_libraries(EngineCrashCatchProbe PRIVATE Catch2::Catch2WithMain)
+    engine_enable_test_crash_reports(EngineCrashCatchProbe)
+    engine_warnings(EngineCrashCatchProbe)
+    add_dependencies(EngineTestSuite EngineCrashCatchProbe)
+    find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME Engine.CrashReports COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Diagnostics/verify_crashes.py"
+        "$<TARGET_FILE:EngineCrashProbe>" "$<TARGET_FILE:EngineCrashReporter>" "$<TARGET_FILE:EngineCrashCatchProbe>")
+    set_tests_properties(Engine.CrashReports PROPERTIES LABELS "engine;crash" TIMEOUT 120)
+endif()
 
 # engine_tests(<target> SOURCES <files...> LINKS <libraries...>)
 function(engine_tests target)
@@ -18,6 +34,7 @@ function(engine_tests target)
     add_executable(${target} ${TEST_SOURCES})
     target_link_libraries(${target} PRIVATE ${TEST_LINKS} EngineTestSupport Catch2::Catch2WithMain)
     engine_warnings(${target})
+    engine_enable_test_crash_reports(${target})
     add_dependencies(EngineTestSuite ${target})
     catch_discover_tests(${target}
         DISCOVERY_MODE PRE_TEST

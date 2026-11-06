@@ -15,6 +15,7 @@
 | `Core/Fx/`, `Core/Gameplay/`, `Core/Progress/` | Headless effects and reusable gameplay/view logic |
 | `Core/Utilities/` | Foundation types and helpers, grouped under `Geometry/`, `Math/` and `Random/`. `Random/` (seeded numbers, tables, scattering, noise) builds as `EngineRandom`, with precise floats; the other `.cpp` files belong to `EngineHeadless` |
 | `Core/Diagnostics/` | Cross-cutting development checks and frame instrumentation contracts |
+| `Core/Diagnostics/Internals/` | `EngineDiagnostics` process capture and the separate `EngineCrashReporter`; no window or game dependency |
 | `Core/Options/` | Engine/player options, backed by Persistence |
 | `Core/Tuning/` | Tuning format, live values (`ENGINE_TUNING_LIVE`), `Tuning<T>()` |
 | `Core/Animation/` | Values over time: tweens, clips, animators, timelines and curves for simulations and views, small helpers for views. Headers only, with no target of their own; nothing here draws |

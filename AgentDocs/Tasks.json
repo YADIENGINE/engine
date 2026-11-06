@@ -1,5 +1,6 @@
 {
   "tasks": [
+    {"task": "Diagnose a game, worker or native test crash from its local report", "files": ["Docs/Debugging.md"], "recipe": null, "docs": ["Docs/Debugging.md#read-a-report"], "words": ["crash", "exception", "stack", "trace", "dump", "pdb", "violation", "terminate", "abort"]},
     {"task": "Create a game, factory and GameSettings", "files": ["Core/Runtime/Game.h", "Core/Runtime/EntryPoint.h", "Core/Runtime/GameSettings.h"], "recipe": "AgentDocs/Recipes/SceneTransition.md", "docs": ["Docs/ProjectSetup.md#new-project"]},
     {"task": "Configure canvas, window and assets", "files": ["Core/Runtime/GameSettings.h", "Core/Graphics/Render/WindowSettings.h"], "recipe": null, "docs": ["Docs/AssetsAndPlatforms.md#gamesettings-reference"]},
     {"task": "Add a scene or fade between scenes", "files": ["Core/Scene/Scene.h", "Core/Scene/TransitionClock.h"], "recipe": "AgentDocs/Recipes/SceneTransition.md", "docs": ["Docs/Runtime.md#input-and-time-selection"], "words": ["transition", "switch", "level", "title", "screen"]},

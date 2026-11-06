@@ -5,6 +5,10 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+if(MSVC)
+    # Embedded symbols travel with prebuilt static libraries; Release optimization stays enabled.
+    add_compile_options("$<$<CONFIG:Release>:/Z7>")
+endif()
 option(ENGINE_BUILD_RUNTIME "Build the raylib runtime" ON)
 option(ENGINE_BUILD_TESTS "Build headless Engine and module tests (desktop only)" OFF)
 option(ENGINE_BUILD_EDITOR "Build the standalone Windows engine editor" OFF)
@@ -14,6 +18,7 @@ option(ENGINE_BUILD_TOY_SIMULATION "Build the small simulation behind `python . 
 function(engine_warnings target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8)
+        target_compile_options(${target} PRIVATE "$<$<CONFIG:Release>:/Z7>")
         if(CMAKE_GENERATOR MATCHES "Visual Studio") # Ninja already compiles files in parallel
             target_compile_options(${target} PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/MP>")
         endif()

@@ -2,6 +2,11 @@
 
 include("${CMAKE_CURRENT_LIST_DIR}/ProjectTargets.cmake")
 
+include(Diagnostics/CrashTargets.cmake)
+if(WIN32)
+    include(Diagnostics/Diagnostics.cmake)
+endif()
+
 add_library(EngineStorage STATIC
     Platform/Internals/FileStorage.cpp
     Platform/Internals/SecureRandom.cpp
@@ -476,6 +481,7 @@ add_library(Engine STATIC
     Runtime/Game.cpp
 )
 target_link_libraries(Engine PUBLIC EngineAudio EngineHeadless raylib)
+target_link_libraries(Engine PRIVATE EngineDiagnostics)
 # GLSL sources are compiled into the engine: Graphics/Gpu/Internals/Shaders/Name.glsl -> NameShader in EngineShaders.h.
 # Configure-time generation; editing a shader re-runs configure.
 file(GLOB engineShaders CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Graphics/Gpu/Internals/Shaders/*.glsl")
