@@ -19,6 +19,8 @@ class TimeScale;
 // What a cue plays on: where, in which colour, which way and with what text.
 struct FxPlay {
     Float2 at{};
+    // How fast the thing it happens to moves, canvas units/second: particles take ParticleEmission::inherit of it.
+    Float2 velocity{};
     Color4 color{255, 255, 255, 255};
     Float2 facing{1.0f, 0.0f};
     std::string_view text{};
@@ -59,13 +61,17 @@ public:
     bool Play(std::string_view name, const FxPlay& play = {});
     void Play(const FxCue& cue, const FxPlay& play = {});
 
-    void Burst(Float2 at, Color4 color, int count, ParticleRecipe recipe = ParticleRecipe::Soft);
-    // A burst of the game's own.
-    void Burst(Float2 at, Color4 color, int count, const ParticleBurst& burst);
-    void Trail(Float2 at, Color4 color);
+    // A source is a position, or a position and a velocity for particles that inherit it.
+    void Burst(const ParticleSource& from, Color4 color, int count, ParticleRecipe recipe = ParticleRecipe::Soft);
+    // A burst of the game's own; 'draw' replaces the layers' shapes, for sprites.
+    void Burst(const ParticleSource& from, Color4 color, int count, const ParticleBurst& burst,
+               const ParticleCustomDraw& draw = {});
+    // Each frame, for a stream the caller owns (a trail, smoke): runs it on the stage's particles. See
+    // ParticleEmitter; the theme's streams are in style.particles (trail, smoke, flame, embers).
+    void Emit(ParticleEmitter& emitter, Float2 at, Color4 color, float seconds);
     // 'facing': movement direction; sparks scatter behind it.
-    void Dash(Float2 at, Float2 facing, Color4 color);
-    void Steam(Float2 at, Color4 color);
+    void Dash(const ParticleSource& from, Float2 facing, Color4 color);
+    void Steam(const ParticleSource& from, Color4 color);
     void FloatText(Float2 at, const std::string& text, Color4 color);
     // Flying text of 'size' with a popping entrance.
     void PopText(Float2 at, const std::string& text, Color4 color, float size);
@@ -111,6 +117,7 @@ private:
     struct Target {
         Color4 color;
         Float2 at;
+        Float2 velocity;
         Float2 facing;
         std::string_view text;
         float intensity;
@@ -120,6 +127,7 @@ private:
         FxAction action;
         Color4 color;
         Float2 at;
+        Float2 velocity;
         Float2 facing;
         std::string text;
         float intensity;

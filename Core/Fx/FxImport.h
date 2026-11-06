@@ -6,6 +6,7 @@
 #include "Fx/FxCue.h"
 #include "Fx/FxCueSet.h"
 #include "Fx/FxStage.h"
+#include "Fx/Particles/ParticleEmitter.h"
 #include "Fx/Particles/ParticleRecipes.h"
 #include "Fx/Particles/ParticleSystem.h"
 #include "Fx/Screen/Announcements.h"

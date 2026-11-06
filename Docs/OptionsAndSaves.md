@@ -20,8 +20,8 @@ from this file; old progress-file preferences are not imported.
 never needs `Persistence`. `CreatePersistence` applies `GameSettings.save` with per-file overrides and fills in the
 application's shared protected-key path. Each instance owns its generic JSON values/settings; `SaveSettings.keepBackup`
 enables verified `.bak` snapshots and automatic recovery in `Load()`. The stateless [JsonIO
-module](Modules/JsonIO/README.md) owns JSON conversion and optional authenticated encryption behind replaceable private
-adapters. See [Persistence and key storage](Modules/Persistence/README.md). Keep the same identity and keys when
+module](../Core/Modules/JsonIO/README.md) owns JSON conversion and optional authenticated encryption behind replaceable private
+adapters. See [Persistence and key storage](../Core/Modules/Persistence/README.md). Keep the same identity and keys when
 upgrading an existing game.
 
 
@@ -34,13 +34,13 @@ protected values in a separate Persistence file.
 
 `CreatePersistence("progress.json")` applies the GameSettings.save policy. Construction does not load the file: the game
 owns `Load()`, load-result handling, changes, and `Save()` timing. Full example, error and recovery behavior:
-[Persistence](Modules/Persistence/README.md). For raw JSON, see [JsonIO](Modules/JsonIO/README.md).
+[Persistence](../Core/Modules/Persistence/README.md). For raw JSON, see [JsonIO](../Core/Modules/JsonIO/README.md).
 `persistentOptions=false` disables only engine preferences; it does not automatically disable the game's own Persistence
 or telemetry writes.
 
 ## Version tracking
 
-Installed-version tracking is opt-in through the headless [Version module](Modules/Version/README.md). Link
+Installed-version tracking is opt-in through the headless [Version module](../Core/Modules/Version/README.md). Link
 `EngineVersion`, include `Modules/Version/Version.h`, and call `Version::Check(Options(), currentVersion, callback)`
 in the game's `Start()` after response targets are ready. The module owns detection and saving; the callback authors the
 game's response to an upgrade or downgrade. First launch records silently, and unchanged versions do no work. `Game` has
@@ -51,9 +51,9 @@ patch-note content and UI belong to the game.
 
 ## Steam
 
-Steam detection is opt-in through the headless [Steam module](Modules/Steam/README.md). Link `EngineSteam`, include
+Steam detection is opt-in through the headless [Steam module](../Core/Modules/Steam/README.md). Link `EngineSteam`, include
 `Modules/Steam/Steam.h`, and construct a `Steam` value where the game needs to know whether Steam launched it and
 which account is logged in. It probes once, never fails when Steam is absent, and needs no Steamworks SDK.
 `UnlockAchievement(apiName)` forwards the game's own achievements and is silently dropped while no Steam API is
 connected (always, until the planned Steamworks backend). `Game` has no Steam hooks; achievement design, save-path and
-Cloud policy belong to the game. Overall plan: [Steam roadmap](Modules/Steam/Roadmap.md).
+Cloud policy belong to the game. Overall plan: [Steam roadmap](../Core/Modules/Steam/Roadmap.md).

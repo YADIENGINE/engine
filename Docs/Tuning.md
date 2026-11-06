@@ -3,7 +3,7 @@
 Manually tuned numbers (radius, speed, color, duration, probability, price) can live in an `X.tuning.json` file beside
 the class instead of C++ constants. When a value changes in the editor or file, the running game picks it up without
 building; Release compiles the same values as `constexpr`. JSON is the single source: visible in git, editable by hand,
-editor, or AI. The system is opt-in; design decisions are in `Docs/Design/Tuning.md` in the engine repo.
+editor, or AI. The system is opt-in.
 
 Structural constants (array sizes, slot counts, enum-related numbers) stay in code, outside tuning. Existing `constexpr`
 constants do not need to move; both methods coexist.

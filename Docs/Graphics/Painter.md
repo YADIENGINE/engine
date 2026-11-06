@@ -1,7 +1,7 @@
 # Painter
 
 The engine's drawing API. Commands are recorded without raylib, independently of the GPU, and submitted to the engine's
-OpenGL 3.3 device at frame end. Design and decisions: [Render system](../Design/Rendering.md).
+OpenGL 3.3 device at frame end. Frame and surface ownership: [Rendering](Rendering.md).
 
 ## Where it comes from
 

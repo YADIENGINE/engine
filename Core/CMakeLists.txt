@@ -212,6 +212,7 @@ add_library(EngineHeadless STATIC
     Fx/FxCueSet.cpp
     Fx/FxStage.cpp
     Fx/FxText.cpp
+    Fx/Particles/ParticleEmitter.cpp
     Fx/Particles/ParticleRecipes.cpp
     Fx/Particles/ParticleSystem.cpp
     Fx/Screen/Announcements.cpp
@@ -419,6 +420,19 @@ target_compile_features(EngineNumberPopup PUBLIC cxx_std_20)
 target_link_libraries(EngineNumberPopup PUBLIC EnginePopup)
 set_target_properties(EngineNumberPopup PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_warnings(EngineNumberPopup)
+
+# Opt-in sight queries and drawing contours; low-level and precise so simulations may explicitly link it.
+add_library(EngineVisionCone STATIC EXCLUDE_FROM_ALL
+    Modules/VisionCone/VisionCone.cpp
+    Modules/VisionCone/Internals/ConeGeometry.cpp
+    Modules/VisionCone/Internals/SightQuery.cpp
+)
+target_include_directories(EngineVisionCone PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(EngineVisionCone PUBLIC cxx_std_20)
+target_link_libraries(EngineVisionCone PUBLIC EnginePhysics)
+set_target_properties(EngineVisionCone PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_simulation_flags(EngineVisionCone)
+engine_warnings(EngineVisionCone)
 
 # Opt-in: only consumers of EngineSteam compile Steam detection.
 add_library(EngineSteam STATIC EXCLUDE_FROM_ALL

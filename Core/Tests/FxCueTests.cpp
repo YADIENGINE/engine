@@ -358,11 +358,11 @@ TEST_CASE("Engine.FxStage.AWaitingActionThatThrowsThrowsOnce", "[engine][fx]") {
 TEST_CASE("Engine.Fx.FullParticlesMakeRoomForNewOnes", "[engine][fx]") {
     ParticleSystem particles({.capacity = 10});
     const ParticleEmission still{.lifetime = {5.0f, 5.0f}, .size = {1.0f, 1.0f}};
-    particles.Emit({1.0f, 0.0f}, 10, still, {});
-    particles.Emit({2.0f, 0.0f}, 4, still, {});
+    particles.Emit({1.0f, 0.0f}, Pink, 10, still, {});
+    particles.Emit({2.0f, 0.0f}, Pink, 4, still, {});
     CHECK(particles.ActiveCount() == 10);
     int fresh = 0;
-    particles.Emit({3.0f, 0.0f}, 2, still, {}, [&](Painter&, const ParticleDrawData&) { ++fresh; });
+    particles.Emit({3.0f, 0.0f}, Pink, 2, still, {}, [&](Painter&, const ParticleDrawData&) { ++fresh; });
     PaintHarness h;
     h.Begin();
     particles.Draw(h.paint);
@@ -642,7 +642,8 @@ TEST_CASE("Engine.Fx.ParticlesRepeatForTheSameSeedAndDefaultSeed", "[engine][fx]
         ParticleSystem particles(seed ? ParticleSystemSettings{.capacity = 8, .seed = *seed}
                                       : ParticleSystemSettings{.capacity = 8});
         std::vector<Float2> seen;
-        particles.Emit({10.0f, 10.0f}, 8, {.speed = {10.0f, 90.0f}, .lifetime = {1.0f, 2.0f}, .size = {1.0f, 2.0f}}, {},
+        particles.Emit({10.0f, 10.0f}, Pink, 8,
+                       {.speed = {10.0f, 90.0f}, .lifetime = {1.0f, 2.0f}, .size = {1.0f, 2.0f}}, {},
                        [&](Painter&, const ParticleDrawData& data) { seen.push_back(data.position); });
         particles.Update(0.1f);
         PaintHarness h;

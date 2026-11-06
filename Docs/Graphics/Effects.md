@@ -28,11 +28,14 @@ effect has one obvious motion, its style names the `Curve` ([Animation](../Anima
 ParticleSystem particles({.capacity = 600, .seed = 1729});
 ParticleEmission emission{.speed = {40.0f, 100.0f}, .lifetime = {0.4f, 0.8f},
                           .size = {2.0f, 5.0f}, .acceleration = {0.0f, 150.0f}, .drag = 1.0f};
-ParticleAppearance appearance{.color = Rgb(0xff9030), .shape = ParticleShape::Square, .endSizeScale = 0.5f};
-particles.Emit({300.0f, 200.0f}, 24, emission, appearance);
+ParticleAppearance appearance{.shape = ParticleShape::Square,
+                              .colors = ParticleFadeOut(0.6f),
+                              .size = {.start = 1.0f, .end = 0.5f}};
+particles.Emit({300.0f, 200.0f}, Rgb(0xff9030), 24, emission, appearance);
 // Copy and override a descriptor to create another simultaneously active variant.
 emission.lifetime = {1.0f, 1.5f};
-particles.Emit({500.0f, 200.0f}, 24, emission, appearance, [](Painter& paint, const ParticleDrawData& particle) {
+emission.area = {.shape = ParticleAreaShape::Box, .halfSize = {20.0f, 4.0f}};
+particles.Emit({500.0f, 200.0f}, Rgb(0xff9030), 24, emission, appearance, [](Painter& paint, const ParticleDrawData& particle) {
     paint.Circle(particle.position, particle.size, {.stroke = {1.5f, particle.color}});
 });
 // In the View's Draw(Painter& paint):
@@ -42,7 +45,17 @@ particles.Draw(paint);
 Capacity is per particle-system instance; when it is full, the oldest particles make room for new ones, and the player's particle setting
 (`FxQuality::particlePercent`, given with `SetQuality`) scales every emission. The generator is the system's own `Rng`. Its
 seed has a fixed default, so the same emissions look the same on every run: a frame comparison or a rewind sees the same
-picture. Give another seed for two systems that should differ. Shapes are geometry choices, not stylistic recipes. A custom
+picture. Give another seed for two systems that should differ. Shapes are geometry choices, not stylistic recipes.
+
+Through its life a particle follows its appearance: `colors` holds up to eight keys (`ParticleColorKey`, at 0..1 of its
+life) joined by straight lines, and `size` goes from `start` to `end` times its emitted size along a `Curve`. The keys
+multiply the colour given to `Emit`, so one look works in any colour: white to grey darkens it, alpha fades it, and
+`ParticleFadeOut(fraction)` is the usual fade. With `ownColors` the keys' colours are used as they are, for a look with
+colours of its own, like fire. No keys: the given colour, unfaded. `ParticleEmission::area` is where in the source they
+start (a Point, Disc, Ring, Box or Line around it; `outward` aims each away from the centre), and `inherit` is the share
+of the source's velocity each starts with: a `ParticleSource` is a position or a position and a velocity, and a plain
+`Float2` converts to a still one. Particles with the same look share one entry of the system, so each holds only its own
+position, motion, age and colour. A custom
 draw, the last argument of `Emit`, replaces built-in drawing and receives resolved colour/size plus velocity, rotation
 (radians, clockwise) and normalized age; it draws only (the blend is already set). Emission direction/spread are radians,
 positions/sizes are canvas units, acceleration is units/second squared, spin is radians/second, clockwise. `drag` is
@@ -63,9 +76,9 @@ intensity, color, time, style)` in `Graphics/Draw/SpeedLines.h` clips itself to 
 | Need | Use |
 | --- | --- |
 | A short themed label, nothing else | `FxStage::FloatText` / `PopText` (no extra target) |
-| A number: merging, formatting, intensity, particles | [NumberPopup](../Modules/NumberPopup/README.md) `Emit` |
+| A number: merging, formatting, intensity, particles | [NumberPopup](../../Core/Modules/NumberPopup/README.md) `Emit` |
 | A text label with the same animation and juice | NumberPopup `EmitLabel` |
-| Arbitrary drawing, or text with handles and no juice | [Popup](../Modules/Popup/README.md), with `PopupText` for text |
+| Arbitrary drawing, or text with handles and no juice | [Popup](../../Core/Modules/Popup/README.md), with `PopupText` for text |
 
 Popup and NumberPopup are explicitly owned/updated modules; the caller controls their placement relative to the FxStage
 layers. They read no theme, so the owner copies any theme values it wants into their styles.
@@ -122,10 +135,29 @@ three starts a second whatever the setting (`FlashLimit`), and a new flash takes
 motion looks, and `TimeScale::SlowMo` only slows time; `FxSlowMotion` in a cue does both.
 
 `Fx/Particles/ParticleRecipes` holds what the bursts are. `ParticleRecipe` names six (Soft, Spark, Sparkle, Debris,
-Pixel, Confetti), and `ParticleRecipes`, in `Theme::fx.particles`, says what each looks like, plus trail, dash and steam layers. A burst is
-plain data, two `ParticleLayer`s, so a game's own needs no change here: `fx.Burst(at, color, 24, myBurst)`. `EmitBurst`
-spreads a count over a burst's layers; views that own a bare `ParticleSystem` use it with
-`CurrentTheme().fx.particles.Burst(recipe)`. `Fx` never reads the theme.
+Pixel, Confetti), and `ParticleRecipes`, in `Theme::fx.particles`, says what each looks like, plus dash and steam layers
+and four streams (below). A burst is plain data, two `ParticleLayer`s, so a game's own needs no change here:
+`fx.Burst(at, color, 24, myBurst)`, with an optional custom draw for sprites. `EmitBurst` spreads a count over a burst's
+layers; views that own a bare `ParticleSystem` use it with `CurrentTheme().fx.particles.Burst(recipe)`. `Fx` never reads
+the theme. `FxPlay::velocity` is what a cue's particles inherit.
+
+#### Streams
+
+Something that keeps going (the trail behind a moving object, smoke from a chimney, a torch) owns a `ParticleEmitter`
+and calls it each frame; it is a value like a tween, so it goes when its object goes:
+
+```cpp
+ParticleEmitter _trail{CurrentTheme().fx.particles.trail}; // A member of the moving object
+fx.Emit(_trail, position, color, gameSeconds);              // Each frame
+_trail.Jump();                                              // After a teleport or a pause: do not fill the way
+```
+
+`ParticleEmitterStyle` makes `perSecond` particles each second and `perUnit` for each canvas unit the source travels,
+carrying fractions over, so the count does not depend on the frame rate. Each frame's particles are spread along the way
+since the last call and aged by the rest of the frame, so a fast source leaves an even line; that way is also the
+source's velocity for `inherit`. The player's particle setting scales the rate, so it thins even one particle a frame.
+The theme has four: `trail`, `smoke` (takes the colour it is given), and `flame` and `embers` (their own colours). Rain,
+snow and dust that fill the view are [Atmosphere](Atmosphere.md)'s `DriftField`, not emitters.
 
 Neon widgets and their styles are described in [Painter → Helpers and theme](Painter.md#helpers-and-theme).
 

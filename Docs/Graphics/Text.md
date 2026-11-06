@@ -63,7 +63,7 @@ Right-to-left text is not aligned to the right by itself: an Arabic or Hebrew sc
 
 ## Localization
 
-Use the standalone [Localization module](../Modules/Localization/README.md), linked as `EngineLocalization`. Its public
+Use the standalone [Localization module](../../Core/Modules/Localization/README.md), linked as `EngineLocalization`. Its public
 entry point is `Modules/Localization/Localization.h`. The module owns persisted language identities, native display
 names, translation fallback, placeholders and number formatting. The consumer supplies language declarations, fallback
 and constexpr translation rows, then constructs an immutable catalogue.

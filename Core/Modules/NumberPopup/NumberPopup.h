@@ -76,11 +76,11 @@ struct NumberPopupJuice {
                                .drag = 2.0f};
     ParticleAppearance particleLook{.shape = ParticleShape::Star,
                                     .blend = ParticleBlend::Additive,
-                                    .endSizeScale = 0.2f,
-                                    .fadeFraction = 0.8f,
+                                    .colors = ParticleFadeOut(0.8f),
+                                    .size = {.start = 1.0f, .end = 0.2f},
                                     .sparkTrailSeconds = 0.035f,
                                     .sparkThickness = 0.5f};
-    bool particlesUseTextColor = true; // False: particleLook.color
+    std::optional<Color4> particleColor; // Empty: the text's colour
     PopupPulse pulse;
 };
 

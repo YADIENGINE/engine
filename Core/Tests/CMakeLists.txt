@@ -39,6 +39,7 @@ engine_tests(EngineTests
         FrameworkTests.cpp
         FxCueTests.cpp
         FxTests.cpp
+        ParticleTests.cpp
         GameOptionsTests.cpp
         InputTests.cpp
         LifecycleTests.cpp
@@ -163,6 +164,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/CollisionBullets.cpp"
     "${recipeRoot}/FxBurst.cpp"
     "${recipeRoot}/FxCues.cpp"
+    "${recipeRoot}/FxStream.cpp"
     "${recipeRoot}/GameCamera.cpp"
     "${recipeRoot}/Lighting.cpp"
     "${recipeRoot}/Weather.cpp"

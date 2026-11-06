@@ -1,7 +1,7 @@
 # Görsel asset'ler: katalog, galeri ve pişirme (tasarım)
 
 Durum: **pişirme ertelendi**, uygulanmadı. Karar kaydı: [README → D10](README.md#d10-görsel-assetler-katalog-galeri-ve-pişirme).
-Katalog ve galeri kısmının yerini [Asset library](AssetLibrary.md) (D22) aldı; aşağıdaki katalog ve galeri maddeleri
+Katalog ve galeri kısmının yerini [Asset library](../AssetsAndPlatforms.md#asset-library) (D22) aldı; aşağıdaki katalog ve galeri maddeleri
 artık geçerli değildir.
 
 ## Erteleme notları (2026-11-01)

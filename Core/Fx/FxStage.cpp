@@ -89,7 +89,8 @@ void FxStage::Update(float gameSeconds, float realSeconds) {
     const std::vector<Waiting> running(std::make_move_iterator(due.begin()), std::make_move_iterator(due.end()));
     _waiting.erase(due.begin(), due.end());
     for (const Waiting& waiting : running)
-        Run(waiting.action, {waiting.color, waiting.at, waiting.facing, waiting.text, waiting.intensity});
+        Run(waiting.action,
+            {waiting.color, waiting.at, waiting.velocity, waiting.facing, waiting.text, waiting.intensity});
     _particles.Update(gameSeconds);
     _texts.Update(gameSeconds);
     _rings.Update(gameSeconds);
@@ -135,10 +136,10 @@ void FxStage::Play(const FxCue& cue, const FxPlay& play) {
     for (const FxCueEntry& entry : cue.Entries()) {
         const Color4 color = entry.color.value_or(play.color);
         if (entry.at > 0.0f)
-            _waiting.push_back(
-                {entry.at, entry.action, color, play.at, play.facing, std::string(play.text), play.intensity});
+            _waiting.push_back({entry.at, entry.action, color, play.at, play.velocity, play.facing,
+                                std::string(play.text), play.intensity});
         else
-            Run(entry.action, {color, play.at, play.facing, play.text, play.intensity});
+            Run(entry.action, {color, play.at, play.velocity, play.facing, play.text, play.intensity});
     }
 }
 void FxStage::Run(const FxAction& action, const Target& target) {
@@ -148,13 +149,13 @@ void FxStage::Run(const FxAction& action, const Target& target) {
         return *_time;
     };
     const float scale = target.intensity;
+    const ParticleSource source{target.at, target.velocity};
     std::visit(
         Overloaded{
-            [&](const FxBurst& a) { Burst(target.at, target.color, Scaled(a.count, scale), a.recipe); },
-            [&](const FxParticles& a) { Burst(target.at, target.color, Scaled(a.count, scale), a.burst); },
-            [&](const FxTrail&) { Trail(target.at, target.color); },
-            [&](const FxDash&) { Dash(target.at, target.facing, target.color); },
-            [&](const FxSteam&) { Steam(target.at, target.color); },
+            [&](const FxBurst& a) { Burst(source, target.color, Scaled(a.count, scale), a.recipe); },
+            [&](const FxParticles& a) { Burst(source, target.color, Scaled(a.count, scale), a.burst); },
+            [&](const FxDash&) { Dash(source, target.facing, target.color); },
+            [&](const FxSteam&) { Steam(source, target.color); },
             [&](const FxFloatText& a) { FloatText(target.at, textOf(a.text), target.color); },
             [&](const FxPopText& a) { PopText(target.at, textOf(a.text), target.color, a.size); },
             [&](const FxRing&) {
@@ -190,22 +191,23 @@ void FxStage::Run(const FxAction& action, const Target& target) {
         action);
 }
 
-void FxStage::Burst(Float2 at, Color4 color, int count, ParticleRecipe recipe) {
-    EmitBurst(_particles, at, color, count, _style.particles.Burst(recipe));
+void FxStage::Burst(const ParticleSource& from, Color4 color, int count, ParticleRecipe recipe) {
+    EmitBurst(_particles, from, color, count, _style.particles.Burst(recipe));
 }
-void FxStage::Burst(Float2 at, Color4 color, int count, const ParticleBurst& burst) {
-    EmitBurst(_particles, at, color, count, burst);
+void FxStage::Burst(const ParticleSource& from, Color4 color, int count, const ParticleBurst& burst,
+                    const ParticleCustomDraw& draw) {
+    EmitBurst(_particles, from, color, count, burst, draw);
 }
-void FxStage::Trail(Float2 at, Color4 color) {
-    EmitLayer(_particles, at, color, _style.particles.trailCount, _style.particles.trail);
+void FxStage::Emit(ParticleEmitter& emitter, Float2 at, Color4 color, float seconds) {
+    emitter.Emit(_particles, at, color, seconds);
 }
-void FxStage::Dash(Float2 at, Float2 facing, Color4 color) {
-    EmitLayer(_particles, at, color, _style.particles.dashCount, AimedBehind(_style.particles.dash, facing));
+void FxStage::Dash(const ParticleSource& from, Float2 facing, Color4 color) {
+    EmitLayer(_particles, from, color, _style.particles.dashCount, AimedBehind(_style.particles.dash, facing));
 }
-void FxStage::Steam(Float2 at, Color4 color) {
+void FxStage::Steam(const ParticleSource& from, Color4 color) {
     const auto& recipes = _style.particles;
     const Color4 steam = Mix(color, Color4{255, 255, 255, 255}, recipes.steamWhiten);
-    EmitLayer(_particles, at, WithAlpha(steam, recipes.steamOpacity), recipes.steamCount, recipes.steam);
+    EmitLayer(_particles, from, WithAlpha(steam, recipes.steamOpacity), recipes.steamCount, recipes.steam);
 }
 void FxStage::FloatText(Float2 at, const std::string& text, Color4 color) { _texts.Emit(at, text, color, _style.text); }
 void FxStage::PopText(Float2 at, const std::string& text, Color4 color, float size) {
