@@ -3,6 +3,7 @@
 #include <fstream>
 #include "Editor/Internals/Protocol/WorkerProtocol.h"
 #include "Editor/Internals/Session/AssetLibrary.h"
+#include "Editor/Internals/Session/AssetNames.h"
 #include "Editor/Internals/Session/AssetNavigation.h"
 #include "Editor/Internals/Session/GraphicAssetCatalog.h"
 #include "Tests/Support/TempDirectory.h"
@@ -156,4 +157,28 @@ TEST_CASE("Editor.AssetNavigation.BackUndoesBrowsingAndOpeningInOrder", "[engine
     REQUIRE(step);
     CHECK(step->scene.empty());
     CHECK_FALSE(navigation.Back());
+}
+
+TEST_CASE("Editor.AssetNames.ExplainWhyANameCannotBeCreated", "[engine-editor]") {
+    const std::vector<std::string> none;
+    CHECK(AssetNameProblem(AssetNameKind::Graphic, "PlayerShip", none).empty());
+    CHECK(AssetNameProblem(AssetNameKind::Graphic, "", none) == "Enter a name");
+    CHECK(AssetNameProblem(AssetNameKind::Graphic, "playerShip", none).starts_with("Start with a capital"));
+    CHECK(AssetNameProblem(AssetNameKind::Graphic, "Player Ship", none).starts_with("No spaces"));
+    CHECK(AssetNameProblem(AssetNameKind::Graphic, "Player_Ship", none).starts_with("Use only letters"));
+    CHECK(AssetNameProblem(AssetNameKind::Folder, "Enemies", none).empty());
+    CHECK(AssetNameProblem(AssetNameKind::Folder, "Big Enemies", none).empty());
+    CHECK_FALSE(AssetNameProblem(AssetNameKind::Folder, "a/b", none).empty());
+    CHECK_FALSE(AssetNameProblem(AssetNameKind::Folder, "v1.2", none).empty());
+    CHECK_FALSE(AssetNameProblem(AssetNameKind::Folder, "Enemies ", none).empty());
+    // Taken names compare without case, as the disk does.
+    CHECK(AssetNameProblem(AssetNameKind::Graphic, "goblin", {"Goblin"}).starts_with("Start with"));
+    CHECK(AssetNameProblem(AssetNameKind::Graphic, "GOBLIN", {"Goblin"}) == "Goblin already exists in this folder");
+}
+
+TEST_CASE("Editor.AssetNames.CommandErrorIsTheLastLine", "[engine-editor]") {
+    CHECK(AssetCommandError("note\nerror: Already exists: Game/Assets/Graphics/Goblin.h\n") ==
+          "Already exists: Game/Assets/Graphics/Goblin.h");
+    CHECK(AssetCommandError("Traceback\n  boom\r\n") == "boom");
+    CHECK_FALSE(AssetCommandError("").empty());
 }

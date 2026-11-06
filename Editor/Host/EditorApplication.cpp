@@ -427,7 +427,8 @@ void EditorApplication::DrawToolOverlay() const {
                 commands.emplace_back([this, path] { _controller.OpenPath(path); });
         },
         [&](const std::string& id) { return _thumbnails.Texture(id); },
-        [&](const std::vector<std::string>& arguments) { _assetCommands.Run(arguments); },
+        [&](const std::vector<std::string>& arguments) { return _assetCommands.Run(arguments); },
+        [&](std::uint64_t id) { return _assetCommands.Result(id); },
         [&](const std::string& file, int line) {
             commands.emplace_back([this, file, line] { _controller.OpenSource(file, line); });
         },

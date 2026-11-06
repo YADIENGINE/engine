@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <deque>
 #include <filesystem>
 #include <functional>
@@ -150,6 +151,13 @@ struct EditorGitImage {
     int height = 0;
 };
 
+// Where one Assets panel file action is: queued or running, finished, or refused with the command's reason.
+enum class AssetCommandState { Running, Done, Failed };
+struct AssetCommandResult {
+    AssetCommandState state = AssetCommandState::Running;
+    std::string message; // Failed: the reason, one line
+};
+
 // References/callbacks are borrowed for the current UI frame; panels never retain session data.
 struct EditorUiActions {
     std::function<void(EditorCommand)> command;
@@ -169,8 +177,10 @@ struct EditorUiActions {
     std::function<void(const std::filesystem::path&)> openPath;
     // A graphic's thumbnail texture by catalog id; 0 while there is none.
     std::function<std::uint64_t(const std::string&)> assetThumbnail;
-    // Arguments after `python Engine asset`: the Assets panel's file actions.
-    std::function<void(const std::vector<std::string>&)> assetCommand;
+    // Arguments after `python Engine asset`: the Assets panel's file actions. Returns the request's id for
+    // assetCommandResult.
+    std::function<std::uint64_t(const std::vector<std::string>&)> assetCommand;
+    std::function<AssetCommandResult(std::uint64_t)> assetCommandResult;
     // A file named in build output, at a line (0: none), in the developer's code editor.
     std::function<void(const std::string&, int)> openSource;
     std::function<void(const GitRequest&)> git;

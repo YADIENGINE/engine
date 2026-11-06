@@ -20,6 +20,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Protocol/WorkerMessageReader.cpp
     Internals/Protocol/EditorControlProtocol.cpp
     Internals/Session/AssetLibrary.cpp
+    Internals/Session/AssetNames.cpp
     Internals/Session/AssetNavigation.cpp
     Internals/Session/AudioAnalysis.cpp
     Internals/Session/AudioPreview.cpp
