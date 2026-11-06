@@ -1,4 +1,4 @@
-#include "Editor/Api/SceneParameter.h"
+#include "Scene/SceneParameter.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>

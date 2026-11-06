@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <vector>
 #include "Animation/Timeline.h"
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
+#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Scene/Scene.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationRegistry.h"
 
@@ -37,9 +37,10 @@ private:
 // The view, outside Game/Simulation: a curve shapes what the rules' timeline measures.
 void DrawRecipeBoss(Painter& paint, const RecipeBossSimulation& simulation, float alpha);
 
-class RecipeBossEditorScene final : public EditorScene {
+class RecipeBossScene final : public Scene {
 public:
-    RecipeBossEditorScene(const SceneServices& services, std::uint64_t seed);
+    RecipeBossScene(const SceneServices& services, std::uint64_t seed);
+    ~RecipeBossScene() override { ShutdownNoThrow(); }
 
 private:
     void Update(float seconds) override;

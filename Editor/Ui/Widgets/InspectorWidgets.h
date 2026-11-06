@@ -2,7 +2,7 @@
 #include <functional>
 #include <span>
 #include <string>
-#include "Editor/Api/SceneParameter.h"
+#include "Scene/SceneParameter.h"
 #include "Editor/Ui/Widgets/Properties.h"
 
 struct SceneReadout;

@@ -120,7 +120,7 @@ in the simulation, and replays must reproduce it:
 
 `DrawCameraGuides(paint, camera)` draws, in canvas coordinates after the world: the viewport, the dead zone around where the
 camera is heading, the limits, each target's circle, the aim with look-ahead (a cross) and the point it heads for (a dot).
-It is view code; a simulation cannot include it. An editor scene usually shows it behind a Boolean parameter.
+It is view code; a simulation cannot include it. A scene usually shows it behind a Boolean editor parameter.
 
 ## Details
 

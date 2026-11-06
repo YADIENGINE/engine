@@ -4,9 +4,10 @@
 #include "Graphics/Paint/Painter.h"
 
 namespace {
-class GlowBenchmark final : public EditorScene {
+class GlowBenchmark final : public Scene {
 public:
-    GlowBenchmark(Vec2 canvas, const SceneParameters& parameters) {
+    GlowBenchmark(const SceneServices& services, const SceneParameters& parameters) {
+        const Vec2 canvas = services.canvas;
         const int count = std::stoi(std::get<std::string>(parameters.at("count")));
         const bool cluster = std::get<bool>(parameters.at("overlap"));
         _radius = static_cast<float>(std::get<double>(parameters.at("radius")));
@@ -24,6 +25,7 @@ public:
                                  (static_cast<float>(i / columns) + 0.5f) * height / gridRows});
         }
     }
+    ~GlowBenchmark() override { ShutdownNoThrow(); }
 
 private:
     void Draw(Painter& paint) const override {
@@ -68,7 +70,7 @@ SceneDefinition GlowBenchmarkDefinition() {
                               .apply = SceneApplyMode::OnReset}};
     definition.benchmark = SceneBenchmark{definition.id, 2};
     definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
-        return std::make_unique<GlowBenchmark>(services.canvas, parameters);
+        return std::make_unique<GlowBenchmark>(services, parameters);
     };
     return definition;
 }

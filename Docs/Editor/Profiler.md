@@ -5,7 +5,7 @@ project's editor preferences. Opening it does not automatically enable recording
 
 ## Live
 
-Open any editor scene or application flow, then select Record live. Worker FPS measures actual worker frames;
+Open any catalog scene or application flow, then select Record live. Worker FPS measures actual worker frames;
 Stream FPS measures image publication. The worker normally runs at 30 FPS. Live data includes image
 transport, frame limiting and profiler communication; use Benchmarks for controlled comparisons.
 
@@ -59,8 +59,7 @@ version when its meaning changes, retaining the version for ordinary implementat
 
 A benchmark opts into fixed-step operation explicitly. Its factory must reconstruct repeatable state from
 parameters and fixed seeds, use Painter::Time for decorative time and call production models/Views. Other
-scenes still support Live. SceneServices exposes a borrowed Profiler pointer for optional custom CPU
-scopes/counters; register names during setup and never retain the pointer past Stop/destruction.
+scenes still support Live.
 
 Engine supplies Painter Glows (20/100/500 lights, grid/cluster, radius, seed) without any Game dependency.
 Projects add production workloads through their normal scene registry.

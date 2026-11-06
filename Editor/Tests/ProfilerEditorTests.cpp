@@ -96,7 +96,7 @@ TEST_CASE("Editor.Profiler.BenchmarkMetadataRoundTripAndValidation", "[engine-ed
         {.id = "enabled", .label = "Enabled", .kind = SceneParameterKind::Boolean, .initial = true}};
     definition.benchmark = SceneBenchmark{definition.id};
     definition.benchmark->variants[0].parameters = {{"enabled", false}};
-    definition.create = [](const SceneServices&, const SceneParameters&) { return std::unique_ptr<EditorScene>{}; };
+    definition.create = [](const SceneServices&, const SceneParameters&) { return std::unique_ptr<Scene>{}; };
     SceneRegistry registry;
     registry.Add(definition);
     const auto encoded = EncodeSceneCatalog(registry.Entries());

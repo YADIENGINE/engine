@@ -74,17 +74,13 @@ void DrawRecipeFighter(Painter& paint, const RecipeFighterSimulation& simulation
     paint.Circle(at + Rotated(Float2{60.0f, 0.0f}, pose.arm), 12.0f, Fill(pose.tint));
 }
 
-RecipeFighterEditorScene::RecipeFighterEditorScene(const SceneServices& services, std::uint64_t seed)
+RecipeFighterScene::RecipeFighterScene(const SceneServices& services, std::uint64_t seed)
     : _hosted(services.simulation, RecipeFighterDefinition().settings, SimulationStart{.seed = seed, .players = 1})
     , _bindings(MakeBindings()) {}
-void RecipeFighterEditorScene::HandleInput(const DeviceInput& input) {
-    if (input.cancelled)
-        _hosted.Runner().CancelInput();
-    else
-        _hosted.Runner().Feed(_bindings.Read(input));
-}
-void RecipeFighterEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
-void RecipeFighterEditorScene::Draw(Painter& paint) const {
+void RecipeFighterScene::HandleInput(const DeviceInput& input) { _hosted.Runner().Feed(_bindings.Read(input)); }
+void RecipeFighterScene::InputCancelled() { _hosted.Runner().CancelInput(); }
+void RecipeFighterScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
+void RecipeFighterScene::Draw(Painter& paint) const {
     DrawRecipeFighter(paint, _hosted.Sim(), _hosted.Runner().Alpha());
 }
 SceneDefinition RecipeFighterSceneDefinition() {
@@ -93,7 +89,7 @@ SceneDefinition RecipeFighterSceneDefinition() {
     definition.name = "Fighter";
     definition.category = "MyProject";
     definition.create = [](const SceneServices& services, const SceneParameters&) {
-        return std::make_unique<RecipeFighterEditorScene>(services, 1);
+        return std::make_unique<RecipeFighterScene>(services, 1);
     };
     return definition;
 }

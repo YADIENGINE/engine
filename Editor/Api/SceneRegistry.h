@@ -6,8 +6,8 @@
 #include <array>
 #include <optional>
 #include <limits>
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/SceneServices.h"
+#include "Scene/Scene.h"
+#include "Scene/SceneServices.h"
 
 inline constexpr const char* WorkSceneCategory = "Work";
 inline constexpr int WorkSceneCategoryOrder = std::numeric_limits<int>::lowest();
@@ -36,7 +36,8 @@ struct SceneDefinition {
     std::string description;
     std::vector<SceneParameter> parameters;
     std::vector<SceneAction> actions;
-    std::function<std::unique_ptr<EditorScene>(const SceneServices&, const SceneParameters&)> create;
+    // Makes the scene the editor opens: the same Scene class the game hosts.
+    std::function<std::unique_ptr<Scene>(const SceneServices&, const SceneParameters&)> create;
     int categoryOrder = 0; // Lower values come first; a category sorts by the lowest order among its entries.
     std::optional<SceneBenchmark> benchmark;
     std::optional<SceneAssetInfo> asset;

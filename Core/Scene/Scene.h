@@ -1,12 +1,18 @@
 #pragma once
 #include <memory>
+#include <string>
 #include "GameObjects/GameObject.h"
 #include "GameObjects/ObjectList.h"
+#include "Scene/SceneInspection.h"
+#include "Scene/SceneParameter.h"
+#include "Scene/SceneServices.h"
 
 struct DeviceInput;
 enum class TimeDomain { Real, Game };
 
 // A scene keeps domain objects/views as value members. Children update before the scene's simulation hook.
+// One type for the game and the editor: the game hosts it through Game::SetScene, the editor's catalog opens the same
+// class (SceneDefinition::create). Its constructor takes `const SceneServices&` plus its own values.
 class Scene : public GameObject {
 public:
     explicit Scene(TimeDomain time = TimeDomain::Real);
@@ -26,6 +32,14 @@ public:
     [[nodiscard]] bool IsShutdown() const { return _shutdown; }
     // Evaluated after UpdateReal; application-level pause can independently freeze game time.
     [[nodiscard]] virtual bool GameTimePaused() const;
+
+    // Editor hooks; the game never calls them. Called for Immediate/NextAction values. NextAction setters stage values
+    // for the next action. Return an explanation to reject a change; rejected setters must leave content unchanged.
+    [[nodiscard]] virtual std::string ApplyParameter(const std::string& id, const SceneValue& value);
+    [[nodiscard]] virtual std::string ExecuteAction(const std::string& id);
+    // Report authored controls changed by an action or content interaction; omit transient animation state.
+    [[nodiscard]] virtual SceneParameters CaptureParameters() const;
+    [[nodiscard]] virtual SceneInspection Inspect() const;
 
 protected:
     void AddObject(GameObject& object);

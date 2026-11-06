@@ -3,9 +3,9 @@
 #include <cstdint>
 #include "Animation/Animator.h"
 #include "Animation/Tween.h"
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
+#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Scene/Scene.h"
 #include "Input/InputBindings.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationRegistry.h"
@@ -44,12 +44,14 @@ private:
 // The view, outside Game/Simulation: it draws a pose and decides nothing.
 void DrawRecipeFighter(Painter& paint, const RecipeFighterSimulation& simulation, float alpha);
 
-class RecipeFighterEditorScene final : public EditorScene {
+class RecipeFighterScene final : public Scene {
 public:
-    RecipeFighterEditorScene(const SceneServices& services, std::uint64_t seed);
+    RecipeFighterScene(const SceneServices& services, std::uint64_t seed);
+    ~RecipeFighterScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
 

@@ -4,7 +4,7 @@
 #include <cfloat>
 #include <cmath>
 #include <string>
-#include "Editor/Api/SceneInspection.h"
+#include "Scene/SceneInspection.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "Editor/Ui/Widgets/PropertyWidgets.h"

@@ -1,4 +1,4 @@
-# First editor scene
+# First scene in the editor
 
 Complete [project setup](../ProjectSetup.md) first; the [first game](../GettingStarted.md) is not required. The editor
 runs on Windows desktop. The project's `Editor/` folder is a sibling of Engine and Game; `Editor/Api/...` includes refer
@@ -34,12 +34,14 @@ with `engine_add_game`, because that helper adds the game's entry point.
 
 ```cpp
 #pragma once
-#include "Editor/Api/EditorScene.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Scene/Scene.h"
 
-class FirstScene final : public EditorScene {
+// An engine Scene: the game could host this same class with Game::SetScene.
+class FirstScene final : public Scene {
 public:
-    explicit FirstScene(const SceneParameters& parameters);
+    FirstScene(const SceneServices& services, const SceneParameters& parameters);
+    ~FirstScene() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
 
 private:
@@ -59,8 +61,9 @@ private:
 #include <variant>
 #include "Graphics/Paint/Painter.h"
 
-FirstScene::FirstScene(const SceneParameters& parameters)
+FirstScene::FirstScene(const SceneServices&, const SceneParameters& parameters)
     : _radius(static_cast<float>(std::get<double>(parameters.at("radius")))) {}
+FirstScene::~FirstScene() { ShutdownNoThrow(); }
 
 std::string FirstScene::ApplyParameter(const std::string& id, const SceneValue& value) {
     if (id != "radius") return "Unknown parameter";
@@ -79,14 +82,15 @@ SceneDefinition FirstSceneDefinition() {
     definition.name = "First scene";
     definition.category = "Drawing";
     definition.parameters = {{"radius", "Radius", SceneParameterKind::Float, 80.0, 8.0, 200.0}};
-    definition.create = [](const SceneServices&, const SceneParameters& parameters) {
-        return std::make_unique<FirstScene>(parameters);
+    definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
+        return std::make_unique<FirstScene>(services, parameters);
     };
     return definition;
 }
 ```
 
-You can call the real game's View instead of the example's fixed center and colors. Metadata registration defines only a
+You can call the real game's View instead of the example's fixed center and colors, or register a scene the game
+already has: its constructor takes `const SceneServices&` plus its own values, so the factory builds it as the game does. Metadata registration defines only a
 factory; it does not draw or load assets.
 
 ## Editor/Main.cpp

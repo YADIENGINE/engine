@@ -10,12 +10,12 @@ The order in `Draw` is the whole recipe: the world, the layer, what shines by it
 ```cpp
 #pragma once
 #include <string>
-#include "Editor/Api/EditorScene.h"
 #include "Editor/Api/SceneRegistry.h"
 #include "Fx/FxStage.h"
 #include "Graphics/Light/LightLayer.h"
 #include "Graphics/Light/LightOccluders.h"
 #include "Physics/Collision/CollisionWorld.h"
+#include "Scene/Scene.h"
 #include "Utilities/Geometry/Float2.h"
 
 // A dark room: the player carries a lantern and aims a flashlight, a torch flickers on the wall, lightning lights it
@@ -48,12 +48,14 @@ private:
     LightOccluders _walls;     // Built once from the colliders: walls stand still
 };
 
-class RecipeLitScene final : public EditorScene {
+class RecipeLitScene final : public Scene {
 public:
     RecipeLitScene(const SceneServices& services, bool guides);
+    ~RecipeLitScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
@@ -183,10 +185,6 @@ RecipeLitScene::RecipeLitScene(const SceneServices& services, bool guides)
 }
 
 void RecipeLitScene::HandleInput(const DeviceInput& input) {
-    if (input.cancelled) {
-        _move = {};
-        return;
-    }
     const auto axis = [&input](InputKey negative, InputKey positive) {
         return (input.Down(positive) ? 1.0f : 0.0f) - (input.Down(negative) ? 1.0f : 0.0f);
     };
@@ -195,6 +193,7 @@ void RecipeLitScene::HandleInput(const DeviceInput& input) {
     if (input.mousePosition)
         _mouse = {static_cast<float>(input.mousePosition->x), static_cast<float>(input.mousePosition->y)};
 }
+void RecipeLitScene::InputCancelled() { _move = {}; }
 
 std::string RecipeLitScene::ApplyParameter(const std::string& id, const SceneValue& value) {
     if (id == "guides") _view.SetGuides(std::get<bool>(value));

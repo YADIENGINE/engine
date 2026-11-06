@@ -25,7 +25,7 @@ space-separated word in any order, ignoring case; panel result ordering is prese
   content shows the area reported by content, and Actual size shows it at 100%. Zoom in the same menu or Ctrl+wheel
   multiplies the mode's scale; middle-button dragging pans; Reset pan and zoom resets view settings. Without Ctrl, the
   wheel goes to the product. The maximize button or double-clicking the strip between them enables temporary focus mode.
-  Closed, loading, or failed editor scenes show a state explanation and an available run / retry / cancel action; with
+  Closed, loading, or failed scenes show a state explanation and an available run / retry / cancel action; with
   no scene or a stopped one, also the last five scenes opened, one click from running again, and with no scene the
   shortcuts. A short viewport drops the shortcuts first, then the recent scenes. Playback is only in the global
   toolbar, at its left, with the search box (quick open, Ctrl+P) in the middle and speed, Mark, Build and Play game at

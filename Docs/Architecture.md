@@ -22,7 +22,8 @@ smaller windows draw at the logical size and downscale. Clipping uses scoped `pa
 Set `ENGINE_BUILD_RUNTIME=OFF` to use the headless targets without fetching/linking raylib.
 
 The optional [Engine Editor](Editor/README.md) has independent, default-OFF targets. It uses the same runtime without
-adding editor or UI dependencies to Engine/EngineHeadless. Transient applications can set
+adding editor or UI dependencies to Engine/EngineHeadless. There is one scene type: the editor's catalog opens the
+game's own `Scene` classes, so a screen is written once (D53). The catalog (`Editor/Api`) is not in games. Transient applications can set
 `GameSettings::persistentOptions=false` to use supplied window settings without loading/writing preferences.
 `WindowSettings::visible=false` keeps a graphics context hidden; `alwaysRun=true` keeps it ticking while minimized.
 
@@ -41,7 +42,7 @@ Everything a game's look needs lives under `Graphics/`, so a new game draws its 
 
 Game UI is outside `Graphics/`, in `Ui/` ([UI](Ui.md)).
 
-Particle shape drawing is shared by `Fx/Particles/ParticleSystem` and static editor scenes through
+Particle shape drawing is shared by `Fx/Particles/ParticleSystem` and static catalog scenes through
 `Graphics/Draw/ParticleDraw`; it accepts explicit pose/style and never reads a theme.
 
 Drawing uses [Painter](Graphics/Painter.md). All public headers use the `.h` extension.
@@ -57,7 +58,10 @@ rather than in the game.
 - `Runtime/Game`: renderer, font, input, audio, options, and clock; the derived game's scenes are value members.
 - `Scene/Internals/SceneManager` (Engine-private): scene reference registrations, active/pending target, transitions,
   and shutdown; headless.
-- `Scene/Scene`: its own object list, real-time hook, and pause decision; models may remain independent of lifecycle.
+- `Scene/Scene`: its own object list, real-time hook, pause decision and the editor hooks (parameters, actions,
+  inspection; the game never calls them); models may remain independent of lifecycle. Its constructor takes
+  `SceneServices` (`Game::Services()`; the editor's worker fills the same set) plus its own values.
+- `Simulation/HostedSimulation`: a scene's simulation; the editor's `SimulationHost` keeps its tape, a null host just runs.
 - `GameObjects/`: GameObject and ObjectList; ordered lifecycle with reference registration or dynamic object ownership.
 - Dependency direction is Runtime → Scene → GameObjects; SceneManager, Scene, GameObject, and ObjectList are in
   EngineHeadless, while Game is in the raylib-based Engine target.

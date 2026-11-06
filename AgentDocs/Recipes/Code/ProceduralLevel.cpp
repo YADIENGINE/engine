@@ -122,8 +122,7 @@ void DrawRecipeDungeon(Painter& paint, const RecipeDungeonSimulation& simulation
     paint.Circle(at(ToFloat2(run.player)) + middle, CellSize * 0.35f, Fill(Color4{255, 200, 90, 255}));
 }
 
-RecipeDungeonEditorScene::RecipeDungeonEditorScene(const SceneServices& services, std::uint64_t seed,
-                                                   const std::string& layout)
+RecipeDungeonScene::RecipeDungeonScene(const SceneServices& services, std::uint64_t seed, const std::string& layout)
     : _hosted(services.simulation, RecipeDungeonDefinition().settings,
               [&] {
                   SimulationStart start{.seed = seed, .players = 1};
@@ -136,14 +135,10 @@ RecipeDungeonEditorScene::RecipeDungeonEditorScene(const SceneServices& services
     _bindings.Bind(0, RecipeDungeonButton::Up, InputKey::W);
     _bindings.Bind(0, RecipeDungeonButton::Down, InputKey::S);
 }
-void RecipeDungeonEditorScene::HandleInput(const DeviceInput& input) {
-    if (input.cancelled)
-        _hosted.Runner().CancelInput();
-    else
-        _hosted.Runner().Feed(_bindings.Read(input));
-}
-void RecipeDungeonEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
-void RecipeDungeonEditorScene::Draw(Painter& paint) const { DrawRecipeDungeon(paint, _hosted.Sim()); }
+void RecipeDungeonScene::HandleInput(const DeviceInput& input) { _hosted.Runner().Feed(_bindings.Read(input)); }
+void RecipeDungeonScene::InputCancelled() { _hosted.Runner().CancelInput(); }
+void RecipeDungeonScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
+void RecipeDungeonScene::Draw(Painter& paint) const { DrawRecipeDungeon(paint, _hosted.Sim()); }
 SceneDefinition RecipeDungeonSceneDefinition() {
     SceneDefinition definition;
     definition.id = "myproject.dungeon";
@@ -157,7 +152,7 @@ SceneDefinition RecipeDungeonSceneDefinition() {
         {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{1}, 0.0, 1000000.0, SceneApplyMode::OnReset},
         layout};
     definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
-        return std::make_unique<RecipeDungeonEditorScene>(
+        return std::make_unique<RecipeDungeonScene>(
             services, static_cast<std::uint64_t>(std::get<std::int64_t>(parameters.at("seed"))),
             std::get<std::string>(parameters.at("layout")));
     };

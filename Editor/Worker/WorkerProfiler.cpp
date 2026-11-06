@@ -15,14 +15,12 @@ WorkerProfiler::WorkerProfiler(Game& game, WorkerScene& scene, ControlChannel& c
     , _activate(std::move(activate)) {
     _profiler.Attach(game);
     _runtimeMetadata = _profiler.RuntimeMetadata();
-    _scene.SetProfiler(&_profiler);
 }
 WorkerProfiler::~WorkerProfiler() {
     try {
         Cancel(false, false);
     } catch (...) {
     }
-    _scene.SetProfiler(nullptr);
     _profiler.Detach();
 }
 bool WorkerProfiler::Busy() const {

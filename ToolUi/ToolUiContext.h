@@ -4,7 +4,7 @@
 
 struct ToolUiOptions {
     bool docking = false;            // ImGui docking (the editor's workspace)
-    bool keyboardNavigation = false; // Off when the keyboard also drives something else (an editor scene)
+    bool keyboardNavigation = false; // Off when the keyboard also drives something else (an open scene)
 };
 
 // The ImGui context of a tool window: rlImGui backend, embedded IBM Plex Sans + Font Awesome, IBM Plex Mono for

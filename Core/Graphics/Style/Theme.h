@@ -3,7 +3,7 @@
 #include "Graphics/Draw/BackgroundDraw.h"
 #include "Graphics/Style/ThemePalette.h"
 
-// Screen background roles (read by Graphics/Backgrounds/Backdrops): menus, surroundings of the game field, editor scene / gallery screens;
+// Screen background roles (read by Graphics/Backgrounds/Backdrops): menus, surroundings of the game field, catalog scene / gallery screens;
 // scanline geometry is shared by all.
 struct BackdropTheme {
     BackdropStyle menu;

@@ -12,9 +12,9 @@ Put the rules in Game/Simulation/ and implement `RegisterSimulations` there: the
 #include <cstdint>
 #include "Animation/Animator.h"
 #include "Animation/Tween.h"
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
+#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Scene/Scene.h"
 #include "Input/InputBindings.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationRegistry.h"
@@ -53,12 +53,14 @@ private:
 // The view, outside Game/Simulation: it draws a pose and decides nothing.
 void DrawRecipeFighter(Painter& paint, const RecipeFighterSimulation& simulation, float alpha);
 
-class RecipeFighterEditorScene final : public EditorScene {
+class RecipeFighterScene final : public Scene {
 public:
-    RecipeFighterEditorScene(const SceneServices& services, std::uint64_t seed);
+    RecipeFighterScene(const SceneServices& services, std::uint64_t seed);
+    ~RecipeFighterScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
 
@@ -146,17 +148,13 @@ void DrawRecipeFighter(Painter& paint, const RecipeFighterSimulation& simulation
     paint.Circle(at + Rotated(Float2{60.0f, 0.0f}, pose.arm), 12.0f, Fill(pose.tint));
 }
 
-RecipeFighterEditorScene::RecipeFighterEditorScene(const SceneServices& services, std::uint64_t seed)
+RecipeFighterScene::RecipeFighterScene(const SceneServices& services, std::uint64_t seed)
     : _hosted(services.simulation, RecipeFighterDefinition().settings, SimulationStart{.seed = seed, .players = 1})
     , _bindings(MakeBindings()) {}
-void RecipeFighterEditorScene::HandleInput(const DeviceInput& input) {
-    if (input.cancelled)
-        _hosted.Runner().CancelInput();
-    else
-        _hosted.Runner().Feed(_bindings.Read(input));
-}
-void RecipeFighterEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
-void RecipeFighterEditorScene::Draw(Painter& paint) const {
+void RecipeFighterScene::HandleInput(const DeviceInput& input) { _hosted.Runner().Feed(_bindings.Read(input)); }
+void RecipeFighterScene::InputCancelled() { _hosted.Runner().CancelInput(); }
+void RecipeFighterScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
+void RecipeFighterScene::Draw(Painter& paint) const {
     DrawRecipeFighter(paint, _hosted.Sim(), _hosted.Runner().Alpha());
 }
 SceneDefinition RecipeFighterSceneDefinition() {
@@ -165,7 +163,7 @@ SceneDefinition RecipeFighterSceneDefinition() {
     definition.name = "Fighter";
     definition.category = "MyProject";
     definition.create = [](const SceneServices& services, const SceneParameters&) {
-        return std::make_unique<RecipeFighterEditorScene>(services, 1);
+        return std::make_unique<RecipeFighterScene>(services, 1);
     };
     return definition;
 }

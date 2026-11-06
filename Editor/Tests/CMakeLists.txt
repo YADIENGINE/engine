@@ -1,10 +1,11 @@
 engine_use_catch2()
 add_executable(EngineEditorTests AssetLibraryTests.cpp QuickOpenTests.cpp AudioPreviewTests.cpp ControlChannelTests.cpp EditorInfrastructureTests.cpp EditorControlTests.cpp EditorUiModelTests.cpp ProfilerEditorTests.cpp
-    EditorCommandTests.cpp GitTests.cpp TuningEditorTests.cpp WorkerSimulationTests.cpp
+    EditorCommandTests.cpp GitTests.cpp OneSceneTests.cpp TuningEditorTests.cpp WorkerSimulationTests.cpp
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Worker/WorkerScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Tests/Support/TempDirectory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Tests/Simulation/ToySimulation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Tests/Simulation/ToyTimeline.cpp")
-target_link_libraries(EngineEditorTests PRIVATE EngineEditorSupport Catch2::Catch2WithMain)
+target_link_libraries(EngineEditorTests PRIVATE EngineEditorSupport EngineAudio Catch2::Catch2WithMain)
 if(TARGET EngineEditorUi)
     # ImGui-only frames: no window, GPU context, worker or game startup.
     target_sources(EngineEditorTests PRIVATE EditorActionTests.cpp EditorContextTests.cpp EditorPaletteTests.cpp InspectorUiTests.cpp

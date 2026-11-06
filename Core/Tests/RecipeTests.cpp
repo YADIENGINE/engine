@@ -38,7 +38,10 @@
 #include "Simulation/SimulationRegistry.h"
 #include "Simulation/StateHash.h"
 #include "Tests/PaintHarness.h"
+#include "Scene/Internals/SceneManager.h"
+#include "Simulation/SimulationHost.h"
 #include "Tests/Support/FakeSoundOutput.h"
+#include "Tests/Support/TestSceneServices.h"
 #include "Tests/Support/TempDirectory.h"
 #include "Ui/Kernel/UiListener.h"
 #include "Ui/Sound/UiSoundListener.h"
@@ -115,14 +118,14 @@ TEST_CASE("Engine.Recipes.LevelsScrollUnderTabs", "[engine][recipes]") {
 }
 
 TEST_CASE("Engine.Recipes.SimulationPlaysInASceneAndWithoutOne", "[engine][recipes]") {
-    TimeScale time;
-    RecipePlayScene scene(time, 1);
+    TestSceneServices host;
+    RecipePlayScene scene(host.services, 1);
     scene.Activate();
     DeviceInput right;
     right.keysDown[static_cast<std::size_t>(InputKey::D)] = true;
     for (int frame = 0; frame < 60; ++frame) {
         scene.ReadInput(right);
-        scene.Tick(time.Advance(1.0f / 60.0f));
+        scene.Tick(host.time.Advance(1.0f / 60.0f));
     }
     CHECK(scene.Runner().StepIndex() == 60);
     CHECK(scene.Sim().ShipX(1.0f) > 230.0f);
@@ -148,23 +151,81 @@ TEST_CASE("Engine.Recipes.SimulationEventsReachTheScene", "[engine][recipes]") {
     CHECK(scenario.Events().back().name == "Hit");
     CHECK(rules.Score() == 1);
 
-    // In the scene, the same Hit starts a hitstop: the next frame owes no game time.
-    TimeScale time;
-    RecipePlayScene scene(time, 1);
+    // In the scene, the same Hit starts a hitstop through SceneServices::time: the next frame owes no game time.
+    TestSceneServices host;
+    RecipePlayScene scene(host.services, 1);
     scene.Activate();
     DeviceInput right;
     right.keysDown[static_cast<std::size_t>(InputKey::D)] = true;
     while (scene.Sim().ShipX(1.0f) < rock - 10.0f) {
         scene.ReadInput(right);
-        scene.Tick(time.Advance(1.0f / 60.0f));
+        scene.Tick(host.time.Advance(1.0f / 60.0f));
     }
     DeviceInput fire;
     fire.keysPressed[static_cast<std::size_t>(InputKey::Space)] = true;
     fire.keysDown[static_cast<std::size_t>(InputKey::Space)] = true;
     scene.ReadInput(fire);
-    scene.Tick(time.Advance(1.0f / 60.0f));
+    scene.Tick(host.time.Advance(1.0f / 60.0f));
     CHECK(scene.Sim().Score() == 1);
-    CHECK(time.Advance(1.0f / 60.0f) == 0.0f);
+    CHECK(host.time.Advance(1.0f / 60.0f) == 0.0f);
+}
+
+namespace {
+// The editor's side of HostedSimulation, reduced to what a test can see: which runner is attached.
+struct RecordingHost final : SimulationHost {
+    [[nodiscard]] SimulationStart StartFor(const SimulationSettings&, SimulationStart fallback) override {
+        fallback.seed = 9; // A loaded replay's start would replace the scene's own
+        return fallback;
+    }
+    void Attach(SimulationRunner& runner) override { attached = &runner; }
+    void Detach(SimulationRunner& runner) override {
+        if (attached == &runner) attached = nullptr;
+        ++detached;
+    }
+    SimulationRunner* attached = nullptr;
+    int detached = 0;
+};
+} // namespace
+
+TEST_CASE("Engine.Recipes.OneSceneRunsInTheGameAndInTheCatalog", "[engine][recipes]") {
+    DeviceInput right;
+    right.keysDown[static_cast<std::size_t>(InputKey::D)] = true;
+    // The game: the scene manager hosts the class; with no simulation host the rules simply run.
+    TestSceneServices game;
+    RecipePlayScene played(game.services, 1);
+    SceneManager scenes;
+    scenes.Register(played);
+    scenes.Request(played);
+    REQUIRE(scenes.Commit({}));
+    for (int frame = 0; frame < 30; ++frame) {
+        scenes.Current()->ReadInput(right);
+        scenes.Current()->Tick(game.time.Advance(1.0f / 60.0f));
+    }
+    CHECK(played.Runner().StepIndex() == 30);
+    CHECK(played.Runner().Tape().start.seed == 1);
+    CHECK(played.ExecuteAction("add_score").empty());
+    scenes.Shutdown();
+    CHECK(played.IsShutdown());
+
+    // The editor: the catalog makes the same class; the host attaches its runner and chooses the start.
+    RecordingHost recorder;
+    TestSceneServices editor(&recorder);
+    const auto definition = RecipePlaySceneDefinition();
+    auto opened = definition.create(editor.services, SceneDefaults(definition));
+    REQUIRE(dynamic_cast<RecipePlayScene*>(opened.get()));
+    const auto& scene = static_cast<const RecipePlayScene&>(*opened);
+    CHECK(recorder.attached == &scene.Runner());
+    CHECK(scene.Runner().Tape().start.seed == 9);
+    opened->Activate();
+    opened->ReadInput(right);
+    opened->Tick(1.0f / 60.0f);
+    CHECK(scene.Runner().StepIndex() == 1);
+    CHECK(opened->ExecuteAction("add_score").empty());
+    CHECK(opened->ApplyParameter("seed", std::int64_t{2}) == "Unsupported parameter: seed");
+    opened->Shutdown();
+    opened.reset();
+    CHECK(recorder.attached == nullptr);
+    CHECK(recorder.detached == 1);
 }
 
 TEST_CASE("Engine.Recipes.LightingDarkensTheWorldBeforeTheSign", "[engine][recipes]") {
@@ -530,8 +591,9 @@ TEST_CASE("Engine.Recipes.ViewsRecordAndCachedLayerInvalidates", "[engine][recip
     fx.Clear();
 }
 
-TEST_CASE("Engine.Recipes.EditorSceneAndTextWorkWithoutWindow", "[engine][recipes]") {
-    RecipeScene scene;
+TEST_CASE("Engine.Recipes.SceneAndTextWorkWithoutWindow", "[engine][recipes]") {
+    TestSceneServices host;
+    RecipeScene scene(host.services);
     scene.Activate();
     scene.Tick(0.1f);
     scene.Deactivate();
@@ -539,11 +601,10 @@ TEST_CASE("Engine.Recipes.EditorSceneAndTextWorkWithoutWindow", "[engine][recipe
     CHECK(scene.IsShutdown());
     const auto definition = RecipeCharacterDefinition();
     REQUIRE(definition.create);
-    auto editorScene = std::make_unique<RecipeCharacterScene>();
-    ObjectList objects;
-    objects.Add(*editorScene);
-    objects.Update(0.1f);
-    objects.Stop();
+    auto opened = definition.create(host.services, {}); // The same class, made by the catalog
+    opened->Activate();
+    opened->Tick(0.1f);
+    opened->Shutdown();
     RecipeTextView text(ENGINE_RECIPE_FONT);
     CHECK(text.Measured().x > 0.0f);
     CHECK(RecipeRadius() > 0.0f);

@@ -1,6 +1,6 @@
 # Editor development notes
 
-This file is separate from the supported feature list. Current API: [Api](../Api.md); production editor scene guide:
+This file is separate from the supported feature list. Current API: [Api](../Api.md); production scene guide:
 [CreatingScenes](../CreatingScenes.md).
 
 ## Current limits

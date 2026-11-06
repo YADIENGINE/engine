@@ -1,7 +1,7 @@
 # Project setup
 
 The engine is a separate git repo, and each game uses it as a submodule named `Engine/` at its root. Game code, editor
-editor scenes, and documentation stay in the game's repo; the engine repo sees no games.
+catalog entries, and documentation stay in the game's repo; the engine repo sees no games.
 
 ```text
 MyProject/                  (game repo)
@@ -10,7 +10,7 @@ MyProject/                  (game repo)
   Game/                     game sources + Assets/ (.cpp files found automatically) + Distribution/ (notices sent
                             to players: GameNotices.txt, credits; see Release.md) + Simulation/ (optional: rules that
                             run without a window, see Simulation.md)
-  Editor/                   project worker process (EngineEditor scenes; .cpp files found automatically)
+  Editor/                   project worker process (scene catalog; .cpp files found automatically)
   CMakeLists.txt  CMakePresets.json
   Project.json              project settings read by engine tools
 ```
@@ -55,7 +55,7 @@ python Engine test      # headless tests (Engine tests)
 `Game/` and `Editor/` start empty (`Game/Assets/` and `.gitkeep`). While empty, `engine_add_game` and
 `engine_add_editor_worker` build the engine's starter game and starter worker: the game opens the "Game/ has no sources
 yet" screen, and the editor opens the Engine → Starter scene. When the first `.cpp` is added, CMake reconfigures and
-the project's code takes over: [First game](GettingStarted.md), [First editor scene](Editor/GettingStarted.md).
+the project's code takes over: [First game](GettingStarted.md), [First scene in the editor](Editor/GettingStarted.md).
 
 ## Using an AI agent
 

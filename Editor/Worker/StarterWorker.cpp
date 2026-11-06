@@ -1,7 +1,6 @@
 #include <memory>
-#include "Editor/Api/EditorScene.h"
 #include "Editor/Api/SceneRegistry.h"
-#include "Editor/Api/SceneServices.h"
+#include "Scene/SceneServices.h"
 #include "Editor/Worker/WorkerHost.h"
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Text/TextStyle.h"
@@ -17,7 +16,11 @@ constexpr Color4 HintColor{130, 130, 130, 255};
 
 // engine_add_editor_worker builds this worker while the project's Editor/ has no sources; its one entry shows the
 // scene pipeline works end to end.
-class StarterWorker final : public EditorScene {
+class StarterWorker final : public Scene {
+public:
+    explicit StarterWorker(const SceneServices&) {}
+    ~StarterWorker() override { ShutdownNoThrow(); }
+
 private:
     void Draw(Painter& paint) const override {
         constexpr int CenterX = CanvasWidth / 2;
@@ -34,7 +37,9 @@ SceneDefinition StarterDefinition() {
     definition.name = "Starter";
     definition.category = "Engine";
     definition.description = "Placeholder until the project registers its own scenes.";
-    definition.create = [](const SceneServices&, const SceneParameters&) { return std::make_unique<StarterWorker>(); };
+    definition.create = [](const SceneServices& services, const SceneParameters&) {
+        return std::make_unique<StarterWorker>(services);
+    };
     return definition;
 }
 } // namespace

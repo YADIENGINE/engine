@@ -2,16 +2,17 @@ Register an owned GameObject in a scene with safe shutdown.
 
 APIs: Core/Scene/Scene.h, Core/GameObjects/GameObject.h; production View: AgentDocs/Recipes/Code/AnimatedCharacter.h.
 
-Use this scene with `Recipes/SceneTransition.md`.
+Use this scene with `Recipes/SceneTransition.md`; `Recipes/CharacterScene.md` opens it in the editor.
 
 <!-- recipe:SceneTransition-header -->
 ```cpp
 #pragma once
 #include "Scene/Scene.h"
 
+// Constructed from the services and its own values, so the game and the editor's catalog both make it.
 class RecipeScene final : public Scene {
 public:
-    RecipeScene();
+    explicit RecipeScene(const SceneServices& services);
     ~RecipeScene() override;
 };
 ```
@@ -23,7 +24,7 @@ public:
 #include <memory>
 #include "AgentDocs/Recipes/Code/CharacterObject.h"
 
-RecipeScene::RecipeScene()
+RecipeScene::RecipeScene(const SceneServices&)
     : Scene(TimeDomain::Game) {
     AddObject(std::make_unique<RecipeCharacterObject>());
 }

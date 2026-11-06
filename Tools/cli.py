@@ -76,7 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--list", action="store_true", help="list the selected tests without running them")
     command.add_argument("--clean", action="store_true", help="delete the test build folder first")
 
-    command = commands.add_parser("editor", help="build the editor and the project's editor scenes, then open it")
+    command = commands.add_parser("editor", help="build the editor and the project's scene catalog, then open it")
     command.add_argument("--release", action="store_true", help="Release configuration")
     command.add_argument("--build-only", action="store_true", help="build without opening the editor")
     command.add_argument("--clean", action="store_true", help="delete the editor's build folder first")

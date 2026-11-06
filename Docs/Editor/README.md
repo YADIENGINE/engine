@@ -1,6 +1,6 @@
 # Engine Editor
 
-A Windows development tool that displays editor scenes using actual production drawing in a separate worker process. General infrastructure
+A Windows development tool that displays the game's scenes using actual production drawing in a separate worker process. General infrastructure
 lives in `Engine/Editor/`; the game catalog and worker adapter live in the consumer project. Normal game and headless
 targets do not acquire editor/ImGui dependencies.
 
@@ -10,8 +10,8 @@ For agent-driven visual or gameplay changes, follow the
 
 ## Terms
 
-editor scene (EditorScene): a catalog entry opened in the viewport; not an engine Scene. Game screens are engine
-Scenes (Scene). A Game Flow editor scene runs real game Scenes.
+scene: one engine `Scene` class serves the game and the editor; a catalog entry (`SceneDefinition`) makes it for the
+viewport. A Game Flow catalog entry runs the real game and its scene changes.
 
 Migration tables for API and tools changes are in [cumulative migration notes](Development/Migrations.md).
 

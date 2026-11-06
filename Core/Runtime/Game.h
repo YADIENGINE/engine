@@ -13,6 +13,7 @@
 #include "Runtime/GameSettings.h"
 #include "Runtime/GraphicsSettings.h"
 #include "Runtime/FrameExecutionSettings.h"
+#include "Scene/SceneServices.h"
 #include "Diagnostics/FrameObserver.h"
 #include "Utilities/Geometry/Vec2.h"
 
@@ -56,6 +57,9 @@ public:
     [[nodiscard]] const FxQuality& Effects() const { return _effects; }
     // Game time's scale: hitstop, slow motion and pauses (FxStage::SetTime for cues that change it).
     [[nodiscard]] TimeScale& Time() { return _timeScale; }
+    // What a scene takes in its constructor: canvas, audio, sound tables, time scale, effect choice, font and log.
+    // The editor's worker fills the same set from its own Game, adding its simulation host.
+    [[nodiscard]] const SceneServices& Services() const { return _services; }
     // This frame's real duration: what a hitstop, slow motion or a pause does not change (FxStage::Update's second
     // clock). Inside Scene::UpdateReal the same value arrives as its argument.
     [[nodiscard]] float RealSeconds() const { return _frameSeconds; }
@@ -157,6 +161,7 @@ private:
     bool _showFps = false;
     FxQuality _effects;
     std::optional<RenderQuality> _renderOverride; // OverrideRenderQuality (development hosts)
+    SceneServices _services;                      // References the members above
     double _frameStart = 0.0;                     // Frame start (GetTime); origin for the FPS counter's work duration
     float _frameSeconds = 0.0f;                   // This frame's real duration (Painter::Delta)
     mutable float _frameWorkSeconds = 0.0f;       // Smoothed update + drawing duration (excluding waits)

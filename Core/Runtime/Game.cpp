@@ -112,6 +112,13 @@ Game::Game(const GameSettings& settings)
     , _defaultFpsLimit(settings.project.targetFps)
     , _persistentOptions(settings.persistentOptions)
     , _fixedWindow(settings.fixedWindow)
+    , _services{{settings.project.canvasWidth, settings.project.canvasHeight},
+                _audio,
+                _sounds,
+                _timeScale,
+                _effects,
+                _font ? &*_font : nullptr,
+                [](const std::string& line) { std::cerr << line << '\n'; }}
     , _sceneManager(std::make_unique<SceneManager>()) {
     _frameExecution.fpsLimit = settings.project.targetFps;
     _renderer->SetFont(_font ? &*_font : nullptr); // _font, renderer'dan önce yıkılır; o sırada kare çizilmez

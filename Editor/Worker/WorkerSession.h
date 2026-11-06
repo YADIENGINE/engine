@@ -15,20 +15,19 @@ struct WorkerSessionActions {
     std::function<void()> quit;
     std::function<void()> reset;
     std::function<void(WorkerScene&)> activate;
-    std::function<std::string(const std::string&, const SceneParameters&)> application;
 };
 
 // Transport and scene lifecycle, reusable by a project's actual Game without another window or loop.
 class WorkerSession {
 public:
+    // Scenes get the game's services (Game::Services()) with the editor's log and simulation host.
     WorkerSession(Game& game, const GameSettings& settings, const SceneRegistry& registry, ControlChannel& channel,
-                  const std::string& session, const FontFace* font, AudioSystem& audio, SoundPlayer& sounds,
-                  WorkerSessionActions actions);
+                  const std::string& session, WorkerSessionActions actions);
     ~WorkerSession();
     [[nodiscard]] WorkerScene& Scene() { return _scene; }
     [[nodiscard]] const WorkerScene& Scene() const { return _scene; }
-    // For a custom Game adapter whose own scene hosts a simulation (HostedSimulation does this for editor scenes).
-    [[nodiscard]] SimulationHost& Simulation() { return _simulation; }
+    // What a custom Game adapter hands its own scenes, so their HostedSimulation reaches the editor's tape.
+    [[nodiscard]] const SceneServices& Services() const { return _scene.Services(); }
     [[nodiscard]] DeviceInput ReadInput();
     void PrepareFrame();
     void Capture();

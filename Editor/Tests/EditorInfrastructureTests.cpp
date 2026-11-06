@@ -359,7 +359,7 @@ TEST_CASE("Editor.Registry.MetadataDoesNotConstructContent", "[engine-editor]") 
     definition.parameters.back().apply = SceneApplyMode::NextAction;
     definition.parameters.back().applyAction = "replay";
     definition.actions = {{"replay", "Replay", "Apply the prepared values.", true}};
-    definition.create = [&constructed](const SceneServices&, const SceneParameters&) -> std::unique_ptr<EditorScene> {
+    definition.create = [&constructed](const SceneServices&, const SceneParameters&) -> std::unique_ptr<Scene> {
         constructed = true;
         return {};
     };

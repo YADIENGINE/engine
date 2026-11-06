@@ -12,9 +12,9 @@ Put the rules in Game/Simulation/: `engine_add_simulation` already links collisi
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
+#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Scene/Scene.h"
 #include "Input/InputBindings.h"
 #include "Physics/Collision/CollisionWorld.h"
 #include "Simulation/Simulation.h"
@@ -51,13 +51,15 @@ private:
 // The view, outside Game/Simulation. A debug switch shows what the rules see on top of what the player sees.
 void DrawRecipeShooter(Painter& paint, const RecipeShooterSimulation& simulation, bool showColliders);
 
-// An editor scene with the switch as a parameter: `ctl open ID --set showColliders=true --screenshot`.
-class RecipeShooterEditorScene final : public EditorScene {
+// The scene, with the switch as an editor parameter: `ctl open ID --set showColliders=true --screenshot`.
+class RecipeShooterScene final : public Scene {
 public:
-    RecipeShooterEditorScene(const SceneServices& services, std::uint64_t seed, bool showColliders);
+    RecipeShooterScene(const SceneServices& services, std::uint64_t seed, bool showColliders);
+    ~RecipeShooterScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
@@ -157,23 +159,18 @@ void DrawRecipeShooter(Painter& paint, const RecipeShooterSimulation& simulation
     if (showColliders) DrawColliders(paint, simulation.Collision());
 }
 
-RecipeShooterEditorScene::RecipeShooterEditorScene(const SceneServices& services, std::uint64_t seed,
-                                                   bool showColliders)
+RecipeShooterScene::RecipeShooterScene(const SceneServices& services, std::uint64_t seed, bool showColliders)
     : _hosted(services.simulation, RecipeShooterDefinition().settings, SimulationStart{.seed = seed, .players = 1})
     , _bindings(MakeBindings())
     , _showColliders(showColliders) {}
-void RecipeShooterEditorScene::HandleInput(const DeviceInput& input) {
-    if (input.cancelled)
-        _hosted.Runner().CancelInput();
-    else
-        _hosted.Runner().Feed(_bindings.Read(input));
-}
-std::string RecipeShooterEditorScene::ApplyParameter(const std::string& id, const SceneValue& value) {
+void RecipeShooterScene::HandleInput(const DeviceInput& input) { _hosted.Runner().Feed(_bindings.Read(input)); }
+void RecipeShooterScene::InputCancelled() { _hosted.Runner().CancelInput(); }
+std::string RecipeShooterScene::ApplyParameter(const std::string& id, const SceneValue& value) {
     if (id == "showColliders") _showColliders = std::get<bool>(value);
     return {};
 }
-void RecipeShooterEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
-void RecipeShooterEditorScene::Draw(Painter& paint) const { DrawRecipeShooter(paint, _hosted.Sim(), _showColliders); }
+void RecipeShooterScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
+void RecipeShooterScene::Draw(Painter& paint) const { DrawRecipeShooter(paint, _hosted.Sim(), _showColliders); }
 SceneDefinition RecipeShooterSceneDefinition() {
     SceneDefinition definition;
     definition.id = "myproject.shooter";
@@ -183,7 +180,7 @@ SceneDefinition RecipeShooterSceneDefinition() {
         {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{1}, 0.0, 1000000.0, SceneApplyMode::OnReset},
         {"showColliders", "Show colliders", SceneParameterKind::Boolean, true}};
     definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
-        return std::make_unique<RecipeShooterEditorScene>(
+        return std::make_unique<RecipeShooterScene>(
             services, static_cast<std::uint64_t>(std::get<std::int64_t>(parameters.at("seed"))),
             std::get<bool>(parameters.at("showColliders")));
     };

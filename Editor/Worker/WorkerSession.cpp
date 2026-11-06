@@ -30,33 +30,36 @@ struct CapturedImage {
     CapturedImage(const CapturedImage&) = delete;
     CapturedImage& operator=(const CapturedImage&) = delete;
 };
+SceneServices EditorServices(const SceneServices& game, std::function<void(const std::string&)> log,
+                             SimulationHost& simulation) {
+    SceneServices services = game;
+    services.log = std::move(log);
+    services.simulation = &simulation;
+    return services;
+}
 std::filesystem::path Utf8Path(const std::string& text) {
     return std::filesystem::path(std::u8string_view(reinterpret_cast<const char8_t*>(text.data()), text.size()));
 }
 } // namespace
 
 WorkerSession::WorkerSession(Game& game, const GameSettings& settings, const SceneRegistry& registry,
-                             ControlChannel& channel, const std::string& session, const FontFace* font,
-                             AudioSystem& audio, SoundPlayer& sounds, WorkerSessionActions actions)
-    : _audio(audio)
-    , _sounds(sounds)
+                             ControlChannel& channel, const std::string& session, WorkerSessionActions actions)
+    : _audio(game.Services().audio)
+    , _sounds(game.Services().sounds)
     , _game(game)
     , _registry(registry)
     , _channel(channel)
     , _canvas{settings.project.canvasWidth, settings.project.canvasHeight}
     , _frames(session, false)
     , _actions(std::move(actions))
-    , _scene(
-          _canvas, audio, sounds, [this](const std::string& text) { SendLog(text); }, font)
+    , _scene(EditorServices(
+          game.Services(), [this](const std::string& text) { SendLog(text); }, _simulation))
     , _profiler(game, _scene, channel, _canvas,
                 [this] {
                     _actions.reset();
                     _actions.activate(_scene);
                 })
-    , _lastInput(std::chrono::steady_clock::now()) {
-    _scene.SetApplicationCommand(_actions.application);
-    _scene.SetSimulationHost(&_simulation);
-}
+    , _lastInput(std::chrono::steady_clock::now()) {}
 WorkerSession::~WorkerSession() {
     try {
         _profiler.Cancel(false, false);
@@ -206,7 +209,7 @@ void WorkerSession::ReplayDue() {
         (void)_scene.Action(_timeline[_applied++].id); // Accepted when it was first run
         replayed = true;
     }
-    if (replayed && _scene.CaptureParameters()) SendParameters();
+    if (replayed && _scene.MergeCapture()) SendParameters();
 }
 void WorkerSession::FinishSeek() {
     if (auto* runner = _simulation.Runner()) runner->SilenceEventsUntil(runner->StepIndex());
@@ -316,7 +319,7 @@ void WorkerSession::Command(const WorkerMessage& message) {
         if (auto error = _scene.SetParameter(id, value); !error.empty())
             Reply(message, "rejected", {{"text", error}, {"id", id}});
         else {
-            (void)_scene.CaptureParameters();
+            (void)_scene.MergeCapture();
             Reply(message, "accepted", {{"id", id}, {"value", EncodeSceneValue(_scene.Parameters().at(id))}});
             SendParameters();
         }
@@ -331,7 +334,7 @@ void WorkerSession::Command(const WorkerMessage& message) {
             _timeline.push_back({_elapsed, id});
             _applied = _timeline.size();
         }
-        if (_scene.CaptureParameters()) SendParameters();
+        if (_scene.MergeCapture()) SendParameters();
     } else {
         Reply(message, "rejected", {{"text", "Unsupported scene command: " + message.type}});
     }
@@ -374,7 +377,7 @@ DeviceInput WorkerSession::ReadInput() {
 }
 void WorkerSession::Capture() {
     if (_profiler.Busy()) return;
-    if (_scene.CaptureParameters()) SendParameters();
+    if (_scene.MergeCapture()) SendParameters();
 }
 void WorkerSession::CanvasReady(const Texture2D& texture) const {
     if (_profiler.Busy() || _seek) return;

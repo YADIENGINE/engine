@@ -57,17 +57,17 @@ void DrawRecipeBoss(Painter& paint, const RecipeBossSimulation& simulation, floa
     paint.Circle(BossPosition, Mix(30.0f, 60.0f, EaseOutBack(simulation.Charge(alpha))), Fill(BossColor));
 }
 
-RecipeBossEditorScene::RecipeBossEditorScene(const SceneServices& services, std::uint64_t seed)
+RecipeBossScene::RecipeBossScene(const SceneServices& services, std::uint64_t seed)
     : _hosted(services.simulation, RecipeBossDefinition().settings, SimulationStart{.seed = seed, .players = 1}) {}
-void RecipeBossEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
-void RecipeBossEditorScene::Draw(Painter& paint) const { DrawRecipeBoss(paint, _hosted.Sim(), _hosted.Runner().Alpha()); }
+void RecipeBossScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
+void RecipeBossScene::Draw(Painter& paint) const { DrawRecipeBoss(paint, _hosted.Sim(), _hosted.Runner().Alpha()); }
 SceneDefinition RecipeBossSceneDefinition() {
     SceneDefinition definition;
     definition.id = "myproject.boss";
     definition.name = "Boss";
     definition.category = "MyProject";
     definition.create = [](const SceneServices& services, const SceneParameters&) {
-        return std::make_unique<RecipeBossEditorScene>(services, 1);
+        return std::make_unique<RecipeBossScene>(services, 1);
     };
     return definition;
 }

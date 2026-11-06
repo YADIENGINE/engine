@@ -68,4 +68,4 @@ void RecipeAnalogFinish::Apply(Painter& paint) const {
 ```
 <!-- /recipe -->
 
-To tell it apart from `Fx`: `FxStage::Glitch` is a burst that ends by itself and is drawn on the canvas. This finish is a lasting value you keep setting. Look at both ends and at the HUD in the editor scene `engine.post.gallery`.
+To tell it apart from `Fx`: `FxStage::Glitch` is a burst that ends by itself and is drawn on the canvas. This finish is a lasting value you keep setting. Look at both ends and at the HUD in the editor catalog entry `engine.post.gallery`.

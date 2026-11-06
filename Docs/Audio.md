@@ -25,7 +25,7 @@ inline constexpr std::array SfxTable{
 static_assert(RowsInIdOrder(SfxTable));
 
 settings.sounds = SfxTable;     // In the game's settings
-game.Sounds().Play(Sfx::Hit);   // In a scene holding a Game&; in an editor scene, services.sounds.Play(Sfx::Hit)
+services.sounds.Play(Sfx::Hit); // In a scene, from its SceneServices; game.Sounds() is the same player
 ```
 
 A row is `SoundRow{id, files, options}`; `SoundRow<Sfx>{...}` means the same.
@@ -255,7 +255,7 @@ operations require the system to be ready first. An operation with an unloaded I
 
 `LoadEffect/LoadMusic` replace the old resource only after fully loading the new one; a failed load preserves the old
 resource and playing music. Successful effect replacement applies the supplied `EffectSettings`. Successfully replacing
-the playing music ID stops playback; the new stream does not start itself. A dynamic editor scene must unload only resources
+the playing music ID stops playback; the new stream does not start itself. A scene that loads audio itself must unload only resources
 it loaded itself. Game closes the device before the window.
 
 ## Tools and source files

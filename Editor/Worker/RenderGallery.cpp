@@ -24,13 +24,14 @@ constexpr Color4 Lime = Rgb(0x9dff4a);
 constexpr Color4 Gold = Rgb(0xffc640);
 constexpr Color4 Violet = Rgb(0x8a5cff);
 
-class RenderGallery final : public EditorScene {
+class RenderGallery final : public Scene {
 public:
     RenderGallery(const SceneServices& services, const SceneParameters& parameters)
         : _canvas(services.canvas) {
         for (const auto& [id, value] : parameters)
             (void)ApplyParameter(id, value);
     }
+    ~RenderGallery() override { ShutdownNoThrow(); }
 
     std::string ApplyParameter(const std::string& id, const SceneValue& value) override {
         if (id == "animate") _animate = std::get<bool>(value);

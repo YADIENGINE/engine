@@ -20,7 +20,7 @@ it and [Editor automation](Editor/Automation.md) lists what it can do. Agent mat
 2. [Architecture](Architecture.md) and [runtime](Runtime.md): ownership, lifecycle, time, and scene transitions.
 3. [Graphics](Graphics/README.md), [input](Input.md), [audio](Audio.md), and [assets/platforms](AssetsAndPlatforms.md).
 4. [Options and saves](OptionsAndSaves.md), [modules](../Core/Modules/README.md), and [gameplay helpers](GameplayHelpers.md).
-5. [Editor](Editor/README.md): connect the project and display production drawing in editor scenes.
+5. [Editor](Editor/README.md): connect the project and open its scenes and production drawing in the editor.
 6. [Release package](Release.md): `python Engine release`, `Release/` layout, and third-party notices. Every change that
    adds an external asset or library to a game also updates the `Game/Distribution/` notice.
 

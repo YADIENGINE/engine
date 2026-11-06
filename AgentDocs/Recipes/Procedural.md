@@ -13,9 +13,9 @@ Put the rules in Game/Simulation/: `engine_add_simulation` already links the gen
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
+#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Scene/Scene.h"
 #include "Input/InputBindings.h"
 #include "Procedural/MapCell.h"
 #include "Simulation/Simulation.h"
@@ -62,13 +62,15 @@ private:
 // The view, outside Game/Simulation: smooth noise shades the floor, which decides nothing.
 void DrawRecipeDungeon(Painter& paint, const RecipeDungeonSimulation& simulation);
 
-// An editor scene: `ctl open myproject.dungeon --set layout=caves --set seed=7 --screenshot`.
-class RecipeDungeonEditorScene final : public EditorScene {
+// The scene, also in the editor: `ctl open myproject.dungeon --set layout=caves --set seed=7 --screenshot`.
+class RecipeDungeonScene final : public Scene {
 public:
-    RecipeDungeonEditorScene(const SceneServices& services, std::uint64_t seed, const std::string& layout);
+    RecipeDungeonScene(const SceneServices& services, std::uint64_t seed, const std::string& layout);
+    ~RecipeDungeonScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
     HostedSimulation<RecipeDungeonSimulation> _hosted;
@@ -203,8 +205,7 @@ void DrawRecipeDungeon(Painter& paint, const RecipeDungeonSimulation& simulation
     paint.Circle(at(ToFloat2(run.player)) + middle, CellSize * 0.35f, Fill(Color4{255, 200, 90, 255}));
 }
 
-RecipeDungeonEditorScene::RecipeDungeonEditorScene(const SceneServices& services, std::uint64_t seed,
-                                                   const std::string& layout)
+RecipeDungeonScene::RecipeDungeonScene(const SceneServices& services, std::uint64_t seed, const std::string& layout)
     : _hosted(services.simulation, RecipeDungeonDefinition().settings,
               [&] {
                   SimulationStart start{.seed = seed, .players = 1};
@@ -217,14 +218,10 @@ RecipeDungeonEditorScene::RecipeDungeonEditorScene(const SceneServices& services
     _bindings.Bind(0, RecipeDungeonButton::Up, InputKey::W);
     _bindings.Bind(0, RecipeDungeonButton::Down, InputKey::S);
 }
-void RecipeDungeonEditorScene::HandleInput(const DeviceInput& input) {
-    if (input.cancelled)
-        _hosted.Runner().CancelInput();
-    else
-        _hosted.Runner().Feed(_bindings.Read(input));
-}
-void RecipeDungeonEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
-void RecipeDungeonEditorScene::Draw(Painter& paint) const { DrawRecipeDungeon(paint, _hosted.Sim()); }
+void RecipeDungeonScene::HandleInput(const DeviceInput& input) { _hosted.Runner().Feed(_bindings.Read(input)); }
+void RecipeDungeonScene::InputCancelled() { _hosted.Runner().CancelInput(); }
+void RecipeDungeonScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
+void RecipeDungeonScene::Draw(Painter& paint) const { DrawRecipeDungeon(paint, _hosted.Sim()); }
 SceneDefinition RecipeDungeonSceneDefinition() {
     SceneDefinition definition;
     definition.id = "myproject.dungeon";
@@ -238,7 +235,7 @@ SceneDefinition RecipeDungeonSceneDefinition() {
         {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{1}, 0.0, 1000000.0, SceneApplyMode::OnReset},
         layout};
     definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
-        return std::make_unique<RecipeDungeonEditorScene>(
+        return std::make_unique<RecipeDungeonScene>(
             services, static_cast<std::uint64_t>(std::get<std::int64_t>(parameters.at("seed"))),
             std::get<std::string>(parameters.at("layout")));
     };

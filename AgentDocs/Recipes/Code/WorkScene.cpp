@@ -9,9 +9,9 @@ constexpr float RandomPoseRange = 16.0f;
 // Includes the View's ears, sway and full pose range, with margin.
 constexpr SceneContentBounds SubjectBounds{40, 50, 240, 180};
 
-class CharacterWorkScene final : public EditorScene {
+class CharacterWorkScene final : public Scene {
 public:
-    explicit CharacterWorkScene(const SceneParameters& parameters)
+    CharacterWorkScene(const SceneServices&, const SceneParameters& parameters)
         : _offset(static_cast<float>(std::get<double>(parameters.at("offset")))) {
         // Randomness is opt-in and replayable. Omit these controls for deterministic subjects.
         if (std::get<bool>(parameters.at("randomPose"))) {
@@ -19,6 +19,7 @@ public:
             _randomOffset = std::uniform_real_distribution<float>(-RandomPoseRange, RandomPoseRange)(random);
         }
     }
+    ~CharacterWorkScene() override { ShutdownNoThrow(); }
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override {
         if (id != "offset") return "Unknown parameter";
         _offset = static_cast<float>(std::get<double>(value));
@@ -45,12 +46,12 @@ SceneDefinition MakeCharacterWorkScene() {
         {"offset", "Pose offset", SceneParameterKind::Float, 12.0, -48.0, 48.0},
         {"randomPose", "Random pose", SceneParameterKind::Boolean, false, 0.0, 1.0, SceneApplyMode::OnReset},
         {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{1729}, 0.0, 1000000.0, SceneApplyMode::OnReset}};
-    definition.create = [](const SceneServices&, const SceneParameters& parameters) {
-        return std::make_unique<CharacterWorkScene>(parameters);
+    definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
+        return std::make_unique<CharacterWorkScene>(services, parameters);
     };
     return definition;
 }
 
-[[maybe_unused]] const bool Registered = RegisterEditorScene(&MakeCharacterWorkScene);
+[[maybe_unused]] const bool Registered = RegisterCatalogScene(&MakeCharacterWorkScene);
 } // namespace
 // [/recipe]

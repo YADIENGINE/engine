@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
+#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Scene/Scene.h"
 #include "Input/InputBindings.h"
 #include "Procedural/MapCell.h"
 #include "Simulation/Simulation.h"
@@ -52,13 +52,15 @@ private:
 // The view, outside Game/Simulation: smooth noise shades the floor, which decides nothing.
 void DrawRecipeDungeon(Painter& paint, const RecipeDungeonSimulation& simulation);
 
-// An editor scene: `ctl open myproject.dungeon --set layout=caves --set seed=7 --screenshot`.
-class RecipeDungeonEditorScene final : public EditorScene {
+// The scene, also in the editor: `ctl open myproject.dungeon --set layout=caves --set seed=7 --screenshot`.
+class RecipeDungeonScene final : public Scene {
 public:
-    RecipeDungeonEditorScene(const SceneServices& services, std::uint64_t seed, const std::string& layout);
+    RecipeDungeonScene(const SceneServices& services, std::uint64_t seed, const std::string& layout);
+    ~RecipeDungeonScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
     HostedSimulation<RecipeDungeonSimulation> _hosted;

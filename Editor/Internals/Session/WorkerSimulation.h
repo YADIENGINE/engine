@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
-#include "Editor/Api/SimulationHost.h"
+#include "Simulation/SimulationHost.h"
 #include "Simulation/InputTape.h"
 
 // The worker's record of the open scene's simulation: one tape, kept while the scene is rebuilt. In a scene with a

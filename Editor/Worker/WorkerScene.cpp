@@ -2,14 +2,14 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
-#include "Input/Input.h"
 
-WorkerScene::WorkerScene(Vec2 canvas, AudioSystem& audio, SoundPlayer& sounds,
-                         std::function<void(const std::string&)> log,
-                         const FontFace* font)
+WorkerScene::WorkerScene(SceneServices services)
     : Scene(TimeDomain::Game)
-    , _services{canvas, audio, sounds, std::move(log), font} {}
-WorkerScene::~WorkerScene() { ShutdownNoThrow(); }
+    , _services(std::move(services)) {}
+WorkerScene::~WorkerScene() {
+    ShutdownNoThrow();
+    if (_scene) _scene->ShutdownNoThrow(); // Never started: Stop did not run
+}
 void WorkerScene::Open(const SceneDefinition& definition, const SceneParameters& parameters) {
     _definition = &definition;
     std::vector<std::string> messages;
@@ -18,18 +18,19 @@ void WorkerScene::Open(const SceneDefinition& definition, const SceneParameters&
         _services.log(message);
     Reset();
 }
+void WorkerScene::Close() {
+    const auto scene = std::move(_scene);
+    if (scene) scene->Shutdown();
+}
 void WorkerScene::Reset() {
     if (!_definition) return;
-    _scene = nullptr;
-    _content.Clear();
-    _content.Start(); // Commit removal: Stop and destruction happen before the new factory.
+    Close(); // Stop and destruction happen before the new factory, even while playback is paused.
     _seconds = 0.0;
     auto instance = _definition->create(_services, _parameters);
     if (!instance) throw std::runtime_error("Scene factory returned an empty instance");
-    _scene = instance.get();
-    _content.Add(std::move(instance));
-    _content.Start(); // Even paused content starts before it can receive input or draw.
-    (void)CaptureParameters();
+    instance->Activate(); // Even paused content starts before it can receive input or draw.
+    _scene = std::move(instance);
+    (void)MergeCapture();
 }
 std::string WorkerScene::SetParameter(const std::string& id, const SceneValue& value) {
     if (!_scene || !_definition) return "No active scene";
@@ -48,24 +49,28 @@ std::string WorkerScene::Action(const std::string& id) {
         return "Unknown scene action: " + id;
     return _scene->ExecuteAction(id);
 }
-bool WorkerScene::CaptureParameters() {
+bool WorkerScene::MergeCapture() {
     return _scene && _definition && MergeSceneCapture(*_definition, _scene->CaptureParameters(), _parameters);
 }
+SceneInspection WorkerScene::Inspect() const { return _scene ? _scene->Inspect() : SceneInspection{}; }
+bool WorkerScene::GameTimePaused() const { return _scene && _scene->Enabled() && _scene->GameTimePaused(); }
+// Game::Run's order for one scene: real time, then a Real scene's tick, then GameTimePaused, then a Game scene's tick.
+void WorkerScene::UpdateReal(float realSeconds) {
+    _seconds += realSeconds;
+    if (!_scene) return;
+    _scene->TickReal(realSeconds);
+    if (_scene->Clock() == TimeDomain::Real) _scene->Tick(realSeconds);
+}
+void WorkerScene::Update(float gameSeconds) {
+    if (_scene && _scene->Clock() == TimeDomain::Game) _scene->Tick(gameSeconds);
+}
 void WorkerScene::HandleInput(const DeviceInput& input) {
-    if (_scene && _scene->Enabled()) _scene->HandleInput(input);
+    if (_scene) _scene->ReadInput(input);
 }
 void WorkerScene::InputCancelled() {
-    DeviceInput input;
-    input.cancelled = true;
-    if (_scene) _scene->HandleInput(input);
+    if (_scene) _scene->CancelInput();
 }
-void WorkerScene::Update(float deltaSeconds) {
-    _seconds += deltaSeconds;
-    _content.Update(deltaSeconds);
+void WorkerScene::Draw(Painter& paint) const {
+    if (_scene) _scene->Render(paint);
 }
-void WorkerScene::Draw(Painter& paint) const { _content.Draw(paint); }
-SceneInspection WorkerScene::Inspect() const { return _scene ? _scene->Inspect() : SceneInspection{}; }
-void WorkerScene::Stop() {
-    _scene = nullptr;
-    _content.Stop();
-}
+void WorkerScene::Stop() { Close(); }

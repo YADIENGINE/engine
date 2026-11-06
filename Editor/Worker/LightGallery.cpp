@@ -39,7 +39,7 @@ constexpr float Tile = 80.0f;
 constexpr float CrateSize = 34.0f;
 enum class Layer { Wall };
 
-class LightGallery final : public EditorScene {
+class LightGallery final : public Scene {
 public:
     LightGallery(const SceneServices& services, const SceneParameters& parameters)
         : _size(static_cast<float>(services.canvas.x), static_cast<float>(services.canvas.y))
@@ -58,6 +58,7 @@ public:
                              {center + Float2{-420.0f, -100.0f}, -0.6f}, wall);
         AddOccluders(_walls, _colliders, wall);
     }
+    ~LightGallery() override { ShutdownNoThrow(); }
 
     std::string ApplyParameter(const std::string& id, const SceneValue& value) override {
         if (id == "animate") _animate = std::get<bool>(value);

@@ -209,18 +209,15 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/UiMenu.cpp"
     "${recipeRoot}/UiOptions.cpp"
     "${recipeRoot}/UiSounds.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/EditorScene.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneParameter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneAutoRegistration.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SimulationHost.cpp"
 )
 target_include_directories(EngineRecipes PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 target_link_libraries(EngineRecipes PUBLIC EngineAssets EngineHeadless EnginePersistence EngineNumberPopup)
 engine_warnings(EngineRecipes)
 engine_add_tuning(EngineRecipes ROOT "${recipeRoot}")
 # Registration-only examples must reach the executable directly, not through a static archive.
-engine_tests(EngineRecipeTests SOURCES RecipeTests.cpp "${recipeRoot}/WorkScene.cpp" LINKS EngineRecipes)
+engine_tests(EngineRecipeTests SOURCES RecipeTests.cpp "${recipeRoot}/WorkScene.cpp" LINKS EngineRecipes EngineAudio)
 target_compile_definitions(EngineRecipeTests PRIVATE
     ENGINE_RECIPE_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf")
 

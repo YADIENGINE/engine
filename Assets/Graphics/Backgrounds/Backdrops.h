@@ -5,7 +5,7 @@
 class Painter;
 
 // The theme's background roles (CurrentTheme().backdrop); their colours are the theme's. Menu: menu screens; Play: around the play field;
-// Gallery: editor scene and gallery screens.
+// Gallery: catalog scene and gallery screens.
 enum class BackdropRole { Menu, Play, Gallery };
 
 [[nodiscard]] const BackdropStyle& ThemeBackdrop(BackdropRole role);

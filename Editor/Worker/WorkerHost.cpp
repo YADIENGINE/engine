@@ -107,7 +107,7 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
         registry.Add(RenderGalleryDefinition());
         registry.Add(LightGalleryDefinition());
         registry.Add(PostGalleryDefinition());
-        AddRegisteredEditorScenes(registry);
+        AddRegisteredCatalogScenes(registry);
         AddRegisteredGraphicAssets(registry);
         registerScenes(registry); // Metadata and factories only: no GL/assets/instances.
         if (thumbnails) {

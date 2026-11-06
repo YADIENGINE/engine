@@ -1,6 +1,6 @@
 ---
 name: api
-description: Write game or editor-scene code against the engine API - find the right public declaration, compiled recipe and concept doc for a task (drawing, scenes, input, audio, saves, effects, UI, editor scenes, tools).
+description: Write game or editor code against the engine API - find the right public declaration, compiled recipe and concept doc for a task (drawing, scenes, input, audio, saves, effects, UI, the editor catalog, tools).
 ---
 
 # Find the engine API for a task
@@ -14,6 +14,6 @@ description: Write game or editor-scene code against the engine API - find the r
    header only at the printed lines.
 3. Read the route's `Docs/` section only when you need the concept.
 4. Includes omit `Core/` and `Assets/` (`#include "Scene/Scene.h"`, `#include "Graphics/DefaultIcons.h"`); editor
-   includes start at the engine root (`#include "Editor/Api/EditorScene.h"`).
+   includes start at the engine root (`#include "Editor/Api/SceneRegistry.h"`).
 5. Keep the hard invariants in `AgentDocs/Agent.md`. Game code includes only public headers, never `Internals/`.
 6. Missing API is added to the engine, not worked around in the game; say so when a task needs it.

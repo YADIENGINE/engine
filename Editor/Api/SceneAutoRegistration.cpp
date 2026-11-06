@@ -9,12 +9,12 @@ auto& SceneMakers() {
 }
 } // namespace
 
-bool RegisterEditorScene(SceneDefinition (*make)()) {
+bool RegisterCatalogScene(SceneDefinition (*make)()) {
     SceneMakers().push_back(make);
     return true;
 }
 
-void AddRegisteredEditorScenes(SceneRegistry& registry) {
+void AddRegisteredCatalogScenes(SceneRegistry& registry) {
     for (const auto make : SceneMakers())
         registry.Add(make());
 }

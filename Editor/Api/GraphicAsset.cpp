@@ -8,8 +8,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <utility>
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/SceneServices.h"
+#include "Scene/SceneServices.h"
 #include "Editor/Internals/Session/GraphicAssetCatalog.h"
 #include "Graphics/Paint/Painter.h"
 
@@ -37,12 +36,13 @@ FloatRect PreviewBox(Vec2 canvas) {
     return {(static_cast<float>(canvas.x) - side) * 0.5f, (static_cast<float>(canvas.y) - side) * 0.5f, side, side};
 }
 
-class GraphicAssetScene final : public EditorScene {
+class GraphicAssetScene final : public Scene {
 public:
-    GraphicAssetScene(std::shared_ptr<const GraphicAsset> asset, std::size_t item, Vec2 canvas)
+    GraphicAssetScene(const SceneServices& services, std::shared_ptr<const GraphicAsset> asset, std::size_t item)
         : _asset(std::move(asset))
         , _item(item)
-        , _box(PreviewBox(canvas)) {}
+        , _box(PreviewBox(services.canvas)) {}
+    ~GraphicAssetScene() override { ShutdownNoThrow(); }
     [[nodiscard]] SceneInspection Inspect() const override {
         SceneInspection inspection;
         inspection.focus = SceneContentBounds{static_cast<int>(_box.x), static_cast<int>(_box.y),
@@ -98,7 +98,7 @@ std::vector<SceneDefinition> GraphicAssetDefinitions(const GraphicAsset& asset, 
         definition.asset =
             SceneAssetInfo{AssetPathKey(file), setName, itemName, Replaced(asset.usage, "{item}", itemName)};
         definition.create = [shared, item](const SceneServices& services, const SceneParameters&) {
-            return std::make_unique<GraphicAssetScene>(shared, item, services.canvas);
+            return std::make_unique<GraphicAssetScene>(services, shared, item);
         };
         return definition;
     };

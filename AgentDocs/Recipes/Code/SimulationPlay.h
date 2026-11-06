@@ -3,12 +3,11 @@
 #include <cstdint>
 #include <string_view>
 #include <variant>
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
 #include "Runtime/TimeScale.h"
 #include "Input/InputBindings.h"
 #include "Scene/Scene.h"
+#include "Simulation/HostedSimulation.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationEventReader.h"
 #include "Simulation/SimulationEvents.h"
@@ -61,13 +60,17 @@ private:
 [[nodiscard]] const SimulationSettings& RecipePlaySettings();
 [[nodiscard]] SimulationDefinition RecipePlayDefinition();
 
-// The game's scene: feeds input, advances by scaled seconds, draws between steps.
+// The one scene the game shows and the editor opens: feeds input, advances by scaled seconds, draws between steps.
+// In the game services.simulation is null and the rules simply run; in the editor it gives the worker the tape, so
+// seek, replay and Step work in steps.
 class RecipePlayScene final : public Scene {
 public:
-    RecipePlayScene(TimeScale& time, std::uint64_t seed);
+    RecipePlayScene(const SceneServices& services, std::uint64_t seed);
     ~RecipePlayScene() override;
-    [[nodiscard]] const RecipePlaySimulation& Sim() const { return _simulation; }
-    [[nodiscard]] const SimulationRunner& Runner() const { return _runner; }
+    [[nodiscard]] const RecipePlaySimulation& Sim() const { return _hosted.Sim(); }
+    [[nodiscard]] const SimulationRunner& Runner() const { return _hosted.Runner(); }
+    // The editor's action: a command on the tape, so a rewind plays it again.
+    [[nodiscard]] std::string ExecuteAction(const std::string& id) override;
 
 protected:
     void HandleInput(const DeviceInput& input) override;
@@ -77,25 +80,9 @@ protected:
 
 private:
     TimeScale& _time;
-    SimulationStart _start;
-    RecipePlaySimulation _simulation;
-    SimulationRunner _runner;
-    InputBindings _bindings;
-    SimulationEventReader<RecipeEvent> _events;
-};
-
-// The same rules in the editor: services.simulation gives the worker the tape, so seek, replay and Step work in steps.
-class RecipePlayEditorScene final : public EditorScene {
-public:
-    RecipePlayEditorScene(const SceneServices& services, std::uint64_t seed);
-
-private:
-    void HandleInput(const DeviceInput& input) override;
-    [[nodiscard]] std::string ExecuteAction(const std::string& id) override;
-    void Update(float seconds) override;
-    void Draw(Painter& paint) const override;
     HostedSimulation<RecipePlaySimulation> _hosted;
     InputBindings _bindings;
+    SimulationEventReader<RecipeEvent> _events;
 };
 [[nodiscard]] SceneDefinition RecipePlaySceneDefinition();
 // [/recipe]

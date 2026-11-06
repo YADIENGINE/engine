@@ -23,6 +23,6 @@ static_assert(RowsInIdOrder(RecipeSfxTable));
 void AddRecipeSounds(GameSettings& settings);
 // What a scene does when something happens: `combo` raises the pitch of later coins.
 void RecipeCollect(Game& game, int combo);
-// The same call where a system was handed only the player, as an editor scene is (SceneServices::sounds).
+// The same call where a system was handed only the player, as a scene is (SceneServices::sounds).
 bool RecipeHit(SoundPlayer& sounds);
 // [/recipe]

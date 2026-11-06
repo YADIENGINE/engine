@@ -3,11 +3,9 @@
 WorkerGame::WorkerGame(const GameSettings& settings, const SceneRegistry& registry, ControlChannel& channel,
                        const std::string& session)
     : Game(settings)
-    , _session(*this, settings, registry, channel, session, HasFont() ? &Font() : nullptr, Audio(), Sounds(),
-               {[this] { RequestQuit(); },
-                [this] { Time().Clear(); },
-                [this](WorkerScene& scene) { SetScene(scene); },
-                {}}) {
+    , _session(
+          *this, settings, registry, channel, session,
+          {[this] { RequestQuit(); }, [this] { Time().Clear(); }, [this](WorkerScene& scene) { SetScene(scene); }}) {
     RegisterScene(_session.Scene());
 }
 WorkerGame::~WorkerGame() { _session.Scene().ShutdownNoThrow(); }

@@ -20,23 +20,23 @@ SceneDefinition MakeRegisteredScene() {
     definition.name = "Registered scene";
     definition.category = WorkSceneCategory;
     definition.categoryOrder = WorkSceneCategoryOrder;
-    definition.create = [](const SceneServices&, const SceneParameters&) -> std::unique_ptr<EditorScene> { return {}; };
+    definition.create = [](const SceneServices&, const SceneParameters&) -> std::unique_ptr<Scene> { return {}; };
     return definition;
 }
-[[maybe_unused]] const bool Registered = RegisterEditorScene(&MakeRegisteredScene);
+[[maybe_unused]] const bool Registered = RegisterCatalogScene(&MakeRegisteredScene);
 } // namespace
 
 TEST_CASE("Editor.Catalog.AutoRegistrationDefersMakersAndRejectsDuplicateIds", "[engine-editor]") {
     CHECK(MakerCalls == 0);
     SceneRegistry registry;
-    AddRegisteredEditorScenes(registry);
+    AddRegisteredCatalogScenes(registry);
     CHECK(MakerCalls == 1);
     const auto* definition = registry.Find("myproject.work.registration-test");
     REQUIRE(definition);
     CHECK(definition->category == WorkSceneCategory);
     CHECK(definition->categoryOrder == WorkSceneCategoryOrder);
     CHECK_THROWS_WITH(registry.Add(*definition), Catch::Matchers::ContainsSubstring(definition->id));
-    CHECK_THROWS_WITH(AddRegisteredEditorScenes(registry),
+    CHECK_THROWS_WITH(AddRegisteredCatalogScenes(registry),
                       Catch::Matchers::ContainsSubstring("myproject.work.registration-test"));
 }
 
@@ -74,7 +74,7 @@ TEST_CASE("Editor.Catalog.PrimaryActionMustBeUnambiguous", "[engine-editor]") {
     definition.id = "actions";
     definition.name = "Actions";
     definition.actions = {{"inspect", "Inspect", "", true}, {"replay", "Replay", "", true}};
-    definition.create = [](const SceneServices&, const SceneParameters&) -> std::unique_ptr<EditorScene> { return {}; };
+    definition.create = [](const SceneServices&, const SceneParameters&) -> std::unique_ptr<Scene> { return {}; };
     SceneRegistry registry;
     CHECK_THROWS(registry.Add(definition));
     CHECK_THROWS(DecodeSceneCatalog(EncodeSceneCatalog({definition})));

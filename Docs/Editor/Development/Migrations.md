@@ -1,5 +1,26 @@
 # Cumulative migration notes
 
+## One scene type (D53)
+
+The editor's catalog opens the game's own `Scene`; the separate editor scene type is gone. Write each screen once:
+derive it from `Scene`, take `const SceneServices&` plus its own values in the constructor, and call
+`ShutdownNoThrow()` in its destructor. The game builds it from `Game::Services()`, the catalog's factory from the
+services it receives.
+
+| Old | New | How to migrate |
+| --- | --- | --- |
+| `EditorScene` (`Editor/Api/EditorScene.h`) | `Scene` (`Scene/Scene.h`) | Derive from `Scene`; add `~X() override { ShutdownNoThrow(); }`. A game scene and its editor copy become one class. |
+| `HandleInput` with `input.cancelled` | `InputCancelled()` | Move the cancelled branch into an `InputCancelled` override; `HandleInput` no longer sees cancelled input. |
+| `SceneDefinition::create` returning `std::unique_ptr<EditorScene>` | `std::unique_ptr<Scene>` | Return the game's scene class. |
+| `Editor/Api/SceneParameter.h`, `SceneInspection.h`, `SceneServices.h` | `Scene/SceneParameter.h`, `Scene/SceneInspection.h`, `Scene/SceneServices.h` | Change the include. |
+| `Editor/Api/SimulationHost.h`, `HostedSimulation.h` | `Simulation/SimulationHost.h`, `Simulation/HostedSimulation.h` | Change the include; a game scene keeps the same `HostedSimulation<T>` member (null host in the game). |
+| A game scene taking `TimeScale&`, `SoundPlayer&` or `Game&` | `const SceneServices&` (`time`, `sounds`, `audio`, `effects`, `font`) | Pass `Services()` from the game's constructor. |
+| `SceneServices::applicationCommand`, `SceneServices::profiler`, `WorkerSessionActions::application` | Removed | Nothing read them. |
+| `WorkerSession(game, settings, registry, channel, session, font, audio, sounds, actions)` | `WorkerSession(game, settings, registry, channel, session, actions)` | Services come from `game.Services()`. |
+| `WorkerSession::Simulation()` | `WorkerSession::Services()` | Build a custom adapter's scenes from it. |
+| `RegisterEditorScene`, `AddRegisteredEditorScenes` | `RegisterCatalogScene`, `AddRegisteredCatalogScenes` | Rename the call. |
+| `WorkerScene::CaptureParameters()` | `WorkerScene::MergeCapture()` | Worker code only. |
+
 ## 0.3.0 — editor scenes (tools contract 2)
 
 An editor scene is a catalog entry displayed in the viewport. It is distinct from the engine's `Scene`.

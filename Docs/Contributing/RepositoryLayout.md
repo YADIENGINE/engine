@@ -26,7 +26,7 @@
 | `Core/Tests/` | Core tests and shared `Support/` (temporary directories, diagnostics, gzip inflater) |
 | `ToolUi/` | `EngineToolUi`: shared ImGui context, fonts, theme and widgets for tools; never shipped in games |
 | `Terminal/` | `EngineTerminal`: ConPTY/libvterm session; `EngineTerminalUi`: ImGui terminal view; tools only |
-| `Editor/` | Editor shell, public editor scene API and worker runtime; root-relative includes (`Editor/Api/...`) |
+| `Editor/` | Editor shell, public scene catalog API and worker runtime; root-relative includes (`Editor/Api/...`) |
 | `ThirdParty/` | Unmodified vendored dependencies, notices and notice tests; see [Third-party rules](../../ThirdParty/README.md) |
 | `Tools/` | Standard-library Python CLI and project template (offline audio authoring has separate NumPy/SciPy dependencies) |
 

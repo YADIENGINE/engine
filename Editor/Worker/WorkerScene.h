@@ -1,44 +1,44 @@
 #pragma once
-#include <utility>
+#include <memory>
 #include "Editor/Api/SceneRegistry.h"
 #include "Scene/Scene.h"
 
+// Hosts the catalog's scene through Scene's public lifecycle. The worker's frame time is already the editor's (pause,
+// Step, speed), so both clocks of the hosted scene follow it; the hosted scene's TimeDomain and GameTimePaused hold.
 class WorkerScene : public Scene {
 public:
-    WorkerScene(Vec2 canvas, AudioSystem& audio, SoundPlayer& sounds, std::function<void(const std::string&)> log,
-                const FontFace* font);
+    explicit WorkerScene(SceneServices services);
     ~WorkerScene() override;
     void Open(const SceneDefinition& definition, const SceneParameters& parameters);
+    // Stops and destroys the current instance before the factory makes the next one.
     void Reset();
     [[nodiscard]] bool HasContent() const { return _scene != nullptr; }
     [[nodiscard]] const SceneDefinition* Definition() const { return _definition; }
-    void SetProfiler(Profiler* profiler) { _services.profiler = profiler; }
-    void SetSimulationHost(SimulationHost* host) { _services.simulation = host; }
+    [[nodiscard]] const SceneServices& Services() const { return _services; }
     [[nodiscard]] const SceneParameters& Parameters() const { return _parameters; }
     [[nodiscard]] std::string SetParameter(const std::string& id, const SceneValue& value);
     [[nodiscard]] std::string Action(const std::string& id);
-    [[nodiscard]] bool CaptureParameters();
-    [[nodiscard]] SceneInspection Inspect() const;
-    // Scaled seconds since the current scene instance was created; the host's draw clock.
+    // Merges what the hosted scene reports changed into the accepted values; true when they changed.
+    [[nodiscard]] bool MergeCapture();
+    [[nodiscard]] SceneInspection Inspect() const override;
+    [[nodiscard]] bool GameTimePaused() const override;
+    // Playback seconds since the current scene instance was created; the host's draw clock.
     [[nodiscard]] double Seconds() const { return _seconds; }
-    void SetApplicationCommand(std::function<std::string(const std::string&, const SceneParameters&)> command) {
-        _services.applicationCommand = std::move(command);
-    }
 
 protected:
-    void InputCancelled() override;
+    void UpdateReal(float realSeconds) override;
     void HandleInput(const DeviceInput& input) override;
-    void Update(float deltaSeconds) override;
+    void InputCancelled() override;
+    void Update(float gameSeconds) override;
     void Draw(Painter& paint) const override;
     void Stop() override;
 
 private:
-    // Objects (and their captured service references) die before services.
+    void Close();
+
     double _seconds = 0.0;
-    SceneServices _services;
-    // Reset commits old content's destruction before calling the new factory, even while playback is paused.
-    ObjectList _content;
+    SceneServices _services; // Outlives the hosted scene, which may reference it
     const SceneDefinition* _definition = nullptr;
-    EditorScene* _scene = nullptr;
+    std::unique_ptr<Scene> _scene;
     SceneParameters _parameters;
 };

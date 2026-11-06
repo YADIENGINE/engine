@@ -2,7 +2,7 @@
 #include <array>
 #include <memory>
 #include <optional>
-#include "Editor/Api/HostedSimulation.h"
+#include "Simulation/HostedSimulation.h"
 #include "Editor/Internals/Session/WorkerSimulation.h"
 #include "Simulation/SimulationRunner.h"
 #include "Simulation/StateHash.h"

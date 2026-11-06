@@ -19,6 +19,13 @@ void Scene::Enter() {}
 void Scene::Exit() {}
 void Scene::HandleInput(const DeviceInput& input) { (void)input; }
 void Scene::InputCancelled() {}
+std::string Scene::ApplyParameter(const std::string& id, const SceneValue& value) {
+    (void)value;
+    return "Unsupported parameter: " + id;
+}
+std::string Scene::ExecuteAction(const std::string& id) { return "Unsupported action: " + id; }
+SceneParameters Scene::CaptureParameters() const { return {}; }
+SceneInspection Scene::Inspect() const { return {}; }
 void Scene::CheckDispatch() const {
     if (_dispatching) throw std::logic_error("Cannot dispatch a scene recursively");
 }

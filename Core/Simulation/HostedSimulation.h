@@ -1,11 +1,11 @@
 #pragma once
 #include <utility>
-#include "Editor/Api/SimulationHost.h"
+#include "Simulation/SimulationHost.h"
 #include "Simulation/SimulationRunner.h"
 
-// An editor scene's simulation and runner, known to the editor: keep one as a member, built from
-// SceneServices::simulation. A rewind or a loaded replay then rebuilds the scene and replays the tape. T is constructed
-// from a SimulationStart. A null host (outside the editor) simply runs.
+// A scene's simulation and runner: keep one as a member, built from SceneServices::simulation. A null host (the game)
+// simply runs. In the editor a rewind or a loaded replay rebuilds the scene and replays the tape. T is constructed from
+// a SimulationStart.
 template <class T> class HostedSimulation {
 public:
     HostedSimulation(SimulationHost* host, const SimulationSettings& settings, SimulationStart fallback)

@@ -14,6 +14,8 @@ constexpr Color4 CurtainColor = Rgb(0x000000);
 
 RecipeGame::RecipeGame(const GameSettings& settings)
     : Game(settings)
+    , _first(Services())
+    , _second(Services())
     , _transition(CloseSeconds, HoldSeconds, OpenSeconds) {}
 void RecipeGame::Start() {
     RegisterScene(_first);

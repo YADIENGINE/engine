@@ -1,12 +1,12 @@
 // [recipe:Lighting-header]
 #pragma once
 #include <string>
-#include "Editor/Api/EditorScene.h"
 #include "Editor/Api/SceneRegistry.h"
 #include "Fx/FxStage.h"
 #include "Graphics/Light/LightLayer.h"
 #include "Graphics/Light/LightOccluders.h"
 #include "Physics/Collision/CollisionWorld.h"
+#include "Scene/Scene.h"
 #include "Utilities/Geometry/Float2.h"
 
 // A dark room: the player carries a lantern and aims a flashlight, a torch flickers on the wall, lightning lights it
@@ -39,12 +39,14 @@ private:
     LightOccluders _walls;     // Built once from the colliders: walls stand still
 };
 
-class RecipeLitScene final : public EditorScene {
+class RecipeLitScene final : public Scene {
 public:
     RecipeLitScene(const SceneServices& services, bool guides);
+    ~RecipeLitScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;

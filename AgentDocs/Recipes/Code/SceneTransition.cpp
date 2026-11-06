@@ -3,7 +3,7 @@
 #include <memory>
 #include "AgentDocs/Recipes/Code/CharacterObject.h"
 
-RecipeScene::RecipeScene()
+RecipeScene::RecipeScene(const SceneServices&)
     : Scene(TimeDomain::Game) {
     AddObject(std::make_unique<RecipeCharacterObject>());
 }

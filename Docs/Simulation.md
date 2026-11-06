@@ -28,7 +28,7 @@ Use a simulation for a game's rules. Menus, transitions and effects stay ordinar
 | `Physics/Collision/CollisionWorld.h` | Hits and overlaps inside the rules: [Collision](Collision.md) |
 | `Animation/Animator.h`, `Animation/Tween.h`, `Animation/Timeline.h` | Character clips, moving values, boss and wave timing: [Animation](Animation.md) |
 | `Camera/Camera2D.h` | A camera that decides gameplay (enemies wake as it shows them, no scrolling back): [Camera](Camera.md#a-camera-in-the-rules) |
-| `Editor/Api/HostedSimulation.h` | A simulation an editor scene hosts |
+| `Simulation/HostedSimulation.h` | A scene's simulation and runner; the editor keeps its tape |
 
 Worked example: [AgentDocs/Recipes/Simulation.md](../AgentDocs/Recipes/Simulation.md).
 
@@ -88,8 +88,9 @@ reason for a swept test, not for a higher rate.
 
 ## Hosting it in a scene
 
-The runner sits between variable frames and fixed steps. A scene in `TimeDomain::Game` feeds it in `HandleInput`, advances
-it in `Update`, cancels it in `InputCancelled`, and draws with `Alpha`:
+The runner sits between variable frames and fixed steps. A scene in `TimeDomain::Game` keeps it in a `HostedSimulation<T>`
+built from `SceneServices::simulation` ([In the editor](#in-the-editor)), feeds it in `HandleInput`, advances it in
+`Update`, cancels it in `InputCancelled`, and draws with `Alpha`:
 
 | Situation | What happens |
 | --- | --- |
@@ -248,7 +249,8 @@ error (exit 2), not a failed check. C++ tests use `Scenario`, the same driver, w
 
 ## In the editor
 
-An editor scene keeps a `HostedSimulation<T>` built from `services.simulation`; the worker then records its tape across
+The scene the game hosts is the one the editor opens. It keeps a `HostedSimulation<T>` built from
+`services.simulation`: null in the game, where the rules simply run; in the editor the worker records its tape across
 resets. The toolbar shows the step and whether a replay is playing, and Step advances one simulation step. A simulation can
 name points of its run with `Moments`, for `ctl seek --moment` ([Animation](Animation.md#jumping-to-a-moment)).
 

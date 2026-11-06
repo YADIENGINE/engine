@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | Public API | EngineEditorApi / Engine/Editor/Api | Metadata, parameters, inspection; knows no ImGui/IPC |
 | Support | EngineEditorSupport / Internals | Project recipe, protocol, process, viewport, preferences |
-| Worker runtime | EngineWorkerRuntime / Worker | Hosts editor scenes in an engine Scene; worker session |
+| Worker runtime | EngineWorkerRuntime / Worker | Hosts the catalog's scene through its public lifecycle (WorkerScene); worker session |
 | Shared UI | EngineToolUi / ToolUi | Theme, fonts, ImGui context, general widgets (shared with launcher) |
 | UI | EngineEditorUi / Ui | Shell, docking, panels, and editor-specific widgets |
 | Application | EngineEditor / Host, Application | Windows processes and UI lifecycle |

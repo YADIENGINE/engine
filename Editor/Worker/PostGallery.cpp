@@ -31,13 +31,14 @@ constexpr PostSettings Disturbed() {
     return post;
 }
 
-class PostGallery final : public EditorScene {
+class PostGallery final : public Scene {
 public:
     PostGallery(const SceneServices& services, const SceneParameters& parameters)
         : _size(static_cast<float>(services.canvas.x), static_cast<float>(services.canvas.y)) {
         for (const auto& [id, value] : parameters)
             (void)ApplyParameter(id, value);
     }
+    ~PostGallery() override { ShutdownNoThrow(); }
 
     std::string ApplyParameter(const std::string& id, const SceneValue& value) override {
         const auto number = [&] { return static_cast<float>(std::get<double>(value)); };

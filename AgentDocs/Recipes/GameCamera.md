@@ -14,9 +14,9 @@ Most games want part 1: the camera is view code on seconds and decides nothing. 
 #include <optional>
 #include "Camera/Camera2D.h"
 #include "Camera/Cameras.h"
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
+#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Scene/Scene.h"
 #include "Fx/FxStage.h"
 #include "Input/InputBindings.h"
 #include "Simulation/Simulation.h"
@@ -72,13 +72,15 @@ private:
 // The view of the scroller: the world through the rules' camera, at the runner's alpha.
 void DrawRecipeScroller(Painter& paint, const RecipeScrollerSimulation& simulation, float alpha, bool guides);
 
-// Both in the editor. Parameters switch split screen and the camera's guides.
-class RecipeCameraEditorScene final : public EditorScene {
+// The scenes the game shows and the editor opens. Parameters switch split screen and the camera's guides.
+class RecipeCameraScene final : public Scene {
 public:
-    RecipeCameraEditorScene(const SceneServices& services, bool split, bool guides);
+    RecipeCameraScene(const SceneServices& services, bool split, bool guides);
+    ~RecipeCameraScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
@@ -87,12 +89,14 @@ private:
     std::optional<Float2> _mouse;
     bool _fire = false;
 };
-class RecipeScrollerEditorScene final : public EditorScene {
+class RecipeScrollerScene final : public Scene {
 public:
-    RecipeScrollerEditorScene(const SceneServices& services, bool guides);
+    RecipeScrollerScene(const SceneServices& services, bool guides);
+    ~RecipeScrollerScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
@@ -254,16 +258,12 @@ void DrawRecipeScroller(Painter& paint, const RecipeScrollerSimulation& simulati
     if (guides) DrawCameraGuides(paint, simulation.Camera());
 }
 
-RecipeCameraEditorScene::RecipeCameraEditorScene(const SceneServices& services, bool split, bool guides)
+RecipeCameraScene::RecipeCameraScene(const SceneServices& services, bool split, bool guides)
     : _view(FloatRect::FromCorners({}, ToFloat2(services.canvas))) {
     _view.SetSplit(split);
     _view.SetGuides(guides);
 }
-void RecipeCameraEditorScene::HandleInput(const DeviceInput& input) {
-    if (input.cancelled) {
-        _moves = {};
-        return;
-    }
+void RecipeCameraScene::HandleInput(const DeviceInput& input) {
     const auto axis = [&input](InputKey negative, InputKey positive) {
         return (input.Down(positive) ? 1.0f : 0.0f) - (input.Down(negative) ? 1.0f : 0.0f);
     };
@@ -272,36 +272,33 @@ void RecipeCameraEditorScene::HandleInput(const DeviceInput& input) {
     _mouse = MousePoint(input);
     _fire = _fire || input.mousePress.has_value();
 }
-std::string RecipeCameraEditorScene::ApplyParameter(const std::string& id, const SceneValue& value) {
+void RecipeCameraScene::InputCancelled() { _moves = {}; }
+std::string RecipeCameraScene::ApplyParameter(const std::string& id, const SceneValue& value) {
     if (id == "split") _view.SetSplit(std::get<bool>(value));
     if (id == "guides") _view.SetGuides(std::get<bool>(value));
     return {};
 }
-void RecipeCameraEditorScene::Update(float seconds) {
+void RecipeCameraScene::Update(float seconds) {
     _view.Update(seconds, _moves, _mouse, _fire);
     _fire = false;
 }
-void RecipeCameraEditorScene::Draw(Painter& paint) const { _view.Draw(paint); }
+void RecipeCameraScene::Draw(Painter& paint) const { _view.Draw(paint); }
 
-RecipeScrollerEditorScene::RecipeScrollerEditorScene(const SceneServices& services, bool guides)
+RecipeScrollerScene::RecipeScrollerScene(const SceneServices& services, bool guides)
     : _hosted(services.simulation, RecipeScrollerDefinition().settings, SimulationStart{.players = 1})
     , _bindings(1)
     , _guides(guides) {
     _bindings.Bind(0, RecipeScrollButton::Left, InputKey::A);
     _bindings.Bind(0, RecipeScrollButton::Right, InputKey::D);
 }
-void RecipeScrollerEditorScene::HandleInput(const DeviceInput& input) {
-    if (input.cancelled)
-        _hosted.Runner().CancelInput();
-    else
-        _hosted.Runner().Feed(_bindings.Read(input));
-}
-std::string RecipeScrollerEditorScene::ApplyParameter(const std::string& id, const SceneValue& value) {
+void RecipeScrollerScene::HandleInput(const DeviceInput& input) { _hosted.Runner().Feed(_bindings.Read(input)); }
+void RecipeScrollerScene::InputCancelled() { _hosted.Runner().CancelInput(); }
+std::string RecipeScrollerScene::ApplyParameter(const std::string& id, const SceneValue& value) {
     if (id == "guides") _guides = std::get<bool>(value);
     return {};
 }
-void RecipeScrollerEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
-void RecipeScrollerEditorScene::Draw(Painter& paint) const {
+void RecipeScrollerScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
+void RecipeScrollerScene::Draw(Painter& paint) const {
     DrawRecipeScroller(paint, _hosted.Sim(), _hosted.Runner().Alpha(), _guides);
 }
 
@@ -314,8 +311,8 @@ SceneDefinition RecipeCameraSceneDefinition() {
     definition.parameters = {{"split", "Split screen", SceneParameterKind::Boolean, false},
                              {"guides", "Camera guides", SceneParameterKind::Boolean, true}};
     definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
-        return std::make_unique<RecipeCameraEditorScene>(services, std::get<bool>(parameters.at("split")),
-                                                         std::get<bool>(parameters.at("guides")));
+        return std::make_unique<RecipeCameraScene>(services, std::get<bool>(parameters.at("split")),
+                                                   std::get<bool>(parameters.at("guides")));
     };
     return definition;
 }
@@ -327,7 +324,7 @@ SceneDefinition RecipeScrollerSceneDefinition() {
     definition.description = "A and D move; the view never scrolls back, and enemies wake as it reaches them.";
     definition.parameters = {{"guides", "Camera guides", SceneParameterKind::Boolean, true}};
     definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
-        return std::make_unique<RecipeScrollerEditorScene>(services, std::get<bool>(parameters.at("guides")));
+        return std::make_unique<RecipeScrollerScene>(services, std::get<bool>(parameters.at("guides")));
     };
     return definition;
 }

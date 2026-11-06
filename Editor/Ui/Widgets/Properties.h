@@ -6,7 +6,7 @@
 #include <string_view>
 #include <variant>
 #include <vector>
-#include "Editor/Api/SceneParameter.h"
+#include "Scene/SceneParameter.h"
 #include "Tuning/TuningFile.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Geometry/Float2.h"

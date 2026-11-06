@@ -138,6 +138,7 @@ add_library(EngineSimulation STATIC
     Simulation/Simulation.cpp
     Simulation/SimulationEventLog.cpp
     Simulation/SimulationRegistry.cpp
+    Simulation/SimulationHost.cpp
     Simulation/SimulationRunner.cpp
     Simulation/SimulationSettings.cpp
     Simulation/StateDump.cpp
@@ -285,6 +286,7 @@ add_library(EngineHeadless STATIC
     Runtime/Internals/StartupTimer.cpp
     Scene/Internals/SceneManager.cpp
     Scene/Scene.cpp
+    Scene/SceneParameter.cpp
     Scene/TransitionClock.cpp
     Ui/Kernel/Internals/UiFocusSearch.cpp
     Ui/Kernel/Internals/UiKernel.cpp

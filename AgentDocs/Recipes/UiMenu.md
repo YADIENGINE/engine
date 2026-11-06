@@ -2,7 +2,7 @@ Write a menu with a dialog and a widget of the game's own.
 
 APIs: Core/Ui/Kernel/Ui.h, Core/Ui/Widgets/UiButton.h, Core/Ui/Widgets/UiLabel.h, Core/Ui/Widgets/UiPanel.h, Core/Ui/Widgets/UiLayer.h.
 
-In a scene: `_ui.Input(input)` in `HandleInput`, `_ui.CancelInput()` in `InputCancelled`, the building in `UpdateReal`, `_ui.Draw(paint)` in `Draw`. `UiSettings::font` comes from `Game::Font()`, or `SceneServices::font` in an editor scene.
+In a scene: `_ui.Input(input)` in `HandleInput`, `_ui.CancelInput()` in `InputCancelled`, the building in `UpdateReal`, `_ui.Draw(paint)` in `Draw`. `UiSettings::font` comes from `SceneServices::font`.
 
 <!-- recipe:UiMenu-header -->
 ```cpp

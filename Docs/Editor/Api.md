@@ -1,12 +1,13 @@
 # General editor API
 
-This document is the project-independent contract for editor scenes. Initial setup is in [GettingStarted](GettingStarted.md); using
+This document is the project-independent contract for the editor's scene catalog. Initial setup is in [GettingStarted](GettingStarted.md); using
 production drawing and designing content are in [CreatingScenes](CreatingScenes.md).
 
 ## Registration
 
-Public headers are under `Engine/Editor/Api/`; they contain no ImGui, Windows handles, or IPC. The project registers
-explicitly with the registry it receives:
+The catalog's public headers are under `Engine/Editor/Api/`; they contain no ImGui, Windows handles, or IPC. The scene
+and its parameter, inspection and service types are engine headers in `Core/Scene/`, so games carry no catalog. The
+project registers explicitly with the registry it receives:
 
 ```cpp
 void RegisterProjectScenes(SceneRegistry& registry) {
@@ -23,28 +24,34 @@ void RegisterProjectScenes(SceneRegistry& registry) {
 }
 ```
 
-`MyScene` derives from `EditorScene` (a `GameObject`). Drawing without a model needs only `Draw(Painter&) const`;
-override `Start`, `Update(float)`, `Stop`, `HandleInput`, `ApplyParameter`, `ExecuteAction`, `CaptureParameters`, and
-`Inspect` as needed. Do not write a separate frame loop; content owns the model and real View, without a second copy of
-drawing for the editor.
+`MyScene` is an engine `Scene` ([Runtime](../Runtime.md#lifecycle)): the same class the game hosts with
+`Game::SetScene`, never a second copy for the editor. Its constructor takes `const SceneServices&` plus its own values,
+so `Game::Services()` and the factory build it alike. Drawing without a model needs only `Draw(Painter&) const`; override
+`Start`, `Update(float)`, `UpdateReal`, `Stop`, `HandleInput`, `InputCancelled`, and the editor hooks `ApplyParameter`,
+`ExecuteAction`, `CaptureParameters` and `Inspect` as needed; the game never calls the editor hooks. Do not write a
+separate frame loop.
 
 Rules:
 
 - Registration adds only metadata / factories; it creates no window, assets, or instances. IDs are unique.
 - The factory is called on the engine thread when GL, text, and audio are ready; initial values are supplied as a
   complete map, without relying on `ApplyParameter` during setup.
-- `SceneServices` supplies canvas size, audio reference, the game's [sound tables](../Audio.md#sound-tables) (`sounds`), game font (`font`; for measurement outside drawing, e.g. hit
-  testing; null if absent), and log/application-command callbacks. References outlive the instance; do not retain them
-  after content stops.
-- `Update` receives scaled seconds. Visual time is `paint.Time()`: `WorkerScene::Seconds()` resets to 0 on every Reset
-  and supplies presentation time through `WorkerGame::DrawSeconds()`; content does not wire up a clock.
+- `SceneServices` (`Core/Scene/SceneServices.h`) supplies canvas size, audio, the game's
+  [sound tables](../Audio.md#sound-tables) (`sounds`), game time's `TimeScale` (`time`), the effect choice (`effects`),
+  game font (`font`; for measurement outside drawing, e.g. hit testing; null if absent), a log callback and, in the
+  editor only, the simulation host. References outlive the instance; do not retain them after content stops.
+- The worker hosts the scene through its public lifecycle (`WorkerScene`). Editor Pause, Step and speed reach both of
+  its clocks; its `TimeDomain` and `GameTimePaused` hold as in the game. Visual time is `paint.Time()`:
+  `WorkerScene::Seconds()` resets to 0 on every Reset and supplies presentation time through
+  `WorkerGame::DrawSeconds()`; content does not wire up a clock.
+- Reset stops and destroys the instance before the factory makes the next one; a new instance is started before it
+  receives input or draws, even while paused.
 - `Stop` and destructors do not throw. Factory / hook failures may terminate the worker; the editor shows the error and
   exit code.
 
 `SceneDefinition::benchmark` is an optional, repeatable workload contract. It carries stable identity/version, the
 names of two variants, and parameter differences. Without a definition, the scene supports only live measurement.
-`SceneServices::profiler` is a borrowed module reference for recording custom CPU scopes/counters; use it only through
-`Modules/Profiler/Profiler.h`. [Profiler guide](Profiler.md).
+[Profiler guide](Profiler.md).
 
 ## Graphic assets
 
@@ -123,7 +130,7 @@ reflection, or automatic source writing.
 
 ## Inspection
 
-`EditorScene::Inspect()` returns read-only `SceneInspection`: focus rectangle, labels / values, table tabs, hidden /
+`Scene::Inspect()` returns read-only `SceneInspection`: focus rectangle, labels / values, table tabs, hidden /
 disabled control and action IDs, `showImage`. It does not affect the recipe; changes are sent separately at most 10 Hz.
 General UI displays it without knowing project IDs. `SceneReadout::kind` selects left-aligned wrapped text for default
 `Text`, right-aligned technical font for `Number`, and a short badge for `Status`. Status text also wraps if it does not
@@ -134,10 +141,10 @@ fit. Units are part of the formatted value.
 `RunEditorWorker(argc, argv, RegisterProjectScenes, settings)` takes an optional Game factory; the default is
 `WorkerGame`. `WorkerSession` separates IPC, instance lifecycle, and frame transfer from Game; the project can set up
 the same session in its own real Game (consumer's custom Game adapter). `WorkerSessionActions` wires quit / reset /
-activate and application-command callbacks. Game hooks: `FrameSeconds` (host simulation time), `DrawSeconds`
-(presentation clock), `SetScene(scene, true)` (restarts the same scene's Enter flow). `WorkerSession::Simulation()` is the
-host a custom adapter's own scene passes to `HostedSimulation`; editor scenes get it as `SceneServices::simulation`
-([Simulation](../Simulation.md#in-the-editor)). The host setting `fixedWindow`
+activate callbacks. Game hooks: `FrameSeconds` (host simulation time), `DrawSeconds` (presentation clock),
+`SetScene(scene, true)` (restarts the same scene's Enter flow). `WorkerSession::Services()` is the game's services with
+the editor's log and simulation host: a custom adapter builds its own scenes from it, so their `HostedSimulation`
+reaches the tape, as catalog scenes do ([Simulation](../Simulation.md#in-the-editor)). The host setting `fixedWindow`
 prevents Options from changing OS window / capture size.
 
 ## Project recipe and build

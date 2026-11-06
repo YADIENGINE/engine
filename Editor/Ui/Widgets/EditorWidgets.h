@@ -1,6 +1,6 @@
 #pragma once
 #include <cstddef>
-#include "Editor/Api/SceneParameter.h"
+#include "Scene/SceneParameter.h"
 
 enum class EditorGlyph;
 

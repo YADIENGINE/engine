@@ -194,7 +194,7 @@ offer this row.
 All of this is view code on the presentation clock (`paint.Time()`), so pausing holds the image, and a hitstop does not. It
 uses no `Rng` and never reaches a simulation. Rewinding in the editor leaves the wobble and the tape where they are, so the
 same second can look different. An example: [recipe](../../AgentDocs/Recipes/AnalogFinish.md); every effect alone:
-the editor scene `engine.post.gallery`. A burst that ends by itself is `FxStage::Glitch`, drawn on the canvas.
+the editor catalog entry `engine.post.gallery`. A burst that ends by itself is `FxStage::Glitch`, drawn on the canvas.
 
 ## Helpers and theme
 
@@ -222,7 +222,7 @@ view's viewport. A game camera that follows makes the view: [Camera](../Camera.m
 Menus and widgets are not drawn by hand: see [UI](../Ui.md).
 
 One-off variant: copy `CurrentTheme().ui.X`, modify it, and pass it to the explicit-style function. Drawing that
-advances its own clock (e.g. a card in an editor scene) also calls the explicit-style function with `time`.
+advances its own clock (e.g. a card in a catalog scene) also calls the explicit-style function with `time`.
 
 ## Measurement
 

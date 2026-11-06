@@ -16,7 +16,7 @@ MyProject/
     CreateGame.cpp
     MyGame.h  MyGame.cpp
     MyScene.h  MyScene.cpp
-  Editor/                   (editor scenes; see Editor/GettingStarted.md)
+  Editor/                   (the editor's scene catalog; see Editor/GettingStarted.md)
 ```
 
 ## CMakeLists.txt
@@ -41,9 +41,10 @@ beside the desktop executable. Do not add your own `main` function.
 #pragma once
 #include "Scene/Scene.h"
 
+// A scene takes the game's services plus its own values, so the editor's catalog can build the same class.
 class MyScene final : public Scene {
 public:
-    MyScene();
+    explicit MyScene(const SceneServices& services);
     ~MyScene() override;
 
 private:
@@ -73,7 +74,7 @@ constexpr float Radius = 24.0f;
 constexpr float CanvasWidth = 1280.0f;
 } // namespace
 
-MyScene::MyScene()
+MyScene::MyScene(const SceneServices&)
     : Scene(TimeDomain::Game) {}
 MyScene::~MyScene() { ShutdownNoThrow(); }
 void MyScene::Enter() { _x = StartX; }
@@ -124,7 +125,8 @@ GameSettings Settings() {
 } // namespace
 
 MyGame::MyGame()
-    : Game(Settings()) {
+    : Game(Settings())
+    , _scene(Services()) {
     RegisterScene(_scene);
 }
 void MyGame::Start() { SetScene(_scene); }

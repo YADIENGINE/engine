@@ -85,23 +85,18 @@ void DrawRecipeShooter(Painter& paint, const RecipeShooterSimulation& simulation
     if (showColliders) DrawColliders(paint, simulation.Collision());
 }
 
-RecipeShooterEditorScene::RecipeShooterEditorScene(const SceneServices& services, std::uint64_t seed,
-                                                   bool showColliders)
+RecipeShooterScene::RecipeShooterScene(const SceneServices& services, std::uint64_t seed, bool showColliders)
     : _hosted(services.simulation, RecipeShooterDefinition().settings, SimulationStart{.seed = seed, .players = 1})
     , _bindings(MakeBindings())
     , _showColliders(showColliders) {}
-void RecipeShooterEditorScene::HandleInput(const DeviceInput& input) {
-    if (input.cancelled)
-        _hosted.Runner().CancelInput();
-    else
-        _hosted.Runner().Feed(_bindings.Read(input));
-}
-std::string RecipeShooterEditorScene::ApplyParameter(const std::string& id, const SceneValue& value) {
+void RecipeShooterScene::HandleInput(const DeviceInput& input) { _hosted.Runner().Feed(_bindings.Read(input)); }
+void RecipeShooterScene::InputCancelled() { _hosted.Runner().CancelInput(); }
+std::string RecipeShooterScene::ApplyParameter(const std::string& id, const SceneValue& value) {
     if (id == "showColliders") _showColliders = std::get<bool>(value);
     return {};
 }
-void RecipeShooterEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
-void RecipeShooterEditorScene::Draw(Painter& paint) const { DrawRecipeShooter(paint, _hosted.Sim(), _showColliders); }
+void RecipeShooterScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
+void RecipeShooterScene::Draw(Painter& paint) const { DrawRecipeShooter(paint, _hosted.Sim(), _showColliders); }
 SceneDefinition RecipeShooterSceneDefinition() {
     SceneDefinition definition;
     definition.id = "myproject.shooter";
@@ -111,7 +106,7 @@ SceneDefinition RecipeShooterSceneDefinition() {
         {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{1}, 0.0, 1000000.0, SceneApplyMode::OnReset},
         {"showColliders", "Show colliders", SceneParameterKind::Boolean, true}};
     definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
-        return std::make_unique<RecipeShooterEditorScene>(
+        return std::make_unique<RecipeShooterScene>(
             services, static_cast<std::uint64_t>(std::get<std::int64_t>(parameters.at("seed"))),
             std::get<bool>(parameters.at("showColliders")));
     };

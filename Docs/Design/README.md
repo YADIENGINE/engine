@@ -738,3 +738,27 @@ enum and `SimulationSettings::buttons`, which drifted silently when one changed.
    build.
 
 Left out: gamepads, an axis from a key pair, player rebinding (N8), a collision-layer matrix (D27 keeps no global one).
+
+### D53. One scene type
+Usage: [Editor API](../Editor/Api.md#registration).
+
+The editor's catalog opens the game's own `Scene`; the separate editor scene type is gone, so a screen is no longer
+written twice (once for the game, once for the editor).
+
+1. *The editor hooks are `Scene` virtuals with neutral defaults* (`ApplyParameter`, `ExecuteAction`,
+   `CaptureParameters`, `Inspect`): the game never calls them, and one class needs no second interface or cast.
+2. *Input stays `HandleInput` + `InputCancelled`:* the host cancels; scenes no longer read `input.cancelled`.
+3. *One service source:* `SceneServices` lives in `Core/Scene`; `Game::Services()` fills it, the worker copies it and adds
+   its log and simulation host. A scene's constructor takes it plus its own values, so the game and a factory build it
+   alike.
+4. *`HostedSimulation` and `SimulationHost` live in `Core/Simulation`:* a null host simply runs, so the game and the
+   editor use the same member.
+5. *The worker hosts through the public lifecycle:* `WorkerScene` drives the scene as `Game::Run` does; editor Pause,
+   Step and speed reach both clocks, and the scene's `TimeDomain` and `GameTimePaused` hold. Reset stops and destroys
+   the old instance before the factory runs.
+6. *The catalog stays in `Editor/Api`:* `SceneDefinition`, the registry and auto-registration, so Release carries none.
+7. *Destructors still call `ShutdownNoThrow()`:* a derived game's constructor can throw after its scene members exist,
+   and no owner can shut those down while they are alive.
+
+Left out: a separate editor interface found by `dynamic_cast`, switching scenes from the editor (still `Game::SetScene`
+in a Game Flow), the scene-held `Profiler` pointer and application command (nothing read them).

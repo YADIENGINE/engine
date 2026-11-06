@@ -1,24 +1,28 @@
-# Developing editor scenes
+# Developing scenes for the editor
 
 ## Choosing a content type
 
-For simple drawing, `EditorScene::Draw(Painter&) const` is enough. Add `Update(dt)` for animation/state, `HandleInput`
-for user interaction, and `ExecuteAction` for triggers. Each catalog entry is explicitly registered with a
+The catalog opens engine `Scene`s, the same classes the game hosts. For simple drawing, `Scene`'s `Draw(Painter&) const`
+is enough. Add `Update(dt)` for animation/state, `HandleInput` and `InputCancelled` for user interaction, and
+`ExecuteAction` for triggers. Each catalog entry is explicitly registered with a
 `SceneDefinition` and factory. The general engine does not register scenes by scanning files automatically. Projects
 can write their own short registration/gallery helpers (such as quick drawing or gallery scenes); these are not required
 to use the EngineEditor API.
 
-The scene calls the production model/View. Do not write a second editor version of the same appearance. List/gallery
+The scene calls the production model/View. Do not write a second editor version of a game scene or of its appearance:
+register the game's class, built from `const SceneServices&` plus its own values. List/gallery
 layout and project-local short registration helpers belong in the consumer's development layer.
 
 ## Resources and lifecycle
 
 1. The registry contains only metadata and create callbacks; global registration does not create GL/fonts/audio.
 2. The factory constructs the instance on the engine thread with a complete parameter map when services are ready.
-3. ObjectList manages Start/Update/Draw/Stop; content does not dispatch these hooks manually.
-4. Reset creates a new instance with the accepted recipe; old resources are cleaned up while the context is alive.
+3. The worker drives the scene through its public lifecycle (Activate, input, both ticks, Render, Shutdown), as the game
+   does; content does not dispatch these hooks manually.
+4. Reset stops and destroys the old instance, then creates a new one with the accepted recipe, while the context is
+   alive.
 
-`SceneServices` font/audio/sounds references outlive the instance. Views explicitly own textures; dependent effects are
+`SceneServices` references outlive the instance. Views explicitly own textures; dependent effects are
 cleaned up before the texture. Stop/destructors do not throw. Factory/hook exceptions may close the worker.
 
 ## Control design
@@ -35,7 +39,8 @@ recipe. A setter returning a rejection explanation must not change current conte
 ## Clock, input, and real game flow
 
 Decorative time is `paint.Time()`; state advances with Update dt. Do not wire scene time into Views manually; the host
-applies Pause, Step, and speed. Product input arrives when the View area is focused; do not reread Inspector focus or OS
+applies Pause, Step, and speed to both clocks, and the scene's `TimeDomain`, `GameTimePaused` and hitstops
+(`SceneServices::time`) work as in the game. Product input arrives when the View area is focused; do not reread Inspector focus or OS
 input. A scene hosting a [simulation](../Simulation.md#in-the-editor) keeps it in a `HostedSimulation`, so seek and replay
 work in exact steps.
 

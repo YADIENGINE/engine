@@ -1,6 +1,6 @@
 Write gameplay rules as a deterministic simulation, host them in a scene and in the editor, and test them without a window.
 
-APIs: Core/Simulation/Simulation.h, Core/Simulation/SimulationRunner.h, Core/Simulation/SimulationEvents.h, Core/Simulation/SimulationEventReader.h, Core/Simulation/SimulationRegistry.h, Core/Input/InputBindings.h, Editor/Api/HostedSimulation.h.
+APIs: Core/Simulation/Simulation.h, Core/Simulation/SimulationRunner.h, Core/Simulation/SimulationEvents.h, Core/Simulation/SimulationEventReader.h, Core/Simulation/SimulationRegistry.h, Core/Input/InputBindings.h, Core/Simulation/HostedSimulation.h.
 
 Put the rules in Game/Simulation/ (the project's CMake builds them into a library for the game, worker and `python Engine sim`) and implement `void RegisterSimulations(SimulationRegistry& registry) { registry.Add(RecipePlayDefinition()); }` there. Views and scenes stay outside that folder. This example keeps them in one file only to read in one place.
 
@@ -10,12 +10,11 @@ Put the rules in Game/Simulation/ (the project's CMake builds them into a librar
 #include <cstdint>
 #include <string_view>
 #include <variant>
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
 #include "Runtime/TimeScale.h"
 #include "Input/InputBindings.h"
 #include "Scene/Scene.h"
+#include "Simulation/HostedSimulation.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationEventReader.h"
 #include "Simulation/SimulationEvents.h"
@@ -68,13 +67,17 @@ private:
 [[nodiscard]] const SimulationSettings& RecipePlaySettings();
 [[nodiscard]] SimulationDefinition RecipePlayDefinition();
 
-// The game's scene: feeds input, advances by scaled seconds, draws between steps.
+// The one scene the game shows and the editor opens: feeds input, advances by scaled seconds, draws between steps.
+// In the game services.simulation is null and the rules simply run; in the editor it gives the worker the tape, so
+// seek, replay and Step work in steps.
 class RecipePlayScene final : public Scene {
 public:
-    RecipePlayScene(TimeScale& time, std::uint64_t seed);
+    RecipePlayScene(const SceneServices& services, std::uint64_t seed);
     ~RecipePlayScene() override;
-    [[nodiscard]] const RecipePlaySimulation& Sim() const { return _simulation; }
-    [[nodiscard]] const SimulationRunner& Runner() const { return _runner; }
+    [[nodiscard]] const RecipePlaySimulation& Sim() const { return _hosted.Sim(); }
+    [[nodiscard]] const SimulationRunner& Runner() const { return _hosted.Runner(); }
+    // The editor's action: a command on the tape, so a rewind plays it again.
+    [[nodiscard]] std::string ExecuteAction(const std::string& id) override;
 
 protected:
     void HandleInput(const DeviceInput& input) override;
@@ -84,25 +87,9 @@ protected:
 
 private:
     TimeScale& _time;
-    SimulationStart _start;
-    RecipePlaySimulation _simulation;
-    SimulationRunner _runner;
-    InputBindings _bindings;
-    SimulationEventReader<RecipeEvent> _events;
-};
-
-// The same rules in the editor: services.simulation gives the worker the tape, so seek, replay and Step work in steps.
-class RecipePlayEditorScene final : public EditorScene {
-public:
-    RecipePlayEditorScene(const SceneServices& services, std::uint64_t seed);
-
-private:
-    void HandleInput(const DeviceInput& input) override;
-    [[nodiscard]] std::string ExecuteAction(const std::string& id) override;
-    void Update(float seconds) override;
-    void Draw(Painter& paint) const override;
     HostedSimulation<RecipePlaySimulation> _hosted;
     InputBindings _bindings;
+    SimulationEventReader<RecipeEvent> _events;
 };
 [[nodiscard]] SceneDefinition RecipePlaySceneDefinition();
 ```
@@ -128,10 +115,6 @@ constexpr float HitstopSeconds = 0.05f;
 constexpr Color4 ShipColor{120, 220, 255, 255};
 constexpr Color4 RockColor{255, 180, 90, 255};
 
-void DrawField(Painter& paint, float shipX, float rockX) {
-    paint.Circle({shipX, DrawY}, DrawSize, Fill(ShipColor));
-    paint.Circle({rockX, DrawY - DrawSize * 4.0f}, DrawSize, Fill(RockColor));
-}
 InputBindings MakeBindings() {
     InputBindings bindings(1);
     bindings.Bind(0, RecipeButton::Left, InputKey::A);
@@ -178,44 +161,30 @@ SimulationDefinition RecipePlayDefinition() {
             [](const SimulationStart& start) { return std::make_unique<RecipePlaySimulation>(start); }};
 }
 
-RecipePlayScene::RecipePlayScene(TimeScale& time, std::uint64_t seed)
+RecipePlayScene::RecipePlayScene(const SceneServices& services, std::uint64_t seed)
     : Scene(TimeDomain::Game)
-    , _time(time)
-    , _start{.seed = seed, .players = 1}
-    , _simulation(_start)
-    , _runner(_simulation, RecipePlaySettings(), _start)
+    , _time(services.time)
+    , _hosted(services.simulation, RecipePlaySettings(), SimulationStart{.seed = seed, .players = 1})
     , _bindings(MakeBindings()) {}
 RecipePlayScene::~RecipePlayScene() { ShutdownNoThrow(); }
-void RecipePlayScene::HandleInput(const DeviceInput& input) { _runner.Feed(_bindings.Read(input)); }
-void RecipePlayScene::InputCancelled() { _runner.CancelInput(); }
+std::string RecipePlayScene::ExecuteAction(const std::string& id) {
+    if (id == "add_score") _hosted.Runner().Command("add_score", 5); // On the tape, so a rewind plays it again
+    return {};
+}
+void RecipePlayScene::HandleInput(const DeviceInput& input) { _hosted.Runner().Feed(_bindings.Read(input)); }
+void RecipePlayScene::InputCancelled() { _hosted.Runner().CancelInput(); }
 void RecipePlayScene::Update(float seconds) {
-    (void)_runner.Advance(seconds); // TimeScale already applied: hitstop and slow motion only change steps per second
+    // TimeScale already applied: hitstop and slow motion only change steps per second
+    (void)_hosted.Runner().Advance(seconds);
     // Every event of the steps this frame ran, in order; none of the steps a seek or RunTo skipped.
-    for (const auto& happened : _events.Read(_simulation.Events(), _runner))
+    for (const auto& happened : _events.Read(_hosted.Sim().Events(), _hosted.Runner()))
         std::visit(Overloaded{[&](const RecipeHit&) { _time.Hitstop(HitstopSeconds); },
                               [](const RecipeMiss&) {}}, // A miss sound would play here
                    happened.event);
 }
 void RecipePlayScene::Draw(Painter& paint) const {
-    DrawField(paint, _simulation.ShipX(_runner.Alpha()), _simulation.RockX());
-}
-
-RecipePlayEditorScene::RecipePlayEditorScene(const SceneServices& services, std::uint64_t seed)
-    : _hosted(services.simulation, RecipePlaySettings(), SimulationStart{.seed = seed, .players = 1})
-    , _bindings(MakeBindings()) {}
-void RecipePlayEditorScene::HandleInput(const DeviceInput& input) {
-    if (input.cancelled)
-        _hosted.Runner().CancelInput();
-    else
-        _hosted.Runner().Feed(_bindings.Read(input));
-}
-std::string RecipePlayEditorScene::ExecuteAction(const std::string& id) {
-    if (id == "add_score") _hosted.Runner().Command("add_score", 5); // On the tape, so a rewind plays it again
-    return {};
-}
-void RecipePlayEditorScene::Update(float seconds) { (void)_hosted.Runner().Advance(seconds); }
-void RecipePlayEditorScene::Draw(Painter& paint) const {
-    DrawField(paint, _hosted.Sim().ShipX(_hosted.Runner().Alpha()), _hosted.Sim().RockX());
+    paint.Circle({_hosted.Sim().ShipX(_hosted.Runner().Alpha()), DrawY}, DrawSize, Fill(ShipColor));
+    paint.Circle({_hosted.Sim().RockX(), DrawY - DrawSize * 4.0f}, DrawSize, Fill(RockColor));
 }
 SceneDefinition RecipePlaySceneDefinition() {
     SceneDefinition definition;
@@ -226,7 +195,7 @@ SceneDefinition RecipePlaySceneDefinition() {
         {"seed", "Seed", SceneParameterKind::Integer, std::int64_t{1}, 0.0, 1000000.0, SceneApplyMode::OnReset}};
     definition.actions = {{"add_score", "Add score", "A command on the tape.", true}};
     definition.create = [](const SceneServices& services, const SceneParameters& parameters) {
-        return std::make_unique<RecipePlayEditorScene>(
+        return std::make_unique<RecipePlayScene>(
             services, static_cast<std::uint64_t>(std::get<std::int64_t>(parameters.at("seed"))));
     };
     return definition;

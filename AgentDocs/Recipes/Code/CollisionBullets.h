@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
+#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Scene/Scene.h"
 #include "Input/InputBindings.h"
 #include "Physics/Collision/CollisionWorld.h"
 #include "Simulation/Simulation.h"
@@ -42,13 +42,15 @@ private:
 // The view, outside Game/Simulation. A debug switch shows what the rules see on top of what the player sees.
 void DrawRecipeShooter(Painter& paint, const RecipeShooterSimulation& simulation, bool showColliders);
 
-// An editor scene with the switch as a parameter: `ctl open ID --set showColliders=true --screenshot`.
-class RecipeShooterEditorScene final : public EditorScene {
+// The scene, with the switch as an editor parameter: `ctl open ID --set showColliders=true --screenshot`.
+class RecipeShooterScene final : public Scene {
 public:
-    RecipeShooterEditorScene(const SceneServices& services, std::uint64_t seed, bool showColliders);
+    RecipeShooterScene(const SceneServices& services, std::uint64_t seed, bool showColliders);
+    ~RecipeShooterScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;

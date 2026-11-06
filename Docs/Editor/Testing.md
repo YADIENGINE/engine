@@ -4,7 +4,7 @@ Commands are for developers; documentation-only changes do not require builds/te
 commands and scope are in [API](Api.md#headless-editor-tests). The user performs real window/input/visual checks; select
 only the changed section.
 
-## Editor scene contract
+## Catalog scene contract
 
 1. Catalog retrieval must work without creating GL/fonts/audio during registration.
 2. The factory must receive the complete initial recipe; invalid values must be rejected atomically.

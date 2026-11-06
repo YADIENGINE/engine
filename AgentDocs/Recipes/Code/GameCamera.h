@@ -5,9 +5,9 @@
 #include <optional>
 #include "Camera/Camera2D.h"
 #include "Camera/Cameras.h"
-#include "Editor/Api/EditorScene.h"
-#include "Editor/Api/HostedSimulation.h"
+#include "Simulation/HostedSimulation.h"
 #include "Editor/Api/SceneRegistry.h"
+#include "Scene/Scene.h"
 #include "Fx/FxStage.h"
 #include "Input/InputBindings.h"
 #include "Simulation/Simulation.h"
@@ -63,13 +63,15 @@ private:
 // The view of the scroller: the world through the rules' camera, at the runner's alpha.
 void DrawRecipeScroller(Painter& paint, const RecipeScrollerSimulation& simulation, float alpha, bool guides);
 
-// Both in the editor. Parameters switch split screen and the camera's guides.
-class RecipeCameraEditorScene final : public EditorScene {
+// The scenes the game shows and the editor opens. Parameters switch split screen and the camera's guides.
+class RecipeCameraScene final : public Scene {
 public:
-    RecipeCameraEditorScene(const SceneServices& services, bool split, bool guides);
+    RecipeCameraScene(const SceneServices& services, bool split, bool guides);
+    ~RecipeCameraScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;
@@ -78,12 +80,14 @@ private:
     std::optional<Float2> _mouse;
     bool _fire = false;
 };
-class RecipeScrollerEditorScene final : public EditorScene {
+class RecipeScrollerScene final : public Scene {
 public:
-    RecipeScrollerEditorScene(const SceneServices& services, bool guides);
+    RecipeScrollerScene(const SceneServices& services, bool guides);
+    ~RecipeScrollerScene() override { ShutdownNoThrow(); }
 
 private:
     void HandleInput(const DeviceInput& input) override;
+    void InputCancelled() override;
     [[nodiscard]] std::string ApplyParameter(const std::string& id, const SceneValue& value) override;
     void Update(float seconds) override;
     void Draw(Painter& paint) const override;

@@ -2,7 +2,7 @@
 
 Scripts and agents drive the open editor through `python Engine ctl <command>` (from the project root; `yadien ctl` with
 the launcher). Each command sends one request to the editor's [control endpoint](Architecture.md#control-gateway) and
-prints its answer as one JSON object on stdout. Game Flows are editor scenes, so everything below applies to them too.
+prints its answer as one JSON object on stdout. Game Flows are catalog entries, so everything below applies to them too.
 Design record: `Docs/Design/README.md` → D20 (engine repository).
 
 Agents follow the [editor skill](../../AgentDocs/Skills/editor/SKILL.md) to show something and the
