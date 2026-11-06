@@ -14,7 +14,10 @@ struct GlyphRaster {
     int top = 0;  // Bitmap's top edge from the baseline (negative: above), pixels
 };
 
-// Parsed font file behind a FontFace (stb_truetype). Sizes follow the font's ascent-to-descent height.
+struct kbts_font;
+
+// Parsed font file behind a FontFace: stb_truetype rasterizes and measures, kb_text_shape shapes (TextShaper). Sizes
+// follow the font's ascent-to-descent height.
 class FontData {
 public:
     // Throws runtime_error when 'bytes' is not a usable font.
@@ -26,13 +29,18 @@ public:
     [[nodiscard]] bool Has(char32_t codepoint) const;
     // Font units.
     [[nodiscard]] float Advance(int glyph) const;
-    [[nodiscard]] float Kerning(int left, int right) const;
     [[nodiscard]] float Ascent() const { return _ascent; }
     [[nodiscard]] float Descent() const { return _descent; } // Negative
     [[nodiscard]] float LineGap() const { return _lineGap; }
     // Logical units per font unit at 'size'.
     [[nodiscard]] float Scale(float size) const { return size / (_ascent - _descent); }
+    // Ascent-to-descent height in ems. Fallback fonts are drawn with the em of the font they stand in for.
+    [[nodiscard]] float EmHeight() const { return _emHeight; }
     [[nodiscard]] std::uint32_t Id() const { return _id; }
+    // The '?' glyph drawn for characters no font has.
+    [[nodiscard]] int Fallback() const { return _fallback; }
+    // The font as kb_text_shape reads it; for TextShaper only.
+    [[nodiscard]] kbts_font& Shaping() const;
 
     [[nodiscard]] GlyphRaster Rasterize(int glyph, float pixelSize) const;
     // Signed distance field: 'padding' pixels around the glyph; a byte is 128 on the outline and changes by
@@ -48,6 +56,7 @@ private:
     float _ascent = 0.0f;
     float _descent = 0.0f;
     float _lineGap = 0.0f;
+    float _emHeight = 1.0f;
     std::uint32_t _id;
 
 public:
@@ -57,4 +66,13 @@ public:
 
 struct FontAccess {
     [[nodiscard]] static const FontData& Data(const FontFace& font) { return *font._data; }
+    // The font a block's glyph names: 0 the face, then its fallbacks.
+    [[nodiscard]] static const FontData& Data(const FontFace& font, std::uint32_t index) {
+        return index == 0 || index > font._fallbacks.size() ? *font._data : *font._fallbacks[index - 1]._data;
+    }
+    // The size font 'index' is drawn at, per unit of the block's size: 1 for the face, its em over the face's em for a
+    // fallback.
+    [[nodiscard]] static float SizeScale(const FontFace& font, std::uint32_t index) {
+        return Data(font, index).EmHeight() / font._data->EmHeight();
+    }
 };

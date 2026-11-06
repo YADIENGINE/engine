@@ -188,6 +188,13 @@ class BoundaryTests(unittest.TestCase):
         self.assertTrue(any("StateVisitor.h:1" in line and "Reflection.h" in line for line in found))
         self.assertTrue(any("Game/Simulation/Run.h:1" in line and "Reflection.h" in line for line in found))
 
+    def test_text_shaping_stays_behind_text_internals(self):
+        self.write("Engine/Core/Graphics/Text/Internals/TextShaper.cpp", '#include <kb_text_shape.h>\n')
+        self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Graphics/Paint/PainterText.cpp", '#include <kb_text_shape.h>\n')
+        found = self.check()
+        self.assertTrue(any("PainterText.cpp:1" in line and "text shaping" in line for line in found))
+
     def test_the_audio_library_stays_behind_audio_internals(self):
         self.write("Engine/Core/Audio/Internals/Graph.cpp", '#include <miniaudio.h>\n#include <extras/stb_vorbis.c>\n')
         self.assertEqual(self.check(), [])

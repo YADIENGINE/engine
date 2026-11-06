@@ -241,6 +241,7 @@ add_library(EngineHeadless STATIC
     Graphics/Text/Internals/FontData.cpp
     Graphics/Text/Internals/GlyphCache.cpp
     Graphics/Text/Internals/TextLayoutCache.cpp
+    Graphics/Text/Internals/TextShaper.cpp
     Input/Internals/CollectionPointer.cpp
     Input/Internals/DragPointer.cpp
     Input/Internals/InputBindings.cpp
@@ -302,7 +303,7 @@ target_compile_features(EngineHeadless PUBLIC cxx_std_20)
 set_target_properties(EngineHeadless PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}")
 target_link_libraries(EngineHeadless PUBLIC EngineCamera EnginePersistence EnginePhysics EngineSimulation EngineTuning
-    PRIVATE EngineClipper2 EngineEarcut EngineStorage)
+    PRIVATE EngineClipper2 EngineEarcut EngineStorage EngineTextShape)
 # The engine's ready-made graphics (Assets/Graphics). They sit above the engine's systems, so nothing in Core calls them.
 # X.asset.cpp registrations are left out: they reach only the editor worker.
 file(GLOB_RECURSE engineAssetSources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../Assets/Graphics/*.cpp")
@@ -316,6 +317,15 @@ engine_warnings(EngineAssets)
 set_source_files_properties(Graphics/Text/Internals/FontData.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${ENGINE_THIRD_PARTY_DIR}/raylib/src/external")
 engine_warnings(EngineHeadless)
+
+# Text shaping for Graphics/Text: kb_text_shape (one C header) segments Unicode text and applies OpenType rules. Private to
+# EngineHeadless; vendored and unmodified, so its warnings stay off.
+add_library(EngineTextShape STATIC Graphics/Text/Internals/TextShapeLibrary.c)
+target_include_directories(EngineTextShape SYSTEM PUBLIC "${ENGINE_THIRD_PARTY_DIR}/kb")
+set_target_properties(EngineTextShape PROPERTIES POSITION_INDEPENDENT_CODE ON)
+if(MSVC)
+    target_compile_options(EngineTextShape PRIVATE /W0)
+endif()
 
 # miniaudio and stb_vorbis as one object, with their warnings off: they are vendored and unmodified.
 add_library(EngineMiniaudio STATIC Audio/Internals/Miniaudio.c)

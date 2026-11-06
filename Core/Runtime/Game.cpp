@@ -39,6 +39,17 @@ void ReportAssetsWhenAsked(const GameSettings& settings) {
     std::exit(EXIT_SUCCESS);
 }
 constexpr const char* OptionsFile = "settings.json";
+
+std::optional<FontFace> LoadFont(const std::filesystem::path& assets, const GameSettings& settings) {
+    if (settings.font.empty()) {
+        if (!settings.fontFallbacks.empty()) throw std::invalid_argument("GameSettings::fontFallbacks needs a font");
+        return std::nullopt;
+    }
+    FontFace font = FontFace::FromFile(assets / settings.font);
+    for (const auto& fallback : settings.fontFallbacks)
+        font.AddFallback(FontFace::FromFile(assets / fallback));
+    return font;
+}
 constexpr std::int64_t MaxWindowSide = 1 << 15;
 
 // FPS sayacı: sol üst köşede koyu zemin üstünde küçük yazı.
@@ -72,7 +83,7 @@ template <class Level> Level StoredLevel(std::int64_t stored, Level last, Level 
 Game::Game(const GameSettings& settings)
     : _renderer(OpenRenderer(settings))
     , _assetRoot(PrepareAssets(GameAssetManifest(settings)))
-    , _font(settings.font.empty() ? std::optional<FontFace>{} : FontFace::FromFile(_assetRoot / settings.font))
+    , _font(LoadFont(_assetRoot, settings))
     , _audio(_assetRoot, settings.audioVolume)
     , _soundOutput(std::make_unique<AudioSoundOutput>(_audio))
     , _sounds(settings.sounds, *_soundOutput)

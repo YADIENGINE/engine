@@ -9,9 +9,12 @@
 class TextBlock {
 public:
     struct Glyph {
-        int index = 0;  // The font's glyph index
-        float x = 0.0f; // Pen position on its line, from the line's left end
+        int index = 0;          // Glyph index in its font
+        float x = 0.0f;         // Pen position on its line, from the line's left end
+        float y = 0.0f;         // From the baseline, down positive: a mark sits above or below its letter
+        std::uint32_t font = 0; // 0: the block's font; 1 and up: its fallbacks, in the order they were added
     };
+    // Glyphs left to right as drawn, also in right-to-left text.
     struct Line {
         std::uint32_t firstGlyph = 0;
         std::uint32_t glyphCount = 0;

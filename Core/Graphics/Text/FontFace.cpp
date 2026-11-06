@@ -6,140 +6,159 @@
 #include <stdexcept>
 #include <vector>
 #include "Graphics/Text/Internals/FontData.h"
-#include "Utilities/Utf8.h"
+#include "Graphics/Text/Internals/TextShaper.h"
 
 namespace {
-constexpr float TabSpaces = 4.0f;
-
-bool Space(char32_t codepoint) { return codepoint == U' ' || codepoint == U'\t' || codepoint == 0x3000; }
-
-// Lays glyphs into lines at one size. Spaces are not stored; they only move the pen and mark where a line may wrap.
-class LineBuilder {
-public:
-    LineBuilder(const FontData& font, float size, float letterSpacing, float lineHeight, float maxWidth, bool wrap,
-                std::vector<TextBlock::Glyph>& glyphs, std::vector<TextBlock::Line>& lines)
-        : _font(font)
-        , _scale(font.Scale(size))
-        , _letterSpacing(letterSpacing)
-        , _lineHeight(lineHeight)
-        , _maxWidth(maxWidth)
-        , _wrap(wrap && maxWidth > 0.0f)
-        , _glyphs(glyphs)
-        , _lines(lines) {}
-
-    void Add(char32_t codepoint) {
-        if (codepoint == U'\r') return;
-        if (codepoint == U'\n') {
-            EndLine(Count(), _visibleEnd);
-            StartLine(Count());
-            return;
-        }
-        const int glyph = _font.GlyphIndex(codepoint == U'\t' ? U' ' : codepoint);
-        const float kerning = _previous >= 0 ? _font.Kerning(_previous, glyph) * _scale : 0.0f;
-        const float advance = _font.Advance(glyph) * _scale * (codepoint == U'\t' ? TabSpaces : 1.0f);
-        _previous = glyph;
-        if (Space(codepoint)) {
-            if (!_inSpace && Count() > _lineStart) {
-                _breakIndex = Count();
-                _breakWidth = _visibleEnd;
-                _canBreak = true;
-            }
-            _inSpace = true;
-            _pen += kerning + advance + _letterSpacing;
-            _resume = _pen;
-            return;
-        }
-        _inSpace = false;
-        float x = _pen + kerning;
-        if (_wrap && x + advance > _maxWidth && Count() > _lineStart) {
-            if (_canBreak) { // Move the words after the last space run to a new line
-                const float shift = _resume;
-                EndLine(_breakIndex, _breakWidth);
-                for (std::size_t i = _breakIndex; i < _glyphs.size(); ++i)
-                    _glyphs[i].x -= shift;
-                _lineStart = _breakIndex;
-                _pen -= shift;
-                _visibleEnd -= shift;
-                _canBreak = false;
-                x -= shift;
-            } else { // A word longer than the line: break between characters
-                EndLine(Count(), _visibleEnd);
-                StartLine(Count());
-                x = 0.0f;
-            }
-        }
-        _glyphs.push_back({glyph, x});
-        _visibleEnd = x + advance;
-        _pen = x + advance + _letterSpacing;
-    }
-
-    void Finish() { EndLine(Count(), _visibleEnd); }
-
-private:
-    [[nodiscard]] std::uint32_t Count() const { return static_cast<std::uint32_t>(_glyphs.size()); }
-    void EndLine(std::uint32_t end, float width) {
-        _lines.push_back({_lineStart, end - _lineStart, std::max(width, 0.0f), _top});
-        _top += _lineHeight;
-    }
-    void StartLine(std::uint32_t start) {
-        _lineStart = start;
-        _pen = 0.0f;
-        _visibleEnd = 0.0f;
-        _previous = -1;
-        _canBreak = false;
-        _inSpace = false;
-    }
-
-    const FontData& _font;
-    float _scale;
-    float _letterSpacing;
-    float _lineHeight;
-    float _maxWidth;
-    bool _wrap;
-    std::vector<TextBlock::Glyph>& _glyphs;
-    std::vector<TextBlock::Line>& _lines;
-    float _pen = 0.0f;        // Where the next character starts
-    float _visibleEnd = 0.0f; // Right end of the last visible glyph on the line
-    float _top = 0.0f;
-    std::uint32_t _lineStart = 0;
-    std::uint32_t _breakIndex = 0; // Glyphs before the last space run on this line
-    float _breakWidth = 0.0f;      // Line width up to that space run
-    float _resume = 0.0f;          // Pen after that space run
-    bool _canBreak = false;
-    bool _inSpace = false;
-    int _previous = -1;
-};
-
 float LineHeightOf(const FontData& font, float size) {
     return (font.Ascent() - font.Descent() + font.LineGap()) * font.Scale(size);
 }
 
-// Widest unwrapped line, or widest word when 'words'.
-float Widest(const FontData& font, std::string_view text, float size, float letterSpacing, bool words) {
-    const float scale = font.Scale(size);
+// A unit's width at one size: its glyphs and the letter spacing after each glyph that moves the pen. 'visible' leaves
+// out the spacing after its last glyph, which only matters when something follows.
+struct UnitWidth {
+    float full = 0.0f;
+    float visible = 0.0f;
+};
+UnitWidth WidthOf(const ShapedUnit& unit, float size, float letterSpacing) {
+    const float glyphs = unit.advance * size;
+    const float spacing = static_cast<float>(unit.spaced) * letterSpacing;
+    return {glyphs + spacing, glyphs + (unit.spaced > 0 ? spacing - letterSpacing : 0.0f)};
+}
+
+// Widest paragraph, or widest piece no line may break inside when 'words' (its spaces left out). Letter spacing after
+// the last glyph is included, as the callers expect.
+float Widest(const std::vector<ShapedParagraph>& paragraphs, float size, float letterSpacing, bool words) {
     float widest = 0.0f;
-    float run = 0.0f;
-    int previous = -1;
-    for (std::size_t at = 0; at < text.size();) {
-        const char32_t codepoint = NextCodepoint(text, at);
-        if (codepoint == U'\n' || (words && Space(codepoint))) {
-            widest = std::max(widest, run);
-            run = 0.0f;
-            previous = -1;
-            if (codepoint == U'\n' || words) continue;
+    for (const ShapedParagraph& paragraph : paragraphs) {
+        float run = 0.0f;
+        for (const ShapedUnit& unit : paragraph.units) {
+            if (words && unit.breakBefore) {
+                widest = std::max(widest, run);
+                run = 0.0f;
+            }
+            if (!(words && unit.space)) run += WidthOf(unit, size, letterSpacing).full;
         }
-        if (codepoint == U'\r') continue;
-        const int glyph = font.GlyphIndex(codepoint == U'\t' ? U' ' : codepoint);
-        if (previous >= 0) run += font.Kerning(previous, glyph) * scale;
-        run += font.Advance(glyph) * scale * (codepoint == U'\t' ? TabSpaces : 1) + letterSpacing;
-        previous = glyph;
+        widest = std::max(widest, run);
     }
-    return std::max(widest, run);
+    return widest;
+}
+
+// Units [begin, visibleEnd) of one paragraph drawn on a line. Spaces after visibleEnd hang past the line's end.
+struct LineSpan {
+    std::uint32_t begin = 0;
+    std::uint32_t visibleEnd = 0;
+    float width = 0.0f;
+};
+
+// Greedy line breaking: a line ends at the last place Unicode allows before the unit that does not fit or, when one
+// word is longer than the line, between graphemes.
+std::vector<LineSpan> BreakLines(const ShapedParagraph& paragraph, float size, float letterSpacing, float maxWidth,
+                                 bool wrap) {
+    std::vector<LineSpan> lines;
+    const auto count = static_cast<std::uint32_t>(paragraph.units.size());
+    std::uint32_t lineStart = 0;
+    std::uint32_t lastVisible = 0; // One past the last visible unit on the line
+    float pen = 0.0f;              // Where the next unit starts
+    float visibleEnd = 0.0f;       // Right end of the last visible unit
+    bool visible = false;
+    bool canBreak = false;
+    std::uint32_t breakAt = 0; // The last unit a line may start at, and the line up to it
+    std::uint32_t breakVisible = 0;
+    float breakWidth = 0.0f;
+    float breakPen = 0.0f;
+    for (std::uint32_t i = 0; i < count; ++i) {
+        const ShapedUnit& unit = paragraph.units[i];
+        const UnitWidth width = WidthOf(unit, size, letterSpacing);
+        if (unit.breakBefore && visible) {
+            canBreak = true;
+            breakAt = i;
+            breakVisible = lastVisible;
+            breakWidth = visibleEnd;
+            breakPen = pen;
+        }
+        if (unit.space) {
+            pen += width.full;
+            continue;
+        }
+        if (wrap && visible && pen + width.visible > maxWidth) {
+            if (canBreak) { // Move what follows the last break to a new line
+                lines.push_back({lineStart, breakVisible, std::max(breakWidth, 0.0f)});
+                lineStart = breakAt;
+                pen -= breakPen;
+                visible = lastVisible > breakAt;
+                visibleEnd = visible ? visibleEnd - breakPen : 0.0f;
+                canBreak = false;
+            } else { // A word longer than the line: break between graphemes
+                lines.push_back({lineStart, lastVisible, std::max(visibleEnd, 0.0f)});
+                lineStart = i;
+                pen = 0.0f;
+                visibleEnd = 0.0f;
+                visible = false;
+            }
+        }
+        visibleEnd = pen + width.visible;
+        pen += width.full;
+        visible = true;
+        lastVisible = i + 1;
+    }
+    lines.push_back({lineStart, visible ? lastVisible : lineStart, visible ? std::max(visibleEnd, 0.0f) : 0.0f});
+    return lines;
+}
+
+// One run's glyphs on a line.
+struct LinePiece {
+    std::uint32_t run = 0;
+    std::uint8_t level = 0;
+};
+
+// Places one line's glyphs left to right. Runs go in visual order by Unicode rule L2 (from the highest level down to
+// the lowest odd one, every sequence at that level or higher is reversed); each run's glyphs are already in drawn order.
+void PlaceLine(const ShapedParagraph& paragraph, const LineSpan& span, float size, float letterSpacing,
+               std::vector<TextBlock::Glyph>& glyphs) {
+    const auto onLine = [&](const ShapedGlyph& glyph) {
+        return glyph.unit >= span.begin && glyph.unit < span.visibleEnd;
+    };
+    std::vector<LinePiece> pieces;
+    int highest = 0;
+    int lowestOdd = 255;
+    for (std::uint32_t r = 0; r < paragraph.runs.size(); ++r) {
+        const ShapedRun& run = paragraph.runs[r];
+        const auto begin = paragraph.glyphs.begin() + run.first;
+        if (std::none_of(begin, begin + run.count, onLine)) continue;
+        pieces.push_back({r, run.level});
+        highest = std::max(highest, static_cast<int>(run.level));
+        if (run.level % 2 == 1) lowestOdd = std::min(lowestOdd, static_cast<int>(run.level));
+    }
+    for (int level = highest; level >= lowestOdd; --level) {
+        for (std::size_t i = 0; i < pieces.size();) {
+            if (pieces[i].level < level) {
+                ++i;
+                continue;
+            }
+            std::size_t end = i;
+            while (end < pieces.size() && pieces[end].level >= level)
+                ++end;
+            std::reverse(pieces.begin() + static_cast<std::ptrdiff_t>(i),
+                         pieces.begin() + static_cast<std::ptrdiff_t>(end));
+            i = end;
+        }
+    }
+    float pen = 0.0f;
+    for (const LinePiece& piece : pieces) {
+        const ShapedRun& run = paragraph.runs[piece.run];
+        for (std::uint32_t g = run.first; g < run.first + run.count; ++g) {
+            const ShapedGlyph& glyph = paragraph.glyphs[g];
+            if (!onLine(glyph)) continue;
+            if (!glyph.space) glyphs.push_back({glyph.index, pen + glyph.x * size, glyph.y * size, glyph.font});
+            pen += glyph.advance * size + (glyph.advance != 0.0f ? letterSpacing : 0.0f);
+        }
+    }
 }
 } // namespace
 
 FontFace::FontFace(std::unique_ptr<FontData> data)
-    : _data(std::move(data)) {}
+    : _data(std::move(data))
+    , _shaper(std::make_unique<TextShaper>(std::vector<const FontData*>{_data.get()})) {}
 
 FontFace::~FontFace() = default;
 FontFace::FontFace(FontFace&&) noexcept = default;
@@ -162,19 +181,21 @@ FontFace FontFace::FromMemory(std::span<const std::byte> data) {
     return FontFace(std::make_unique<FontData>(std::move(bytes)));
 }
 
+std::vector<ShapedParagraph> FontFace::Shape(std::string_view text, float letterSpacing) const {
+    return _shaper->Shape(text, letterSpacing == 0.0f); // Letter spacing pulls ligatures apart, so it turns them off
+}
+
 Float2 FontFace::Measure(std::string_view text, float size, float letterSpacing) const {
     if (!(size > 0.0f) || !std::isfinite(size)) return {};
-    std::size_t lines = 1;
-    for (const char c : text)
-        lines += c == '\n' ? 1 : 0;
-    const float width = Widest(*_data, text, size, letterSpacing, false);
+    const auto paragraphs = Shape(text, letterSpacing);
+    const float width = Widest(paragraphs, size, letterSpacing, false);
     return {width > 0.0f ? width - letterSpacing : 0.0f,
-            LineHeightOf(*_data, size) * static_cast<float>(lines - 1) + size};
+            LineHeightOf(*_data, size) * static_cast<float>(paragraphs.size() - 1) + size};
 }
 
 float FontFace::FittedSize(std::string_view text, float size, float maxWidth, float letterSpacing) const {
     if (!(size > 0.0f) || !std::isfinite(size) || !(maxWidth > 0.0f)) return size;
-    const float widest = Widest(*_data, text, size, letterSpacing, false) - letterSpacing;
+    const float widest = Widest(Shape(text, letterSpacing), size, letterSpacing, false) - letterSpacing;
     return widest > maxWidth ? size * maxWidth / widest : size;
 }
 
@@ -183,18 +204,23 @@ TextBlock FontFace::Layout(std::string_view text, const TextStyle& style) const 
     block._font = _data->Id();
     float size = style.size;
     if (!(size > 0.0f) || !std::isfinite(size)) return block;
-    const bool wrap = style.wrap == TextWrap::Word;
+    const bool wrap = style.wrap == TextWrap::Word && style.maxWidth > 0.0f;
+    const auto paragraphs = Shape(text, style.letterSpacing);
     if (style.fit == TextFit::Shrink && style.maxWidth > 0.0f) {
-        const float widest = Widest(*_data, text, size, style.letterSpacing, wrap) - style.letterSpacing;
+        const float widest = Widest(paragraphs, size, style.letterSpacing, wrap) - style.letterSpacing;
         if (widest > style.maxWidth) size *= style.maxWidth / widest;
     }
     const float lineHeight = style.lineHeight > 0.0f ? style.lineHeight * size / style.size
                                                      : LineHeightOf(*_data, size) * std::max(style.lineSpacing, 0.0f);
-    LineBuilder builder(*_data, size, style.letterSpacing, lineHeight, style.maxWidth, wrap, block._glyphs,
-                        block._lines);
-    for (std::size_t at = 0; at < text.size();)
-        builder.Add(NextCodepoint(text, at));
-    builder.Finish();
+    float top = 0.0f;
+    for (const ShapedParagraph& paragraph : paragraphs) {
+        for (const LineSpan& span : BreakLines(paragraph, size, style.letterSpacing, style.maxWidth, wrap)) {
+            const auto first = static_cast<std::uint32_t>(block._glyphs.size());
+            PlaceLine(paragraph, span, size, style.letterSpacing, block._glyphs);
+            block._lines.push_back({first, static_cast<std::uint32_t>(block._glyphs.size()) - first, span.width, top});
+            top += lineHeight;
+        }
+    }
     block._size = size;
     block._ascent = _data->Ascent() * _data->Scale(size);
     float width = 0.0f;
@@ -208,6 +234,24 @@ float FontFace::LineHeight(float size) const { return LineHeightOf(*_data, size)
 
 float FontFace::Ascent(float size) const { return _data->Ascent() * _data->Scale(size); }
 
-bool FontFace::HasCharacter(char32_t codepoint) const { return _data->Has(codepoint); }
+bool FontFace::HasCharacter(char32_t codepoint) const {
+    return _data->Has(codepoint) || std::any_of(_fallbacks.begin(), _fallbacks.end(), [&](const FontFace& fallback) {
+               return fallback._data->Has(codepoint);
+           });
+}
+
+void FontFace::AddFallback(FontFace fallback) {
+    if (!fallback._data) throw std::invalid_argument("FontFace::AddFallback: the fallback was moved from");
+    std::vector<FontFace> nested = std::move(fallback._fallbacks);
+    fallback._fallbacks.clear();
+    fallback._shaper.reset();
+    _fallbacks.push_back(std::move(fallback));
+    for (FontFace& font : nested)
+        _fallbacks.push_back(std::move(font));
+    std::vector<const FontData*> fonts{_data.get()};
+    for (const FontFace& font : _fallbacks)
+        fonts.push_back(font._data.get());
+    _shaper = std::make_unique<TextShaper>(std::move(fonts));
+}
 
 std::uint32_t FontFace::Id() const { return _data->Id(); }

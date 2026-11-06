@@ -11,7 +11,8 @@ settings.assets = {settings.font};
 ```
 
 Glyphs are rasterized at their on-screen size when first needed. The full font character set is available; there is no
-authored codepoint list or preloaded size list. Missing characters use the font's fallback glyph.
+authored codepoint list or preloaded size list. Characters neither the font nor its [fallbacks](#other-scripts) have
+draw as `?`.
 
 ## Drawing and layout
 
@@ -30,6 +31,35 @@ Measure with `paint.Font().Measure(label, size)` or `FontFace::FittedSize`. Meas
 on the window size. `FontFace::Layout` returns an owned `TextBlock` for repeated drawing with `paint.Text(font, block,
 position, style)`. Rebuild a retained block when its text, font or layout changes; string-based Painter calls already
 use the renderer's layout cache. Effects are `TextStyle::glow`, `outline`, `shadow` and `emission`.
+
+## Shaping
+
+Text is shaped before it is laid out (kb_text_shape, private to the engine): kerning and ligatures come from the font,
+Arabic letters join, marks sit on their letters, right-to-left words read right to left, and lines break where Unicode
+allows: at spaces, after hyphens, and between Chinese or Japanese characters, which need no spaces. A word longer than
+the line breaks between characters. `letterSpacing` other than 0 turns optional ligatures off, so spaced letters stay
+apart. A `TextBlock` lists each line's glyphs left to right as drawn; `Glyph::y` lifts or lowers a mark, and
+`Glyph::font` names the fallback it came from.
+
+## Other scripts
+
+The starter font is Latin, Greek and Cyrillic. For another script, add a font that has it as a fallback: each character
+takes the first font that has it, at the same em size, and lines keep the main font's height.
+
+```cpp
+settings.font = "Fonts/MyFont.ttf";
+settings.fontFallbacks = {"Fonts/NotoSansArabic-Regular.ttf"};
+settings.assets = {settings.font, settings.fontFallbacks[0]};
+// Or on a font of your own, before it lays out text:
+font.AddFallback(FontFace::FromFile(path));
+```
+
+Right-to-left text is not aligned to the right by itself: an Arabic or Hebrew screen sets `TextAlign::Right`. Limits:
+
+- Directions follow a simplified bidirectional algorithm: no explicit direction marks (U+202A..U+202E, U+2066..U+2069),
+  and a number right after right-to-left words inside left-to-right text stays on their right.
+- Thai, Lao, Khmer and Myanmar have no word dictionary: they wrap between characters, never inside one.
+- Horizontal text only. Load only fonts you ship: the shaper is not hardened against malicious font files.
 
 ## Localization
 

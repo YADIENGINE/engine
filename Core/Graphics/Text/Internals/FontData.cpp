@@ -1,4 +1,5 @@
 #include "Graphics/Text/Internals/FontData.h"
+#include <kb_text_shape.h>
 #include <atomic>
 #include <cmath>
 #include <cstring>
@@ -27,6 +28,8 @@ std::atomic<std::uint32_t>& NextFontId() {
 
 struct FontData::Info {
     stbtt_fontinfo font{};
+    kbts_font shaping{};
+    ~Info() { kbts_FreeFont(&shaping); }
 };
 
 FontData::FontData(std::vector<unsigned char> bytes)
@@ -36,6 +39,8 @@ FontData::FontData(std::vector<unsigned char> bytes)
     const int offset = _bytes.empty() ? -1 : stbtt_GetFontOffsetForIndex(_bytes.data(), 0);
     if (offset < 0 || stbtt_InitFont(&_info->font, _bytes.data(), offset) == 0)
         throw std::runtime_error("Not a usable TrueType / OpenType font");
+    _info->shaping = kbts_FontFromMemory(_bytes.data(), static_cast<int>(_bytes.size()), 0, nullptr, nullptr);
+    if (!kbts_FontIsValid(&_info->shaping)) throw std::runtime_error("Font tables could not be read for shaping");
     int ascent = 0;
     int descent = 0;
     int lineGap = 0;
@@ -44,6 +49,7 @@ FontData::FontData(std::vector<unsigned char> bytes)
     _ascent = static_cast<float>(ascent);
     _descent = static_cast<float>(descent);
     _lineGap = static_cast<float>(lineGap);
+    _emHeight = (_ascent - _descent) * stbtt_ScaleForMappingEmToPixels(&_info->font, 1.0f);
     _fallback = stbtt_FindGlyphIndex(&_info->font, '?');
     _ascii.resize(AsciiCount);
     for (int codepoint = 0; codepoint < AsciiCount; ++codepoint) {
@@ -71,9 +77,7 @@ float FontData::Advance(int glyph) const {
     return static_cast<float>(advance);
 }
 
-float FontData::Kerning(int left, int right) const {
-    return static_cast<float>(stbtt_GetGlyphKernAdvance(&_info->font, left, right));
-}
+kbts_font& FontData::Shaping() const { return _info->shaping; }
 
 GlyphRaster FontData::Rasterize(int glyph, float pixelSize) const {
     GlyphRaster raster;

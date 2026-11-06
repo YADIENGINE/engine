@@ -602,6 +602,27 @@ behind `Utilities/Reflection.h`. No field lists: `PoseFields`, `PoseField` and `
 
 Left out: a `Fields` macro of our own (repeats every name), private-member reflection, C++26 reflection (PFR moves to it).
 
+### D48. Text shaping: kb_text_shape
+Usage: [Text](../Graphics/Text.md#shaping).
+
+`FontFace` shapes text with kb_text_shape (one C header, zlib) before laying it out; stb_truetype stays for rasterizing
+and metrics. kb lives in `EngineTextShape`, private to `EngineHeadless`; only `Graphics/Text/Internals` includes it.
+
+1. *Shape once per layout, at no size:* lengths are in units of the font's height, so `TextFit::Shrink` and every size
+   reuse one shaping.
+2. *Lines break at Unicode break opportunities, greedily, between graphemes for an over-long word;* spaces hang, as
+   before. Latin and Turkish layouts are unchanged except for the font's own ligatures.
+3. *Bidirectional order per line:* kb's run levels, reordered by rule L2; each run's glyphs come in drawn order.
+4. *Fallback fonts belong to the face:* `FontFace::AddFallback` (also `GameSettings::fontFallbacks`) owns them, so a
+   block can never outlive the font of a glyph. First font that has a character wins; lines keep the face's metrics.
+5. *A fallback is drawn with the face's em,* not its height: script fonts have tall ascents and would look small.
+6. *Letter spacing turns optional ligatures off.*
+7. *A character no font has is the face's `?`,* as before; zero-width ones vanish.
+8. *`TextBlock::Glyph` grew `y` and `font`;* `FontData::Kerning` went, kerning comes from shaping.
+9. *Honest limits:* simplified bidi, no Thai dictionary, horizontal only, no automatic right alignment.
+
+Left out: carets and selection (a cluster index per glyph), text direction in `TextStyle`, script fonts in the starter.
+
 ## Remaining v1 work
 
 [v1 finalization](v1finalization.md).

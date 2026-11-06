@@ -124,66 +124,75 @@ Float2 Painter::Text(const FontFace& font, const TextBlock& block, Float2 positi
     }
     if (!ValidWidth(list, style.outline.width, "Text outline width must not be negative")) return block.Extent();
     if (block.Glyphs().empty() || !Finite(position)) return block.Extent();
-    const FontData& data = FontAccess::Data(font);
     GlyphCache& glyphs = context.text->glyphs;
     const Affine2& transform = list.State().transform;
     const float size = block.Size();
     const float pixels = size * list.PixelScale();
-    const int raster = GlyphCache::RasterSize(pixels);
-    const float unit = size / static_cast<float>(raster); // Drawing units per raster pixel
-    const bool snap = raster == static_cast<int>(std::lround(pixels)) && transform.AxisAligned() &&
-                      std::abs(transform.a - transform.d) < 1e-4f;
+    const bool square = transform.AxisAligned() && std::abs(transform.a - transform.d) < 1e-4f;
     const std::uint8_t emission = EmissionByte(style.emission);
-    const float distanceUnit = size / static_cast<float>(GlyphCache::DistanceSize);
     const float distanceReach = static_cast<float>(GlyphCache::DistancePadding);
 
-    // Calls 'draw(glyph index, pen on the baseline)' for every glyph.
+    // Calls 'draw(its font, glyph index, pen on the baseline, size it is drawn at)' for every glyph. A fallback font's
+    // glyphs are drawn at the size that gives them the block font's em.
     const auto each = [&](auto&& draw) {
         for (const TextBlock::Line& line : block.Lines()) {
             const float left = position.x + AlignOffset(style.align, line.width);
             const float baseline = position.y + line.top + block.Ascent();
             for (std::uint32_t i = 0; i < line.glyphCount; ++i) {
                 const TextBlock::Glyph& glyph = block.Glyphs()[line.firstGlyph + i];
-                draw(glyph.index, Float2{left + glyph.x, baseline});
+                const float scale = glyph.font == 0 ? 1.0f : FontAccess::SizeScale(font, glyph.font);
+                draw(FontAccess::Data(font, glyph.font), glyph.index, Float2{left + glyph.x, baseline + glyph.y},
+                     scale);
             }
         }
     };
     const auto coverage = [&](Float2 offset, const GlyphLook& look) {
-        each([&](int index, Float2 pen) {
+        each([&](const FontData& data, int index, Float2 pen, float scale) {
+            const int raster = GlyphCache::RasterSize(pixels * scale);
+            const float unit = size * scale / static_cast<float>(raster); // Drawing units per raster pixel
+            const bool snap = square && raster == static_cast<int>(std::lround(pixels * scale));
             const CachedGlyph& glyph = glyphs.Coverage(data, index, raster);
             if (glyph.empty) return;
             EmitGlyph(list, pen + offset + Float2{glyph.left, glyph.top} * unit,
                       Float2{glyph.width, glyph.height} * unit, glyph, look, snap);
         });
     };
-    const auto distance = [&](const GlyphLook& look) {
-        each([&](int index, Float2 pen) {
+    // 'look(distance unit)': halo widths are in distance-field pixels, which differ between fonts drawn at other sizes.
+    const auto distance = [&](auto&& look) {
+        each([&](const FontData& data, int index, Float2 pen, float scale) {
             const CachedGlyph& glyph = glyphs.Distance(data, index);
             if (glyph.empty) return;
+            const float distanceUnit = size * scale / static_cast<float>(GlyphCache::DistanceSize);
             EmitGlyph(list, pen + Float2{glyph.left, glyph.top} * distanceUnit,
-                      Float2{glyph.width, glyph.height} * distanceUnit, glyph, look, false);
+                      Float2{glyph.width, glyph.height} * distanceUnit, glyph, look(distanceUnit), false);
         });
     };
 
     if (style.shadow.color.a > 0)
         coverage(style.shadow.offset, {.color = list.Shade(style.shadow.color), .emission = 0});
     if (const auto glow = EffectiveGlow(list, style.glow, context.frame.quality)) {
-        distance({.kind = PaintKind::GlyphHalo,
-                  .mode = PaintMode::Halo,
-                  .color = list.Shade(glow->color, true, glow->strength),
-                  .shape0 = GlyphCache::DistanceScale,
-                  .style0 = std::min(glow->radius / distanceUnit, distanceReach),
-                  .emission = emission});
+        const auto color = list.Shade(glow->color, true, glow->strength);
+        distance([&](float distanceUnit) {
+            return GlyphLook{.kind = PaintKind::GlyphHalo,
+                             .mode = PaintMode::Halo,
+                             .color = color,
+                             .shape0 = GlyphCache::DistanceScale,
+                             .style0 = std::min(glow->radius / distanceUnit, distanceReach),
+                             .emission = emission};
+        });
     }
     if (style.outline.width > 0.0f && style.outline.color.a > 0) {
-        const float half = std::min(style.outline.width * 0.5f / distanceUnit, distanceReach * 0.5f);
-        distance({.kind = PaintKind::GlyphHalo,
-                  .mode = PaintMode::Stroke,
-                  .color = list.Shade(style.outline.color),
-                  .shape0 = GlyphCache::DistanceScale,
-                  .style0 = half,
-                  .style1 = half,
-                  .emission = emission});
+        const auto color = list.Shade(style.outline.color);
+        distance([&](float distanceUnit) {
+            const float half = std::min(style.outline.width * 0.5f / distanceUnit, distanceReach * 0.5f);
+            return GlyphLook{.kind = PaintKind::GlyphHalo,
+                             .mode = PaintMode::Stroke,
+                             .color = color,
+                             .shape0 = GlyphCache::DistanceScale,
+                             .style0 = half,
+                             .style1 = half,
+                             .emission = emission};
+        });
     }
     if (style.color.a > 0) coverage({}, {.color = list.Shade(style.color), .emission = emission});
     return block.Extent();

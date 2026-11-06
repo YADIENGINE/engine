@@ -67,6 +67,7 @@ engine_tests(EngineTests
         SimulationSceneTests.cpp
         TuningTests.cpp
         UiTransformTests.cpp
+        TextShapingTests.cpp
     LINKS EngineAssets EngineHeadless EngineStorage
 )
 # The real audio engine on no device (AudioOutput::Offline), which no other test executable links.
@@ -82,7 +83,8 @@ engine_add_tuning(EngineTests ROOT Tuning)
 target_compile_definitions(EngineTests PRIVATE
     ENGINE_TUNING_TEST_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Tuning/TestValues.tuning.json"
     ENGINE_TUNING_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/Tests/TuningCases"
-    ENGINE_TEST_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf")
+    ENGINE_TEST_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf"
+    ENGINE_TEST_SCRIPT_FONTS="${ENGINE_THIRD_PARTY_DIR}/NotoSansScripts")
 
 # Links only the physics target, so collision code that reaches drawing or audio fails to build here.
 engine_tests(EnginePhysicsTests

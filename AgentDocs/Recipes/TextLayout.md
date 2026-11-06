@@ -51,6 +51,6 @@ void RecipeTextView::Draw(Painter& paint) const {
 ```
 <!-- /recipe -->
 
-Pitfalls: TextBlock borrows its font identity: keep FontFace alive. Block layout wins over the size/wrapping in draw style. Text position is the top of the first line.
+Pitfalls: TextBlock borrows its font identity: keep FontFace alive. Block layout wins over the size/wrapping in draw style. Text position is the top of the first line. Arabic, Hebrew or Thai need a font that has them: add it with AddFallback or GameSettings::fontFallbacks, and align right-to-left screens with TextAlign::Right.
 
 Concept: `Docs/Graphics/Text.md#drawing-and-layout`.

@@ -60,6 +60,8 @@ AUDIO_PUBLIC_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|A
 # PFR is the one vendored library a public header includes; only the engine's own facade names it, so the rest of the
 # engine and every game see plain-struct reflection in engine words (Docs/Simulation.md#state).
 REFLECTION_LIBRARY_INCLUDE = re.compile(r'''^\s*#\s*include\s*[<"](?:pfr\.hpp|pfr/[^>"]*)[>"]''')
+# Text shaping stays behind Graphics/Text/Internals: FontFace and TextBlock are the API (Docs/Graphics/Text.md).
+SHAPING_LIBRARY_INCLUDE = re.compile(r'''^\s*#\s*include\s*[<"](?:[^>"/]*/)*kb_text_shape\.h[>"]''')
 PLATFORM_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:[^>"/]*/)*(raylib|raymath|rlgl)\.h[>"]')
 
 
@@ -124,6 +126,7 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
         audio_internal = source.is_relative_to(engine_root / CORE / "Audio" / "Internals")
         engine_code = source.is_relative_to(engine_root)
         reflection_facade = source == engine_root / CORE / "Utilities" / "Reflection.h"
+        text_internal = source.is_relative_to(engine_root / CORE / "Graphics" / "Text" / "Internals")
         for number, line in enumerate(lines, 1):
             if atmosphere and ATMOSPHERE_RULE.match(line):
                 where = source.relative_to(project_root).as_posix()
@@ -141,6 +144,10 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: includes "{line.strip()}"; use Utilities/Reflection.h, the only file'
                              ' that includes PFR')
+            if not text_internal and SHAPING_LIBRARY_INCLUDE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: includes "{line.strip()}"; text shaping stays in'
+                             ' Core/Graphics/Text/Internals')
             if audio and PLATFORM_INCLUDE.match(line):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Audio includes "{line.strip()}"; audio does not use raylib')

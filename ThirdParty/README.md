@@ -19,6 +19,8 @@ building (examples, documentation, tests) are omitted.
 | `Clipper2/` | 2.0.1 | https://github.com/AngusJohnson/Clipper2/archive/refs/tags/Clipper2_2.0.1.tar.gz | `EngineHeadless` Paint (private) | Yes |
 | `FastNoiseLite/` | 1.1.1 | https://github.com/Auburn/FastNoiseLite/archive/refs/tags/v1.1.1.tar.gz | `EngineNoise` (private) | Yes |
 | `pfr/` | 2.3.2 | https://github.com/apolukhin/pfr_non_boost/archive/refs/tags/2.3.2.tar.gz | `EngineReflection`: `Utilities/Reflection.h` (header only, public) | Yes |
+| `kb/` | 2.31 (5474b3c) | https://github.com/JimmyLefevre/kb/archive/5474b3cebe3c5fc52fa2ab35e71e20fe9a3dbec2.tar.gz | `EngineTextShape`: Graphics/Text shaping (private) | Yes |
+| `NotoSansScripts/` | Arabic 2.009, Hebrew 3.000, Thai 2.000 | https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf | Text shaping tests (OFL 1.1) | No |
 | `NotoSans/` | 2.008 | https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSans | Painter starter game/worker font (OFL 1.1) | Starter only |
 | `IBMPlex/` | Sans 3.005, Mono 2.004 | https://github.com/IBM/plex/releases (`@ibm/plex-sans@1.1.0`, `@ibm/plex-mono@1.1.0`) | ToolUi fonts (OFL 1.1) | No |
 
@@ -29,7 +31,8 @@ come ready in the release package), and `LICENSE`; the whole Box2D source tree, 
 miniaudio `miniaudio.h`, `miniaudio.c`, `extras/stb_vorbis.c` and `LICENSE`. earcut `include/` and `LICENSE`; Clipper2 `CPP/Clipper2Lib/` and `LICENSE`, of which
 `clipper.triangulation.cpp` is not built (Paint triangulates with earcut). FastNoiseLite `Cpp/FastNoiseLite.h` (kept at the
 folder's root) and `LICENSE`. PFR (the standalone `pfr_non_boost`) `include/` and `LICENSE_1_0.txt`; it is the one library a public
-header includes, and only `Core/Utilities/Reflection.h` may (`check` enforces it). raylib's own copy of miniaudio, inside
+header includes, and only `Core/Utilities/Reflection.h` may (`check` enforces it). kb `kb_text_shape.h` and `LICENSE`, compiled once in
+`Core/Graphics/Text/Internals/TextShapeLibrary.c`; only `Graphics/Text/Internals` may include it. raylib's own copy of miniaudio, inside
 `raudio.c`, is left out of the build by `CMakeLists.txt`, since two copies cannot link; the file itself stays, unmodified.
 
 ## License notice

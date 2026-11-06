@@ -41,6 +41,13 @@
       "license": "FastNoiseLite/LICENSE"
     },
     {
+      "name": "kb_text_shape",
+      "version": "2.31",
+      "text": "Notices/kb-text-shape.txt",
+      "pin": { "file": "kb/kb_text_shape.h", "contains": "kb_text_shape - v{version} - " },
+      "license": "kb/LICENSE"
+    },
+    {
       "name": "miniaudio",
       "version": "0.11.26",
       "text": "Notices/miniaudio.txt",

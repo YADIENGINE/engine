@@ -22,7 +22,11 @@ struct GameSettings {
     // bloom layer only while bloom is asked for (here, or by the previous frame).
     PostSettings post;
     std::filesystem::path applicationId = "Game";
+    // The font Painter draws with when given none (relative to the assets). List it in `assets` too.
     std::filesystem::path font;
+    // Fonts for characters `font` lacks, first match wins: another script (Arabic, Hebrew, Thai...) or symbols. List
+    // them in `assets` too. See FontFace::AddFallback.
+    std::vector<std::filesystem::path> fontFallbacks;
     std::vector<std::filesystem::path> assets;
     AudioCatalog audio;
     // The game's typed sound tables, played through Game::Sounds(); see Docs/Audio.md. `audio` keeps music and any
