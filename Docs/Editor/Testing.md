@@ -29,7 +29,11 @@ only the changed section.
    Scenes and Inspector/tuning match every search word in any order. With Favorites / Recent or Modified active,
    clear text with the search's x: the scope stays active and typing continues in the field. Reset filters clears
    text and scope together; empty results identify the active scope. Assets labels its all-folders search, matches
-   across project and engine roots, and clearing returns to the current folder. Palette arrows / Enter / Escape
+   across project and engine roots; clearing text preserves the selected type and Reset filters returns to the current
+   folder. Check type filtering, grouped graphic/tuning inspection, and an uncatalogued sound's preview. Breadcrumb
+   ancestors and their ellipsis menu navigate without stopping the scene, and Back restores the previous location.
+   Engine locations say Read-only; tile type/action and build/catalog/read-only states remain readable at small tile
+   sizes and 150% scale. Palette arrows / Enter / Escape
    retain their existing behavior.
 4. Inspector Search / Modified counter, `?` description, changed-value marker, Pending / rejection, and single-field
    reset; up to four choices that fit share a row with their label, more use full width. Narrowing the panel reduces columns for three-way choices such as Phase; normal

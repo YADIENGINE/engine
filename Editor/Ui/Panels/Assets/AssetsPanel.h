@@ -18,6 +18,7 @@ public:
     void Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions);
 
 private:
+    enum class TypeFilter { All, Graphic, Sound, Tuning, Code, Font, Other };
     // Asset catalog entries by registration file, in catalog order.
     using GraphicScenes = std::map<std::string, std::vector<const SceneDefinition*>>;
     struct NameDialog {
@@ -29,6 +30,10 @@ private:
         bool focus = false;
     };
     void Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, const AssetNode& folder);
+    void Breadcrumbs(const EditorSnapshot& snapshot, const std::vector<const AssetNode*>& trail);
+    void Filters();
+    void ResetFilters();
+    [[nodiscard]] bool MatchesType(const AssetNode& node) const;
     // The node's path as `python Engine asset` takes it; nullopt outside the project's graphics.
     [[nodiscard]] std::optional<std::string> GraphicsRelative(const AssetNode& node) const;
     void CreateItems(const AssetNode& folder);
@@ -39,7 +44,7 @@ private:
                   const GraphicScenes& scenes);
     void Grid(const EditorSnapshot& snapshot, const EditorUiActions& actions, const AssetNode& folder,
               const GraphicScenes& scenes);
-    void Footer();
+    void Footer(bool readOnly);
     void NodeTile(const AssetNode& node, const EditorSnapshot& snapshot, const EditorUiActions& actions,
                   const GraphicScenes& scenes);
     void SceneTile(const SceneDefinition& scene, const std::string& label, const AssetNode& node,
@@ -61,6 +66,7 @@ private:
     bool _revealFolder = true;       // Open the tree down to the shown folder
     std::array<char, 256> _search{};
     bool _focusSearch = false;
+    TypeFilter _typeFilter = TypeFilter::All;
     float _tileSize = 92;
     int _tileIndex = 0;
     int _tileColumns = 1;

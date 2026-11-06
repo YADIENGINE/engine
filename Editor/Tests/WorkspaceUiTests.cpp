@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <extras/IconsFontAwesome6.h>
 #include <algorithm>
 #include <fstream>
 #include <imgui.h>
@@ -11,6 +12,7 @@
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
 #include "Editor/Ui/Panels/Catalog/CatalogPanel.h"
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
+#include "Editor/Internals/Session/GraphicAssetCatalog.h"
 #include "Editor/Ui/Widgets/EditorWidgets.h"
 #include "Editor/Ui/Workspace/EditorWorkspace.h"
 #include "ToolUi/ToolTheme.h"
@@ -1090,14 +1092,17 @@ TEST_CASE("Editor.Search.ClearTextKeepsScopeAndResetRestoresAll", "[engine-edito
     CHECK(edits == 0);
 }
 
-TEST_CASE("Editor.Assets.SearchCoversBothRootsAndClearReturnsToFolder", "[engine-editor]") {
+TEST_CASE("Editor.Assets.SearchFiltersBreadcrumbsAndTileActions", "[engine-editor]") {
     TempDirectory temp;
     const auto engine = temp.Path() / "Engine";
     const auto assets = temp.Path() / "Game" / "Assets";
     std::filesystem::create_directories(engine / "Assets" / "Audio");
     std::filesystem::create_directories(assets / "Graphics");
+    std::filesystem::create_directories(assets / "Audio");
     std::ofstream(engine / "Assets" / "Audio" / "Glow Red.wav") << "x";
     std::ofstream(assets / "Graphics" / "Glow Red.asset.cpp") << "x";
+    std::ofstream(assets / "Graphics" / "Glow Red.tuning.json") << "{}";
+    std::ofstream(assets / "Audio" / "Uncatalogued.wav") << "x";
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
                                                                                   ImGui::DestroyContext);
     auto& io = ImGui::GetIO();
@@ -1111,14 +1116,30 @@ TEST_CASE("Editor.Assets.SearchCoversBothRootsAndClearReturnsToFolder", "[engine
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     io.Fonts->SetTexID(ImTextureID{1});
     ApplyToolTheme();
-    const std::vector<SceneDefinition> catalog;
+    SceneDefinition graphic;
+    graphic.id = "myproject.glow";
+    graphic.name = "Glow Red";
+    graphic.asset = SceneAssetInfo{AssetPathKey(assets / "Graphics" / "Glow Red.asset.cpp"), "Glow Red", {}, {}};
+    const std::vector catalog{graphic};
     const SceneParameters parameters;
     const EditorDiagnostics diagnostics;
     const std::string status;
-    EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};
+    EditorSnapshot snapshot{catalog, &catalog.front(), parameters, {}, diagnostics, {}, EditorPhase::Ready, status};
+    AudioUsage usage;
+    usage.reported = true;
+    snapshot.audioUsage = &usage;
     AssetsPanel panel;
     panel.SetRoots(engine, assets);
-    ImGuiID search = 0;
+    int commands = 0;
+    std::filesystem::path inspected;
+    std::filesystem::path previewed;
+    EditorUiActions actions;
+    actions.command = [&](EditorCommand) { ++commands; };
+    actions.select = [&](const std::string&) { ++commands; };
+    actions.inspectTuning = [&](const std::filesystem::path& file) { inspected = file; };
+    actions.previewAudio = [&](const AudioPreviewRequest& request) { previewed = request.file; };
+    ImGuiID search = 0, projectCrumb = 0, back = 0, tuningTile = 0, soundTile = 0, engineRow = 0;
+    ImVec2 typePosition;
     ImVec2 clearPosition;
     const auto frame = [&] {
         ImGui::NewFrame();
@@ -1126,13 +1147,29 @@ TEST_CASE("Editor.Assets.SearchCoversBothRootsAndClearReturnsToFolder", "[engine
         ImGui::SetNextWindowSize(io.DisplaySize);
         ImGui::Begin("Assets");
         ImGui::LogToBuffer();
-        panel.Draw(snapshot, {});
+        panel.Draw(snapshot, actions);
         const std::string text = ImGui::GetCurrentContext()->LogBuffer.c_str();
         ImGui::LogFinish();
         auto* window = ImGui::GetCurrentWindow();
         for (auto* child : window->DC.ChildWindows)
             if (child->ChildId == window->GetID("asset-toolbar")) {
                 search = child->GetID("##asset-search");
+                back = ImHashStr(ICON_FA_ARROW_LEFT, 0, child->GetID("back"));
+            } else if (child->ChildId == window->GetID("asset-content")) {
+                typePosition = {child->WorkRect.Min.x + 16, child->WorkRect.Min.y + ImGui::GetFrameHeightWithSpacing() +
+                                                                ImGui::GetFrameHeight() * 0.5f};
+                const int root = 0;
+                const auto crumbSeed = ImHashData(&root, sizeof(root), child->GetID("asset-location"));
+                projectCrumb = ImHashStr("###folder", 0, crumbSeed);
+                for (auto* grid : child->DC.ChildWindows)
+                    if (grid->ChildId == child->GetID("asset-grid")) {
+                        tuningTile = ImHashStr(
+                            "##tile", 0, grid->GetID(AssetPathKey(assets / "Graphics" / "Glow Red.asset.cpp").c_str()));
+                        soundTile = ImHashStr("##tile", 0,
+                                              grid->GetID(AssetPathKey(assets / "Audio" / "Uncatalogued.wav").c_str()));
+                    }
+            } else if (child->ChildId == window->GetID("asset-tree")) {
+                engineRow = ImHashStr("##row", 0, child->GetID(AssetPathKey(engine / "Assets").c_str()));
             }
         const auto& gui = *ImGui::GetCurrentContext();
         if (gui.NavWindow && gui.NavId == search) {
@@ -1144,6 +1181,23 @@ TEST_CASE("Editor.Assets.SearchCoversBothRootsAndClearReturnsToFolder", "[engine
         ImGui::End();
         ImGui::Render();
         return text;
+    };
+    const auto click = [&](ImVec2 position) {
+        io.AddMousePosEvent(position.x, position.y);
+        (void)frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+        (void)frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+        (void)frame();
+    };
+    const auto type = [&](const char* label) {
+        click(typePosition);
+        REQUIRE_FALSE(ImGui::GetCurrentContext()->OpenPopupStack.empty());
+        auto* popup = ImGui::GetCurrentContext()->OpenPopupStack.back().Window;
+        REQUIRE(popup);
+        ImGui::ActivateItemByID(popup->GetID(label));
+        (void)frame();
+        return frame();
     };
     CHECK(frame().find("1 item") != std::string::npos);
     REQUIRE(search != 0);
@@ -1163,4 +1217,25 @@ TEST_CASE("Editor.Assets.SearchCoversBothRootsAndClearReturnsToFolder", "[engine
     const auto folder = frame();
     CHECK(folder.find("Searching all asset folders") == std::string::npos);
     CHECK(folder.find("1 item") != std::string::npos);
+    CHECK(type("Sounds").find("2 items") != std::string::npos);
+    ImGui::ActivateItemByID(soundTile);
+    (void)frame();
+    CHECK(previewed == assets / "Audio" / "Uncatalogued.wav"); // An uncatalogued sound still previews.
+    CHECK(type("Tuning").find("1 item") != std::string::npos);
+    ImGui::ActivateItemByID(tuningTile);
+    (void)frame();
+    CHECK(inspected ==
+          assets / "Graphics" / "Glow Red.tuning.json"); // A built graphic's grouped tuning opens Inspector.
+    ImGui::ActivateItemByID(projectCrumb);
+    (void)frame();
+    const auto project = frame();
+    CHECK(project.find("Searching all asset folders") == std::string::npos);
+    CHECK(project.find("2 items") != std::string::npos); // Project's Audio and Graphics folders.
+    ImGui::ActivateItemByID(back);
+    (void)frame();
+    CHECK(frame().find("1 item") != std::string::npos); // Back restores Graphics without stopping the scene.
+    ImGui::ActivateItemByID(engineRow);
+    (void)frame();
+    CHECK(frame().find("Read-only") != std::string::npos);
+    CHECK(commands == 0);
 }

@@ -85,7 +85,16 @@ space-separated word in any order, ignoring case; panel result ordering is prese
   includes. The Engine root is read-only. A graphic not built yet is dimmed; Build & Refresh also renews thumbnails.
   Registering assets: [Api](Api.md#graphic-assets).
   Search covers all project and engine asset folders; **Searching all asset folders** appears above its results.
-  Clearing search returns to the current folder and restores typing focus (Ctrl+F focuses the asset search).
+  The **All types** dropdown filters Graphics, Sounds, Tuning, Code, Fonts or Other files across both roots, even with
+  no search text. The search's x clears text and restores typing focus while keeping the type; **Reset filters**
+  clears both and returns to the current folder (Ctrl+F focuses the asset search).
+  Click the **Project / Graphics / ...** breadcrumb to browse ancestors; long paths keep intermediate folders in an
+  ellipsis menu, with full paths in tooltips. Breadcrumbs, tree navigation and Back clear search/type filters.
+  Tiles show their type/action and **Needs build**, **Not in catalog** or **Read-only** where applicable. Names stay
+  readable even when an icon is dimmed; an uncatalogued sound still previews. **Menu** means right-click for source or
+  Explorer actions. The Engine root and current engine folder explicitly say **Read-only**. In the Tuning filter,
+  clicking a project's tuning file grouped with a graphic opens Inspector; engine tuning opens its source in the code
+  editor. The normal graphic, folder/set and sound click actions remain available.
 - **Audio Preview:** the sound picked in Assets, beside it in the bottom dock by default. It shows the file name,
   folder, length, format, size, sample rate and channels; whether the audio catalog uses it, as `Effect <name>` or
   `Music <name>`, or `#<id>` when the catalog entry has no `name`; and a waveform (a plain bar until it has been decoded
