@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 #include "Editor/Internals/Protocol/WorkerProtocol.h"
+#include "Input/InputMap.h"
 #include "Tuning/TuningFile.h"
 
 struct TuningFileProblem {
@@ -15,7 +16,12 @@ struct TuningFileProblem {
     std::string text;
 };
 
+// Tuning: X.tuning.json (Docs/Tuning.md). Settings: the project's Game/Game.settings.json against the engine's schema
+// (Docs/ProjectSettings.md). InputMap: X.input.json (Docs/InputMap.md).
+enum class TuningFileKind { Tuning, Settings, InputMap };
+
 struct TuningFileState {
+    TuningFileKind kind = TuningFileKind::Tuning;
     std::filesystem::path source; // Absolute
     std::string label;            // From the folder all tuning files share: "Effects/Glow.tuning.json"
     std::string relative;         // From the project folder, '/'-separated: "Game/Effects/Glow.tuning.json"
@@ -27,6 +33,13 @@ struct TuningFileState {
     // The fields at git HEAD, which Modified and Revert compare with. Empty: unknown yet, not committed, or no git.
     std::optional<std::vector<TuningField>> committed;
     std::optional<std::filesystem::file_time_type> written;
+    // Settings: whether the file exists (the first edit writes it), and the names it sets, now and at git HEAD.
+    bool exists = true;
+    std::vector<std::string> set;
+    std::optional<std::vector<std::string>> committedSet;
+    // InputMap: the last valid map, and the map at git HEAD.
+    std::optional<InputMapDocument> input;
+    std::optional<InputMapDocument> committedInput;
 
     [[nodiscard]] const TuningField* Field(std::string_view name) const;
     [[nodiscard]] const TuningField* CommittedField(std::string_view name) const;
@@ -50,6 +63,8 @@ public:
     void Poll();
     [[nodiscard]] const std::vector<TuningFileState>& Files() const { return _files; }
     [[nodiscard]] const TuningFileState* Find(const std::filesystem::path& source) const;
+    // The project's settings file; null before the project is configured.
+    [[nodiscard]] const TuningFileState* Settings() const;
 
     // Edits. Empty text: written (or nothing to change); otherwise why the file was left alone (invalid on disk, out
     // of bounds, wrong type).
@@ -59,6 +74,11 @@ public:
                                      TuningResize resize);
     // Writes a field's committed values back; its shape must be the committed one.
     [[nodiscard]] std::string Revert(const std::filesystem::path& source, const std::string& field);
+    // Settings: removes the value from the file, so the engine's default applies.
+    [[nodiscard]] std::string ResetToDefault(const std::filesystem::path& source, const std::string& field);
+    // InputMap: one player's keys for one button; an empty list leaves the button without keys.
+    [[nodiscard]] std::string SetKeys(const std::filesystem::path& source, std::size_t player, const std::string& button,
+                                      const std::vector<std::string>& keys);
     [[nodiscard]] bool CanUndo() const { return !_undo.empty(); }
     [[nodiscard]] bool CanRedo() const { return !_redo.empty(); }
     [[nodiscard]] std::optional<TuningHistoryStep> Undo();

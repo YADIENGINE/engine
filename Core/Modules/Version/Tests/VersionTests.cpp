@@ -132,3 +132,14 @@ TEST_CASE("Version.Notes.ValidateAndSelectNewerVersions", "[version]") {
     CHECK(GameVersion{1, 2, 3} < GameVersion{1, 10, 0});
     CHECK(GameVersion{1, 9, 9} < GameVersion{2, 0, 0});
 }
+
+TEST_CASE("Version.ParseReadsTheProjectSettingsSpelling", "[version]") {
+    CHECK(Version::Parse("1.2.3") == GameVersion{1, 2, 3});
+    CHECK(Version::Parse("2") == GameVersion{2, 0, 0});
+    CHECK(Version::Parse("1.2.3.4") == GameVersion{1, 2, 3});
+    CHECK_THROWS_AS(Version::Parse(""), std::invalid_argument);
+    CHECK_THROWS_AS(Version::Parse("1..2"), std::invalid_argument);
+    CHECK_THROWS_AS(Version::Parse("1.2.3.4.5"), std::invalid_argument);
+    CHECK_THROWS_AS(Version::Parse("1.1000"), std::invalid_argument);
+    CHECK_THROWS_AS(Version::Parse("v1"), std::invalid_argument);
+}

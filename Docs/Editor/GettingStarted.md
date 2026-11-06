@@ -96,10 +96,8 @@ factory; it does not draw or load assets.
 #include "Editor/Worker/WorkerHost.h"
 
 int main(int argc, char** argv) {
-    GameSettings settings;
-    settings.applicationId = "MyProjectWorker";
-    settings.canvasWidth = 1280;
-    settings.canvasHeight = 720;
+    GameSettings settings; // Canvas and font from Game/Game.settings.json
+    settings.project.applicationId = "MyProjectWorker";
     settings.persistentOptions = false;
     return RunEditorWorker(
         argc, argv, [](SceneRegistry& registry) { registry.Add(FirstSceneDefinition()); }, settings);
@@ -115,7 +113,7 @@ A scene sees the game's theme, `uiLooks`, sound tables and `uiSounds` only if th
 
 ```cpp
 GameSettings settings = MyProjectSettings(); // The game's main calls the same one
-settings.applicationId = "MyProjectWorker";
+settings.project.applicationId = "MyProjectWorker";
 settings.persistentOptions = false;
 ```
 

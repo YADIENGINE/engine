@@ -6,18 +6,11 @@
 #include "Scenes/PlayScene.h"
 
 namespace {
-constexpr int CanvasWidth = 1280;
-constexpr int CanvasHeight = 720;
 constexpr std::uint64_t Seed = 1;
 
+// Title, canvas and font come from Game/Game.settings.json.
 GameSettings Settings() {
     GameSettings settings;
-    settings.applicationId = "Arena";
-    settings.window.title = "Arena";
-    settings.canvasWidth = CanvasWidth;
-    settings.canvasHeight = CanvasHeight;
-    settings.font = "Fonts/Arena.ttf";
-    settings.assets = {settings.font};
     return settings;
 }
 

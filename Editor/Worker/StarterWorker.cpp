@@ -41,11 +41,10 @@ SceneDefinition StarterDefinition() {
 
 int main(int argc, char** argv) {
     GameSettings settings;
-    settings.applicationId = ENGINE_NAME "StarterWorker";
-    settings.canvasWidth = CanvasWidth;
-    settings.canvasHeight = CanvasHeight;
+    settings.project.applicationId = ENGINE_NAME "StarterWorker";
+    settings.project.canvasWidth = CanvasWidth;
+    settings.project.canvasHeight = CanvasHeight;
     settings.persistentOptions = false;
-    settings.font = "Fonts/Starter.ttf";
-    settings.assets = {settings.font};
+    settings.project.font = "Fonts/Starter.ttf";
     return RunEditorWorker(argc, argv, [](SceneRegistry& registry) { registry.Add(StarterDefinition()); }, settings);
 }

@@ -699,3 +699,42 @@ global `rand()`.
 6. *Weather that fills the view stays `DriftField`;* emitters are for local sources.
 
 Left out: sprite sheets and frame animation, collision, attractors, GPU particles, custom drawing for streams.
+
+### D51. Project settings
+Usage: [Project settings](../ProjectSettings.md).
+
+The editor's first lasting edits outside tuning: title, window, canvas, font and identity move from `GameSettings` code
+to `Game/Game.settings.json`, edited under the new **Project** menu.
+
+1. *The schema is the engine's, the file holds values only:* `Core/Runtime/ProjectSettings.schema.json` (tuning syntax,
+   `value` = default) generates the committed `ProjectSettings.h`; a project's file lists only what differs, so an
+   engine can change a default or a bound without touching projects.
+2. *One source:* the fields left `GameSettings` for `GameSettings::project`, without a shim. Hosts (worker, tools, tests)
+   may still write them; games do not.
+3. *Read at start, not live:* window and canvas cannot change under a running game, so there is no `apply` mode and no
+   preview. Development builds reread the file at start; Release compiles it through a generated `.cpp` per game and
+   worker target, which runs before `main` and works with a prebuilt engine.
+4. *Tuning machinery reused, live side untouched:* the same parser, Inspector widgets, undo and git comparison. `text`
+   and `path` exist only in schemas, since tuning values are `constexpr` and patched in place.
+5. *The exe carries the identity:* a generated `.rc` gives `GLFW_ICON` and VERSIONINFO; the version also feeds
+   `Version::Parse`.
+6. *A new application id asks first:* it moves every player's options and saves.
+
+Left out: an apply-live mode, lists in schemas, quality profiles, localization, plugin switches, a single C++
+generator (the Python and C++ rules stay twinned by shared cases).
+
+### D52. Input map
+Usage: [Input map](../InputMap.md).
+
+`X.input.json` names buttons and axes once and gives each player's default keys; it replaces the hand-kept pair of an
+enum and `SimulationSettings::buttons`, which drifted silently when one changed.
+
+1. *Buttons and axes are structure, keys are values:* the lists generate `XInput::Button` / `Axis` and their names
+   (`DeclareInput`); keys are read from the file when a scene binds the map in development, compiled in Release.
+2. *Key names, not codes:* the header holds names, so simulation code that includes it never reaches `Input/`;
+   `InputBindings::BindMap` resolves them. A test keeps the C++ name table in the enum's order.
+3. *Its own small format,* not a tuning table: a button has any number of keys per player.
+4. *The editor edits keys only:* a click removes one, `+` waits for the next key. Buttons change in the file and need a
+   build.
+
+Left out: gamepads, an axis from a key pair, player rebinding (N8), a collision-layer matrix (D27 keeps no global one).

@@ -13,8 +13,8 @@
     },
     {
       "file": "Game/ArenaGame.cpp",
-      "old": "    settings.assets = {settings.font};\n",
-      "new": "    settings.assets = {settings.font};\n    settings.sounds = ArenaSfxTable;\n"
+      "old": "    GameSettings settings;\n",
+      "new": "    GameSettings settings;\n    settings.sounds = ArenaSfxTable;\n"
     },
     {
       "file": "Game/ArenaGame.cpp",

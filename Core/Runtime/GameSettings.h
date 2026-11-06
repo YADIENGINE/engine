@@ -2,31 +2,30 @@
 #include <filesystem>
 #include <vector>
 #include "Graphics/Post/PostSettings.h"
-#include "Graphics/Render/WindowSettings.h"
 #include "Audio/AudioSystem.h"
 #include "Audio/SoundTables.h"
 #include "Modules/Persistence/Persistence.h"
 #include "Graphics/Style/PlainTheme.h"
+#include "Runtime/ProjectSettingsStore.h"
 #include "Ui/Kernel/UiLooks.h"
 #include "Ui/Sound/UiSounds.h"
-#include "Utilities/Color4.h"
 
+// What a game starts with. Title, window, canvas, font and identity come from the project's Game/Game.settings.json
+// (`project`, Docs/ProjectSettings.md); the rest is code.
 struct GameSettings {
-    WindowSettings window;
-    int canvasWidth = 1280;
-    int canvasHeight = 720;
-    Color4 background{0, 0, 0, 255};
-    Color4 letterbox{0, 0, 0, 255};
-    bool smoothCanvas = true;
+    // Edit Game/Game.settings.json (in the editor: Project > Project settings), not these: the file is their only
+    // source. Engine hosts (the editor's worker, tools, tests) change them here.
+    ProjectSettings project = CurrentProjectSettings();
+    // Host flags: an offscreen host keeps the window hidden and running while unfocused.
+    bool windowVisible = true;
+    bool alwaysRun = false;
     // Full-screen finish (bloom, vignette, grain, tint...); a frame may change it through Painter::Post. The canvas keeps a
     // bloom layer only while bloom is asked for (here, or by the previous frame).
     PostSettings post;
-    std::filesystem::path applicationId = "Game";
-    // The font Painter draws with when given none (relative to the assets). List it in `assets` too.
-    std::filesystem::path font;
-    // Fonts for characters `font` lacks, first match wins: another script (Arabic, Hebrew, Thai...) or symbols. List
-    // them in `assets` too. See FontFace::AddFallback.
+    // Fonts for characters `project.font` lacks, first match wins: another script (Arabic, Hebrew, Thai...) or
+    // symbols; relative to the assets, which ship them by themselves. See FontFace::AddFallback.
     std::vector<std::filesystem::path> fontFallbacks;
+    // Asset files the game loads itself (relative to the assets); the font, fallbacks and sounds are added for it.
     std::vector<std::filesystem::path> assets;
     AudioCatalog audio;
     // The game's typed sound tables, played through Game::Sounds(); see Docs/Audio.md. `audio` keeps music and any

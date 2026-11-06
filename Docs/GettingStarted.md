@@ -118,11 +118,7 @@ private:
 
 namespace {
 GameSettings Settings() {
-    GameSettings settings;
-    settings.applicationId = "MyProject";
-    settings.window.title = "My first game";
-    settings.canvasWidth = 1280;
-    settings.canvasHeight = 720;
+    GameSettings settings; // Title, window and canvas come from Game/Game.settings.json
     return settings;
 }
 } // namespace
@@ -150,7 +146,9 @@ void MyGame::HandleInput(const DeviceInput& input) {
 std::unique_ptr<Game> CreateGame() { return std::make_unique<MyGame>(); }
 ```
 
-`applicationId` is the user-data folder name (options, saves); choose a persistent, project-specific value. The scene is
+`Game/Game.settings.json` holds the title, the canvas size and `applicationId`, the user-data folder name (options,
+saves); keep the id once the game is released. Edit it under Project → Project settings in the editor ([Project
+settings](ProjectSettings.md)). The scene is
 a value member of the game. Call `ShutdownNoThrow()` in the concrete scene's destructor; the same ownership rule applies
 when adding child objects.
 

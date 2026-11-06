@@ -37,6 +37,7 @@ from .include_boundaries import violations
 from .manifest import ENGINE_ROOT, load_manifest
 from .project import PROJECT_FILE, Project
 from .tuning.check import check_tuning
+from .tuning.settings import check_settings
 from .agentdocs.check import check_agentdocs
 
 INTERRUPTED = 130  # Ctrl+C; kabukların ortak kodu
@@ -166,6 +167,9 @@ def dispatch(args: argparse.Namespace) -> int:
                 print(violation)
             print(f"Internals boundaries: {len(found)} violation(s)" if found else "Internals boundaries: OK")
             problems, fixed = check_tuning(root, args.fix)
+            settings_problems, settings_fixed = check_settings(root, args.fix)
+            problems += settings_problems
+            fixed += settings_fixed
             for line in problems + [f"{path}: rewritten in the canonical layout" for path in fixed]:
                 print(line)
             print(f"Tuning files: {len(problems)} problem(s)" if problems else "Tuning files: OK")

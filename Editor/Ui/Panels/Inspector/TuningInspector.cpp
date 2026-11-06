@@ -15,6 +15,9 @@ namespace {
 constexpr float CellWidth = 92.0f; // A list element or table cell (unscaled)
 constexpr const char* ContextPopup = "tuning-context";
 constexpr const char* RevertTooltip = "Revert: the value in the last commit (git HEAD).";
+constexpr const char* ConfirmPopup = "Change the application id?";
+// Settings whose change asks first (Docs/ProjectSettings.md).
+constexpr std::string_view ConfirmedSetting = "applicationId";
 
 std::string Utf8(const std::filesystem::path& file) {
     const auto text = file.generic_u8string();
@@ -95,9 +98,15 @@ std::string Details(const TuningFileState& file, const TuningField& field) {
     return text;
 }
 
+bool IsSet(const TuningFileState& file, const TuningField& field) {
+    return std::ranges::find(file.set, field.name) != file.set.end();
+}
+
 std::string Tooltip(const TuningFileState& file, const TuningField& field) {
-    return PropertyLabel(field.name) + " (" + field.name + ")\nSaved in " + file.relative + ", line " +
-           std::to_string(field.line) + "\n" + Details(file, field) +
+    std::string saved = "Saved in " + file.relative + ", line " + std::to_string(field.line);
+    if (file.kind == TuningFileKind::Settings && !IsSet(file, field))
+        saved = "Engine default; a change writes it to " + file.relative;
+    return PropertyLabel(field.name) + " (" + field.name + ")\n" + saved + "\n" + Details(file, field) +
            "Right-click: revert, open in the code editor, send to the agent. Ctrl+Z undoes.";
 }
 
@@ -136,6 +145,16 @@ void TuningInspector::Status(const TuningFileState& file, const EditorSnapshot& 
         ImGui::TextWrapped("Line %d: %s", file.problem->line, file.problem->text.c_str());
         ImGui::PopStyleColor();
         ImGui::TextDisabled("Showing the last valid values; fix the file to edit it here.");
+        return;
+    }
+    if (file.kind == TuningFileKind::Settings) {
+        ToolStatusBadge("On start", ToolToneColor(ToolTone::Information));
+        ToolTooltip("The game and the scene worker read these when they start; Release builds compile them in.");
+        ImGui::SameLine();
+        BuildButton(snapshot, actions);
+        ImGui::TextWrapped("%s", file.exists ? "A change applies to the running scene after Build & Refresh."
+                                             : "Every value is the engine's default; the first change writes "
+                                               "Game/Game.settings.json.");
         return;
     }
     if (file.target.empty()) {
@@ -221,7 +240,8 @@ void TuningInspector::Scalar(const TuningFileState& file, const TuningField& fie
     auto property = TuningPropertyValue(previewing ? _previewing->value : field.values.front());
     const auto edit = InspectorPropertyField(row, TuningPropertySpec(field.spec), property);
     if (edit.changed) {
-        _previewing = Previewing{file.source, at, TuningValueOf(property)};
+        const bool confirm = file.kind == TuningFileKind::Settings && field.name == ConfirmedSetting;
+        _previewing = Previewing{file.source, at, TuningValueOf(property), confirm};
         actions.tuning({TuningEditKind::Preview, file.source, at, _previewing->value});
     }
     if (edit.reset && modified && file.CommittedField(field.name))
@@ -371,6 +391,13 @@ void TuningInspector::ContextMenu(const TuningFileState& file, const EditorSnaps
             actions.tuning({TuningEditKind::Revert, file.source, {field->name}});
         ImGui::EndDisabled();
         ToolTooltip("Write the field's values from the last commit (git HEAD) back into the file.");
+        if (file.kind == TuningFileKind::Settings) {
+            ImGui::BeginDisabled(!IsSet(file, *field));
+            if (ImGui::MenuItem("Reset to engine default"))
+                actions.tuning({TuningEditKind::Default, file.source, {field->name}});
+            ImGui::EndDisabled();
+            ToolTooltip("Remove the value from Game/Game.settings.json, so the engine's default applies.");
+        }
         if (ImGui::MenuItem("Open in code editor")) actions.openSource(Utf8(file.source), field->line);
         if (ImGui::MenuItem("Send to Agent")) {
             auto details = Details(file, *field);
@@ -388,9 +415,45 @@ void TuningInspector::ContextMenu(const TuningFileState& file, const EditorSnaps
 }
 
 void TuningInspector::Finish(const EditorUiActions& actions) {
+    Confirmation(actions);
     if (!_previewing || ImGui::IsAnyItemActive()) return;
-    actions.tuning({TuningEditKind::Set, _previewing->source, _previewing->at, _previewing->value});
+    if (_previewing->confirm) {
+        _confirming = std::move(_previewing);
+        _openConfirmation = true;
+    } else {
+        actions.tuning({TuningEditKind::Set, _previewing->source, _previewing->at, _previewing->value});
+    }
     _previewing.reset();
+}
+
+void TuningInspector::Confirmation(const EditorUiActions& actions) {
+    if (_openConfirmation) {
+        ImGui::OpenPopup(ConfirmPopup);
+        _openConfirmation = false;
+    }
+    if (!_confirming) return;
+    ImGui::SetNextWindowSize({420 * ToolUiScale(), 0});
+    if (!ImGui::BeginPopupModal(ConfirmPopup, nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
+        _confirming.reset(); // Closed without an answer
+        return;
+    }
+    const auto* text = std::get_if<TuningPath>(&_confirming->value);
+    ImGui::TextWrapped("The application id names the folder that keeps the players' options and saves. After a "
+                       "release, a new id starts every player with empty options and no saves.");
+    ImGui::Spacing();
+    ImGui::TextWrapped("New id: %s", text ? (text->path.empty() ? "(empty)" : text->path.c_str()) : "?");
+    ImGui::Spacing();
+    if (ToolButton("Change it")) {
+        actions.tuning({TuningEditKind::Set, _confirming->source, _confirming->at, _confirming->value});
+        _confirming.reset();
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ToolButton("Keep the old id") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        _confirming.reset();
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
 }
 
 void TuningInspector::Shortcuts(const EditorSnapshot& snapshot, const EditorUiActions& actions) {

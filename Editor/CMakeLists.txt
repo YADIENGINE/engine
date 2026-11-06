@@ -108,6 +108,7 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Panels/Audio/AudioPreviewPanel.cpp
         Ui/Panels/Catalog/CatalogPanel.cpp
         Ui/Panels/Viewport/ViewportPanel.cpp
+        Ui/Panels/Inspector/InputMapInspector.cpp
         Ui/Panels/Inspector/InspectorPanel.cpp
         Ui/Panels/Inspector/TuningInspector.cpp
         Ui/Panels/Output/OutputPanel.cpp

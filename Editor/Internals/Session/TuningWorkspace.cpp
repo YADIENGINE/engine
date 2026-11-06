@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cwctype>
 #include "Platform/Internals/FileStorage.h"
+#include "Runtime/ProjectSettingsStore.h"
 
 namespace {
 constexpr auto PollInterval = std::chrono::milliseconds(250);
@@ -10,6 +11,9 @@ constexpr auto ScanInterval = std::chrono::seconds(2);
 constexpr std::size_t MaxFileBytes = 4 * 1024 * 1024;
 constexpr std::size_t MaxHistory = 200;
 constexpr std::string_view Suffix = ".tuning.json";
+constexpr std::string_view InputSuffix = ".input.json";
+constexpr std::string_view SettingsFile = "Game/Game.settings.json"; // From the project folder
+constexpr std::string_view EmptySettings = "{}\n";
 
 std::optional<std::filesystem::file_time_type> WriteTime(const std::filesystem::path& file) {
     std::error_code error;
@@ -34,10 +38,29 @@ std::filesystem::path PathOf(const std::string& utf8) {
     return std::filesystem::path(std::u8string_view(reinterpret_cast<const char8_t*>(utf8.data()), utf8.size()));
 }
 
+// A settings file that does not exist yet reads as one that sets nothing.
+std::string Text(const TuningFileState& file) {
+    std::error_code error;
+    if (file.kind == TuningFileKind::Settings && !std::filesystem::exists(file.source, error))
+        return std::string(EmptySettings);
+    return ReadBinaryFile(file.source, MaxFileBytes);
+}
+
 void Read(TuningFileState& file) {
     file.written = WriteTime(file.source);
     try {
-        file.fields = ParseTuningFile(ReadBinaryFile(file.source, MaxFileBytes));
+        std::error_code error;
+        file.exists = std::filesystem::exists(file.source, error);
+        const auto text = Text(file);
+        if (file.kind == TuningFileKind::Settings) {
+            auto values = ParseSettingsValues(text, ProjectSettingsSchema());
+            file.fields = std::move(values.fields);
+            file.set = std::move(values.set);
+        } else if (file.kind == TuningFileKind::InputMap) {
+            file.input = ParseInputMap(text);
+        } else {
+            file.fields = ParseTuningFile(text);
+        }
         file.problem.reset();
     } catch (const TuningFormatError& error) {
         file.problem = TuningFileProblem{error.Line(), error.what()};
@@ -46,11 +69,14 @@ void Read(TuningFileState& file) {
     }
 }
 
+// From the folder the tuning files and input maps share; the settings file has its own label.
 void Label(std::vector<TuningFileState>& files) {
-    if (files.empty()) return;
-    std::filesystem::path common = files.front().source.parent_path();
+    const auto first = std::ranges::find_if(files, [](const auto& f) { return f.kind != TuningFileKind::Settings; });
+    if (first == files.end()) return;
+    std::filesystem::path common = first->source.parent_path();
     for (const auto& file : files)
-        while (!common.empty() && Key(file.source).rfind(Key(common) + L"/", 0) != 0) {
+        while (file.kind != TuningFileKind::Settings && !common.empty() &&
+               Key(file.source).rfind(Key(common) + L"/", 0) != 0) {
             const auto parent = common.parent_path();
             if (parent == common) break;
             common = parent;
@@ -61,7 +87,12 @@ void Label(std::vector<TuningFileState>& files) {
 
 bool IsTuningFile(const std::filesystem::path& file) {
     const auto name = Utf8(file.filename());
-    return name.size() > Suffix.size() && name.ends_with(Suffix);
+    return (name.size() > Suffix.size() && name.ends_with(Suffix)) ||
+           (name.size() > InputSuffix.size() && name.ends_with(InputSuffix));
+}
+
+TuningFileKind KindOf(const std::filesystem::path& file) {
+    return Utf8(file.filename()).ends_with(InputSuffix) ? TuningFileKind::InputMap : TuningFileKind::Tuning;
 }
 
 void ScanFolder(const std::filesystem::path& folder, std::vector<std::filesystem::path>& found) {
@@ -176,12 +207,26 @@ void TuningWorkspace::Scan() {
     for (const auto& [target, source] : _built)
         found.push_back(source.lexically_normal());
     std::vector<TuningFileState> files;
+    if (!_project.empty()) { // Listed even before it exists: the first edit writes it
+        TuningFileState settings;
+        settings.kind = TuningFileKind::Settings;
+        settings.source = (_project / std::filesystem::path(SettingsFile)).lexically_normal();
+        settings.relative = std::string(SettingsFile);
+        settings.target = "project";
+        if (const auto* previous = FindMutable(settings.source)) {
+            settings = *previous;
+        } else {
+            Read(settings);
+        }
+        files.push_back(std::move(settings));
+    }
     for (const auto& source : found) {
         if (std::ranges::any_of(files, [&](const TuningFileState& file) { return Key(file.source) == Key(source); }))
             continue;
         std::error_code error;
         if (!std::filesystem::is_regular_file(source, error)) continue; // Built once, deleted since
         TuningFileState file;
+        file.kind = KindOf(source);
         file.source = source;
         const auto built =
             std::ranges::find_if(_built, [&](const auto& entry) { return Key(entry.second) == Key(source); });
@@ -194,13 +239,20 @@ void TuningWorkspace::Scan() {
             file.used = previous->used;
             file.committed = previous->committed;
             file.written = previous->written;
+            file.input = previous->input;
+            file.committedInput = previous->committedInput;
         } else {
             Read(file);
         }
         files.push_back(std::move(file));
     }
-    std::ranges::sort(files, {}, [](const TuningFileState& file) { return Key(file.source); });
+    // The settings file first, then by path.
+    std::ranges::sort(files, {}, [](const TuningFileState& file) {
+        return std::pair(file.kind != TuningFileKind::Settings, Key(file.source));
+    });
     Label(files);
+    for (auto& file : files)
+        if (file.kind == TuningFileKind::Settings) file.label = "Project settings";
     _files = std::move(files);
 }
 
@@ -208,6 +260,12 @@ const TuningFileState* TuningWorkspace::Find(const std::filesystem::path& source
     const auto key = Key(source);
     const auto found =
         std::ranges::find_if(_files, [&](const TuningFileState& file) { return Key(file.source) == key; });
+    return found == _files.end() ? nullptr : &*found;
+}
+
+const TuningFileState* TuningWorkspace::Settings() const {
+    const auto found =
+        std::ranges::find(_files, TuningFileKind::Settings, [](const TuningFileState& file) { return file.kind; });
     return found == _files.end() ? nullptr : &*found;
 }
 
@@ -234,7 +292,16 @@ std::string TuningWorkspace::Set(const std::filesystem::path& source, const Tuni
     auto* file = FindMutable(source);
     if (!file) return "Unknown tuning file";
     try {
-        const std::string text = ReadBinaryFile(file->source, MaxFileBytes);
+        const std::string text = Text(*file);
+        if (file->kind == TuningFileKind::Settings) {
+            const auto values = ParseSettingsValues(text, ProjectSettingsSchema());
+            if (const auto* field = Named(values.fields, at.field);
+                field && std::ranges::find(values.set, at.field) != values.set.end() && field->values.front() == value)
+                return {};
+            return Write(*file, Where(*file, at), text,
+                         PatchSettingsValue(text, ProjectSettingsSchema(), at.field, value));
+        }
+        if (file->kind != TuningFileKind::Tuning) return file->label + ": not a tuning file";
         const auto fields = ParseTuningFile(text);
         if (const auto* field =
                 Named(fields, at.field)) // Unchanged: no write, so no one-line diff of a respelled number
@@ -271,6 +338,21 @@ std::string TuningWorkspace::Revert(const std::filesystem::path& source, const s
     if (!file) return "Unknown tuning file";
     const auto* committed = file->CommittedField(name);
     if (!committed) return file->label + ": \"" + name + "\" has no committed value";
+    if (file->kind == TuningFileKind::Settings) { // The committed value, or the default when the commit left it out
+        try {
+            const std::string text = Text(*file);
+            const bool wasSet = file->committedSet && std::ranges::find(*file->committedSet, name) != file->committedSet->end();
+            const auto patched = PatchSettingsValue(text, ProjectSettingsSchema(), name,
+                                                    wasSet ? std::optional(committed->values.front()) : std::nullopt);
+            return Write(*file, file->label + ": revert " + name, text, patched);
+        } catch (const TuningFormatError& failure) {
+            Read(*file);
+            return file->label + ":" + std::to_string(failure.Line()) + ": " + failure.what();
+        } catch (const std::exception& failure) {
+            Read(*file);
+            return file->label + ": " + failure.what();
+        }
+    }
     try {
         const std::string text = ReadBinaryFile(file->source, MaxFileBytes);
         const auto fields = ParseTuningFile(text);
@@ -301,6 +383,39 @@ std::string TuningWorkspace::Revert(const std::filesystem::path& source, const s
     }
 }
 
+std::string TuningWorkspace::ResetToDefault(const std::filesystem::path& source, const std::string& name) {
+    auto* file = FindMutable(source);
+    if (!file || file->kind != TuningFileKind::Settings) return "Not a settings file";
+    try {
+        const std::string text = Text(*file);
+        return Write(*file, file->label + ": default " + name, text,
+                     PatchSettingsValue(text, ProjectSettingsSchema(), name, std::nullopt));
+    } catch (const TuningFormatError& failure) {
+        Read(*file);
+        return file->label + ":" + std::to_string(failure.Line()) + ": " + failure.what();
+    } catch (const std::exception& failure) {
+        Read(*file);
+        return file->label + ": " + failure.what();
+    }
+}
+
+std::string TuningWorkspace::SetKeys(const std::filesystem::path& source, std::size_t player, const std::string& button,
+                                     const std::vector<std::string>& keys) {
+    auto* file = FindMutable(source);
+    if (!file || file->kind != TuningFileKind::InputMap) return "Not an input map";
+    try {
+        const std::string text = ReadBinaryFile(file->source, MaxFileBytes);
+        const std::string what = file->label + ": player " + std::to_string(player + 1) + " " + button;
+        return Write(*file, what, text, PatchInputMapKeys(text, player, button, keys));
+    } catch (const TuningFormatError& failure) {
+        Read(*file);
+        return file->label + ":" + std::to_string(failure.Line()) + ": " + failure.what();
+    } catch (const std::exception& failure) {
+        Read(*file);
+        return file->label + ": " + failure.what();
+    }
+}
+
 std::optional<TuningHistoryStep> TuningWorkspace::Step(std::deque<Edit>& from, std::deque<Edit>& to, bool undo) {
     if (from.empty()) return std::nullopt;
     auto edit = std::move(from.back());
@@ -310,7 +425,7 @@ std::optional<TuningHistoryStep> TuningWorkspace::Step(std::deque<Edit>& from, s
     const std::string& expected = undo ? edit.after : edit.before;
     const std::string& wanted = undo ? edit.before : edit.after;
     try {
-        if (!file || ReadBinaryFile(edit.source, MaxFileBytes) != expected) {
+        if (!file || Text(*file) != expected) {
             step.text = edit.what + " changed since; not " + (undo ? "undone" : "redone");
             return step;
         }
@@ -356,9 +471,19 @@ void TuningWorkspace::SetCommitted(const std::filesystem::path& source, const st
     auto* file = FindMutable(source);
     if (!file) return;
     file->committed.reset();
+    file->committedSet.reset();
+    file->committedInput.reset();
     if (!text) return;
     try {
-        file->committed = ParseTuningFile(*text);
+        if (file->kind == TuningFileKind::Settings) {
+            auto values = ParseSettingsValues(*text, ProjectSettingsSchema());
+            file->committed = std::move(values.fields);
+            file->committedSet = std::move(values.set);
+        } else if (file->kind == TuningFileKind::InputMap) {
+            file->committedInput = ParseInputMap(*text);
+        } else {
+            file->committed = ParseTuningFile(*text);
+        }
     } catch (const std::exception&) { // An invalid commit compares with nothing
     }
 }

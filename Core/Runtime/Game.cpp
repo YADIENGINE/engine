@@ -41,12 +41,17 @@ void ReportAssetsWhenAsked(const GameSettings& settings) {
 }
 constexpr const char* OptionsFile = "settings.json";
 
+std::filesystem::path PathOf(const std::string& utf8) {
+    return std::filesystem::path(std::u8string_view(reinterpret_cast<const char8_t*>(utf8.data()), utf8.size()));
+}
+
 std::optional<FontFace> LoadFont(const std::filesystem::path& assets, const GameSettings& settings) {
-    if (settings.font.empty()) {
-        if (!settings.fontFallbacks.empty()) throw std::invalid_argument("GameSettings::fontFallbacks needs a font");
+    if (settings.project.font.empty()) {
+        if (!settings.fontFallbacks.empty())
+            throw std::invalid_argument("GameSettings::fontFallbacks needs a font (Game/Game.settings.json \"font\")");
         return std::nullopt;
     }
-    FontFace font = FontFace::FromFile(assets / settings.font);
+    FontFace font = FontFace::FromFile(assets / PathOf(settings.project.font));
     for (const auto& fallback : settings.fontFallbacks)
         font.AddFallback(FontFace::FromFile(assets / fallback));
     return font;
@@ -63,16 +68,27 @@ constexpr Color4 FpsCounterBackground{0, 0, 0, 170};
 constexpr Color4 FpsCounterText{120, 255, 160, 255};
 
 RenderPipelineSettings PipelineSettings(const GameSettings& settings) {
-    return {{static_cast<float>(settings.canvasWidth), static_cast<float>(settings.canvasHeight)},
-            settings.background,
-            settings.letterbox,
-            settings.smoothCanvas,
+    const auto& project = settings.project;
+    return {{static_cast<float>(project.canvasWidth), static_cast<float>(project.canvasHeight)},
+            project.background,
+            project.letterbox,
+            project.smoothCanvas,
             settings.post};
+}
+
+// `settings` outlives the renderer's constructor, which is all the title needs.
+WindowSettings WindowOf(const GameSettings& settings) {
+    const auto& project = settings.project;
+    return {project.windowWidth,    project.windowHeight,   project.title.c_str(), project.targetFps,
+            project.windowMinWidth, project.windowMinHeight, project.resizable,     project.maximized,
+            settings.windowVisible, settings.alwaysRun};
 }
 
 std::unique_ptr<Renderer> OpenRenderer(const GameSettings& settings) {
     ReportAssetsWhenAsked(settings);
-    return std::make_unique<Renderer>(settings.window, PipelineSettings(settings));
+    if (settings.project.applicationId.empty())
+        throw std::invalid_argument("Game/Game.settings.json \"applicationId\" is empty: options and saves need it");
+    return std::make_unique<Renderer>(WindowOf(settings), PipelineSettings(settings));
 }
 
 // A stored level enum value up to 'last'; anything else (an edited or old file) falls back to 'fallback'.
@@ -90,14 +106,14 @@ Game::Game(const GameSettings& settings)
     , _sounds(settings.sounds, *_soundOutput)
     , _uiSoundListener(_sounds)
     , _input(std::make_unique<InputNormalizer>())
-    , _applicationId(settings.applicationId)
+    , _applicationId(PathOf(settings.project.applicationId))
     , _saveSettings(settings.save)
-    , _options(SaveFilePath(settings.applicationId, OptionsFile))
-    , _defaultFpsLimit(settings.window.targetFps)
+    , _options(SaveFilePath(_applicationId, OptionsFile))
+    , _defaultFpsLimit(settings.project.targetFps)
     , _persistentOptions(settings.persistentOptions)
     , _fixedWindow(settings.fixedWindow)
     , _sceneManager(std::make_unique<SceneManager>()) {
-    _frameExecution.fpsLimit = settings.window.targetFps;
+    _frameExecution.fpsLimit = settings.project.targetFps;
     _renderer->SetFont(_font ? &*_font : nullptr); // _font, renderer'dan önce yıkılır; o sırada kare çizilmez
     SetTheme(settings.theme);                      // Türeyen oyunun View ve Ui üyeleri kurulurken tema etkin olmalı
     CheckUiSounds(settings.uiSounds, _sounds, "GameSettings::uiSounds");

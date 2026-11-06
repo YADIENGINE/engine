@@ -8,19 +8,17 @@ are reserved for source code and are not copied ([Asset library](#asset-library)
 engine's own files, copied to `Assets/Engine` beside every game ([ready-made sounds](Audio.md#ready-made-sounds)); a
 folder of that name under `Game/Assets` stops the configure.
 
-`GameSettings::assets` is the relative path list of files in use. Audio catalog paths are added automatically; list a
-custom font path explicitly. Images are not loaded from files: visuals are produced by code ([D1](Design/README.md#d1-assets)),
+`GameSettings::assets` is the relative path list of files in use. Audio catalog paths, the project's font and its
+fallbacks are added automatically. Images are not loaded from files: visuals are produced by code ([D1](Design/README.md#d1-assets)),
 and textures come from `Surface`.
 
 ```cpp
-GameSettings settings;
-settings.font = "Fonts/MyFont.ttf";
-settings.assets = {settings.font};
+GameSettings settings; // "font": "Fonts/MyFont.ttf" in Game/Game.settings.json
 settings.audio.effects = {{SoundId{0}, "Audio/click.wav"}};
 ```
 
-Empty, absolute, or `..` manifest paths are rejected. A missing file is a startup error. If `font` is empty, the
-built-in default font is used. The engine provides manifest preparation and font/audio loading. Every external
+Empty, absolute, or `..` manifest paths are rejected. A missing file is a startup error. If the project's `font` is
+empty, the game has no font. The engine provides manifest preparation and font/audio loading. Every external
 (downloaded, licensed) asset has a notice in `Game/Distribution/` and its license file included in the package:
 [Release](Release.md).
 
@@ -59,14 +57,9 @@ identifies which sounds are used; unlisted sounds are dimmed. Command-line metad
 
 | Field | Default / meaning |
 | --- | --- |
-| `window` | 1280×720, title Game, 60 FPS; minimum 640×360, resizing enabled |
-| `window.visible`, `alwaysRun` | true / false; hidden context and running while minimized |
-| `window.maximized` | false |
-| `canvasWidth/Height` | 1280 / 720 logical coordinates |
-| `background`, `letterbox` | opaque black `Color4` |
-| `smoothCanvas` | true; linear filtering for canvas presentation |
-| `applicationId` | Game; persistent identity for user data |
-| `font` | empty means no game font; otherwise an asset path, with glyphs loaded on demand; [font guide](Graphics/Text.md) |
+| `project` | From `Game/Game.settings.json`: title, window, canvas, colours, font, application id; [Project settings](ProjectSettings.md) |
+| `windowVisible`, `alwaysRun` | true / false; for hosts: hidden context and running while unfocused |
+| `fontFallbacks` | empty; fonts for characters the project's font lacks; [font guide](Graphics/Text.md#other-scripts) |
 | `assets`, `audio`, `sounds` | empty manifest / catalog / [sound tables](Audio.md#sound-tables) |
 | `audioVolume` | [audio steps and groups](Audio.md) |
 | `save` | [SaveSettings](../Core/Modules/Persistence/README.md); supports per-file overrides |
@@ -76,8 +69,8 @@ identifies which sounds are used; unlisted sounds are dimmed. Command-line metad
 | `fixedWindow` | false; if the host sets true, options do not change capture/window size |
 
 Source contracts: [GameSettings.h](../Core/Runtime/GameSettings.h),
-[WindowSettings.h](../Core/Graphics/Render/WindowSettings.h). Since the window title is a `const char*`, a persistent
-string literal is simplest. The supplied initial window settings may change when the engine loads user options.
+[ProjectSettings.h](../Core/Runtime/ProjectSettings.h). The initial window size may change when the engine loads user
+options.
 
 ## Platform responsibilities
 

@@ -1,0 +1,7 @@
+{
+  "rows": {
+    "type": "table",
+    "columns": { "a": { "type": "int" } },
+    "rows": [{ "a": 1 }]
+  }
+}

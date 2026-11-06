@@ -76,7 +76,7 @@ void InspectorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
     } else {
         if (snapshot.tuning && !snapshot.tuning->Files().empty()) FilePicker(snapshot, actions, "Tuning files...");
         ToolEmptyState("No scene selected", "Pick a scene to see its controls and the tuning it reads, or open a "
-                                            "tuning file above.");
+                                            "file above. Project settings and input maps are in the Project menu.");
     }
     _tuning.Finish(actions);
     _tuning.Shortcuts(snapshot, actions);
@@ -155,12 +155,33 @@ void InspectorPanel::File(const TuningFileState& file, const EditorSnapshot& sna
         ToolTooltip("Back to the selected scene.");
         ImGui::SameLine();
     }
+    ImGui::BeginDisabled(!file.exists);
     if (ToolButton("Open in code editor")) actions.openSource(key, 1);
-    InspectorSummary(file.label.c_str(), ("Saved in " + file.relative +
-                                          ". Values apply live and are compiled into Release builds; Ctrl+Z undoes "
-                                          "an edit made here.")
-                                             .c_str());
+    ImGui::EndDisabled();
+    std::string summary;
+    switch (file.kind) {
+    case TuningFileKind::Tuning:
+        summary = "Saved in " + file.relative +
+                  ". Values apply live and are compiled into Release builds; Ctrl+Z undoes an edit made here.";
+        break;
+    case TuningFileKind::Settings:
+        summary = "Saved in " + file.relative +
+                  ": title, window, canvas, font and identity. The file keeps only what differs from the engine's "
+                  "defaults; Ctrl+Z undoes an edit made here.";
+        break;
+    case TuningFileKind::InputMap:
+        summary = "Saved in " + file.relative + ": each player's keys for the game's buttons. Ctrl+Z undoes an edit "
+                                                "made here.";
+        break;
+    }
+    InspectorSummary(file.label.c_str(), summary.c_str());
     FilePicker(snapshot, actions, file.label.c_str());
+    if (file.kind == TuningFileKind::InputMap) {
+        if (ImGui::BeginChild("##inspector-content")) _inputMap.File(file, snapshot, actions);
+        ImGui::EndChild();
+        ImGui::PopID();
+        return;
+    }
     Filters(file.fields.size(), TuningInspector::ModifiedCount(file));
     const auto query = EditorSearchText(_search.data());
     if (ImGui::BeginChild("##inspector-content")) {

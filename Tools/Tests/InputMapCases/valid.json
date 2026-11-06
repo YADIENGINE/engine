@@ -1,0 +1,8 @@
+{
+  "buttons": ["Left", "Right", "Jump"],
+  "axes": ["MoveX"],
+  "players": [
+    { "Left": ["A", "Left"], "Right": ["D", "Right"], "Jump": ["Space"] },
+    { "Jump": ["RightControl"], "Left": [] }
+  ]
+}

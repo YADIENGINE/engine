@@ -81,6 +81,9 @@ global). The game target in a project created by `python Engine new` already cal
   `static_assert(std::tuple_size_v<decltype(GlowTuning::steps)> == StepCount);`
 - Cross-field rules such as "chances sum to 100" do not belong in the file; check them in code or tests.
 
+Two other files share this format and the editor's Inspector: the project's settings, whose schema adds `text` and
+`path` ([Project settings](ProjectSettings.md)), and input maps ([Input map](InputMap.md)).
+
 ## Code
 
 ```cpp

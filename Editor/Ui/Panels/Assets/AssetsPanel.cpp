@@ -16,11 +16,13 @@
 #include "ToolUi/ToolWidgets.h"
 
 namespace {
-// A node's tuning file ("Goblin.tuning.json" beside "Goblin.h"), which the Inspector edits.
+// A node's file the Inspector edits: a tuning file ("Goblin.tuning.json" beside "Goblin.h"), an input map or the
+// project's settings.
 std::optional<std::filesystem::path> TuningFileOf(const AssetNode& node) {
     if (node.kind == AssetKind::Folder) return std::nullopt;
     for (const auto& file : node.files)
-        if (file.ends_with(".tuning.json")) return std::filesystem::absolute(node.path.parent_path() / file);
+        if (file.ends_with(".tuning.json") || file.ends_with(".input.json") || file == "Game.settings.json")
+            return std::filesystem::absolute(node.path.parent_path() / file);
     return std::nullopt;
 }
 constexpr double ScanSeconds = 2.0;

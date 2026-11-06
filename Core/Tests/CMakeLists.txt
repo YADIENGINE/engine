@@ -83,6 +83,8 @@ engine_tests(EngineTests
         SceneTimeTests.cpp
         ShatterTests.cpp
         SimulationSceneTests.cpp
+        InputMapTests.cpp
+        SettingsTests.cpp
         TuningTests.cpp
         UiTransformTests.cpp
         TextShapingTests.cpp
@@ -101,6 +103,8 @@ engine_add_tuning(EngineTests ROOT Tuning)
 target_compile_definitions(EngineTests PRIVATE
     ENGINE_TUNING_TEST_FILE="${CMAKE_CURRENT_SOURCE_DIR}/Tuning/TestValues.tuning.json"
     ENGINE_TUNING_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/Tests/TuningCases"
+    ENGINE_INPUT_MAP_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/Tests/InputMapCases"
+    ENGINE_SETTINGS_CASES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../Tools/Tests/SettingsCases"
     ENGINE_TEST_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf"
     ENGINE_TEST_SCRIPT_FONTS="${ENGINE_THIRD_PARTY_DIR}/NotoSansScripts")
 

@@ -16,12 +16,18 @@
 // field (saved in its file). Both convert to this model, so one set of widgets edits both (PropertyWidgets.h).
 
 // Order matches PropertyValue's alternatives.
-enum class PropertyKind { Float, Integer, Boolean, Color, Vec2, Range, Choice };
+enum class PropertyKind { Float, Integer, Boolean, Color, Vec2, Range, Choice, Text };
 struct PropertyChoice {
     std::size_t index = 0;
     friend bool operator==(const PropertyChoice&, const PropertyChoice&) = default;
 };
-using PropertyValue = std::variant<double, std::int64_t, bool, Color4, Float2, FloatRange, PropertyChoice>;
+// One line of text; `path` keeps a settings path apart from plain text.
+struct PropertyString {
+    std::string text;
+    bool path = false;
+    friend bool operator==(const PropertyString&, const PropertyString&) = default;
+};
+using PropertyValue = std::variant<double, std::int64_t, bool, Color4, Float2, FloatRange, PropertyChoice, PropertyString>;
 // Drag: the number follows the mouse and needs no range (tuning). Slider: across min..max (scene parameters).
 // Input: a typed box.
 enum class PropertyNumbers { Drag, Slider, Input };

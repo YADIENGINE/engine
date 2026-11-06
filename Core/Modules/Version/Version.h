@@ -37,6 +37,10 @@ public:
     static void Check(GameOptions& options, GameVersion current,
                       const std::function<void(const Change&)>& onChange = {});
     [[nodiscard]] static std::string Text(GameVersion version);
+    // The version a project's settings name (Game/Game.settings.json "version", Docs/ProjectSettings.md): "1.2.3" is
+    // {1, 2, 3}; missing numbers are 0 and a fourth is ignored. Throws std::invalid_argument for other text:
+    //     Version::Check(Options(), Version::Parse(CurrentProjectSettings().version), onChange);
+    [[nodiscard]] static GameVersion Parse(std::string_view text);
     // Notes must be valid and newest first. Returned views borrow the caller's table and strings.
     [[nodiscard]] static std::span<const PatchNote> NotesSince(std::span<const PatchNote> notes, GameVersion previous);
     [[nodiscard]] static constexpr bool IsValid(GameVersion version) {

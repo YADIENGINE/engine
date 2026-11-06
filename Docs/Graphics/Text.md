@@ -1,13 +1,15 @@
 # Text and fonts
 
-Text uses `FontFace` and `Painter::Text` / `Painter::TextBox` ([Painter](Painter.md#text)). Set `GameSettings::font` to
-a path relative to the asset root and include it in `settings.assets` for startup validation. An empty path means no
-game font: shapes still work, but font-dependent drawing requires a font. The starter game and worker ship a Noto Sans
+Text uses `FontFace` and `Painter::Text` / `Painter::TextBox` ([Painter](Painter.md#text)). Set `font` in
+`Game/Game.settings.json` ([Project settings](../ProjectSettings.md)) to a path relative to the asset root; the engine
+ships it and checks it at startup. An empty path means no game font: shapes still work, but font-dependent drawing
+requires a font. The starter game and worker ship a Noto Sans
 font and its OFL license automatically.
 
-```cpp
-settings.font = "Fonts/MyFont.ttf";
-settings.assets = {settings.font};
+```json
+{
+  "font": "Fonts/MyFont.ttf"
+}
 ```
 
 Glyphs are rasterized at their on-screen size when first needed. The full font character set is available; there is no
@@ -47,9 +49,7 @@ The starter font is Latin, Greek and Cyrillic. For another script, add a font th
 takes the first font that has it, at the same em size, and lines keep the main font's height.
 
 ```cpp
-settings.font = "Fonts/MyFont.ttf";
-settings.fontFallbacks = {"Fonts/NotoSansArabic-Regular.ttf"};
-settings.assets = {settings.font, settings.fontFallbacks[0]};
+settings.fontFallbacks = {"Fonts/NotoSansArabic-Regular.ttf"}; // With "font" set in Game/Game.settings.json
 // Or on a font of your own, before it lays out text:
 font.AddFallback(FontFace::FromFile(path));
 ```

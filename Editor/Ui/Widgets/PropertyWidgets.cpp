@@ -165,6 +165,16 @@ bool ChoiceValue(const PropertySpec& spec, std::size_t& index) {
     ImGui::EndCombo();
     return changed;
 }
+
+// A text box; the value changes as it is typed, and its owner saves it once nothing is active.
+bool TextValue(PropertyString& value) {
+    std::array<char, 512> buffer{};
+    const auto length = std::min(value.text.size(), buffer.size() - 1);
+    std::copy_n(value.text.begin(), length, buffer.begin());
+    if (!ImGui::InputText("##value", buffer.data(), buffer.size())) return false;
+    value.text = buffer.data();
+    return true;
+}
 } // namespace
 
 int PropertyChoiceColumns(const PropertySpec& spec) {
@@ -179,5 +189,6 @@ bool PropertyWidget(const PropertySpec& spec, PropertyValue& value) {
     if (auto* color = std::get_if<Color4>(&value)) return ColorValue(*color);
     if (auto* point = std::get_if<Float2>(&value)) return Pair(spec, point->x, point->y, false);
     if (auto* range = std::get_if<FloatRange>(&value)) return Pair(spec, range->min, range->max, true);
+    if (auto* text = std::get_if<PropertyString>(&value)) return TextValue(*text);
     return ChoiceValue(spec, std::get<PropertyChoice>(value).index);
 }

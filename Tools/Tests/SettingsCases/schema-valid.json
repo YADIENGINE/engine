@@ -1,0 +1,8 @@
+{
+  "title": { "type": "text", "value": "Game", "group": "Identity", "note": "Window title" },
+  "icon": { "type": "path", "value": "" },
+  "version": { "type": "text", "format": "version", "value": "1.0.0" },
+  "size": { "type": "int", "value": 640, "min": 1, "unit": "px" },
+  "tint": { "type": "color", "value": "#102030" },
+  "mode": { "type": "choice", "choices": ["Fit", "Fill"], "value": "Fit" }
+}

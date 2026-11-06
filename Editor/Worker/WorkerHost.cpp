@@ -60,13 +60,13 @@ public:
 
 namespace {
 void PrepareHiddenWindow(GameSettings& settings) {
-    settings.window.visible = false;
-    settings.window.alwaysRun = true;
-    settings.window.maximized = false;
-    settings.window.resizable = false;
-    settings.window.width = settings.canvasWidth;
-    settings.window.height = settings.canvasHeight;
-    settings.window.targetFps = 30;
+    settings.windowVisible = false;
+    settings.alwaysRun = true;
+    settings.project.maximized = false;
+    settings.project.resizable = false;
+    settings.project.windowWidth = settings.project.canvasWidth;
+    settings.project.windowHeight = settings.project.canvasHeight;
+    settings.project.targetFps = 30;
     settings.persistentOptions = false;
     settings.fixedWindow = true;
 }
@@ -98,7 +98,7 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
                 return 0;
             } else if (argument == "--thumbnails" && i + 2 < argc) {
                 thumbnails = argv[++i];
-                settings.background = ParseThumbnailBackground(argv[++i]);
+                settings.project.background = ParseThumbnailBackground(argv[++i]);
             } else
                 throw std::runtime_error("Unsupported worker argument: " + argument);
         }
@@ -138,8 +138,8 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
         // Readback's per-frame INFO messages must not displace useful diagnostics in the output panel.
         SetTraceLogLevel(LOG_WARNING);
         PrepareHiddenWindow(settings);
-        if (settings.canvasWidth <= 0 || settings.canvasHeight <= 0 || settings.canvasWidth > WorkerMaxFrameWidth ||
-            settings.canvasHeight > WorkerMaxFrameHeight)
+        if (settings.project.canvasWidth <= 0 || settings.project.canvasHeight <= 0 ||
+            settings.project.canvasWidth > WorkerMaxFrameWidth || settings.project.canvasHeight > WorkerMaxFrameHeight)
             throw std::runtime_error("Unsupported scene canvas size");
         std::unique_ptr<Game> game = createApplication
                                          ? createApplication(settings, registry, *channel, session)

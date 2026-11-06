@@ -1,0 +1,20 @@
+{
+  "comment": "Shared by Tools/Tests/test_inputmap.py and Core/Tests/InputMapTests.cpp; line is the reported error line, null when valid.",
+  "cases": [
+    { "file": "valid.json", "line": null },
+    { "file": "valid-minimal.json", "line": null },
+    { "file": "unknown-top-key.json", "line": 3 },
+    { "file": "missing-players.json", "line": 1 },
+    { "file": "buttons-empty.json", "line": 2 },
+    { "file": "button-not-pascal.json", "line": 2 },
+    { "file": "button-twice.json", "line": 4 },
+    { "file": "too-many-axes.json", "line": 3 },
+    { "file": "players-empty.json", "line": 3 },
+    { "file": "player-not-object.json", "line": 4 },
+    { "file": "unknown-button.json", "line": 5 },
+    { "file": "unknown-key.json", "line": 4 },
+    { "file": "key-twice.json", "line": 6 },
+    { "file": "keys-not-list.json", "line": 4 },
+    { "file": "not-object.json", "line": 1 }
+  ]
+}

@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include "Graphics/Render/WindowSettings.h"
 #include "Runtime/GameSettings.h"
 
 // GameSettings for a tool window (editor, launcher): no options file, canvas content, audio or game font of its own;

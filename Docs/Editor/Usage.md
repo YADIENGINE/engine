@@ -55,7 +55,12 @@ space-separated word in any order, ignoring case; panel result ordering is prese
   scene's state for the file: Live, Not applied (line and reason), Build needed (with Build & Refresh), Unreadable; a
   file no build has seen yet is Not built. Any other tuning file opens from the list under the sections, from the list
   shown when no scene is selected, or by clicking its tile in Assets; the Inspector then shows only that file, with a
-  button back to the scene. Picking a scene in Scenes returns to it too.
+  button back to the scene. Picking a scene in Scenes returns to it too. **Project settings** draw the same way: only
+  the values that differ from the engine's defaults are written, right-click → Reset to engine default removes one, a
+  new application id asks first, and a change reaches the running scene after Build & Refresh
+  ([Project settings](../ProjectSettings.md)). An **input map** shows one row per button and one column per player:
+  click a key to remove it, `+` and then a key to add one (Escape cancels); keys apply at the scene's next Reset
+  ([Input map](../InputMap.md)).
 - **Output:** one row of controls above the lines. `Problems` lists the latest build's compiler, linker and CMake
   messages, errors first and without repeats; a click opens the file at the line (VS Code when `code` is on PATH,
   otherwise the file's default application), *Paste error* prepares that error without Enter and *Ask agent to fix build*
@@ -132,6 +137,7 @@ always does what its menu item does. A disabled item says why in its tooltip.
 | Menu | Holds |
 | --- | --- |
 | File | Quick open, Back to project list (when a launcher started the editor), Exit |
+| Project | Project settings, Input map: open `Game/Game.settings.json` or the project's input map in the Inspector |
 | Scene | Run / Stop / Cancel (F5), Pause / Resume, Step one frame, Reset |
 | View | Command palette, Focus viewport, Panels, Layouts, Interface scale, viewport performance metrics |
 | Build | Build & Refresh, Build & Play game, Cancel build |

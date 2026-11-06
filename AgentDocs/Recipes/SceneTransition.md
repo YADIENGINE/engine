@@ -65,9 +65,7 @@ void RecipeGame::Draw(Painter& paint) const {
     paint.Rect(paint.Bounds(), Fill(WithAlpha(CurtainColor, _transition.Cover())));
 }
 std::unique_ptr<Game> CreateGame() {
-    GameSettings settings;
-    settings.applicationId = "MyProject";
-    settings.window.title = "MyProject";
+    GameSettings settings; // Title, window and canvas come from Game/Game.settings.json
     return std::make_unique<RecipeGame>(settings);
 }
 ```

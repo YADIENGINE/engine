@@ -19,7 +19,9 @@ Version::Check(Options(), CurrentVersion, [this](const Version::Change& change) 
 });
 ```
 
-Call `Check` during game startup after options are loaded and response targets are
+`Version::Parse(CurrentProjectSettings().version)` reads the version from the project's
+settings ([Project settings](../../../Docs/ProjectSettings.md)), so the exe's details and the
+tracking share one number. Call `Check` during game startup after options are loaded and response targets are
 ready. It borrows the options and optional callback only for this synchronous call;
 neither is retained. The game supplies its current version and response. Tracking,
 comparison, encoding, and persistence belong to this module. A patch-note table is

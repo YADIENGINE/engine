@@ -2,8 +2,9 @@
 include("${CMAKE_CURRENT_LIST_DIR}/Diagnostics/CrashTargets.cmake")
 
 # engine_add_tuning(<target> ROOT <folder>): each *.tuning.json under ROOT generates
-# <build>/Tuning/<target>/<path relative to ROOT>.tuning.h at build time; that folder is a PUBLIC include directory,
-# so includes match source headers. Files are found at configure time (not listed manually in CMake). See Docs/Tuning.md.
+# <build>/Tuning/<target>/<path relative to ROOT>.tuning.h at build time, and each *.input.json an .input.h
+# (Docs/InputMap.md); that folder is a PUBLIC include directory, so includes match source headers. Files are found at
+# configure time (not listed manually in CMake). See Docs/Tuning.md.
 set(ENGINE_TUNING_GENERATOR_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." CACHE INTERNAL "Engine root for python -m Tools.tuning")
 function(engine_add_tuning target)
     cmake_parse_arguments(PARSE_ARGV 1 TUNING "" "ROOT" "")
@@ -13,7 +14,7 @@ function(engine_add_tuning target)
     cmake_path(ABSOLUTE_PATH TUNING_ROOT NORMALIZE)
     _engine_schedule_tuning_manifest()
     set_property(GLOBAL APPEND PROPERTY ENGINE_TUNING_ROOTS "${target}|${TUNING_ROOT}")
-    file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${TUNING_ROOT}/*.tuning.json")
+    file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${TUNING_ROOT}/*.tuning.json" "${TUNING_ROOT}/*.input.json")
     if(NOT sources)
         return()
     endif()
@@ -26,9 +27,13 @@ function(engine_add_tuning target)
         cmake_path(RELATIVE_PATH source BASE_DIRECTORY "${TUNING_ROOT}" OUTPUT_VARIABLE relative)
         string(REGEX REPLACE "\\.json$" ".h" relativeHeader "${relative}")
         cmake_path(GET source FILENAME name)
+        set(kind generate)
+        if(name MATCHES "\\.input\\.json$")
+            set(kind input)
+        endif()
         if(name IN_LIST structs)
-            message(FATAL_ERROR "${target}: two tuning files are named ${name}; each target needs unique names "
-                "because the generated structs are global")
+            message(FATAL_ERROR "${target}: two tuning or input map files are named ${name}; each target needs unique "
+                "names because the generated structs are global")
         endif()
         list(APPEND structs "${name}")
         set(header "${outputRoot}/${relativeHeader}")
@@ -36,7 +41,7 @@ function(engine_add_tuning target)
         # search the working directory with `-m`.
         set(command "${Python3_EXECUTABLE}" -B -c
             "__import__('sys').path.insert(0, __import__('sys').argv.pop(1)) or __import__('runpy').run_module('Tools.tuning', run_name='__main__')"
-            "${ENGINE_TUNING_GENERATOR_ROOT}" generate "${source}" "${header}" "${CMAKE_SOURCE_DIR}")
+            "${ENGINE_TUNING_GENERATOR_ROOT}" ${kind} "${source}" "${header}" "${CMAKE_SOURCE_DIR}")
         if(NOT EXISTS "${header}")
             # Let IntelliSense find it before the first build; the build reports any errors.
             execute_process(COMMAND ${command} WORKING_DIRECTORY "${ENGINE_TUNING_GENERATOR_ROOT}"
@@ -44,7 +49,7 @@ function(engine_add_tuning target)
         endif()
         add_custom_command(OUTPUT "${header}"
             COMMAND ${command}
-            DEPENDS "${source}" ${generatorSources}
+            DEPENDS "${source}" ${generatorSources} "${ENGINE_TUNING_GENERATOR_ROOT}/Core/Input/Input.h"
             WORKING_DIRECTORY "${ENGINE_TUNING_GENERATOR_ROOT}"
             COMMENT "Generating tuning header ${relativeHeader}"
             VERBATIM)
@@ -53,6 +58,37 @@ function(engine_add_tuning target)
     endforeach()
     target_sources(${target} PRIVATE ${headers})
     target_include_directories(${target} PUBLIC "${outputRoot}")
+endfunction()
+
+# engine_add_project_settings(<target> [RESOURCES]): the project's Game/Game.settings.json (Docs/ProjectSettings.md)
+# becomes <build>/ProjectSettings/<target>/ProjectSettings.cpp, which hands its values to the engine before main;
+# RESOURCES adds the game's icon and version details (.rc). An absent file means every default; creating it
+# reconfigures. engine_add_game and engine_add_editor_worker call this.
+function(engine_add_project_settings target)
+    cmake_parse_arguments(PARSE_ARGV 1 SETTINGS "RESOURCES" "" "")
+    find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+    set(values "${CMAKE_SOURCE_DIR}/Game/Game.settings.json")
+    file(GLOB present CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Game/Game.settings.json")
+    file(GLOB generatorSources CONFIGURE_DEPENDS "${ENGINE_TUNING_GENERATOR_ROOT}/Tools/tuning/*.py")
+    set(schema "${ENGINE_TUNING_GENERATOR_ROOT}/Core/Runtime/ProjectSettings.schema.json")
+    set(outputRoot "${CMAKE_BINARY_DIR}/ProjectSettings/${target}")
+    set(outputs "${outputRoot}/ProjectSettings.cpp")
+    set(rc "-")
+    if(SETTINGS_RESOURCES)
+        set(rc "${outputRoot}/ProjectSettings.rc")
+        list(APPEND outputs "${rc}")
+    endif()
+    set(command "${Python3_EXECUTABLE}" -B -c
+        "__import__('sys').path.insert(0, __import__('sys').argv.pop(1)) or __import__('runpy').run_module('Tools.tuning', run_name='__main__')"
+        "${ENGINE_TUNING_GENERATOR_ROOT}" settings "${values}" "${outputRoot}/ProjectSettings.cpp" "${rc}"
+        "${CMAKE_SOURCE_DIR}")
+    add_custom_command(OUTPUT ${outputs}
+        COMMAND ${command}
+        DEPENDS ${present} "${schema}" ${generatorSources}
+        WORKING_DIRECTORY "${ENGINE_TUNING_GENERATOR_ROOT}"
+        COMMENT "Generating project settings for ${target}"
+        VERBATIM)
+    target_sources(${target} PRIVATE ${outputs})
 endfunction()
 
 # The editor reads the tuning roots and files from <build>/Tuning/TuningFiles.json; written once at configure end.
@@ -195,6 +231,7 @@ function(engine_add_game target)
     endif()
     engine_copy_engine_audio(${target})
     engine_enable_crash_reports(${target})
+    engine_add_project_settings(${target} RESOURCES)
     if(useStarter)
         engine_copy_starter_font(${target})
     endif()

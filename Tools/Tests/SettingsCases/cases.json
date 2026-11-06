@@ -1,0 +1,27 @@
+{
+  "comment": "Shared by Tools/Tests/test_settings.py and Core/Tests/SettingsTests.cpp; kind: schema (a settings schema), values (a values file against the engine's ProjectSettings schema) or tuning; line is the reported error line, null when valid.",
+  "cases": [
+    { "kind": "schema", "file": "schema-valid.json", "line": null },
+    { "kind": "schema", "file": "schema-list.json", "line": 2 },
+    { "kind": "schema", "file": "schema-table.json", "line": 3 },
+    { "kind": "schema", "file": "schema-format-on-int.json", "line": 3 },
+    { "kind": "schema", "file": "schema-format-unknown.json", "line": 2 },
+    { "kind": "schema", "file": "schema-default-not-version.json", "line": 2 },
+    { "kind": "tuning", "file": "tuning-text.json", "line": 2 },
+    { "kind": "tuning", "file": "tuning-format.json", "line": 2 },
+    { "kind": "values", "file": "values-valid.json", "line": null },
+    { "kind": "values", "file": "values-empty.json", "line": null },
+    { "kind": "values", "file": "values-unknown.json", "line": 3 },
+    { "kind": "values", "file": "values-parent-path.json", "line": 2 },
+    { "kind": "values", "file": "values-backslash-path.json", "line": 2 },
+    { "kind": "values", "file": "values-absolute-path.json", "line": 2 },
+    { "kind": "values", "file": "values-empty-part.json", "line": 2 },
+    { "kind": "values", "file": "values-five-part-version.json", "line": 2 },
+    { "kind": "values", "file": "values-big-version.json", "line": 2 },
+    { "kind": "values", "file": "values-zero-led-version.json", "line": 2 },
+    { "kind": "values", "file": "values-out-of-range.json", "line": 3 },
+    { "kind": "values", "file": "values-multiline.json", "line": 2 },
+    { "kind": "values", "file": "values-wrong-type.json", "line": 2 },
+    { "kind": "values", "file": "values-not-object.json", "line": 1 }
+  ]
+}

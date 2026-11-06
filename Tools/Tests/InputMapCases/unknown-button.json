@@ -1,0 +1,8 @@
+{
+  "buttons": ["Fire"],
+  "players": [
+    {
+      "Jump": ["Space"]
+    }
+  ]
+}

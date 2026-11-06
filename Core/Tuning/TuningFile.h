@@ -14,16 +14,30 @@
 // runtime and editor. The build-time generator applies the same rules in Python (Tools/tuning/document.py); shared
 // cases in Tools/Tests/TuningCases check both sides. A rule change must update both implementations together.
 
-// Scalar types used to build lists and table columns. Order matches TuningValue's alternatives.
-enum class TuningType { Float, Int, Bool, Color, Vec2, Range, Choice };
+// Scalar types used to build lists and table columns. Order matches TuningValue's alternatives. Text and Path exist
+// only in settings schemas (Docs/ProjectSettings.md): tuning values are compiled `constexpr` and patched in place.
+enum class TuningType { Float, Int, Bool, Color, Vec2, Range, Choice, Text, Path };
 // A choice's position in its spec's `choices`; the generated enum has the same order.
 struct TuningChoice {
     int index = 0;
     friend bool operator==(const TuningChoice&, const TuningChoice&) = default;
 };
-using TuningValue = std::variant<float, int, bool, Color4, Float2, FloatRange, TuningChoice>;
+// One line of text.
+struct TuningText {
+    std::string text;
+    friend bool operator==(const TuningText&, const TuningText&) = default;
+};
+// Empty, or relative with '/' separators and no '.', '..' or empty part.
+struct TuningPath {
+    std::string path;
+    friend bool operator==(const TuningPath&, const TuningPath&) = default;
+};
+using TuningValue = std::variant<float, int, bool, Color4, Float2, FloatRange, TuningChoice, TuningText, TuningPath>;
 
 [[nodiscard]] std::string_view TuningTypeName(TuningType type);
+[[nodiscard]] bool IsTuningPath(std::string_view text);
+// One to four numbers up to 65535, separated by dots: "1.2.0".
+[[nodiscard]] bool IsTuningVersion(std::string_view text);
 
 // min / max are validity bounds; applied to each list element and each number in vec2 / range. `choices` only for
 // choice; `unit` only for numbers, vec2 and range.
@@ -34,6 +48,7 @@ struct TuningSpec {
     std::optional<double> max;
     std::vector<std::string> choices;
     std::string unit;
+    std::string format; // Text only: "version"
 };
 
 struct TuningColumn {
@@ -77,6 +92,23 @@ private:
 
 // Validated fields in file order.
 [[nodiscard]] std::vector<TuningField> ParseTuningFile(std::string_view text);
+
+// Settings files (Docs/ProjectSettings.md). A schema is written like a tuning file whose values are the defaults; it
+// adds text and path, and has neither lists nor tables. A values file is a flat object holding only the settings that
+// differ from the defaults, in schema order.
+[[nodiscard]] std::vector<TuningField> ParseSettingsSchema(std::string_view text);
+struct SettingsValues {
+    std::vector<TuningField> fields; // The schema's, with the file's values
+    std::vector<std::string> set;    // Names the file sets, in schema order
+};
+// Throws TuningFormatError for an unknown name or an invalid value.
+[[nodiscard]] SettingsValues ParseSettingsValues(std::string_view text, const std::vector<TuningField>& schema);
+// The values file in its canonical layout with `name` set to `value`, or removed (back to the default) without one.
+// Other values keep their spelling. Throws TuningFormatError like ParseSettingsValues.
+[[nodiscard]] std::string PatchSettingsValue(std::string_view text, const std::vector<TuningField>& schema,
+                                             std::string_view name, const std::optional<TuningValue>& value);
+// The canonical layout of a valid values file.
+[[nodiscard]] std::string CanonicalSettingsValues(std::string_view text, const std::vector<TuningField>& schema);
 // Changes only that value's spelling in valid 'text'; the rest stays byte-identical. Throws TuningFormatError if
 // the file or result is invalid (type mismatch, out of bounds).
 [[nodiscard]] std::string PatchTuningValue(std::string_view text, const TuningLocation& at, const TuningValue& value);

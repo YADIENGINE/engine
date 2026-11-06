@@ -11,6 +11,11 @@ void InputBindings::AddBinding(int player, std::size_t button, InputKey key) {
     if (button >= MaxPlayerButtons) throw std::invalid_argument("InputBindings: no such button");
     _bindings.push_back({static_cast<std::size_t>(player), button, key});
 }
+void InputBindings::Bind(std::span<const InputMapBinding> keys) {
+    for (const auto& key : keys)
+        if (key.player >= 0 && static_cast<std::size_t>(key.player) < _players.size())
+            AddBinding(key.player, key.button, key.key);
+}
 void InputBindings::Clear() { _bindings.clear(); }
 std::span<PlayerInput> InputBindings::Read(const DeviceInput& input) {
     for (auto& player : _players)

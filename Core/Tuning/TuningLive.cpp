@@ -217,6 +217,8 @@ void WriteOne(const TuningFieldRef& ref, std::size_t i, const TuningValue& value
         std::memcpy(static_cast<std::byte*>(ref.data) + i * sizeof(int), &index, sizeof(int));
         break;
     }
+    case TuningType::Text: // Settings schemas only; a tuning struct has none
+    case TuningType::Path: break;
     }
 }
 
@@ -278,6 +280,8 @@ void HashField(std::uint64_t& hash, const TuningFieldRef& ref) {
         case TuningType::Choice:
             Hash(hash, static_cast<const std::byte*>(ref.data) + i * sizeof(int), sizeof(int));
             break;
+        case TuningType::Text: // Settings schemas only; a tuning struct has none
+        case TuningType::Path: break;
         }
     }
 }

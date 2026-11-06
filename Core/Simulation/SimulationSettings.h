@@ -16,6 +16,17 @@ struct SimulationSettings {
     std::vector<std::string> axes;    // At most MaxPlayerAxes
 };
 
+// Buttons and axes from an input map (X.input.json -> XInput; Docs/InputMap.md), in its order, so the enum and the
+// names cannot drift apart.
+template <class Map> void DeclareInput(SimulationSettings& settings) {
+    settings.buttons.clear();
+    for (const auto name : Map::ButtonNames)
+        settings.buttons.emplace_back(name);
+    settings.axes.clear();
+    for (const auto name : Map::AxisNames)
+        settings.axes.emplace_back(name);
+}
+
 // The most game time one frame can owe a runner: time beyond it is dropped (SimulationRunner::Advance). Events are
 // kept at least this long, so a view that reads them every frame misses none (SimulationEvents).
 inline constexpr double SimulationMaxFrameSeconds = 0.25;

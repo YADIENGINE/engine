@@ -9,7 +9,7 @@
 #include "Editor/Ui/Shell/EditorShell.h"
 
 // The main menu bar's menus, in their order.
-enum class EditorMenu { File, Scene, View, Build, Git, Agent, Help, Count };
+enum class EditorMenu { File, Project, Scene, View, Build, Git, Agent, Help, Count };
 enum class EditorActionCheck { None, Toggle, Radio };
 
 // clang-format off

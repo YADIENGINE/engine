@@ -8,7 +8,8 @@
 
 // The tuning part of the Inspector (Docs/Tuning.md → Editor): a file's status and fields, edited with the same property
 // widgets as scene parameters. A drag previews in the running scene and writes the file once, when it ends; Modified
-// and the reset button compare with the committed file.
+// and the reset button compare with the committed file. The project's settings file (Docs/ProjectSettings.md) is drawn
+// the same way; a new application id asks first, since it moves the players' options and saves.
 class TuningInspector {
 public:
     // A file's status and fields. `standalone`: the file fills the Inspector; otherwise it is a section of a scene.
@@ -29,7 +30,9 @@ private:
         std::filesystem::path source;
         TuningLocation at;
         TuningValue value;
+        bool confirm = false; // Ask before writing
     };
+    void Confirmation(const EditorUiActions& actions);
     void Status(const TuningFileState& file, const EditorSnapshot& snapshot, const EditorUiActions& actions,
                 bool standalone);
     void Fields(const TuningFileState& file, const EditorSnapshot& snapshot, const EditorUiActions& actions,
@@ -44,6 +47,8 @@ private:
     void OpenContext(const TuningFileState& file, const TuningField& field);
 
     std::optional<Previewing> _previewing;
+    std::optional<Previewing> _confirming;
+    bool _openConfirmation = false;
     unsigned int _popup = 0; // ImGuiID of the file being drawn's context menu
     std::filesystem::path _contextFile;
     std::string _contextField;

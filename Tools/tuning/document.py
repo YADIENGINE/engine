@@ -8,10 +8,15 @@ import json
 import re
 from dataclasses import dataclass, field
 
-SCALAR_TYPES = ("float", "int", "bool", "color", "vec2", "range", "choice")
+SCALAR_TYPES = ("float", "int", "bool", "color", "vec2", "range", "choice", "text", "path")
 BOUNDED_TYPES = ("float", "int", "vec2", "range")  # Types that take min / max, and a unit
-# Allowed keys; also the canonical order.
+# Only a settings schema (Docs/ProjectSettings.md) has these: tuning values are compiled `constexpr` and patched in
+# place while the game runs, which a string cannot be.
+SCHEMA_TYPES = ("text", "path")
+TEXT_FORMATS = ("version",)
+# Allowed keys; also the canonical order. A schema field may also have "format" (text only).
 FIELD_KEYS = ("type", "choices", "value", "min", "max", "unit", "group", "note")
+SCHEMA_KEYS = ("type", "choices", "format", "value", "min", "max", "unit", "group", "note")
 TABLE_KEYS = ("type", "group", "note", "columns", "rows")
 COLUMN_KEYS = ("type", "choices", "min", "max", "unit", "note")
 RANGE_KEYS = ("min", "max")
@@ -19,12 +24,14 @@ MAX_UNIT = 16
 MAX_DEPTH = 32
 
 FIELD_NAME = re.compile(r"[a-z][A-Za-z0-9]*\Z")
-TYPE_NAME = re.compile(r"(float|int|bool|color|vec2|range|choice)(\[\])?\Z")
+TYPE_NAME = re.compile(r"(float|int|bool|color|vec2|range|choice|text|path)(\[\])?\Z")
 CHOICE_NAME = re.compile(r"[A-Z][A-Za-z0-9]*\Z")
 COLOR = re.compile(r"#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?\Z")
 INTEGER = re.compile(r"-?(0|[1-9][0-9]*)\Z")
 NUMBER = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?")
 INT_MIN, INT_MAX = -(2**31), 2**31 - 1
+VERSION = re.compile(r"(0|[1-9][0-9]{0,4})(\.(0|[1-9][0-9]{0,4})){0,3}\Z")
+MAX_VERSION_PART = 65535
 
 # Alan adı üretilen struct'ın üyesi olur; küçük harfle başlayan C++ anahtar sözcükleri ad olamaz.
 CPP_KEYWORDS = frozenset("""
@@ -69,6 +76,7 @@ class Spec:
     choices: list[str] = field(default_factory=list)
     unit: str | None = None
     note: str | None = None
+    format: str | None = None  # text only: "version"
 
     @property
     def text(self) -> str:
@@ -221,9 +229,39 @@ def _number(node: Node, what: str) -> float:
     return float(node.value)
 
 
+def _single_line(node: Node, what: str) -> str:
+    if node.kind != "string" or any(ord(char) < 0x20 for char in node.value):
+        raise TuningError(node.line, f"{what} must be single-line text")
+    return node.value
+
+
+def check_path(text: str) -> bool:
+    """A path a settings value names: empty, or relative with '/' separators and no '.', '..' or empty part."""
+    if not text:
+        return True
+    if "\\" in text or ":" in text or text.startswith("/"):
+        return False
+    return all(part not in ("", ".", "..") for part in text.split("/"))
+
+
+def check_version(text: str) -> bool:
+    return bool(VERSION.match(text)) and all(int(part) <= MAX_VERSION_PART for part in text.split("."))
+
+
 def _decode(node: Node, spec: Spec, what: str):
-    """One value: float, int, bool, (r, g, b, a), (x, y), (min, max) or a choice's name."""
+    """One value: float, int, bool, (r, g, b, a), (x, y), (min, max), a choice's name or text."""
     type_name = spec.type
+    if type_name == "text":
+        text = _single_line(node, what)
+        if spec.format == "version" and not check_version(text):
+            raise TuningError(node.line, f"{what} must be a version such as 1.2.0 (one to four numbers up to "
+                                         f"{MAX_VERSION_PART})")
+        return text
+    if type_name == "path":
+        text = _single_line(node, what)
+        if not check_path(text):
+            raise TuningError(node.line, f"{what} must be a relative path with '/' separators and no '.' or '..'")
+        return text
     if type_name == "choice":
         if node.kind != "string" or node.value not in spec.choices:
             raise TuningError(node.line, f"{what} must be one of {', '.join(spec.choices)}")
@@ -325,7 +363,7 @@ def _choices(node: Node, where: str) -> list[str]:
     return names
 
 
-def _spec(node: Node, type_node: Node | None, where: str, inferred: str | None = None) -> Spec:
+def _spec(node: Node, type_node: Node | None, where: str, inferred: str | None = None, schema: bool = False) -> Spec:
     if type_node is None:
         if inferred is None:
             raise TuningError(node.line, f'{where} needs "type"')
@@ -335,7 +373,17 @@ def _spec(node: Node, type_node: Node | None, where: str, inferred: str | None =
             types = ", ".join(SCALAR_TYPES)
             raise TuningError(type_node.line, f'{where} has an unknown type; use one of {types}, a list "T[]" or "table"')
         spec = Spec(type_node.value.removesuffix("[]"), type_node.value.endswith("[]"))
+        if spec.type in SCHEMA_TYPES and not schema:
+            raise TuningError(type_node.line, f"{where}: type {spec.type} is only for settings schemas")
+        if spec.is_list and schema:
+            raise TuningError(type_node.line, f"{where}: a settings field cannot be a list")
     keys = {key: item for key, _, item in node.value}
+    if "format" in keys:
+        if spec.type != "text":
+            raise TuningError(keys["format"].line, f'{where} of type {spec.text} cannot have "format"')
+        if keys["format"].kind != "string" or keys["format"].value not in TEXT_FORMATS:
+            raise TuningError(keys["format"].line, f'{where} "format" must be one of {", ".join(TEXT_FORMATS)}')
+        spec.format = keys["format"].value
     for bound in ("min", "max"):
         if bound in keys:
             if spec.type not in BOUNDED_TYPES:
@@ -371,13 +419,13 @@ def _inferred(value: Node | None) -> str | None:
     return "bool" if value is not None and value.kind == "bool" else None
 
 
-def _value_field(name: str, line: int, node: Node) -> Field:
+def _value_field(name: str, line: int, node: Node, schema: bool = False) -> Field:
     where = f'"{name}"'
-    _check_keys(node, FIELD_KEYS, where)
+    _check_keys(node, SCHEMA_KEYS if schema else FIELD_KEYS, where)
     keys = {key: item for key, _, item in node.value}
     if "value" not in keys:
         raise TuningError(node.line, f'{where} needs "value"')
-    spec = _spec(node, keys.get("type"), where, _inferred(keys["value"]))
+    spec = _spec(node, keys.get("type"), where, _inferred(keys["value"]), schema)
     return _described(Field(name, line, spec, _checked(keys["value"], spec, f"{where} value")), keys, where)
 
 
@@ -427,8 +475,9 @@ def _table_field(name: str, line: int, node: Node) -> Field:
     return result
 
 
-def parse_fields(root: Node) -> list[Field]:
-    """Doğrulanmış alanlar, dosyadaki sırayla. İlk hatada TuningError."""
+def parse_fields(root: Node, schema: bool = False) -> list[Field]:
+    """Validated fields in file order; TuningError at the first error. `schema`: a settings schema
+    (Docs/ProjectSettings.md), which adds text and path and has neither lists nor tables."""
     if root.kind != "object":
         raise TuningError(root.line, "a tuning file is a JSON object of fields")
     if not root.value:
@@ -440,7 +489,9 @@ def parse_fields(root: Node) -> list[Field]:
             raise TuningError(node.line, f'"{name}" must be an object such as {{ "value": 1.0 }}')
         type_node = next((item for key, _, item in node.value if key == "type"), None)
         is_table = type_node is not None and type_node.kind == "string" and type_node.value == "table"
-        fields.append(_table_field(name, line, node) if is_table else _value_field(name, line, node))
+        if is_table and schema:
+            raise TuningError(type_node.line, f'"{name}": a settings schema has no tables')
+        fields.append(_table_field(name, line, node) if is_table else _value_field(name, line, node, schema))
     _check_type_names(fields)
     return fields
 
@@ -459,5 +510,5 @@ def _check_type_names(fields: list[Field]):
                                       f'"{rows[type_name(f.name)]}" uses for its rows')
 
 
-def read_fields(text: str) -> list[Field]:
-    return parse_fields(parse_json(text))
+def read_fields(text: str, schema: bool = False) -> list[Field]:
+    return parse_fields(parse_json(text), schema)

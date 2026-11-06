@@ -16,13 +16,12 @@ constexpr Color4 HintColor{130, 130, 130, 255};
 
 GameSettings Settings() {
     GameSettings settings;
-    settings.applicationId = ENGINE_NAME "Starter";
-    settings.window.title = ENGINE_NAME " starter";
-    settings.canvasWidth = CanvasWidth;
-    settings.canvasHeight = CanvasHeight;
+    settings.project.applicationId = ENGINE_NAME "Starter";
+    settings.project.title = ENGINE_NAME " starter";
+    settings.project.canvasWidth = CanvasWidth;
+    settings.project.canvasHeight = CanvasHeight;
     settings.persistentOptions = false;
-    settings.font = "Fonts/Starter.ttf";
-    settings.assets = {settings.font};
+    settings.project.font = "Fonts/Starter.ttf";
     return settings;
 }
 

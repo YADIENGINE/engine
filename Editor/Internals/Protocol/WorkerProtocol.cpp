@@ -244,6 +244,10 @@ nlohmann::json EncodeTuningValue(const TuningValue& value) {
                 data = nlohmann::json::array({item.min, item.max});
             else if constexpr (std::is_same_v<T, TuningChoice>)
                 data = item.index;
+            else if constexpr (std::is_same_v<T, TuningText>)
+                data = item.text;
+            else if constexpr (std::is_same_v<T, TuningPath>)
+                data = item.path;
             else
                 data = item;
         },
@@ -283,6 +287,12 @@ TuningValue DecodeTuningValue(const nlohmann::json& json) {
             value.get<std::int64_t>() > std::numeric_limits<int>::max())
             break;
         return TuningChoice{value.get<int>()};
+    case TuningType::Text:
+        if (!value.is_string()) break;
+        return TuningText{value.get<std::string>()};
+    case TuningType::Path:
+        if (!value.is_string()) break;
+        return TuningPath{value.get<std::string>()};
     }
     throw std::runtime_error("Invalid tuning value");
 }

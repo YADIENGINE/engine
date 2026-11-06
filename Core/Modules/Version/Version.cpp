@@ -1,5 +1,7 @@
 #include "Modules/Version/Version.h"
 #include <algorithm>
+#include <array>
+#include <charconv>
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
@@ -44,6 +46,28 @@ void Version::Check(GameOptions& options, GameVersion current, const std::functi
 
 std::string Version::Text(GameVersion version) {
     return std::to_string(version.major) + "." + std::to_string(version.minor) + "." + std::to_string(version.patch);
+}
+
+GameVersion Version::Parse(std::string_view text) {
+    std::array<int, 3> parts{};
+    std::size_t count = 0;
+    std::size_t start = 0;
+    while (true) {
+        const auto end = text.find('.', start);
+        const auto part = text.substr(start, end == std::string_view::npos ? std::string_view::npos : end - start);
+        int number = 0;
+        const auto [last, error] = std::from_chars(part.data(), part.data() + part.size(), number);
+        if (part.empty() || error != std::errc{} || last != part.data() + part.size() || number < 0 || count == 4)
+            throw std::invalid_argument("Version::Parse: \"" + std::string(text) + "\" is not a version such as 1.2.3");
+        if (count < parts.size()) parts[count] = number;
+        ++count;
+        if (end == std::string_view::npos) break;
+        start = end + 1;
+    }
+    const GameVersion version{parts[0], parts[1], parts[2]};
+    if (!IsValid(version))
+        throw std::invalid_argument("Version::Parse: \"" + std::string(text) + "\" is outside the version limits");
+    return version;
 }
 
 std::span<const PatchNote> Version::NotesSince(std::span<const PatchNote> notes, GameVersion previous) {

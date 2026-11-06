@@ -148,7 +148,9 @@ that must handle it. Events are named in [scenarios](#scenarios) and by `sim run
 
 A tape stores actions, not keys. The game declares button and axis names, and `InputBindings` turns keys into per-player
 actions before the runner sees them, so a tape does not depend on key layout or devices. It also means a replay does not
-reproduce a binding mistake: test bindings on their own. A new device changes bindings, not the format.
+reproduce a binding mistake: test bindings on their own. A new device changes bindings, not the format. An [input
+map](InputMap.md) names the buttons and axes once and gives each player's default keys: `DeclareInput<XInput>` fills
+the declaration and `InputBindings::BindMap<XInput>` binds the keys.
 
 Axes are rounded to 1/1024 before the simulation sees them, so live play and replay read one value. `Command(id, value)`
 carries events that are not keys, such as picking an upgrade.

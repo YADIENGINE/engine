@@ -43,7 +43,7 @@ WorkerSession::WorkerSession(Game& game, const GameSettings& settings, const Sce
     , _game(game)
     , _registry(registry)
     , _channel(channel)
-    , _canvas{settings.canvasWidth, settings.canvasHeight}
+    , _canvas{settings.project.canvasWidth, settings.project.canvasHeight}
     , _frames(session, false)
     , _actions(std::move(actions))
     , _scene(

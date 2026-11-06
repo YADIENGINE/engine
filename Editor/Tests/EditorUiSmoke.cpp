@@ -91,6 +91,8 @@ constexpr std::array Stages{
     SmokeStage{"tuning", SmokeView::Running, 1600, 1000, 100, EditorPanel::Inspector},
     SmokeStage{"tuning-file", SmokeView::Running, 1600, 1000, 100, EditorPanel::Inspector},
     SmokeStage{"tuning-narrow", SmokeView::Running, 1100, 680, 150, EditorPanel::Inspector},
+    SmokeStage{"project-settings", SmokeView::Running, 1600, 1000, 100, EditorPanel::Inspector},
+    SmokeStage{"input-map", SmokeView::Running, 1600, 1000, 100, EditorPanel::Inspector},
     SmokeStage{"assets", SmokeView::Running, 1600, 900, 100, EditorPanel::Assets},
     SmokeStage{"audio", SmokeView::Running, 1600, 900, 100, EditorPanel::AudioPreview},
     SmokeStage{"agent-strip", SmokeView::AgentStrip},
@@ -308,6 +310,11 @@ public:
         WriteFile(TuningFile(), EnemyTuning);
         WriteFile(_root / "Game" / "Effects" / "Glow.tuning.json",
                   "{\n  \"radius\": { \"value\": 12, \"min\": 0, \"unit\": \"px\" }\n}\n");
+        WriteFile(SettingsFile(), "{\n  \"title\": \"My game\",\n  \"canvasWidth\": 640,\n  \"canvasHeight\": 360\n}\n");
+        WriteFile(InputMapFile(), "{\n  \"buttons\": [\"Left\", \"Right\", \"Jump\", \"Pause\"],\n  \"axes\": [\"MoveX\"],\n"
+                                  "  \"players\": [\n    { \"Left\": [\"A\", \"Left\"], \"Right\": [\"D\", \"Right\"], "
+                                  "\"Jump\": [\"Space\"], \"Pause\": [\"Escape\"] },\n"
+                                  "    { \"Left\": [\"J\"], \"Right\": [\"L\"], \"Jump\": [\"RightControl\"] }\n  ]\n}\n");
         const auto quoted = [](const std::filesystem::path& path) { return "\"" + path.generic_string() + "\""; };
         WriteFile(_root / "build" / "Tuning" / "TuningFiles.json",
                   "{ \"version\": 2, \"project\": " + quoted(_root) + ", \"roots\": [ { \"target\": \"MyGame\", " +
@@ -323,6 +330,8 @@ public:
     [[nodiscard]] std::filesystem::path BuildDirectory() const { return _root / "build"; }
     // Read by the running scene; Effects/Glow.tuning.json is not built yet.
     [[nodiscard]] std::filesystem::path TuningFile() const { return _root / "Game" / "Enemy.tuning.json"; }
+    [[nodiscard]] std::filesystem::path SettingsFile() const { return _root / "Game" / "Game.settings.json"; }
+    [[nodiscard]] std::filesystem::path InputMapFile() const { return _root / "Game" / "Simulation" / "Pad.input.json"; }
     static constexpr std::string_view EnemyTuning = R"({
   "radius": { "value": 12, "min": 0, "max": 40, "unit": "px", "note": "Hit circle around the enemy" },
   "speed": { "value": 2.5, "min": 0, "max": 10, "unit": "px/s" },
@@ -604,6 +613,8 @@ protected:
         snapshot.profiler.liveSummary = _summary;
         snapshot.tuning = &_tuning;
         if (std::string_view(stage.name) == "tuning-file") snapshot.inspectedTuning = _project.TuningFile();
+        if (std::string_view(stage.name) == "project-settings") snapshot.inspectedTuning = _project.SettingsFile();
+        if (std::string_view(stage.name) == "input-map") snapshot.inspectedTuning = _project.InputMapFile();
         snapshot.audio.file = _project.AssetsDirectory() / "Audio" / "SE" / "Hit.wav";
         snapshot.audio.length = _waveform->seconds;
         snapshot.audio.position = 0.7f;

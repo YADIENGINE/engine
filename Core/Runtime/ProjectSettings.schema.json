@@ -1,0 +1,20 @@
+{
+  "title": { "type": "text", "value": "Game", "group": "Identity", "note": "Window title; also the product name in the exe's details" },
+  "applicationId": { "type": "path", "value": "Game", "group": "Identity", "note": "Folder for options and saves in the player's data folder; changing it after a release loses them" },
+  "company": { "type": "text", "value": "", "group": "Identity", "note": "Company name in the exe's details; empty: none" },
+  "version": { "type": "text", "format": "version", "value": "1.0.0", "group": "Identity", "note": "Game version in the exe's details: one to four numbers" },
+  "icon": { "type": "path", "value": "", "group": "Identity", "note": "Windows .ico from the project folder for the window, taskbar and exe; empty: none" },
+  "windowWidth": { "type": "int", "value": 1280, "min": 1, "max": 16384, "unit": "px", "group": "Window", "note": "Window size when the game starts" },
+  "windowHeight": { "type": "int", "value": 720, "min": 1, "max": 16384, "unit": "px", "group": "Window" },
+  "windowMinWidth": { "type": "int", "value": 640, "min": 1, "max": 16384, "unit": "px", "group": "Window", "note": "Smallest size the player can drag the window to" },
+  "windowMinHeight": { "type": "int", "value": 360, "min": 1, "max": 16384, "unit": "px", "group": "Window" },
+  "resizable": { "value": true, "group": "Window" },
+  "maximized": { "value": false, "group": "Window", "note": "Start maximized" },
+  "targetFps": { "type": "int", "value": 60, "min": 0, "max": 1000, "group": "Window", "note": "Frame rate limit until the player chooses one; 0: unlimited" },
+  "canvasWidth": { "type": "int", "value": 1280, "min": 1, "max": 8192, "unit": "px", "group": "Canvas", "note": "The size the game draws at, scaled to the window" },
+  "canvasHeight": { "type": "int", "value": 720, "min": 1, "max": 8192, "unit": "px", "group": "Canvas" },
+  "background": { "type": "color", "value": "#000000", "group": "Canvas", "note": "Canvas colour before anything is drawn" },
+  "letterbox": { "type": "color", "value": "#000000", "group": "Canvas", "note": "Colour around the canvas when the window's shape differs" },
+  "smoothCanvas": { "value": true, "group": "Canvas", "note": "Smooth scaling; off keeps pixels sharp" },
+  "font": { "type": "path", "value": "", "group": "Text", "note": "Font Painter draws with when given none, from Game/Assets; empty: none" }
+}

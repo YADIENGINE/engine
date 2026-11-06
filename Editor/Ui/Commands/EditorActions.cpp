@@ -3,6 +3,7 @@
 #include <string>
 #include <system_error>
 #include "Editor/Internals/Agent/AgentProfile.h"
+#include "Editor/Internals/Session/TuningWorkspace.h"
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Style/EditorPalettePreset.h"
 #include "Editor/Ui/Widgets/EditorAgentSetup.h"
@@ -105,6 +106,48 @@ void FileActions(const EditorActionContext& context, std::vector<EditorAction>& 
     list.push_back({.menu = EditorMenu::File, .section = "leave", .label = "Exit", .palette = false, .run = [&result] {
                         result.quit = true;
                     }});
+}
+
+// The project's files the Inspector edits (Docs/ProjectSettings.md, Docs/InputMap.md).
+void ProjectActions(const EditorActionContext& context, std::vector<EditorAction>& list) {
+    const auto* workspace = context.snapshot.tuning;
+    const auto open = [&context](const std::filesystem::path& file) {
+        return [&preferences = context.preferences, &actions = context.actions, file] {
+            preferences.Visible(EditorPanel::Inspector) = true;
+            if (actions.inspectTuning) actions.inspectTuning(file);
+        };
+    };
+    const auto* settings = workspace ? workspace->Settings() : nullptr;
+    list.push_back({.menu = EditorMenu::Project,
+                    .section = "settings",
+                    .label = "Project settings",
+                    .enabled = settings != nullptr,
+                    .reason = settings ? "" : "The project has not been configured yet: build it once.",
+                    .tooltip = "Title, window, canvas, font and identity (Game/Game.settings.json), in the Inspector.",
+                    .run = settings ? std::function<void()>(open(settings->source)) : [] {}});
+    std::vector<const TuningFileState*> maps;
+    if (workspace)
+        for (const auto& file : workspace->Files())
+            if (file.kind == TuningFileKind::InputMap) maps.push_back(&file);
+    if (maps.size() <= 1) {
+        list.push_back({.menu = EditorMenu::Project,
+                        .section = "settings",
+                        .label = "Input map",
+                        .enabled = !maps.empty(),
+                        .reason = maps.empty() ? "No input map yet: add Game/Simulation/<Name>.input.json "
+                                                 "(Docs/InputMap.md)."
+                                               : "",
+                        .tooltip = "Each player's keys for the game's buttons, in the Inspector.",
+                        .run = maps.empty() ? std::function<void()>([] {}) : open(maps[0]->source)});
+        return;
+    }
+    for (const auto* map : maps)
+        list.push_back({.menu = EditorMenu::Project,
+                        .section = "settings",
+                        .submenu = "Input maps",
+                        .label = map->label,
+                        .tooltip = "Each player's keys for the game's buttons, in the Inspector.",
+                        .run = open(map->source)});
 }
 
 void SceneActions(const EditorActionContext& context, std::vector<EditorAction>& list) {
@@ -382,8 +425,9 @@ void HelpActions(const EditorActionContext& context, std::vector<EditorAction>& 
 
 const char* EditorMenuTitle(EditorMenu menu) {
     switch (menu) {
-    case EditorMenu::File : return "File";
-    case EditorMenu::Scene: return "Scene";
+    case EditorMenu::File   : return "File";
+    case EditorMenu::Project: return "Project";
+    case EditorMenu::Scene  : return "Scene";
     case EditorMenu::View : return "View";
     case EditorMenu::Build: return "Build";
     case EditorMenu::Git  : return "Git";
@@ -397,6 +441,7 @@ const char* EditorMenuTitle(EditorMenu menu) {
 std::vector<EditorAction> EditorActionList(const EditorActionContext& context) {
     std::vector<EditorAction> list;
     FileActions(context, list);
+    ProjectActions(context, list);
     SceneActions(context, list);
     ViewActions(context, list);
     BuildActions(context, list);

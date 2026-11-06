@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from ..include_boundaries import skipped_directory
+from . import inputmap
 from .document import TuningError
 from .header import SUFFIX, struct_name
 from .layout import canonical
@@ -13,7 +14,7 @@ def tuning_files(root: Path):
         if entry.is_dir():
             if not skipped_directory(entry):
                 yield from tuning_files(entry)
-        elif entry.name.endswith(SUFFIX):
+        elif entry.name.endswith(SUFFIX) or entry.name.endswith(inputmap.SUFFIX):
             yield entry
 
 
@@ -25,9 +26,10 @@ def check_tuning(root: Path, fix: bool) -> tuple[list[str], list[str]]:
     for path in tuning_files(root):
         where = path.relative_to(root).as_posix()
         try:
-            struct_name(path)
+            is_input = path.name.endswith(inputmap.SUFFIX)
+            (inputmap.struct_name if is_input else struct_name)(path)
             text = path.read_bytes().decode("utf-8")
-            expected = canonical(text)
+            expected = (inputmap.canonical if is_input else canonical)(text)
         except UnicodeDecodeError:
             problems.append(f"{where}:1: the file is not UTF-8")
             continue

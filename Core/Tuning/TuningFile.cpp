@@ -8,8 +8,12 @@
 #include "Tuning/Internals/TuningJson.h"
 
 namespace {
-constexpr std::array<std::string_view, 7> TypeNames{"float", "int", "bool", "color", "vec2", "range", "choice"};
+constexpr std::array<std::string_view, 9> TypeNames{"float", "int",    "bool", "color", "vec2",
+                                                    "range", "choice", "text", "path"};
 constexpr std::array<std::string_view, 8> FieldKeys{"type", "choices", "value", "min", "max", "unit", "group", "note"};
+constexpr std::array<std::string_view, 9> SchemaKeys{"type", "choices", "format", "value", "min",
+                                                     "max",  "unit",    "group",  "note"};
+constexpr std::array<std::string_view, 1> TextFormats{"version"};
 constexpr std::array<std::string_view, 5> TableKeys{"type", "group", "note", "columns", "rows"};
 constexpr std::array<std::string_view, 6> ColumnKeys{"type", "choices", "min", "max", "unit", "note"};
 constexpr std::size_t MaxUnit = 16; // Characters (code points)
@@ -82,8 +86,27 @@ std::string ChoiceList(const std::vector<std::string>& choices) {
     return out;
 }
 
+std::string SingleLine(const TuningJsonNode& node, const std::string& what) {
+    if (node.kind != TuningJsonKind::String ||
+        std::any_of(node.text.begin(), node.text.end(), [](char c) { return static_cast<unsigned char>(c) < 0x20; }))
+        Fail(node.line, what + " must be single-line text");
+    return node.text;
+}
+
 TuningValue Decode(const TuningJsonNode& node, const TuningSpec& spec, const std::string& what) {
     switch (spec.type) {
+    case TuningType::Text: {
+        auto text = SingleLine(node, what);
+        if (spec.format == "version" && !IsTuningVersion(text))
+            Fail(node.line, what + " must be a version such as 1.2.0 (one to four numbers up to 65535)");
+        return TuningText{std::move(text)};
+    }
+    case TuningType::Path: {
+        auto text = SingleLine(node, what);
+        if (!IsTuningPath(text))
+            Fail(node.line, what + " must be a relative path with '/' separators and no '.' or '..'");
+        return TuningPath{std::move(text)};
+    }
     case TuningType::Choice: {
         const auto found = node.kind == TuningJsonKind::String
                                ? std::find(spec.choices.begin(), spec.choices.end(), node.text)
@@ -172,7 +195,8 @@ void CheckName(std::string_view name, int line, const std::string& what) {
 }
 
 bool Bounded(TuningType type) {
-    return type != TuningType::Bool && type != TuningType::Color && type != TuningType::Choice;
+    return type == TuningType::Float || type == TuningType::Int || type == TuningType::Vec2 ||
+           type == TuningType::Range;
 }
 
 std::size_t CodePoints(std::string_view text) {
@@ -212,7 +236,7 @@ std::vector<std::string> Choices(const TuningJsonNode& node, const std::string& 
 }
 
 TuningSpec Spec(const TuningJsonNode& node, const TuningJsonNode* type, const std::string& where,
-                std::optional<TuningType> inferred = std::nullopt) {
+                std::optional<TuningType> inferred = std::nullopt, bool schema = false) {
     TuningSpec spec;
     if (!type) {
         if (!inferred) Fail(node.line, where + " needs \"type\"");
@@ -226,8 +250,19 @@ TuningSpec Spec(const TuningJsonNode& node, const TuningJsonNode* type, const st
             Fail(type->line,
                  where + " has an unknown type; use one of " + Joined(TypeNames) + ", a list \"T[]\" or \"table\"");
         spec.type = static_cast<TuningType>(found - TypeNames.begin());
+        if ((spec.type == TuningType::Text || spec.type == TuningType::Path) && !schema)
+            Fail(type->line, where + ": type " + std::string(name) + " is only for settings schemas");
+        if (spec.list && schema) Fail(type->line, where + ": a settings field cannot be a list");
     }
     const std::string typeText = std::string(TuningTypeName(spec.type)) + (spec.list ? "[]" : "");
+    if (const auto* format = node.Find("format")) {
+        if (spec.type != TuningType::Text)
+            Fail(format->line, where + " of type " + typeText + " cannot have \"format\"");
+        if (format->kind != TuningJsonKind::String ||
+            std::find(TextFormats.begin(), TextFormats.end(), format->text) == TextFormats.end())
+            Fail(format->line, where + " \"format\" must be one of " + Joined(TextFormats));
+        spec.format = format->text;
+    }
     for (const auto* bound : {"min", "max"}) {
         const auto* value = node.Find(bound);
         if (!value) continue;
@@ -261,14 +296,17 @@ std::optional<TuningType> Inferred(const TuningJsonNode* value) {
     return std::nullopt;
 }
 
-TuningField ValueField(const TuningJsonMember& member) {
+TuningField ValueField(const TuningJsonMember& member, bool schema) {
     const auto& node = member.value;
     const std::string where = Quoted(member.key);
-    CheckKeys(node, FieldKeys, where);
+    if (schema)
+        CheckKeys(node, SchemaKeys, where);
+    else
+        CheckKeys(node, FieldKeys, where);
     const auto* value = node.Find("value");
     if (!value) Fail(node.line, where + " needs \"value\"");
     TuningField field{member.key, member.line};
-    field.spec = Spec(node, node.Find("type"), where, Inferred(value));
+    field.spec = Spec(node, node.Find("type"), where, Inferred(value), schema);
     field.values = Checked(*value, field.spec, where + " value");
     Describe(field, node, where);
     return field;
@@ -322,7 +360,7 @@ TuningField TableField(const TuningJsonMember& member) {
     return field;
 }
 
-std::vector<TuningField> Fields(const TuningJsonNode& root) {
+std::vector<TuningField> Fields(const TuningJsonNode& root, bool schema = false) {
     if (root.kind != TuningJsonKind::Object) Fail(root.line, "a tuning file is a JSON object of fields");
     if (root.members.empty()) Fail(root.line, "a tuning file needs at least one field");
     std::vector<TuningField> fields;
@@ -332,7 +370,8 @@ std::vector<TuningField> Fields(const TuningJsonNode& root) {
             Fail(member.value.line, Quoted(member.key) + " must be an object such as { \"value\": 1.0 }");
         const auto* type = member.value.Find("type");
         const bool table = type && type->kind == TuningJsonKind::String && type->text == "table";
-        fields.push_back(table ? TableField(member) : ValueField(member));
+        if (table && schema) Fail(type->line, Quoted(member.key) + ": a settings schema has no tables");
+        fields.push_back(table ? TableField(member) : ValueField(member, schema));
     }
     // A choice's enum and a table's row struct live in the same generated struct, so their names must differ.
     const auto typeName = [](const std::string& name) {
@@ -357,6 +396,15 @@ std::string FormatNumber(float value) {
     return text;
 }
 
+std::string JsonString(std::string_view text) {
+    std::string out = "\"";
+    for (const char c : text) {
+        if (c == '"' || c == '\\') out += '\\';
+        out += c;
+    }
+    return out + "\"";
+}
+
 std::string FormatHex(std::uint8_t channel) {
     constexpr std::string_view Digits = "0123456789ABCDEF";
     return {Digits[channel >> 4], Digits[channel & 0x0F]};
@@ -369,6 +417,8 @@ std::string Format(const TuningValue& value, const TuningSpec& spec) {
             throw TuningFormatError(1, "the choice is not one of " + ChoiceList(spec.choices));
         return Quoted(spec.choices[static_cast<std::size_t>(choice->index)]);
     }
+    if (const auto* text = std::get_if<TuningText>(&value)) return JsonString(text->text);
+    if (const auto* path = std::get_if<TuningPath>(&value)) return JsonString(path->path);
     if (const auto* number = std::get_if<float>(&value)) return FormatNumber(*number);
     if (const auto* integer = std::get_if<int>(&value)) return std::to_string(*integer);
     if (const auto* flag = std::get_if<bool>(&value)) return *flag ? "true" : "false";
@@ -390,7 +440,120 @@ TuningFormatError::TuningFormatError(int line, const std::string& text)
 
 std::string_view TuningTypeName(TuningType type) { return TypeNames[static_cast<std::size_t>(type)]; }
 
+bool IsTuningPath(std::string_view text) {
+    if (text.empty()) return true;
+    if (text.find_first_of("\\:") != std::string_view::npos || text.front() == '/') return false;
+    std::size_t start = 0;
+    while (true) {
+        const auto end = text.find('/', start);
+        const auto part = text.substr(start, end == std::string_view::npos ? std::string_view::npos : end - start);
+        if (part.empty() || part == "." || part == "..") return false;
+        if (end == std::string_view::npos) return true;
+        start = end + 1;
+    }
+}
+
+bool IsTuningVersion(std::string_view text) {
+    int parts = 0;
+    std::size_t start = 0;
+    while (true) {
+        const auto end = text.find('.', start);
+        const auto part = text.substr(start, end == std::string_view::npos ? std::string_view::npos : end - start);
+        const bool digits = !part.empty() && part.size() <= 5 &&
+                            std::all_of(part.begin(), part.end(), [](char c) { return c >= '0' && c <= '9'; });
+        if (!digits || (part.size() > 1 && part.front() == '0')) return false;
+        int number = 0;
+        std::from_chars(part.data(), part.data() + part.size(), number);
+        if (number > 65535 || ++parts > 4) return false;
+        if (end == std::string_view::npos) return true;
+        start = end + 1;
+    }
+}
+
 std::vector<TuningField> ParseTuningFile(std::string_view text) { return Fields(ParseTuningJson(text)); }
+
+std::vector<TuningField> ParseSettingsSchema(std::string_view text) { return Fields(ParseTuningJson(text), true); }
+
+namespace {
+struct SettingsEntry {
+    const TuningField* field = nullptr;
+    std::string spelling; // As written in the file, or the formatted new value
+};
+
+const TuningField& SchemaField(const std::vector<TuningField>& schema, std::string_view name, int line) {
+    const auto found =
+        std::find_if(schema.begin(), schema.end(), [&](const TuningField& field) { return field.name == name; });
+    if (found == schema.end()) Fail(line, "unknown setting " + Quoted(name));
+    return *found;
+}
+
+// The file's entries in schema order, after validating it.
+std::vector<SettingsEntry> SettingsEntries(std::string_view text, const std::vector<TuningField>& schema,
+                                           SettingsValues* values) {
+    const auto root = ParseTuningJson(text);
+    if (root.kind != TuningJsonKind::Object) Fail(root.line, "a settings file is a JSON object of values");
+    if (values) {
+        values->fields = schema;
+        for (auto& field : values->fields)
+            field.line = 1; // A default is not in the file
+    }
+    std::vector<SettingsEntry> entries;
+    for (const auto& member : root.members) {
+        const auto& field = SchemaField(schema, member.key, member.line);
+        auto checked = Checked(member.value, field.spec, Quoted(member.key));
+        entries.push_back({&field, std::string(text.substr(member.value.begin, member.value.end - member.value.begin))});
+        if (values) {
+            const auto index = static_cast<std::size_t>(&field - schema.data());
+            values->fields[index].values = std::move(checked);
+            values->fields[index].line = member.line;
+        }
+    }
+    std::sort(entries.begin(), entries.end(),
+              [](const SettingsEntry& a, const SettingsEntry& b) { return a.field < b.field; });
+    if (values) {
+        values->set.clear();
+        for (const auto& entry : entries)
+            values->set.push_back(entry.field->name);
+    }
+    return entries;
+}
+
+std::string SettingsText(const std::vector<SettingsEntry>& entries) {
+    if (entries.empty()) return "{}\n";
+    std::string text = "{\n";
+    for (std::size_t i = 0; i < entries.size(); ++i)
+        text += "  " + Quoted(entries[i].field->name) + ": " + entries[i].spelling +
+                (i + 1 < entries.size() ? ",\n" : "\n");
+    return text + "}\n";
+}
+} // namespace
+
+SettingsValues ParseSettingsValues(std::string_view text, const std::vector<TuningField>& schema) {
+    SettingsValues values;
+    (void)SettingsEntries(text, schema, &values);
+    return values;
+}
+
+std::string PatchSettingsValue(std::string_view text, const std::vector<TuningField>& schema, std::string_view name,
+                               const std::optional<TuningValue>& value) {
+    auto entries = SettingsEntries(text, schema, nullptr);
+    const auto& field = SchemaField(schema, name, 1);
+    std::erase_if(entries, [&](const SettingsEntry& entry) { return entry.field == &field; });
+    if (value) {
+        if (value->index() != static_cast<std::size_t>(field.spec.type))
+            Fail(1, "a " + std::string(TuningTypeName(field.spec.type)) + " value is expected for " + Quoted(name));
+        entries.push_back({&field, Format(*value, field.spec)});
+        std::sort(entries.begin(), entries.end(),
+                  [](const SettingsEntry& a, const SettingsEntry& b) { return a.field < b.field; });
+    }
+    auto patched = SettingsText(entries);
+    (void)SettingsEntries(patched, schema, nullptr); // An out-of-bounds value is rejected here; nothing is written
+    return patched;
+}
+
+std::string CanonicalSettingsValues(std::string_view text, const std::vector<TuningField>& schema) {
+    return SettingsText(SettingsEntries(text, schema, nullptr));
+}
 
 std::string PatchTuningValue(std::string_view text, const TuningLocation& at, const TuningValue& value) {
     const TuningJsonNode root = ParseTuningJson(text);

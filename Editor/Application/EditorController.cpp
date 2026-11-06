@@ -200,6 +200,10 @@ void EditorController::Tuning(const TuningEditRequest& request) {
     case TuningEditKind::Set   : error = _tuning.Set(request.source, request.at, request.value); break;
     case TuningEditKind::Resize: error = _tuning.Resize(request.source, request.at, request.resize); break;
     case TuningEditKind::Revert: error = _tuning.Revert(request.source, request.at.field); break;
+    case TuningEditKind::Default: error = _tuning.ResetToDefault(request.source, request.at.field); break;
+    case TuningEditKind::SetKeys:
+        error = _tuning.SetKeys(request.source, request.player, request.button, request.keys);
+        break;
     case TuningEditKind::Undo  :
     case TuningEditKind::Redo  : {
         const auto step = request.kind == TuningEditKind::Undo ? _tuning.Undo() : _tuning.Redo();

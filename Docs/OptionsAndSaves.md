@@ -15,7 +15,7 @@ from this file; old progress-file preferences are not imported.
 
 ## Saves
 
-`SavePath("progress.json")` chooses the platform's user-data directory using the configured `applicationId`. Construct
+`SavePath("progress.json")` chooses the platform's user-data directory using the project's `applicationId` ([Project settings](ProjectSettings.md)). Construct
 `Persistence` with that path; game data keys and their load/save timing belong to the derived game. A game without saves
 never needs `Persistence`. `CreatePersistence` applies `GameSettings.save` with per-file overrides and fills in the
 application's shared protected-key path. Each instance owns its generic JSON values/settings; `SaveSettings.keepBackup`

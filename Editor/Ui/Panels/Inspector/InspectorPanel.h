@@ -3,10 +3,12 @@
 #include <string>
 #include <utility>
 #include "Editor/Application/EditorPresentation.h"
+#include "Editor/Ui/Panels/Inspector/InputMapInspector.h"
 #include "Editor/Ui/Panels/Inspector/TuningInspector.h"
 
-// The selected scene's controls and the tuning files it reads, or one tuning file picked on its own
-// (Docs/Editor/Usage.md → Inspector). Scene controls last for the session; tuning values are saved in their files.
+// The selected scene's controls and the tuning files it reads, or one file picked on its own: a tuning file, the
+// project's settings or an input map (Docs/Editor/Usage.md → Inspector). Scene controls last for the session; the
+// others are saved in their files.
 class InspectorPanel {
 public:
     void Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions);
@@ -26,6 +28,7 @@ private:
     void EmptyResults();
 
     TuningInspector _tuning;
+    InputMapInspector _inputMap;
     std::array<char, 128> _search{};
     std::string _shown; // The scene id or tuning file whose filters are set
     std::string _contextParameter;

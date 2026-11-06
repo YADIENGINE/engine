@@ -77,7 +77,8 @@ TEST_CASE("Editor.Protocol.TuningPreviewsRoundTrip", "[engine-editor]") {
 
 TEST_CASE("Editor.Tuning.WorkspaceListsBuiltAndNewFiles", "[engine-editor]") {
     Project project;
-    REQUIRE(project.workspace.Files().size() == 1);
+    REQUIRE(project.workspace.Files().size() == 2); // With the project's settings file, which comes first
+    CHECK(project.workspace.Files().front().kind == TuningFileKind::Settings);
     const auto& file = project.File();
     CHECK(file.label == "Glow.tuning.json");
     CHECK(file.relative == "Game/Glow.tuning.json");
@@ -89,7 +90,7 @@ TEST_CASE("Editor.Tuning.WorkspaceListsBuiltAndNewFiles", "[engine-editor]") {
     Write(project.temp.Path() / "Game" / "Effects" / "Spark.tuning.json", Sample);
     Write(project.temp.Path() / "Elsewhere" / "Lost.tuning.json", Sample);
     project.workspace.Open(project.build);
-    REQUIRE(project.workspace.Files().size() == 2);
+    REQUIRE(project.workspace.Files().size() == 3);
     const auto* spark = project.workspace.Find(project.temp.Path() / "Game" / "Effects" / "Spark.tuning.json");
     REQUIRE(spark);
     CHECK(spark->target.empty());
@@ -222,4 +223,66 @@ TEST_CASE("Editor.Tuning.BaselinesReadTheCommittedText", "[engine-editor]") {
             CHECK_FALSE(text); // Never committed
         }
     }
+}
+
+
+TEST_CASE("Editor.Settings.FirstEditWritesTheFileAndUndoReturnsToDefaults", "[engine-editor]") {
+    Project project;
+    const auto* settings = project.workspace.Settings();
+    REQUIRE(settings);
+    const auto source = settings->source;
+    CHECK(source == project.temp.Path() / "Game" / "Game.settings.json");
+    CHECK(settings->label == "Project settings");
+    CHECK_FALSE(settings->exists);
+    CHECK(settings->set.empty());
+    REQUIRE(settings->Field("canvasWidth"));
+    CHECK(settings->Field("canvasWidth")->values.front() == TuningValue{1280}); // The default
+
+    CHECK(project.workspace.Set(source, {"canvasWidth"}, TuningValue{640}).empty());
+    CHECK(ReadText(source) == "{\n  \"canvasWidth\": 640\n}\n");
+    settings = project.workspace.Settings();
+    CHECK(settings->exists);
+    CHECK(settings->set == std::vector<std::string>{"canvasWidth"});
+    CHECK(project.workspace.Set(source, {"canvasWidth"}, TuningValue{0}).find("outside") != std::string::npos);
+    CHECK(project.workspace.Set(source, {"title"}, TuningValue{TuningText{"My game"}}).empty());
+    CHECK(project.workspace.ResetToDefault(source, "canvasWidth").empty());
+    CHECK(ReadText(source) == "{\n  \"title\": \"My game\"\n}\n");
+
+    REQUIRE(project.workspace.Undo());
+    CHECK(ReadText(source).find("640") != std::string::npos);
+    REQUIRE(project.workspace.Undo());
+    REQUIRE(project.workspace.Undo());
+    CHECK(ReadText(source) == "{}\n"); // Back to every default
+}
+
+TEST_CASE("Editor.Settings.RevertWritesTheCommittedValueOrTheDefault", "[engine-editor]") {
+    Project project;
+    const auto source = project.workspace.Settings()->source;
+    Write(source, "{\n  \"title\": \"Now\",\n  \"canvasWidth\": 640\n}\n");
+    project.workspace.Open(project.build);
+    project.workspace.SetCommitted(source, std::string("{ \"title\": \"Then\" }"));
+    CHECK(project.workspace.Revert(source, "title").empty());
+    CHECK(project.workspace.Revert(source, "canvasWidth").empty()); // The commit left it out: the default
+    CHECK(ReadText(source) == "{\n  \"title\": \"Then\"\n}\n");
+}
+
+TEST_CASE("Editor.InputMap.KeysAreSetPerPlayerAndButton", "[engine-editor]") {
+    Project project;
+    const auto source = project.temp.Path() / "Game" / "Simulation" / "Pad.input.json";
+    Write(source, "{\n  \"buttons\": [\"Left\", \"Jump\"],\n  \"axes\": [],\n  \"players\": [\n"
+                  "    { \"Jump\": [\"Space\"] },\n    {}\n  ]\n}\n");
+    project.workspace.Open(project.build);
+    const auto* map = project.workspace.Find(source);
+    REQUIRE(map);
+    CHECK(map->kind == TuningFileKind::InputMap);
+    REQUIRE(map->input);
+    CHECK(map->input->players.size() == 2);
+
+    CHECK(project.workspace.SetKeys(source, 1, "Left", {"Left", "A"}).empty());
+    CHECK(ReadText(source).find("{ \"Left\": [\"Left\", \"A\"] }") != std::string::npos);
+    CHECK_FALSE(project.workspace.SetKeys(source, 0, "Left", {"Spacebar"}).empty()); // Not a key name: not written
+    CHECK(project.workspace.SetKeys(source, 0, "Jump", {}).empty());
+    CHECK_FALSE(project.workspace.Find(source)->input->players[0][1].has_value());
+    REQUIRE(project.workspace.Undo());
+    CHECK(project.workspace.Find(source)->input->players[0][1] == std::vector<std::string>{"Space"});
 }

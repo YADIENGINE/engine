@@ -3,7 +3,8 @@
 Drawing is recorded through [Painter](Painter.md). Raylib supplies the window, GL context, input, audio and
 platform services; it does not draw game content.
 
-`GameSettings::canvasWidth/canvasHeight` select logical coordinates (default 1280×720). Larger windows rasterize
+The project settings' `canvasWidth` / `canvasHeight` ([Project settings](../ProjectSettings.md)) select logical
+coordinates (default 1280×720). Larger windows rasterize
 the canvas at window resolution; smaller windows downscale the logical image. Aspect ratio is preserved and
 the remaining window area uses `letterbox`. `smoothCanvas` selects linear filtering when presenting the canvas.
 

@@ -50,6 +50,7 @@ std::string PropertyText(const PropertySpec& spec, const PropertyValue& value) {
         return WithUnit("[" + Number(point->x) + ", " + Number(point->y) + "]", spec);
     if (const auto* range = std::get_if<FloatRange>(&value))
         return WithUnit(Number(range->min) + ".." + Number(range->max), spec);
+    if (const auto* text = std::get_if<PropertyString>(&value)) return text->text.empty() ? "(empty)" : text->text;
     const auto index = std::get<PropertyChoice>(value).index;
     return index < spec.choices.size() ? spec.choices[index] : std::string("?");
 }
@@ -110,6 +111,8 @@ PropertySpec TuningPropertySpec(const TuningSpec& spec) {
     case TuningType::Vec2  : property.kind = PropertyKind::Vec2; break;
     case TuningType::Range : property.kind = PropertyKind::Range; break;
     case TuningType::Choice: property.kind = PropertyKind::Choice; break;
+    case TuningType::Text  :
+    case TuningType::Path  : property.kind = PropertyKind::Text; break;
     }
     property.min = spec.min;
     property.max = spec.max;
@@ -126,6 +129,8 @@ PropertyValue TuningPropertyValue(const TuningValue& value) {
     if (const auto* color = std::get_if<Color4>(&value)) return *color;
     if (const auto* point = std::get_if<Float2>(&value)) return *point;
     if (const auto* range = std::get_if<FloatRange>(&value)) return *range;
+    if (const auto* text = std::get_if<TuningText>(&value)) return PropertyString{text->text, false};
+    if (const auto* path = std::get_if<TuningPath>(&value)) return PropertyString{path->path, true};
     return PropertyChoice{static_cast<std::size_t>(std::max(0, std::get<TuningChoice>(value).index))};
 }
 
@@ -138,5 +143,7 @@ TuningValue TuningValueOf(const PropertyValue& value) {
     if (const auto* color = std::get_if<Color4>(&value)) return *color;
     if (const auto* point = std::get_if<Float2>(&value)) return *point;
     if (const auto* range = std::get_if<FloatRange>(&value)) return *range;
+    if (const auto* text = std::get_if<PropertyString>(&value))
+        return text->path ? TuningValue{TuningPath{text->text}} : TuningValue{TuningText{text->text}};
     return TuningChoice{static_cast<int>(std::get<PropertyChoice>(value).index)};
 }

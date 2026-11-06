@@ -186,7 +186,6 @@ constexpr MusicId MenuMusic{0};
 
 GameSettings Settings() {
     GameSettings settings;
-    settings.applicationId = "MyProject";
     settings.audio.effects = {{Click, "Audio/click.wav",
                                {.maxConcurrent = 2, .volume = 0.8f, .overflow = EffectOverflow::Skip}}};
     settings.audio.music = {{MenuMusic, "Audio/menu.ogg", MusicVolumeGroup::Menu}};

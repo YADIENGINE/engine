@@ -271,6 +271,7 @@ add_library(EngineHeadless STATIC
     Input/Internals/CollectionPointer.cpp
     Input/Internals/DragPointer.cpp
     Input/Internals/InputBindings.cpp
+    Input/Internals/InputMap.cpp
     Input/Internals/InputNavigation.cpp
     Input/Internals/InputNormalizer.cpp
     Input/Internals/InputSample.cpp
@@ -278,6 +279,7 @@ add_library(EngineHeadless STATIC
     Input/Internals/PrimaryContact.cpp
     Options/GameOptions.cpp
     Platform/Internals/UserData.cpp
+    Runtime/ProjectSettingsStore.cpp
     Runtime/TimeScale.cpp
     Runtime/Internals/GameAssetManifest.cpp
     Runtime/Internals/StartupTimer.cpp

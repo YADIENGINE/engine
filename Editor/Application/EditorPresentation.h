@@ -20,14 +20,19 @@ class TuningWorkspace;
 
 enum class EditorCommand { Open, Stop, Pause, Reset, Refresh, Cancel, Step, BuildAndPlay, Count };
 // What the Inspector asks of a tuning file (Docs/Tuning.md → Editor). Preview sends a dragged value to the running
-// scene only; Set writes it to the file, which ends the preview. EndPreview drops a preview without writing.
-enum class TuningEditKind { Preview, EndPreview, Set, Resize, Revert, Undo, Redo };
+// scene only; Set writes it to the file, which ends the preview. EndPreview drops a preview without writing. Default
+// removes a project setting so the engine's default applies (Docs/ProjectSettings.md); SetKeys writes one player's keys
+// for one button of an input map (Docs/InputMap.md).
+enum class TuningEditKind { Preview, EndPreview, Set, Resize, Revert, Undo, Redo, Default, SetKeys };
 struct TuningEditRequest {
     TuningEditKind kind = TuningEditKind::Set;
     std::filesystem::path source; // Absolute; unused by Undo / Redo
-    TuningLocation at;            // Revert: at.field
+    TuningLocation at;            // Revert, Default: at.field
     TuningValue value;
     TuningResize resize = TuningResize::Append;
+    std::size_t player = 0; // SetKeys
+    std::string button;
+    std::vector<std::string> keys;
 };
 // The scene's phase. Building only while no scene runs; a running scene stays Ready / Paused while it builds.
 enum class EditorPhase { ReadingCatalog, Starting, Ready, Paused, Building, Stopped, Error };

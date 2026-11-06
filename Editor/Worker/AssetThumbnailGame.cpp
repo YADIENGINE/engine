@@ -15,7 +15,7 @@ AssetThumbnailGame::AssetThumbnailGame(const GameSettings& settings, std::filesy
     : Game(settings)
     , _directory(std::move(directory))
     , _thumbnails(RegisteredGraphicThumbnails())
-    , _canvas{static_cast<float>(settings.canvasWidth), static_cast<float>(settings.canvasHeight)} {
+    , _canvas{static_cast<float>(settings.project.canvasWidth), static_cast<float>(settings.project.canvasHeight)} {
     _cellSide = _canvas.y / static_cast<float>(RowsPerPage);
     _columns = std::max<std::size_t>(1, static_cast<std::size_t>(_canvas.x / _cellSide));
     _rows = RowsPerPage;
