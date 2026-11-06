@@ -1,7 +1,9 @@
 """Process-correlated local crash artifacts and exact Windows symbol identities; standard library only."""
+import codecs
 import json
 import os
 from pathlib import Path
+import shutil
 import struct
 import subprocess
 import sys
@@ -11,6 +13,7 @@ from .agent_output import quiet, shown
 from .errors import ToolError
 
 REPORTER = "EngineCrashReporter.exe"
+LAUNCHES_KEPT = 10  # Launch folders that recorded a crash; the oldest beyond this are removed
 
 
 def read_report(path: Path) -> dict:
@@ -58,25 +61,87 @@ def summary(file: Path, report: dict) -> str:
     return "\n".join(lines)
 
 
+def discard_stale(root: Path) -> None:
+    """Removes incident folders that recorded no crash. Call only once their processes have ended: a process that was
+    killed leaves its folder with an empty `emergency.txt`, which only a crash ever writes to."""
+    if not root.is_dir():
+        return
+    for incident in root.iterdir():
+        if not incident.is_dir() or incident.is_symlink() or (incident / "report.json").is_file():
+            continue
+        try:
+            if (incident / "emergency.txt").stat().st_size > 0:
+                continue  # The helper failed; the emergency record is the crash report
+        except OSError:
+            pass
+        shutil.rmtree(incident, ignore_errors=True)
+
+
+def _prune_launches(root: Path, keep: int = LAUNCHES_KEPT) -> None:
+    launches = [item for item in root.iterdir() if item.is_dir() and not item.is_symlink()
+                and len(item.name) == 32 and all(c in "0123456789abcdef" for c in item.name)]
+    launches.sort(key=lambda item: item.stat().st_mtime)
+    for item in launches[:max(0, len(launches) - keep)]:
+        shutil.rmtree(item, ignore_errors=True)
+
+
+def _stream(command: list[str], cwd: Path | None, env: dict[str, str], log: Path) -> int:
+    """Runs a program, showing its stderr as it arrives (tuning reports, render errors) and keeping a copy."""
+    process = subprocess.Popen(command, cwd=cwd, env=env, stderr=subprocess.PIPE)
+    console = getattr(sys.stderr, "buffer", None)
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    sys.stderr.flush()
+    try:
+        with log.open("wb") as output:
+            while chunk := process.stderr.read1(65536):
+                output.write(chunk)
+                if console is not None:
+                    console.write(chunk)
+                    console.flush()
+                else:
+                    sys.stderr.write(decoder.decode(chunk))
+                    sys.stderr.flush()
+        return process.wait()
+    except BaseException:
+        process.kill()
+        process.wait()
+        raise
+    finally:
+        process.stderr.close()
+
+
 def run_native(executable: Path, arguments: list[str], root: Path, *, cwd: Path | None = None) -> int:
-    """One launch owns one directory. Never attribute yesterday's crash to a new command."""
+    """One launch owns one directory. Never attribute yesterday's crash to a new command.
+
+    stderr streams live, with a copy in the launch folder. Under an agent it is held back and replaced by the crash
+    summary when there is one. A launch folder survives only if it recorded a crash."""
     launch = root / uuid.uuid4().hex
     launch.mkdir(parents=True)
     env = os.environ | {"ENGINE_CRASH_DIRECTORY": str(launch.resolve())}
     log = launch / "stderr.log"
-    with log.open("w", encoding="utf-8") as output:
-        try:
-            code = subprocess.run([str(executable), *arguments], cwd=cwd, env=env, stderr=output).returncode
-        except OSError as error:
-            raise ToolError(f"Cannot start {executable}: {error}") from error
+    command = [str(executable), *arguments]
+    try:
+        if quiet():
+            with log.open("w", encoding="utf-8") as output:
+                code = subprocess.run(command, cwd=cwd, env=env, stderr=output).returncode
+        else:
+            code = _stream(command, cwd, env, log)
+    except OSError as error:
+        shutil.rmtree(launch, ignore_errors=True)
+        raise ToolError(f"Cannot start {executable}: {error}") from error
     crashes = reports(launch)
-    if quiet() and crashes:
-        for file, report in crashes:
-            print(summary(file, report), file=sys.stderr)
-    else:
-        text = log.read_text(encoding="utf-8", errors="replace")
-        if text:
-            print(text, file=sys.stderr, end="" if text.endswith("\n") else "\n")
+    if quiet():
+        if crashes:
+            for file, report in crashes:
+                print(summary(file, report), file=sys.stderr)
+        else:
+            text = log.read_text(encoding="utf-8", errors="replace")
+            if text:
+                print(text, file=sys.stderr, end="" if text.endswith("\n") else "\n")
+    discard_stale(launch)
+    if not any(item.is_dir() for item in launch.iterdir()):
+        shutil.rmtree(launch, ignore_errors=True)
+    _prune_launches(root)
     return code
 
 

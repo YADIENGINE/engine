@@ -130,7 +130,7 @@ private:
     void TickActive();
     void Receive(const WorkerMessage& message);
     void ApplyReady(const WorkerMessage& message);
-    void ActiveExited(WorkerProcessMode mode, unsigned long code);
+    void ActiveExited(WorkerProcessMode mode, unsigned long code, const std::string& cause);
     // Worker'ın tuning raporu: panelin durumu ve Output (ilk başarılı okuma hariç).
     void ReceiveTuning(const WorkerTuningStatus& status);
     void ReceiveTuningUsed(const std::vector<std::string>& sources);

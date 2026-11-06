@@ -5,12 +5,13 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 from Tools.cli import main
-from Tools.crash_reports import output_summaries, read_report, reports, run_native, summary
+from Tools.crash_reports import LAUNCHES_KEPT, output_summaries, read_report, reports, run_native, summary
 from Tools.commands.release import archive_symbols
 from Tools.errors import ToolError
 
@@ -83,6 +84,40 @@ class CrashReportsTests(unittest.TestCase):
             self.assertEqual(run_native(executable, [], self.root), 1)
         self.assertEqual(output.getvalue().count("Crash (worker)"), 1)
         self.assertNotIn("stale", output.getvalue())
+
+    def test_stderr_streams_live_and_a_clean_launch_leaves_no_folder(self):
+        script = "import sys; sys.stderr.write('tuning: reloaded\\n'); sys.stderr.flush()"
+        with patch.dict(os.environ, {"ENGINE_AGENT": "0"}), contextlib.redirect_stderr(io.StringIO()) as output:
+            self.assertEqual(run_native(Path(sys.executable), ["-c", script], self.root / "crashes"), 0)
+        self.assertIn("tuning: reloaded", output.getvalue())
+        self.assertEqual(list((self.root / "crashes").iterdir()), [])
+
+    def test_killed_process_folders_go_and_crash_records_stay(self):
+        def execute(command, **options):
+            destination = Path(options["env"]["ENGINE_CRASH_DIRECTORY"])
+            (destination / "killed").mkdir(parents=True)
+            (destination / "killed" / "emergency.txt").write_bytes(b"")
+            (destination / "killed" / "report.txt").write_bytes(b"")
+            (destination / "fallback").mkdir()
+            (destination / "fallback" / "emergency.txt").write_text("Crash: code=0xC0000005\n")
+            return subprocess.CompletedProcess(command, 1)
+        root = self.root / "crashes"
+        with patch("Tools.crash_reports.subprocess.run", side_effect=execute), \
+                patch.dict(os.environ, {"ENGINE_AGENT": "1"}), contextlib.redirect_stderr(io.StringIO()):
+            run_native(self.root / "Game.exe", [], root)
+        [launch] = root.iterdir()
+        self.assertEqual(sorted(item.name for item in launch.iterdir() if item.is_dir()), ["fallback"])
+
+    def test_only_the_newest_crashed_launches_are_kept(self):
+        def execute(command, **options):
+            self.save(Path(options["env"]["ENGINE_CRASH_DIRECTORY"]) / "incident")
+            return subprocess.CompletedProcess(command, 1)
+        root = self.root / "crashes"
+        with patch("Tools.crash_reports.subprocess.run", side_effect=execute), \
+                patch.dict(os.environ, {"ENGINE_AGENT": "1"}), contextlib.redirect_stderr(io.StringIO()):
+            for _ in range(LAUNCHES_KEPT + 2):
+                run_native(self.root / "Game.exe", [], root)
+        self.assertEqual(len(list(root.iterdir())), LAUNCHES_KEPT)
 
     def test_symbol_archive_keeps_prior_build_and_is_separate_from_package(self):
         exe = self.root / "Game.exe"

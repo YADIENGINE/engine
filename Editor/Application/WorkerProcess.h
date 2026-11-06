@@ -21,7 +21,10 @@ public:
     [[nodiscard]] WorkerProcessMode Mode() const { return _mode; }
     [[nodiscard]] bool Running() const { return _process.Running(); }
     [[nodiscard]] std::optional<unsigned long> ExitCode() const { return _process.ExitCode(); }
-    [[nodiscard]] std::vector<std::string> DrainOutput() { return _process.DrainOutput(); }
+    // Also remembers the first `Crash:` line the worker printed, the cause its crash reporter names.
+    [[nodiscard]] std::vector<std::string> DrainOutput();
+    // The crash message from the worker's output, or empty; meaningful once output has been drained after exit.
+    [[nodiscard]] const std::string& CrashCause() const { return _crashCause; }
     [[nodiscard]] std::vector<WorkerMessage> Poll();
     [[nodiscard]] std::optional<ViewportPixels> ReadFrame(std::uint64_t generation);
     void Send(std::uint64_t generation, std::uint64_t request, const std::string& type, nlohmann::json data);
@@ -41,6 +44,7 @@ public:
 private:
     WorkerProcessMode _mode;
     std::string _crashSession;
+    std::string _crashCause;
     NativeHandle _snapshotLease;
     ChildProcess _process;
     std::unique_ptr<ControlChannel> _channel;

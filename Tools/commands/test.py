@@ -4,6 +4,7 @@ Presets and the build directory come from the project's Project.json "tests" sec
 Every run writes `<build>/reports/<run-id>/results.json`; exit code 0 passed, 1 failed tests, 2 infrastructure.
 """
 
+import contextlib
 import json
 import re
 import subprocess
@@ -19,7 +20,7 @@ from ..build_lock import build_lock
 from ..cmake import PYTHON_DEFINITION, clear_stale_build, remove_build_dir
 from ..errors import EXIT_FAILED, EXIT_INFRA, EXIT_OK
 from ..msvc import msvc_env, tool
-from ..crash_reports import reports as crash_reports, summary as crash_summary
+from ..crash_reports import discard_stale, reports as crash_reports, summary as crash_summary
 
 
 def _execute(command: list[str], root: Path, log: Path, env: dict[str, str]) -> int:
@@ -156,6 +157,10 @@ def run_tests(root: Path, settings: dict, command: list[str], msvc_cache: Path, 
         report["diagnostics"] = f"{error}\n" + report["diagnostics"]
         return exit_code
     finally:
+        # Every test process has ended: folders of processes that recorded no crash (a timeout kill) go.
+        discard_stale(report_dir / "crashes")
+        with contextlib.suppress(OSError):
+            (report_dir / "crashes").rmdir()  # Only when empty
         crashes = crash_reports(report_dir / "crashes")
         if crashes:
             report["crash_reports"] = [file.relative_to(report_dir).as_posix() for file, _ in crashes]

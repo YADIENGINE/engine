@@ -555,13 +555,13 @@ void EditorController::TickActive() {
         const auto mode = _active->Mode();
         for (const auto& line : _active->DrainOutput())
             Log(line, ClassifyWorkerOutput(line), EditorLogSource::Worker);
+        const auto cause = _active->CrashCause();
         _active.reset();
-        ActiveExited(mode, *code);
+        ActiveExited(mode, *code, cause);
     } else if (_active->StartupTimedOut())
         throw std::runtime_error("Scene startup/first-frame timeout");
 }
 void EditorController::Receive(const WorkerMessage& message) {
-    if (message.type == "fatal") throw std::runtime_error(message.data.at("text").get<std::string>());
     if (message.type == "log") {
         Log(message.data.at("text").get<std::string>(), EditorLogLevel::Info, EditorLogSource::Worker);
         return;
@@ -659,7 +659,7 @@ void EditorController::ApplyReady(const WorkerMessage& message) {
     if (_recordOpen) _openedScene = _selected;
     _recordOpen = false;
 }
-void EditorController::ActiveExited(WorkerProcessMode mode, unsigned long code) {
+void EditorController::ActiveExited(WorkerProcessMode mode, unsigned long code, const std::string& cause) {
     _profiler.Disconnected();
     Invalidate(NextGeneration());
     _restPhase = EditorPhase::Stopped;
@@ -673,7 +673,8 @@ void EditorController::ActiveExited(WorkerProcessMode mode, unsigned long code) 
         Log(_status);
         return;
     }
-    throw std::runtime_error("Worker process failed (exit " + std::to_string(code) + ")");
+    throw std::runtime_error("Worker process failed (exit " + std::to_string(code) + ")" +
+                             (cause.empty() ? "" : ": " + cause));
 }
 
 // --- Build & Refresh -----------------------------------------------------------------------------------------------
@@ -776,7 +777,8 @@ void EditorController::TickReplacement() {
                 CommitCatalogOnly();
                 return;
             }
-            throw std::runtime_error("it exited before it was ready (exit " + std::to_string(*code) + ")");
+            throw std::runtime_error("it exited before it was ready (exit " + std::to_string(*code) + ")" +
+                                     (worker.CrashCause().empty() ? "" : ": " + worker.CrashCause()));
         }
         if (worker.StartupTimedOut()) throw std::runtime_error("it did not become ready in time");
         if (worker.ConnectionLost()) throw std::runtime_error("its control connection was lost");
@@ -786,7 +788,6 @@ void EditorController::TickReplacement() {
 }
 void EditorController::ReceiveReplacement(const WorkerMessage& message) {
     auto& replacement = *_replacement;
-    if (message.type == "fatal") throw std::runtime_error(message.data.at("text").get<std::string>());
     if (message.type == "log") {
         Log(message.data.at("text").get<std::string>(), EditorLogLevel::Info, EditorLogSource::Worker);
     } else if (message.type == "tuning") {

@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <cstdlib>
+#include <latch>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -35,6 +36,17 @@ int main(int argc, char** argv) {
         if (mode == "thread") {
             std::thread task(ViolateMemory);
             task.join();
+        }
+        if (mode == "threads") {
+            // Two threads fault together: the second must wait for the first one's report, not end the process.
+            std::latch start(2);
+            const auto fault = [&] {
+                start.arrive_and_wait();
+                ViolateMemory();
+            };
+            std::thread first(fault), second(fault);
+            first.join();
+            second.join();
         }
         if (mode == "terminate") std::terminate();
         if (mode == "abort") std::abort();

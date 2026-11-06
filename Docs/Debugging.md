@@ -26,16 +26,22 @@ point after unwinding; the original throw frames remain in JSON/text. Optimizati
 
 ## Locations and lifetime
 
-- `run` and `sim`: a unique launch directory under the command's build directory, containing stderr and incident
-  directories. `sim` retains JSON stdout; crash diagnostics use stderr.
+- `run` and `sim`: a unique launch directory under `<build>/crashes/`, containing a copy of stderr and incident
+  directories. stderr still streams live; under an agent it is held back and replaced by the crash summary. A launch
+  that recorded no crash is removed when it ends; the ten newest crashed launches are kept. `sim` retains JSON stdout;
+  crash diagnostics use stderr.
 - `test`: `<tests build>/reports/<run-id>/crashes/`. Optional `crash_reports` paths in `results.json` identify artifacts
   at run and test level; the listener supplies the test name. Existing statuses, JUnit handling and exit codes stay.
-- Worker: `crashes/` under the build-output working directory. Worker sessions are distinct. Failed replacement keeps
-  the previous worker. Immutable snapshots retain EXE/PDB/reporter together; a lease prevents deleting a running
-  worker's PDB while a new build runs.
+- Worker: `crashes/` under the build-output working directory, ten newest crash records kept. Worker sessions are
+  distinct. Failed replacement keeps the previous worker, and the editor's error names the crash message. Immutable
+  snapshots retain EXE/PDB/reporter together; a lease prevents deleting a running worker's PDB while a new build runs.
 - Standalone Release: `%LOCALAPPDATA%/<engine>/Crashes/<target>/`. Healthy startup prunes completed reports to the
   latest ten. After saving and game exit, a short notification names the folder. Tools, workers, tests and release
   asset queries suppress the notification.
+
+Every session creates its incident directory at startup and removes it on a normal exit. A killed process leaves it
+behind with an empty `emergency.txt`; the next session in the same folder removes such leftovers, never a running
+session's. A non-empty `emergency.txt` without `report.json` is the record of a crash whose helper failed, and stays.
 
 `build` only compiles: it neither starts a game nor scans old crashes. `refresh` builds and replaces an editor worker.
 
@@ -64,7 +70,8 @@ python . test --label '^crash$'
 ```
 
 The Windows x64 implementation starts a helper while healthy. Native handlers only copy fixed exception/context data
-and signal it; DbgHelp, JSON and dump writing run outside the failed process. Capture waits at most ten seconds.
+and signal it; DbgHelp, JSON and dump writing run outside the failed process. Capture waits at most ten seconds. The
+first faulting thread owns the report; other threads that fault meanwhile wait instead of ending the process early.
 Missing helpers or unwritable directories fall back to an emergency record or stderr and do not stop startup.
 
 Coverage begins when the entry point installs reporting. Pre-main/post-main failures, fail-fast, external kills and

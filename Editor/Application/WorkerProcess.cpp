@@ -1,6 +1,8 @@
 #include "Editor/Application/WorkerProcess.h"
 #include <windows.h>
+#include <cstddef>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 #include "Diagnostics/Internals/CrashSession.h"
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
@@ -10,6 +12,8 @@ constexpr auto StartupLimit = std::chrono::seconds(30); // Until the first frame
 constexpr auto ShutdownGrace = std::chrono::seconds(5);
 // The peer can close its handle just before a normal process exit becomes observable.
 constexpr auto ClosedConnectionGrace = std::chrono::milliseconds(250);
+constexpr std::size_t WorkerReportsKept = 10; // Crash records kept in the shared worker crash folder
+constexpr std::string_view CrashPrefix = "Crash: ";
 } // namespace
 
 WorkerProcess::WorkerProcess(const ProcessCommand& command, WorkerProcessMode mode)
@@ -22,6 +26,7 @@ WorkerProcess::WorkerProcess(const ProcessCommand& command, WorkerProcessMode mo
     auto launch = command;
     launch.environment["ENGINE_CRASH_SESSION"] = session;
     const auto crashDirectory = command.directory / "crashes";
+    PruneCrashReports(crashDirectory, WorkerReportsKept);
     const auto utf8 = crashDirectory.u8string();
     launch.environment["ENGINE_CRASH_DIRECTORY"] = {reinterpret_cast<const char*>(utf8.data()), utf8.size()};
     _snapshotLease.Reset(CreateFileW((command.executable.parent_path() / "snapshot.lock").c_str(), GENERIC_READ,
@@ -32,6 +37,16 @@ WorkerProcess::WorkerProcess(const ProcessCommand& command, WorkerProcessMode mo
     _process.Start(launch);
 }
 WorkerProcess::~WorkerProcess() { _process.Clear(); }
+std::vector<std::string> WorkerProcess::DrainOutput() {
+    auto lines = _process.DrainOutput();
+    if (_crashCause.empty())
+        for (const auto& line : lines)
+            if (line.starts_with(CrashPrefix) && line.size() > CrashPrefix.size()) {
+                _crashCause = line.substr(CrashPrefix.size());
+                break;
+            }
+    return lines;
+}
 std::vector<WorkerMessage> WorkerProcess::Poll() { return _channel->Poll(); }
 std::optional<ViewportPixels> WorkerProcess::ReadFrame(std::uint64_t generation) {
     return _frames ? _frames->Read(generation) : std::nullopt;

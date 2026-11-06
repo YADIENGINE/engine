@@ -13,7 +13,7 @@ def main():
     probe, reporter = map(Path, sys.argv[1:3])
     with tempfile.TemporaryDirectory(prefix="EngineCrash-") as temporary:
         root = Path(temporary)
-        for mode in ("normal", "handled", "exit", "throw", "cleanup", "unknown", "access", "thread", "terminate", "abort"):
+        for mode in ("normal", "handled", "exit", "throw", "cleanup", "unknown", "access", "thread", "threads", "terminate", "abort"):
             destination = root / mode
             env = os.environ | {"ENGINE_CRASH_DIRECTORY": str(destination)}
             result = subprocess.run([str(probe), mode], env=env, capture_output=True, timeout=15)
@@ -27,13 +27,24 @@ def main():
             assert report["context"] == "probe-context", report
             assert report["frames"], report
             assert reports[0].with_name("crash.dmp").stat().st_size > 0
-            expected = "ThrowFromProbe" if mode in ("throw", "cleanup") else "ViolateMemory" if mode in ("access", "thread") else None
+            expected = "ThrowFromProbe" if mode in ("throw", "cleanup") else "ViolateMemory" if mode in ("access", "thread", "threads") else None
             if expected:
                 frames = [f for f in report["frames"] if expected in f.get("function", "")]
                 assert frames and frames[0].get("file", "").endswith("CrashProbe.cpp") and frames[0].get("line"), report
             if mode == "cleanup":
                 assert report["message"] == "deliberate probe exception", report
             print(f"Crash probe {mode}: passed")
+        # A killed process leaves an empty emergency file; the next session removes it and keeps crash records.
+        shared = root / "shared"
+        for name, emergency in (("20000101T000000-000-1-1", b""), ("20000101T000000-000-2-2", b"Crash: code=0x1\n")):
+            (shared / name).mkdir(parents=True)
+            (shared / name / "emergency.txt").write_bytes(emergency)
+            (shared / name / "report.txt").write_bytes(b"")
+        result = subprocess.run([str(probe), "normal"], env=os.environ | {"ENGINE_CRASH_DIRECTORY": str(shared)},
+                                capture_output=True, timeout=15)
+        assert result.returncode == 0, result.stderr
+        assert sorted(item.name for item in shared.iterdir()) == ["20000101T000000-000-2-2"], list(shared.iterdir())
+        print("Stale incident cleanup: passed")
         # The packaged executable has no PDB. Resolve later with the exact developer archive.
         package = root / "package"
         package.mkdir()

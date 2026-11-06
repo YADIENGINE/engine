@@ -75,6 +75,13 @@ void WorkerSnapshots::Prune() const {
     std::filesystem::directory_iterator entries(_built.executable.parent_path(), error);
     for (std::filesystem::directory_iterator end; !error && entries != end; entries.increment(error)) {
         const auto& file = entries->path();
+        // Before snapshots became folders they were `<name>.live-<n>.exe` files; a running one stays locked.
+        if (entries->is_regular_file(error) && file.extension() == _built.executable.extension() &&
+            IsSnapshot(file.parent_path() / file.stem())) {
+            std::error_code ignored;
+            std::filesystem::remove(file, ignored);
+            continue;
+        }
         if (!entries->is_directory(error) || entries->is_symlink(error) || !IsSnapshot(file) ||
             (_current && file == _current->executable.parent_path()))
             continue;

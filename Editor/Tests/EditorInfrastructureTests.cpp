@@ -466,7 +466,9 @@ TEST_CASE("Editor.Snapshots.WorkersRunFromCopiesOfTheBuild", "[engine-editor]") 
     lease.Reset();
 
     write(directory.Path() / "Unrelated.live-3.exe", "other");
+    write(directory.Path() / "MyGameWorker.live-1.exe", "legacy"); // A file snapshot from before snapshot folders
     snapshots.Prune();
+    CHECK_FALSE(std::filesystem::exists(directory.Path() / "MyGameWorker.live-1.exe"));
     CHECK_FALSE(std::filesystem::exists(first));
     CHECK(std::filesystem::exists(second));
     CHECK(std::filesystem::exists(built.executable));

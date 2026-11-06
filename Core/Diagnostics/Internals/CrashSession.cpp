@@ -29,7 +29,9 @@ struct ProcessCrashState {
     LPTOP_LEVEL_EXCEPTION_FILTER previousFilter = nullptr;
     std::terminate_handler previousTerminate = nullptr;
     void (*previousAbort)(int) = SIG_DFL;
+    unsigned int previousAbortBehavior = 0;
     LONG reported = 0;
+    volatile DWORD reportingThread = 0;
     unsigned owners = 0;
     bool installed = false;
     bool exitCleanupRegistered = false;
@@ -80,7 +82,14 @@ void EmitReport() noexcept {
     }
 }
 void Submit(DWORD code, EXCEPTION_POINTERS* exception, const char* message) noexcept {
-    if (!crash.packet || InterlockedCompareExchange(&crash.reported, 1, 0) != 0) return;
+    if (!crash.packet) return;
+    if (InterlockedCompareExchange(&crash.reported, 1, 0) != 0) {
+        // Another thread owns the report. Returning would let this fault end the process mid-capture, so park here;
+        // the reporting thread terminates or exits the process. A fault inside Submit itself returns at once.
+        if (crash.reportingThread != GetCurrentThreadId()) Sleep(INFINITE);
+        return;
+    }
+    crash.reportingThread = GetCurrentThreadId();
     auto& packet = *crash.packet;
     packet.thread = GetCurrentThreadId();
     packet.code = code;
@@ -129,15 +138,17 @@ LONG WINAPI FatalFilter(EXCEPTION_POINTERS* exception) noexcept {
     return EXCEPTION_EXECUTE_HANDLER;
 }
 void Terminated() noexcept {
+    bool submitted = false;
     const char* message = "std::terminate";
     try {
         if (auto exception = std::current_exception()) std::rethrow_exception(exception);
     } catch (const std::exception& error) {
-        Submit(0xE0000001, nullptr, error.what());
+        Submit(0xE0000001, nullptr, error.what()); // what() lives only inside this handler
+        submitted = true;
     } catch (...) {
         message = "std::terminate: unknown exception";
     }
-    Submit(0xE0000001, nullptr, message);
+    if (!submitted) Submit(0xE0000001, nullptr, message);
     TerminateProcess(GetCurrentProcess(), 1);
 }
 void Aborted(int) noexcept {
@@ -154,6 +165,7 @@ void Release() noexcept {
             std::set_terminate(crash.previousTerminate);
             SetUnhandledExceptionFilter(crash.previousFilter);
             std::signal(SIGABRT, crash.previousAbort);
+            _set_abort_behavior(crash.previousAbortBehavior, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
             crash.installed = false;
         }
         UnmapViewOfFile(crash.packet);
@@ -177,20 +189,7 @@ void Release() noexcept {
         std::filesystem::remove(crash.directory, ignored);
     }
 }
-void Prune(const std::filesystem::path& root) {
-    std::vector<std::filesystem::path> completed;
-    std::error_code error;
-    for (const auto& item : std::filesystem::directory_iterator(root, error))
-        if (item.is_directory() && !item.is_symlink() && std::filesystem::is_regular_file(item.path() / "report.json"))
-            completed.push_back(item.path());
-    std::ranges::sort(completed);
-    while (completed.size() > 10) {
-        if (std::filesystem::absolute(completed.front()).lexically_normal().parent_path() ==
-            std::filesystem::absolute(root).lexically_normal())
-            std::filesystem::remove_all(completed.front(), error);
-        completed.erase(completed.begin());
-    }
-}
+constexpr std::size_t PlayerReportsKept = 10;
 void Install(std::string_view kind, bool playerDialog) {
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
@@ -208,8 +207,8 @@ void Install(std::string_view kind, bool playerDialog) {
     crash.previousFilter = SetUnhandledExceptionFilter(FatalFilter);
     crash.previousTerminate = std::set_terminate(Terminated);
     crash.previousAbort = std::signal(SIGABRT, Aborted);
+    crash.previousAbortBehavior = _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
     crash.installed = true;
-    _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
     ULONG guarantee = 64 * 1024;
     SetThreadStackGuarantee(&guarantee);
     Copy(packet.kind, kind);
@@ -228,7 +227,7 @@ void Install(std::string_view kind, bool playerDialog) {
         }
     }
     std::filesystem::create_directories(root);
-    if (player) Prune(root);
+    PruneCrashReports(root, player ? PlayerReportsKept : 0);
     SYSTEMTIME time{};
     GetSystemTime(&time);
     std::array<wchar_t, 128> id{};
@@ -352,5 +351,38 @@ bool WorkerCrashPending(std::string_view session) noexcept {
         return pending;
     } catch (...) {
         return false;
+    }
+}
+void PruneCrashReports(const std::filesystem::path& root, std::size_t keep) noexcept {
+    try {
+        std::error_code error;
+        const auto parent = std::filesystem::absolute(root, error).lexically_normal();
+        if (error) return;
+        std::vector<std::filesystem::path> records;
+        std::filesystem::directory_iterator entries(root, error);
+        for (std::filesystem::directory_iterator end; !error && entries != end; entries.increment(error)) {
+            std::error_code ignored;
+            if (!entries->is_directory(ignored) || entries->is_symlink(ignored)) continue;
+            const auto incident = entries->path();
+            if (std::filesystem::absolute(incident, ignored).lexically_normal().parent_path() != parent) continue;
+            const auto emergency = incident / "emergency.txt";
+            std::error_code missing;
+            const auto size = std::filesystem::file_size(emergency, missing);
+            if (std::filesystem::is_regular_file(incident / "report.json", ignored) || (!missing && size > 0)) {
+                records.push_back(incident);
+                continue;
+            }
+            // An empty emergency file records no crash. Its live owner holds it open without delete sharing, so the
+            // delete succeeds only once that process has ended: a killed process, not one still starting or running.
+            if (!missing && DeleteFileW(emergency.c_str())) std::filesystem::remove_all(incident, ignored);
+        }
+        if (keep == 0 || records.size() <= keep) return;
+        std::ranges::sort(records); // Incident names start with their UTC time
+        for (std::size_t i = 0; i + keep < records.size(); ++i) {
+            std::error_code ignored;
+            std::filesystem::remove_all(records[i], ignored);
+        }
+    } catch (...) {
+        // Housekeeping must never prevent reporting.
     }
 }
