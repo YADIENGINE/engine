@@ -44,7 +44,7 @@ Game UI is outside `Graphics/`, in `Ui/` ([UI](Ui.md)).
 Particle shape drawing is shared by `Fx/Particles/ParticleSystem` and static editor scenes through
 `Graphics/Draw/ParticleDraw`; it accepts explicit pose/style and never reads a theme.
 
-The render migration is complete (`Docs/Design/Rendering.md` → R13). All public headers use the `.h` extension.
+Drawing uses [Painter](Graphics/Painter.md). All public headers use the `.h` extension.
 `Fx/` is Painter-only and headless. Raylib is limited to platform and native tool integration.
 
 Only `Backgrounds/Backdrops` and `Ui/Looks` read the theme. Shared shapes take explicit colors/styles and `Painter&` as their first parameter:

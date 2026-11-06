@@ -81,8 +81,15 @@ GraphicAsset MakeGoblin() {
 Fill `items` for a set: each item gets its own tile and catalog entry, and `{item}` in `usage` becomes its name. Ids are
 `asset:Graphics/Folder/Name[#Item]`; `ctl find` and `ctl open` reach them like scenes. `python Engine asset new NAME`
 writes a skeleton. The asset provides its own viewport preview; no separate work scene is needed for a standalone
-drawing. Recipe: [Graphic asset](../../AgentDocs/Recipes/GraphicAsset.md). Rule and unlisted-drawing reminder:
-[Asset library](../Design/AssetLibrary.md#authoring-rule).
+drawing. Follow the [graphic-asset skill](../../AgentDocs/Skills/graphic-asset/SKILL.md) and
+[compiled recipe](../../AgentDocs/Recipes/GraphicAsset.md). Folder layout and panel workflow:
+[Asset library](../AssetsAndPlatforms.md#asset-library).
+
+Before finishing, `python Engine asset unlisted <files>` lists free `void DrawX(Painter& ...)` functions in the changed
+headers whose names occur in no project `.asset.cpp` file. With no files it scans `Game/`. It prints a JSON array of
+`file`, `line` and `function` entries and always returns 0: a heuristic reminder, not enforcement. It skips `build/`,
+`Engine/` and `Launcher/`; macros are not expanded. Register each relevant drawing or explain why it remains
+unregistered, without migrating unrelated code.
 
 ## Parameter and action contract
 

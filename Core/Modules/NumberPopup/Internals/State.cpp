@@ -100,9 +100,7 @@ void NumberPopup::State::Burst(const Entry& entry, Float2 position, float intens
     if (count == 0) return;
     ParticleEmission emission = juice.particles;
     emission.speed = {emission.speed.min * intensity, emission.speed.max * intensity};
-    ParticleAppearance look = juice.particleLook;
-    if (juice.particlesUseTextColor) look.color = entry.style.text.color;
-    particles.Emit(position, count, emission, look);
+    particles.Emit(position, juice.particleColor.value_or(entry.style.text.color), count, emission, juice.particleLook);
 }
 
 bool NumberPopup::State::Emphasize(Entry& entry, float intensity) {

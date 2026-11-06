@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include "Fx/Particles/ParticleEmitter.h"
 #include "Fx/Particles/ParticleSystem.h"
 
 // Ready-made particle bursts. Soft: soft circle + spark; Spark: spark; Sparkle: rising star; Debris: falling square
@@ -23,8 +24,12 @@ struct ParticleRecipes {
     ParticleBurst debris{};
     ParticleBurst pixel{};
     ParticleBurst confetti{};
-    ParticleLayer trail{}; // Light left behind a moving object
-    int trailCount = 0;
+    // Streams for a ParticleEmitter: light left behind a moving object; smoke that grows, greys and drifts up; a
+    // flame from yellow to red, in its own colours; embers rising and cooling, in their own colours.
+    ParticleEmitterStyle trail{};
+    ParticleEmitterStyle smoke{};
+    ParticleEmitterStyle flame{};
+    ParticleEmitterStyle embers{};
     ParticleLayer dash{}; // Sparks opposite the facing direction; AimedBehind sets its direction
     int dashCount = 0;
     ParticleLayer steam{}; // Rising haze that grows and fades
@@ -46,13 +51,15 @@ struct ParticleRecipes {
 };
 
 [[nodiscard]] bool IsValid(const ParticleBurst& burst);
-// Trail, dash and steam count only when their count is above 0.
+// Dash and steam count only when their count is above 0.
 [[nodiscard]] bool IsValid(const ParticleRecipes& recipes);
 
 // The layer pointing away from 'direction', the way something moving leaves sparks behind it.
 [[nodiscard]] ParticleLayer AimedBehind(ParticleLayer layer, Float2 direction);
 
 // Emits 'count' particles of the layer in 'color'.
-void EmitLayer(ParticleSystem& particles, Float2 position, Color4 color, int count, const ParticleLayer& layer);
+void EmitLayer(ParticleSystem& particles, const ParticleSource& source, Color4 color, int count,
+               const ParticleLayer& layer, const ParticleCustomDraw& draw = {});
 // Distributes 'count' among the burst's layers according to their shares.
-void EmitBurst(ParticleSystem& particles, Float2 position, Color4 color, int count, const ParticleBurst& burst);
+void EmitBurst(ParticleSystem& particles, const ParticleSource& source, Color4 color, int count,
+               const ParticleBurst& burst, const ParticleCustomDraw& draw = {});

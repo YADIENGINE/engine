@@ -15,9 +15,10 @@ bool IsValid(const ParticleBurst& burst) {
 }
 bool IsValid(const ParticleRecipes& recipes) {
     return IsValid(recipes.soft) && IsValid(recipes.spark) && IsValid(recipes.sparkle) && IsValid(recipes.debris) &&
-           IsValid(recipes.pixel) && IsValid(recipes.confetti) && ValidUse(recipes.trail, recipes.trailCount) &&
-           ValidUse(recipes.dash, recipes.dashCount) && ValidUse(recipes.steam, recipes.steamCount) &&
-           FxNotNegative(recipes.steamWhiten) && FxNotNegative(recipes.steamOpacity);
+           IsValid(recipes.pixel) && IsValid(recipes.confetti) && IsValid(recipes.trail) && IsValid(recipes.smoke) &&
+           IsValid(recipes.flame) && IsValid(recipes.embers) && ValidUse(recipes.dash, recipes.dashCount) &&
+           ValidUse(recipes.steam, recipes.steamCount) && FxNotNegative(recipes.steamWhiten) &&
+           FxNotNegative(recipes.steamOpacity);
 }
 
 ParticleLayer AimedBehind(ParticleLayer layer, Float2 direction) {
@@ -25,17 +26,17 @@ ParticleLayer AimedBehind(ParticleLayer layer, Float2 direction) {
     return layer;
 }
 
-void EmitLayer(ParticleSystem& particles, Float2 position, Color4 color, int count, const ParticleLayer& layer) {
+void EmitLayer(ParticleSystem& particles, const ParticleSource& source, Color4 color, int count,
+               const ParticleLayer& layer, const ParticleCustomDraw& draw) {
     if (count <= 0) return;
-    auto appearance = layer.appearance;
-    appearance.color = color;
-    particles.Emit(position, count, layer.emission, appearance);
+    particles.Emit(source, color, count, layer.emission, layer.appearance, draw);
 }
-void EmitBurst(ParticleSystem& particles, Float2 position, Color4 color, int count, const ParticleBurst& burst) {
+void EmitBurst(ParticleSystem& particles, const ParticleSource& source, Color4 color, int count,
+               const ParticleBurst& burst, const ParticleCustomDraw& draw) {
     if (count <= 0) return;
     for (const auto& layer : burst) {
         if (layer.share <= 0.0f) continue;
-        EmitLayer(particles, position, color, static_cast<int>(std::lround(static_cast<float>(count) * layer.share)),
-                  layer);
+        EmitLayer(particles, source, color, static_cast<int>(std::lround(static_cast<float>(count) * layer.share)),
+                  layer, draw);
     }
 }

@@ -212,6 +212,7 @@ add_library(EngineHeadless STATIC
     Fx/FxCueSet.cpp
     Fx/FxStage.cpp
     Fx/FxText.cpp
+    Fx/Particles/ParticleEmitter.cpp
     Fx/Particles/ParticleRecipes.cpp
     Fx/Particles/ParticleSystem.cpp
     Fx/Screen/Announcements.cpp

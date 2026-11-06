@@ -73,7 +73,7 @@ color for that entry, so one style serves every color.
 - `format`: sign, decimals, compact notation, trailing-zero trimming, prefix/suffix or a custom complete-label formatter.
 - `juice`: launch-velocity scatter, rotation spread, short color flash, the reusable pulse, and particles as the
   engine's own `ParticleEmission` and `ParticleAppearance` plus `particleCount`. Particles take the text color unless
-  `particlesUseTextColor` is false. Angles are clockwise radians. The popup motion also offers damped wobble and drag.
+  `particleColor` names another; the look's color keys multiply it. Angles are clockwise radians. The popup motion also offers damped wobble and drag.
 - `merge`: sliding merge window, hold gained per addition, maximum extended lifetime and `followAnchor`.
 
 Intensity is finite and in 0..4. It scales launch variation, entrance squash/rotation, wobble, pulse, flash strength

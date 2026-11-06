@@ -23,10 +23,11 @@ inline constexpr ParticleEmission NeonArcadeEmission{.speed = {60.0f, 220.0f},
     ParticleLayer layer{.share = share, .emission = NeonArcadeEmission};
     layer.emission.speed = {NeonArcadeEmission.speed.min * speedScale, NeonArcadeEmission.speed.max * speedScale};
     layer.emission.acceleration = {0.0f, gravity};
+    const float scale = shape == ParticleShape::Star ? 1.8f : shape == ParticleShape::Pixel ? 1.4f : 1.0f;
     layer.appearance = {.shape = shape,
                         .blend = blend,
-                        .endSizeScale = 0.5f,
-                        .sizeScale = shape == ParticleShape::Star ? 1.8f : shape == ParticleShape::Pixel ? 1.4f : 1.0f,
+                        .colors = ParticleFadeOut(1.0f),
+                        .size = {.start = scale, .end = scale * 0.5f},
                         .sparkTrailSeconds = 0.045f,
                         .sparkThickness = 0.7f,
                         .sparkMinThickness = 1.0f};
@@ -37,6 +38,70 @@ inline constexpr ParticleEmission NeonArcadeEmission{.speed = {60.0f, 220.0f},
     layer.emission.spread = 0.7f;
     return layer;
 }
+
+// Streams. A trail: a slow soft light every half unit travelled, and a little while standing still.
+[[nodiscard]] constexpr ParticleEmitterStyle NeonArcadeTrail() {
+    const ParticleLayer layer = NeonArcadeLayer(1.0f, ParticleShape::Circle, 0.15f, 0.0f, ParticleBlend::Additive);
+    return {.emission = layer.emission, .appearance = layer.appearance, .perSecond = 30.0f, .perUnit = 0.5f};
+}
+// Smoke rises from a small disc, grows and greys as it thins; it darkens whatever colour it is given.
+inline constexpr ParticleEmitterStyle NeonArcadeSmoke{
+    .emission = {.speed = {10.0f, 30.0f},
+                 .lifetime = {1.2f, 2.0f},
+                 .size = {4.0f, 7.0f},
+                 .rotation = {0.0f, Radians(360.0f)},
+                 .spin = {-1.0f, 1.0f},
+                 .direction = -Pi * 0.5f,
+                 .spread = Pi * 0.35f,
+                 .acceleration = {0.0f, -10.0f},
+                 .drag = 0.8f,
+                 .area = {.shape = ParticleAreaShape::Disc, .radius = 4.0f}},
+    .appearance = {.colors = {.keys = {{{0.0f, {200, 200, 200, 0}},
+                                        {0.15f, {170, 170, 170, 150}},
+                                        {0.6f, {120, 120, 120, 90}},
+                                        {1.0f, {90, 90, 90, 0}}}},
+                              .count = 4},
+                   .size = {.start = 0.6f, .end = 2.6f, .curve = Curve::OutQuad}},
+    .perSecond = 14.0f};
+// A flame licks up and shrinks from white-yellow to dark red, in its own colours.
+inline constexpr ParticleEmitterStyle NeonArcadeFlame{
+    .emission = {.speed = {20.0f, 50.0f},
+                 .lifetime = {0.35f, 0.7f},
+                 .size = {3.0f, 6.0f},
+                 .direction = -Pi * 0.5f,
+                 .spread = Pi * 0.25f,
+                 .acceleration = {0.0f, -60.0f},
+                 .drag = 1.5f,
+                 .area = {.shape = ParticleAreaShape::Disc, .radius = 5.0f}},
+    .appearance = {.blend = ParticleBlend::Additive,
+                   .colors = {.keys = {{{0.0f, {255, 250, 220, 255}},
+                                        {0.2f, {255, 210, 80, 255}},
+                                        {0.5f, {255, 110, 30, 200}},
+                                        {0.8f, {200, 40, 20, 90}},
+                                        {1.0f, {120, 20, 10, 0}}}},
+                              .count = 5},
+                   .ownColors = true,
+                   .size = {.start = 1.0f, .end = 0.3f, .curve = Curve::InQuad}},
+    .perSecond = 60.0f};
+// Embers drift up, turning and cooling from orange to red, in their own colours.
+inline constexpr ParticleEmitterStyle NeonArcadeEmbers{
+    .emission = {.speed = {15.0f, 45.0f},
+                 .lifetime = {1.0f, 2.2f},
+                 .size = {1.0f, 2.0f},
+                 .rotation = {0.0f, Radians(360.0f)},
+                 .spin = {Radians(-180.0f), Radians(180.0f)},
+                 .direction = -Pi * 0.5f,
+                 .spread = Pi * 0.5f,
+                 .acceleration = {0.0f, -25.0f},
+                 .drag = 0.6f,
+                 .area = {.shape = ParticleAreaShape::Disc, .radius = 6.0f}},
+    .appearance =
+        {.blend = ParticleBlend::Additive,
+         .colors = {.keys = {{{0.0f, {255, 220, 120, 255}}, {0.7f, {255, 120, 40, 220}}, {1.0f, {180, 40, 20, 0}}}},
+                    .count = 3},
+         .ownColors = true,
+         .size = {.start = 1.0f, .end = 0.5f}},
+    .perSecond = 8.0f};
 
 inline constexpr float NeonArcadeSparkSpeed = 1.7f;
 inline constexpr float NeonArcadeSparkShare = 0.35f;
@@ -54,8 +119,10 @@ inline constexpr ParticleRecipes NeonArcadeParticles{
                                ParticleBlend::Additive)},
     .pixel = {NeonArcadeLayer(1.0f, ParticleShape::Pixel, 1.0f, 450.0f, ParticleBlend::Alpha), ParticleLayer{}},
     .confetti = {NeonArcadeLayer(1.0f, ParticleShape::Square, 0.8f, 140.0f, ParticleBlend::Alpha), ParticleLayer{}},
-    .trail = NeonArcadeLayer(1.0f, ParticleShape::Circle, 0.15f, 0.0f, ParticleBlend::Additive),
-    .trailCount = 3,
+    .trail = NeonArcadeTrail(),
+    .smoke = NeonArcadeSmoke,
+    .flame = NeonArcadeFlame,
+    .embers = NeonArcadeEmbers,
     .dash = NeonArcadeDash(),
     .dashCount = 3,
     .steam = {.share = 1.0f,
@@ -66,7 +133,9 @@ inline constexpr ParticleRecipes NeonArcadeParticles{
                            .spread = Pi * 0.65f,
                            .acceleration = {0.0f, -18.0f},
                            .drag = 1.5f},
-              .appearance = {.blend = ParticleBlend::Additive, .endSizeScale = 2.5f}},
+              .appearance = {.blend = ParticleBlend::Additive,
+                             .colors = ParticleFadeOut(1.0f),
+                             .size = {.start = 1.0f, .end = 2.5f}}},
     .steamCount = 2,
     .steamWhiten = 0.65f,
     .steamOpacity = 0.6f};

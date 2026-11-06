@@ -22,7 +22,7 @@ Visual content is produced by code. Importable: fonts, sounds (external sources 
 ### D2. Tuning files
 Values tuned in the editor live in `X.tuning.json` beside their class. The JSON is the only source; a struct is generated
 from it. Development reads values live, Release compiles them in. Opt-in. Visual and balance values use the same system.
-Usage: [Tuning](Tuning.md).
+Usage: [Tuning](../Tuning.md).
 
 ### D3. Launcher plus an editor compiled per project
 The launcher is prebuilt and changes rarely. Each project's editor is compiled from that project's `Engine/`, so editor,
@@ -114,11 +114,15 @@ What binds the engine:
 `Painter` records draw calls per frame and sends them to OpenGL 3.3 core through the engine's own `GpuDevice`:
 premultiplied alpha, SDF shapes, a dynamic glyph atlas, bloom from emission, RAII state scopes. raylib is only the platform
 layer. Owning vertex format, uploads and shaders is what lets quality and speed improve in one place. Usage:
-[Painter](../Graphics/Painter.md); background: [Rendering](Rendering.md).
+[Painter](../Graphics/Painter.md), [Rendering](../Graphics/Rendering.md).
+
+Deferred: GPU time queries, asynchronous PBO readback for editor previews, and sharing `HandlePool` with `NullDevice`.
+Shader clipping and subpixel text positioning wait for measurement; `StaticTexture` and `PixelBuffer` remain unimplemented.
 
 ### D18. Console panel
 A real terminal in the editor (ConPTY + libvterm, drawn with ImGui; core in `Terminal/`). The editor writes no chat UI of
-its own: agent CLIs run as they are, so nothing has to be rewritten when they change. Usage: [Console](Console.md).
+its own: agent CLIs run as they are, so nothing has to be rewritten when they change. Usage: [Editor panels](../Editor/Usage.md#window).
+Word and line selection by double/triple click remain deferred.
 
 ### D19. Open source
 - Public repositories under the `YADIENGINE` organization: `YADIENGINE/engine` and `YADIENGINE/yadien` (launcher).
@@ -147,7 +151,13 @@ The open editor is driven and observed through its control pipe (JSON lines) wit
 ### D22. Asset library
 Ready-made graphics and audio are browsed in an Assets panel sharing the scene viewport. `Engine/Assets/Graphics` is
 read-only, `Game/Assets/Graphics` is free-form. Every graphic is a set. Registration compiles into the editor worker only,
-so Release has no catalog. Prefabs and baking are deferred. Usage: [Asset library](AssetLibrary.md).
+so Release has no catalog. Prefabs and baking are deferred. Usage: [Asset library](../AssetsAndPlatforms.md#asset-library),
+[Graphic assets](../Editor/Api.md#graphic-assets).
+
+Moves rewrite literal includes; renaming remains a code refactor. C++20 modules were rejected because improving this rare
+operation did not justify weaker IDE support, a newer CMake requirement and a second source convention.
+If prefabs return, keep logic outside asset folders for headless use; no entity/component system or drag-and-drop
+composition, and the editor generates skeletons only.
 
 ### D23. Tool look: Cabinet
 Launcher and editor share one look in `ToolUi/`: warm graphite surfaces, regions separated by tone rather than lines, one
@@ -393,7 +403,7 @@ and links below `EngineHeadless` (`EngineCamera`).
 Left out: per-view effects in a split, dynamic split, platformer zones, rotation-aware limits, a camera panel.
 
 ### D36. Graphics own their look
-Usage: [Asset library](AssetLibrary.md#authoring-rule).
+Usage: [Graphic assets](../Editor/Api.md#graphic-assets).
 
 A ready-made graphic lives in `Assets/Graphics` and draws as intended with no look given; callers override only what
 they need. `.asset.cpp` keeps registration and passes no colours. `Core/Graphics` keeps primitives, helpers and what Core
@@ -650,6 +660,31 @@ our `Rng` and a fixed order.
 
 Left out: loops between rooms, several walkers, wave function collapse, a shuffle bag (`Rng::Shuffle` covers it),
 soft pity (rising odds), density masks for scattering, a tile grid kit.
+
+### D50. Particles: streams, life curves, areas
+Usage: [Effects](../Graphics/Effects.md#streams).
+
+No library: Effekseer authors effects in its own editor (agents cannot write them) and draws through its own renderer;
+the Particle System API, SPARK and Thor are 3D, unmaintained or bound to another framework, and the first uses the
+global `rand()`.
+
+1. *A stream's state lives in its owner:* `ParticleEmitter` is a value like a tween (last place, share of a particle
+   owed); `FxStage::Emit` runs it. No names or handles in the stage, so a dead object's stream goes with it.
+   `FxStage::Trail` and `FxTrail` are gone: a steady stream is not a one-off cue action.
+2. *Rates per second and per unit travelled,* with fractions carried over; each frame's particles are spread along the
+   way and aged by the rest of the frame. The player's particle share scales the rate, so it thins even one a frame.
+3. *Life is fixed data:* up to eight colour keys and a size curve, so a `constexpr` theme holds them (`Track` keeps a
+   vector). Keys multiply the emitted colour; `ownColors` uses them as they are. `fadeFraction`, `sizeScale` and
+   `endSizeScale` are gone.
+4. *Particles share their look:* a particle holds its own values and an index into the system's looks (appearance,
+   motion, custom draw); a look with no particles left is reused and drops its drawing. Measured at 5,000 particles
+   (Release, `[.fx-perf]`): emit 27 to 9 us, update 20 to 14 us a frame; recording the draws is unchanged at ~330 us
+   and dominates.
+5. *Areas and inheritance are emission data,* so bursts use them too: Point, Disc, Ring, Box, Line, optionally aimed
+   outward. A `ParticleSource` carries the velocity; `FxPlay::velocity` passes it through cues.
+6. *Weather that fills the view stays `DriftField`;* emitters are for local sources.
+
+Left out: sprite sheets and frame animation, collision, attractors, GPU particles, custom drawing for streams.
 
 ## Remaining v1 work
 

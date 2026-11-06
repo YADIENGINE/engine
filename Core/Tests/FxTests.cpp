@@ -53,28 +53,27 @@ FxStyle TestFx() {
 
 TEST_CASE("Engine.Fx.ParticlesRespectCapacityQualityAndLifetime", "[engine][fx]") {
     ParticleSystem particles({.capacity = 10, .seed = 7U});
-    particles.Emit({10.0f, 10.0f}, 25, Emission, {.color = Pink});
+    particles.Emit({10.0f, 10.0f}, Pink, 25, Emission, {});
     CHECK(particles.ActiveCount() == 10);
     particles.Update(1.1f); // Longer than the longest lifetime
     CHECK(particles.ActiveCount() == 0);
 
     particles.SetQuality({.particlePercent = 50});
-    particles.Emit({10.0f, 10.0f}, 8, Emission, {.color = Pink});
+    particles.Emit({10.0f, 10.0f}, Pink, 8, Emission, {});
     CHECK(particles.ActiveCount() == 4);
     particles.Clear();
     particles.SetQuality({.particlePercent = 0});
-    particles.Emit({10.0f, 10.0f}, 8, Emission, {.color = Pink});
+    particles.Emit({10.0f, 10.0f}, Pink, 8, Emission, {});
     CHECK(particles.ActiveCount() == 0);
 
-    CHECK_THROWS_AS(particles.Emit({}, 1, {.lifetime = {0.0f, 1.0f}}, {}), std::invalid_argument);
+    CHECK_THROWS_AS(particles.Emit({}, Pink, 1, {.lifetime = {0.0f, 1.0f}}, {}), std::invalid_argument);
 }
 
 TEST_CASE("Engine.Fx.ParticlesOfBothBlendsDrawInOneBatch", "[engine][fx]") {
     ParticleSystem particles({.capacity = 20, .seed = 3U});
-    particles.Emit({50.0f, 50.0f}, 5, Emission, {.color = Pink, .shape = ParticleShape::Square});
-    particles.Emit(
-        {50.0f, 50.0f}, 5, Emission,
-        {.color = Pink, .shape = ParticleShape::Spark, .blend = ParticleBlend::Additive, .sparkTrailSeconds = 0.05f});
+    particles.Emit({50.0f, 50.0f}, Pink, 5, Emission, {.shape = ParticleShape::Square});
+    particles.Emit({50.0f, 50.0f}, Pink, 5, Emission,
+                   {.shape = ParticleShape::Spark, .blend = ParticleBlend::Additive, .sparkTrailSeconds = 0.05f});
     particles.Update(0.1f);
     PaintHarness h;
     h.Begin();
@@ -121,12 +120,12 @@ TEST_CASE("Engine.Fx.CameraEffectsMoveTheViewAndSettle", "[engine][fx]") {
 TEST_CASE("Engine.Fx.ParticleRotationAndSpinUseClockwiseRadians", "[engine][fx]") {
     ParticleSystem particles({.capacity = 1, .seed = 7U});
     float rotation = -1.0f;
-    particles.Emit({50.0f, 50.0f}, 1,
+    particles.Emit({50.0f, 50.0f}, Pink, 1,
                    {.lifetime = {2.0f, 2.0f},
                     .size = {2.0f, 2.0f},
                     .rotation = {Radians(15.0f), Radians(15.0f)},
                     .spin = {Radians(30.0f), Radians(30.0f)}},
-                   {.color = Pink}, [&](Painter& paint, const ParticleDrawData& data) {
+                   {}, [&](Painter& paint, const ParticleDrawData& data) {
                        rotation = data.rotation;
                        DrawParticleShape(paint, ParticleShape::Square, data);
                    });
@@ -237,7 +236,7 @@ TEST_CASE("Engine.FxQuality.ScalesParticlesAndShake", "[engine][graphics]") {
 
     const FxQuality reduced{.particlePercent = 50, .shake = EffectLevel::Reduced};
     CHECK(reduced.ParticleCount(40) == 20);
-    CHECK(reduced.ParticleCount(1) == 1); // A one-particle trail does not vanish
+    CHECK(reduced.ParticleCount(1) == 1); // A one-particle burst does not vanish
     CHECK(reduced.ParticleCount(0) == 0);
     CHECK(reduced.ShakeScale() > 0.0f);
     CHECK(reduced.ShakeScale() < 1.0f);

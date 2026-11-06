@@ -22,7 +22,6 @@ struct FxParticles { // A burst of the game's own
     ParticleBurst burst{};
     int count = 0;
 };
-struct FxTrail {};
 struct FxDash {};
 struct FxSteam {};
 struct FxFloatText {
@@ -70,7 +69,7 @@ struct FxSlowMotion { // Time and its look together
     float endScale = 1.0f;
 };
 
-using FxAction = std::variant<FxBurst, FxParticles, FxTrail, FxDash, FxSteam, FxFloatText, FxPopText, FxRing,
+using FxAction = std::variant<FxBurst, FxParticles, FxDash, FxSteam, FxFloatText, FxPopText, FxRing,
                               FxShockwave, FxFlash, FxLightFlash, FxBolt, FxBanner, FxToast, FxShake, FxPunch, FxKick, FxGlitch,
                               FxHitstop, FxSlowMotion>;
 
