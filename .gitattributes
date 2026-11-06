@@ -27,3 +27,6 @@
 /ThirdParty/earcut/** -text
 /ThirdParty/Clipper2/** -text
 /ThirdParty/FastNoiseLite/** -text
+/ThirdParty/pfr/** -text
+/ThirdParty/kb/** -text
+/ThirdParty/NotoSansScripts/** -text
