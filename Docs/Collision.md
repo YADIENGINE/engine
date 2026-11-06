@@ -16,6 +16,7 @@ identical hashes when measured, but that is not promised across compilers or CPU
 | `Physics/Collision/Collision.h` | Questions about two shapes, with nothing to set up |
 | `Physics/Collision/CollisionWorld.h` | Many colliders: area, point, ray and sweep queries, overlapping pairs |
 | `Physics/Collision/CollisionMask.h` | `MaskOf`: layers from the game's own enum |
+| `Physics/Collision/PoolColliders.h` | `PoolColliders`: how a [pool](Simulation.md#things-that-come-and-go)'s items have colliders, declared once |
 | `Physics/Debug/ColliderDraw.h` | `DrawColliders`: outlines on top of a view |
 
 Worked example: [AgentDocs/Recipes/Collision.md](../AgentDocs/Recipes/Collision.md).
@@ -43,7 +44,7 @@ else into several. Invalid sizes throw `std::invalid_argument`.
 ```cpp
 enum class Layer { Player, Enemy, Wall };
 
-const ColliderId id = world.Add(Shape::Box(16.0f, 3.0f), {position, angle}, MaskOf(Layer::Enemy), enemyIndex);
+const ColliderId id = world.Add(Shape::Box(16.0f, 3.0f), {position, angle}, MaskOf(Layer::Enemy), owner);
 world.Move(id, {newPosition, angle});
 
 for (const ColliderRef& found : world.Overlapping(blast, {center}, MaskOf(Layer::Enemy))) Damage(found.owner);
@@ -53,12 +54,41 @@ for (const ColliderPair& pair : world.Pairs(MaskOf(Layer::Player), MaskOf(Layer:
 
 - **Fast objects:** use `Sweep`, and move only if it reports nothing. A shape cannot pass through a collider this way,
   however fast it goes. A bullet does not need to be a collider itself. A swept shape does not turn while it moves.
-- **`owner`:** the number you gave to `Add`, usually an index into the game's own list.
+- **`owner` and `layers`:** every result carries the number you gave to `Add` and the collider's layers. For things that
+  spawn and die, let `PoolColliders` set the owner and read it back ([below](#items-in-a-pool)). Do not use an index into
+  a list as owner: removing an earlier item makes it name the wrong one.
 - **Order:** results come in id order, and equal distances go to the lower id, so they do not depend on the index's inner
   shape.
 - **Spans:** a result stays valid until the next query on that world. Copy what must last longer.
 - **Ids:** a removed collider's id stays invalid, even after its slot is used again. Using one throws.
 - **A collider asking about itself:** pass its id as `ignore`, or it finds itself.
+
+## Items in a pool
+
+When the things with colliders spawn and die, keep them in a [`Pool`](Simulation.md#things-that-come-and-go), each with
+its `ColliderId`. Declare once, beside the item type, how its items have colliders: which member holds the id, where the
+item stands, and the pool's layers. That `PoolColliders` value is compile-time data; it points at no world or pool. Every
+call goes through it, so the owner is always the item's handle and the layers always the pool's:
+
+```cpp
+struct Enemy { Pose pose; int hp = 2; ColliderId collider; };
+inline constexpr PoolColliders EnemyColliders{&Enemy::collider, &Enemy::pose, MaskOf(Layer::Enemy)};
+
+EnemyColliders.Add(_world, _enemies, {.pose = spawn}, Shape::Box(16.0f, 3.0f)); // Item and collider, at its pose
+EnemyColliders.Sync(_world, _enemies); // Each step, after the rules moved the items: no Move to forget
+if (const auto hit = _world.Sweep(bullet, from, move, EnemyColliders.Layers() | MaskOf(Layer::Wall)))
+    if (Enemy* enemy = _enemies.Find(EnemyColliders.Of(*hit))) enemy->hp -= 1; // Null for the wall
+EnemyColliders.RemoveIf(_world, _enemies, [](const Enemy& e) { return e.hp <= 0; }); // Colliders leave too
+```
+
+- **Where it stands:** a member `Pose` or `Float2` (no turn), or a lambda without captures:
+  `[](const Enemy& e) { return Pose{e.at, e.angle}; }`. An unchanged pose costs a comparison in `Sync`.
+- **Back from a hit:** `Of` takes a `ColliderRef` (each side of a `ColliderPair` too) or a `ColliderHit`, and gives the
+  item's handle, or null when the collider is on none of the pool's layers. The item may be gone since: use `Find`.
+- **Layers:** give each pool its own. Two pools may give equal handles, as two lists give equal indices; a pool may have
+  several layers, and `Of` accepts a collider on any of them.
+- **No collider:** an item whose collider is `{}` (added with `Pool::Add`, or whose collider the game removed and cleared)
+  is skipped. `Remove` removes one item and its collider by handle.
 
 ## Walls that stop light
 
@@ -78,7 +108,8 @@ state.Field("collision", _collision);
 everything it knows came through calls the tape reproduces.
 
 A forgotten `Move` is a bug hashes cannot catch: it replays the same way every time. It shows as a collider left behind its
-owner, in `sim state` beside the game's own position, or on screen with `DrawColliders`.
+owner, in `sim state` beside the game's own position, or on screen with `DrawColliders`. Items in a pool cannot forget it:
+`PoolColliders::Sync` moves them all.
 
 ## Seeing colliders
 

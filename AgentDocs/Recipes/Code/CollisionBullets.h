@@ -8,13 +8,28 @@
 #include "Scene/Scene.h"
 #include "Input/InputBindings.h"
 #include "Physics/Collision/CollisionWorld.h"
+#include "Physics/Collision/PoolColliders.h"
+#include "Physics/Collision/Pose.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationRegistry.h"
+#include "Utilities/Pool.h"
 
 class Painter;
 
 enum class RecipeLayer { Player, Enemy, Wall };
 enum class RecipeShooterButton { Left, Right, Fire };
+
+// A plain struct, so State writes it field by field.
+struct RecipeEnemy {
+    Pose pose;
+    float drift = 0.0f; // Sideways, units per second
+    int hp = 2;
+    ColliderId collider;
+};
+// Declared once beside the type: each enemy's collider is its `collider`, stands at its `pose`, is on the Enemy layer
+// and is owned by its handle.
+inline constexpr PoolColliders RecipeEnemyColliders{&RecipeEnemy::collider, &RecipeEnemy::pose,
+                                                    MaskOf(RecipeLayer::Enemy)};
 
 // The rules, in Game/Simulation: colliders are found through the world, positions stay in the game's own fields.
 class RecipeShooterSimulation final : public Simulation {
@@ -28,10 +43,12 @@ public:
     [[nodiscard]] float PlayerX() const { return _playerX; }
     [[nodiscard]] const CollisionWorld& Collision() const { return _collision; }
     [[nodiscard]] const std::vector<Float2>& Bullets() const { return _bullets; }
+    [[nodiscard]] const Pool<RecipeEnemy>& Enemies() const { return _enemies; }
 
 private:
     CollisionWorld _collision;
     ColliderId _player;
+    Pool<RecipeEnemy> _enemies;
     std::vector<Float2> _bullets; // Bullets only ask questions, so they need no collider of their own
     float _playerX = 400.0f;
     int _score = 0;

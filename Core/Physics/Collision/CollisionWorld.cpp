@@ -47,7 +47,7 @@ struct CollisionWorld::Impl {
         return slots[id.index];
     }
     [[nodiscard]] ColliderRef RefOf(std::uint32_t index) const {
-        return {{index, slots[index].generation}, slots[index].owner};
+        return {{index, slots[index].generation}, slots[index].owner, slots[index].layers};
     }
     // Slots in the box and the mask, ascending. Box2D's mask filter may be approximate, so it is applied again.
     std::vector<std::uint32_t>& Candidates(b2AABB box, CollisionMask mask, ColliderId ignore) {
@@ -62,7 +62,7 @@ struct CollisionWorld::Impl {
         if (best && (hit.fraction > best->fraction || (hit.fraction == best->fraction && index >= best->id.index)))
             return;
         const ColliderRef ref = RefOf(index);
-        best = ColliderHit{ref.id, ref.owner, hit.point, hit.normal, hit.fraction};
+        best = ColliderHit{ref.id, ref.owner, ref.layers, hit.point, hit.normal, hit.fraction};
     }
     [[nodiscard]] float CastLimit(float current) const {
         return best ? std::min(current, best->fraction + TieMargin) : current;

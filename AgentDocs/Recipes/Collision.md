@@ -1,8 +1,9 @@
 # Collision recipe
 
-Stop fast bullets, find overlapping pairs and show colliders on screen, inside a simulation that replays exactly.
+Stop fast bullets, keep drifting enemies in a pool whose colliders follow them, find overlapping pairs and show colliders
+on screen, inside a simulation that replays exactly.
 
-APIs: Core/Physics/Collision/CollisionWorld.h, Core/Physics/Collision/Shape.h, Core/Physics/Collision/CollisionMask.h, Core/Physics/Debug/ColliderDraw.h. Concepts: [Collision](../../Docs/Collision.md).
+APIs: Core/Physics/Collision/CollisionWorld.h, Core/Physics/Collision/Shape.h, Core/Physics/Collision/CollisionMask.h, Core/Physics/Collision/PoolColliders.h, Core/Utilities/Pool.h, Core/Physics/Debug/ColliderDraw.h. Concepts: [Collision](../../Docs/Collision.md).
 
 Put the rules in Game/Simulation/: `engine_add_simulation` already links collision, so including the headers is enough. Keep the drawing function outside that folder.
 
@@ -17,13 +18,28 @@ Put the rules in Game/Simulation/: `engine_add_simulation` already links collisi
 #include "Scene/Scene.h"
 #include "Input/InputBindings.h"
 #include "Physics/Collision/CollisionWorld.h"
+#include "Physics/Collision/PoolColliders.h"
+#include "Physics/Collision/Pose.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/SimulationRegistry.h"
+#include "Utilities/Pool.h"
 
 class Painter;
 
 enum class RecipeLayer { Player, Enemy, Wall };
 enum class RecipeShooterButton { Left, Right, Fire };
+
+// A plain struct, so State writes it field by field.
+struct RecipeEnemy {
+    Pose pose;
+    float drift = 0.0f; // Sideways, units per second
+    int hp = 2;
+    ColliderId collider;
+};
+// Declared once beside the type: each enemy's collider is its `collider`, stands at its `pose`, is on the Enemy layer
+// and is owned by its handle.
+inline constexpr PoolColliders RecipeEnemyColliders{&RecipeEnemy::collider, &RecipeEnemy::pose,
+                                                    MaskOf(RecipeLayer::Enemy)};
 
 // The rules, in Game/Simulation: colliders are found through the world, positions stay in the game's own fields.
 class RecipeShooterSimulation final : public Simulation {
@@ -37,10 +53,12 @@ public:
     [[nodiscard]] float PlayerX() const { return _playerX; }
     [[nodiscard]] const CollisionWorld& Collision() const { return _collision; }
     [[nodiscard]] const std::vector<Float2>& Bullets() const { return _bullets; }
+    [[nodiscard]] const Pool<RecipeEnemy>& Enemies() const { return _enemies; }
 
 private:
     CollisionWorld _collision;
     ColliderId _player;
+    Pool<RecipeEnemy> _enemies;
     std::vector<Float2> _bullets; // Bullets only ask questions, so they need no collider of their own
     float _playerX = 400.0f;
     int _score = 0;
@@ -75,7 +93,7 @@ private:
 ```cpp
 #include "AgentDocs/Recipes/Code/CollisionBullets.h"
 #include <algorithm>
-#include <limits>
+#include <cmath>
 #include <memory>
 #include <variant>
 #include "Graphics/Paint/PaintStyle.h"
@@ -85,15 +103,17 @@ private:
 #include "Utilities/Random/Rng.h"
 
 namespace {
-constexpr std::uint64_t WallOwner = std::numeric_limits<std::uint64_t>::max();
 constexpr float FieldWidth = 800.0f;
 constexpr float PlayerY = 500.0f;
 constexpr float PlayerSpeed = 240.0f;
 constexpr float BulletSpeed = 3000.0f; // 50 units per step: without a sweep it would jump over a thin enemy
 constexpr float BulletRadius = 4.0f;
 constexpr int EnemyCount = 8;
+constexpr float EnemyHalfLength = 16.0f;
+constexpr float EnemyHalfWidth = 3.0f;
 constexpr float PlayerRadius = 12.0f;
 constexpr Color4 BulletColor{255, 230, 120, 255};
+constexpr Color4 EnemyColor{255, 110, 120, 255};
 constexpr Color4 PlayerColor{120, 220, 255, 255};
 
 InputBindings MakeBindings() {
@@ -108,10 +128,11 @@ InputBindings MakeBindings() {
 RecipeShooterSimulation::RecipeShooterSimulation(const SimulationStart& start) {
     _player = _collision.Add(Shape::Circle(PlayerRadius), {{_playerX, PlayerY}}, MaskOf(RecipeLayer::Player));
     Rng rng(start.seed);
-    (void)_collision.Add(Shape::Segment({0.0f, 0.0f}, {FieldWidth, 0.0f}), {}, MaskOf(RecipeLayer::Wall), WallOwner);
+    (void)_collision.Add(Shape::Segment({0.0f, 0.0f}, {FieldWidth, 0.0f}), {}, MaskOf(RecipeLayer::Wall));
     for (int i = 0; i < EnemyCount; ++i) {
         const Pose pose{{rng.Float(0.0f, FieldWidth), rng.Float(100.0f, 300.0f)}, rng.Float(0.0f, 3.0f)};
-        (void)_collision.Add(Shape::Box(16.0f, 3.0f), pose, MaskOf(RecipeLayer::Enemy));
+        (void)RecipeEnemyColliders.Add(_collision, _enemies, {.pose = pose, .drift = rng.Float(-40.0f, 40.0f)},
+                                       Shape::Box(EnemyHalfLength, EnemyHalfWidth));
     }
 }
 void RecipeShooterSimulation::Step(const SimulationStep& step) {
@@ -120,28 +141,34 @@ void RecipeShooterSimulation::Step(const SimulationStep& step) {
     if (input.Held(RecipeShooterButton::Right)) _playerX += PlayerSpeed * step.seconds;
     _collision.Move(_player, {{_playerX, PlayerY}}); // The game owns the position; the world has to be told
     if (input.Pressed(RecipeShooterButton::Fire)) _bullets.push_back({_playerX, PlayerY});
+    for (RecipeEnemy& enemy : _enemies) {
+        enemy.pose.position.x += enemy.drift * step.seconds;
+        if (enemy.pose.position.x < 0.0f || enemy.pose.position.x > FieldWidth) enemy.drift = -enemy.drift;
+    }
+    RecipeEnemyColliders.Sync(_collision, _enemies); // One line, no Move to forget
 
     const Shape bullet = Shape::Circle(BulletRadius);
     const Float2 move{0.0f, -BulletSpeed * step.seconds};
     std::erase_if(_bullets, [&](Float2& position) {
-        const auto hit = _collision.Sweep(bullet, {position}, move, MaskOf(RecipeLayer::Enemy, RecipeLayer::Wall));
+        const auto hit =
+            _collision.Sweep(bullet, {position}, move, RecipeEnemyColliders.Layers() | MaskOf(RecipeLayer::Wall));
         if (!hit) {
             position += move;
             return false;
         }
-        if (hit->owner != WallOwner) {
-            _collision.Remove(hit->id);
-            ++_score;
-        }
+        if (RecipeEnemy* enemy = _enemies.Find(RecipeEnemyColliders.Of(*hit))) enemy->hp -= 1; // Null for the wall
         return true;
     });
+    _score += static_cast<int>(
+        RecipeEnemyColliders.RemoveIf(_collision, _enemies, [](const RecipeEnemy& enemy) { return enemy.hp <= 0; }));
     _touches += static_cast<int>(_collision.Pairs(MaskOf(RecipeLayer::Player), MaskOf(RecipeLayer::Enemy)).size());
 }
 void RecipeShooterSimulation::State(StateVisitor& state) const {
     state.Field("playerX", _playerX);
     state.Field("score", _score);
     state.Field("touches", _touches);
-    state.Field("bullet", _bullets);       // bullet[0].x, bullet[0].y, ...
+    state.Field("bullet", _bullets);      // bullet[0].x, bullet[0].y, ...
+    state.Field("enemies", _enemies);     // enemies[0].handle, enemies[0].hp, ..., and the pool's free slots
     state.Field("collision", _collision); // Dumps show colliders beside the game's positions
 }
 SimulationDefinition RecipeShooterDefinition() {
@@ -154,6 +181,11 @@ SimulationDefinition RecipeShooterDefinition() {
 
 void DrawRecipeShooter(Painter& paint, const RecipeShooterSimulation& simulation, bool showColliders) {
     paint.Circle({simulation.PlayerX(), PlayerY}, PlayerRadius, Fill(PlayerColor));
+    for (const RecipeEnemy& enemy : simulation.Enemies()) {
+        const Float2 half{std::cos(enemy.pose.angle) * EnemyHalfLength, std::sin(enemy.pose.angle) * EnemyHalfLength};
+        paint.Line(enemy.pose.position - half, enemy.pose.position + half,
+                   {.width = EnemyHalfWidth * 2.0f, .color = EnemyColor});
+    }
     for (const Float2 bullet : simulation.Bullets())
         paint.Circle(bullet, BulletRadius, Fill(BulletColor));
     if (showColliders) DrawColliders(paint, simulation.Collision());
@@ -194,7 +226,7 @@ game's position with its collider's catches a forgotten `Move`, which hashes can
 
 ```json
 { "simulation": "myproject.shooter", "seed": 4, "script": [
-  { "expect": { "collision.colliders": 10 } },
+  { "expect": { "collision.colliders": 10, "enemies.count": 8 } },
   { "hold": "Right" }, { "run": 60 },
   { "expect": { "playerX": { "min": 639, "max": 641 },
                 "collision.collider[0].position.x": { "min": 639, "max": 641 } } } ] }
@@ -206,6 +238,6 @@ goes wrong has its own procedure: [collision skill](../Skills/collision/SKILL.md
 Checks:
 
 - A bullet is moved only after its sweep reports nothing, so it cannot jump over an enemy between steps.
-- Every position the game changes goes through `Move`. A forgotten `Move` replays the same way every time, so hashes will not catch it: compare the game's position with its collider in `python Engine sim state`, or draw with `showColliders` on.
-- `owner` connects a found collider to the game's own data; here it marks the wall.
+- Every position the game changes goes through `Move`; the pool's enemies through one `RecipeEnemyColliders.Sync` per step. A forgotten `Move` replays the same way every time, so hashes will not catch it: compare the game's position with its collider in `python Engine sim state`, or draw with `showColliders` on.
+- `RecipeEnemyColliders` is declared once beside `RecipeEnemy`; adding, syncing and removing go through it, so every enemy collider has the enemy's handle as owner and the Enemy layer. `Of(*hit)` gives the enemy's handle, or null for the wall. Dead enemies leave with their colliders in one `RemoveIf` per step, so two bullets hitting one enemy in a step cannot remove its collider twice.
 - `sim state` lists each collider as `collision.collider[N].position.x`, `collision.collider[N].layers` and so on.

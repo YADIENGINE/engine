@@ -762,3 +762,36 @@ written twice (once for the game, once for the editor).
 
 Left out: a separate editor interface found by `dynamic_cast`, switching scenes from the editor (still `Game::SetScene`
 in a Game Flow), the scene-held `Profiler` pointer and application command (nothing read them).
+
+### D55. Pool and handles
+Usage: [Simulation](../Simulation.md#things-that-come-and-go), [Collision](../Collision.md#items-in-a-pool).
+
+Things that spawn and die live in `Pool<T>` (`Utilities/Pool.h`, header-only); `Add` gives a `Handle<T>` (slot index +
+generation) that finds its item until it is removed. `Physics/Collision/PoolColliders.h` links a pool to its colliders.
+D27 stays: the world is an index, the game owns positions.
+
+1. *Handles are typed plain structs:* a `Handle<Enemy>` cannot reach a `Pool<Bullet>`, generation 0 is null, and
+   `StateVisitor` writes one as fields wherever a game keeps it.
+2. *Spawn order, not swap-and-pop:* removal keeps the others' order and new items go last, so loops, nearest-target ties and
+   results read the same in every replay. `RemoveIf` asks every item before any leaves, then closes the gaps in one pass.
+3. *No adding or removing during a loop over the pool, enforced:* the loop's iterator marks the pool, and `Add`,
+   `Remove` and `RemoveIf` throw `std::logic_error` while a loop (or a `RemoveIf` question) runs, before anything moves.
+   Collecting changes for after the loop is what the game needs anyway.
+4. *The allocator is state:* `State` writes items with their handles, then each slot's generation and the free list,
+   because they decide the handles given later; two pools with equal items but different histories hash differently.
+5. *A value type:* copies are independent and keep the handles; `Find`'s pointer is for now, the handle is what is kept.
+6. *A slot whose generation would wrap is retired,* so no old handle ever names a new item.
+7. *One `PoolColliders` per pool, declared beside the item type, owns the collider contract:* the member holding the
+   id, where the item stands, the pool's layers. Compile-time data only (member pointers, a capture-free lambda, the
+   mask), so it holds no world, pool or callback (D28). `Add` gives item and collider at once, so owner, layers and pose
+   cannot be wrong; `Sync` moves every collider once per step, so a forgotten `Move` is impossible; `RemoveIf` and
+   `Remove` take the colliders along. Physics sees Utilities, never the other way.
+8. *A hit leads back through layers:* the owner is the handle (`Owner()` / `FromOwner`), query results now carry
+   `layers`, and `Of` gives the handle only when they overlap the pool's layers, because two pools may give equal
+   handles.
+9. *Foreign handles are caught as far as the numbers allow:* a handle this pool never gave throws from `Get`; one from
+   another pool of the same type with an equal slot and generation cannot be told apart, as with two lists' indices.
+
+Left out: component storage / ECS (revisit with the swarm and bullet kit, system 6). If ever adopted: EnTT only inside
+simulations, no signals, observers or meta, a `StateVisitor` adapter that names component types, a pinned version.
+Also left out: a stored callback on removal, and `Clear` (`RemoveIf` removes everything and keeps old handles stale).

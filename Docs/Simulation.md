@@ -25,6 +25,7 @@ Use a simulation for a game's rules. Menus, transitions and effects stay ordinar
 | `Input/InputBindings.h` | Keys to per-player actions |
 | `Utilities/Random/Rng.h`, `Utilities/Random/WeightedPick.h` | Seeded random numbers, weighted choice |
 | `Utilities/Random/`, `Procedural/` | Loot with pity, scattered points, noise, levels generated from the seed: [Procedural](Procedural.md) |
+| `Utilities/Pool.h` | `Pool<T>` and `Handle<T>`: things that come and go, with an identity that lasts: [below](#things-that-come-and-go) |
 | `Physics/Collision/CollisionWorld.h` | Hits and overlaps inside the rules: [Collision](Collision.md) |
 | `Animation/Animator.h`, `Animation/Tween.h`, `Animation/Timeline.h` | Character clips, moving values, boss and wave timing: [Animation](Animation.md) |
 | `Camera/Camera2D.h` | A camera that decides gameplay (enemies wake as it shows them, no scrolling back): [Camera](Camera.md#a-camera-in-the-rules) |
@@ -80,6 +81,37 @@ Rules that keep a run reproducible:
 
 Simulation code is always built with `/fp:precise`. Measured: `/fp:fast` changes results between Debug and Release,
 because Release switches to vector math.
+
+### Things that come and go
+
+Enemies, bullets and pickups that spawn and die go in a `Pool<T>` (`Utilities/Pool.h`) rather than a `std::vector`, as
+soon as anything points at them. `Add` gives a `Handle<T>`; a handle finds its item until that item is removed, whatever
+else is added or removed, and finds nothing afterwards. Keep handles in the state for anything that refers to another
+thing (a target, a parent, a leader); an index into a list names the wrong item once an earlier one is removed.
+
+```cpp
+struct Missile { Float2 at; Handle<Drone> target; };
+struct RunState {
+    Pool<Drone> drones;
+    Pool<Missile> missiles;
+};
+
+for (Missile& missile : _run.missiles)
+    if (Drone* drone = _run.drones.Find(missile.target)) ... // Null once the drone is gone
+_run.drones.RemoveIf([](const Drone& drone) { return drone.hp <= 0; });
+```
+
+- **Order:** items stay in spawn order. A removed item leaves, the others keep their order, new items go to the end.
+- **Handles:** typed (a `Handle<Drone>` is no `Handle<Missile>`), plain values, `{}` is null. `Get` throws for a handle
+  that names nothing; `Find` gives null. A pointer from `Find` or `Get` is for now: keep the handle.
+- **No adding or removing inside a loop over the same pool:** it throws `std::logic_error`. Spawn before or after the
+  loop; remove with one `RemoveIf` per step.
+- **State:** a pool writes its items with their handles (`drones[0].handle.index`, `drones[0].hp`) and its free slots,
+  because those decide the handles given later. The same operations give the same handles.
+- **Colliders:** a `PoolColliders` value declared beside the item type adds, moves and removes the items' colliders
+  with them and leads a hit back to its item: [Collision](Collision.md#items-in-a-pool).
+
+Worked example: [AgentDocs/Recipes/Pool.md](../AgentDocs/Recipes/Pool.md).
 
 ## Step rate
 

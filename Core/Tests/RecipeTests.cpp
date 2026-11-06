@@ -14,6 +14,7 @@
 #include "AgentDocs/Recipes/Code/Lighting.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
+#include "AgentDocs/Recipes/Code/PoolTargets.h"
 #include "AgentDocs/Recipes/Code/PopupEffects.h"
 #include "AgentDocs/Recipes/Code/ProceduralLevel.h"
 #include "AgentDocs/Recipes/Code/SaveProgress.h"
@@ -374,6 +375,10 @@ TEST_CASE("Engine.Recipes.CollisionBulletsReplayAndDraw", "[engine][recipes]") {
     }
     CHECK(shots > 0);
     CHECK(simulation.Score() >= 1);
+    CHECK(simulation.Enemies().Count() + static_cast<std::size_t>(simulation.Score()) == 8);
+    CHECK(simulation.Collision().Count() == simulation.Enemies().Count() + 2); // Removed enemies took their colliders
+    for (const RecipeEnemy& enemy : simulation.Enemies()) // Every collider stands where its enemy is
+        CHECK(simulation.Collision().PoseOf(enemy.collider) == enemy.pose);
     CHECK_FALSE(VerifyTape(definition, scenario.Tape()).mismatch);
 
     PaintHarness harness;
@@ -492,10 +497,47 @@ TEST_CASE("Engine.Recipes.CollisionScenarioInTheRecipePasses", "[engine][recipes
     SimulationRegistry registry;
     registry.Add(RecipeShooterDefinition());
     const auto script = JsonIO::Parse(R"json({ "simulation": "myproject.shooter", "seed": 4, "script": [
-  { "expect": { "collision.colliders": 10 } },
+  { "expect": { "collision.colliders": 10, "enemies.count": 8 } },
   { "hold": "Right" }, { "run": 60 },
   { "expect": { "playerX": { "min": 639, "max": 641 },
                 "collision.collider[0].position.x": { "min": 639, "max": 641 } } } ] })json");
+    const auto result = RunScenarioScript(registry, script);
+    CHECK(result.passed);
+}
+
+TEST_CASE("Engine.Recipes.PoolTargetsReplayAndDraw", "[engine][recipes]") {
+    const auto definition = RecipeHomingDefinition();
+    Scenario scenario(definition, {.seed = 3, .players = 1});
+    const auto& rules = dynamic_cast<const RecipeHomingSimulation&>(scenario.Sim());
+    for (int volley = 0; volley < 12; ++volley) {
+        scenario.Tap("Fire");
+    scenario.Run(20);
+    }
+    CHECK(rules.Run().score >= 2);
+    CHECK(rules.Run().drones.Count() == 5);
+    const auto state = scenario.State();
+    CHECK(state.Members().contains("drones[0].handle.generation"));
+    CHECK(state.Members().contains("drones.generations[0]"));
+    const auto replay = VerifyTape(definition, scenario.Tape());
+    CHECK_FALSE(replay.mismatch);
+    CHECK(replay.hash == scenario.Hash());
+
+    PaintHarness harness;
+    harness.Begin();
+    DrawRecipeHoming(harness.paint, rules);
+    harness.End();
+    CHECK_FALSE(harness.Draws().empty());
+}
+
+TEST_CASE("Engine.Recipes.PoolScenarioInTheRecipePasses", "[engine][recipes]") {
+    SimulationRegistry registry;
+    registry.Add(RecipeHomingDefinition());
+    const auto script = JsonIO::Parse(R"json({ "simulation": "myproject.homing", "seed": 3, "script": [
+  { "run": 1 }, { "expect": { "drones.count": 5, "missiles.count": 0 } },
+  { "tap": "Fire" }, { "run": 3 }, { "tap": "Fire" }, { "run": 3 },
+  { "expect": { "missiles.count": 2, "missiles[0].target.index": 3, "missiles[1].target.index": 3 } },
+  { "until": { "score": 1 }, "limit": 300 },
+  { "expect": { "drones.count": 4, "drones.free[0]": 3, "drones.generations[3]": 2 } } ] })json");
     const auto result = RunScenarioScript(registry, script);
     CHECK(result.passed);
 }

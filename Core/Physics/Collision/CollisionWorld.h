@@ -20,14 +20,17 @@ struct ColliderId {
     friend constexpr bool operator==(ColliderId, ColliderId) = default;
 };
 
-// A collider found by a query; 'owner' is the number given to Add, usually an index into the game's own list.
+// A collider found by a query. 'owner' is the number given to Add; 'layers' tells which kind of thing that owner
+// belongs to. For a pool's items, PoolColliders::Of turns both back into the item's handle (PoolColliders.h).
 struct ColliderRef {
     ColliderId id;
     std::uint64_t owner = 0;
+    CollisionMask layers;
 };
 struct ColliderHit {
     ColliderId id;
     std::uint64_t owner = 0;
+    CollisionMask layers;
     Float2 point;
     Float2 normal;         // Faces the mover; zero when it started inside (fraction 0)
     float fraction = 0.0f; // 0..1 along the movement

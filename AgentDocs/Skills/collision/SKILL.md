@@ -25,8 +25,11 @@ Bullets usually need no collider: they only ask, with `Sweep`. Give a collider t
 ## Write it
 
 1. Declare layers as one enum, and pass them through `MaskOf`.
-2. `Add` each collider with its `owner`, usually an index into the game's own list. Keep the returned id.
-3. Call `Move` wherever the game changes that position. The game owns positions; the world knows only what it is told.
+2. Things that spawn and die go in a `Pool`; declare one `PoolColliders` beside the item type, add, sync and remove
+   through it, and find the item of a hit with its `Of`: `Docs/Collision.md#items-in-a-pool`. Never use an index into a
+   list as `owner`. A single collider (the player, a wall) is a plain `Add`; keep the returned id.
+3. Call `Move` wherever the game changes a single collider's position; a pool's colliders move with one `Sync` per step.
+   The game owns positions; the world knows only what it is told.
 4. In a simulation, keep the world as a member and add it to `State`:
    `state.Field("collision", _collision);`
 5. Test without a window: the [simulation skill](../simulation/SKILL.md). Check that a hit happens and also that a near miss
@@ -51,7 +54,7 @@ public:
                 bullet += move;
                 return false;
             }
-            _world.Remove(hit->id); // hit->owner is what Add was given: an index into the game's list
+            _world.Remove(hit->id); // hit->owner is what Add was given; for a pool item, its handle
             return true;
         });
     }

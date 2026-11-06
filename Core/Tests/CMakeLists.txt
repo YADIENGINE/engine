@@ -113,6 +113,7 @@ engine_tests(EnginePhysicsTests
     SOURCES
         Physics/CollisionTests.cpp
         Physics/CollisionWorldTests.cpp
+        Physics/PoolCollidersTests.cpp
         Physics/ShapeTests.cpp
     LINKS EnginePhysics
 )
@@ -149,6 +150,7 @@ engine_tests(EngineSimulationTests
         Animation/TweenTests.cpp
         Simulation/CollisionReplayTests.cpp
         Simulation/EventTests.cpp
+        Simulation/PoolTests.cpp
         Simulation/ProceduralReplayTests.cpp
         Simulation/ReplayCheckTests.cpp
         Simulation/RngTests.cpp
@@ -192,6 +194,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/AnalogFinish.cpp"
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"
+    "${recipeRoot}/PoolTargets.cpp"
     "${recipeRoot}/PopupEffects.cpp"
     "${recipeRoot}/ProceduralLevel.cpp"
     "${recipeRoot}/SaveProgress.cpp"

@@ -29,7 +29,7 @@ public:
                 bullet += move;
                 return false;
             }
-            _world.Remove(hit->id); // hit->owner is what Add was given: an index into the game's list
+            _world.Remove(hit->id); // hit->owner is what Add was given; for a pool item, its handle
             return true;
         });
     }

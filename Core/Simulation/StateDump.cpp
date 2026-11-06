@@ -32,7 +32,9 @@ void StateDump::BeginGroup(std::string_view name, std::int64_t index) {
     _prefix += '.';
 }
 void StateDump::EndGroup() {
+    // A non-empty prefix always ends with '.', which an unnamed group took away.
     _prefix.resize(_prefixEnds.back());
+    if (!_prefix.empty()) _prefix.back() = '.';
     _prefixEnds.pop_back();
 }
 

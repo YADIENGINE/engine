@@ -142,3 +142,15 @@ TEST_CASE("Engine.State.ReflectedFieldsHashLikeWrittenOnes", "[engine][simulatio
     third.Fields(a);
     CHECK(third.Result() != first.Result());
 }
+
+TEST_CASE("Engine.State.AnUnnamedGroupIsItsEnclosingGroup", "[engine][simulation]") {
+    StateDump dump;
+    dump.Group("list", [&] {
+        dump.Group({}, 0, [&] { dump.Field("hp", 1); });
+        dump.Field("count", 1);
+    });
+    dump.Field("after", 2);
+    CHECK(Has(dump, "list[0].hp"));
+    CHECK(Has(dump, "list.count"));
+    CHECK(Has(dump, "after"));
+}
