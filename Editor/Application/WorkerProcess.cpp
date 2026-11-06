@@ -29,6 +29,9 @@ WorkerProcess::WorkerProcess(const ProcessCommand& command, WorkerProcessMode mo
     PruneCrashReports(crashDirectory, WorkerReportsKept);
     const auto utf8 = crashDirectory.u8string();
     launch.environment["ENGINE_CRASH_DIRECTORY"] = {reinterpret_cast<const char*>(utf8.data()), utf8.size()};
+    // The worker runs from a snapshot copy of its executable; its assets stay in the build folder.
+    const auto assets = (command.directory / "Assets").u8string();
+    launch.environment["ENGINE_ASSET_DIRECTORY"] = {reinterpret_cast<const char*>(assets.data()), assets.size()};
     _snapshotLease.Reset(CreateFileW((command.executable.parent_path() / "snapshot.lock").c_str(), GENERIC_READ,
                                      FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
     if (!_snapshotLease) throw std::runtime_error("Worker snapshot is unavailable or being pruned");

@@ -122,6 +122,7 @@ directory must not be reused to infer which command failed.
 | `ENGINE_LAUNCHER` | editor | Full path to the windowed executable of the launcher that started the editor. If present, "Back to project list" appears in File: the editor starts that executable and closes. The launcher sets it for every engine command; tools forward it unchanged to the editor |
 | `ENGINE_PREBUILT` | `build`, `run`, `release`, `editor` | Folder of the compiled engine for the project's version ([Prebuilt engine](Prebuilt.md)). The launcher sets it when it has one; tools remember it for commands run without the launcher |
 | `ENGINE_ASSET_REPORT` | a built game | When set, the game prints its asset list as `asset: <path>` lines and exits before opening a window. `release` sets it |
+| `ENGINE_ASSET_DIRECTORY` | a built game | The `Assets` folder to read instead of the one beside the executable. The editor sets it for its worker, which runs from a snapshot copy of the executable |
 | `CLAUDECODE`, `CODEX_CI` | `build`, `run`, `release`, `test`, `sim`, `editor`, `refresh` | Set by Claude Code and Codex: the command runs under a coding agent and prints only its result (see [Commands](#commands)) |
 | `ENGINE_AGENT` | same | `1` gives the agent output anywhere, `0` turns it off under an agent |
 | `ENGINE_EDITOR_CONTROL` | `refresh`, `ctl` | The control pipe of the editor whose Console started the command; used instead of the build directory's announcement. The editor sets it for its Console's shell |
