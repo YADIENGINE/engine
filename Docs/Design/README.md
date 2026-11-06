@@ -568,13 +568,13 @@ Paint triangulates with earcut.hpp and resolves areas with Clipper2, both vendor
 ### D46. Smooth noise: FastNoiseLite
 Usage: [Rendering](../Graphics/Rendering.md#geometry-and-timing).
 
-FastNoiseLite behind `Utilities/Math/NoiseField.h`: `NoiseSettings` and plain functions `Noise(settings, point)`,
+FastNoiseLite behind `Utilities/Random/NoiseField.h`: `NoiseSettings` and plain functions `Noise(settings, point)`,
 `Noise(settings, x)`, `Warp(settings, amplitude, point)`. `Hash`, `Random01` and `NoiseHash` stay in `Noise.h`.
 
 1. *Plain functions of plain settings,* no object; settings can sit in tuning files.
 2. *`frequency` means the same for every kind:* at 1, about as often as values one unit apart.
 3. *`Warp`'s amplitude is the largest push of one layer.*
-4. *Its own target, `EngineNoise`, with `/fp:precise`,* linked by `EngineSimulation`.
+4. *Its own target, `EngineNoise` (now `EngineRandom`, D49), with `/fp:precise`,* linked by `EngineSimulation`.
 5. *Simplex by default.*
 
 Out of scope: cellular options, 3D noise, noise in a simulation (needs a `StateHash` test when it comes).
@@ -622,6 +622,34 @@ and metrics. kb lives in `EngineTextShape`, private to `EngineHeadless`; only `G
 9. *Honest limits:* simplified bidi, no Thai dictionary, horizontal only, no automatic right alignment.
 
 Left out: carets and selection (a cluster index per glyph), text direction in `TextStyle`, script fonts in the starter.
+
+### D49. Procedural kit
+Usage: [Procedural](../Procedural.md).
+
+Everything random lives in `Utilities/Random` (`Rng`, `WeightedPick`, `DrawTable`, `Scatter`, and `Noise.h` /
+`NoiseField.h`, moved from `Utilities/Math`), built as `EngineRandom` (was `EngineNoise`). Generated layouts live in
+`Core/Procedural` (`EngineProcedural`): `GenerateRooms`, `GenerateRandomWalk`, `GenerateCaves` and `Regions.h`, over
+`Grid<T>` (`Utilities/Geometry/Grid.h`) of `MapCell`. No library: each piece is under 150 lines, and each had to take
+our `Rng` and a fixed order.
+
+1. *Group by what it gives, not by what it uses:* randomness is a foundation every layer includes, so it stays in
+   `Utilities`; a cave generator uses `Rng` the way particles do and is a system of its own.
+2. *Both targets build with `/fp:precise` and below `EngineHeadless`;* `engine_add_simulation` links `EngineProcedural`.
+   `check` lets `Core/Procedural` include only `Utilities` and itself.
+3. *The grid belongs to neither generators nor tiles:* `Grid<T>` is plain data in `Utilities`; a tile kit will use the
+   same type and own what cells mean. `StateVisitor` writes a grid as `size` and `cells`.
+4. *A table is fixed data, its memory a plain struct:* `DrawMemory` goes into the state as it is, so pity survives a
+   replay. Pity is "after N misses"; the most overdue entry wins without a roll.
+5. *Generators keep the border wall and return one connected floor area;* caves fill small areas and dig shortest
+   tunnels to the rest (`ConnectRegions`).
+6. *Poisson sampling draws ring offsets by rejection,* so it needs no sine or cosine; points come in the order placed.
+7. *Noise in a simulation is proven:* a toy simulation reads noise, scatters, generates caves and draws loot every step;
+   the same seed gives the same hash at all 301 steps and its tape replays (`ProceduralReplayTests`).
+8. *No pinned hashes:* tests check sameness for a seed and the layouts' properties (border, one area, room gaps), so a
+   better generator is not a broken test.
+
+Left out: loops between rooms, several walkers, wave function collapse, a shuffle bag (`Rng::Shuffle` covers it),
+soft pity (rising odds), density masks for scattering, a tile grid kit.
 
 ## Remaining v1 work
 

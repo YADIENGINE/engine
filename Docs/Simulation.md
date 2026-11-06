@@ -24,6 +24,7 @@ Use a simulation for a game's rules. Menus, transitions and effects stay ordinar
 | `Simulation/Scenario.h` | Input, steps and state from a C++ test |
 | `Input/InputBindings.h` | Keys to per-player actions |
 | `Utilities/Random/Rng.h`, `Utilities/Random/WeightedPick.h` | Seeded random numbers, weighted choice |
+| `Utilities/Random/`, `Procedural/` | Loot with pity, scattered points, noise, levels generated from the seed: [Procedural](Procedural.md) |
 | `Physics/Collision/CollisionWorld.h` | Hits and overlaps inside the rules: [Collision](Collision.md) |
 | `Animation/Animator.h`, `Animation/Tween.h`, `Animation/Timeline.h` | Character clips, moving values, boss and wave timing: [Animation](Animation.md) |
 | `Camera/Camera2D.h` | A camera that decides gameplay (enemies wake as it shows them, no scrolling back): [Camera](Camera.md#a-camera-in-the-rules) |

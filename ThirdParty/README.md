@@ -17,7 +17,7 @@ building (examples, documentation, tests) are omitted.
 | `Box2D/` | 3.2.0 | https://github.com/erincatto/box2d/archive/refs/tags/v3.2.0.tar.gz | `EnginePhysics` (private) | Yes |
 | `earcut/` | 3.2.4 | https://github.com/mapbox/earcut.hpp/archive/refs/tags/v3.2.4.tar.gz | `EngineHeadless` Paint (private) | Yes |
 | `Clipper2/` | 2.0.1 | https://github.com/AngusJohnson/Clipper2/archive/refs/tags/Clipper2_2.0.1.tar.gz | `EngineHeadless` Paint (private) | Yes |
-| `FastNoiseLite/` | 1.1.1 | https://github.com/Auburn/FastNoiseLite/archive/refs/tags/v1.1.1.tar.gz | `EngineNoise` (private) | Yes |
+| `FastNoiseLite/` | 1.1.1 | https://github.com/Auburn/FastNoiseLite/archive/refs/tags/v1.1.1.tar.gz | `EngineRandom` (private) | Yes |
 | `pfr/` | 2.3.2 | https://github.com/apolukhin/pfr_non_boost/archive/refs/tags/2.3.2.tar.gz | `EngineReflection`: `Utilities/Reflection.h` (header only, public) | Yes |
 | `kb/` | 2.31 (5474b3c) | https://github.com/JimmyLefevre/kb/archive/5474b3cebe3c5fc52fa2ab35e71e20fe9a3dbec2.tar.gz | `EngineTextShape`: Graphics/Text shaping (private) | Yes |
 | `NotoSansScripts/` | Arabic 2.009, Hebrew 3.000, Thai 2.000 | https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf | Text shaping tests (OFL 1.1) | No |

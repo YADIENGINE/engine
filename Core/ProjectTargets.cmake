@@ -160,7 +160,7 @@ endfunction()
 function(engine_add_simulation target)
     cmake_parse_arguments(SIMULATION "" "" "SOURCES;LIBRARIES" ${ARGN})
     add_library(${target} STATIC ${SIMULATION_SOURCES})
-    target_link_libraries(${target} PUBLIC EngineCamera EnginePhysics EngineSimulation EngineTuning
+    target_link_libraries(${target} PUBLIC EngineCamera EnginePhysics EngineProcedural EngineSimulation EngineTuning
         ${SIMULATION_LIBRARIES})
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     engine_simulation_flags(${target})

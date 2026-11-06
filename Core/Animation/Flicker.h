@@ -1,8 +1,8 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
-#include "Utilities/Math/Noise.h"
-#include "Utilities/Math/NoiseField.h"
+#include "Utilities/Random/Noise.h"
+#include "Utilities/Random/NoiseField.h"
 
 // How a lamp's strength moves: a smooth wander, and for a failing lamp stretches of fast hard cuts.
 struct FlickerStyle {

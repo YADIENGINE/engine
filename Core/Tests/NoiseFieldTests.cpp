@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
 #include <cmath>
-#include "Utilities/Math/NoiseField.h"
+#include "Utilities/Random/NoiseField.h"
 
 using Catch::Approx;
 

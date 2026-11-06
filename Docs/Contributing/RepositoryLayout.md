@@ -13,12 +13,13 @@
 | `Core/Ui/` | Game UI: Layout, Kernel, Looks, Widgets, Kit, Sound ([UI](../Ui.md)) |
 | `Core/Input/`, `Core/Audio/`, `Core/Platform/` | Public services and private platform backends |
 | `Core/Fx/`, `Core/Gameplay/`, `Core/Progress/` | Headless effects and reusable gameplay/view logic |
-| `Core/Utilities/` | Foundation types and helpers, grouped under `Geometry/`, `Math/` and `Random/` |
+| `Core/Utilities/` | Foundation types and helpers, grouped under `Geometry/`, `Math/` and `Random/`. `Random/` (seeded numbers, tables, scattering, noise) builds as `EngineRandom`, with precise floats; the other `.cpp` files belong to `EngineHeadless` |
 | `Core/Diagnostics/` | Cross-cutting development checks and frame instrumentation contracts |
 | `Core/Options/` | Engine/player options, backed by Persistence |
 | `Core/Tuning/` | Tuning format, live values (`ENGINE_TUNING_LIVE`), `Tuning<T>()` |
 | `Core/Animation/` | Values over time: tweens, clips, animators, timelines and curves for simulations and views, small helpers for views. Headers only, with no target of their own; nothing here draws |
 | `Core/Camera/` | Game cameras (`EngineCamera`): `Camera2D`, `Cameras`, `CameraView`; math only, so a simulation may keep one. `Internals/` holds the follow rules; `Debug/` draws and belongs to `EngineHeadless` |
+| `Core/Procedural/` | Generated layouts (`EngineProcedural`): rooms, random walks, caves, floor regions over `Grid<MapCell>`; includes only `Utilities/`, so a simulation may generate its level ([Procedural](../Procedural.md)) |
 | `Core/Physics/` | Collision over Box2D (`EnginePhysics`); Box2D stays behind `Internals/`. `Debug/` draws and belongs to `EngineHeadless` |
 | `Core/Modules/` | Opt-in systems; each module owns its facade, internals and tests |
 | `Core/Tests/` | Core tests and shared `Support/` (temporary directories, diagnostics, gzip inflater) |
@@ -29,12 +30,12 @@
 | `Tools/` | Standard-library Python CLI and project template (offline audio authoring has separate NumPy/SciPy dependencies) |
 
 `EngineHeadless` contains platform-free code; `Engine` adds the runtime platform layer. `EngineAudio` is the audio engine over miniaudio: it needs no window, so `Engine` links it and its tests run it offline. `EngineSimulation`,
-`EnginePhysics`, `EngineCamera` and `EngineTuning` sit below `EngineHeadless` and reach neither drawing nor audio, so
+`EnginePhysics`, `EngineCamera`, `EngineProcedural`, `EngineRandom` and `EngineTuning` sit below `EngineHeadless` and reach neither drawing nor audio, so
 simulation code can link only them. `EngineAssets` sits above `EngineHeadless`; games, workers and tests link it, and
 nothing in Core does.
 
-`Core/Utilities/` accepts only headless foundation APIs with no clearer domain owner. Geometry, scalar/noise/index math
-and seeded random helpers use their named subfolders; UI, camera, options and diagnostics types stay with those owners.
+`Core/Utilities/` accepts only headless foundation APIs with no clearer domain owner. Geometry, scalar/index math
+and everything random (generators, tables, scattering, noise) use their named subfolders; UI, camera, options and diagnostics types stay with those owners.
 Do not add `Common`, `Misc` or another catch-all layer beneath it.
 
 Create consuming targets with `engine_add_game`, `engine_add_simulation` and `engine_add_editor_worker`.

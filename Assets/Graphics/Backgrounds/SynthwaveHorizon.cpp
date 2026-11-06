@@ -7,7 +7,7 @@
 #include "Graphics/Backgrounds/Sky.h"
 #include "Graphics/Backgrounds/StarField.h"
 #include "Graphics/Paint/Painter.h"
-#include "Utilities/Math/NoiseField.h"
+#include "Utilities/Random/NoiseField.h"
 #include "Utilities/Math/Scalar.h"
 
 namespace {

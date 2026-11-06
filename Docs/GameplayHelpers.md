@@ -13,6 +13,7 @@ never names game types. Input navigation is a compiled borrowed view.
 | `Progress/CollectFlights.h` | Pickup-to-counter flights; `Pending(kind)` keeps credit off a counter until arrival |
 | `Utilities/Random/Rng.h` | `Rng`: the engine's seeded generator (PCG32); the same seed gives the same sequence in every build |
 | `Utilities/Random/WeightedPick.h` | `WeightedIndex(weights, rng)`: index in proportion to the weights, from an `Rng` |
+| `Utilities/Random/DrawTable.h` | `DrawTable`: weighted draws with no-repeat and pity, remembered in a `DrawMemory` ([Procedural](Procedural.md#tables-that-remember)) |
 | `Utilities/EnumTable.h` | `static_assert(RowsInIdOrder(rows))`: rows in enum order, one per value (`Id::Count` last) |
 | `Options/ChoiceList.h` | `StoredChoice` / `StepChoice` for settings lists (control scheme, FPS limit) |
 | `Input/InputNavigation.h` | Borrowed semantic queries over `DeviceInput` (Confirm, Back, axes, tabs, press point) |

@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include "Graphics/Atmosphere/Internals/AtmosphereView.h"
 #include "Graphics/Paint/Painter.h"
-#include "Utilities/Math/Noise.h"
+#include "Utilities/Random/Noise.h"
 
 namespace {
 constexpr float DensityArea = 100.0f * 100.0f;

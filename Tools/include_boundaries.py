@@ -43,6 +43,8 @@ UI_LAYER_RULES = (
 # Core/Camera computes and draws nothing, so a simulation may keep a camera that decides gameplay; only its debug guides
 # draw (Docs/Camera.md).
 CAMERA_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|Camera/)[^"]*"''')
+# Core/Procedural generates layouts from plain data, so a simulation can build its level with it (Docs/Procedural.md).
+PROCEDURAL_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Procedural/)[^"]*"''')
 # Lighting stands on Painter, like a game's own drawing, and Painter does not know it. One file bridges colliders to it.
 LIGHT_BRIDGE = "CollisionOccluders"
 LIGHT_RULE = re.compile(
@@ -118,6 +120,7 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                          if source.is_relative_to(engine_root / CORE / "Ui" / rule[0])), None)
         camera = (source.is_relative_to(engine_root / CORE / "Camera")
                   and not source.is_relative_to(engine_root / CORE / "Camera" / "Debug"))
+        procedural = source.is_relative_to(engine_root / CORE / "Procedural")
         light = source.is_relative_to(engine_root / CORE / "Graphics" / "Light") and source.stem != LIGHT_BRIDGE
         paint = source.is_relative_to(engine_root / CORE / "Graphics" / "Paint")
         atmosphere = source.is_relative_to(engine_root / CORE / "Graphics" / "Atmosphere")
@@ -170,6 +173,10 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Camera includes "{line.strip()}"; only Utilities, Animation and'
                              ' Camera, so a simulation can use it')
+            if procedural and PROCEDURAL_RULE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: Core/Procedural includes "{line.strip()}"; only Utilities and'
+                             ' Procedural, so a simulation can use it')
             if rules and SIMULATION_FORBIDDEN.match(line):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: simulation code includes "{line.strip()}"; see Docs/Simulation.md')

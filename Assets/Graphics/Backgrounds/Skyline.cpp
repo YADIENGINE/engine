@@ -4,8 +4,8 @@
 #include <cmath>
 #include <cstddef>
 #include "Graphics/Paint/Painter.h"
-#include "Utilities/Math/Noise.h"
-#include "Utilities/Math/NoiseField.h"
+#include "Utilities/Random/Noise.h"
+#include "Utilities/Random/NoiseField.h"
 #include "Utilities/Math/Scalar.h"
 
 namespace {

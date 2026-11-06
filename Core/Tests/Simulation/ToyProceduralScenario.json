@@ -1,0 +1,10 @@
+{
+  "simulation": "engine.toy-procedural",
+  "seed": 5,
+  "script": [
+    { "expect": { "age": 0, "loot.last": -1, "map.size.x": 48, "map.size.y": 32 } },
+    { "run": 100 },
+    { "expect": { "age": 100 } },
+    { "read": ["age", "wisp.x", "wisp.y", "noise", "loot.last", "drops[0]", "drops[3]", "rng.state"] }
+  ]
+}

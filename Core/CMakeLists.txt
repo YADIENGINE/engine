@@ -87,15 +87,35 @@ target_link_libraries(EngineTuning PRIVATE EngineStorage)
 set_target_properties(EngineTuning PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_warnings(EngineTuning)
 
-# Smooth noise (Utilities/Math/NoiseField.h) over FastNoiseLite, which stays private. Built with precise floats like
-# simulation code, so simulations may use it; everything above EngineSimulation gets it from there.
-add_library(EngineNoise STATIC Utilities/Math/Internals/NoiseField.cpp)
-target_include_directories(EngineNoise PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_include_directories(EngineNoise SYSTEM PRIVATE "${ENGINE_THIRD_PARTY_DIR}/FastNoiseLite")
-target_compile_features(EngineNoise PUBLIC cxx_std_20)
-set_target_properties(EngineNoise PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
-engine_simulation_flags(EngineNoise)
-engine_warnings(EngineNoise)
+# Randomness (Utilities/Random): seeded numbers, weighted tables, scattered points and smooth noise over FastNoiseLite,
+# which stays private. Built with precise floats like simulation code, so simulations may use all of it; everything
+# above EngineSimulation gets it from there.
+add_library(EngineRandom STATIC
+    Utilities/Random/DrawTable.cpp
+    Utilities/Random/Internals/NoiseField.cpp
+    Utilities/Random/Scatter.cpp
+)
+target_include_directories(EngineRandom PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(EngineRandom SYSTEM PRIVATE "${ENGINE_THIRD_PARTY_DIR}/FastNoiseLite")
+target_compile_features(EngineRandom PUBLIC cxx_std_20)
+set_target_properties(EngineRandom PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_simulation_flags(EngineRandom)
+engine_warnings(EngineRandom)
+
+# Generated layouts (Docs/Procedural.md): rooms and corridors, random walks, caves, floor regions. Precise floats and no
+# drawing, so a simulation may generate its level; engine_add_simulation links it.
+add_library(EngineProcedural STATIC
+    Procedural/Caves.cpp
+    Procedural/RandomWalk.cpp
+    Procedural/Regions.cpp
+    Procedural/Rooms.cpp
+)
+target_include_directories(EngineProcedural PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(EngineProcedural PUBLIC cxx_std_20)
+target_link_libraries(EngineProcedural PUBLIC EngineRandom)
+set_target_properties(EngineProcedural PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_simulation_flags(EngineProcedural)
+engine_warnings(EngineProcedural)
 
 # Field reflection for plain structs (Utilities/Reflection.h): PFR, header only. The one vendored library a public header
 # includes, because poses and State walk a game's own structs inside templates; only Reflection.h names it.
@@ -122,7 +142,7 @@ add_library(EngineSimulation STATIC
 target_include_directories(EngineSimulation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineSimulation PUBLIC cxx_std_20)
 target_compile_definitions(EngineSimulation PRIVATE ENGINE_VERSION="${engineVersion}")
-target_link_libraries(EngineSimulation PUBLIC EngineJsonIO EngineNoise EngineReflection EngineTuning)
+target_link_libraries(EngineSimulation PUBLIC EngineJsonIO EngineRandom EngineReflection EngineTuning)
 set_target_properties(EngineSimulation PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_simulation_flags(EngineSimulation)
 engine_warnings(EngineSimulation)
@@ -302,8 +322,8 @@ target_include_directories(EngineHeadless PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineHeadless PUBLIC cxx_std_20)
 set_target_properties(EngineHeadless PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}")
-target_link_libraries(EngineHeadless PUBLIC EngineCamera EnginePersistence EnginePhysics EngineSimulation EngineTuning
-    PRIVATE EngineClipper2 EngineEarcut EngineStorage EngineTextShape)
+target_link_libraries(EngineHeadless PUBLIC EngineCamera EnginePersistence EnginePhysics EngineProcedural EngineSimulation
+    EngineTuning PRIVATE EngineClipper2 EngineEarcut EngineStorage EngineTextShape)
 # The engine's ready-made graphics (Assets/Graphics). They sit above the engine's systems, so nothing in Core calls them.
 # X.asset.cpp registrations are left out: they reach only the editor worker.
 file(GLOB_RECURSE engineAssetSources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../Assets/Graphics/*.cpp")
@@ -419,6 +439,7 @@ if(ENGINE_BUILD_TESTS OR ENGINE_BUILD_TOY_SIMULATION)
     engine_add_simulation(EngineToySimulation SOURCES
         Tests/Simulation/ToyAnimation.cpp
         Tests/Simulation/ToyCollision.cpp
+        Tests/Simulation/ToyProcedural.cpp
         Tests/Simulation/ToyRegistry.cpp
         Tests/Simulation/ToySimulation.cpp
         Tests/Simulation/ToyTimeline.cpp

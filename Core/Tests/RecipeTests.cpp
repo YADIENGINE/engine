@@ -15,6 +15,7 @@
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
 #include "AgentDocs/Recipes/Code/PopupEffects.h"
+#include "AgentDocs/Recipes/Code/ProceduralLevel.h"
 #include "AgentDocs/Recipes/Code/SaveProgress.h"
 #include "AgentDocs/Recipes/Code/SceneTransition.h"
 #include "AgentDocs/Recipes/Code/SimulationPlay.h"
@@ -240,6 +241,53 @@ TEST_CASE("Engine.Recipes.CameraInTheRulesReplays", "[engine][recipes]") {
     DrawRecipeScroller(harness.paint, rules, 0.5f, true);
     harness.End();
     CHECK(harness.list.Rejected() == 0);
+}
+
+TEST_CASE("Engine.Recipes.ProceduralLevelReplaysEveryLayout", "[engine][recipes]") {
+    const auto definition = RecipeDungeonDefinition();
+    for (const char* layout : {"rooms", "caves", "walk"}) {
+        INFO(layout);
+        SimulationStart start{.seed = 7, .players = 1};
+        start.parameters["layout"] = layout;
+        Scenario scenario(definition, start);
+        const auto& rules = dynamic_cast<const RecipeDungeonSimulation&>(scenario.Sim());
+        const RecipeDungeonRun& run = rules.Run();
+        REQUIRE(run.map[run.player] == MapCell::Floor);
+        CHECK(run.gems.size() >= 5);
+        for (const Vec2 gem : run.gems)
+            CHECK(run.map[gem] == MapCell::Floor);
+        scenario.Hold("Right");
+        scenario.Run(120);
+        scenario.Release("Right");
+        scenario.Hold("Down");
+        scenario.Run(120);
+        CHECK(scenario.State().Members().contains("loot.last"));
+        const auto replay = VerifyTape(definition, scenario.Tape());
+        CHECK_FALSE(replay.mismatch);
+        CHECK(replay.hash == scenario.Hash());
+
+        PaintHarness harness({1280.0f, 720.0f}, 1.0f);
+        harness.Begin();
+        DrawRecipeDungeon(harness.paint, rules);
+        harness.End();
+        CHECK(harness.list.Rejected() == 0);
+    }
+    // Another seed, another level; the layouts differ from each other too.
+    Scenario first(definition, {.seed = 7, .players = 1});
+    Scenario second(definition, {.seed = 8, .players = 1});
+    CHECK_FALSE(dynamic_cast<const RecipeDungeonSimulation&>(first.Sim()).Run().map ==
+                dynamic_cast<const RecipeDungeonSimulation&>(second.Sim()).Run().map);
+}
+TEST_CASE("Engine.Recipes.ProceduralLootComesWithPity", "[engine][recipes]") {
+    DrawMemory memory;
+    Rng rng(1);
+    int sinceCrown = 0, longest = 0;
+    for (int gem = 0; gem < 500; ++gem) {
+        sinceCrown = RecipeDungeonLoot().Draw(memory, rng) == 3 ? 0 : sinceCrown + 1;
+        longest = std::max(longest, sinceCrown);
+    }
+    CHECK(longest <= 15);
+    CHECK(RecipeDungeonSceneDefinition().parameters.back().choices.size() == 3);
 }
 
 TEST_CASE("Engine.Recipes.CameraScenesAreDefined", "[engine][recipes]") {

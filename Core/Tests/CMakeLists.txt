@@ -102,6 +102,16 @@ engine_tests(EngineCameraTests
     LINKS EngineCamera
 )
 
+# Links only the procedural target, so layout code that reaches drawing or the simulation framework fails to build here.
+engine_tests(EngineProceduralTests
+    SOURCES
+        Procedural/GridTests.cpp
+        Procedural/LayoutTests.cpp
+        Random/DrawTableTests.cpp
+        Random/ScatterTests.cpp
+    LINKS EngineProcedural
+)
+
 # Links only the simulation target, so a simulation that reaches drawing or audio fails to build here. The toy simulation
 # also goes through the console tool, end to end.
 engine_tests(EngineSimulationTests
@@ -117,6 +127,7 @@ engine_tests(EngineSimulationTests
         Animation/TweenTests.cpp
         Simulation/CollisionReplayTests.cpp
         Simulation/EventTests.cpp
+        Simulation/ProceduralReplayTests.cpp
         Simulation/ReplayCheckTests.cpp
         Simulation/RngTests.cpp
         Simulation/RunnerTests.cpp
@@ -135,8 +146,10 @@ add_test(NAME Engine.SimulationToolTimeline
     COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyTimelineScenario.json")
 add_test(NAME Engine.SimulationToolAnimation
     COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyAnimationScenario.json")
+add_test(NAME Engine.SimulationToolProcedural
+    COMMAND EngineToySimulationTool run "${CMAKE_CURRENT_SOURCE_DIR}/Simulation/ToyProceduralScenario.json")
 set_tests_properties(Engine.SimulationTool Engine.SimulationToolCollision Engine.SimulationToolTimeline
-    Engine.SimulationToolAnimation
+    Engine.SimulationToolAnimation Engine.SimulationToolProcedural
     PROPERTIES LABELS engine TIMEOUT 30)
 
 # Compile all consumer examples, including runtime-only factories. The static archive lets the headless smoke
@@ -157,6 +170,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"
     "${recipeRoot}/PopupEffects.cpp"
+    "${recipeRoot}/ProceduralLevel.cpp"
     "${recipeRoot}/SaveProgress.cpp"
     "${recipeRoot}/SceneGame.cpp"
     "${recipeRoot}/SceneTransition.cpp"

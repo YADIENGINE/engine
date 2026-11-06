@@ -30,8 +30,8 @@ order. `paint.Clip(area)` intersects the current clip; rotated clips are rejecte
 | `Utilities/Geometry/Float2.h`, `Utilities/Geometry/FloatRect.h`, `Utilities/Geometry/Affine2.h`, `Utilities/Color4.h` | Continuous geometry, transformations and colors |
 | `Animation/Easing.h` | Curves, `Progress01`, `Since`, `Staggered`, `Crossed`, `CountDown` ([Animation](../Animation.md)) |
 | `Utilities/Math/Scalar.h` | Constants, angle conversion, fractional parts and scalar interpolation |
-| `Utilities/Math/Noise.h` | Stable hashes for decorations (`Hash`, `Random01`, `NoiseHash`) |
-| `Utilities/Math/NoiseField.h` | Smooth noise: `Noise(settings, point)` over a plane or along a line, `Warp`; kinds Simplex, SimplexSmooth, Cellular, Perlin, Value; FBm, Ridged and PingPong layers. Same settings and point, same value; usable in simulations |
+| `Utilities/Random/Noise.h` | Stable hashes for decorations (`Hash`, `Random01`, `NoiseHash`) |
+| `Utilities/Random/NoiseField.h` | Smooth noise: `Noise(settings, point)` over a plane or along a line, `Warp`; kinds Simplex, SimplexSmooth, Cellular, Perlin, Value; FBm, Ridged and PingPong layers. Same settings and point, same value; usable in simulations |
 | `Utilities/Math/Index.h` | Wrapped indices |
 | `Ui/Layout/UiTransform.h` | Centered aspect-preserving design-to-panel mapping and inverse input mapping |
 

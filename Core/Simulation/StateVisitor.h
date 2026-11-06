@@ -11,6 +11,7 @@
 #include "Simulation/StepSmoothed.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Geometry/Float2.h"
+#include "Utilities/Geometry/Grid.h"
 #include "Utilities/Random/Rng.h"
 #include "Utilities/Geometry/Vec2.h"
 #include "Utilities/Reflection.h"
@@ -91,6 +92,13 @@ public:
     template <class T, std::size_t N> void Field(std::string_view name, const std::array<T, N>& items) {
         for (std::size_t i = 0; i < N; ++i)
             Group(name, i, [&] { Item(items[i]); });
+    }
+    // A map of cells: name.size, then name.cells[0], ... row by row.
+    template <class T> void Field(std::string_view name, const Grid<T>& grid) {
+        Group(name, [&] {
+            Field("size", grid.Size());
+            Field("cells", grid.Cells());
+        });
     }
     // A group that is empty when there is no value.
     template <class T> void Field(std::string_view name, const std::optional<T>& value) {

@@ -149,6 +149,13 @@ class BoundaryTests(unittest.TestCase):
         self.write("Engine/Core/Camera/Camera2D.cpp", '#include "Graphics/Paint/Painter.h"\n')
         self.assertIn("Core/Camera includes", self.check()[0])
 
+    def test_procedural_includes_only_what_a_simulation_may(self):
+        self.write("Engine/Core/Procedural/Caves.cpp", '#include "Procedural/Regions.h"\n'
+                   '#include "Utilities/Random/Rng.h"\n#include <vector>\n')
+        self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Procedural/Caves.cpp", '#include "Simulation/StateVisitor.h"\n')
+        self.assertIn("Core/Procedural includes", self.check()[0])
+
     def test_lighting_stands_on_paint_and_paint_does_not_know_it(self):
         self.write("Engine/Core/Graphics/Light/LightLayer.cpp", '#include "Graphics/Light/LightLayer.h"\n'
                    '#include "Graphics/Paint/Painter.h"\n#include "Graphics/Surface/Surface.h"\n'
