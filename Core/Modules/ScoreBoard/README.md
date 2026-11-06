@@ -1,8 +1,5 @@
 # ScoreBoard
 
-Source/API include root: `Engine/Core/Modules/ScoreBoard/`. Documentation and plans live here;
-`Internals/` and `Tests/` paths below refer to the source module directory.
-
 One game-independent, locally persisted score history per board. The module owns
 validation dispatch, recording, ranking and storage. Include only
 `Modules/ScoreBoard/ScoreBoard.h`; link `EngineScoreBoard`. No runtime, raylib or

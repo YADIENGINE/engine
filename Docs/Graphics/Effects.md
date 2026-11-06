@@ -63,9 +63,9 @@ intensity, color, time, style)` in `Graphics/Draw/SpeedLines.h` clips itself to 
 | Need | Use |
 | --- | --- |
 | A short themed label, nothing else | `FxStage::FloatText` / `PopText` (no extra target) |
-| A number: merging, formatting, intensity, particles | [NumberPopup](../Modules/NumberPopup/README.md) `Emit` |
+| A number: merging, formatting, intensity, particles | [NumberPopup](../../Core/Modules/NumberPopup/README.md) `Emit` |
 | A text label with the same animation and juice | NumberPopup `EmitLabel` |
-| Arbitrary drawing, or text with handles and no juice | [Popup](../Modules/Popup/README.md), with `PopupText` for text |
+| Arbitrary drawing, or text with handles and no juice | [Popup](../../Core/Modules/Popup/README.md), with `PopupText` for text |
 
 Popup and NumberPopup are explicitly owned/updated modules; the caller controls their placement relative to the FxStage
 layers. They read no theme, so the owner copies any theme values it wants into their styles.

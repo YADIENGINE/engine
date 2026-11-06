@@ -38,7 +38,7 @@ built-in default font is used. The engine provides manifest preparation and font
 | `font` | empty means no game font; otherwise an asset path, with glyphs loaded on demand; [font guide](Graphics/Text.md) |
 | `assets`, `audio`, `sounds` | empty manifest / catalog / [sound tables](Audio.md#sound-tables) |
 | `audioVolume` | [audio steps and groups](Audio.md) |
-| `save` | [SaveSettings](Modules/Persistence/README.md); supports per-file overrides |
+| `save` | [SaveSettings](../Core/Modules/Persistence/README.md); supports per-file overrides |
 | `theme` | PlainTheme |
 | `uiLooks`, `uiSounds` | empty: plain widgets, silent menus; [UI](Ui.md#sounds) |
 | `persistentOptions` | true; when false, player preferences are neither read nor written |

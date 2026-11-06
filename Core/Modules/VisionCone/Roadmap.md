@@ -1,3 +1,5 @@
+Planned work, not implemented. The supported API is README.md.
+
 # VisionCone roadmap
 
 These are possible extensions, not supported API or promises:

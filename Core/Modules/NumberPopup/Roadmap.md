@@ -1,3 +1,5 @@
+Planned work, not implemented. The supported API is README.md.
+
 # NumberPopup roadmap
 
 The supported API is documented in [README](README.md). Potential future work:

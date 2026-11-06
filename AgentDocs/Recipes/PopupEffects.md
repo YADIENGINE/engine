@@ -49,4 +49,4 @@ Pitfalls: custom callbacks draw around local zero, and `paint.Text` positions th
 `PopupText`/`DrawPopupText` for text. Popup already applies the animation transform and opacity. Capture labels by
 value. Keep borrowed resources alive. Place Draw inside or outside the world camera according to the desired space.
 
-Concepts: `Docs/Modules/Popup/README.md`, `Docs/Modules/NumberPopup/README.md`.
+Concepts: `Core/Modules/Popup/README.md`, `Core/Modules/NumberPopup/README.md`.

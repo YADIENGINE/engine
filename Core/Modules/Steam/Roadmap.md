@@ -1,3 +1,5 @@
+Planned work, not implemented. The supported API is README.md.
+
 # Steam TODO
 
 Planned work; none of it is supported yet. Consumer-specific integration plans belong to the game's own documentation.

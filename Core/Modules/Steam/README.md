@@ -1,8 +1,5 @@
 # Steam
 
-Source/API include root: `Engine/Core/Modules/Steam/`. Documentation and plans live here;
-`Internals/` and `Tests/` paths below refer to the source module directory.
-
 Opt-in, headless detection of the Steam client (whether Steam launched the game, which
 app id it was launched under, which account is logged in) plus an achievement-forwarding
 facade. It needs no Steamworks SDK, never contacts Steam servers, and never fails when

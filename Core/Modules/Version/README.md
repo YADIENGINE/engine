@@ -1,8 +1,5 @@
 # Version
 
-Source/API include root: `Engine/Core/Modules/Version/`. Documentation and plans live here;
-`Internals/` and `Tests/` paths below refer to the source module directory.
-
 Opt-in, headless tracking of the installed game version and queries over game-authored
 patch notes. It does not contact an update server. Games that do not use it have no
 runtime hooks, configuration fields, or tracking work.

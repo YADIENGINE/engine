@@ -1,8 +1,5 @@
 # JsonIO
 
-Source/API include root: `Engine/Core/Modules/JsonIO/`. Documentation and plans live here;
-`Internals/` and `Tests/` paths below refer to the source module directory.
-
 Stateless JSON parsing, serialization, file reading and atomic writing, with optional
 authenticated encryption or write-only gzip compression. Include only `Modules/JsonIO/JsonIO.h`.
 
@@ -94,7 +91,7 @@ No schema, save version, fallback document, backup or recovery policy is applied
 - `Internals/GzipCodec` adapts the vendored sdefl compressor (`Internals/sdefl.h`).
 - Versions and licenses of all third-party code: [ThirdParty](ThirdParty.md).
 - Engine-private `Platform/Internals/FileStorage`, `StorageError` and `SecureRandom` supply generic
-  OS file/nonce primitives ([API boundaries](../../Contributing/ApiBoundaries.md)). They have no dependency on either module or on Game.
+  OS file/nonce primitives ([API boundaries](../../../Docs/Contributing/ApiBoundaries.md)). They have no dependency on either module or on Game.
 - The `EngineJsonIO` CMake target exposes no third-party headers or types publicly.
 
 The facade has no instance, cache, registry or mutable global state. Independent

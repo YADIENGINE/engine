@@ -1,7 +1,8 @@
 # Engine tests
 
 Headless Catch2 tests for game-independent code. Sources stay under `Engine/Core/Tests/`
-and `Engine/Core/Modules/<Module>/Tests/`; documentation lives here in the engine repository's `Docs/`.
+and `Engine/Core/Modules/<Module>/Tests/`; general testing documentation lives here in `Docs/`,
+and module API documentation lives beside each module under `Core/Modules/`.
 They never link the consuming game's core or include its source headers.
 
 | Executable | Sources | Links | Tags |
@@ -21,7 +22,7 @@ They never link the consuming game's core or include its source headers.
 
 `EngineTestSupport` holds game-free helpers: TempDirectory, Diagnostics and GzipInflate.
 Include them as `Tests/Support/...`. The test inflater's
-[third-party notices](../Modules/JsonIO/ThirdParty.md) apply.
+[third-party notices](../../Core/Modules/JsonIO/ThirdParty.md) apply.
 
 ## Building and running
 

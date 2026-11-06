@@ -27,5 +27,5 @@ Each README explains API, dependencies, ownership, and errors. Future work: [Jso
 [NumberPopup](NumberPopup/Roadmap.md). Planned work is not a supported feature; for example, real
 achievement unlocking is not promised without Steam's SDK backend.
 
-When developing a module, follow [Module rules](../Contributing/ModuleRules.md) and
-[Testing](../Contributing/Testing.md).
+When developing a module, follow [Module rules](../../Docs/Contributing/ModuleRules.md) and
+[Testing](../../Docs/Contributing/Testing.md).

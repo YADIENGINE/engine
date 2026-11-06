@@ -95,6 +95,15 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(area("Engine/Core/Ui/Ui.h"), "engine source")
         self.assertEqual(area("Engine/Docs/Ui.md"), "engine Docs")
 
+    def test_colocated_core_docs(self):
+        for path in ("Core/Modules/JsonIO/README.md", "Engine/Core/Modules/JsonIO/Roadmap.md",
+                     r"C:\Project\Engine\Core\Modules\JsonIO\Encryption.md", "Core/Ui/README.md"):
+            with self.subTest(path=path):
+                self.assertEqual(area(path), "engine Docs")
+        self.assertEqual(area("Engine/Core/Modules/JsonIO/JsonIO.h"), "engine source")
+        self.assertEqual(area("Game/Core/README.md"), "game")
+        self.assertEqual(area("build/Core/README.md"), "build output")
+
 
 class LiveTests(unittest.TestCase):
     def test_codex_events(self):

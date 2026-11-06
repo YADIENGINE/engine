@@ -87,4 +87,4 @@ not statistical significance.
 Encode/Decode exchange owned JsonIO documents. Save/Load use atomic JSON IO, schema version 1, 128 MiB limit.
 Markdown produces summary, CPU/counter and repeat tables. Invalid samples, recipes and formats throw standard
 exceptions or JsonIO errors. Observer callbacks do not propagate exceptions into the loop. Serializing and
-writing files belong outside measured work. [Editor workflow](../../Editor/Profiler.md).
+writing files belong outside measured work. [Editor workflow](../../../Docs/Editor/Profiler.md).

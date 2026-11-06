@@ -109,7 +109,7 @@ void DrawVisionIndicator(VisionCone& contours, Painter& paint, const VisionConeS
 ```
 
 Call under the same camera as the world. Drawing these vertices into an existing `Surface` via `Painter::Target` also
-allows composition as a mask; see [Painter scopes](../../Graphics/Painter.md#scopes). Contours use uniform angular
+allows composition as a mask; see [Painter scopes](../../../Docs/Graphics/Painter.md#scopes). Contours use uniform angular
 samples: narrow walls between rays can be missed, chords approximate the range arc, and very wide sectors need adequate
 subdivision. They are visual approximations, never the authority for AI. Increase segments only when the view needs it.
 Do not pass an empty contour to `Painter::Light` as an occlusion mask: that API interprets empty as unrestricted.
@@ -136,7 +136,7 @@ void DrawVisionLight(LightLayer& layer, Painter& paint, const CameraView& view, 
 Call after drawing the world and outside camera/transform scopes. For several lights, collect them in one `LightFrame`
 and draw the layer once. Use simulation positions for decisions and interpolated positions for rendering. Visual shadow
 outlines may differ from collision blockers; neither light brightness nor softened edges decide AI visibility. Existing
-[lighting and shadows](../../Graphics/Lighting.md#shadows) remain responsible for this rendering.
+[lighting and shadows](../../../Docs/Graphics/Lighting.md#shadows) remain responsible for this rendering.
 
 ## Tests
 

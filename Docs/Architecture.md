@@ -9,8 +9,8 @@ scene routing; the engine owns the main loop and services.
 | --- | --- |
 | `EngineHeadless` | Object lifecycle, scenes, scaled time, transition timing, game UI, text layout, pointer gestures, player options (`GameOptions`) and run JSON storage, geometry, shatter patterns, UI transforms and [gameplay helpers](GameplayHelpers.md) |
 | `Engine` | Window/canvas, drawing, fonts, input sampling, audio, effects and iris drawing, asset preparation, application loop |
-| `EngineLocalization` | Standalone [Localization module](Modules/Localization/README.md): authored languages, native names, translation fallback, placeholders and number formatting |
-| `EngineScoreBoard` | Standalone [ScoreBoard module](Modules/ScoreBoard/README.md): game-defined validation, durable score history, top-N and per-player ranking |
+| `EngineLocalization` | Standalone [Localization module](../Core/Modules/Localization/README.md): authored languages, native names, translation fallback, placeholders and number formatting |
+| `EngineScoreBoard` | Standalone [ScoreBoard module](../Core/Modules/ScoreBoard/README.md): game-defined validation, durable score history, top-N and per-player ranking |
 | Derived game | Initial scene, navigation, rules, models, views, content definitions, its own option and save keys |
 
 `GameSettings` configures the window/title, logical canvas, clear color, application identity, font and an asset
@@ -99,4 +99,4 @@ components without raylib. Input has explicit headless public headers (`Input.h`
 `Input/Internals/`. See [Input](Input.md). There is no global EngineImport header.
 
 
-Details: [runtime](Runtime.md), [graphics](Graphics/README.md), [module selection](Modules/README.md).
+Details: [runtime](Runtime.md), [graphics](Graphics/README.md), [module selection](../Core/Modules/README.md).

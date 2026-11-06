@@ -3,8 +3,9 @@
 This folder is for developers making games with the C++20 / raylib-based engine. The engine's name and version are in
 `EngineManifest.json`; the documentation does not spell out the name. The engine is a separate repo; games use it as an
 `Engine/` submodule. Engine code shipped in games is under `Core/`, the editor under `Editor/`, the tools' shared ImGui
-layer under `ToolUi/` ([ToolUi](ToolUi.md)), external dependencies under `ThirdParty/`, documentation under `Docs/`, and
-build/editor/test tools and the new project template under `Tools/`; commands use `python Engine <command>`
+layer under `ToolUi/` ([ToolUi](ToolUi.md)), external dependencies under `ThirdParty/`, general documentation under `Docs/`,
+module documentation beside its source under `Core/Modules/`, and build/editor/test tools and the new project template
+under `Tools/`; commands use `python Engine <command>`
 ([ToolsContract](ToolsContract.md)), and `python Engine new` creates a project. Game rules, content catalogs, and
 project-specific editor helpers stay in the game's own documentation.
 
@@ -18,7 +19,7 @@ it and [Editor automation](Editor/Automation.md) lists what it can do. Agent mat
 1. [First game](GettingStarted.md): CMake, factory, game, and first scene.
 2. [Architecture](Architecture.md) and [runtime](Runtime.md): ownership, lifecycle, time, and scene transitions.
 3. [Graphics](Graphics/README.md), [input](Input.md), [audio](Audio.md), and [assets/platforms](AssetsAndPlatforms.md).
-4. [Options and saves](OptionsAndSaves.md), [modules](Modules/README.md), and [gameplay helpers](GameplayHelpers.md).
+4. [Options and saves](OptionsAndSaves.md), [modules](../Core/Modules/README.md), and [gameplay helpers](GameplayHelpers.md).
 5. [Editor](Editor/README.md): connect the project and display production drawing in editor scenes.
 6. [Release package](Release.md): `python Engine release`, `Release/` layout, and third-party notices. Every change that
    adds an external asset or library to a game also updates the `Game/Distribution/` notice.
@@ -40,7 +41,7 @@ it and [Editor automation](Editor/Automation.md) lists what it can do. Agent mat
 | Levels from a seed: rooms, caves, scattered pickups, loot tables with pity | [Procedural](Procedural.md) |
 | Tweens, character clips and fades, curves, boss and wave timing | [Animation](Animation.md) |
 | A camera that follows, frames several players, stays in the level, split screen | [Camera](Camera.md) |
-| General JSON run archive | [RunTracking](Modules/RunTracking/README.md) |
+| General JSON run archive | [RunTracking](../Core/Modules/RunTracking/README.md) |
 | Offline audio generation with Python | [Audio generation](AudioGeneration.md) |
 | Release package, license/credits notices | [Release](Release.md) |
 | Linking a compiled engine; building it from source | [Prebuilt engine](Prebuilt.md) |

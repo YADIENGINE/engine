@@ -1,3 +1,5 @@
+Planned work, not implemented. The supported API is README.md.
+
 # Planned work
 
 No additional features are scheduled. Streaming JSON and alternative backends are

@@ -21,7 +21,7 @@
 | `Core/Camera/` | Game cameras (`EngineCamera`): `Camera2D`, `Cameras`, `CameraView`; math only, so a simulation may keep one. `Internals/` holds the follow rules; `Debug/` draws and belongs to `EngineHeadless` |
 | `Core/Procedural/` | Generated layouts (`EngineProcedural`): rooms, random walks, caves, floor regions over `Grid<MapCell>`; includes only `Utilities/`, so a simulation may generate its level ([Procedural](../Procedural.md)) |
 | `Core/Physics/` | Collision over Box2D (`EnginePhysics`); Box2D stays behind `Internals/`. `Debug/` draws and belongs to `EngineHeadless` |
-| `Core/Modules/` | Opt-in systems; each module owns its facade, internals and tests |
+| `Core/Modules/` | Opt-in systems; each module owns its facade, internals, documentation and tests |
 | `Core/Tests/` | Core tests and shared `Support/` (temporary directories, diagnostics, gzip inflater) |
 | `ToolUi/` | `EngineToolUi`: shared ImGui context, fonts, theme and widgets for tools; never shipped in games |
 | `Terminal/` | `EngineTerminal`: ConPTY/libvterm session; `EngineTerminalUi`: ImGui terminal view; tools only |
@@ -69,6 +69,7 @@ examples belong in documentation, not the project template.
 | Location | Source of truth |
 | --- | --- |
 | `Docs/` | Human concepts, architecture and guides |
+| `Core/Modules/<Module>/` | Module supported API (`README.md`), planned work (`Roadmap.md`) and extra guides |
 | `AgentDocs/` | Agent rules, skills, task routes (`Tasks.json`) and compiled recipes |
 | `AGENTS.md` (`CLAUDE.md` imports it) | Short contributor rules; excluded from launcher copies |
 | `Docs/Design/` | Historical decisions/plans; excluded from launcher copies |

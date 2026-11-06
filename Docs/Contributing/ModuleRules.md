@@ -14,7 +14,7 @@ Known exception: the core uses `Persistence` (and through it `JsonIO`) to store 
 options. It stays a module because the developer still meets it only when the game
 has saves of its own; the core never exposes it for its own options.
 
-The structure below (one facade, `Internals/`, central documentation, tests) is a quality standard;
+The structure below (one facade, `Internals/`, module documentation, tests) is a quality standard;
 it does not by itself make something a module.
 
 Every module in `Engine/Core/Modules/` must follow these rules. They define a consistent
@@ -30,19 +30,25 @@ ModuleName/
     Internals/
     ModuleName.h
     ModuleName.cpp
+    README.md
+    Roadmap.md
+    ExtraGuide.md
     Tests/
         CMakeLists.txt
         *Tests.cpp
 ```
 
 - `Internals/` contains private implementation files that consumers must not use directly.
-- `Docs/Modules/ModuleName/README.md` starts with a short module summary,
+- `README.md` starts with a short module summary,
   followed by public API documentation, notes and examples.
 - `ModuleName.h` declares the module's main class and its public API.
 - `ModuleName.cpp` implements the main class.
-- Documentation lives outside the module's source tree in the engine's `Docs/Modules/ModuleName/`.
-  Keep supported API in `README.md`, planned work in `Roadmap.md`, and additional
-  format/reference guides beside them. Third-party sources live unmodified in the engine's `ThirdParty/` with their
+- Documentation lives in the module folder, `Core/Modules/ModuleName/`.
+  Keep the supported API in `README.md`, planned work in `Roadmap.md`, and extra
+  guides beside them (shown as `ExtraGuide.md` above). Every roadmap starts with:
+  "Planned work, not implemented. The supported API is README.md."
+  AgentDocs routes, skills and recipes must link to the supported API or extra guides, never to a roadmap.
+  Third-party sources live unmodified in the engine's `ThirdParty/` with their
   licenses; code that ends up in a game is also listed in `ThirdParty/Notices.json` ([ThirdParty](../../ThirdParty/README.md)).
 - `Tests/` holds the module's Catch2 tests. Its `CMakeLists.txt` is one
   `engine_tests(Engine<ModuleName>Tests SOURCES ... LINKS Engine<ModuleName> ...)` call,
@@ -50,14 +56,6 @@ ModuleName/
   Tests use only the public header and link only this module and its declared
   dependencies (plus `EngineTestSupport`). Game code never tests module behavior.
   See `Docs/Contributing/Testing.md`.
-
-The corresponding documentation tree is:
-
-```text
-Docs/Modules/ModuleName/
-    README.md
-    Roadmap.md
-```
 
 ## 2. One public entry point
 
@@ -111,4 +109,4 @@ part of the public contract.
 Update the module's README whenever its public API or observable behavior changes.
 Describe parameters, return values, failure behavior, and relevant constraints
 such as thread safety where applicable. Examples must use only the public API.
-Keep planned work in `Docs/Modules/ModuleName/Roadmap.md`; a TODO is not a supported feature.
+Keep planned work in the module's `Roadmap.md`; a TODO is not a supported feature.

@@ -1,3 +1,5 @@
+Planned work, not implemented. The supported API is README.md.
+
 # Planned extensions
 
 These are extension points, not supported features or scheduled commitments:

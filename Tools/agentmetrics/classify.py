@@ -203,7 +203,8 @@ def area(path: str) -> str:
     normal = path.replace("\\", "/")
     for marker, name in (("AgentDocs/", "AgentDocs"), ("/build/", "build output"), ("/.claude/", "agent files"),
                          ("/.codex/", "agent files"), ("/Game/", "game"), ("Docs/", "engine Docs"),
-                         ("/Core/", "engine source"), ("/Assets/", "engine source"), ("/Editor/", "editor source"),
+                         ("/Core/", "engine Docs" if normal.endswith(".md") else "engine source"),
+                         ("/Assets/", "engine source"), ("/Editor/", "editor source"),
                          ("/Tools/", "engine tools")):
         if marker in normal or normal.startswith(marker.lstrip("/")):
             return name

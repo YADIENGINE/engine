@@ -4,7 +4,7 @@ All third-party code below is private to JsonIO; no type or header is exposed
 through `JsonIO.h` or the `EngineJsonIO` CMake target.
 
 This is the developer note. The notice text shipped with games lives in
-[`ThirdParty/`](../../../ThirdParty/README.md); see [Release](../../Release.md).
+[`ThirdParty/`](../../../ThirdParty/README.md); see [Release](../../../Docs/Release.md).
 
 - **nlohmann/json 3.12.0** ([release](https://github.com/nlohmann/json/releases/tag/v3.12.0)),
   MIT license, vendored unmodified in `Engine/ThirdParty/nlohmann_json/`. Its types are confined to
