@@ -685,7 +685,3 @@ global `rand()`.
 6. *Weather that fills the view stays `DriftField`;* emitters are for local sources.
 
 Left out: sprite sheets and frame animation, collision, attractors, GPU particles, custom drawing for streams.
-
-## Remaining v1 work
-
-[v1 finalization](v1finalization.md).
