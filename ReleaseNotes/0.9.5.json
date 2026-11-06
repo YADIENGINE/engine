@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-06",
+  "changes": [
+    "Editor: one action list drives menus, the command palette and shortcuts; ten color themes.",
+    "Editor: project settings and input maps edit in the Inspector.",
+    "Editor: asset search, filters and tiles explain themselves; new assets show their result in the form.",
+    "Engine: particle streams, a procedural kit, a vision cone module and local crash reports.",
+    "Third party: PFR reads plain structs; kb_text_shape shapes text."
+  ],
+  "breaking": []
+}
