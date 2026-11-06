@@ -82,7 +82,9 @@ public:
     void Arc(Float2 center, float radius, float startAngle, float sweep, const LineStyle& style);
     void Line(Float2 from, Float2 to, const LineStyle& style);
     void Polyline(std::span<const Float2> points, const LineStyle& style, bool closed = false);
-    // Simple (non-self-intersecting) polygon: fill (no gradient), stroke and glow are supported.
+    // Polygon of any shape, either winding: concave is fine. Every ShapeStyle part works (fill or gradient, border on
+    // any StrokeAlign, glow). A self-intersecting outline gets a reasonable fill, not one decided by a rule; for that,
+    // and for holes, use a Path with FillPath.
     void Polygon(std::span<const Float2> points, const ShapeStyle& style);
     void Triangle(Float2 a, Float2 b, Float2 c, const ShapeStyle& style);
     // Triangles ('indices' in threes) with one colour per point, blended across each triangle: soft fields such as
@@ -90,7 +92,10 @@ public:
     // multiple of three or 'colors' not matching 'points' is invalid_argument.
     void Mesh(std::span<const Float2> points, std::span<const Color4> colors, std::span<const std::uint32_t> indices,
               float emission = 0.0f);
+    // Fills the area the path's contours enclose under its FillRule (Path::SetFillRule): holes, overlapping and
+    // self-intersecting contours are exact. The border and glow follow that area's outline, not each contour.
     void FillPath(const Path& path, const ShapeStyle& style);
+    // Strokes every contour as it was drawn (open ones stay open).
     void StrokePath(const Path& path, const LineStyle& style);
     // Soft round light fading from 'center' to 'radius', added on top (follows RenderQuality::glow).
     void Glow(Float2 center, float radius, const RadialGlowStyle& style);

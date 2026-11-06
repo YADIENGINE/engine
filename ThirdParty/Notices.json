@@ -20,6 +20,20 @@
       "license": "Box2D/LICENSE"
     },
     {
+      "name": "Clipper2",
+      "version": "2.0.1",
+      "text": "Notices/clipper2.txt",
+      "pin": { "file": "Clipper2/CPP/Clipper2Lib/include/clipper2/clipper.version.h", "contains": "CLIPPER2_VERSION = \"{version}\"" },
+      "license": "Clipper2/LICENSE"
+    },
+    {
+      "name": "earcut.hpp",
+      "version": "3.2.4",
+      "text": "Notices/earcut.txt",
+      "pin": { "file": "README.md", "contains": "| `earcut/` | {version} |" },
+      "license": "earcut/LICENSE"
+    },
+    {
       "name": "miniaudio",
       "version": "0.11.26",
       "text": "Notices/miniaudio.txt",

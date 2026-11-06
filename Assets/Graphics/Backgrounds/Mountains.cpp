@@ -76,9 +76,9 @@ void DrawSnow(Painter& paint, std::span<const Float2> crest, std::span<const flo
         if (end - start >= 4) {
             shape.assign(crest.begin() + static_cast<std::ptrdiff_t>(start),
                          crest.begin() + static_cast<std::ptrdiff_t>(end) + 1);
-            // Back along a torn lower edge, always under the crest so that the shape stays simple. A share of the
-            // height above the snow line makes the cap follow its peak; all of it would rule a flat line under it.
-            // Polygon needs some thickness everywhere: its anti-aliased edge turns a sliver inside out.
+            // Back along a torn lower edge under the crest. A share of the height above the snow line makes the cap
+            // follow its peak; all of it would rule a flat line under it. A few pixels at least, or a small view shows
+            // the caps as thin broken lines.
             for (std::size_t i = end; i-- > start + 1;) {
                 const float tear = 0.55f + 0.3f * SmoothNoise(heights[i] * tearFrequency, 77U);
                 const float thickness = std::max((heights[i] - snowLine) * depth * tear, minThickness);

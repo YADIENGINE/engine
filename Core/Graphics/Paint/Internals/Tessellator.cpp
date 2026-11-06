@@ -1,6 +1,7 @@
 #include "Graphics/Paint/Internals/Tessellator.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include "Graphics/Paint/Internals/PathAccess.h"
 #include "Utilities/Math/Scalar.h"
 
@@ -9,7 +10,6 @@ constexpr float SamePoint = 1e-4f;
 constexpr float RoundTolerance = 0.25f; // Of the fringe width: how far round joins / caps may deviate from a circle
 constexpr int MaxRoundSteps = 32;
 constexpr float MaxFillMiter = 4.0f; // Polygon corner offsets beyond this many edge widths are clamped
-constexpr float MaxHaloMiter = 2.0f;
 constexpr int MaxCurveSteps = 256;
 constexpr PaintColor Clear{};
 
@@ -150,81 +150,68 @@ float SignedArea(std::span<const Float2> points) {
     return area * 0.5f;
 }
 
-// Per-corner outward offset (per unit of distance from each edge), clamped at sharp corners.
-void CornerOffsets(std::span<const Float2> points, float limit, std::vector<Float2>& offsets) {
+// Appends per-corner offsets (per unit of distance from each edge), clamped at sharp corners. They point out of the
+// ring when 'side' is 1 and into it when -1 (a hole's edge, seen from the filled area around it).
+void AppendCornerOffsets(std::span<const Float2> points, float limit, float side, std::vector<Float2>& offsets) {
     const std::size_t count = points.size();
-    const float side = SignedArea(points) > 0.0f ? 1.0f : -1.0f;
+    side *= SignedArea(points) > 0.0f ? 1.0f : -1.0f;
     const auto outward = [&](std::size_t i) {
         const Float2 edge = Normalized(points[(i + 1) % count] - points[i]);
         return Float2{edge.y, -edge.x} * side;
     };
-    offsets.resize(count);
     for (std::size_t i = 0; i < count; ++i) {
         const Float2 previous = outward((i + count - 1) % count);
         const Float2 next = outward(i);
         const Float2 bisector = Normalized(previous + next, next);
         const float scale = std::min(1.0f / std::max(Dot(bisector, next), 1e-4f), limit);
-        offsets[i] = bisector * scale;
+        offsets.push_back(bisector * scale);
     }
 }
 
-bool InsideTriangle(Float2 p, Float2 a, Float2 b, Float2 c) {
-    const float d1 = Cross(b - a, p - a);
-    const float d2 = Cross(c - b, p - b);
-    const float d3 = Cross(a - c, p - c);
-    const bool negative = d1 < 0.0f || d2 < 0.0f || d3 < 0.0f;
-    const bool positive = d1 > 0.0f || d2 > 0.0f || d3 > 0.0f;
-    return !(negative && positive);
-}
-
-// Triangulates the polygon whose vertices are out.vertices[base .. base + count) (ear clipping, O(n^2)).
-void Triangulate(MeshBuffer& out, std::span<const Float2> points, std::uint32_t base) {
-    const std::size_t count = points.size();
-    const float side = SignedArea(points) > 0.0f ? 1.0f : -1.0f;
-    bool convex = true;
-    for (std::size_t i = 0; i < count && convex; ++i) {
-        const Float2 a = points[i];
-        const Float2 b = points[(i + 1) % count];
-        const Float2 c = points[(i + 2) % count];
-        convex = Cross(b - a, c - b) * side >= 0.0f;
-    }
-    std::vector<std::uint32_t>& remaining = out.remaining;
-    remaining.resize(count);
-    for (std::size_t i = 0; i < count; ++i)
-        remaining[i] = static_cast<std::uint32_t>(i);
-    if (!convex) {
-        std::size_t guard = 0;
-        while (remaining.size() > 3 && guard < remaining.size()) {
-            bool clipped = false;
-            for (std::size_t i = 0; i < remaining.size(); ++i) {
-                const std::size_t n = remaining.size();
-                const std::uint32_t ia = remaining[(i + n - 1) % n];
-                const std::uint32_t ib = remaining[i];
-                const std::uint32_t ic = remaining[(i + 1) % n];
-                const Float2 a = points[ia];
-                const Float2 b = points[ib];
-                const Float2 c = points[ic];
-                if (Cross(b - a, c - b) * side <= 0.0f) continue; // Reflex corner
-                bool ear = true;
-                for (const std::uint32_t other : remaining) {
-                    if (other == ia || other == ib || other == ic) continue;
-                    if (InsideTriangle(points[other], a, b, c)) {
-                        ear = false;
-                        break;
-                    }
-                }
-                if (!ear) continue;
-                out.indices.insert(out.indices.end(), {base + ia, base + ib, base + ic});
-                remaining.erase(remaining.begin() + static_cast<std::ptrdiff_t>(i));
-                clipped = true;
-                break;
-            }
-            guard = clipped ? 0 : guard + 1;
-            if (!clipped) break; // Self-intersecting: fan the rest
+// Fills one outline and its holes ('rings', the outline first) with an anti-aliasing fringe along every ring.
+void FillRings(MeshBuffer& out, std::span<const std::span<const Float2>> rings, PaintColor color, float aa) {
+    std::vector<Float2>& offsets = out.offsets;
+    offsets.clear();
+    for (std::size_t r = 0; r < rings.size(); ++r)
+        AppendCornerOffsets(rings[r], MaxFillMiter, r == 0 ? 1.0f : -1.0f, offsets);
+    const float half = aa * 0.5f;
+    const auto base = static_cast<std::uint32_t>(out.vertices.size());
+    const auto total = static_cast<std::uint32_t>(offsets.size());
+    std::size_t at = 0;
+    for (const std::span<const Float2> ring : rings)
+        for (const Float2 point : ring)
+            out.vertices.push_back(Vertex(point - offsets[at++] * half, color));
+    out.triangulator.Triangulate(rings, base, out.indices);
+    at = 0;
+    for (const std::span<const Float2> ring : rings)
+        for (const Float2 point : ring)
+            out.vertices.push_back(Vertex(point + offsets[at++] * half, Clear));
+    std::uint32_t first = base;
+    for (const std::span<const Float2> ring : rings) {
+        const auto n = static_cast<std::uint32_t>(ring.size());
+        for (std::uint32_t i = 0; i < n; ++i) {
+            const std::uint32_t next = (i + 1) % n;
+            Quad(out, first + i, first + total + i, first + total + next, first + next);
         }
+        first += n;
     }
-    for (std::size_t i = 1; i + 1 < remaining.size(); ++i)
-        out.indices.insert(out.indices.end(), {base + remaining[0], base + remaining[i], base + remaining[i + 1]});
+}
+
+float DistanceToSegment(Float2 point, Float2 a, Float2 b) {
+    const Float2 edge = b - a;
+    const float span = LengthSquared(edge);
+    const float t = span > 0.0f ? std::clamp(Dot(point - a, edge) / span, 0.0f, 1.0f) : 0.0f;
+    return Length(point - (a + edge * t));
+}
+
+float DistanceToRings(Float2 point, const Regions& edge) {
+    float nearest = std::numeric_limits<float>::max();
+    for (std::size_t r = 0; r < edge.rings.size(); ++r) {
+        const std::span<const Float2> ring = edge.Ring(r);
+        for (std::size_t i = 0; i < ring.size(); ++i)
+            nearest = std::min(nearest, DistanceToSegment(point, ring[i], ring[(i + 1) % ring.size()]));
+    }
+    return nearest;
 }
 } // namespace
 
@@ -305,32 +292,26 @@ void StrokePolyline(MeshBuffer& out, std::span<const Float2> input, bool closed,
 void FillPolygon(MeshBuffer& out, std::span<const Float2> input, PaintColor color, float aa) {
     std::vector<Float2>& points = out.points;
     Deduplicate(input, true, points);
-    const std::size_t count = points.size();
-    if (count < 3 || std::abs(SignedArea(points)) < SamePoint) return;
-    std::vector<Float2>& offsets = out.offsets;
-    CornerOffsets(points, MaxFillMiter, offsets);
-    std::vector<Float2>& inner = out.directions;
-    inner.resize(count);
-    const float half = aa * 0.5f;
-    for (std::size_t i = 0; i < count; ++i)
-        inner[i] = points[i] - offsets[i] * half;
-    const auto base = static_cast<std::uint32_t>(out.vertices.size());
-    for (const Float2 point : inner)
-        out.vertices.push_back(Vertex(point, color));
-    for (std::size_t i = 0; i < count; ++i)
-        out.vertices.push_back(Vertex(points[i] + offsets[i] * half, Clear));
-    Triangulate(out, inner, base);
-    const auto n = static_cast<std::uint32_t>(count);
-    for (std::uint32_t i = 0; i < n; ++i) {
-        const std::uint32_t next = (i + 1) % n;
-        Quad(out, base + i, base + n + i, base + n + next, base + next);
+    if (points.size() < 3 || std::abs(SignedArea(points)) < SamePoint) return;
+    const std::span<const Float2> outline = points;
+    FillRings(out, std::span(&outline, 1), color, aa);
+}
+
+void FillRegions(MeshBuffer& out, const Regions& regions, PaintColor color, float aa) {
+    std::uint32_t first = 0;
+    for (const std::uint32_t end : regions.ends) {
+        const std::uint32_t outline = first;
+        first = end;
+        if (regions.rings[outline].count < 3) continue; // Without its outline, its holes would be filled instead
+        out.rings.clear();
+        for (std::uint32_t r = outline; r < end; ++r)
+            if (regions.rings[r].count >= 3) out.rings.push_back(regions.Ring(r));
+        FillRings(out, out.rings, color, aa);
     }
 }
 
-void FillPolygon(MeshBuffer& out, std::span<const Float2> points, PaintColor from, PaintColor to,
-                 const Gradient& gradient, const Affine2& toLocal, float aa) {
-    const std::size_t first = out.vertices.size();
-    FillPolygon(out, points, PaintColor{255, 255, 255, 255}, aa);
+void ShadeGradient(MeshBuffer& out, std::size_t first, PaintColor from, PaintColor to, const Gradient& gradient,
+                   const Affine2& toLocal) {
     const Float2 axis = gradient.end - gradient.start;
     const float span = std::max(LengthSquared(axis), 1e-12f);
     for (std::size_t i = first; i < out.vertices.size(); ++i) {
@@ -352,22 +333,24 @@ void FillPolygon(MeshBuffer& out, std::span<const Float2> points, PaintColor fro
     }
 }
 
-void PolygonHalo(MeshBuffer& out, std::span<const Float2> input, float width, PaintColor color) {
-    std::vector<Float2>& points = out.points;
-    Deduplicate(input, true, points);
-    const std::size_t count = points.size();
-    if (count < 3 || !(width > 0.0f)) return;
-    std::vector<Float2>& offsets = out.offsets;
-    CornerOffsets(points, MaxHaloMiter, offsets);
-    const auto base = static_cast<std::uint32_t>(out.vertices.size());
-    for (const Float2 point : points)
-        out.vertices.push_back(Vertex(point, color));
-    for (std::size_t i = 0; i < count; ++i)
-        out.vertices.push_back(Vertex(points[i] + offsets[i] * width, Clear));
-    const auto n = static_cast<std::uint32_t>(count);
-    for (std::uint32_t i = 0; i < n; ++i) {
-        const std::uint32_t next = (i + 1) % n;
-        Quad(out, base + i, base + n + i, base + n + next, base + next);
+void FadeRegions(MeshBuffer& out, const Regions& band, const Regions& edge, float width, PaintColor color) {
+    if (!(width > 0.0f)) return;
+    std::uint32_t first = 0;
+    for (const std::uint32_t end : band.ends) {
+        const std::uint32_t outline = first;
+        first = end;
+        if (band.rings[outline].count < 3) continue;
+        const auto base = static_cast<std::uint32_t>(out.vertices.size());
+        out.rings.clear();
+        for (std::uint32_t r = outline; r < end; ++r) {
+            const std::span<const Float2> ring = band.Ring(r);
+            out.rings.push_back(ring);
+            for (const Float2 point : ring) {
+                const float strength = std::clamp(1.0f - DistanceToRings(point, edge) / width, 0.0f, 1.0f);
+                out.vertices.push_back(Vertex(point, Scaled(color, strength)));
+            }
+        }
+        out.triangulator.Triangulate(out.rings, base, out.indices);
     }
 }
 

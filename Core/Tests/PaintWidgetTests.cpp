@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 #include "Graphics/Draw/BackgroundDraw.h"
 #include "Graphics/Draw/DrawUtils.h"
@@ -258,8 +259,20 @@ TEST_CASE("Engine.Painter.PolygonAndPathBordersRespectJoinAndKeepMiterDefault", 
             CHECK(actual[i].x == expected[i].x);
             CHECK(actual[i].y == expected[i].y);
             CHECK(actual[i].color == expected[i].color);
-            CHECK(filled[i].x == expected[i].x);
-            CHECK(filled[i].y == expected[i].y);
+        }
+        // A path's border follows its resolved outline, which may start at another corner and run the other way.
+        const auto sorted = [](const auto& vertices) {
+            std::vector<std::pair<float, float>> positions;
+            for (const auto& v : vertices)
+                positions.emplace_back(v.x, v.y);
+            std::sort(positions.begin(), positions.end());
+            return positions;
+        };
+        const auto filledPositions = sorted(filled);
+        const auto expectedPositions = sorted(expected);
+        for (std::size_t i = 0; i < filledPositions.size(); ++i) {
+            CHECK(filledPositions[i].first == Approx(expectedPositions[i].first).margin(1e-3f));
+            CHECK(filledPositions[i].second == Approx(expectedPositions[i].second).margin(1e-3f));
         }
     }
     CHECK(counts[0] != counts[1]);

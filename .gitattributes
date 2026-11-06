@@ -24,3 +24,5 @@
 /ThirdParty/NotoSans/** -text
 /ThirdParty/libvterm/** -text
 /ThirdParty/Box2D/** -text
+/ThirdParty/earcut/** -text
+/ThirdParty/Clipper2/** -text

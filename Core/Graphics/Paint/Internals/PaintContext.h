@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 #include "Graphics/Paint/Internals/DrawList.h"
+#include "Graphics/Paint/Internals/ShapeArea.h"
 #include "Graphics/Paint/Internals/Tessellator.h"
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Post/PostSettings.h"
@@ -56,6 +57,9 @@ struct PaintContext {
     MeshBuffer mesh;            // Tessellation scratch
     std::vector<Float2> points; // Transformed input points
     std::vector<Contour> contours;
+    ShapeArea area;  // Fill rules, holes, glows and aligned strokes
+    Regions regions; // The area's outlines and holes
+    Regions band;    // A glow's or aligned stroke's band
 
     PaintContext(const PaintContext&) = delete;
     PaintContext& operator=(const PaintContext&) = delete;

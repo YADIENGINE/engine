@@ -142,6 +142,23 @@ set_target_properties(EngineCamera PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_E
 engine_simulation_flags(EngineCamera)
 engine_warnings(EngineCamera)
 
+# Polygon geometry for Paint, private to EngineHeadless: earcut triangulates (header only), Clipper2 offsets and
+# resolves fill rules. Vendored and unmodified, so their warnings stay off. Clipper2's triangulation is not built.
+add_library(EngineEarcut INTERFACE)
+target_include_directories(EngineEarcut SYSTEM INTERFACE "${ENGINE_THIRD_PARTY_DIR}/earcut/include")
+set(clipper2Dir "${ENGINE_THIRD_PARTY_DIR}/Clipper2/CPP/Clipper2Lib")
+add_library(EngineClipper2 STATIC
+    "${clipper2Dir}/src/clipper.engine.cpp"
+    "${clipper2Dir}/src/clipper.offset.cpp"
+    "${clipper2Dir}/src/clipper.rectclip.cpp"
+)
+target_include_directories(EngineClipper2 SYSTEM PUBLIC "${clipper2Dir}/include")
+target_compile_features(EngineClipper2 PUBLIC cxx_std_17)
+set_target_properties(EngineClipper2 PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+if(MSVC)
+    target_compile_options(EngineClipper2 PRIVATE /W0)
+endif()
+
 add_library(EngineHeadless STATIC
     Audio/Internals/AudioVolumePolicy.cpp
     Audio/Internals/LiveVoices.cpp
@@ -182,7 +199,9 @@ add_library(EngineHeadless STATIC
     Graphics/Style/Theme.cpp
     Graphics/Gpu/Internals/NullDevice.cpp
     Graphics/Paint/Internals/DrawList.cpp
+    Graphics/Paint/Internals/ShapeArea.cpp
     Graphics/Paint/Internals/Tessellator.cpp
+    Graphics/Paint/Internals/Triangulator.cpp
     Graphics/Atmosphere/Atmosphere.cpp
     Graphics/Atmosphere/DriftField.cpp
     Graphics/Atmosphere/FogField.cpp
@@ -266,7 +285,7 @@ target_compile_features(EngineHeadless PUBLIC cxx_std_20)
 set_target_properties(EngineHeadless PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 target_compile_definitions(EngineHeadless PUBLIC ENGINE_NAME="${engineName}" ENGINE_VERSION="${engineVersion}")
 target_link_libraries(EngineHeadless PUBLIC EngineCamera EnginePersistence EnginePhysics EngineSimulation EngineTuning
-    PRIVATE EngineStorage)
+    PRIVATE EngineClipper2 EngineEarcut EngineStorage)
 # The engine's ready-made graphics (Assets/Graphics). They sit above the engine's systems, so nothing in Core calls them.
 # X.asset.cpp registrations are left out: they reach only the editor worker.
 file(GLOB_RECURSE engineAssetSources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../Assets/Graphics/*.cpp")

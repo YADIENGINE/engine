@@ -1,7 +1,10 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include <cmath>
+#include <span>
 #include <vector>
+#include "Graphics/Paint/Internals/ShapeArea.h"
 #include "Graphics/Paint/Internals/Tessellator.h"
 #include "Graphics/Paint/Path.h"
 #include "Utilities/Geometry/Affine2.h"
@@ -28,6 +31,76 @@ float CoveredArea(const MeshBuffer& mesh) {
 }
 
 bool Near(Float2 a, Float2 b, float tolerance = 1e-4f) { return Length(a - b) <= tolerance; }
+
+constexpr float Unit = 1.0f / 256.0f; // ShapeArea grid of the tests (aa = 1)
+
+std::vector<Float2> Square(Float2 at, float size, bool clockwise = true) {
+    std::vector<Float2> square{at, at + Float2{size, 0.0f}, at + Float2{size, size}, at + Float2{0.0f, size}};
+    if (!clockwise) std::reverse(square.begin(), square.end());
+    return square;
+}
+
+// The area 'outlines' enclose under 'rule', filled with a negligible fringe; returns its opaque area.
+float FilledArea(const std::vector<std::vector<Float2>>& outlines, FillRule rule) {
+    std::vector<Float2> points;
+    std::vector<Contour> contours;
+    for (const auto& outline : outlines) {
+        contours.push_back(
+            {static_cast<std::uint32_t>(points.size()), static_cast<std::uint32_t>(outline.size()), true});
+        points.insert(points.end(), outline.begin(), outline.end());
+    }
+    ShapeArea area;
+    area.Set(points, contours, rule, Unit);
+    Regions regions;
+    area.Get(regions);
+    MeshBuffer mesh;
+    FillRegions(mesh, regions, Opaque, 0.001f);
+    return CoveredArea(mesh);
+}
+
+float DistanceToPolygon(Float2 point, std::span<const Float2> polygon) {
+    float nearest = 1e30f;
+    for (std::size_t i = 0; i < polygon.size(); ++i) {
+        const Float2 a = polygon[i];
+        const Float2 edge = polygon[(i + 1) % polygon.size()] - a;
+        const float t = std::clamp(Dot(point - a, edge) / std::max(LengthSquared(edge), 1e-12f), 0.0f, 1.0f);
+        nearest = std::min(nearest, Length(point - (a + edge * t)));
+    }
+    return nearest;
+}
+
+bool InsidePolygon(Float2 point, std::span<const Float2> polygon) {
+    bool inside = false;
+    for (std::size_t i = 0, j = polygon.size() - 1; i < polygon.size(); j = i++) {
+        const Float2 a = polygon[i];
+        const Float2 b = polygon[j];
+        if ((a.y > point.y) != (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x)
+            inside = !inside;
+    }
+    return inside;
+}
+
+float TriangleArea(const MeshBuffer& mesh) {
+    float covered = 0.0f;
+    for (std::size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {
+        const PaintVertex& a = mesh.vertices[mesh.indices[i]];
+        const PaintVertex& b = mesh.vertices[mesh.indices[i + 1]];
+        const PaintVertex& c = mesh.vertices[mesh.indices[i + 2]];
+        covered += std::abs(Cross(Float2{b.x - a.x, b.y - a.y}, Float2{c.x - a.x, c.y - a.y})) * 0.5f;
+    }
+    return covered;
+}
+
+std::vector<Float2> Centroids(const MeshBuffer& mesh) {
+    std::vector<Float2> centroids;
+    for (std::size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {
+        const PaintVertex& a = mesh.vertices[mesh.indices[i]];
+        const PaintVertex& b = mesh.vertices[mesh.indices[i + 1]];
+        const PaintVertex& c = mesh.vertices[mesh.indices[i + 2]];
+        centroids.push_back({(a.x + b.x + c.x) / 3.0f, (a.y + b.y + c.y) / 3.0f});
+    }
+    return centroids;
+}
 } // namespace
 
 TEST_CASE("Engine.PaintMath.AffineComposesInvertsAndRotatesAroundPivots", "[engine][paint]") {
@@ -174,4 +247,117 @@ TEST_CASE("Engine.Path.RegularPolygonsAppendClosedClockwiseContours", "[engine][
     REQUIRE(contours.size() == 2);
     CHECK(contours[1].count == 3);
     CHECK(contours[1].closed);
+}
+
+TEST_CASE("Engine.Tessellator.SliversStayOnTheirOutline", "[engine][paint]") {
+    // A snow cap along a ridge that thins to nothing at both ends: the anti-aliased edge used to turn its thin parts
+    // inside out, and the triangulation then drew a wedge far from the cap.
+    std::vector<Float2> cap;
+    for (int i = 0; i <= 40; ++i) {
+        const float x = static_cast<float>(i) * 5.0f;
+        cap.push_back({x, 40.0f + 15.0f * std::sin(x * 0.05f)});
+    }
+    for (int i = 40; i >= 0; --i) {
+        const float x = static_cast<float>(i) * 5.0f;
+        const float thickness = 3.0f * std::pow(std::sin(Pi * x / 200.0f), 4.0f);
+        cap.push_back({x, 40.0f + 15.0f * std::sin(x * 0.05f) + thickness});
+    }
+    MeshBuffer mesh;
+    FillPolygon(mesh, cap, Opaque, 1.0f);
+    REQUIRE_FALSE(mesh.indices.empty());
+    for (const Float2 centroid : Centroids(mesh))
+        CHECK((InsidePolygon(centroid, cap) || DistanceToPolygon(centroid, cap) <= 1.0f));
+}
+
+TEST_CASE("Engine.ShapeArea.FillRulesDecideHolesAndOverlaps", "[engine][paint]") {
+    const auto outer = Square({0.0f, 0.0f}, 30.0f);
+    const auto inner = Square({10.0f, 10.0f}, 10.0f);
+    const auto innerReversed = Square({10.0f, 10.0f}, 10.0f, false);
+    CHECK(FilledArea({outer, inner}, FillRule::EvenOdd) == Approx(800.0f).epsilon(0.01));
+    CHECK(FilledArea({outer, innerReversed}, FillRule::EvenOdd) == Approx(800.0f).epsilon(0.01));
+    CHECK(FilledArea({outer, inner}, FillRule::NonZero) == Approx(900.0f).epsilon(0.01));
+    CHECK(FilledArea({outer, innerReversed}, FillRule::NonZero) == Approx(800.0f).epsilon(0.01));
+    // Overlapping contours: NonZero merges them, EvenOdd leaves their overlap empty.
+    const auto a = Square({0.0f, 0.0f}, 10.0f);
+    const auto b = Square({5.0f, 5.0f}, 10.0f);
+    CHECK(FilledArea({a, b}, FillRule::NonZero) == Approx(175.0f).epsilon(0.01));
+    CHECK(FilledArea({a, b}, FillRule::EvenOdd) == Approx(150.0f).epsilon(0.01));
+    // An island inside a hole is filled again.
+    CHECK(FilledArea({outer, inner, Square({13.0f, 13.0f}, 4.0f)}, FillRule::EvenOdd) == Approx(816.0f).epsilon(0.01));
+}
+
+TEST_CASE("Engine.ShapeArea.SelfIntersectingOutlinesFollowTheRule", "[engine][paint]") {
+    std::vector<Float2> star;
+    for (int i = 0; i < 5; ++i) {
+        const float angle = -Pi * 0.5f + static_cast<float>(i) * 4.0f * Pi / 5.0f;
+        star.push_back({50.0f * std::cos(angle), 50.0f * std::sin(angle)});
+    }
+    const float nonZero = FilledArea({star}, FillRule::NonZero);
+    const float evenOdd = FilledArea({star}, FillRule::EvenOdd);
+    // The pentagon in the middle is wound twice: filled under NonZero, empty under EvenOdd.
+    const float pentagonRadius = 50.0f * std::cos(2.0f * Pi / 5.0f) / std::cos(Pi / 5.0f);
+    const float pentagon = 2.5f * pentagonRadius * pentagonRadius * std::sin(2.0f * Pi / 5.0f);
+    CHECK(nonZero - evenOdd == Approx(pentagon).epsilon(0.01));
+}
+
+TEST_CASE("Engine.ShapeArea.GlowBandIsRoundAndFades", "[engine][paint]") {
+    const auto square = Square({0.0f, 0.0f}, 10.0f);
+    const Contour contour{0, 4, true};
+    ShapeArea area;
+    area.Set(square, std::span(&contour, 1), FillRule::NonZero, Unit);
+    Regions edge;
+    area.Get(edge);
+    Regions band;
+    area.Band(4.0f, StrokeJoin::Round, 1.0f, 0.25f, band);
+    MeshBuffer mesh;
+    FadeRegions(mesh, band, edge, 4.0f, Opaque);
+    REQUIRE_FALSE(mesh.indices.empty());
+    float farthest = 0.0f;
+    for (const PaintVertex& vertex : mesh.vertices) {
+        const float distance = DistanceToPolygon({vertex.x, vertex.y}, square);
+        farthest = std::max(farthest, distance);
+        // No miter spikes at the corners, and the colour fades with the distance from the edge.
+        CHECK(distance <= 4.0f + 0.01f);
+        CHECK(std::abs(static_cast<float>(vertex.color.a) - 255.0f * (1.0f - distance / 4.0f)) <= 2.0f);
+    }
+    CHECK(farthest == Approx(4.0f).margin(0.01f));
+    // Sides plus quarter circles; the corners are chords within the 0.25 tolerance, so slightly smaller.
+    CHECK(TriangleArea(mesh) == Approx(4.0f * 10.0f * 4.0f + Pi * 16.0f).epsilon(0.03));
+}
+
+TEST_CASE("Engine.ShapeArea.InsideBandsCoverThinPartsWhole", "[engine][paint]") {
+    const auto drawBand = [](const std::vector<Float2>& outline, float distance) {
+        const Contour contour{0, static_cast<std::uint32_t>(outline.size()), true};
+        ShapeArea area;
+        area.Set(outline, std::span(&contour, 1), FillRule::NonZero, Unit);
+        Regions band;
+        area.Band(distance, StrokeJoin::Miter, 4.0f, 0.25f, band);
+        MeshBuffer mesh;
+        FillRegions(mesh, band, Opaque, 0.001f);
+        return CoveredArea(mesh);
+    };
+    const auto square = Square({0.0f, 0.0f}, 10.0f);
+    CHECK(drawBand(square, -2.0f) == Approx(100.0f - 36.0f).epsilon(0.01));
+    CHECK(drawBand(square, 2.0f) == Approx(196.0f - 100.0f).epsilon(0.01));
+    const std::vector<Float2> sliver{{0.0f, 0.0f}, {20.0f, 0.0f}, {20.0f, 1.0f}, {0.0f, 1.0f}};
+    CHECK(drawBand(sliver, -2.0f) == Approx(20.0f).epsilon(0.01));
+}
+
+TEST_CASE("Engine.Tessellator.TriangulationKeepsHolesEmpty", "[engine][paint]") {
+    const auto outer = Square({0.0f, 0.0f}, 30.0f);
+    const auto hole = Square({10.0f, 10.0f}, 10.0f);
+    Regions regions;
+    regions.points = outer;
+    regions.points.insert(regions.points.end(), hole.begin(), hole.end());
+    regions.rings = {{0, 4, true}, {4, 4, true}};
+    regions.ends = {2};
+    MeshBuffer mesh;
+    for (int pass = 0; pass < 2; ++pass) { // The triangulator's memory is reused between calls
+        mesh.Clear();
+        FillRegions(mesh, regions, Opaque, 1.0f);
+        // Opaque core: the outline half a fringe in, the hole half a fringe out.
+        CHECK(CoveredArea(mesh) == Approx(29.0f * 29.0f - 11.0f * 11.0f).epsilon(0.01));
+        for (const Float2 centroid : Centroids(mesh))
+            CHECK_FALSE((centroid.x > 10.6f && centroid.x < 19.4f && centroid.y > 10.6f && centroid.y < 19.4f));
+    }
 }

@@ -1673,6 +1673,49 @@ outside chip and the empty state. The smoke run draws the drawer where the works
 
 **Out of scope:** remembering the drawer's size between runs, reordering chips, per-agent notifications.
 
+### D45. Polygon geometry: earcut and Clipper2
+Status: implemented (2026-11-06), awaiting the developer's look. Usage: [Painter](../Graphics/Painter.md#holes-and-fill-rules).
+
+**Decision:** Paint triangulates with earcut.hpp 3.2.4 and resolves areas with Clipper2 2.0.1, both vendored under
+`ThirdParty/` and private to `EngineHeadless`. Our ear clipping and the per-corner halo are gone.
+
+**Why:** the old fill moved a polygon's corners half a pixel inwards for its anti-aliased edge and then triangulated
+the moved outline. A part thinner than that turned inside out, ear clipping failed, and its fan drew a wedge far from
+the shape; backgrounds had to keep every polygon thick. `FillPath` filled each contour on its own, so a path could not
+have a hole. Glows were miter offsets clamped at sharp corners, and `StrokeAlign` was silently ignored for polygons
+and paths.
+
+**Decided:**
+1. *earcut triangulates, Clipper2 decides areas.* Clipper2 2.0 has a triangulation of its own, but it is marked beta and
+   refuses intersecting paths. earcut 3.x (not 2.2.4 as first surveyed) is newer and faster.
+2. *The triangles come from the real outline.* The fill is triangulated on the points as given; only the coloured
+   corners then move half a fringe inwards. Normal shapes draw exactly as before (the edge stays on the outline); a
+   sliver folds over within a pixel instead of breaking the triangulation. The other option, fill to the outline with
+   an outward-only fringe, would have grown every polygon by half a pixel.
+3. *`FillRule` lives on `Path`, `NonZero` by default,* as in SVG, Canvas and Skia. Overlapping contours keep looking as
+   they did; `EvenOdd` cuts holes by nesting. The rule travels with the shape, so `FillPath` keeps its signature.
+4. *A filled path's border and glow follow the resolved area,* so overlapping contours get one outline. `StrokePath`
+   still draws contours as built.
+5. *`Polygon` stays the fast path:* it fills its points directly and allocates nothing once warm. Clipper2 runs only
+   for paths, glows and inside or outside borders. Its integer grid is 1/256 of a device pixel.
+6. *Glow = Clipper2's round offset minus the shape,* coloured by distance from the edge. No miter spikes; narrow
+   notches inside the glow's width fill with near-full glow, which reads as glow.
+7. *`StrokeAlign::Inside` / `Outside` work for polygons and paths:* the band between the area and its offset, filled.
+   A part thinner than an inside border is covered whole.
+8. *No public shape operations yet.* `Union` / `Difference` / `Intersect` / `Offset` over contours wait for a game or
+   background that needs them (root `SYSTEMS.md` TODO). They would need a target simulations can link, built with
+   `/fp:precise`.
+
+**Removed:** `Triangulate`, `InsideTriangle`, `PolygonHalo`. The snow caps in `Mountains` keep their minimum
+thickness: without it a small view shows them as thin broken lines (compared on thumbnails); only its reason changed.
+
+**Checking:** paint geometry tests cover the snow-cap sliver (it fails on the old tessellator), holes under both rules,
+an island in a hole, a self-intersecting star, overlapping contours, the glow band's round corners and fade, and inside
+and outside bands. `EngineGpuPixelCheck` reads a polygon's edge pixels, the sliver, a ring's hole and aligned borders.
+The developer has not yet looked at backgrounds (snow caps), glowing polygons and path drawings in the editor.
+
+**Out of scope:** the public shape operations above, Clipper2 in simulations, gradient borders.
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).

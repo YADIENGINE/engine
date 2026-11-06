@@ -16,8 +16,10 @@
 #include "Utilities/Math/Scalar.h"
 
 namespace {
-constexpr float AntiAliasPixels = 1.5f; // Quad margin beyond a shape's coverage, device pixels
-constexpr float FlattenPixels = 0.25f;  // Curve flattening tolerance, device pixels
+constexpr float AntiAliasPixels = 1.5f;     // Quad margin beyond a shape's coverage, device pixels
+constexpr float FlattenPixels = 0.25f;      // Curve flattening tolerance, device pixels
+constexpr float AreaStepsPerPixel = 256.0f; // ShapeArea's exact grid
+constexpr float RoundPixels = 0.25f;        // How far rounded glow and stroke corners may deviate from a circle
 constexpr float FullTurn = 2.0f * Pi;
 constexpr Color4 White{255, 255, 255, 255};
 constexpr PremultipliedColor Transparent{};
@@ -234,32 +236,77 @@ Float2 BoundsCenter(std::span<const Float2> points, const Affine2& transform = {
     return (low + high) * 0.5f;
 }
 
-void ShadeTargetPolygon(PaintContext& context, std::span<const Float2> points, const ShapeStyle& style,
-                        Float2 gradientCenter) {
+// A closed shape in target coordinates: one polygon, filled as it is, or contours whose area a fill rule decides.
+struct TargetShape {
+    std::span<const Float2> points;
+    std::span<const Contour> contours; // Empty: 'points' is one polygon
+    FillRule rule = FillRule::NonZero;
+};
+
+void ShadeTargetShape(PaintContext& context, const TargetShape& shape, const ShapeStyle& style, Float2 gradientCenter) {
     DrawList& list = context.list;
     if (!ValidWidth(list, style.stroke.width, "Stroke width must not be negative")) return;
     const TargetScale scale = Measure(list);
     const std::uint8_t emission = EmissionByte(style.emission);
+    const bool polygon = shape.contours.empty();
+    const Contour whole{0, static_cast<std::uint32_t>(shape.points.size()), true};
+    // The exact area is resolved only when needed: a plain polygon's fill and centred stroke skip it.
+    bool resolved = false;
+    const auto area = [&]() -> const ShapeArea& {
+        if (!resolved) {
+            context.area.Set(shape.points, polygon ? std::span(&whole, 1) : shape.contours, shape.rule,
+                             scale.aa / AreaStepsPerPixel);
+            context.area.Get(context.regions);
+            resolved = true;
+        }
+        return context.area;
+    };
     if (const auto glow = EffectiveGlow(list, style.glow, context.frame.quality)) {
-        PolygonHalo(context.mesh, points, glow->radius * scale.scale, list.Shade(glow->color, true, glow->strength));
+        const float width = glow->radius * scale.scale;
+        area().Band(width, StrokeJoin::Round, 1.0f, RoundPixels * scale.aa, context.band);
+        FadeRegions(context.mesh, context.band, context.regions, width, list.Shade(glow->color, true, glow->strength));
         SubmitMesh(context, emission);
     }
-    if (style.gradient.kind != GradientKind::None) {
-        const Affine2 toLocal = Affine2::Translate(-gradientCenter) * list.State().transform.Inverse();
-        FillPolygon(context.mesh, points, list.Shade(style.gradient.from), list.Shade(style.gradient.to),
-                    style.gradient, toLocal, scale.aa);
-        SubmitMesh(context, emission);
-    } else if (style.fill.a > 0) {
-        FillPolygon(context.mesh, points, list.Shade(style.fill), scale.aa);
+    const bool gradient = style.gradient.kind != GradientKind::None;
+    if (gradient || style.fill.a > 0) {
+        const PaintColor color = gradient ? PaintColor{255, 255, 255, 255} : list.Shade(style.fill);
+        const std::size_t first = context.mesh.vertices.size();
+        if (polygon) {
+            FillPolygon(context.mesh, shape.points, color, scale.aa);
+        } else {
+            area();
+            FillRegions(context.mesh, context.regions, color, scale.aa);
+        }
+        if (gradient) {
+            const Affine2 toLocal = Affine2::Translate(-gradientCenter) * list.State().transform.Inverse();
+            ShadeGradient(context.mesh, first, list.Shade(style.gradient.from), list.Shade(style.gradient.to),
+                          style.gradient, toLocal);
+        }
         SubmitMesh(context, emission);
     }
-    if (style.stroke.width > 0.0f && style.stroke.color.a > 0) {
-        StrokeTargetPoints(context, points, true,
-                           {.width = style.stroke.width,
-                            .color = style.stroke.color,
-                            .join = style.stroke.join,
-                            .emission = style.emission});
+    const StrokeStyle& stroke = style.stroke;
+    if (!(stroke.width > 0.0f) || stroke.color.a == 0) return;
+    if (stroke.align == StrokeAlign::Center) {
+        const LineStyle line{
+            .width = stroke.width, .color = stroke.color, .join = stroke.join, .emission = style.emission};
+        if (polygon) return StrokeTargetPoints(context, shape.points, true, line);
+        area();
+        for (std::size_t r = 0; r < context.regions.rings.size(); ++r)
+            StrokeTargetPoints(context, context.regions.Ring(r), true, line);
+        return;
     }
+    // Inside or outside: the band between the edge and the stroke's width, filled. A stroke thinner than a pixel is
+    // a pixel wide and fainter, as lines are.
+    float width = stroke.width * scale.scale;
+    Color4 color = stroke.color;
+    if (width < scale.aa) {
+        color = ScaleAlpha(color, width / scale.aa);
+        width = scale.aa;
+    }
+    area().Band(stroke.align == StrokeAlign::Outside ? width : -width, stroke.join, LineStyle{}.miterLimit,
+                RoundPixels * scale.aa, context.band);
+    FillRegions(context.mesh, context.band, list.Shade(color), scale.aa);
+    SubmitMesh(context, emission);
 }
 
 void AddImageQuad(PaintContext& context, const Affine2& frame, Float2 half, const FloatRect& uv, bool flipY,
@@ -403,7 +450,7 @@ void Painter::Polyline(std::span<const Float2> points, const LineStyle& style, b
 void Painter::Polygon(std::span<const Float2> points, const ShapeStyle& style) {
     if (points.size() < 3) return;
     TransformPoints(_context, points);
-    ShadeTargetPolygon(_context, _context.points, style, BoundsCenter(points));
+    ShadeTargetShape(_context, {.points = _context.points}, style, BoundsCenter(points));
 }
 
 void Painter::Triangle(Float2 a, Float2 b, Float2 c, const ShapeStyle& style) {
@@ -436,11 +483,7 @@ void Painter::FillPath(const Path& path, const ShapeStyle& style) {
     const float tolerance = FlattenPixels / std::max(std::min(pixels.x, pixels.y), 1e-6f);
     FlattenPath(path, list.State().transform, tolerance, _context.points, _context.contours);
     const Float2 center = BoundsCenter(_context.points, list.State().transform.Inverse());
-    for (const Contour& contour : _context.contours) {
-        if (contour.count < 3) continue;
-        ShadeTargetPolygon(_context, std::span<const Float2>(_context.points).subspan(contour.first, contour.count),
-                           style, center);
-    }
+    ShadeTargetShape(_context, {_context.points, _context.contours, path.Rule()}, style, center);
 }
 
 void Painter::StrokePath(const Path& path, const LineStyle& style) {

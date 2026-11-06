@@ -4,6 +4,7 @@
 //   EngineGpuPixelCheck [--compose-cost]
 #include "external/glad.h"
 #include <raylib.h>
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdlib>
@@ -15,6 +16,7 @@
 #include "Graphics/Light/LightLayer.h"
 #include "Graphics/Light/LightOccluders.h"
 #include "Graphics/Paint/Painter.h"
+#include "Graphics/Paint/Path.h"
 #include "Graphics/Render/Internals/PostChain.h"
 #include "Graphics/Render/Internals/RenderPipeline.h"
 #include "Graphics/Surface/Internals/SurfaceState.h"
@@ -223,6 +225,73 @@ void VisiblePolygonLimitsTheLight(PixelCheck& check) {
     check.Near("the fan needs no centre seam", check.Read(image, 63, 64).r, 255, 2);
     check.Near("behind the notch is dark", check.Read(image, 84, 64).r, 0);
     check.Near("beside the notch is lit", check.Read(image, 74, 44).r, 150, 60);
+}
+
+void PolygonEdgesStayOnTheOutline(PixelCheck& check) {
+    Surface image({64.0f, 64.0f});
+    const std::array<Float2, 4> square{Float2{20.0f, 20.0f}, {40.0f, 20.0f}, {40.0f, 40.0f}, {20.0f, 40.0f}};
+    check.Frame([&](Painter& paint) {
+        auto into = paint.Target(image, Black);
+        paint.Polygon(square, Fill(White));
+    });
+    check.Near("a polygon's first pixel inside is full", check.Read(image, 20, 30).r, 255);
+    check.Near("a polygon does not grow past its outline", check.Read(image, 19, 30).r, 0);
+    check.Near("nor on the far side", check.Read(image, 40, 30).r, 0);
+}
+
+// A snow cap that thins to nothing at both ends: its thin parts used to turn inside out and draw a wedge below it.
+void ThinPolygonsDrawNoWedge(PixelCheck& check) {
+    Surface image({200.0f, 80.0f});
+    const auto crest = [](float x) { return 40.0f + 15.0f * std::sin(x * 0.05f); };
+    std::vector<Float2> cap;
+    for (int i = 0; i <= 40; ++i)
+        cap.push_back({static_cast<float>(i) * 5.0f, crest(static_cast<float>(i) * 5.0f)});
+    for (int i = 40; i >= 0; --i) {
+        const float x = static_cast<float>(i) * 5.0f;
+        cap.push_back({x, crest(x) + 3.0f * std::pow(std::sin(Pi * x / 200.0f), 4.0f)});
+    }
+    check.Frame([&](Painter& paint) {
+        auto into = paint.Target(image, Black);
+        paint.Polygon(cap, Fill(White));
+    });
+    check.Near("the cap's thick middle is drawn", check.Read(image, 100, static_cast<int>(crest(100.0f) + 1.5f)).r,
+               255);
+    int stray = 0;
+    for (int x = 2; x < 198; x += 4) {
+        const int below = static_cast<int>(crest(static_cast<float>(x)) + 3.0f) + 3;
+        const int above = static_cast<int>(crest(static_cast<float>(x))) - 3;
+        if (below < 80) stray = std::max(stray, check.Read(image, x, below).r);
+        if (above >= 0) stray = std::max(stray, check.Read(image, x, above).r);
+    }
+    check.Near("nothing is drawn away from the thin cap", stray, 0);
+}
+
+void PathHolesStayEmpty(PixelCheck& check) {
+    Surface image({128.0f, 128.0f});
+    Path ring;
+    ring.SetFillRule(FillRule::EvenOdd).AddCircle({64.0f, 64.0f}, 40.0f).AddCircle({64.0f, 64.0f}, 20.0f);
+    check.Frame([&](Painter& paint) {
+        auto into = paint.Target(image, Black);
+        paint.FillPath(ring, Fill(White));
+    });
+    check.Near("the ring is filled", check.Read(image, 94, 64).r, 255);
+    check.Near("its hole stays empty", check.Read(image, 64, 64).r, 0);
+    check.Near("and so does the outside", check.Read(image, 64, 10).r, 0);
+}
+
+void AlignedBordersSitOutsideOrInside(PixelCheck& check) {
+    Surface image({128.0f, 64.0f});
+    const std::array<Float2, 4> left{Float2{20.0f, 20.0f}, {44.0f, 20.0f}, {44.0f, 44.0f}, {20.0f, 44.0f}};
+    const std::array<Float2, 4> right{Float2{84.0f, 20.0f}, {108.0f, 20.0f}, {108.0f, 44.0f}, {84.0f, 44.0f}};
+    check.Frame([&](Painter& paint) {
+        auto into = paint.Target(image, Black);
+        paint.Polygon(left, {.fill = Gray, .stroke = {4.0f, White, StrokeAlign::Outside}});
+        paint.Polygon(right, {.fill = Gray, .stroke = {4.0f, White, StrokeAlign::Inside}});
+    });
+    check.Near("an outside border lies outside", check.Read(image, 17, 32).r, 255);
+    check.Near("and leaves the fill whole", check.Read(image, 21, 32).r, 128);
+    check.Near("an inside border lies inside", check.Read(image, 86, 32).r, 255);
+    check.Near("and leaves the outside empty", check.Read(image, 82, 32).r, 0);
 }
 
 void LayerDarkensTheWorld(PixelCheck& check) {
@@ -821,6 +890,10 @@ int main(int argc, char** argv) {
         LightKeepsItsCoreAndColor(check);
         LightsAddUp(check);
         ConePointsWhereItIsTold(check);
+        PolygonEdgesStayOnTheOutline(check);
+        ThinPolygonsDrawNoWedge(check);
+        PathHolesStayEmpty(check);
+        AlignedBordersSitOutsideOrInside(check);
         VisiblePolygonLimitsTheLight(check);
         WallsCastShadows(check);
         AFanFallsOffLikeAPlainLight(check);

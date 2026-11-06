@@ -37,9 +37,9 @@ Under `Utilities/Geometry/`, headless: `Float2` (operations, `Length`, `Normaliz
 | `Arc(center, radius, start, sweep, LineStyle)` | `Butt` / `Round` caps; a full turn draws a ring |
 | `Line(from, to, LineStyle)` | `Butt` / `Round` / `Square` caps |
 | `Polyline(points, LineStyle, closed)` | `Miter` (`Bevel` beyond the limit) / `Bevel` / `Round` joins |
-| `Polygon(points, ShapeStyle)`, `Triangle` | Non-self-intersecting polygon (either winding direction) |
+| `Polygon(points, ShapeStyle)`, `Triangle` | Any polygon, concave included, either winding direction |
 | `Mesh(points, colors, indices)` | Per-vertex colored triangles, color blends across each triangle (soft areas such as light masks); no antialiasing |
-| `FillPath(path, ShapeStyle)`, `StrokePath(path, LineStyle)` | `Path`: `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ArcTo`, `Close` |
+| `FillPath(path, ShapeStyle)`, `StrokePath(path, LineStyle)` | `Path`: `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ArcTo`, `Close`; holes: [below](#holes-and-fill-rules) |
 | `Glow(center, radius, RadialGlowStyle)` | Soft, additive decoration; follows `RenderQuality::glow` |
 | `Light(LightSource, visible)` | A light that ignores the quality setting; see [Lighting](Lighting.md) |
 
@@ -49,7 +49,28 @@ local to the shape's center; `Gradient::Radial(radius, from, to)` starts at the 
 bottom)`. Polygon gradients use the centre of the points' bounding box before the current transform; path fills use
 the bounding box of all flattened contours in that same drawing coordinate system. Linear and radial gradients
 include the antialiasing fringe. Polygon and path borders use `StrokeStyle::join` (`Miter` by default, `Bevel` or
-`Round`); distance shapes retain their analytic borders.
+`Round`) and every `StrokeAlign`; distance shapes retain their analytic borders. A polygon's or path's glow is rounded
+at the corners and fades with the distance from the edge.
+
+### Holes and fill rules
+
+`FillPath` fills the area a path's contours enclose. The path's `FillRule` decides what is inside:
+
+- `NonZero` (default, as in SVG and Canvas): overlapping contours merge into one shape; a contour running the other
+  way (points in reverse order, `ArcTo` with a negative sweep) cuts a hole.
+- `EvenOdd`: any contour inside another cuts a hole, whatever its direction; a contour inside that hole fills again.
+
+```cpp
+Path window;
+window.SetFillRule(FillRule::EvenOdd);
+window.AddPolygon(wall);   // The building's outline
+window.AddPolygon(pane);   // Becomes a hole
+paint.FillPath(window, {.fill = brick, .stroke = {2.0f, mortar, StrokeAlign::Inside}});
+```
+
+The border and glow of a filled path follow the area's outline: two overlapping circles get one border around both.
+`StrokePath` draws each contour as it was built instead. `Polygon` skips this work: it fills its points as they are,
+so a self-intersecting outline gets a reasonable fill rather than one decided by a rule.
 
 Lines thinner than one pixel fade instead of becoming thinner. Zero sizes or NaN positions do not draw.
 

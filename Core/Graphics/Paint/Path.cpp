@@ -15,6 +15,11 @@ void Path::EnsureContour() {
     MoveTo(_points.empty() ? Float2{} : _points.back());
 }
 
+Path& Path::SetFillRule(FillRule rule) {
+    _rule = rule;
+    return *this;
+}
+
 Path& Path::MoveTo(Float2 point) {
     _verbs.push_back(Verb::Move);
     _points.push_back(point);
