@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
-#include "Editor/Ui/Shell/EditorShell.h"
+#include "Editor/Ui/Commands/EditorActions.h"
 
 // One search over the project: Ctrl+P finds scenes, their choices, graphics, sounds and commands; Ctrl+Shift+P the
 // same window with commands only.
@@ -16,8 +16,8 @@ public:
         _anchorTop = top;
     }
     // True while the palette owns input, including the frame that executes a command.
-    [[nodiscard]] bool Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                            EditorPreferences& preferences, bool maximized, EditorShellResult& result);
+    // Commands come from EditorActionList, the same list the menus draw.
+    [[nodiscard]] bool Draw(const EditorActionContext& context);
 
 private:
     struct Sound {

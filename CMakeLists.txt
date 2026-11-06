@@ -47,6 +47,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/EngineManifest.json" engineManifest)
 string(JSON engineName GET "${engineManifest}" name)
 string(JSON engineVersion GET "${engineManifest}" version)
+string(JSON engineRepository GET "${engineManifest}" repository)
 
 # A compiled engine in place of the sources below, when the tools found a usable one (Docs/Prebuilt.md).
 include(Core/Prebuilt.cmake)

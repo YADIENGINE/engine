@@ -627,12 +627,26 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         const bool busy = _maximized || _consoleFocused || ImGui::GetIO().WantTextInput;
         if (attempt.id != snapshot.controlAttempt && !busy) _showFailedOutput = true;
     }
-    auto menu =
-        _shell.Menu(snapshot, actions, preferences, fontSize, _maximized, _offerProjectList, _projectName, _gitBar);
-    result.cancelViewportInput |= menu.shortcutsOpen;
+    EditorShellResult menu;
+    // Help windows the palette asked for last frame
+    menu.showShortcuts = std::exchange(_showShortcuts, false);
+    menu.showAbout = std::exchange(_showAbout, false);
+    const EditorActionContext context{.snapshot = snapshot,
+                                      .actions = actions,
+                                      .preferences = preferences,
+                                      .fontSize = fontSize,
+                                      .maximized = _maximized,
+                                      .offerProjectList = _offerProjectList,
+                                      .engineDirectory = _engineDirectory,
+                                      .result = menu};
+    _shell.Menu(context, _projectName, _gitBar);
+    result.cancelViewportInput |= menu.dialogOpen;
     result.cancelViewportInput |= Shortcuts(snapshot, actions, menu);
     if (std::exchange(_openQuickOpen, false)) menu.openQuick = true; // The toolbar's search box, last frame
-    if (_palette.Draw(snapshot, actions, preferences, _maximized, menu)) {
+    const bool palette = _palette.Draw(context);
+    _showShortcuts = menu.showShortcuts;
+    _showAbout = menu.showAbout;
+    if (palette) {
         result.cancelViewportInput = true;
         _viewport.ReleaseFocus();
     }

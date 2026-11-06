@@ -16,9 +16,11 @@ only the changed section.
 ## Editor UI
 
 1. Initial preferences use Develop: Project / Viewport / Inspector open, Output / Profiler closed. Dock panels / combine
-   tabs; close and reopen from Window. Window → Layouts manages preset / custom layouts; Window → Toggle last bottom
-   tool and Ctrl+J manage the last bottom panel. Fit / Focus content / Actual size and zoom work in Viewport's local View menu; the top
-   View menu changes Focus viewport / Restore workspace, UI scale, and performance metrics.
+   tabs; close and reopen from View → Panels. View → Layouts manages preset / custom layouts; View → Panels → Toggle
+   last bottom tool and Ctrl+J manage the last bottom panel. Fit / Focus content / Actual size and zoom work in
+   Viewport's local View menu; the top View menu also changes Focus viewport / Restore workspace, Interface scale, and
+   performance metrics. Every menu item does something or says why it cannot; Help → Keyboard shortcuts lists the same
+   shortcuts the menus show.
 2. 75% / 100% / 125% / 150% UI scale and monitor DPI changes; long names wrap or truncate with tooltips in narrow
    panels. Secondary toolbar actions are in overflow; no horizontal toolbar scrolling.
 3. Ctrl+P opens quick open and finds scenes, their choices, graphics, sounds and commands; Ctrl+Shift+P the same with

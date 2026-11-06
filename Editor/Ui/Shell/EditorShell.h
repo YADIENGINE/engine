@@ -25,9 +25,11 @@ struct EditorShellResult {
     bool quit = false;
     bool returnToProjectList = false;
     bool toggleMaximize = false;
-    bool openCommands = false; // The palette with commands only
-    bool openQuick = false;    // The palette over everything
-    bool shortcutsOpen = false;
+    bool openCommands = false;  // The palette with commands only
+    bool openQuick = false;     // The palette over everything
+    bool showShortcuts = false; // Help → Keyboard shortcuts
+    bool showAbout = false;
+    bool dialogOpen = false; // A Help window is open this frame
     bool showProblems = false;
     bool showActivity = false; // The Agents drawer
     bool toggleBottom = false;
@@ -38,12 +40,12 @@ struct EditorShellResult {
     EditorGitBarResult git;
 };
 
+struct EditorActionContext;
+
 class EditorShell {
 public:
-    [[nodiscard]] EditorShellResult Menu(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                         EditorPreferences& preferences, int& fontSize, bool maximized,
-                                         bool offerProjectList, const std::string& projectName,
-                                         EditorGitBar& gitBar) const;
+    // The menu bar, drawn from EditorActionList; its requests go to context.result.
+    void Menu(const EditorActionContext& context, const std::string& projectName, EditorGitBar& gitBar) const;
     [[nodiscard]] float Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
                                 float width, bool& marking, EditorToolbarSearch& search, const EditorAgentStatus& agent,
                                 EditorAgentActivity& activity) const;

@@ -158,8 +158,8 @@ void InspectorPanel::Scene(const EditorSnapshot& snapshot, const EditorUiActions
         ResetFilters();
     }
     const auto hidden = [&](const std::string& id) {
-        return id == "language" || std::ranges::find(snapshot.inspection.hiddenParameters, id) !=
-                                       snapshot.inspection.hiddenParameters.end();
+        return std::ranges::find(snapshot.inspection.hiddenParameters, id) !=
+               snapshot.inspection.hiddenParameters.end();
     };
     const auto disabled = [&](const std::string& id) {
         return std::ranges::find(snapshot.inspection.disabledParameters, id) !=
@@ -212,7 +212,11 @@ void InspectorPanel::Scene(const EditorSnapshot& snapshot, const EditorUiActions
     if (changedScene) ImGui::SetScrollY(0);
     if (drawContent) {
         bool openContext = false;
-        ImGui::BeginDisabled(!snapshot.ready);
+        // Before the scene opens, a value chosen here is part of the recipe it opens with (a language, a level).
+        if (!snapshot.ready && !groups.empty())
+            ImGui::TextDisabled(snapshot.busy ? "Wait for the current operation to finish."
+                                              : "Values chosen now apply when the scene opens.");
+        ImGui::BeginDisabled(snapshot.busy);
         for (const auto& group : groups) {
             bool advanced = true;
             for (const auto& parameter : selected.parameters) {

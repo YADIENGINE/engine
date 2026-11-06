@@ -87,6 +87,7 @@ endif()
 
 if(ENGINE_BUILD_EDITOR)
     add_library(EngineEditorUi STATIC
+        Ui/Commands/EditorActions.cpp
         Ui/Commands/EditorCommands.cpp
         Ui/Commands/EditorCommandPalette.cpp
         Ui/Style/EditorTheme.cpp
@@ -116,6 +117,8 @@ if(ENGINE_BUILD_EDITOR)
     target_sources(EngineEditorUi PRIVATE Ui/Panels/Profiler/ProfilerPanel.cpp)
     target_link_libraries(EngineEditorUi PUBLIC EngineToolUi EngineTerminalUi EngineEditorSupport)
     engine_warnings(EngineEditorUi)
+    # Help → About and the online editor guide.
+    target_compile_definitions(EngineEditorUi PRIVATE ENGINE_REPOSITORY="${engineRepository}")
 
     # Icon drawn from code at configure time (Tools/app_icon.py; never committed). The resource name GLFW_ICON makes
     # Windows show it for the executable and GLFW (raylib) use it for the window and taskbar.

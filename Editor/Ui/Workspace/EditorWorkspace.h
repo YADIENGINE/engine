@@ -42,6 +42,7 @@ public:
         _assets.SetRoots(engineDirectory, assetsDirectory);
         _audioPreview.SetRoots(engineDirectory, assetsDirectory);
         _palette.SetAssetRoots(engineDirectory, assetsDirectory);
+        _engineDirectory = engineDirectory;
     }
     // Pastes `text` (no Enter) into the agent session, shown in the Agents drawer, when there is one; else into the
     // Console's selected session, starting a shell if needed.
@@ -125,6 +126,9 @@ private:
     bool _showFailedOutput = false;
     bool _fixFailedBuild = false; // Problems' "Fix all with agent"
     bool _openQuickOpen = false;  // The toolbar search box was pressed
+    bool _showShortcuts = false;  // Help windows asked for from the palette, opened next frame
+    bool _showAbout = false;
+    std::filesystem::path _engineDirectory; // Help → Editor guide
     ImGuiID _centerDock = 0;
     int _ignoreLayoutChanges = 0;
     bool _resetDock = false;

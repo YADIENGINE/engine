@@ -4,6 +4,9 @@
 #include <format>
 #include <span>
 #include <string>
+#include <string_view>
+#include <utility>
+#include "Editor/Ui/Commands/EditorActions.h"
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "Editor/Ui/Style/EditorTheme.h"
 #include "Editor/Ui/Widgets/EditorPlaybackControls.h"
@@ -19,70 +22,128 @@ constexpr ImGuiWindowFlags BarFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindo
                                       ImGuiWindowFlags_NoScrollWithMouse;
 constexpr float StatusGap = 10.0f;
 constexpr const char* ShortcutsPopup = "Keyboard shortcuts###editor.shortcuts";
+constexpr const char* AboutPopup = "About###editor.about";
 struct ShortcutHelpEntry {
     const char* action;
     const char* shortcut;
 };
-constexpr std::array GeneralShortcuts{
-    ShortcutHelpEntry{"Quick open", "Ctrl+P"},
-    ShortcutHelpEntry{"Command palette", "Ctrl+Shift+P"},
-    ShortcutHelpEntry{"Toggle last bottom tool", "Ctrl+J"},
-    ShortcutHelpEntry{"Toggle Console", "Ctrl+`"},
-    ShortcutHelpEntry{"Git changes", "Ctrl+Shift+G"},
-};
-constexpr std::array PlaybackShortcuts{
-    ShortcutHelpEntry{"Run / Stop / Cancel", "F5"},
-    ShortcutHelpEntry{"Pause / Resume", "F6"},
-    ShortcutHelpEntry{"Step one frame", "F7"},
-    ShortcutHelpEntry{"Reset", "Ctrl+R"},
-    ShortcutHelpEntry{"Build & Refresh", "Ctrl+Shift+B"},
-};
-constexpr std::array AgentShortcuts{
-    ShortcutHelpEntry{"Show / hide Agents", "Ctrl+Shift+A"},
-    ShortcutHelpEntry{"Send scene", "Ctrl+Shift+S"},
-    ShortcutHelpEntry{"New agent", "Ctrl+Shift+N"},
+// Keys that act only inside the Agents drawer; everything else comes from the action list.
+constexpr std::array DrawerShortcuts{
     ShortcutHelpEntry{"Next / previous agent", "Ctrl+PageDown / Ctrl+PageUp"},
     ShortcutHelpEntry{"Select agent 1-9", "Ctrl+1 ... Ctrl+9"},
     ShortcutHelpEntry{"Terminal / Activity", "Ctrl+Shift+T"},
 };
-void ShortcutGroup(const char* title, std::span<const ShortcutHelpEntry> entries) {
+bool BeginShortcutTable(const char* title) {
     ImGui::SeparatorText(title);
-    if (!ImGui::BeginTable(title, 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) return;
+    if (!ImGui::BeginTable(title, 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) return false;
     ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthStretch);
     ImGui::TableSetupColumn("Shortcut", ImGuiTableColumnFlags_WidthFixed,
                             ImGui::CalcTextSize("Ctrl+PageDown / Ctrl+PageUp").x + ImGui::GetStyle().CellPadding.x * 2);
-    for (const auto& entry : entries) {
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::TextUnformatted(entry.action);
-        ImGui::TableSetColumnIndex(1);
-        ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
-        ImGui::TextUnformatted(entry.shortcut);
-        ImGui::PopFont();
-    }
-    ImGui::EndTable();
+    return true;
 }
-bool KeyboardShortcuts(bool open) {
-    if (open) ImGui::OpenPopup(ShortcutsPopup);
+void ShortcutRow(const char* action, const char* shortcut) {
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted(action);
+    ImGui::TableSetColumnIndex(1);
+    ImGui::PushFont(ToolFont(ToolFontRole::Technical), ToolMetrics::CaptionSize);
+    ImGui::TextUnformatted(shortcut);
+    ImGui::PopFont();
+}
+// Centered and sized to the window (height 0: fits its content); closes with its button or Escape.
+bool BeginHelpPopup(const char* id, bool open, float width, float height) {
+    if (open) ImGui::OpenPopup(id);
     const auto* viewport = ImGui::GetMainViewport();
     const float scale = ToolUiScale();
-    const float width = std::max(1.0f, std::min(620.0f * scale, viewport->Size.x - 32.0f * scale));
-    const float height = std::max(1.0f, std::min(600.0f * scale, viewport->Size.y - 32.0f * scale));
+    const float fitHeight =
+        height > 0 ? std::max(1.0f, std::min(height * scale, viewport->Size.y - 32.0f * scale)) : 0.0f;
     ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
-    ImGui::SetNextWindowSize({width, height}, ImGuiCond_Appearing);
-    if (!ImGui::BeginPopupModal(ShortcutsPopup, nullptr,
-                                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings))
-        return false;
+    ImGui::SetNextWindowSize({std::max(1.0f, std::min(width * scale, viewport->Size.x - 32.0f * scale)), fitHeight},
+                             ImGuiCond_Appearing);
+    return ImGui::BeginPopupModal(id, nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings);
+}
+void EndHelpPopup() {
+    if (ToolButton("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
+}
+// Every action with a shortcut, under its menu's name, then the drawer's own keys.
+bool KeyboardShortcuts(bool open, std::span<const EditorAction> list) {
+    if (!BeginHelpPopup(ShortcutsPopup, open, 620.0f, 600.0f)) return false;
     ImGui::TextWrapped("Shortcuts available throughout the editor. Agent navigation shortcuts apply while the "
                        "Agents drawer is open.");
     ImGui::BeginChild("shortcut-list", {0, -ImGui::GetFrameHeightWithSpacing()});
-    ShortcutGroup("General", GeneralShortcuts);
-    ShortcutGroup("Playback", PlaybackShortcuts);
-    ShortcutGroup("Agents", AgentShortcuts);
+    for (int index = 0; index < static_cast<int>(EditorMenu::Count); ++index) {
+        const auto menu = static_cast<EditorMenu>(index);
+        const auto shortcut = [menu](const EditorAction& action) { return action.menu == menu && *action.shortcut; };
+        if (std::ranges::none_of(list, shortcut) || !BeginShortcutTable(EditorMenuTitle(menu))) continue;
+        for (const auto& action : list)
+            if (shortcut(action)) ShortcutRow(action.label.c_str(), action.shortcut);
+        ImGui::EndTable();
+    }
+    if (BeginShortcutTable("Agents drawer")) {
+        for (const auto& entry : DrawerShortcuts)
+            ShortcutRow(entry.action, entry.shortcut);
+        ImGui::EndTable();
+    }
     ImGui::EndChild();
-    if (ToolButton("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
-    ImGui::EndPopup();
+    EndHelpPopup();
     return true;
+}
+std::string RepositoryPage() {
+    std::string repository = ENGINE_REPOSITORY;
+    if (repository.ends_with(".git")) repository.resize(repository.size() - 4);
+    return repository;
+}
+bool About(bool open, const EditorUiActions& actions) {
+    if (!BeginHelpPopup(AboutPopup, open, 420.0f, 0.0f)) return false;
+    ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
+    ImGui::TextUnformatted(ENGINE_NAME " " ENGINE_VERSION);
+    ImGui::PopFont();
+    ImGui::TextDisabled("Engine, editor and tools share this version.");
+    const auto repository = RepositoryPage();
+    ImGui::TextDisabled("%s", repository.c_str());
+    ImGui::Spacing();
+    ImGui::BeginDisabled(!actions.openPath);
+    if (ToolButton("Open repository")) actions.openPath(repository);
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    EndHelpPopup();
+    return true;
+}
+// One menu's items in list order: a separator where the section changes, submenus where they are named.
+void DrawMenu(EditorMenu menu, std::span<const EditorAction> list) {
+    std::string_view section;
+    std::string_view submenu;
+    bool submenuOpen = false;
+    bool first = true;
+    for (const auto& action : list) {
+        if (action.menu != menu) continue;
+        const bool newSection = !first && section != action.section;
+        if (first || newSection || submenu != action.submenu) {
+            if (submenuOpen) ImGui::EndMenu();
+            submenuOpen = false;
+            if (newSection) ImGui::Separator();
+            section = action.section;
+            submenu = action.submenu;
+            if (!submenu.empty()) submenuOpen = ImGui::BeginMenu(action.submenu);
+        } else if (submenuOpen && action.separatorBefore) {
+            ImGui::Separator();
+        }
+        first = false;
+        if (!submenu.empty() && !submenuOpen) continue;
+        const char* help = action.enabled || action.reason.empty() ? action.tooltip.c_str() : action.reason.c_str();
+        if (action.content) {
+            if (ImGui::BeginMenu(action.label.c_str(), action.enabled)) {
+                action.content();
+                ImGui::EndMenu();
+            }
+        } else if (ImGui::MenuItem(action.label.c_str(), action.shortcut, action.checked, action.enabled) &&
+                   action.run) {
+            action.run();
+        }
+        if (*help) ToolTooltip(help);
+    }
+    if (submenuOpen) ImGui::EndMenu();
 }
 bool PhaseIsWorking(const EditorSnapshot& snapshot) {
     return snapshot.profiler.busy || snapshot.building || snapshot.phase == EditorPhase::Building ||
@@ -104,173 +165,41 @@ void StatusPhase(const EditorSnapshot& snapshot) {
     ImGui::AlignTextToFramePadding();
     ImGui::TextColored(PhaseIsWorking(snapshot) ? EditorInfoColor() : EditorPhaseColor(snapshot.phase), "%s", phase);
 }
-void LanguageMenu(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
-    const SceneParameter* language = nullptr;
-    if (snapshot.selected) {
-        const auto found = std::ranges::find(snapshot.selected->parameters, "language", &SceneParameter::id);
-        if (found != snapshot.selected->parameters.end() && found->kind == SceneParameterKind::Choice)
-            language = &*found;
-    }
-    if (!ImGui::BeginMenu("Language")) return;
-    if (!language) {
-        ImGui::TextDisabled("Select a scene with language support.");
-        ImGui::EndMenu();
-        return;
-    }
-    const bool enabled = !snapshot.busy && snapshot.parameters.contains(language->id) &&
-                         std::ranges::find(snapshot.inspection.hiddenParameters, language->id) ==
-                             snapshot.inspection.hiddenParameters.end() &&
-                         std::ranges::find(snapshot.inspection.disabledParameters, language->id) ==
-                             snapshot.inspection.disabledParameters.end();
-    const auto found = snapshot.parameters.find(language->id);
-    const auto* selected = found != snapshot.parameters.end() ? std::get_if<std::string>(&found->second) : nullptr;
-    ImGui::BeginDisabled(!enabled);
-    int row = 0;
-    for (const auto& choice : language->choices) {
-        ImGui::PushID(row++); // Choice names come from the project and may repeat.
-        if (ImGui::MenuItem(choice.c_str(), nullptr, selected && *selected == choice))
-            actions.parameter(language->id, choice);
-        ImGui::PopID();
-    }
-    ImGui::EndDisabled();
-    if (snapshot.pending.contains(language->id)) ImGui::TextDisabled("Pending");
-    if (snapshot.busy)
-        ImGui::TextDisabled("Wait for the current operation to finish.");
-    else if (!snapshot.ready)
-        ImGui::TextDisabled("Applies when the scene opens.");
-    ImGui::EndMenu();
-}
 bool BuildFailed(const EditorSnapshot& snapshot) {
     const auto result = snapshot.diagnostics.Attempt().result;
     return result == EditorBuildResult::BuildFailed || result == EditorBuildResult::RefreshFailed;
 }
-void AgentMenu(const EditorSnapshot& snapshot, AgentPreferences& agent, EditorShellResult& result) {
-    if (!ImGui::BeginMenu("Agent")) return;
-    ImGui::SeparatorText("Send context");
-    if (ImGui::MenuItem("Send scene", nullptr, false, snapshot.ready)) result.agent = EditorAgentRequest::SendScene;
-    ToolTooltip(snapshot.ready
-                    ? "Paste the open scene, its time, changed values and a screenshot into the agent session."
-                    : "Run a scene before sending its context.");
-    const bool failed = BuildFailed(snapshot);
-    if (ImGui::MenuItem("Send build failure", nullptr, false, failed))
-        result.agent = EditorAgentRequest::SendBuildFailure;
-    ToolTooltip(failed ? "Paste the last build failure into the agent session, without Enter."
-                       : "The last Build & Refresh did not fail.");
-    if (ImGui::MenuItem("Ask agent to fix build", nullptr, false, failed)) result.agent = EditorAgentRequest::FixBuild;
-    ToolTooltip(failed ? "Send the build errors and ask the agent to fix them. This presses Enter."
-                       : "The last Build & Refresh did not fail.");
-    if (ImGui::MenuItem("Show agents", "Ctrl+Shift+A")) result.showActivity = true;
-    ToolTooltip("Every agent, its terminal and what it did in the editor.");
-    ImGui::SeparatorText("Settings");
-    (void)ToolToggle("Agent control", agent.control);
-    ToolTooltip("Allow agent tools (python Engine ctl) to change the editor.\n"
-                "Off: tools can still observe status, logs, parameters and screenshots.");
-    (void)ToolToggle("Visual checks", agent.visualChecks);
-    ToolTooltip("Allow agent tools to capture the viewport (screenshots, frame grids) and look at it.\n"
-                "Off: captures are refused and the agent tells you what to look at instead.");
-    if (ImGui::BeginMenu("Agent CLI")) {
-        EditorAgentChoice(agent, ImGui::GetFontSize() * 26);
-        ImGui::EndMenu();
-    }
-    ImGui::EndMenu();
-}
 } // namespace
-EditorShellResult EditorShell::Menu(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                    EditorPreferences& preferences, int& fontSize, bool maximized,
-                                    bool offerProjectList, const std::string& projectName,
-                                    EditorGitBar& gitBar) const {
-    EditorShellResult result;
-    if (!ImGui::BeginMainMenuBar()) return result;
-    bool openShortcuts = false;
-    ToolPixelText("Y", 2, ToolPalette::Accent, ImGui::GetFrameHeight());
-    ImGui::SameLine();
-    if (ImGui::BeginMenu("File")) {
-        result.openQuick = ImGui::MenuItem("Quick open", "Ctrl+P");
-        EditorCommandMenuItem(EditorCommand::Open, snapshot, actions);
-        ImGui::Separator();
-        // Only when a launcher started this editor (ENGINE_LAUNCHER; Docs/ToolsContract.md).
-        if (offerProjectList) result.returnToProjectList = ImGui::MenuItem("Back to project list");
-        result.quit = ImGui::MenuItem("Exit");
-        ImGui::EndMenu();
-    }
-    if (ImGui::BeginMenu("Scene")) {
-        EditorCommandMenuItem(EditorPrimaryCommand(snapshot), snapshot, actions);
-        if (snapshot.profiler.busy) EditorCommandMenuItem(EditorCommand::Stop, snapshot, actions);
-        EditorCommandMenuItem(EditorCommand::Pause, snapshot, actions);
-        EditorCommandMenuItem(EditorCommand::Step, snapshot, actions);
-        EditorCommandMenuItem(EditorCommand::Reset, snapshot, actions);
-        ImGui::Separator();
-        LanguageMenu(snapshot, actions);
-        ImGui::EndMenu();
-    }
-    if (ImGui::BeginMenu("View")) {
-        result.toggleMaximize = ImGui::MenuItem(maximized ? "Restore workspace" : "Focus viewport");
-        ImGui::Separator();
-        if (ImGui::BeginMenu("Interface scale")) {
-            for (const int percent : EditorFontSizes) {
-                const auto label = std::to_string(percent) + "%";
-                if (ImGui::MenuItem(label.c_str(), nullptr, fontSize == percent)) fontSize = percent;
-            }
+void EditorShell::Menu(const EditorActionContext& context, const std::string& projectName, EditorGitBar& gitBar) const {
+    auto& result = context.result;
+    const auto list = EditorActionList(context);
+    if (ImGui::BeginMainMenuBar()) {
+        ToolPixelText("Y", 2, ToolPalette::Accent, ImGui::GetFrameHeight());
+        ImGui::SameLine();
+        for (int index = 0; index < static_cast<int>(EditorMenu::Count); ++index) {
+            const auto menu = static_cast<EditorMenu>(index);
+            if (std::ranges::none_of(list, [menu](const EditorAction& action) { return action.menu == menu; }))
+                continue;
+            if (!ImGui::BeginMenu(EditorMenuTitle(menu))) continue;
+            DrawMenu(menu, list);
             ImGui::EndMenu();
         }
-        ImGui::MenuItem("Viewport performance metrics", nullptr, &preferences.showMetrics);
-        ImGui::EndMenu();
-    }
-    if (ImGui::BeginMenu("Window")) {
-        for (const auto& panel : EditorPanels)
-            ImGui::MenuItem(panel.title, nullptr, &preferences.Visible(panel.id));
-        ImGui::Separator();
-        if (ImGui::BeginMenu("Layouts")) {
-            for (const auto& layout : EditorLayouts)
-                if (ImGui::MenuItem(layout.title, nullptr, preferences.layout == layout.id,
-                                    layout.id != EditorWorkspaceLayout::Custom || !preferences.customDocking.empty()))
-                    result.layout = layout.id;
-            ImGui::EndMenu();
+        const auto& snapshot = context.snapshot;
+        if (snapshot.git) {
+            const auto bar = gitBar.Draw(*snapshot.git, context.actions, projectName, snapshot.building);
+            if (bar.toggle) result.git.toggle = bar.toggle;
+            if (bar.show) result.git.show = bar.show;
+        } else if (const float width = ImGui::CalcTextSize(projectName.c_str()).x;
+                   !projectName.empty() && width < ImGui::GetContentRegionAvail().x) {
+            ImGui::SameLine(ImGui::GetWindowWidth() - width - ImGui::GetStyle().WindowPadding.x * 2);
+            ImGui::TextDisabled("%s", projectName.c_str());
         }
-        ImGui::Separator();
-        result.toggleBottom = ImGui::MenuItem("Toggle last bottom tool", "Ctrl+J");
-        ImGui::EndMenu();
+        ImGui::EndMainMenuBar();
     }
-    if (ImGui::BeginMenu("Tools")) {
-        EditorCommandMenuItem(EditorCommand::Refresh, snapshot, actions);
-        EditorCommandMenuItem(EditorCommand::BuildAndPlay, snapshot, actions);
-        result.openCommands = ImGui::MenuItem("Command palette", "Ctrl+Shift+P");
-        ImGui::Separator();
-        openShortcuts = ImGui::MenuItem("Keyboard shortcuts...");
-        ImGui::EndMenu();
-    }
-    if (snapshot.git && snapshot.git->availability == GitAvailability::Ready && ImGui::BeginMenu("Git")) {
-        const auto* repository = snapshot.git->Active();
-        const bool idle = snapshot.git->busy.empty();
-        if (ImGui::MenuItem("Changes", "Ctrl+Shift+G")) result.git.toggle = GitDrawerTab::Changes;
-        if (ImGui::MenuItem("Incoming commits")) result.git.show = GitDrawerTab::Incoming;
-        ImGui::Separator();
-        const auto request = [&](GitRequestKind kind) {
-            if (actions.git) actions.git(GitRequest{.kind = kind});
-        };
-        if (ImGui::MenuItem("Fetch", nullptr, false, idle)) request(GitRequestKind::Fetch);
-        if (ImGui::MenuItem("Pull", nullptr, false,
-                            idle && !snapshot.building && repository && repository->branch.behind > 0 &&
-                                repository->branch.ahead == 0 && repository->incoming.overlapping.empty()))
-            request(GitRequestKind::Pull);
-        if (ImGui::MenuItem("Push", nullptr, false,
-                            idle && repository && repository->branch.ahead > 0 && repository->branch.behind == 0))
-            request(GitRequestKind::Push);
-        ImGui::EndMenu();
-    }
-    AgentMenu(snapshot, preferences.agent, result);
-    if (snapshot.git) {
-        const auto bar = gitBar.Draw(*snapshot.git, actions, projectName, snapshot.building);
-        if (bar.toggle) result.git.toggle = bar.toggle;
-        if (bar.show) result.git.show = bar.show;
-    } else if (const float width = ImGui::CalcTextSize(projectName.c_str()).x;
-               !projectName.empty() && width < ImGui::GetContentRegionAvail().x) {
-        ImGui::SameLine(ImGui::GetWindowWidth() - width - ImGui::GetStyle().WindowPadding.x * 2);
-        ImGui::TextDisabled("%s", projectName.c_str());
-    }
-    ImGui::EndMainMenuBar();
-    result.shortcutsOpen = KeyboardShortcuts(openShortcuts);
-    return result;
+    // A request made in the menus this frame opens its window now; the palette's opens it next frame.
+    const bool shortcuts = KeyboardShortcuts(std::exchange(result.showShortcuts, false), list);
+    const bool about = About(std::exchange(result.showAbout, false), context.actions);
+    result.dialogOpen = shortcuts || about;
 }
 float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position, float width,
                            bool& marking, EditorToolbarSearch& search, const EditorAgentStatus& agent,

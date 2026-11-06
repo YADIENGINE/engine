@@ -6,6 +6,7 @@
 #include <vector>
 #include "Editor/Internals/Session/AssetLibrary.h"
 #include "Editor/Internals/Session/QuickOpen.h"
+#include "Editor/Ui/Commands/EditorActions.h"
 #include "Editor/Ui/Commands/EditorCommands.h"
 #include "ToolUi/ToolTheme.h"
 #include "ToolUi/ToolWidgets.h"
@@ -72,8 +73,11 @@ void EditorCommandPalette::ReadSounds() {
     };
     CollectSounds(ScanAssetLibrary(_engineDirectory, _assetsDirectory), {}, add);
 }
-bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                EditorPreferences& preferences, bool maximized, EditorShellResult& result) {
+bool EditorCommandPalette::Draw(const EditorActionContext& context) {
+    const auto& snapshot = context.snapshot;
+    const auto& actions = context.actions;
+    auto& preferences = context.preferences;
+    auto& result = context.result;
     const bool opening = result.openCommands || result.openQuick;
     if (opening) {
         _commandsOnly = result.openCommands;
@@ -145,80 +149,18 @@ bool EditorCommandPalette::Draw(const EditorSnapshot& snapshot, const EditorUiAc
                                }});
     }
     const std::size_t commandsStart = entries.size();
-    for (const auto& command : EditorCommands()) {
-        const auto id = command.command;
-        const char* shortcut =
-            command.shortcutLabel ? command.shortcutLabel : (id == EditorPrimaryCommand(snapshot) ? "F5" : "");
-        entries.push_back({"Command", EditorCommandLabel(id, snapshot), "", shortcut, snapshot.capabilities.Can(id),
-                           snapshot.capabilities.Reason(id), [&, id] { actions.command(id); }});
+    // The menus' actions (EditorActionList): each under its menu's name, with its submenu and state beside it.
+    const auto list = EditorActionList(context);
+    for (const auto& action : list) {
+        if (!action.palette || !action.run) continue;
+        std::string detail = action.submenu;
+        const char* state = action.check == EditorActionCheck::Toggle  ? (action.checked ? "On" : "Off")
+                            : action.check == EditorActionCheck::Radio ? (action.checked ? "Current" : "")
+                                                                       : "";
+        if (*state) detail += detail.empty() ? state : std::string(" \xC2\xB7 ") + state;
+        entries.push_back({EditorMenuTitle(action.menu), action.label, std::move(detail), action.shortcut,
+                           action.enabled, action.reason, action.run});
     }
-    entries.push_back({"View", maximized ? "Restore workspace" : "Focus viewport", "", "", true, {}, [&] {
-                           result.toggleMaximize = true;
-                       }});
-    entries.push_back(
-        {"Window", "Toggle last bottom tool", "", "Ctrl+J", true, {}, [&] { result.toggleBottom = true; }});
-    for (const auto& panel : EditorPanels) {
-        const auto id = panel.id;
-        entries.push_back({"Window",
-                           std::string(preferences.Visible(id) ? "Hide " : "Show ") + panel.title,
-                           "",
-                           "",
-                           true,
-                           {},
-                           [&preferences, id] { preferences.Visible(id) = !preferences.Visible(id); }});
-    }
-    for (const auto& layout : EditorLayouts) {
-        const auto id = layout.id;
-        const bool enabled = id != EditorWorkspaceLayout::Custom || !preferences.customDocking.empty();
-        entries.push_back({"Layout", layout.title, "", "", enabled, enabled ? "" : "No custom layout has been saved",
-                           [&result, id] { result.layout = id; }});
-    }
-    if (snapshot.git && snapshot.git->availability == GitAvailability::Ready) {
-        const bool idle = snapshot.git->busy.empty();
-        const auto gitEntry = [&](const char* label, GitRequestKind kind) {
-            entries.push_back({"Git", label, "", "", idle, idle ? "" : "Git is busy", [&actions, kind] {
-                                   if (actions.git) actions.git(GitRequest{.kind = kind});
-                               }});
-        };
-        entries.push_back({"Git", "Changes", "", "Ctrl+Shift+G", true, {}, [&result] {
-                               result.git.toggle = GitDrawerTab::Changes;
-                           }});
-        entries.push_back({"Git", "Incoming commits", "", "", true, {}, [&result] {
-                               result.git.show = GitDrawerTab::Incoming;
-                           }});
-        gitEntry("Fetch", GitRequestKind::Fetch);
-        gitEntry("Update submodules", GitRequestKind::UpdateSubmodules);
-    }
-    const auto attempt = snapshot.diagnostics.Attempt().result;
-    const bool failed = attempt == EditorBuildResult::BuildFailed || attempt == EditorBuildResult::RefreshFailed;
-    const auto agentEntry = [&](std::string label, bool enabled, const char* reason, EditorAgentRequest request) {
-        entries.push_back({"Agent", std::move(label), "",
-                           request == EditorAgentRequest::SendScene ? "Ctrl+Shift+S" : "", enabled,
-                           enabled ? "" : reason, [&result, request] { result.agent = request; }});
-    };
-    agentEntry(std::string("Open ") + AgentKindInfo(preferences.agent.kind).name, true, "", EditorAgentRequest::Open);
-    agentEntry("New shell", true, "", EditorAgentRequest::NewShell);
-    agentEntry("Send scene", snapshot.ready, "No scene is running", EditorAgentRequest::SendScene);
-    agentEntry("Send build failure", failed, "The last Build & Refresh did not fail",
-               EditorAgentRequest::SendBuildFailure);
-    agentEntry("Ask agent to fix build", failed, "The last Build & Refresh did not fail", EditorAgentRequest::FixBuild);
-    entries.push_back(
-        {"Agent", "Show agents", "", "Ctrl+Shift+A", true, {}, [&result] { result.showActivity = true; }});
-    entries.push_back({"Agent", "New agent", "", "Ctrl+Shift+N", true, {}, [&result] { result.agents.add = true; }});
-    entries.push_back({"Agent",
-                       preferences.agent.control ? "Turn agent control off" : "Turn agent control on",
-                       "",
-                       "",
-                       true,
-                       {},
-                       [&preferences] { preferences.agent.control = !preferences.agent.control; }});
-    entries.push_back({"Agent",
-                       preferences.agent.visualChecks ? "Turn visual checks off" : "Turn visual checks on",
-                       "",
-                       "",
-                       true,
-                       {},
-                       [&preferences] { preferences.agent.visualChecks = !preferences.agent.visualChecks; }});
 
     // Empty search: the scenes opened last, then the commands. A search: the best fit, whatever its kind.
     std::map<std::string, int> recentScenes;

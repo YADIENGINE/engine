@@ -92,16 +92,33 @@ the recipe's Python, engine and source paths plus a game configuration in `Proje
 - **Profiler:** Live / Benchmarks / Compare. Opens when a benchmark example is selected; warmup / measurement frames /
   repetition pairs are under Advanced benchmark settings. Glow override is one choice group; highlighting shows the last
   requested value. Compare's Export menu offers JSON and Markdown. Details: [Profiler](Profiler.md).
-- Panels can be docked, combined into tabs, closed, and reopened from Window. Scene → Language changes the selected
-  scene's language; it can be chosen before opening a scene and is used in the opening recipe. Language control is
-  not shown in Inspector. The menu always opens and explains scenes without language support. The top View menu
-  manages Focus viewport / Restore workspace, UI scale (75% / 100% / 125% / 150%), and viewport performance metrics. The
-  default 100% matches the previous 125% size; UI and technical text fonts scale with user scale and monitor DPI.
+- Panels can be docked, combined into tabs, closed, and reopened from View → Panels. A scene's values, its language
+  among them, are set in the Inspector; before the scene opens they become part of the recipe it opens with. Interface
+  scale (75% / 100% / 125% / 150%): the default 100% matches the previous 125% size; UI and technical text fonts scale
+  with user scale and monitor DPI.
 
-Under Window → Layouts, Develop opens general scene layout, Inspect a wider Inspector, and Profile a Profiler-focused
-layout. Last custom layout restores the last manual layout; selecting a preset does not erase it. Bottom-bar Output /
-Console buttons only toggle their respective panel; multiple panels can stay open. Window → Toggle last bottom tool or
-Ctrl+J toggles the last-used bottom panel without affecting others. Profiler opens from Window or the command palette.
+Under View → Layouts, Develop opens general scene layout, Inspect a wider Inspector, Profile a Profiler-focused layout
+and Agent the scene beside a tall Console. Last custom layout restores the last manual layout; selecting a preset does
+not erase it. Bottom-bar Output / Console buttons only toggle their respective panel; multiple panels can stay open.
+View → Panels → Toggle last bottom tool or Ctrl+J toggles the last-used bottom panel without affecting others.
+
+## Menus
+
+The menu bar, the command palette and Help → Keyboard shortcuts read one list of actions, so an action has the same
+name, shortcut and reason for being unavailable in all three. A disabled item says why in its tooltip.
+
+| Menu | Holds |
+| --- | --- |
+| File | Quick open, Back to project list (when a launcher started the editor), Exit |
+| Scene | Run / Stop / Cancel (F5), Pause / Resume, Step one frame, Reset |
+| View | Command palette, Focus viewport, Panels, Layouts, Interface scale, viewport performance metrics |
+| Build | Build & Refresh, Build & Play game, Cancel build |
+| Git | Changes, Incoming commits, Fetch, Pull, Push, Update submodules; hidden when the project is no repository (the Git bar offers to create one) |
+| Agent | Send scene / build failure, Ask agent to fix build, Show agents, New agent, open the agent CLI, New shell, Agent control, Visual checks, Agent CLI |
+| Help | Keyboard shortcuts, Editor guide, About |
+
+Editor guide opens this page: the engine's own `Docs/Editor/Usage.md` when the engine folder has it, else the page for
+this engine version in its repository. About names the engine and its version.
 Unread errors or warnings flash the Output button; viewing Output clears the notification. Highlighting uses the theme's
 error or warning color; errors take priority.
 
@@ -141,7 +158,7 @@ Reset recreates the scene in the same worker process. Use Run to restart the wor
 | Ctrl+Shift+T | In the Agents drawer: Terminal ↔ Activity |
 | Ctrl+J | Toggle last bottom tool panel |
 
-The same list is available in the editor from **Tools → Keyboard shortcuts**.
+The same list is available in the editor from **Help → Keyboard shortcuts**.
 
 Quick open starts with the scenes opened last, then the commands; typing finds anything by any of its words, in any
 order ("medusa boss"). Picking a scene runs it, picking one of its choices ("Boss flow · boss: Medusa") runs it with that
@@ -252,7 +269,7 @@ editor context; it never calls a model itself. The agent drives the editor back 
     in Console* and *Close session* (a running agent asks first).
   - *No agent yet:* the drawer offers Claude Code, Codex and a custom command, the one in your preferences first;
     Enter starts it.
-- **Opening an agent:** the drawer's **+**, its empty state, the Console's add button or the palette's *Open* entry start
+- **Opening an agent:** the drawer's **+**, its empty state, the Console's add button or *Open* in the Agent menu or the palette start
   the chosen CLI in the project folder (or select its session) and show it in the Agents drawer. The session's shell stays open after the CLI exits. On first use, a setup modal lets you choose
   Claude Code, Codex or Custom, checks the executable on PATH (or at its full path), and offers an *Install...* link
   for the named CLIs. Custom shows a command field with an argument hint. *Check again* rechecks installation; if PATH
@@ -294,7 +311,7 @@ editor context; it never calls a model itself. The agent drives the editor back 
 - **Several agents:** one session at a time may change or capture the editor; another one's such command is refused
   until the holder has been idle for 60 s ([Several agents](Automation.md#several-agents)). Your own use of the editor
   is never refused and ends an agent's hold.
-- **Agent layout** (Window → Layouts): the Viewport takes 60% of the width beside a tall 40% column shared by Console
+- **Agent layout** (View → Layouts): the Viewport takes 60% of the width beside a tall 40% column shared by Console
   and Inspector, with Console selected in front. The Viewport remains larger at 1440×900 and 2560×1440.
 
 Text sent to a session that is still starting waits until the CLI's output settles, so a just-started agent receives
