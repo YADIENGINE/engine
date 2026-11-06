@@ -5,6 +5,7 @@
 #include "Graphics/Atmosphere/Internals/AtmosphereView.h"
 #include "Graphics/Paint/Painter.h"
 #include "Utilities/Math/Noise.h"
+#include "Utilities/Math/NoiseField.h"
 #include "Utilities/Math/Scalar.h"
 
 namespace {
@@ -19,9 +20,6 @@ constexpr std::array OctavePace{1.0f, 1.45f, 0.7f};
 constexpr std::array OctaveBoil{Float2{0.8f, 0.6f}, Float2{-0.7f, 0.7f}, Float2{0.3f, -1.0f}};
 constexpr std::array OctaveScale{1.0f, 2.1f, 4.3f};
 constexpr std::array OctaveWeight{0.56f, 0.3f, 0.14f};
-// Turned against each other, so that no octave's grid lines up with the others' and shows as stripes.
-constexpr std::array OctaveCos{0.8f, 0.28f, -0.6f};
-constexpr std::array OctaveSin{0.6f, 0.96f, 0.8f};
 constexpr float OffsetWrap = 1048576.0f; // Noise has no period, but this keeps floats fine over a long session
 
 bool Finite(Float2 value) { return std::isfinite(value.x) && std::isfinite(value.y); }
@@ -105,9 +103,8 @@ void FogField::Draw(Painter& paint, float amount, const CameraView& view) const 
                 const float scale = OctaveScale[i] / _look.wavelength;
                 const float px = (world.x - _offsets[i].x) * scale;
                 const float py = (world.y - _offsets[i].y) * scale;
-                noise += OctaveWeight[i] * ValueNoise(px * OctaveCos[i] - py * OctaveSin[i],
-                                                      px * OctaveSin[i] + py * OctaveCos[i],
-                                                      _seed + static_cast<unsigned>(i) * 131U);
+                const NoiseSettings octave{.seed = _seed + static_cast<unsigned>(i) * 131U};
+                noise += OctaveWeight[i] * (Noise(octave, Float2{px, py}) * 0.5f + 0.5f);
             }
             float share = SmoothRange(edge, edge + EdgeWidth, noise) * fade;
             if (_look.band) share *= BandShare(*_look.band, world.y);

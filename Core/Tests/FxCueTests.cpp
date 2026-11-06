@@ -28,7 +28,6 @@
 #include "Runtime/TimeScale.h"
 #include "Scene/TransitionClock.h"
 #include "Tests/PaintHarness.h"
-#include "Utilities/Math/Noise.h"
 
 using Catch::Approx;
 
@@ -566,9 +565,6 @@ TEST_CASE("Engine.Fx.ShakeBuildsWithItsAmountAndSettles", "[engine][fx]") {
     CHECK_THROWS_AS(calm.Shake(-1.0f), std::invalid_argument);
     CHECK_THROWS_AS(calm.Kick({std::nanf(""), 0.0f}), std::invalid_argument);
     CHECK_THROWS_AS(calm.SetMotion(std::nanf(""), {}), std::invalid_argument);
-    CHECK(SmoothNoise(1.25f, 3U) == SmoothNoise(1.25f, 3U));
-    CHECK(SmoothNoise(1.25f, 3U) != SmoothNoise(1.25f, 4U));
-    CHECK(SmoothNoise(2.0f, 3U) == Approx(SmoothNoise(1.9999f, 3U)).margin(0.001f)); // No jumps
 }
 
 TEST_CASE("Engine.FxStage.WorldCameraWorksOnAGamesOwnCamera", "[engine][fx]") {

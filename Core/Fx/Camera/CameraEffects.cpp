@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include "Animation/Easing.h"
 #include "Fx/Internals/FxChecks.h"
-#include "Utilities/Math/Noise.h"
+#include "Utilities/Math/NoiseField.h"
 
 bool IsValid(const CameraEffectsStyle& style) {
     for (const float value :
@@ -83,9 +83,9 @@ CameraView CameraEffects::Apply(const CameraView& base, float timeSeconds) const
     if (_shake > 0.0f) {
         const float strength = _shake * _shake;
         const float noiseAt = timeSeconds * _settings.shakeSpeed;
-        shake = {_settings.shakeOffset * strength * SmoothNoise(noiseAt, 1U),
-                 _settings.shakeOffset * strength * SmoothNoise(noiseAt, 2U)};
-        camera.rotation += _settings.shakeAngle * strength * SmoothNoise(noiseAt, 3U) * scale;
+        shake = {_settings.shakeOffset * strength * Noise(NoiseSettings{.seed = 1U}, noiseAt),
+                 _settings.shakeOffset * strength * Noise(NoiseSettings{.seed = 2U}, noiseAt)};
+        camera.rotation += _settings.shakeAngle * strength * Noise(NoiseSettings{.seed = 3U}, noiseAt) * scale;
     }
     camera.offset.x += (shake.x + _kick.position.x) * scale - _motionLead.x;
     camera.offset.y += (shake.y + _kick.position.y) * scale - _motionLead.y;

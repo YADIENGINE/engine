@@ -7,7 +7,7 @@
 #include <vector>
 #include "Graphics/Backgrounds/StarField.h"
 #include "Graphics/Paint/Painter.h"
-#include "Utilities/Math/Noise.h"
+#include "Utilities/Math/NoiseField.h"
 #include "Utilities/Math/Scalar.h"
 
 namespace {
@@ -31,22 +31,9 @@ constexpr int MinRows = 20;
 constexpr float CellPixels = 9.0f;
 constexpr float Frequency = 1.7f; // Noise cells per short side, at the largest octave
 constexpr float DriftSpeed = 0.012f;
+constexpr float WarpAmount = 0.55f; // How far the gas lookup is pushed, in noise cells
 
-[[nodiscard]] float Fractal(float x, float y, unsigned seed, int octaves) {
-    float sum = 0.0f;
-    float weight = 0.5f;
-    float total = 0.0f;
-    for (int octave = 0; octave < octaves; ++octave) {
-        sum += ValueNoise(x, y, seed + static_cast<unsigned>(octave) * 131U) * weight;
-        total += weight;
-        weight *= 0.5f;
-        // Twice as fine and turned, so that no octave lines up with the noise grid.
-        const float turnedX = x * 1.6f - y * 1.2f + 7.1f;
-        y = x * 1.2f + y * 1.6f + 3.7f;
-        x = turnedX;
-    }
-    return sum / total;
-}
+[[nodiscard]] float Unit(float noise) { return noise * 0.5f + 0.5f; }
 
 [[nodiscard]] float SmoothRange(float from, float to, float value) {
     const float t = std::clamp((value - from) / (to - from), 0.0f, 1.0f);
@@ -54,15 +41,17 @@ constexpr float DriftSpeed = 0.012f;
 }
 
 [[nodiscard]] Color4 GasColor(float x, float y, const NebulaColors& colors, unsigned seed, float shift) {
-    // Warping the lookup by another noise turns round blobs into wisps.
-    const float warpX = ValueNoise(x + shift, y, seed + 17U);
-    const float warpY = ValueNoise(x, y - shift, seed + 53U);
-    const float gas = Fractal(x + warpX * 1.1f, y + warpY * 1.1f, seed, 4);
-    const float mask = ValueNoise(x * 0.55f + 11.0f, y * 0.55f - 5.0f, seed + 91U);
-    const float density = SmoothRange(0.3f, 0.78f, gas) * SmoothRange(0.28f, 0.68f, mask);
+    // Warping the lookup by another noise turns round blobs into wisps; the warp drifts, the gas stays.
+    const Float2 at{x, y};
+    const Float2 drift{shift, -shift};
+    const Float2 warped = Warp(NoiseSettings{.seed = seed + 17U}, WarpAmount, at + drift) - drift;
+    const float gas = Unit(Noise(NoiseSettings{.fractal = NoiseFractal::FBm, .octaves = 4, .seed = seed}, warped));
+    const float mask = Unit(Noise(NoiseSettings{.frequency = 0.55f, .seed = seed + 91U}, at));
+    const float swirl = Unit((warped.y - y) / WarpAmount);
+    const float density = SmoothRange(0.38f, 0.78f, gas) * SmoothRange(0.42f, 0.72f, mask);
 
     Color4 color = Mix(colors.space, colors.shade, SmoothRange(0.0f, 0.3f, density));
-    color = Mix(color, colors.accent, SmoothRange(0.35f, 0.75f, warpY) * SmoothRange(0.05f, 0.35f, density) * 0.7f);
+    color = Mix(color, colors.accent, SmoothRange(0.35f, 0.75f, swirl) * SmoothRange(0.05f, 0.35f, density) * 0.7f);
     color = Mix(color, colors.gas, SmoothRange(0.18f, 0.68f, density) * 0.9f);
     // Bright knots only: gas that reached full brightness everywhere would read as flat plateaus.
     return Mix(color, colors.bright, SmoothRange(0.62f, 1.05f, density) * 0.7f);

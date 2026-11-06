@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include "Utilities/Math/Noise.h"
+#include "Utilities/Math/NoiseField.h"
 
 // How a lamp's strength moves: a smooth wander, and for a failing lamp stretches of fast hard cuts.
 struct FlickerStyle {
@@ -34,7 +35,8 @@ struct FlickerStyle {
     if (!std::isfinite(seconds)) return 1.0f;
     const float speed = flashes ? std::max(style.speed, 0.0f) : std::clamp(style.speed, 0.0f, GentleSpeed);
     const auto at = static_cast<float>(std::fmod(seconds * static_cast<double>(speed), WrapAfter));
-    const float wave = (1.0f - FineShare) * SmoothNoise(at, seed) + FineShare * SmoothNoise(at * FineSpeed, seed + 1U);
+    const float wave = (1.0f - FineShare) * Noise(NoiseSettings{.seed = seed}, at) +
+                       FineShare * Noise(NoiseSettings{.seed = seed + 1U}, at * FineSpeed);
     const float wander = 1.0f - std::clamp(style.depth, 0.0f, 1.0f) * (wave * 0.5f + 0.5f);
     if (!flashes || !(style.stutterShare > 0.0f) || !(style.stutterEvery > 0.0f) || !(style.stutterRate > 0.0f))
         return wander;

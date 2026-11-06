@@ -34,6 +34,13 @@
       "license": "earcut/LICENSE"
     },
     {
+      "name": "FastNoiseLite",
+      "version": "1.1.1",
+      "text": "Notices/fastnoiselite.txt",
+      "pin": { "file": "FastNoiseLite/FastNoiseLite.h", "contains": "// VERSION: {version}" },
+      "license": "FastNoiseLite/LICENSE"
+    },
+    {
       "name": "miniaudio",
       "version": "0.11.26",
       "text": "Notices/miniaudio.txt",

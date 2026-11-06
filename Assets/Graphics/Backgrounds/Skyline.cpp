@@ -5,6 +5,7 @@
 #include <cstddef>
 #include "Graphics/Paint/Painter.h"
 #include "Utilities/Math/Noise.h"
+#include "Utilities/Math/NoiseField.h"
 #include "Utilities/Math/Scalar.h"
 
 namespace {
@@ -147,7 +148,10 @@ void DrawSkyline(Painter& paint, const FloatRect& box, SkyKind kind, float time,
             const auto id = static_cast<unsigned>(static_cast<long long>(cell));
             const unsigned seed = rowSeed + id * 37U;
             // Taller blocks gather in districts, so the outline has a shape instead of even noise.
-            const float district = 0.55f + 0.45f * SmoothNoise(cell * row.cell * 1.1f, rowSeed);
+            // Simplex values gather near the middle; stretched, districts reach their tallest as often as before.
+            const float wave =
+                std::clamp(Noise(NoiseSettings{.seed = rowSeed}, cell * row.cell * 1.1f) * 1.5f, -1.0f, 1.0f);
+            const float district = 0.55f + 0.45f * wave;
             const float share = std::pow(Pick(seed, 0, 0), 1.3f) * district;
             const float height = unit * Mix(row.minHeight, row.maxHeight, share);
             const float width = unit * row.cell * (0.74f + 0.42f * Pick(seed, 0, 1));

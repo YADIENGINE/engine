@@ -7,6 +7,7 @@
 #include <vector>
 #include "Graphics/Paint/Painter.h"
 #include "Utilities/Math/Noise.h"
+#include "Utilities/Math/NoiseField.h"
 #include "Utilities/Math/Scalar.h"
 
 namespace {
@@ -80,7 +81,7 @@ void DrawSnow(Painter& paint, std::span<const Float2> crest, std::span<const flo
             // follow its peak; all of it would rule a flat line under it. A few pixels at least, or a small view shows
             // the caps as thin broken lines.
             for (std::size_t i = end; i-- > start + 1;) {
-                const float tear = 0.55f + 0.3f * SmoothNoise(heights[i] * tearFrequency, 77U);
+                const float tear = 0.55f + 0.3f * Noise(NoiseSettings{.seed = 77U}, heights[i] * tearFrequency);
                 const float thickness = std::max((heights[i] - snowLine) * depth * tear, minThickness);
                 shape.push_back({crest[i].x, crest[i].y + thickness});
             }

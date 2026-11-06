@@ -87,6 +87,16 @@ target_link_libraries(EngineTuning PRIVATE EngineStorage)
 set_target_properties(EngineTuning PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_warnings(EngineTuning)
 
+# Smooth noise (Utilities/Math/NoiseField.h) over FastNoiseLite, which stays private. Built with precise floats like
+# simulation code, so simulations may use it; everything above EngineSimulation gets it from there.
+add_library(EngineNoise STATIC Utilities/Math/Internals/NoiseField.cpp)
+target_include_directories(EngineNoise PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(EngineNoise SYSTEM PRIVATE "${ENGINE_THIRD_PARTY_DIR}/FastNoiseLite")
+target_compile_features(EngineNoise PUBLIC cxx_std_20)
+set_target_properties(EngineNoise PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_simulation_flags(EngineNoise)
+engine_warnings(EngineNoise)
+
 # Fixed-step simulation, tapes, hashes and scenarios (Docs/Simulation.md). It links nothing that draws or plays sound, so
 # simulation code that reaches them fails to build.
 add_library(EngineSimulation STATIC
@@ -106,7 +116,7 @@ add_library(EngineSimulation STATIC
 target_include_directories(EngineSimulation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineSimulation PUBLIC cxx_std_20)
 target_compile_definitions(EngineSimulation PRIVATE ENGINE_VERSION="${engineVersion}")
-target_link_libraries(EngineSimulation PUBLIC EngineJsonIO EngineTuning)
+target_link_libraries(EngineSimulation PUBLIC EngineJsonIO EngineNoise EngineTuning)
 set_target_properties(EngineSimulation PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_simulation_flags(EngineSimulation)
 engine_warnings(EngineSimulation)

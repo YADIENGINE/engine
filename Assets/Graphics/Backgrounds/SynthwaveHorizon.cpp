@@ -7,7 +7,7 @@
 #include "Graphics/Backgrounds/Sky.h"
 #include "Graphics/Backgrounds/StarField.h"
 #include "Graphics/Paint/Painter.h"
-#include "Utilities/Math/Noise.h"
+#include "Utilities/Math/NoiseField.h"
 #include "Utilities/Math/Scalar.h"
 
 namespace {
@@ -86,8 +86,8 @@ void DrawRidges(Painter& paint, const FloatRect& box, float horizonY, Color4 rid
         // Low in the middle, so the sun stands clear; a mirror image reads as a designed scene.
         const float side = std::abs(t - 0.5f) * 2.0f;
         const float world = side * box.width / unit;
-        const float fold = 1.0f - std::abs(SmoothNoise(world * 3.1f + 2.0f, seed));
-        const float detail = 1.0f - std::abs(SmoothNoise(world * 8.3f + 5.0f, seed + 19U));
+        const float fold = 1.0f - std::abs(Noise(NoiseSettings{.seed = seed}, world * 3.1f + 2.0f));
+        const float detail = 1.0f - std::abs(Noise(NoiseSettings{.seed = seed + 19U}, world * 8.3f + 5.0f));
         const float envelope = std::clamp((side - 0.22f) * 1.5f, 0.0f, 1.0f);
         const float height = unit * (0.004f + envelope * (0.13f * fold * fold + 0.035f * detail));
         crest.push_back({x, horizonY - height});

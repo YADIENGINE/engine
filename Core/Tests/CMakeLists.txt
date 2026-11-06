@@ -46,6 +46,7 @@ engine_tests(EngineTests
         LightOccluderTests.cpp
         LightTests.cpp
         MathTests.cpp
+        NoiseFieldTests.cpp
         ObjectListSafetyTests.cpp
         PaintTests.cpp
         PaintGeometryTests.cpp

@@ -1716,6 +1716,44 @@ The developer has not yet looked at backgrounds (snow caps), glowing polygons an
 
 **Out of scope:** the public shape operations above, Clipper2 in simulations, gradient borders.
 
+### D46. Smooth noise: FastNoiseLite
+Status: implemented (2026-11-06), awaiting the developer's look. Usage: [Rendering](../Graphics/Rendering.md#geometry-and-timing).
+
+**Decision:** smooth noise comes from FastNoiseLite 1.1.1 behind `Utilities/Math/NoiseField.h`: `NoiseSettings`
+(kind, frequency, fractal layers, seed) and plain functions `Noise(settings, point)`, `Noise(settings, x)` and
+`Warp(settings, amplitude, point)`. `ValueNoise` and `SmoothNoise` are gone; `Hash`, `Random01` and `NoiseHash` stay
+in `Noise.h` as decoration seeds.
+
+**Why:** value noise sits on a grid, so fog and gas showed lines along the axes, and its slope is zero at every whole
+number, so camera shake and flicker slowed to a stop once per unit. Nebula and fog carried hand-written layers and
+warps. One noise API also serves the planned procedural generation kit (N5).
+
+**Decided:**
+1. *Plain functions of plain settings, no object.* The same settings and point give the same value, as drawing that
+   holds no state needs; settings can sit in tuning files. A configured generator is built per call; it holds a few
+   numbers and allocates nothing.
+2. *`frequency` means the same for every kind:* at 1, each kind changes about as often as values set one unit apart
+   (0.67 turning points per unit along a line, measured). FastNoiseLite's Simplex changes 3.3 times as often at the
+   same setting; without this every speed and scale tuned on value noise (shake, flicker, outlines) would have changed.
+3. *`Warp`'s amplitude is the largest push of one layer,* measured and scaled per warp type; FastNoiseLite's own
+   amplitude pushes a fraction of that.
+4. *Its own target, `EngineNoise`, built with `/fp:precise` and linked by `EngineSimulation`,* so simulations can use it
+   later (same build, same values) and everything above gets it.
+5. *Simplex by default.* Fog keeps its per-layer drift (each layer moves its own way), so it samples three fields
+   rather than one fractal; their turned grids are gone. Nebula's gas is one FBm field warped by `Warp`.
+
+**Looks:** the worker's thumbnails were compared with the previous build. Synthwave ridges and mountain snow keep their
+character. Nebula and Skyline needed their thresholds moved, because simplex values gather near the middle more than
+value noise: gas thresholds and the skyline's district wave were stretched. The fog's layer sum spreads slightly wider
+than before (5th to 95th percentile 0.21–0.79 against 0.27–0.74), so its thresholds stay.
+
+**Checking:** tests cover equal values for equal settings, range and variety for every kind and fractal, a line with no
+jumps and no stops at whole numbers, equal change rates across kinds, frequency scaling, warp distance and bad input.
+The developer has not yet looked at nebula, skyline, fog, camera shake and flicker in motion.
+
+**Out of scope:** cellular distance and return options, 3D noise, noise in a simulation (needs a `StateHash` test
+across two runs when it comes).
+
 ## v1'de kalan işler
 
 [v1 finalization](v1finalization.md).
