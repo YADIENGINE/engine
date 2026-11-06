@@ -101,11 +101,14 @@ Under View → Layouts, Develop opens general scene layout, Inspect a wider Insp
 and Agent the scene beside a tall Console. Last custom layout restores the last manual layout; selecting a preset does
 not erase it. Bottom-bar Output / Console buttons only toggle their respective panel; multiple panels can stay open.
 View → Panels → Toggle last bottom tool or Ctrl+J toggles the last-used bottom panel without affecting others.
+Unread errors or warnings flash the Output button; viewing Output clears the notification. Highlighting uses the theme's
+error or warning color; errors take priority.
 
 ## Menus
 
-The menu bar, the command palette and Help → Keyboard shortcuts read one list of actions, so an action has the same
-name, shortcut and reason for being unavailable in all three. A disabled item says why in its tooltip.
+The menu bar, the command palette, Help → Keyboard shortcuts and the keyboard itself read one list of actions and one
+table of keys, so an action has the same name, shortcut and reason for being unavailable everywhere, and a shortcut
+always does what its menu item does. A disabled item says why in its tooltip.
 
 | Menu | Holds |
 | --- | --- |
@@ -113,14 +116,12 @@ name, shortcut and reason for being unavailable in all three. A disabled item sa
 | Scene | Run / Stop / Cancel (F5), Pause / Resume, Step one frame, Reset |
 | View | Command palette, Focus viewport, Panels, Layouts, Interface scale, viewport performance metrics |
 | Build | Build & Refresh, Build & Play game, Cancel build |
-| Git | Changes, Incoming commits, Fetch, Pull, Push, Update submodules; hidden when the project is no repository (the Git bar offers to create one) |
+| Git | Changes, Incoming commits, Fetch, Pull, Push, Update submodules; in a project that is no repository yet, Changes offers to create one |
 | Agent | Send scene / build failure, Ask agent to fix build, Show agents, New agent, open the agent CLI, New shell, Agent control, Visual checks, Agent CLI |
 | Help | Keyboard shortcuts, Editor guide, About |
 
 Editor guide opens this page: the engine's own `Docs/Editor/Usage.md` when the engine folder has it, else the page for
 this engine version in its repository. About names the engine and its version.
-Unread errors or warnings flash the Output button; viewing Output clears the notification. Highlighting uses the theme's
-error or warning color; errors take priority.
 
 ## Toolbar
 
@@ -130,7 +131,7 @@ to an overflow menu. Tooltips show name, shortcut, and the reason if unavailable
 
 | Button | Meaning |
 | --- | --- |
-| Run / Stop / Cancel | Runs selected content when closed; closes the scene when ready or paused; cancels catalog reading, startup, building without a scene, or benchmarking. Cancel an ongoing build with an open scene through Cancel build in the command palette |
+| Run / Stop / Cancel | Runs selected content when closed; closes the scene when ready or paused; cancels catalog reading, startup, building without a scene, or benchmarking. Cancel an ongoing build with an open scene through Build → Cancel build |
 | Pause / Resume | Freezes Update and presentation time; drawing, parameters, actions, and Reset remain available |
 | Step | Advances 1/60 s while paused |
 | Speed | 0.1×..4× |
@@ -163,8 +164,10 @@ The same list is available in the editor from **Help → Keyboard shortcuts**.
 Quick open starts with the scenes opened last, then the commands; typing finds anything by any of its words, in any
 order ("medusa boss"). Picking a scene runs it, picking one of its choices ("Boss flow · boss: Medusa") runs it with that
 value, picking a sound plays it in Audio Preview. Select with up / down, run with Enter, close with Escape. Unavailable
-actions show their reason. Playback / build shortcuts do not run during text editing or
-popups; input consumed by the editor is not forwarded to the scene.
+actions show their reason. No shortcut runs while a popup is open. Playback / build shortcuts (F5, F6, F7, Ctrl+R,
+Ctrl+Shift+B) also wait while you type or while the Console has the keyboard, and Ctrl+P while the Console has it; the
+Console leaves every other shortcut in the table to the editor. Input consumed by the editor is not forwarded to the
+scene.
 
 Replay, Reset, and the product's own Pause screen differ: Replay restarts content's own presentation, Reset recreates
 the instance, toolbar Pause stops time.

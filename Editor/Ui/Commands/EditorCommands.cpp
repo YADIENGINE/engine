@@ -172,8 +172,3 @@ bool EditorCommandButton(EditorCommand command, const EditorSnapshot& snapshot, 
     if (pressed && actions.command) actions.command(command);
     return pressed;
 }
-
-const char* EditorCommandShortcut(EditorCommand command, const EditorSnapshot& snapshot) {
-    const auto* shortcut = CommandShortcut(command, snapshot);
-    return shortcut ? shortcut : "";
-}

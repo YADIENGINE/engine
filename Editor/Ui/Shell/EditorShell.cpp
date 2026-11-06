@@ -23,16 +23,6 @@ constexpr ImGuiWindowFlags BarFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindo
 constexpr float StatusGap = 10.0f;
 constexpr const char* ShortcutsPopup = "Keyboard shortcuts###editor.shortcuts";
 constexpr const char* AboutPopup = "About###editor.about";
-struct ShortcutHelpEntry {
-    const char* action;
-    const char* shortcut;
-};
-// Keys that act only inside the Agents drawer; everything else comes from the action list.
-constexpr std::array DrawerShortcuts{
-    ShortcutHelpEntry{"Next / previous agent", "Ctrl+PageDown / Ctrl+PageUp"},
-    ShortcutHelpEntry{"Select agent 1-9", "Ctrl+1 ... Ctrl+9"},
-    ShortcutHelpEntry{"Terminal / Activity", "Ctrl+Shift+T"},
-};
 bool BeginShortcutTable(const char* title) {
     ImGui::SeparatorText(title);
     if (!ImGui::BeginTable(title, 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) return false;
@@ -66,7 +56,7 @@ void EndHelpPopup() {
     if (ToolButton("Close") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
     ImGui::EndPopup();
 }
-// Every action with a shortcut, under its menu's name, then the drawer's own keys.
+// Every menu action with a shortcut, under its menu's name, then the keys no menu shows (the Agents drawer's).
 bool KeyboardShortcuts(bool open, std::span<const EditorAction> list) {
     if (!BeginHelpPopup(ShortcutsPopup, open, 620.0f, 600.0f)) return false;
     ImGui::TextWrapped("Shortcuts available throughout the editor. Agent navigation shortcuts apply while the "
@@ -74,15 +64,17 @@ bool KeyboardShortcuts(bool open, std::span<const EditorAction> list) {
     ImGui::BeginChild("shortcut-list", {0, -ImGui::GetFrameHeightWithSpacing()});
     for (int index = 0; index < static_cast<int>(EditorMenu::Count); ++index) {
         const auto menu = static_cast<EditorMenu>(index);
-        const auto shortcut = [menu](const EditorAction& action) { return action.menu == menu && *action.shortcut; };
+        const auto shortcut = [menu](const EditorAction& action) {
+            return action.menu == menu && action.inMenu && *action.shortcut;
+        };
         if (std::ranges::none_of(list, shortcut) || !BeginShortcutTable(EditorMenuTitle(menu))) continue;
         for (const auto& action : list)
             if (shortcut(action)) ShortcutRow(action.label.c_str(), action.shortcut);
         ImGui::EndTable();
     }
     if (BeginShortcutTable("Agents drawer")) {
-        for (const auto& entry : DrawerShortcuts)
-            ShortcutRow(entry.action, entry.shortcut);
+        for (const auto& binding : EditorKeyBindings())
+            if (binding.name && *binding.name) ShortcutRow(binding.name, binding.text);
         ImGui::EndTable();
     }
     ImGui::EndChild();
@@ -117,7 +109,7 @@ void DrawMenu(EditorMenu menu, std::span<const EditorAction> list) {
     bool submenuOpen = false;
     bool first = true;
     for (const auto& action : list) {
-        if (action.menu != menu) continue;
+        if (action.menu != menu || !action.inMenu) continue;
         const bool newSection = !first && section != action.section;
         if (first || newSection || submenu != action.submenu) {
             if (submenuOpen) ImGui::EndMenu();
@@ -170,15 +162,16 @@ bool BuildFailed(const EditorSnapshot& snapshot) {
     return result == EditorBuildResult::BuildFailed || result == EditorBuildResult::RefreshFailed;
 }
 } // namespace
-void EditorShell::Menu(const EditorActionContext& context, const std::string& projectName, EditorGitBar& gitBar) const {
+void EditorShell::Menu(const EditorActionContext& context, std::span<const EditorAction> list,
+                       const std::string& projectName, EditorGitBar& gitBar) const {
     auto& result = context.result;
-    const auto list = EditorActionList(context);
     if (ImGui::BeginMainMenuBar()) {
         ToolPixelText("Y", 2, ToolPalette::Accent, ImGui::GetFrameHeight());
         ImGui::SameLine();
         for (int index = 0; index < static_cast<int>(EditorMenu::Count); ++index) {
             const auto menu = static_cast<EditorMenu>(index);
-            if (std::ranges::none_of(list, [menu](const EditorAction& action) { return action.menu == menu; }))
+            if (std::ranges::none_of(
+                    list, [menu](const EditorAction& action) { return action.menu == menu && action.inMenu; }))
                 continue;
             if (!ImGui::BeginMenu(EditorMenuTitle(menu))) continue;
             DrawMenu(menu, list);

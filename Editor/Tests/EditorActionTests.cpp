@@ -7,6 +7,7 @@
 #include "Tests/Support/TempDirectory.h"
 #include "Editor/Application/EditorCommandState.h"
 #include "Editor/Ui/Commands/EditorActions.h"
+#include "Editor/Ui/Commands/EditorCommands.h"
 
 namespace {
 struct Fixture {
@@ -20,12 +21,13 @@ struct Fixture {
     EditorPreferences preferences;
     int fontSize = 100;
     EditorShellResult result;
-    [[nodiscard]] std::vector<EditorAction> List(bool offerProjectList = false) {
+    [[nodiscard]] std::vector<EditorAction> List(bool offerProjectList = false, bool drawerOpen = false) {
         return EditorActionList({.snapshot = snapshot,
                                  .actions = actions,
                                  .preferences = preferences,
                                  .fontSize = fontSize,
                                  .offerProjectList = offerProjectList,
+                                 .agentsDrawerOpen = drawerOpen,
                                  .result = result});
     }
 };
@@ -80,9 +82,11 @@ TEST_CASE("Editor.Actions.RunWritesTheirRequest", "[engine-editor]") {
     const auto* console = Find(list, EditorMenu::View, "Console");
     REQUIRE(console);
     CHECK(std::string(console->shortcut) == "Ctrl+`");
-    const bool before = fixture.preferences.Visible(EditorPanel::Console);
-    console->run();
-    CHECK(fixture.preferences.Visible(EditorPanel::Console) != before);
+    console->run(); // A bottom panel: toggled and focused by the workspace, like Ctrl+`
+    CHECK(fixture.result.bottomPanel == EditorPanel::Console);
+    const bool before = fixture.preferences.Visible(EditorPanel::Inspector);
+    Find(list, EditorMenu::View, "Inspector")->run();
+    CHECK(fixture.preferences.Visible(EditorPanel::Inspector) != before);
     Find(list, EditorMenu::View, "150%")->run();
     CHECK(fixture.fontSize == 150);
     Find(list, EditorMenu::Agent, "New agent")->run();
@@ -99,7 +103,9 @@ TEST_CASE("Editor.Actions.GitMenuFollowsAvailability", "[engine-editor]") {
     GitSnapshot git;
     fixture.snapshot.git = &git;
     git.availability = GitAvailability::NoRepository;
-    CHECK(gitItems() == 0); // The Git bar offers to create one
+    const auto none = fixture.List();
+    CHECK(Find(none, EditorMenu::Git, "Changes")->enabled); // The drawer offers to create a repository
+    CHECK(Find(none, EditorMenu::Git, "Fetch")->reason.find("not a Git repository") != std::string::npos);
     git.availability = GitAvailability::Missing;
     const auto list = fixture.List();
     const auto* fetch = Find(list, EditorMenu::Git, "Fetch");
@@ -124,4 +130,59 @@ TEST_CASE("Editor.Actions.GuidePrefersTheEnginesOwnCopy", "[engine-editor]") {
     std::filesystem::create_directories(engine.Path() / "Docs" / "Editor");
     std::ofstream(engine.Path() / "Docs" / "Editor" / "Usage.md") << "# Editor\n";
     CHECK(EditorGuideLocation(engine.Path()) == engine.Path() / "Docs" / "Editor" / "Usage.md");
+}
+
+TEST_CASE("Editor.Actions.EveryKeyRunsOneAction", "[engine-editor]") {
+    Fixture fixture;
+    GitSnapshot git;
+    git.availability = GitAvailability::Ready;
+    fixture.snapshot.git = &git;
+    const auto list = fixture.List(false, true);
+    std::set<ImGuiKeyChord> chords;
+    for (const auto& binding : EditorKeyBindings()) {
+        INFO(binding.text);
+        CHECK(chords.insert(binding.chord).second);
+        CHECK(std::ranges::count(list, binding.key, &EditorAction::key) == 1);
+        // A key no menu shows is named in the shortcut list (or folded into the row of its first sibling).
+        const auto action = std::ranges::find(list, binding.key, &EditorAction::key);
+        if (action != list.end() && !action->inMenu) CHECK(binding.name);
+    }
+    for (const auto& action : list)
+        if (action.key != EditorKey::None) CHECK(std::string(action.shortcut) == EditorKeyInfo(action.key)->text);
+    // The commands' own table (toolbar tooltips) names the same keys.
+    for (const auto& command : EditorCommands()) {
+        if (!command.shortcut) continue;
+        const auto binding = std::ranges::find(EditorKeyBindings(), command.shortcut, &EditorKeyBinding::chord);
+        REQUIRE(binding != EditorKeyBindings().end());
+        CHECK(std::string(binding->text) == command.shortcutLabel);
+    }
+}
+
+TEST_CASE("Editor.Actions.ConsoleLeavesOnlyEditorWideKeys", "[engine-editor]") {
+    const auto reserved = EditorTerminalReservedKeys();
+    const auto has = [&](ImGuiKeyChord chord) { return std::ranges::find(reserved, chord) != reserved.end(); };
+    CHECK(has(ImGuiMod_Ctrl | ImGuiKey_J));
+    CHECK(has(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P));
+    CHECK(has(ImGuiMod_Ctrl | ImGuiKey_5));       // The Agents drawer's
+    CHECK_FALSE(has(ImGuiMod_Ctrl | ImGuiKey_P)); // Quick open stays out of a focused terminal
+    CHECK_FALSE(has(ImGuiKey_F5));                // Playback keys go to the shell
+}
+
+TEST_CASE("Editor.Actions.DrawerKeysNeedTheDrawer", "[engine-editor]") {
+    Fixture fixture;
+    const auto closed = fixture.List();
+    const auto next = std::ranges::find(closed, EditorKey::NextAgent, &EditorAction::key);
+    REQUIRE(next != closed.end());
+    CHECK_FALSE(next->enabled);
+    CHECK_FALSE(next->inMenu);
+    CHECK(Find(closed, EditorMenu::Agent, "Show agents"));
+    auto open = fixture.List(false, true);
+    CHECK(Find(open, EditorMenu::Agent, "Hide agents"));
+    std::ranges::find(open, EditorKey::Agent3, &EditorAction::key)->run();
+    CHECK(fixture.result.agents.chip == 2u);
+    fixture.snapshot.ready = true;
+    open = fixture.List(false, true);
+    Find(open, EditorMenu::Agent, "Send scene")->run(); // To the drawer's chosen agent
+    CHECK(fixture.result.agents.sendScene);
+    CHECK_FALSE(fixture.result.agent);
 }

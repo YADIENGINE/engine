@@ -83,8 +83,8 @@ private:
     // mark, anything else a window mark.
     void MarkOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions, float top,
                      EditorWorkspaceResult& result);
-    [[nodiscard]] bool Shortcuts(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                 EditorShellResult& result) const;
+    // Runs the action bound to each key pressed (EditorKeyBindings); true when a key was the editor's.
+    [[nodiscard]] bool Shortcuts(std::span<const EditorAction> list) const;
     void DockHost(ImVec2 position, ImVec2 size, bool reset, const EditorPreferences& preferences);
     // The Git drawer and the file open in it, above the panels: they never change the layout underneath.
     void GitOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions, const EditorShellResult& menu,

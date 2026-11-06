@@ -302,80 +302,21 @@ void EditorWorkspace::ToggleBottom(EditorPreferences& preferences, std::optional
         _focusBottom = target;
     }
 }
-bool EditorWorkspace::Shortcuts(const EditorSnapshot& snapshot, const EditorUiActions& actions,
-                                EditorShellResult& result) const {
+bool EditorWorkspace::Shortcuts(std::span<const EditorAction> list) const {
     constexpr auto route = ImGuiInputFlags_RouteGlobal;
-    // Register stable global routes even when a popup/text field temporarily blocks execution.
-    const bool palette = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_P, route);
-    const bool quickOpen = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_P, route);
-    const bool bottom = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_J, route);
-    const bool console = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_GraveAccent, route);
-    const bool agents = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_A, route);
-    const bool sendScene = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, route);
-    const bool newAgent = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_N, route);
-    // Keys that only mean something while the drawer is open; closed, they stay free for whatever else has the keys
-    const bool drawer = _agentsDrawer.IsOpen();
-    const bool nextAgent = drawer && ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_PageDown, route);
-    const bool previousAgent = drawer && ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_PageUp, route);
-    const bool switchView = drawer && ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_T, route);
-    std::optional<std::size_t> chip;
-    if (drawer)
-        for (int index = 0; index < 9; ++index)
-            if (ImGui::Shortcut(ImGuiMod_Ctrl | static_cast<ImGuiKey>(ImGuiKey_1 + index), route))
-                chip = static_cast<std::size_t>(index);
-    const bool primary = ImGui::Shortcut(ImGuiKey_F5, route);
-    const bool git = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_G, route);
-    const auto& io = ImGui::GetIO();
     const bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
-    // The Console owns ordinary chords; global panel, palette and agent shortcuts remain available.
-    const bool blocked = popup || io.WantTextInput || _consoleFocused;
+    const bool typing = ImGui::GetIO().WantTextInput;
+    const bool drawer = _agentsDrawer.IsOpen();
     bool consumed = false;
-    if (palette && !popup) {
-        result.openCommands = true;
+    for (const auto& binding : EditorKeyBindings()) {
+        // Routes are registered every frame, even when a popup or text field holds the key back this time.
+        if (binding.scope == EditorKeyScope::AgentsDrawer && !drawer) continue;
+        if (!ImGui::Shortcut(binding.chord, route) || popup) continue;
+        if (binding.scope == EditorKeyScope::OutsideConsole && _consoleFocused) continue;
+        if (binding.scope == EditorKeyScope::Playback && (typing || _consoleFocused)) continue;
         consumed = true;
-    }
-    if (console && !popup) {
-        result.bottomPanel = EditorPanel::Console;
-        consumed = true;
-    }
-    if (!popup) {
-        if (agents) result.agents.toggle = true;
-        if (newAgent) result.agents.add = true;
-        if (sendScene && snapshot.ready) {
-            if (drawer)
-                result.agents.sendScene = true;
-            else
-                result.agent = EditorAgentRequest::SendScene;
-        }
-        if (nextAgent || previousAgent) result.agents.step = nextAgent ? 1 : -1;
-        if (switchView) result.agents.switchView = true;
-        result.agents.chip = chip;
-        consumed =
-            consumed || agents || newAgent || sendScene || nextAgent || previousAgent || switchView || chip.has_value();
-    }
-    if (git && !popup && snapshot.git) {
-        result.git.toggle = GitDrawerTab::Changes;
-        consumed = true;
-    }
-    if (quickOpen && !popup && !_consoleFocused) {
-        result.openQuick = true;
-        consumed = true;
-    }
-    if (bottom && !popup && !io.WantTextInput) {
-        result.toggleBottom = true;
-        consumed = true;
-    }
-    if (primary && !blocked) {
-        const auto command = EditorPrimaryCommand(snapshot);
-        if (snapshot.capabilities.Can(command)) actions.command(command);
-        consumed = true;
-    }
-    for (const auto& command : EditorCommands()) {
-        if (!command.shortcut) continue;
-        if (ImGui::Shortcut(command.shortcut, route) && !blocked) {
-            if (snapshot.capabilities.Can(command.command)) actions.command(command.command);
-            consumed = true;
-        }
+        const auto action = std::ranges::find(list, binding.key, &EditorAction::key);
+        if (action != list.end() && action->enabled && action->run) action->run();
     }
     return consumed;
 }
@@ -637,11 +578,13 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                                       .fontSize = fontSize,
                                       .maximized = _maximized,
                                       .offerProjectList = _offerProjectList,
+                                      .agentsDrawerOpen = _agentsDrawer.IsOpen(),
                                       .engineDirectory = _engineDirectory,
                                       .result = menu};
-    _shell.Menu(context, _projectName, _gitBar);
+    const auto list = EditorActionList(context);
+    _shell.Menu(context, list, _projectName, _gitBar);
     result.cancelViewportInput |= menu.dialogOpen;
-    result.cancelViewportInput |= Shortcuts(snapshot, actions, menu);
+    result.cancelViewportInput |= Shortcuts(list);
     if (std::exchange(_openQuickOpen, false)) menu.openQuick = true; // The toolbar's search box, last frame
     const bool palette = _palette.Draw(context);
     _showShortcuts = menu.showShortcuts;

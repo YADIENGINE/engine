@@ -1,6 +1,7 @@
 #pragma once
 #include <imgui.h>
 #include <optional>
+#include <span>
 #include <string>
 #include "Editor/Application/EditorPresentation.h"
 #include "Editor/Internals/Agent/SessionActivity.h"
@@ -40,12 +41,14 @@ struct EditorShellResult {
     EditorGitBarResult git;
 };
 
+struct EditorAction;
 struct EditorActionContext;
 
 class EditorShell {
 public:
-    // The menu bar, drawn from EditorActionList; its requests go to context.result.
-    void Menu(const EditorActionContext& context, const std::string& projectName, EditorGitBar& gitBar) const;
+    // The menu bar, drawn from this frame's EditorActionList; its requests go to context.result.
+    void Menu(const EditorActionContext& context, std::span<const EditorAction> list, const std::string& projectName,
+              EditorGitBar& gitBar) const;
     [[nodiscard]] float Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
                                 float width, bool& marking, EditorToolbarSearch& search, const EditorAgentStatus& agent,
                                 EditorAgentActivity& activity) const;
