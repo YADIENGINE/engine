@@ -119,6 +119,7 @@ engine_tests(EngineSimulationTests
         Simulation/RngTests.cpp
         Simulation/RunnerTests.cpp
         Simulation/ScenarioTests.cpp
+        Simulation/StateFieldsTests.cpp
         Simulation/TapeTests.cpp
     LINKS EngineToySimulation
 )

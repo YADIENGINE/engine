@@ -119,11 +119,10 @@ void RecipeScrollerSimulation::Step(const SimulationStep& step) {
         _awake[i] = _awake[i] || _camera.Shows({EnemyX[i], ShipY}, EnemyRadius);
 }
 void RecipeScrollerSimulation::State(StateVisitor& state) const {
-    state.Field("shipX", _shipX.Current());
+    state.Field("shipX", _shipX);
     state.Field("scrolledTo", _scrolledTo);
-    state.Group("camera", [&] { _camera.State(state); });
-    for (std::size_t i = 0; i < _awake.size(); ++i)
-        state.Group("enemy", i, [&] { state.Field("awake", _awake[i]); });
+    state.Field("camera", _camera);
+    state.Field("awake", _awake); // awake[0], awake[1], ...
 }
 SimulationDefinition RecipeScrollerDefinition() {
     SimulationDefinition definition;

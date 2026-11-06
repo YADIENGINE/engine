@@ -4,7 +4,7 @@
 #include <optional>
 #include <span>
 #include <vector>
-#include "Animation/PoseFields.h"
+#include "Animation/Pose.h"
 #include "Camera/CameraPose.h"
 #include "Camera/CameraSettings.h"
 #include "Camera/CameraTarget.h"

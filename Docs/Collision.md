@@ -71,7 +71,7 @@ colliders stop no light unless you ask: [Lighting](Graphics/Lighting.md#shadows)
 it in `State`:
 
 ```cpp
-state.Group("collision", [&] { _collision.State(state); });
+state.Field("collision", _collision);
 ```
 
 `sim state` then lists every collider, as `collision.collider[N].position.x` and so on. A world is not a hidden input, because

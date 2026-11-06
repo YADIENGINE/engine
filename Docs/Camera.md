@@ -111,7 +111,7 @@ in the simulation, and replays must reproduce it:
 
 - Keep a `Camera2D` member; its viewport is the game's canvas size, a constant of the game.
 - `Follow` and `Update(step.seconds)` in `Step`. The math is the same as in a view, deterministic on fixed steps.
-- Name it in `State`: `state.Group("camera", [&] { _camera.State(state); });`. Settings are data; if the rules change
+- Name it in `State`: `state.Field("camera", _camera);`, or keep it in the simulation's [state struct](Simulation.md#state). Settings are data; if the rules change
   them (moving limits), derive them from state the simulation already names.
 - Read `VisibleArea()` or `Shows(point, radius)` in the rules.
 - Draw with `camera.View(runner.Alpha())`, between the last two steps, as `StepSmoothed` does.

@@ -15,16 +15,12 @@ class Painter;
 
 enum class RecipeFighterButton { Walk, Attack };
 
-// What animates. The default values are the rest pose, and Fields makes blending and State follow from one list.
+// What animates. The default values are the rest pose; every field blends and reaches State by its own name.
 struct RecipeFighterPose {
     float arm = 0.0f;
     float bob = 0.0f;
     Color4 tint{120, 220, 255, 255};
     int frame = 0;
-    static constexpr auto Fields() {
-        return PoseFields(PoseField("arm", &RecipeFighterPose::arm), PoseField("bob", &RecipeFighterPose::bob),
-                          PoseField("tint", &RecipeFighterPose::tint), PoseField("frame", &RecipeFighterPose::frame));
-    }
 };
 
 // The rules, in Game/Simulation. They decide what plays; the animator keeps track of how far it is.

@@ -7,7 +7,6 @@ class TimeScale;
 
 struct RecipeSwingPose {
     float arm = 0.0f;
-    static constexpr auto Fields() { return PoseFields(PoseField("arm", &RecipeSwingPose::arm)); }
 };
 
 // A view that names what events look like, and lets an animation's moments play them.

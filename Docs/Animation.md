@@ -21,7 +21,7 @@ menu. Design record: `Docs/Design/README.md` → D28 (engine repository).
 | --- | --- |
 | `Animation/Tween.h`, `TweenSet.h` | `StepTween`, `SecondsTween`, `UpdateAll`; `StepTweenSet`, `SecondsTweenSet` |
 | `Animation/Track.h` | `StepTrack`, `SecondsTrack`: a value through keys |
-| `Animation/PoseFields.h` | `PoseFields`, `PoseField`: what a pose is made of |
+| `Animation/Pose.h` | `AnimationPose`, `MixPose`: what a pose is |
 | `Animation/Clip.h`, `ClipSet.h` | `StepClip`, `SecondsClip`; `StepClipSet`, `SecondsClipSet` |
 | `Animation/Animator.h` | `StepAnimator`, `SecondsAnimator` |
 | `Animation/Timeline.h` | `StepTimeline`, `SecondsTimeline`: named moments. `StepsIn` |
@@ -123,8 +123,9 @@ position jump there. `Curve::Hold` stays until the key, then jumps.
 
 ## Clips and poses
 
-A pose is your own plain struct of what animates. It lists its fields once, and blending and `State` follow from the list. Its default values
-are the rest pose. A field missing from `Fields` does not blend and does not reach `State`, so list them all.
+A pose is your own plain struct of what animates. Every field blends and reaches `State` by its own name, in declaration order; there is
+no list to keep (fields are read from the struct, [`Utilities/Reflection.h`](../Core/Utilities/Reflection.h)). Its default values are the
+rest pose.
 
 ```cpp
 struct BossPose {
@@ -132,12 +133,13 @@ struct BossPose {
     Float2 offset{};
     Color4 tint{255, 255, 255, 255};
     int frame = 0;
-    static constexpr auto Fields() {
-        return PoseFields(PoseField("arm", &BossPose::arm), PoseField("offset", &BossPose::offset),
-                          PoseField("tint", &BossPose::tint), PoseField("frame", &BossPose::frame));
-    }
 };
 ```
+
+Fields are numbers, enums and bools (these hold, then change at the middle of a fade), types with a `Mix(a, b, t)` such as `Float2` and
+`Color4`, or other poses. A pose is a plain struct: public fields, no constructor or base class, declared outside any function and
+anonymous namespace. Something that should not animate does not belong in the pose; keep it beside it. A tween of a pose
+(`SecondsTween<CameraPose>`) blends every field the same way.
 
 A clip gives some of those fields tracks, and has named moments. A field with no track stays at its default. By default the last key or moment marks
 the end.
@@ -175,7 +177,7 @@ void Step(const SimulationStep&) {
         if (moment == "fire") Fire();
     });
 }
-void State(StateVisitor& state) const { state.Group("animator", [&] { _animator.State(state); }); }
+void State(StateVisitor& state) const { state.Field("animator", _animator); }
 
 // The view:
 const BossPose pose = simulation.Pose(runner.Alpha());

@@ -5,9 +5,17 @@
 
 StateDump::StateDump()
     : _result(JsonIO::Document::MakeObject()) {}
+namespace {
+// An unnamed value or group is its enclosing group itself: "items[2]" rather than "items[2].".
+void Append(std::string& path, std::string_view name) {
+    if (name.empty() && !path.empty() && path.back() == '.') path.pop_back();
+    path += name;
+}
+} // namespace
+
 void StateDump::Value(std::string_view name, const StateValue& value) {
     auto path = _prefix;
-    path += name;
+    Append(path, name);
     _result[std::move(path)] = std::visit(
         [](const auto& item) -> JsonIO::Document {
             if constexpr (std::is_same_v<std::decay_t<decltype(item)>, float>)
@@ -19,7 +27,7 @@ void StateDump::Value(std::string_view name, const StateValue& value) {
 }
 void StateDump::BeginGroup(std::string_view name, std::int64_t index) {
     _prefixEnds.push_back(_prefix.size());
-    _prefix += name;
+    Append(_prefix, name);
     if (index >= 0) _prefix += '[' + std::to_string(index) + ']';
     _prefix += '.';
 }

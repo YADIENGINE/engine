@@ -14,13 +14,13 @@
 #include "Simulation/SimulationStep.h"
 #include "Simulation/StateVisitor.h"
 
-// An event type: a plain value naming itself. Its fields are optional; tools show them (sim run, scenario checks):
+// An event type: a plain value naming itself. Tools show its fields by their own names (sim run, scenario checks):
 //     struct Hit {
 //         static constexpr std::string_view Name = "Hit";
 //         Float2 at;
 //         int enemy = 0;
-//         void State(StateVisitor& state) const { state.Field("at", at); state.Field("enemy", enemy); }
 //     };
+// A plain struct shows every field (Utilities/Reflection.h); any other type shows what its State(visitor) writes.
 template <class T>
 concept SimulationEventType = std::copy_constructible<T> && requires {
     { T::Name } -> std::convertible_to<std::string_view>;
@@ -82,7 +82,10 @@ public:
     }
     void FieldsOf(std::uint64_t sequence, StateVisitor& fields) const override {
         const auto visit = [&fields](const auto& one) {
-            if constexpr (requires { one.State(fields); }) one.State(fields);
+            if constexpr (requires { one.State(fields); })
+                one.State(fields);
+            else if constexpr (PlainStruct<std::remove_cvref_t<decltype(one)>>)
+                fields.Fields(one);
         };
         const E& event = At(sequence).event;
         if constexpr (SimulationEventType<E>)

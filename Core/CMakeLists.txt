@@ -97,6 +97,12 @@ set_target_properties(EngineNoise PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EX
 engine_simulation_flags(EngineNoise)
 engine_warnings(EngineNoise)
 
+# Field reflection for plain structs (Utilities/Reflection.h): PFR, header only. The one vendored library a public header
+# includes, because poses and State walk a game's own structs inside templates; only Reflection.h names it.
+add_library(EngineReflection INTERFACE)
+target_include_directories(EngineReflection SYSTEM INTERFACE "${ENGINE_THIRD_PARTY_DIR}/pfr/include")
+target_compile_features(EngineReflection INTERFACE cxx_std_20)
+
 # Fixed-step simulation, tapes, hashes and scenarios (Docs/Simulation.md). It links nothing that draws or plays sound, so
 # simulation code that reaches them fails to build.
 add_library(EngineSimulation STATIC
@@ -116,7 +122,7 @@ add_library(EngineSimulation STATIC
 target_include_directories(EngineSimulation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineSimulation PUBLIC cxx_std_20)
 target_compile_definitions(EngineSimulation PRIVATE ENGINE_VERSION="${engineVersion}")
-target_link_libraries(EngineSimulation PUBLIC EngineJsonIO EngineNoise EngineTuning)
+target_link_libraries(EngineSimulation PUBLIC EngineJsonIO EngineNoise EngineReflection EngineTuning)
 set_target_properties(EngineSimulation PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_simulation_flags(EngineSimulation)
 engine_warnings(EngineSimulation)
@@ -148,6 +154,7 @@ add_library(EngineCamera STATIC
 )
 target_include_directories(EngineCamera PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(EngineCamera PUBLIC cxx_std_20)
+target_link_libraries(EngineCamera PUBLIC EngineReflection)
 set_target_properties(EngineCamera PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 engine_simulation_flags(EngineCamera)
 engine_warnings(EngineCamera)

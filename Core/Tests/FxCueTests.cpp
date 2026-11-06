@@ -702,7 +702,6 @@ TEST_CASE("Engine.Fx.CameraShotIsAnAnimationValue", "[engine][fx]") {
 TEST_CASE("Engine.Fx.AnimationMomentsCanPlayCues", "[engine][fx]") {
     struct Pose {
         float arm = 0.0f;
-        static constexpr auto Fields() { return PoseFields(PoseField("arm", &Pose::arm)); }
     };
     const SecondsClipSet<Pose> clips{
         {"attack",

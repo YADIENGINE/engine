@@ -37,8 +37,31 @@ A simulation is plain state. It has no window, drawing, audio, clock or global r
 `Game/Simulation/` and links only low-level engine targets, so reaching a renderer fails to build, and `python Engine
 check` names forbidden includes. It may read [tuning](Tuning.md) values.
 
-`Step` receives one fixed step: its index, its duration, each player's input and any commands. `State` names every field
+`Step` receives one fixed step: its index, its duration, each player's input and any commands. `State` visits every field
 that decides later steps, including each `Rng`. That one function feeds the hash, the readable dump and scenario checks.
+
+### State
+
+Keep what decides the game in one plain struct and visit it whole, so a field added later cannot be left out of the hash:
+
+```cpp
+struct RunState {
+    Rng rng;
+    StepSmoothed<float> shipX;   // Its current value
+    StepTween<float> recoil{0};  // Engine types with a State of their own write it as a group
+    std::vector<Enemy> enemies;  // enemies[0].hp, ...; Enemy is a plain struct too
+    int score = 0;
+};
+void MySimulation::State(StateVisitor& state) const { state.Fields(_run); }
+```
+
+`Fields` visits every field by its own name in declaration order; `Field("run", _run)` does the same inside a `run.` group.
+`Field` also takes lists (`std::vector`, `std::array`), `std::optional` and anything with a `State(visitor)` member, so
+`state.Field("camera", _camera)` is one line. A plain struct has public fields only, no constructor or base class, and is
+declared outside any function and anonymous namespace ([`Utilities/Reflection.h`](../Core/Utilities/Reflection.h)). What
+only the view uses (drawing caches, sound handles) stays outside the struct. Moving a field changes the hash; tapes belong
+to one build anyway. Writing fields one by one (`state.Field("score", _score)`) still works, for values computed from
+others or a class with private members.
 
 Rules that keep a run reproducible:
 
@@ -50,6 +73,7 @@ Rules that keep a run reproducible:
   uninitialized. `sim diverge` finds these.
 - **No threads, no clock.**
 - **State goes field by field.** Never hash raw struct bytes: measured, padding differs between two runs of one program.
+  `Fields` walks a struct's fields, which is not its bytes.
 - **Effects are requests.** To get hitstop or a sound, emit an [event](#events) the scene reads; the simulation does not
   call `TimeScale`, `Audio` or `Fx`.
 
@@ -84,14 +108,13 @@ state by up to one step, which is what makes it smooth. `Snap` teleports without
 ## Events
 
 A simulation tells its view what happened (a hit, a death, a pickup) by emitting events. The view plays sounds, effects
-and hitstop for them. An event is a plain value that names itself, and its fields are optional:
+and hitstop for them. An event is a plain value that names itself; tools show its fields by their own names:
 
 ```cpp
 struct Hit {
     static constexpr std::string_view Name = "Hit"; // How tools name it
     Float2 at;
     int enemy = 0;
-    void State(StateVisitor& state) const { state.Field("at", at); state.Field("enemy", enemy); }
 };
 using GameEvent = std::variant<Hit, Death, Pickup>; // One list keeps their order
 ```

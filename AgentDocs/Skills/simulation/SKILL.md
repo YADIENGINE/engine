@@ -47,8 +47,9 @@ Changed rules or tuning also make a tape differ, and then the mismatch is expect
 ## Rules when writing simulation code
 
 Everything that decides gameplay comes from `SimulationStart` or the steps. No drawing, audio, clocks or `<random>`; own an
-`Rng` from `start.seed`; name every deciding field in `State`, the `Rng` included. `python Engine check` reports forbidden
-includes. Add new state to `State` in the same change. A new button is a name in the definition's
+`Rng` from `start.seed`; keep every deciding field, the `Rng` included, in one plain struct and write
+`state.Fields(_run)` in `State` (`Docs/Simulation.md#state`), so new state is hashed without another line. `python Engine
+check` reports forbidden includes. A new button is a name in the definition's
 `settings.buttons` (its index is its value); the scene binds a key to it. Durations given in seconds become steps with
 `StepsIn(0.2, 60)` from `Animation/Timeline.h`. Sounds, effects and hitstop are the view's: emit an event
 (`Docs/Simulation.md#events`) and read it in the scene. Collision inside the rules: `AgentDocs/Skills/collision/SKILL.md`. Timing and animation inside the rules:

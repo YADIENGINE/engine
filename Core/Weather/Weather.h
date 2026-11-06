@@ -1,5 +1,5 @@
 #pragma once
-#include "Animation/PoseFields.h"
+#include "Animation/Pose.h"
 #include "Utilities/Geometry/Float2.h"
 
 // What the weather is right now: plain values that draw nothing. It is a pose, so a tween turns one weather into
@@ -26,14 +26,5 @@ struct Weather {
     [[nodiscard]] static constexpr Weather Blizzard() { return {.snow = 1.0f, .fog = 0.5f, .wind = {-220.0f, 0.0f}}; }
     [[nodiscard]] static constexpr Weather Mist() { return {.dust = 0.25f, .fog = 0.75f, .wind = {12.0f, 0.0f}}; }
     [[nodiscard]] static constexpr Weather StillAir() { return {.dust = 0.7f, .wind = {6.0f, 0.0f}}; }
-
-    static constexpr auto Fields() {
-        return PoseFields(PoseField("rain", &Weather::rain), PoseField("snow", &Weather::snow),
-                          PoseField("dust", &Weather::dust), PoseField("fog", &Weather::fog),
-                          PoseField("wind", &Weather::wind));
-    }
     friend constexpr bool operator==(const Weather&, const Weather&) = default;
 };
-
-// What tweens and clips use to go between two weathers.
-[[nodiscard]] inline Weather Mix(const Weather& from, const Weather& to, float t) { return MixPose(from, to, t); }

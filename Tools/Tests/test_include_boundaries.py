@@ -160,7 +160,7 @@ class BoundaryTests(unittest.TestCase):
         self.write("Engine/Core/Graphics/Atmosphere/Fog.cpp", '#include "Graphics/Paint/Painter.h"\n')
         self.write("Engine/Core/Weather/Sky.h", '#include "Graphics/Paint/Painter.h"\n')
         self.assertIn("Core/Weather includes", self.check()[0])
-        self.write("Engine/Core/Weather/Sky.h", '#include "Animation/PoseFields.h"\n')
+        self.write("Engine/Core/Weather/Sky.h", '#include "Animation/Pose.h"\n')
         self.write("Engine/Core/Graphics/Light/CollisionOccluders.cpp", '#include "Physics/Collision/Shape.h"\n')
         self.assertEqual(self.check(), [])
         self.write("Engine/Core/Graphics/Light/LightLayer.cpp", '#include "Physics/Collision/Shape.h"\n')
@@ -178,6 +178,15 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(self.check(), [])
         self.write("Game/Simulation/Rules.cpp", '#include "Camera/Debug/CameraGuides.h"\n')
         self.assertIn("simulation code", self.check()[0])
+
+    def test_only_the_reflection_facade_includes_pfr(self):
+        self.write("Engine/Core/Utilities/Reflection.h", '#include <pfr/core.hpp>\n#include <pfr/core_name.hpp>\n')
+        self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Simulation/StateVisitor.h", '#include <pfr.hpp>\n')
+        self.write("Game/Simulation/Run.h", '#include "pfr/core.hpp"\n')
+        found = self.check()
+        self.assertTrue(any("StateVisitor.h:1" in line and "Reflection.h" in line for line in found))
+        self.assertTrue(any("Game/Simulation/Run.h:1" in line and "Reflection.h" in line for line in found))
 
     def test_the_audio_library_stays_behind_audio_internals(self):
         self.write("Engine/Core/Audio/Internals/Graph.cpp", '#include <miniaudio.h>\n#include <extras/stb_vorbis.c>\n')

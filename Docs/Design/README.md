@@ -579,6 +579,29 @@ FastNoiseLite behind `Utilities/Math/NoiseField.h`: `NoiseSettings` and plain fu
 
 Out of scope: cellular options, 3D noise, noise in a simulation (needs a `StateHash` test when it comes).
 
+### D47. Plain-struct reflection: PFR
+Usage: [Simulation](../Simulation.md#state), [Animation](../Animation.md#clips-and-poses).
+
+Poses and simulation state are plain structs whose fields the engine reads by itself, with PFR (standalone, header only)
+behind `Utilities/Reflection.h`. No field lists: `PoseFields`, `PoseField` and `Fields()` are gone; `PoseFields.h` became
+`Pose.h`.
+
+1. *A forgotten field is a bug class worth a dependency:* it dropped silently out of blending and the replay hash.
+2. *One way to make a pose:* any plain struct of animatable fields; something that should not animate stays outside it.
+3. *PFR is the one third-party library a public header includes,* because templates walk a game's own structs. Only
+   `Reflection.h` names it; `check` refuses `pfr` includes elsewhere, games included.
+4. *Names are the struct's own;* dumps and hashes of engine poses did not change (same names, same order).
+5. *`MixValue` blends any plain struct field by field;* a type's own `Mix` wins. `Mix(Weather)` and `Mix(CameraShot)`
+   went, and `SecondsTween<CameraPose>` now compiles.
+6. *`StateVisitor` takes the whole state:* `Fields(struct)` at this level, `Field(name, struct)` as a group, plus lists,
+   `std::optional`, `StepSmoothed` (current value) and anything with `State(visitor)`. Pointers are refused.
+7. *An unnamed value is its group:* list items dump as `name[2]`, not `name[2].`.
+8. *Events without a `State` show their fields.*
+9. *Reflected types need external linkage:* MSVC reads names through an extern object, so a struct in a function or an
+   anonymous namespace stops the build. Documented, not worked around.
+
+Left out: a `Fields` macro of our own (repeats every name), private-member reflection, C++26 reflection (PFR moves to it).
+
 ## Remaining v1 work
 
 [v1 finalization](v1finalization.md).

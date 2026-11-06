@@ -6,32 +6,40 @@
 #include "Animation/Clip.h"
 #include "Animation/ClipSet.h"
 #include "Animation/Curve.h"
-#include "Animation/PoseFields.h"
+#include "Animation/Pose.h"
 #include "Animation/Track.h"
+#include "Animation/Tween.h"
+#include "Camera/CameraPose.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Geometry/Float2.h"
 
 using Catch::Approx;
 
-namespace {
-enum class Frame { Stand, StepLeft, StepRight };
-struct TestPose {
+// Outside the anonymous namespace: State reads field names from the type (Utilities/Reflection.h).
+enum class ClipTestFrame { Stand, StepLeft, StepRight };
+struct ClipTestPose {
     float arm = 0.5f;
     Float2 offset{};
     Color4 tint{10, 20, 30, 255};
     int frame = 0;
-    Frame mode = Frame::Stand;
-    static constexpr auto Fields() {
-        return PoseFields(PoseField("arm", &TestPose::arm), PoseField("offset", &TestPose::offset),
-                          PoseField("tint", &TestPose::tint), PoseField("frame", &TestPose::frame),
-                          PoseField("mode", &TestPose::mode));
-    }
+    ClipTestFrame mode = ClipTestFrame::Stand;
 };
+// A pose inside a pose blends field by field too.
+struct ClipTestRig {
+    ClipTestPose body;
+    float head = 0.0f;
+};
+struct ClipTestNotAPose {
+    float arm = 0.0f;
+    std::string label; // No "between" for text
+};
+
+namespace {
 struct FieldNames {
     std::vector<std::string> seen;
     void Field(std::string_view name, const auto&) { seen.emplace_back(name); }
 };
-std::vector<std::string> Met(const StepClip<TestPose>& clip, int before, int after, bool includeAfter = false) {
+std::vector<std::string> Met(const StepClip<ClipTestPose>& clip, int before, int after, bool includeAfter = false) {
     std::vector<std::string> names;
     clip.ForEachCrossed(before, after, [&](std::string_view name) { names.emplace_back(name); }, includeAfter);
     return names;
@@ -92,9 +100,9 @@ TEST_CASE("Engine.Track.HoldCurveAndWholeValuesHold", "[engine][animation]") {
     CHECK(frames.At(5) == 1);
     CHECK(frames.At(9) == 1);
     CHECK(frames.At(10) == 2);
-    const StepTrack<Frame> modes{{0, Frame::Stand}, {5, Frame::StepLeft}};
-    CHECK(modes.At(4) == Frame::Stand);
-    CHECK(modes.At(5) == Frame::StepLeft);
+    const StepTrack<ClipTestFrame> modes{{0, ClipTestFrame::Stand}, {5, ClipTestFrame::StepLeft}};
+    CHECK(modes.At(4) == ClipTestFrame::Stand);
+    CHECK(modes.At(5) == ClipTestFrame::StepLeft);
 }
 TEST_CASE("Engine.Track.WorksForEveryMixableType", "[engine][animation]") {
     const SecondsTrack<Float2> path{{0.0f, Float2{0.0f, 0.0f}}, {1.0f, Float2{10.0f, 20.0f}}};
@@ -107,39 +115,63 @@ TEST_CASE("Engine.Track.WorksForEveryMixableType", "[engine][animation]") {
     CHECK(precise.At(1.0f) == Approx(0.5));
 }
 TEST_CASE("Engine.Pose.MixesAndVisitsEveryField", "[engine][animation]") {
-    const TestPose a{.arm = 0.0f, .offset = {0.0f, 2.0f}, .tint = {0, 0, 0, 255}, .frame = 1, .mode = Frame::Stand};
-    const TestPose b{.arm = 1.0f, .offset = {4.0f, 2.0f}, .tint = {100, 0, 0, 255}, .frame = 3, .mode = Frame::StepRight};
-    const TestPose early = MixPose(a, b, 0.25f);
+    const ClipTestPose a{.arm = 0.0f, .offset = {0.0f, 2.0f}, .tint = {0, 0, 0, 255}, .frame = 1, .mode = ClipTestFrame::Stand};
+    const ClipTestPose b{.arm = 1.0f, .offset = {4.0f, 2.0f}, .tint = {100, 0, 0, 255}, .frame = 3, .mode = ClipTestFrame::StepRight};
+    const ClipTestPose early = MixPose(a, b, 0.25f);
     CHECK(early.arm == Approx(0.25f));
     CHECK(early.offset.x == Approx(1.0f));
     CHECK(early.tint.r == 25);
     CHECK(early.frame == 1); // Whole values change at the middle of a fade
-    CHECK(early.mode == Frame::Stand);
-    const TestPose late = MixPose(a, b, 0.75f);
+    CHECK(early.mode == ClipTestFrame::Stand);
+    const ClipTestPose late = MixPose(a, b, 0.75f);
     CHECK(late.frame == 3);
-    CHECK(late.mode == Frame::StepRight);
+    CHECK(late.mode == ClipTestFrame::StepRight);
 
     FieldNames names;
     VisitPose(names, a);
     CHECK(names.seen == std::vector<std::string>{"arm", "offset", "tint", "frame", "mode"});
 }
+TEST_CASE("Engine.Pose.IsAnyPlainStructOfAnimatableFields", "[engine][animation]") {
+    STATIC_REQUIRE(AnimationPose<ClipTestPose>);
+    STATIC_REQUIRE(AnimationPose<ClipTestRig>);
+    STATIC_REQUIRE(AnimationPose<CameraPose>);
+    STATIC_REQUIRE_FALSE(AnimationPose<ClipTestNotAPose>);
+    STATIC_REQUIRE_FALSE(AnimationPose<Float2>); // A value with its own Mix, not a struct of fields
+
+    const ClipTestRig a{.body = {.arm = 0.0f}, .head = 0.0f};
+    const ClipTestRig b{.body = {.arm = 1.0f, .frame = 4}, .head = 2.0f};
+    const ClipTestRig mixed = MixPose(a, b, 0.75f);
+    CHECK(mixed.body.arm == Approx(0.75f));
+    CHECK(mixed.body.frame == 4);
+    CHECK(mixed.head == Approx(1.5f));
+
+    FieldNames names;
+    VisitPose(names, a);
+    CHECK(names.seen == std::vector<std::string>{"body", "head"});
+
+    SecondsTween<CameraPose> camera{CameraPose{}};
+    camera.To(CameraPose{.center = {10.0f, 0.0f}, .zoom = 3.0f}, 1.0f);
+    camera.Update(0.5f);
+    CHECK(camera.Value().center.x == Approx(5.0f));
+    CHECK(camera.Value().zoom == Approx(2.0f));
+}
 TEST_CASE("Engine.Clip.SamplesItsTracksOverTheRestPose", "[engine][animation]") {
-    const auto clip = StepClip<TestPose>{}
-                          .Track(&TestPose::offset, {{0, Float2{0.0f, 0.0f}}, {10, Float2{10.0f, 0.0f}}})
-                          .Track(&TestPose::frame, {{0, 0}, {5, 7}});
+    const auto clip = StepClip<ClipTestPose>{}
+                          .Track(&ClipTestPose::offset, {{0, Float2{0.0f, 0.0f}}, {10, Float2{10.0f, 0.0f}}})
+                          .Track(&ClipTestPose::frame, {{0, 0}, {5, 7}});
     CHECK(clip.Length() == 10);
-    const TestPose pose = clip.Sample(5);
+    const ClipTestPose pose = clip.Sample(5);
     CHECK(pose.offset.x == Approx(5.0f));
     CHECK(pose.frame == 7);
     CHECK(pose.arm == 0.5f); // No track: the pose's own default
     CHECK(clip.Sample(6, 0.5f).offset.x == Approx(5.5f));
 }
 TEST_CASE("Engine.Clip.ALaterTrackForOneFieldWins", "[engine][animation]") {
-    const auto clip = StepClip<TestPose>{}.Track(&TestPose::arm, {{0, 1.0f}}).Track(&TestPose::arm, {{0, 2.0f}});
+    const auto clip = StepClip<ClipTestPose>{}.Track(&ClipTestPose::arm, {{0, 1.0f}}).Track(&ClipTestPose::arm, {{0, 2.0f}});
     CHECK(clip.Sample(0).arm == 2.0f);
 }
 TEST_CASE("Engine.Clip.MomentsAreKeptInOrderAndChecked", "[engine][animation]") {
-    auto clip = StepClip<TestPose>{}.Moment("late", 20).Moment("early", 5).Moment("alsoLate", 20);
+    auto clip = StepClip<ClipTestPose>{}.Moment("late", 20).Moment("early", 5).Moment("alsoLate", 20);
     CHECK(clip.Length() == 20);
     CHECK(Met(clip, 0, 100) == std::vector<std::string>{"early", "late", "alsoLate"}); // As declared at one position
     CHECK(Met(clip, 5, 6) == std::vector<std::string>{"early"});
@@ -151,29 +183,29 @@ TEST_CASE("Engine.Clip.MomentsAreKeptInOrderAndChecked", "[engine][animation]") 
     CHECK(clip.Moments().size() == 3); // A refused moment leaves the clip as it was
 }
 TEST_CASE("Engine.Clip.LengthCannotCutItsContent", "[engine][animation]") {
-    auto clip = StepClip<TestPose>{}.Track(&TestPose::arm, {{0, 0.0f}, {10, 1.0f}});
+    auto clip = StepClip<ClipTestPose>{}.Track(&ClipTestPose::arm, {{0, 0.0f}, {10, 1.0f}});
     CHECK_THROWS(clip.Length(5));
     CHECK_NOTHROW(clip.Length(30));
     CHECK(clip.Length() == 30);
     CHECK_THROWS(clip.Moment("beyond", 31));
-    CHECK_THROWS(clip.Track(&TestPose::frame, {{40, 1}}));
+    CHECK_THROWS(clip.Track(&ClipTestPose::frame, {{40, 1}}));
     CHECK_THROWS(clip.Length(-1));
 }
 TEST_CASE("Engine.Clip.ALoopingClipWraps", "[engine][animation]") {
-    const auto clip = StepClip<TestPose>{}.Track(&TestPose::arm, {{0, 0.0f}, {10, 1.0f}}).Looping();
+    const auto clip = StepClip<ClipTestPose>{}.Track(&ClipTestPose::arm, {{0, 0.0f}, {10, 1.0f}}).Looping();
     CHECK(clip.IsLooping());
     CHECK(clip.Sample(13).arm == Approx(0.3f));
     CHECK(clip.Sample(9, 0.5f).arm == Approx(0.85f));
 }
 TEST_CASE("Engine.ClipSet.RefusesInvalidDataAndSharesOnCopy", "[engine][animation]") {
-    const auto idle = StepClip<TestPose>{}.Track(&TestPose::arm, {{0, 0.0f}, {10, 1.0f}}).Looping();
-    using Entries = std::vector<ClipSetEntry<TestPose, int>>;
-    CHECK_THROWS(StepClipSet<TestPose>(Entries{}));
-    CHECK_THROWS(StepClipSet<TestPose>{{"", idle}});
-    CHECK_THROWS(StepClipSet<TestPose>{{"idle", idle}, {"idle", idle}});
-    CHECK_THROWS(StepClipSet<TestPose>{{"empty", StepClip<TestPose>{}.Looping()}});
+    const auto idle = StepClip<ClipTestPose>{}.Track(&ClipTestPose::arm, {{0, 0.0f}, {10, 1.0f}}).Looping();
+    using Entries = std::vector<ClipSetEntry<ClipTestPose, int>>;
+    CHECK_THROWS(StepClipSet<ClipTestPose>(Entries{}));
+    CHECK_THROWS(StepClipSet<ClipTestPose>{{"", idle}});
+    CHECK_THROWS(StepClipSet<ClipTestPose>{{"idle", idle}, {"idle", idle}});
+    CHECK_THROWS(StepClipSet<ClipTestPose>{{"empty", StepClip<ClipTestPose>{}.Looping()}});
 
-    const StepClipSet<TestPose> clips{{"idle", idle}, {"point", StepClip<TestPose>{}.Track(&TestPose::frame, {{0, 4}})}};
+    const StepClipSet<ClipTestPose> clips{{"idle", idle}, {"point", StepClip<ClipTestPose>{}.Track(&ClipTestPose::frame, {{0, 4}})}};
     CHECK(clips.Count() == 2);
     CHECK(clips.Contains("point"));
     CHECK_FALSE(clips.Contains("nope"));

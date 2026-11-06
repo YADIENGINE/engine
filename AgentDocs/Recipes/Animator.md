@@ -2,7 +2,7 @@
 
 A character with clips that fade into each other, a moment that decides gameplay and a tween for a value no clip knows, inside a simulation that replays exactly.
 
-APIs: Core/Animation/Animator.h, Core/Animation/Clip.h, Core/Animation/ClipSet.h, Core/Animation/PoseFields.h, Core/Animation/Tween.h. Concepts: [Animation](../../Docs/Animation.md).
+APIs: Core/Animation/Animator.h, Core/Animation/Clip.h, Core/Animation/ClipSet.h, Core/Animation/Pose.h, Core/Animation/Tween.h. Concepts: [Animation](../../Docs/Animation.md).
 
 Put the rules in Game/Simulation/ and implement `RegisterSimulations` there: the headers are available and need no CMake line. Views and scenes stay outside that folder. This example keeps them in one file only to read in one place.
 
@@ -24,16 +24,12 @@ class Painter;
 
 enum class RecipeFighterButton { Walk, Attack };
 
-// What animates. The default values are the rest pose, and Fields makes blending and State follow from one list.
+// What animates. The default values are the rest pose; every field blends and reaches State by its own name.
 struct RecipeFighterPose {
     float arm = 0.0f;
     float bob = 0.0f;
     Color4 tint{120, 220, 255, 255};
     int frame = 0;
-    static constexpr auto Fields() {
-        return PoseFields(PoseField("arm", &RecipeFighterPose::arm), PoseField("bob", &RecipeFighterPose::bob),
-                          PoseField("tint", &RecipeFighterPose::tint), PoseField("frame", &RecipeFighterPose::frame));
-    }
 };
 
 // The rules, in Game/Simulation. They decide what plays; the animator keeps track of how far it is.
@@ -132,8 +128,8 @@ void RecipeFighterSimulation::Step(const SimulationStep& step) {
 }
 void RecipeFighterSimulation::State(StateVisitor& state) const {
     state.Field("hits", _hits);
-    state.Group("animator", [&] { _animator.State(state); });
-    state.Group("recoil", [&] { _recoil.State(state); });
+    state.Field("animator", _animator); // What its own State writes, as a group
+    state.Field("recoil", _recoil);
 }
 SimulationDefinition RecipeFighterDefinition() {
     SimulationDefinition definition;

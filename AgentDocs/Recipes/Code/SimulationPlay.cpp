@@ -31,32 +31,28 @@ InputBindings MakeBindings() {
 } // namespace
 
 RecipePlaySimulation::RecipePlaySimulation(const SimulationStart& start)
-    : _rng(start.seed)
-    , _rockX(_rng.Float(0.0f, FieldWidth)) {}
+    : _run{.rng = Rng(start.seed)} {
+    _run.rockX = _run.rng.Float(0.0f, FieldWidth);
+}
 void RecipePlaySimulation::Step(const SimulationStep& step) {
     const auto& input = step.Player(0);
     float direction = 0.0f;
     if (input.Held(RecipeButton::Left)) direction -= 1.0f;
     if (input.Held(RecipeButton::Right)) direction += 1.0f;
-    _shipX.Set(_shipX.Current() + direction * ShipSpeed * step.seconds);
+    _run.shipX.Set(_run.shipX.Current() + direction * ShipSpeed * step.seconds);
     if (input.Pressed(RecipeButton::Fire)) {
-        if (std::fabs(_shipX.Current() - _rockX) < HitRange) {
-            ++_score;
-            _events.Emit(step, RecipeHit{_rockX});
-            _rockX = _rng.Float(0.0f, FieldWidth);
+        if (std::fabs(_run.shipX.Current() - _run.rockX) < HitRange) {
+            ++_run.score;
+            _events.Emit(step, RecipeHit{_run.rockX});
+            _run.rockX = _run.rng.Float(0.0f, FieldWidth);
         } else {
             _events.Emit(step, RecipeMiss{});
         }
     }
     for (const auto& command : step.commands)
-        if (command.id == "add_score") _score += static_cast<int>(command.value);
+        if (command.id == "add_score") _run.score += static_cast<int>(command.value);
 }
-void RecipePlaySimulation::State(StateVisitor& state) const {
-    state.Field("rng", _rng);
-    state.Field("shipX", _shipX.Current());
-    state.Field("rockX", _rockX);
-    state.Field("score", _score);
-}
+void RecipePlaySimulation::State(StateVisitor& state) const { state.Fields(_run); } // rng, shipX, rockX, score
 const SimulationSettings& RecipePlaySettings() {
     static const SimulationSettings settings = [] {
         SimulationSettings made;

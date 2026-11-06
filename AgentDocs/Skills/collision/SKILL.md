@@ -28,7 +28,7 @@ Bullets usually need no collider: they only ask, with `Sweep`. Give a collider t
 2. `Add` each collider with its `owner`, usually an index into the game's own list. Keep the returned id.
 3. Call `Move` wherever the game changes that position. The game owns positions; the world knows only what it is told.
 4. In a simulation, keep the world as a member and add it to `State`:
-   `state.Group("collision", [&] { _collision.State(state); });`
+   `state.Field("collision", _collision);`
 5. Test without a window: the [simulation skill](../simulation/SKILL.md). Check that a hit happens and also that a near miss
    does not.
 
@@ -55,7 +55,7 @@ public:
             return true;
         });
     }
-    void State(StateVisitor& state) const { state.Group("collision", [&] { _world.State(state); }); }
+    void State(StateVisitor& state) const { state.Field("collision", _world); }
 
 private:
     CollisionWorld _world;

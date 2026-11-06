@@ -18,14 +18,10 @@ struct ToyShot {
     int player = 0;
     void State(StateVisitor& state) const { state.Field("player", player); }
 };
-struct ToyHit {
+struct ToyHit { // A plain struct: tools show its fields by their own names
     static constexpr std::string_view Name = "Hit";
     int player = 0;
     float at = 0.0f;
-    void State(StateVisitor& state) const {
-        state.Field("player", player);
-        state.Field("at", at);
-    }
 };
 struct ToyBonus { // No fields
     static constexpr std::string_view Name = "Bonus";

@@ -57,6 +57,9 @@ PAINT_LIGHT_RULE = re.compile(r'''^\s*#\s*include\s*"Graphics/Light/[^"]*"''')
 # no audio code touches raylib. What a public audio header includes stays low enough for a tool to use it (Docs/Audio.md).
 AUDIO_LIBRARY_INCLUDE = re.compile(r'''^\s*#\s*include\s*[<"](?:[^>"/]*/)*(?:miniaudio\.h|stb_vorbis\.c)[>"]''')
 AUDIO_PUBLIC_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Animation/|Audio/)[^"]*"''')
+# PFR is the one vendored library a public header includes; only the engine's own facade names it, so the rest of the
+# engine and every game see plain-struct reflection in engine words (Docs/Simulation.md#state).
+REFLECTION_LIBRARY_INCLUDE = re.compile(r'''^\s*#\s*include\s*[<"](?:pfr\.hpp|pfr/[^>"]*)[>"]''')
 PLATFORM_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:[^>"/]*/)*(raylib|raymath|rlgl)\.h[>"]')
 
 
@@ -120,6 +123,7 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
         audio = source.is_relative_to(engine_root / CORE / "Audio")
         audio_internal = source.is_relative_to(engine_root / CORE / "Audio" / "Internals")
         engine_code = source.is_relative_to(engine_root)
+        reflection_facade = source == engine_root / CORE / "Utilities" / "Reflection.h"
         for number, line in enumerate(lines, 1):
             if atmosphere and ATMOSPHERE_RULE.match(line):
                 where = source.relative_to(project_root).as_posix()
@@ -133,6 +137,10 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: includes "{line.strip()}"; the audio library stays in'
                              ' Core/Audio/Internals')
+            if not reflection_facade and REFLECTION_LIBRARY_INCLUDE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: includes "{line.strip()}"; use Utilities/Reflection.h, the only file'
+                             ' that includes PFR')
             if audio and PLATFORM_INCLUDE.match(line):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Audio includes "{line.strip()}"; audio does not use raylib')

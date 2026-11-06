@@ -67,9 +67,8 @@ void RecipeShooterSimulation::State(StateVisitor& state) const {
     state.Field("playerX", _playerX);
     state.Field("score", _score);
     state.Field("touches", _touches);
-    for (std::size_t i = 0; i < _bullets.size(); ++i)
-        state.Group("bullet", i, [&] { state.Field("position", _bullets[i]); });
-    state.Group("collision", [&] { _collision.State(state); }); // Dumps show colliders beside the game's positions
+    state.Field("bullet", _bullets);       // bullet[0].x, bullet[0].y, ...
+    state.Field("collision", _collision); // Dumps show colliders beside the game's positions
 }
 SimulationDefinition RecipeShooterDefinition() {
     SimulationDefinition definition;

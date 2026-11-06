@@ -155,7 +155,7 @@ TEST_CASE("Engine.Fx.CameraShotRotationUsesClockwiseRadiansAndWeight", "[engine]
     CHECK(right.x == Approx(Area.Center().x));
     CHECK(right.y == Approx(Area.Center().y + 10.0f));
     CHECK(ShotCamera({.rotation = Radians(90.0f)}, Area, Area).rotation == 0.0f);
-    CHECK(Mix(CameraShot{}, shot, 0.5f).rotation == Approx(Pi / 2.0f));
+    CHECK(MixPose(CameraShot{}, shot, 0.5f).rotation == Approx(Pi / 2.0f));
 }
 
 TEST_CASE("Engine.Fx.CameraShotsFrameTheirBoundsInsideTheSafeArea", "[engine][fx]") {

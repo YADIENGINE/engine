@@ -56,8 +56,8 @@ void RecipeFighterSimulation::Step(const SimulationStep& step) {
 }
 void RecipeFighterSimulation::State(StateVisitor& state) const {
     state.Field("hits", _hits);
-    state.Group("animator", [&] { _animator.State(state); });
-    state.Group("recoil", [&] { _recoil.State(state); });
+    state.Field("animator", _animator); // What its own State writes, as a group
+    state.Field("recoil", _recoil);
 }
 SimulationDefinition RecipeFighterDefinition() {
     SimulationDefinition definition;

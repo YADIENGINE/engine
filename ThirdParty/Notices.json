@@ -61,6 +61,13 @@
       "license": "NotoSans/OFL.txt"
     },
     {
+      "name": "PFR",
+      "version": "2.3.2",
+      "text": "Notices/pfr.txt",
+      "pin": { "file": "README.md", "contains": "| `pfr/` | {version} |" },
+      "license": "pfr/LICENSE_1_0.txt"
+    },
+    {
       "name": "raylib",
       "version": "5.5",
       "text": "Notices/raylib.txt",

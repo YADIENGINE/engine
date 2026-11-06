@@ -27,11 +27,11 @@ If the design is in seconds, write `StepsIn(1.5, 60)` in a simulation.
 
 1. **A tween** is the value. `scale.To(1.3f, 0.1f, Curve::OutQuad).Then(1.0f, 0.2f);`, then read it like a float. One `Update` per frame:
    `UpdateAll(deltaSeconds, a, b)` or `UpdateAll(deltaSeconds, enemies, &Enemy::scale)`. React to an end with `if (scale.JustFinished())`.
-2. **A pose** is a plain struct whose defaults are the rest pose, with a `Fields()` listing every field.
+2. **A pose** is a plain struct whose defaults are the rest pose. Every field blends and reaches `State` by itself; there is no field list.
 3. **Clips** go in a function returning a `StepClipSet<Pose>`, not a global: bad data then throws when the simulation is created, with a message.
 4. **An animator** is built from the set and a first clip. Each step, say what should show and advance:
    `_animator.Play("walk", {.blend = 8});`, then `_animator.Step(onMoment);`. Calling `Play` with the current clip does nothing.
-5. **In a simulation**, write state: `state.Group("animator", [&] { _animator.State(state); });`, the same for each tween and tween set. Timelines,
+5. **In a simulation**, keep animators and tweens in the state struct, or write `state.Field("animator", _animator);`. Timelines,
    clips and poses are constant or worked out, so they stay out. A timeline's clock is a field and goes in.
 6. **In the view**, draw between steps with `_animator.Pose(alpha)`, `tween.Value(alpha)`, `timeline.Progress("from", "to", cycle, alpha)`, with
    `alpha` from `runner.Alpha()`.
@@ -44,7 +44,8 @@ If the design is in seconds, write `StepsIn(1.5, 60)` in a simulation.
 - **`auto x = enemy.scale` copies the tween.** Write `float x = enemy.scale`.
 - **There is no `tweens.To(enemy.scale, ...)`, on purpose.** Do not add a pointer to a value in a list: a vector that grows moves them all.
 - **Do not store a pose or a `Play` result in `State`.** Write the animator; the pose is worked out from it.
-- **A field missing from `Fields()` does not blend and does not reach `State`.** It compiles, and hashes cannot show it.
+- **A pose or state struct declared in a function or an anonymous namespace stops the build** at `do_not_use_PFR_with_local_types`.
+  Field names are read from the type: move the struct to a header or out of the anonymous namespace.
 - **Moving a timeline's clock first** skips a moment at 0 and meets the others one step early. Ask, then `++age`.
 - **`Wrap` and looping clips never meet a moment at the very end:** it is the same instant as 0. Put that action at 0.
 - **`moment == "fire"` with a misspelled name never matches and does not throw.** A scenario should see each moment's effect.

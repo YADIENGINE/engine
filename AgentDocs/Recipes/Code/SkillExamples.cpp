@@ -33,7 +33,7 @@ public:
             return true;
         });
     }
-    void State(StateVisitor& state) const { state.Group("collision", [&] { _world.State(state); }); }
+    void State(StateVisitor& state) const { state.Field("collision", _world); }
 
 private:
     CollisionWorld _world;

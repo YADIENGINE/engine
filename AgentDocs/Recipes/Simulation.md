@@ -31,13 +31,21 @@ enum class RecipeButton { Left, Right, Fire };
 // What the rules tell the view happened: plain values. The view plays sounds and effects for them.
 struct RecipeHit {
     static constexpr std::string_view Name = "Hit"; // How tools name it: sim run --events, expectEvent
-    float x = 0.0f;
-    void State(StateVisitor& state) const { state.Field("x", x); }
+    float x = 0.0f;                                  // Tools show fields by their names
 };
 struct RecipeMiss {
     static constexpr std::string_view Name = "Miss";
 };
 using RecipeEvent = std::variant<RecipeHit, RecipeMiss>;
+
+// Everything that decides what happens next, in one plain struct: State visits all of it, so a field added here is
+// hashed and dumped without another line.
+struct RecipePlayRun {
+    Rng rng;
+    StepSmoothed<float> shipX; // State keeps its current value; the view draws between steps
+    float rockX = 0.0f;
+    int score = 0;
+};
 
 // The rules: plain state, in Game/Simulation. No drawing, audio or clock.
 class RecipePlaySimulation final : public Simulation {
@@ -46,18 +54,15 @@ public:
     void Step(const SimulationStep& step) override;
     void State(StateVisitor& state) const override;
 
-    [[nodiscard]] float ShipX(float alpha) const { return _shipX.At(alpha); }
-    [[nodiscard]] float RockX() const { return _rockX; }
-    [[nodiscard]] int Score() const { return _score; }
+    [[nodiscard]] float ShipX(float alpha) const { return _run.shipX.At(alpha); }
+    [[nodiscard]] float RockX() const { return _run.rockX; }
+    [[nodiscard]] int Score() const { return _run.score; }
     // The view reads these to start hitstop; the simulation does not touch TimeScale.
     [[nodiscard]] const SimulationEvents<RecipeEvent>& Events() const { return _events; }
     [[nodiscard]] const SimulationEventLog* EventLog() const override { return &_events; }
 
 private:
-    Rng _rng;
-    StepSmoothed<float> _shipX;
-    float _rockX = 0.0f;
-    int _score = 0;
+    RecipePlayRun _run;
     SimulationEvents<RecipeEvent> _events; // Output, not state: not in State
 };
 [[nodiscard]] const SimulationSettings& RecipePlaySettings();
@@ -137,32 +142,28 @@ InputBindings MakeBindings() {
 } // namespace
 
 RecipePlaySimulation::RecipePlaySimulation(const SimulationStart& start)
-    : _rng(start.seed)
-    , _rockX(_rng.Float(0.0f, FieldWidth)) {}
+    : _run{.rng = Rng(start.seed)} {
+    _run.rockX = _run.rng.Float(0.0f, FieldWidth);
+}
 void RecipePlaySimulation::Step(const SimulationStep& step) {
     const auto& input = step.Player(0);
     float direction = 0.0f;
     if (input.Held(RecipeButton::Left)) direction -= 1.0f;
     if (input.Held(RecipeButton::Right)) direction += 1.0f;
-    _shipX.Set(_shipX.Current() + direction * ShipSpeed * step.seconds);
+    _run.shipX.Set(_run.shipX.Current() + direction * ShipSpeed * step.seconds);
     if (input.Pressed(RecipeButton::Fire)) {
-        if (std::fabs(_shipX.Current() - _rockX) < HitRange) {
-            ++_score;
-            _events.Emit(step, RecipeHit{_rockX});
-            _rockX = _rng.Float(0.0f, FieldWidth);
+        if (std::fabs(_run.shipX.Current() - _run.rockX) < HitRange) {
+            ++_run.score;
+            _events.Emit(step, RecipeHit{_run.rockX});
+            _run.rockX = _run.rng.Float(0.0f, FieldWidth);
         } else {
             _events.Emit(step, RecipeMiss{});
         }
     }
     for (const auto& command : step.commands)
-        if (command.id == "add_score") _score += static_cast<int>(command.value);
+        if (command.id == "add_score") _run.score += static_cast<int>(command.value);
 }
-void RecipePlaySimulation::State(StateVisitor& state) const {
-    state.Field("rng", _rng);
-    state.Field("shipX", _shipX.Current());
-    state.Field("rockX", _rockX);
-    state.Field("score", _score);
-}
+void RecipePlaySimulation::State(StateVisitor& state) const { state.Fields(_run); } // rng, shipX, rockX, score
 const SimulationSettings& RecipePlaySettings() {
     static const SimulationSettings settings = [] {
         SimulationSettings made;
@@ -241,7 +242,7 @@ Test it without a window: `python Engine sim run scenario.json --out build/run.r
   { "expectEvent": "Hit", "count": { "max": 1 } } ] }
 ```
 
-Pitfalls: Everything that decides gameplay comes from SimulationStart or the steps. Name every deciding field in State, the Rng included. A paused scene neither feeds nor advances. The simulation asks for hitstop with an event; the scene reads it after Advance and calls TimeScale. Leave events out of State. Read events every frame, with Read, so a seek stays silent. An editor action that changes gameplay calls Runner().Command, so it is on the tape; one that only changes the view is a parameter.
+Pitfalls: Everything that decides gameplay comes from SimulationStart or the steps. Keep every deciding field in one plain struct, the Rng included, and visit it with state.Fields; declare it outside functions and anonymous namespaces. A paused scene neither feeds nor advances. The simulation asks for hitstop with an event; the scene reads it after Advance and calls TimeScale. Leave events out of State. Read events every frame, with Read, so a seek stays silent. An editor action that changes gameplay calls Runner().Command, so it is on the tape; one that only changes the view is a parameter.
 
 Hits and overlaps inside the rules: [Collision recipe](Collision.md).
 

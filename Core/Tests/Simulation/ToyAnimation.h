@@ -15,11 +15,6 @@ struct ToyPose {
     Float2 offset{};
     Color4 tint{255, 255, 255, 255};
     int frame = 0;
-    static constexpr auto Fields() {
-        return PoseFields(PoseField("arm", &ToyPose::arm), PoseField("scale", &ToyPose::scale),
-                          PoseField("offset", &ToyPose::offset), PoseField("tint", &ToyPose::tint),
-                          PoseField("frame", &ToyPose::frame));
-    }
 };
 
 // Animators, tweens and tween sets deciding a game's rules, used only to test that they replay exactly: random clip

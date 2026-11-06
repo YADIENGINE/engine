@@ -8,7 +8,7 @@
 #include "Animation/AnimationValue.h"
 #include "Animation/ClipSet.h"
 #include "Animation/Curve.h"
-#include "Animation/PoseFields.h"
+#include "Animation/Pose.h"
 
 // How Play starts a clip.
 template <class Position> struct AnimatorPlay {
