@@ -265,24 +265,24 @@ void AgentActions(const EditorActionContext& context, std::vector<EditorAction>&
     list.push_back(
         {.menu = EditorMenu::Agent,
          .section = "context",
-         .label = "Send scene",
+         .label = "Paste scene context to " + context.sceneContextTarget,
          .key = EditorKey::SendScene,
-         .enabled = snapshot.ready,
-         .reason = snapshot.ready ? "" : "Run a scene before sending its context.",
+         .enabled = snapshot.ready && context.sceneContextUnavailable.empty(),
+         .reason = snapshot.ready ? context.sceneContextUnavailable : "Run a scene before pasting its context.",
          .tooltip = "Paste the open scene, its time, changed values and a screenshot into the agent session: the "
-                    "agent chosen in the Agents drawer while it is open.",
+                    "agent chosen in the Agents drawer while it is open. Paste only; you submit.",
          .run = context.agentsDrawerOpen ? std::function<void()>([&result] { result.agents.sendScene = true; })
                                          : request(EditorAgentRequest::SendScene)});
     list.push_back({.menu = EditorMenu::Agent,
                     .section = "context",
-                    .label = "Send build failure",
+                    .label = "Paste build failure to " + context.agentContextTarget,
                     .enabled = failed,
                     .reason = failed ? "" : notFailed,
                     .tooltip = "Paste the last build failure into the agent session, without Enter.",
                     .run = request(EditorAgentRequest::SendBuildFailure)});
     list.push_back({.menu = EditorMenu::Agent,
                     .section = "context",
-                    .label = "Ask agent to fix build",
+                    .label = "Ask agent to fix build with " + context.agentContextTarget,
                     .enabled = failed,
                     .reason = failed ? "" : notFailed,
                     .tooltip = "Send the build errors and ask the agent to fix them. This presses Enter.",

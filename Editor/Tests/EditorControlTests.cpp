@@ -12,6 +12,7 @@
 #include "Editor/Internals/Protocol/EditorControlProtocol.h"
 #include "Editor/Internals/Session/AgentContext.h"
 #include "Editor/Internals/Session/FrameCapture.h"
+#include "Editor/Internals/Session/MarkPauseState.h"
 #include "Editor/Internals/Session/ViewportMark.h"
 #include "Tests/Support/TempDirectory.h"
 
@@ -37,6 +38,30 @@ int Channel(const ViewportPixels& frame, int x, int y, int channel) {
     return std::to_integer<int>(frame.rgba[static_cast<std::size_t>((y * frame.width + x) * 4 + channel)]);
 }
 } // namespace
+
+TEST_CASE("Editor.Mark.PauseReasonRequiresItsOwnReplyAndEndsWithThePausedInterval", "[engine-editor]") {
+    MarkPauseState pause;
+    pause.Observe(4, 10, true); // A scene that was already paused is never claimed by Mark.
+    CHECK_FALSE(pause.Active());
+    pause.Requested(4, 11);
+    CHECK(pause.Pending());
+    pause.Observe(3, 11, true);  // Old generation.
+    pause.Observe(4, 10, true);  // Another command's reply.
+    pause.Observe(4, 10, false); // An older playing reply must not erase the outstanding Mark request.
+    CHECK_FALSE(pause.Active());
+    pause.Observe(4, 11, true);
+    CHECK(pause.Active());
+    CHECK_FALSE(pause.Pending());
+    pause.Observe(4, 12, true); // A sync does not change the cause.
+    CHECK(pause.Active());
+    pause.Observe(4, 13, false); // Resume.
+    CHECK_FALSE(pause.Active());
+    pause.Requested(4, 14);
+    pause.Clear(); // Reset, Stop, scene replacement or another playback intervention.
+    pause.Observe(4, 14, true);
+    CHECK_FALSE(pause.Active());
+    CHECK_FALSE(pause.Pending());
+}
 
 TEST_CASE("Editor.Control.ValuesFollowTheParameterKind", "[engine-editor]") {
     CHECK(ControlValueOf(Parameter(SceneParameterKind::Integer), 3) == SceneValue{std::int64_t{3}});

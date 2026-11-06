@@ -69,6 +69,9 @@ struct EditorActionContext {
     bool offerProjectList = false; // Only when a launcher started this editor (Docs/ToolsContract.md)
     bool agentsDrawerOpen = false;
     std::filesystem::path engineDirectory; // Help → Editor guide opens its Docs/ copy when present
+    std::string agentContextTarget = "New agent session";
+    std::string sceneContextTarget = "New agent session";
+    std::string sceneContextUnavailable;
     EditorShellResult& result;
 };
 

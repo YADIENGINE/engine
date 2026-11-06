@@ -14,7 +14,7 @@ class TerminalSession;
 
 // What the drawer asks of the workspace after a draw; it never starts, stops or sends to a session itself.
 struct AgentsDrawerRequest {
-    std::optional<std::uint64_t> sendScene;   // Send the open scene's context to this session
+    std::optional<std::uint64_t> sendScene;   // Paste the open scene's context into this session, without Enter
     std::optional<std::uint64_t> close;       // Confirmed: end the session's program
     std::optional<std::uint64_t> restart;     // Start the exited program again
     std::optional<std::uint64_t> openConsole; // Show the session in the Console instead

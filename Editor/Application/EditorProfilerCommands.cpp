@@ -27,6 +27,7 @@ void EditorController::Profile(EditorProfilerCommand command, const Profiler::Re
                 !_pendingParameters.empty())
                 return;
             Profiler::ValidateRecipe(recipe);
+            _markPause.Clear();
             _benchmarkCancelPending = false;
             const auto id = ++_profilerRequest;
             _profiler.Arm(id);

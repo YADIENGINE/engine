@@ -32,10 +32,10 @@ private:
     // then, a recent frame of the running scene.
     void UpdateProjectStatus();
     void SaveLastFrame();
-    // Saves the marked region of the latest frame and pastes its context line into the Console.
+    // Saves the marked region and pastes its context into the existing agent target or Console terminal.
     void PasteMark(const FloatRect& region);
     void PasteWindowMark(const FloatRect& region, const ViewportPixels& window);
-    // Agent → Send scene: saves the latest frame and sends the context to the chosen session, or the current target.
+    // Paste scene context: saves the latest frame and pastes into the chosen session, or the current target.
     void SendScene(std::optional<std::uint64_t> session);
     void HandleAudioPreview(const AudioPreviewRequest& request);
     // Handled in the next Update; returns the AudioPreviewState::handled count it brings.
@@ -77,7 +77,7 @@ private:
     mutable std::uint64_t _audioQueued = 0;
     AudioPreviewState _audio;
     AudioWaveformCache _waveforms{DecodeAudioFile};
-    std::uint64_t _windowMarkSequence = 0; // The capture it waits for; 0 until requested
+    mutable std::uint64_t _windowMarkSequence = 0; // The capture it waits for; 0 until requested
     mutable bool _windowWanted = false;
     mutable std::uint64_t _windowSequence = 0;
     mutable std::shared_ptr<const ViewportPixels> _window;

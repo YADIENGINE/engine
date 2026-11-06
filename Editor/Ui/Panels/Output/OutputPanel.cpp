@@ -78,7 +78,8 @@ void OutputPanel::ShowLastAttempt(std::uint64_t attempt) {
     _initialized = true;
 }
 // The latest attempt's diagnostics, one click from the code.
-void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
+void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiActions& actions,
+                               const std::string& agentTarget) {
     const auto& diagnostics = snapshot.diagnostics;
     const auto& attempt = diagnostics.Attempt();
     const auto& problems = diagnostics.Problems();
@@ -91,11 +92,12 @@ void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiAct
                                    ResultLabel(attempt.result), diagnostics.AttemptSeconds())
                            .c_str());
     if (errors > 0) {
-        ContinueToolToolbar("Fix all with agent", true);
+        ContinueToolToolbar("Ask agent to fix build", true);
         PushEditorTintedButton(EditorAgentColor(), EditorAgentColor());
-        if (ToolButton("Fix all with agent")) _fixAll = true;
+        if (ToolButton("Ask agent to fix build")) _fixAll = true;
         PopEditorButton();
         ToolTooltip("Send the build errors to the agent session and ask it to fix them. This presses Enter.");
+        ImGui::TextWrapped("Context to: %s", agentTarget.c_str());
     }
     ImGui::Separator();
     if (!ImGui::BeginChild("problems")) {
@@ -110,7 +112,7 @@ void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiAct
                            : "Errors and warnings from the latest build appear here.");
     const float scale = ToolUiScale();
     const float rowHeight = ImGui::GetTextLineHeight() * 2 + ToolMetrics::Space * scale * 2;
-    const float fixWidth = ImGui::CalcTextSize("Fix").x + ImGui::GetStyle().FramePadding.x * 2;
+    const float fixWidth = ImGui::CalcTextSize("Paste error").x + ImGui::GetStyle().FramePadding.x * 2;
     ImGuiListClipper clipper;
     clipper.Begin(static_cast<int>(problems.size()), rowHeight + ImGui::GetStyle().ItemSpacing.y);
     while (clipper.Step())
@@ -150,7 +152,7 @@ void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiAct
             if (hovered && problem.level == BuildProblemLevel::Error) {
                 const auto after = ImGui::GetCursorScreenPos();
                 ImGui::SetCursorScreenPos({start.x + width - fixWidth - inset, top});
-                if (ToolButton("Fix"))
+                if (ToolButton("Paste error"))
                     _agentText =
                         "[editor] Fix this build error:\n" + (where.empty() ? message : where + ": " + message) + "\n";
                 ToolTooltip("Paste this error into the agent session, without Enter.");
@@ -162,7 +164,8 @@ void OutputPanel::DrawProblems(const EditorSnapshot& snapshot, const EditorUiAct
         }
     ImGui::EndChild();
 }
-void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions, EditorPreferences& preferences) {
+void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions, EditorPreferences& preferences,
+                       const std::string& agentTarget) {
     const auto& diagnostics = snapshot.diagnostics;
     const auto& attempt = diagnostics.Attempt();
     if (_attemptSeen != attempt.id) {
@@ -182,7 +185,7 @@ void OutputPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
     const bool full = ToolSegment("Full", !_problems && !_lastAttempt);
     ToolTooltip("Recent editor, worker and build output (up to 1000 lines). Open log has the whole session.");
     if (_problems && !last && !full) {
-        DrawProblems(snapshot, actions);
+        DrawProblems(snapshot, actions, agentTarget);
         actions.acknowledgeOutput();
         return;
     }

@@ -194,7 +194,7 @@ bool ViewportPanel::Toolbar(bool maximized) {
 
 EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                                               const ViewportImage& image, const std::vector<std::string>& recent,
-                                              bool metrics, bool maximized) {
+                                              bool metrics, bool maximized, bool allowMarkGesture) {
     EditorViewportInteraction result;
     if (snapshot.selected && _scene != snapshot.selected->id) {
         _scene = snapshot.selected->id;
@@ -287,13 +287,17 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
         draw->PopClipRect();
         // Alt+drag (or click) marks a region of the scene; it pauses so the frame holds still. The toolbar's Mark
         // toggle works over the whole window (EditorWorkspace::MarkOverlay).
-        const bool gesture = io.KeyAlt && !navigating;
+        const bool gesture = allowMarkGesture && io.KeyAlt && !navigating;
+        const bool cancelMark =
+            ImGui::IsKeyPressed(ImGuiKey_Escape, false) || ImGui::IsMouseClicked(ImGuiMouseButton_Right);
         const Float2 mouse{io.MousePos.x, io.MousePos.y};
-        if (gesture && result.hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        if (gesture && !cancelMark && result.hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             _markStart = mouse;
             if (snapshot.ready && !snapshot.paused && snapshot.capabilities.Can(EditorCommand::Pause))
-                actions.command(EditorCommand::Pause);
+                result.pauseForMarking = true;
         }
+        if (cancelMark || !allowMarkGesture) _markStart.reset();
+        result.markDragging = _markStart.has_value();
         if (_markStart) {
             const ImVec2 from{std::min(_markStart->x, mouse.x), std::min(_markStart->y, mouse.y)};
             const ImVec2 to{std::max(_markStart->x, mouse.x), std::max(_markStart->y, mouse.y)};

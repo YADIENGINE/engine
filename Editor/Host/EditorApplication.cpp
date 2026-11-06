@@ -7,6 +7,7 @@
 #include <format>
 #include <fstream>
 #include <map>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -239,7 +240,7 @@ std::shared_ptr<const ViewportPixels> EditorApplication::Window(std::uint64_t se
 }
 void EditorApplication::PasteWindowMark(const FloatRect& region, const ViewportPixels& window) {
     try {
-        if (!_control) return;
+        if (!_control) throw std::runtime_error("Capture is unavailable without an editor control session.");
         const Vec2 size{window.width, window.height};
         const double scale =
             std::min(1.0, static_cast<double>(MarkMaxImageSide / std::max(region.width, region.height)));
@@ -248,43 +249,51 @@ void EditorApplication::PasteWindowMark(const FloatRect& region, const ViewportP
         const auto snapshot = _controller.Snapshot();
         _workspace.PasteToConsole(
             WindowMarkContext(region, size, file, snapshot.selected ? snapshot.selected->id : std::string()),
-            _preferences);
+            _preferences, "Window mark");
     } catch (const std::exception& error) {
-        _controller.Log(std::string("Mark: ") + error.what(), EditorLogLevel::Warning);
+        const auto problem = std::string("Window mark capture failed: ") + error.what();
+        _controller.Log(problem, EditorLogLevel::Warning);
+        _workspace.NotifyContext(problem, true);
     }
 }
 void EditorApplication::PasteMark(const FloatRect& region) {
     try {
         const auto snapshot = _controller.Snapshot();
         const auto frame = _controller.LatestFrame();
-        if (!_control || !frame || !snapshot.selected) return;
+        if (!_control || !frame || !snapshot.selected)
+            throw std::runtime_error("The scene frame is no longer available for capture.");
         const double scale =
             std::min(1.0, static_cast<double>(MarkMaxImageSide / std::max(region.width, region.height)));
         const auto image = CaptureFrame(*frame, snapshot.canvas, {region, scale});
         const auto file = _control->WriteCapture(image, {}, {}, "mark");
         _workspace.PasteToConsole(MarkContext(*snapshot.selected, snapshot.parameters, _controller.Seconds(),
                                               snapshot.paused, region, snapshot.canvas, file),
-                                  _preferences);
+                                  _preferences, "Scene mark");
     } catch (const std::exception& error) {
-        _controller.Log(std::string("Mark: ") + error.what(), EditorLogLevel::Warning);
+        const auto problem = std::string("Scene mark capture failed: ") + error.what();
+        _controller.Log(problem, EditorLogLevel::Warning);
+        _workspace.NotifyContext(problem, true);
     }
 }
 void EditorApplication::SendScene(std::optional<std::uint64_t> session) {
     try {
         const auto snapshot = _controller.Snapshot();
         const auto frame = _controller.LatestFrame();
-        if (!_control || !frame || !snapshot.selected) return;
+        if (!_control || !frame || !snapshot.selected)
+            throw std::runtime_error("The scene frame is no longer available for capture.");
         const double scale = std::min(1.0, static_cast<double>(MarkMaxImageSide) /
                                                std::max(snapshot.canvas.x, std::max(snapshot.canvas.y, 1)));
         const auto image = CaptureFrame(*frame, snapshot.canvas, {std::nullopt, scale});
         const auto file = _control->WriteCapture(image, {}, {}, "scene");
         const auto text = SceneContext(*snapshot.selected, snapshot.parameters, _controller.Seconds(), snapshot.paused,
                                        snapshot.canvas, file);
-        const auto problem = session ? _workspace.SendToSession(*session, text, false)
-                                     : _workspace.SendToAgent(text, false, _preferences);
+        const auto problem = session ? _workspace.SendToSession(*session, text, false, "Scene context")
+                                     : _workspace.SendToAgent(text, false, _preferences, "Scene context");
         if (!problem.empty()) _controller.Log(problem, EditorLogLevel::Warning);
     } catch (const std::exception& error) {
-        _controller.Log(std::string("Send scene: ") + error.what(), EditorLogLevel::Warning);
+        const auto problem = std::string("Scene context capture failed: ") + error.what();
+        _controller.Log(problem, EditorLogLevel::Warning);
+        _workspace.NotifyContext(problem, true);
     }
 }
 void EditorApplication::HandleAudioPreview(const AudioPreviewRequest& request) {
@@ -425,6 +434,11 @@ void EditorApplication::DrawToolOverlay() const {
     snapshot.git = _gitSnapshot.get();
     if (_control) snapshot.agents = &_control->Report();
     const auto result = _workspace.Draw(snapshot, actions, _display.Image(), _preferences, _fontSize);
+    if (result.interaction.pauseForMarking) {
+        editorInput = true;
+        developer();
+        commands.emplace_back([this] { _controller.PauseForMarking(); });
+    }
     _quit = result.quit;
     if (result.interaction.mark) _mark = result.interaction.mark;
     if (result.windowMark) _windowMark = result.windowMark;
@@ -459,12 +473,18 @@ void EditorApplication::DrawToolOverlay() const {
     _ui.EndFrame();
     if (_windowWanted) { // The finished frame, before the buffers swap
         _windowWanted = false;
+        const auto sequence = ++_windowSequence; // Failed attempts also consume their sequence.
         try {
             auto pixels = ReadWindowPixels();
-            pixels.sequence = ++_windowSequence;
+            pixels.sequence = sequence;
             _window = std::make_shared<const ViewportPixels>(std::move(pixels));
         } catch (const std::exception& error) {
             _controller.Log(std::string("Window capture: ") + error.what(), EditorLogLevel::Warning);
+            if (_windowMark && _windowMarkSequence && sequence >= _windowMarkSequence) {
+                _windowMark.reset();
+                _windowMarkSequence = 0;
+                _workspace.NotifyContext(std::string("Window mark capture failed: ") + error.what(), true);
+            }
         }
     }
 }

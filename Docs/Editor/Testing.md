@@ -70,6 +70,15 @@ only the changed section.
 
 ## Infrastructure
 
+For context/mark UI changes, check only the affected paths: with two agent sessions, choose a different drawer chip
+and verify scene context targets it while Problems and Marks still name their own targets. Paste scene context,
+Paste build failure and Paste error must not send Enter; Ask agent to fix build must send it. Check the drawer in
+Terminal/Activity, at its minimum width and 150% scale. Notices must remain visible without the drawer/viewport,
+distinguish queued/setup from delivered input, and never report success for canceled setup or failed captures.
+Mark the scene, an editor panel, and a drag crossing their boundary; repeat scene marking with Alt+drag. Verify
+Esc/right-click cancellation (also on release), a running versus already paused scene, and Paused for marking/Resume.
+Finishing, canceling and capture failure must leave the scene paused; Resume/Reset/Stop must clear the Mark reason.
+
 1. Build Debug; no warnings / errors. No second visible worker window / console.
 2. Image center / corner / margin clicks; drag out and release; panel, window, and DPI changes.
 3. Typing in Inspector does not send keyboard input to the scene; alt-tab clears held input.

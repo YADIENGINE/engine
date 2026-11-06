@@ -35,6 +35,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Session/BenchmarkState.cpp
     Internals/Session/FrameCapture.cpp
     Internals/Session/ViewportMark.cpp
+    Internals/Session/MarkPauseState.cpp
     Internals/Session/AgentContext.cpp
     Internals/Session/QuickOpen.cpp
     Internals/Agent/AgentProfile.cpp

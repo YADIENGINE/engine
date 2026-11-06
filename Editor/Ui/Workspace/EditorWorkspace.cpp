@@ -43,7 +43,44 @@ bool BottomVisible(const EditorPreferences& preferences) {
         if (preferences.visible[static_cast<std::size_t>(panel)]) return true;
     return false;
 }
+void DrawMarkHint(const std::string& text, ImVec2 origin, ImVec2 area) {
+    const float pad = 8.0f * ToolUiScale();
+    const float wrap = std::max(1.0f, std::min(700.0f * ToolUiScale(), area.x - pad * 4));
+    const auto size = ImGui::CalcTextSize(text.c_str(), nullptr, false, wrap);
+    const ImVec2 at{origin.x + (area.x - size.x) * 0.5f, origin.y + pad};
+    auto* draw = ImGui::GetForegroundDrawList();
+    draw->AddRectFilled({at.x - pad, at.y - pad * 0.5f}, {at.x + size.x + pad, at.y + size.y + pad * 0.5f},
+                        ImGui::GetColorU32(ImGuiCol_PopupBg), ImGui::GetStyle().FrameRounding);
+    draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), at, ImGui::GetColorU32(ImGuiCol_Text), text.c_str(), nullptr,
+                  wrap);
+}
 } // namespace
+void EditorWorkspace::NotifyContext(std::string text, bool failed) {
+    _contextNotice = std::move(text);
+    _contextNoticeFailed = failed;
+    _contextNoticeAt = std::chrono::steady_clock::now();
+}
+void EditorWorkspace::ContextNotice(ImVec2 position, ImVec2 size) const {
+    const double age = std::chrono::duration<double>(std::chrono::steady_clock::now() - _contextNoticeAt).count();
+    const double duration = _contextNoticeFailed ? 5.0 : 3.0;
+    if (_contextNotice.empty() || age >= duration) return;
+    const float pad = 12.0f * ToolUiScale();
+    const float width = std::max(1.0f, std::min(420.0f * ToolUiScale(), size.x - pad * 2));
+    ImGui::SetNextWindowPos({position.x + size.x - pad, position.y + size.y - pad}, ImGuiCond_Always, {1, 1});
+    ImGui::SetNextWindowSize({width, 0});
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, static_cast<float>(std::clamp((duration - age) / 0.75, 0.0, 1.0)));
+    constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+                           ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+                           ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDocking;
+    if (ImGui::Begin("##editor-context-notice", nullptr, flags)) {
+        if (_contextNoticeFailed) ImGui::PushStyleColor(ImGuiCol_Text, EditorLevelColor(EditorLogLevel::Warning));
+        ImGui::TextWrapped("%s", _contextNotice.c_str());
+        if (_contextNoticeFailed) ImGui::PopStyleColor();
+        ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+}
 void EditorWorkspace::CaptureLayout(EditorPreferences& preferences) const {
     if (!_initialized || _maximized) return;
     std::size_t size = 0;
@@ -103,8 +140,7 @@ void EditorWorkspace::ApplyLayout(EditorWorkspaceLayout layout, EditorPreference
     _ignoreLayoutChanges = 3;
     _viewport.ReleaseFocus();
 }
-void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions, float top,
-                                  EditorWorkspaceResult& result) {
+void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, float top, EditorWorkspaceResult& result) {
     const auto* main = ImGui::GetMainViewport();
     const ImVec2 origin{main->Pos.x, main->Pos.y + top};
     const ImVec2 size{main->Size.x, std::max(1.0f, main->Size.y - top)};
@@ -125,15 +161,27 @@ void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, const EditorUi
         auto* draw = ImGui::GetWindowDrawList();
         draw->AddRectFilled(origin, {origin.x + size.x, origin.y + size.y},
                             ImGui::GetColorU32(ImGuiCol_DragDropTarget, MarkOverlayTint));
-        const char* hint = "Drag (or click) to mark a region for the Console - Esc cancels";
-        const ImVec2 hintSize = ImGui::CalcTextSize(hint);
-        draw->AddText({origin.x + (size.x - hintSize.x) * 0.5f, origin.y + ImGui::GetStyle().WindowPadding.y},
-                      ImGui::GetColorU32(ImGuiCol_Text), hint);
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+        const auto target = PasteContextTarget(_sessions.Infos());
+        const std::string scope = !_overlayStart ? "Scene image or editor window"
+                                  : onViewport(*_overlayStart) && onViewport(io.MousePos) ? "Scene region"
+                                                                                          : "Editor window region";
+        auto hint = scope + " \xC2\xB7 Paste mark to " + target.title +
+                    " \xC2\xB7 You submit\n"
+                    "Drag or click. Both ends on the scene image: scene capture. Otherwise: editor window.\n"
+                    "Starting on the scene pauses it. Esc / right-click cancels.";
+        if (!target.unavailable.empty()) hint += "\n" + target.unavailable;
+        DrawMarkHint(hint, origin, size);
+        const bool cancel =
+            ImGui::IsKeyPressed(ImGuiKey_Escape, false) || ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+        if (cancel) {
+            _overlayStart.reset();
+            _marking = false;
+        }
+        if (!cancel && ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
             _overlayStart = io.MousePos;
             // On the viewport the frame holds still, as with Alt+drag
             if (onViewport(io.MousePos) && !snapshot.paused && snapshot.capabilities.Can(EditorCommand::Pause))
-                actions.command(EditorCommand::Pause);
+                result.interaction.pauseForMarking = true;
         }
         if (_overlayStart) {
             const ImVec2 from{std::min(_overlayStart->x, io.MousePos.x), std::min(_overlayStart->y, io.MousePos.y)};
@@ -152,10 +200,6 @@ void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, const EditorUi
                                                          {io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y});
             }
         }
-        if (ImGui::IsKeyPressed(ImGuiKey_Escape) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-            _overlayStart.reset();
-            _marking = false;
-        }
     }
     ImGui::End();
     ImGui::PopStyleVar();
@@ -173,14 +217,15 @@ void EditorWorkspace::ShowAgents(std::optional<std::uint64_t> session, EditorPre
     _agentsDrawer.Open(session ? session : AgentStatusFocus());
     _viewport.ReleaseFocus();
 }
-void EditorWorkspace::PasteToConsole(const std::string& text, EditorPreferences& preferences) {
+void EditorWorkspace::PasteToConsole(const std::string& text, EditorPreferences& preferences,
+                                     const std::string& context) {
     if (const auto agent = _sessions.AgentSession()) {
         _sessions.Select(*agent);
         ShowAgents(agent, preferences);
     } else {
         ShowConsole(preferences);
     }
-    _sessions.Paste(text);
+    _sessions.Paste(text, context);
 }
 std::string EditorWorkspace::OpenAgent(EditorPreferences& preferences) {
     if (_agentSetup.Active()) return {};
@@ -230,21 +275,35 @@ std::string EditorWorkspace::AddSession(const ConsoleNewSession& request, Editor
         ShowConsole(preferences);
     return {};
 }
-std::string EditorWorkspace::SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences) {
+std::string EditorWorkspace::SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences,
+                                         const std::string& context) {
     auto problem = OpenAgent(preferences);
     if (_agentSetup.Active()) {
         _pendingAgentText += text;
         _pendingAgentSubmit = _pendingAgentSubmit || submit;
+        if (!context.empty()) {
+            if (!_pendingAgentContext.empty()) _pendingAgentContext += " + ";
+            _pendingAgentContext += context;
+            NotifyContext(context + " waiting for agent setup \xC2\xB7 Not pasted");
+        }
     } else if (const auto agent = _sessions.AgentSession()) {
-        _sessions.SendTo(*agent, text, submit);
+        _sessions.SendTo(*agent, text, submit, context);
+        if (!context.empty())
+            NotifyContext(context + " queued for " + _sessions.Info(*agent)->title + " \xC2\xB7 Waiting to paste");
+    } else if (!context.empty()) {
+        NotifyContext("Could not paste " + context + ": no agent terminal is available.", true);
     }
     return problem;
 }
-std::string EditorWorkspace::SendToSession(std::uint64_t id, const std::string& text, bool submit) {
-    const auto session = _sessions.Info(id);
-    if (!session || !session->agent) return "The selected agent session is no longer available.";
-    if (session->state == SessionState::Exited) return "Restart the selected agent session before sending context.";
-    _sessions.SendTo(id, text, submit);
+std::string EditorWorkspace::SendToSession(std::uint64_t id, const std::string& text, bool submit,
+                                           const std::string& context) {
+    const auto target = SessionContextTarget(_sessions.Infos(), id);
+    if (!target.unavailable.empty()) {
+        if (!context.empty()) NotifyContext(context + " could not be pasted. " + target.unavailable, true);
+        return target.unavailable;
+    }
+    _sessions.SendTo(id, text, submit, context);
+    if (!context.empty()) NotifyContext(context + " queued for " + target.title + " \xC2\xB7 Waiting to paste");
     return {};
 }
 void EditorWorkspace::HandleAgent(EditorAgentRequest request, const EditorSnapshot& snapshot,
@@ -261,11 +320,12 @@ void EditorWorkspace::HandleAgent(EditorAgentRequest request, const EditorSnapsh
         break;
     case EditorAgentRequest::SendScene: result.sendScene = true; break;
     case EditorAgentRequest::SendBuildFailure:
-        if (const auto text = failure(); !text.empty()) result.agentProblem = SendToAgent(text, false, preferences);
+        if (const auto text = failure(); !text.empty())
+            result.agentProblem = SendToAgent(text, false, preferences, "Build failure");
         break;
     case EditorAgentRequest::FixBuild:
         if (const auto text = failure(); !text.empty())
-            result.agentProblem = SendToAgent(text + AgentFixBuildRequest, true, preferences);
+            result.agentProblem = SendToAgent(text + AgentFixBuildRequest, true, preferences, "Fix request");
         break;
     }
     result.cancelViewportInput = true;
@@ -544,6 +604,22 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     _sessions.Update(snapshot.agents);
     const auto oldVisibility = preferences.visible;
     EditorWorkspaceResult result;
+    for (const auto& delivery : _sessions.TakeContextDeliveries()) {
+        if (!delivery.problem.empty()) {
+            const auto problem =
+                delivery.context + " could not be pasted to " + delivery.target + ". " + delivery.problem;
+            NotifyContext(problem, true);
+            result.agentProblem = problem;
+        } else {
+            NotifyContext(delivery.context + (delivery.submitted ? " submitted to " : " pasted to ") + delivery.target +
+                          (delivery.submitted ? "" : " \xC2\xB7 Not submitted"));
+        }
+    }
+    const auto sessionInfos = _sessions.Infos();
+    const auto agentTarget = AgentContextTarget(sessionInfos, preferences.agent.kind);
+    const auto sceneTarget =
+        _agentsDrawer.IsOpen() ? SessionContextTarget(sessionInfos, _agentsDrawer.ChosenSession()) : agentTarget;
+    const auto markTarget = PasteContextTarget(sessionInfos);
     if (_showFailedOutput) {
         SetMaximized(false, preferences);
         preferences.Visible(EditorPanel::Output) = true;
@@ -580,6 +656,9 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                                       .offerProjectList = _offerProjectList,
                                       .agentsDrawerOpen = _agentsDrawer.IsOpen(),
                                       .engineDirectory = _engineDirectory,
+                                      .agentContextTarget = agentTarget.title,
+                                      .sceneContextTarget = sceneTarget.title,
+                                      .sceneContextUnavailable = sceneTarget.unavailable,
                                       .result = menu};
     const auto list = EditorActionList(context);
     _shell.Menu(context, list, _projectName, _gitBar);
@@ -618,7 +697,9 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         }
     const float toolbarHeight =
         _shell.Toolbar(snapshot, actions, {viewport->Pos.x, viewport->Pos.y + menuHeight}, viewport->Size.x, _marking,
-                       search, AgentStatus(snapshot), _agentActivity);
+                       search, AgentStatus(snapshot), _agentActivity,
+                       markTarget.title + (markTarget.unavailable.empty() ? "" : ". " + markTarget.unavailable));
+    if (!_marking) _overlayStart.reset();
     if (_agentActivity.TakeOpenAgents()) {
         _agentsDrawer.Toggle(AgentStatusFocus());
         if (_agentsDrawer.IsOpen()) result.cancelViewportInput = true;
@@ -627,7 +708,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     _openQuickOpen = search.pressed;
     const float statusHeight =
         _shell.Status(snapshot, preferences, AgentStatus(snapshot),
-                      {viewport->Pos.x, viewport->Pos.y + viewport->Size.y}, viewport->Size.x, menu);
+                      {viewport->Pos.x, viewport->Pos.y + viewport->Size.y}, viewport->Size.x, menu, actions);
     if (_fixFailedBuild) {
         menu.agent = EditorAgentRequest::FixBuild;
         _fixFailedBuild = false;
@@ -666,7 +747,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Content);
         if (ImGui::Begin("Viewport###editor.maximized", nullptr, flags))
             result.interaction =
-                _viewport.Draw(snapshot, actions, image, preferences.recent, preferences.showMetrics, true);
+                _viewport.Draw(snapshot, actions, image, preferences.recent, preferences.showMetrics, true, !_marking);
         ImGui::End();
         ImGui::PopStyleColor();
     } else {
@@ -703,8 +784,8 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 switch (panel.id) {
                 case EditorPanel::Catalog: _catalog.Draw(snapshot, actions, preferences); break;
                 case EditorPanel::Viewport:
-                    result.interaction =
-                        _viewport.Draw(snapshot, actions, image, preferences.recent, preferences.showMetrics, false);
+                    result.interaction = _viewport.Draw(snapshot, actions, image, preferences.recent,
+                                                        preferences.showMetrics, false, !_marking);
                     viewportDrawn = preferences.Visible(panel.id);
                     break;
                 case EditorPanel::Inspector:
@@ -713,9 +794,9 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                         result.agentProblem = SendToAgent(text, false, preferences);
                     break;
                 case EditorPanel::Output:
-                    _output.Draw(snapshot, actions, preferences);
+                    _output.Draw(snapshot, actions, preferences, agentTarget.title);
                     if (const auto text = _output.TakeAgentText(); !text.empty())
-                        result.agentProblem = SendToAgent(text, false, preferences);
+                        result.agentProblem = SendToAgent(text, false, preferences, "Error context");
                     if (_output.TakeFixRequest()) _fixFailedBuild = true; // Handled next frame, with the other requests
                     break;
                 case EditorPanel::Profiler: _profiler.Draw(snapshot, actions); break;
@@ -772,10 +853,14 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         if (setup == EditorAgentSetupResult::Started) {
             const auto text = std::exchange(_pendingAgentText, {});
             const bool submit = std::exchange(_pendingAgentSubmit, false);
-            result.agentProblem = text.empty() ? OpenAgent(preferences) : SendToAgent(text, submit, preferences);
+            const auto pendingContext = std::exchange(_pendingAgentContext, {});
+            result.agentProblem =
+                text.empty() ? OpenAgent(preferences) : SendToAgent(text, submit, preferences, pendingContext);
         } else if (setup == EditorAgentSetupResult::Canceled) {
             _pendingAgentText.clear();
             _pendingAgentSubmit = false;
+            if (!_pendingAgentContext.empty()) NotifyContext("Context paste canceled \xC2\xB7 Agent setup canceled");
+            _pendingAgentContext.clear();
         }
     }
     GitOverlay(snapshot, actions, menu, workspacePosition, workspaceSize, preferences, result);
@@ -783,7 +868,15 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     // Typing to an agent in the drawer counts as typing in a terminal, maximized or not: F5 and the like stay the
     // agent's
     _consoleFocused = _consoleFocused || _agentsDrawer.TerminalFocused();
-    if (_marking) MarkOverlay(snapshot, actions, menuHeight + toolbarHeight, result);
+    if (_marking)
+        MarkOverlay(snapshot, menuHeight + toolbarHeight, result);
+    else if (result.interaction.markDragging || (result.interaction.marking && result.interaction.hovered)) {
+        auto hint = "Scene region \xC2\xB7 Paste mark to " + markTarget.title +
+                    " \xC2\xB7 You submit\nThe scene pauses for marking. Esc / right-click cancels.";
+        if (!markTarget.unavailable.empty()) hint += "\n" + markTarget.unavailable;
+        DrawMarkHint(hint, workspacePosition, workspaceSize);
+    }
+    ContextNotice(workspacePosition, workspaceSize);
     if (result.cancelViewportInput) _viewport.ReleaseFocus();
     _viewportFocused = result.interaction.focused;
     return result;

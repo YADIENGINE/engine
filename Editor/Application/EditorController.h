@@ -8,6 +8,7 @@
 #include "Editor/Application/WorkerBuild.h"
 #include "Editor/Application/WorkerProcess.h"
 #include "Editor/Internals/Session/EditorProject.h"
+#include "Editor/Internals/Session/MarkPauseState.h"
 #include "Editor/Internals/Session/RefreshState.h"
 #include "Editor/Internals/Session/TuningBaselines.h"
 #include "Editor/Internals/Session/TuningWorkspace.h"
@@ -36,6 +37,7 @@ public:
     void Action(const std::string& id);
     void Playback(double speed, bool step);
     void SetPaused(bool paused);
+    void PauseForMarking();
     // Has the worker write what the device plays to a WAV file.
     void CaptureAudio(const std::string& file, double seconds);
     // Pauses and advances the playback clock to `seconds`, or by `seconds` when relative (replaying from 0 to go back).
@@ -177,6 +179,7 @@ private:
     bool _gotCatalog = false;
     bool _ready = false;
     bool _paused = false;
+    MarkPauseState _markPause;
     double _playbackSpeed = 1.0;
     std::uint64_t _generation = 0;  // The active worker's; frames and replies of other generations are stale
     std::uint64_t _generations = 0; // Last generation handed out

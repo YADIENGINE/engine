@@ -51,8 +51,8 @@ public:
               EditorGitBar& gitBar) const;
     [[nodiscard]] float Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position,
                                 float width, bool& marking, EditorToolbarSearch& search, const EditorAgentStatus& agent,
-                                EditorAgentActivity& activity) const;
+                                EditorAgentActivity& activity, const std::string& markTarget = "Console") const;
     [[nodiscard]] float Status(const EditorSnapshot& snapshot, const EditorPreferences& preferences,
-                               const EditorAgentStatus& agent, ImVec2 position, float width,
-                               EditorShellResult& result) const;
+                               const EditorAgentStatus& agent, ImVec2 position, float width, EditorShellResult& result,
+                               const EditorUiActions& actions = {}) const;
 };

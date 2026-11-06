@@ -86,7 +86,7 @@ void SearchBox(float width, EditorToolbarSearch& search) {
 
 void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool& marking,
                                 EditorToolbarSearch& search, const EditorAgentStatus& agent,
-                                EditorAgentActivity& activity) {
+                                EditorAgentActivity& activity, const std::string& markTarget) {
     const float scale = ToolUiScale();
     ImGui::PushFont(ToolFont(ToolFontRole::Medium), ToolMetrics::BodySize);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
@@ -197,10 +197,11 @@ void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiAc
         }
         ImGui::SameLine();
     }
-    if (EditorIconButton(
-            "mark", EditorGlyph::Mark,
-            "Mark a region of the scene or the editor and paste it into the Console (or Alt+drag on a scene)", marking))
-        marking = !marking;
+    const auto markHint =
+        "Paste mark to " + markTarget +
+        ". Paste only; you submit.\nDrag or click on the scene image or editor window. Starting on the scene "
+        "pauses it.\nAlt+drag marks the scene. Esc / right-click cancels.";
+    if (EditorIconButton("mark", EditorGlyph::Mark, markHint.c_str(), marking)) marking = !marking;
     if (showBuild) {
         ImGui::SameLine();
         EditorCommandButton(EditorCommand::Refresh, snapshot, actions, showBuildLabel);

@@ -10,8 +10,9 @@ struct EditorToolbarSearch {
 };
 
 // Draws the toolbar row: playback at the left, the search box in the middle, tools and their overflow at the right, the
-// agent strip at the far end. The containing shell owns the row. `marking` is the Mark toggle: while on, a press marks a
-// region for the Console instead of reaching the product; it needs no scene, since anything in the window can be marked.
+// agent strip at the far end. The containing shell owns the row. `marking` is the Mark toggle: while on, a press marks
+// a region for a terminal instead of reaching the product; it needs no scene, since anything in the window can be
+// marked.
 void DrawEditorPlaybackControls(const EditorSnapshot& snapshot, const EditorUiActions& actions, bool& marking,
                                 EditorToolbarSearch& search, const EditorAgentStatus& agent,
-                                EditorAgentActivity& activity);
+                                EditorAgentActivity& activity, const std::string& markTarget = "Console");

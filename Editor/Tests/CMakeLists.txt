@@ -7,7 +7,8 @@ add_executable(EngineEditorTests AssetLibraryTests.cpp QuickOpenTests.cpp AudioP
 target_link_libraries(EngineEditorTests PRIVATE EngineEditorSupport Catch2::Catch2WithMain)
 if(TARGET EngineEditorUi)
     # ImGui-only frames: no window, GPU context, worker or game startup.
-    target_sources(EngineEditorTests PRIVATE EditorActionTests.cpp InspectorUiTests.cpp WorkspaceUiTests.cpp)
+    target_sources(EngineEditorTests PRIVATE EditorActionTests.cpp EditorContextTests.cpp InspectorUiTests.cpp
+        WorkspaceUiTests.cpp)
     target_link_libraries(EngineEditorTests PRIVATE EngineEditorUi)
     # Opt-in real-renderer screenshots of the panels; needs a desktop/GPU, so not a CTest (EditorUiSmoke.cpp).
     add_executable(EngineEditorUiSmoke EXCLUDE_FROM_ALL EditorUiSmoke.cpp)

@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <vector>
 #include "Editor/Ui/Commands/EditorCommandPalette.h"
 #include "Editor/Ui/Panels/Assets/AssetsPanel.h"
@@ -21,7 +22,7 @@ struct EditorWorkspaceResult {
     bool returnToProjectList = false;
     bool cancelViewportInput = false;
     std::optional<FloatRect> windowMark; // A finished mark outside the scene: window framebuffer pixels
-    bool sendScene = false;              // Agent → Send scene: the host captures the frame and calls SendToAgent
+    bool sendScene = false;              // Paste scene context: the host captures the frame and calls SendToAgent
     std::optional<std::uint64_t> sendSceneSession; // Agents drawer: send to this Console session
     std::string agentProblem;                      // For the log, e.g. the agent CLI was not found
 };
@@ -46,12 +47,16 @@ public:
     }
     // Pastes `text` (no Enter) into the agent session, shown in the Agents drawer, when there is one; else into the
     // Console's selected session, starting a shell if needed.
-    void PasteToConsole(const std::string& text, EditorPreferences& preferences);
+    void PasteToConsole(const std::string& text, EditorPreferences& preferences, const std::string& context = {});
     // Pastes `text` into the agent session, shown in the Agents drawer, starting the chosen agent CLI when needed;
     // `submit` presses Enter after it. Returns a problem for the log (empty when none).
-    [[nodiscard]] std::string SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences);
+    [[nodiscard]] std::string SendToAgent(const std::string& text, bool submit, EditorPreferences& preferences,
+                                          const std::string& context = {});
     // Sends to an existing agent session chosen in the Agents drawer; it never starts another session.
-    [[nodiscard]] std::string SendToSession(std::uint64_t id, const std::string& text, bool submit);
+    [[nodiscard]] std::string SendToSession(std::uint64_t id, const std::string& text, bool submit,
+                                            const std::string& context = {});
+    // A short, non-modal result, also visible with the viewport and drawer closed.
+    void NotifyContext(std::string text, bool failed = false);
     void SetConsoleEnvironment(std::vector<std::pair<std::string, std::string>> environment) {
         _sessions.SetEnvironment(std::move(environment));
     }
@@ -81,8 +86,8 @@ private:
     void ToggleBottom(EditorPreferences& preferences, std::optional<EditorPanel> panel);
     // The Mark toggle's layer over everything below the toolbar: a region wholly on the scene becomes a scene
     // mark, anything else a window mark.
-    void MarkOverlay(const EditorSnapshot& snapshot, const EditorUiActions& actions, float top,
-                     EditorWorkspaceResult& result);
+    void MarkOverlay(const EditorSnapshot& snapshot, float top, EditorWorkspaceResult& result);
+    void ContextNotice(ImVec2 position, ImVec2 size) const;
     // Runs the action bound to each key pressed (EditorKeyBindings); true when a key was the editor's.
     [[nodiscard]] bool Shortcuts(std::span<const EditorAction> list) const;
     void DockHost(ImVec2 position, ImVec2 size, bool reset, const EditorPreferences& preferences);
@@ -109,6 +114,10 @@ private:
     EditorAgentSetup _agentSetup;
     std::string _pendingAgentText; // Context waits for the developer to accept setup.
     bool _pendingAgentSubmit = false;
+    std::string _pendingAgentContext;
+    std::string _contextNotice;
+    bool _contextNoticeFailed = false;
+    std::chrono::steady_clock::time_point _contextNoticeAt;
     std::string _restoreLayout;
     bool _initialized = false;
     bool _maximized = false;
@@ -124,7 +133,7 @@ private:
     std::optional<EditorPanel> _focusBottom;
     std::uint64_t _failureAttempt = 0;
     bool _showFailedOutput = false;
-    bool _fixFailedBuild = false; // Problems' "Fix all with agent"
+    bool _fixFailedBuild = false; // Problems' "Ask agent to fix build"
     bool _openQuickOpen = false;  // The toolbar search box was pressed
     bool _showShortcuts = false;  // Help windows asked for from the palette, opened next frame
     bool _showAbout = false;

@@ -9,16 +9,17 @@
 
 class OutputPanel {
 public:
-    void Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions, EditorPreferences& preferences);
+    void Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions, EditorPreferences& preferences,
+              const std::string& agentTarget = "agent session");
     void ShowLastAttempt(std::uint64_t attempt);
     void ShowProblems() { _problems = true; }
     // Lines the developer chose to send to the agent session since the last call (empty when none).
     [[nodiscard]] std::string TakeAgentText() { return std::exchange(_agentText, {}); }
-    // "Fix all with agent" was pressed since the last call.
+    // "Ask agent to fix build" was pressed since the last call.
     [[nodiscard]] bool TakeFixRequest() { return std::exchange(_fixAll, false); }
 
 private:
-    void DrawProblems(const EditorSnapshot& snapshot, const EditorUiActions& actions);
+    void DrawProblems(const EditorSnapshot& snapshot, const EditorUiActions& actions, const std::string& agentTarget);
     std::string _agentText;
     bool _problems = false; // The Problems view instead of log lines
     bool _fixAll = false;

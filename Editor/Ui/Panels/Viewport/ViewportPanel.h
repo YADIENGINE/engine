@@ -23,6 +23,8 @@ struct EditorViewportInteraction {
     bool contentActive = false;
     bool toggleMaximize = false;
     bool marking = false;          // A press goes to marking, not the product
+    bool markDragging = false;
+    bool pauseForMarking = false;  // Explicit pause, never a toggle; handled by the host.
     std::optional<FloatRect> mark; // A finished mark, canvas units
 };
 
@@ -30,7 +32,7 @@ class ViewportPanel {
 public:
     [[nodiscard]] EditorViewportInteraction Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions,
                                                  const ViewportImage& image, const std::vector<std::string>& recent,
-                                                 bool metrics, bool maximized);
+                                                 bool metrics, bool maximized, bool allowMarkGesture = true);
     void ReleaseFocus() { _focused = false; }
 
 private:

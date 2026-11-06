@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,6 +26,25 @@ struct ConsoleSessionInfo {
     std::optional<std::chrono::steady_clock::time_point> lastOutput; // Since `started`
 };
 
+// A read-only preview of an existing routing rule; resolving one never selects or starts a session.
+struct ConsoleContextTarget {
+    std::optional<std::uint64_t> session;
+    std::string title;
+    std::string unavailable;
+};
+[[nodiscard]] ConsoleContextTarget AgentContextTarget(std::span<const ConsoleSessionInfo> sessions, AgentKind kind);
+[[nodiscard]] ConsoleContextTarget PasteContextTarget(std::span<const ConsoleSessionInfo> sessions);
+[[nodiscard]] ConsoleContextTarget SessionContextTarget(std::span<const ConsoleSessionInfo> sessions,
+                                                        std::optional<std::uint64_t> id);
+
+// Local terminal delivery, not an acknowledgement that the agent has begun work.
+struct ConsoleContextDelivery {
+    std::string context;
+    std::string target;
+    bool submitted = false;
+    std::string problem;
+};
+
 // The Console's terminal sessions: shells and agent CLIs, each its own program in the project folder
 // (Docs/Editor/Usage.md → Agent workspace). It draws nothing: the Console panel shows it and the workspace drives it.
 // Every session's program gets ENGINE_EDITOR_SESSION (its id), so its `ctl` requests name it. Sessions keep running
@@ -43,10 +63,11 @@ public:
     // Selects the session; an exited program restarts with `commandLine` (empty: its previous one).
     void Revive(std::uint64_t id, const std::string& commandLine);
     // Pastes into the selected session's program (no Enter); opens a shell when there is none.
-    void Paste(const std::string& text);
+    void Paste(const std::string& text, const std::string& context = {});
     // Pastes into the session and selects it; `submit` presses Enter after the text. A program that just started gets
     // the text once its output has settled.
-    void SendTo(std::uint64_t id, const std::string& text, bool submit);
+    void SendTo(std::uint64_t id, const std::string& text, bool submit, const std::string& context = {});
+    [[nodiscard]] std::vector<ConsoleContextDelivery> TakeContextDeliveries();
     void Select(std::uint64_t id);
     // Ends the session's program and removes it.
     void Close(std::uint64_t id);
@@ -75,6 +96,7 @@ private:
         TerminalSession terminal;
         std::string pendingText; // Waits for a starting program (SendTo)
         bool pendingSubmit = false;
+        std::vector<std::string> pendingContexts; // Receipts wait for the same terminal write as pendingText.
         std::chrono::steady_clock::time_point started;
         std::optional<std::chrono::steady_clock::time_point> lastOutput;
         std::optional<std::chrono::steady_clock::time_point> lastBell;
@@ -87,6 +109,8 @@ private:
     [[nodiscard]] std::string NextTitle(const std::string& base) const;
     [[nodiscard]] SessionSignals Signals(const Session& session) const;
     [[nodiscard]] ConsoleSessionInfo InfoOf(const Session& session) const;
+    void CompleteContexts(Session& session, const std::string& problem = {});
+    std::vector<ConsoleContextDelivery> _contextDeliveries;
     std::vector<std::unique_ptr<Session>> _sessions;
     std::uint64_t _selected = 0; // Id; 0 when there is no session
     std::uint64_t _nextId = 1;

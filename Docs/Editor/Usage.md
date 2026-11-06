@@ -58,8 +58,8 @@ space-separated word in any order, ignoring case; panel result ordering is prese
   button back to the scene. Picking a scene in Scenes returns to it too.
 - **Output:** one row of controls above the lines. `Problems` lists the latest build's compiler, linker and CMake
   messages, errors first and without repeats; a click opens the file at the line (VS Code when `code` is on PATH,
-  otherwise the file's default application), *Fix* pastes that error into the agent session and *Fix all with agent*
-  sends them all and presses Enter. `Last build` shows output from the latest Build & Refresh click
+  otherwise the file's default application), *Paste error* prepares that error without Enter and *Ask agent to fix build*
+  sends the build errors and presses Enter. **Context to** names their target before either action. `Last build` shows output from the latest Build & Refresh click
   until the scene is ready, fails, or is cancelled; `Full` shows the last 1000 lines from editor, worker, and all
   attempts. Under the row, `Last build` names the attempt's start time, duration, result, and build exit code. Info /
   Warning / Error counters, search, and Copy Visible apply to
@@ -127,7 +127,7 @@ always does what its menu item does. A disabled item says why in its tooltip.
 | View | Command palette, Focus viewport, Panels, Layouts, Interface scale, viewport performance metrics |
 | Build | Build & Refresh, Build & Play game, Cancel build |
 | Git | Changes, Incoming commits, Fetch, Pull, Push, Update submodules; in a project that is no repository yet, Changes offers to create one |
-| Agent | Send scene / build failure, Ask agent to fix build, Show agents, New agent, open the agent CLI, New shell, Agent control, Visual checks, Agent CLI |
+| Agent | Paste scene context / build failure, Ask agent to fix build, Show agents, New agent, open the agent CLI, New shell, Agent control, Visual checks, Agent CLI |
 | Help | Keyboard shortcuts, Editor guide, About |
 
 Editor guide opens this page: the engine's own `Docs/Editor/Usage.md` when the engine folder has it, else the page for
@@ -162,7 +162,7 @@ Reset recreates the scene in the same worker process. Use Run to restart the wor
 | Ctrl+` | Toggle the Console |
 | Ctrl+Shift+G | Toggle Git changes |
 | Ctrl+Shift+A | Open or close the Agents drawer, on the agent that waits for you (also from a terminal) |
-| Ctrl+Shift+S | Send scene: to the drawer's chosen agent while it is open, else to the agent session |
+| Ctrl+Shift+S | Paste scene context: to the drawer's chosen agent while it is open, else to the configured agent target; no Enter |
 | Ctrl+Shift+N | New agent (the drawer's **+** menu) |
 | Ctrl+PageDown / Ctrl+PageUp | In the Agents drawer: the next / previous agent |
 | Ctrl+1 … Ctrl+9 | In the Agents drawer: agent 1 to 9 |
@@ -252,8 +252,11 @@ editor context; it never calls a model itself. The agent drives the editor back 
   The **+** button at the top (*Add terminal* on hover) offers Shell, Claude, Codex and *Custom agent*, with the named
   CLIs' commands alongside them. Choosing an agent makes it the one agent requests start next. Each session keeps
   running while the panel is hidden; closing one ends its program (a running agent asks first). Agent requests
-  (Send scene, Marks, ...) go to the selected session when it runs an agent, else to the agent session
-  selected last; with none, the chosen agent starts. The first draw opens a shell when there is none.
+  use the selected agent session, else the last selected agent. Scene context from an open drawer goes to its chosen
+  chip instead; choosing a chip alone does not change the general target. General agent commands reuse the target
+  only when it matches the configured CLI, otherwise they start that CLI in a new session. Marks paste into the
+  existing agent target, or the selected Console terminal (a new shell if none exists), without starting an agent.
+  The first Console draw opens a shell when there is none.
 - **Session state** (each session's icon): *working* while its program writes output for a request, *waiting for you*
   when it rang the terminal bell after your last input (agent CLIs ring it when they ask something), *done* when the
   output went quiet after a request, *idle* before anyone typed into it, *exited* when the program ended. An agent's
@@ -278,8 +281,10 @@ editor context; it never calls a model itself. The agent drives the editor back 
     terminal twice.
   - *Activity:* what that agent did, newest first, filtered by *All*, *Editor* (changes with *Undo*, captures with
     *Open*, commands and notes) or *Tools* (its last 100 tool lines from hooks).
-  - *Send scene* pastes the open scene into this agent's prompt; an exited agent offers *Restart*; the ⋯ menu has *Open
-    in Console* and *Close session* (a running agent asks first).
+  - **Scene context to: Codex 2** remains below the chips in both views, with **Paste only · You submit**.
+    *Paste scene context* prepares the open scene in that agent's prompt without Enter; an exited agent offers
+    *Restart*. Outside agents have activity only and cannot receive pasted context. The ⋯ menu has *Open in Console*
+    and *Close session* (a running agent asks first).
   - *No agent yet:* the drawer offers Claude Code, Codex and a custom command, the one in your preferences first;
     Enter starts it.
 - **Opening an agent:** the drawer's **+**, its empty state, the Console's add button or *Open* in the Agent menu or the palette start
@@ -292,12 +297,17 @@ editor context; it never calls a model itself. The agent drives the editor back 
   add @Engine/AgentDocs/Agent.md to your CLAUDE.md (or AGENTS.md)".
 - **Agent menu** groups Send context and Settings. Open agent and New shell are available through the Console's add
   button and remain in the command palette as "Agent" entries, alongside the context commands:
-  - *Send scene* pastes the open scene's id, playback time, changed parameters and a capture of the frame
+  - *Paste scene context* pastes the open scene's id, playback time, changed parameters and a capture of the frame
     (`editor-captures/scene-*.png`) into the agent session, shown in the Agents drawer, without Enter: type your
     request after it.
-  - *Send build failure* pastes the last failed Build & Refresh with its error lines; *Ask agent to fix build* also
-    asks for a fix and presses Enter, as *Fix all with agent* in Output → Problems does. Disabled context commands
-    explain why in a tooltip.
+  - *Paste build failure* prepares the last failed Build & Refresh with its error lines, without Enter;
+    *Ask agent to fix build* asks for a fix and presses Enter, as the same action in Output → Problems does.
+    Menu and palette context commands name their actual target. **New Codex session**, for example, means the configured
+    CLI will start in a new terminal. Disabled context commands explain why in a tooltip.
+  - A short, non-modal notice names what was pasted and where, and whether Enter was sent. Queued context and agent
+    setup show waiting notices; success appears only after terminal delivery, not merely after saving a capture.
+    Setup cancellation and capture/terminal failures never show a successful paste. Notices remain visible with
+    the drawer or viewport closed, for three seconds on success and five seconds on failure.
   - *Show agents* opens the Agents drawer.
   - *Agent control* (on by default): off, tools may observe the editor (status, list, screenshot, inspect, logs) but
     every command that changes it (open, set, action, playback, seek, frames, refresh) is refused. The status bar shows

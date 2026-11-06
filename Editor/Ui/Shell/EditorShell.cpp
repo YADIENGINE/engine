@@ -145,7 +145,8 @@ bool PhaseIsWorking(const EditorSnapshot& snapshot) {
 void StatusPhase(const EditorSnapshot& snapshot) {
     const char* phase = snapshot.profiler.busy ? (snapshot.benchmarkCancelPending ? "Canceling benchmark"
                                                                                   : snapshot.profiler.phase.c_str())
-                                               : EditorPhaseLabel(snapshot.phase);
+                        : snapshot.paused && snapshot.pausedForMarking ? "Paused for marking"
+                                                                       : EditorPhaseLabel(snapshot.phase);
     const float y = ImGui::GetCursorPosY();
     ImGui::SetCursorPosY(y + ImGui::GetStyle().FramePadding.y);
     if (PhaseIsWorking(snapshot))
@@ -196,7 +197,7 @@ void EditorShell::Menu(const EditorActionContext& context, std::span<const Edito
 }
 float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions& actions, ImVec2 position, float width,
                            bool& marking, EditorToolbarSearch& search, const EditorAgentStatus& agent,
-                           EditorAgentActivity& activity) const {
+                           EditorAgentActivity& activity, const std::string& markTarget) const {
     const float scale = ToolUiScale();
     const float height = std::max(EditorToolbarMetrics::ControlHeight * scale, ImGui::GetFrameHeight()) +
                          EditorToolbarMetrics::PaddingY * 2 * scale;
@@ -206,15 +207,15 @@ float EditorShell::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions
                         {EditorToolbarMetrics::PaddingX * scale, EditorToolbarMetrics::PaddingY * scale});
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolPalette::Window);
     if (ImGui::Begin("Toolbar###editor.toolbar", nullptr, BarFlags))
-        DrawEditorPlaybackControls(snapshot, actions, marking, search, agent, activity);
+        DrawEditorPlaybackControls(snapshot, actions, marking, search, agent, activity, markTarget);
     ImGui::End();
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     return height;
 }
 float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreferences& preferences,
-                          const EditorAgentStatus& agent, ImVec2 position, float width,
-                          EditorShellResult& result) const {
+                          const EditorAgentStatus& agent, ImVec2 position, float width, EditorShellResult& result,
+                          const EditorUiActions& actions) const {
     const float scale = ToolUiScale();
     const float height = std::max(24.0f * scale, ImGui::GetTextLineHeight() + 8.0f * scale);
     ImGui::SetNextWindowPos({position.x, position.y - height});
@@ -260,6 +261,10 @@ float EditorShell::Status(const EditorSnapshot& snapshot, const EditorPreference
         // After the buttons, so they stay in place while the phase's name changes.
         ImGui::SameLine(0, gap);
         StatusPhase(snapshot);
+        if (snapshot.paused && snapshot.pausedForMarking) {
+            ImGui::SameLine();
+            EditorCommandButton(EditorCommand::Pause, snapshot, actions, true);
+        }
         ImGui::SameLine(0, gap);
         // The scene's size and rate at the far end, the status message in what is left.
         std::string metrics;

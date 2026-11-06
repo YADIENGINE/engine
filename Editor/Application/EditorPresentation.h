@@ -126,6 +126,7 @@ struct EditorSnapshot {
     const GitSnapshot* git = nullptr; // Source control; null without a project
     // Agents' notes, tool lines and who holds the editor (EditorControlService); null without a control endpoint.
     const EditorAgentReport* agents = nullptr;
+    bool pausedForMarking = false; // Confirmed pause requested by Mark, never inferred from a gesture.
 };
 
 enum class AudioPreviewAction { Play, Pause, Resume, Stop, Seek, Volume, Loop };

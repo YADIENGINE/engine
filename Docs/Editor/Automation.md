@@ -161,6 +161,9 @@ grid image, each tile labelled with its playback time; the answer lists the time
 
 The toolbar's Mark button covers the editor below the toolbar with a marking layer: drag a region, or click for a small
 square (Esc or right-click cancels; one mark per press). Alt+drag on the scene marks without the button.
+The tooltip and marking hint name the actual destination and say **You submit**: neither path sends Enter. During a
+drag the hint identifies **Scene region** or **Editor window region**. Esc/right-click also cancels Alt+drag, including
+when cancellation and release happen together.
 
 - **On the scene** (the region starts and ends on the image): the scene pauses so the frame holds still, the region
   of the viewport frame is saved, and the pasted line carries the scene's context:
@@ -178,8 +181,16 @@ square (Esc or right-click cancels; one mark per press). Alt+drag on the scene m
   [editor] window region=12,340 420x260 of 2560x1440 image="C:\...\mark-....png" open-scene=my.scene
   ```
 
-The line is pasted into the Console's input without Enter; the developer types their question after it. The image is
-the marked region only (scaled down to at most 1000 px on its long side).
+The line is pasted into the existing agent target, shown in Agents, or the selected Console terminal when there is no
+agent target (a new shell if none exists). Selecting a drawer chip alone does not change this Mark target. The developer
+types their question after it and submits it. The image is the marked region only (scaled down to at most 1000 px on
+its long side). A short notice confirms the actual destination only after capture and paste complete; failures show
+an error instead. Window capture happens after the marking layer is removed.
+
+If Mark pauses a running scene, the status bar shows **Paused for marking** with **Resume**, once the worker confirms
+that pause. A scene that was already paused keeps its ordinary **Paused** status. Finishing, canceling or failing a
+mark never resumes the scene automatically. Resume, other playback interventions, Reset, Stop or replacing the scene
+clear the Mark pause reason.
 
 ## Build errors
 

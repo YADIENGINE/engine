@@ -156,7 +156,6 @@ void Label(ImVec2 position, ImVec4 color, const std::string& text) {
     ImGui::RenderText(position, text.c_str());
     ImGui::PopStyleColor();
 }
-float LabelWidth(const char* label) { return ImGui::CalcTextSize(label).x + ImGui::GetStyle().FramePadding.x * 2; }
 
 // "1 waiting · 2 working · 1 done", leaving out what is zero.
 std::string Summary(const std::vector<Row>& rows) {
@@ -499,13 +498,13 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
         ImGui::SetCursorScreenPos({origin.x, y});
         ImGui::Dummy({0, 0});
     } else {
-        // The chosen agent: its state, Terminal / Activity, Send scene and its menu
+        // The chosen agent's view and state; context gets its own wrapped row below.
         const bool exited = chosen->state == SessionState::Exited;
         const View view = outside ? View::Activity : _view;
         const float barTop = top + Scaled(ToolMetrics::Space);
         const float more = ImGui::GetFrameHeight();
-        const char* send = exited ? "Restart" : "Send scene";
-        const float buttons = chosen->id ? more + gap + LabelWidth(send) : 0.0f;
+        const char* send = exited ? "Restart" : "Paste scene context";
+        const float buttons = chosen->id ? more : 0.0f;
         ImGui::SetCursorScreenPos({origin.x + pad, barTop});
         if (!outside) {
             for (const auto& [option, label] :
@@ -531,19 +530,6 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
         }
         if (chosen->id) {
             ImGui::SetCursorScreenPos({origin.x + width - pad - buttons, barTop});
-            if (exited) {
-                if (ToolButton(send, {}, true)) request.restart = chosen->id;
-            } else {
-                ImGui::BeginDisabled(!snapshot.ready);
-                if (ToolButton(send)) request.sendScene = chosen->id;
-                ImGui::EndDisabled();
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                    ToolTooltip(
-                        snapshot.ready
-                            ? "Paste the open scene and a capture of it into this agent's prompt  (Ctrl+Shift+S)"
-                            : "Run a scene first");
-            }
-            ImGui::SameLine(0, gap);
             if (ToolIconButton("agent-more", ICON_FA_ELLIPSIS, "More")) ImGui::OpenPopup("agent-more-menu");
             if (ImGui::BeginPopup("agent-more-menu")) {
                 if (ImGui::MenuItem("Open in Console")) request.openConsole = chosen->id;
@@ -556,7 +542,29 @@ AgentsDrawerRequest AgentsDrawer::Draw(const std::vector<ConsoleSessionInfo>& se
                 ImGui::EndPopup();
             }
         }
-        const float bodyTop = barTop + ImGui::GetFrameHeight() + Scaled(ToolMetrics::Space) * 2;
+        ImGui::SetCursorScreenPos({origin.x + pad, barTop + ImGui::GetFrameHeight() + gap});
+        ImGui::PushTextWrapPos(width - pad);
+        if (chosen->id) {
+            const auto target = SessionContextTarget(sessions, chosen->id);
+            ImGui::TextWrapped("Scene context to: %s", target.title.c_str());
+            ImGui::TextColored(ToolPalette::Muted, "Paste only \xC2\xB7 You submit");
+            ContinueToolToolbar(send, true);
+            if (exited) {
+                if (ToolButton(send, {}, true)) request.restart = chosen->id;
+                ToolTooltip("Restart this agent before pasting scene context.");
+            } else {
+                ImGui::BeginDisabled(!snapshot.ready);
+                if (ToolButton(send)) request.sendScene = chosen->id;
+                ImGui::EndDisabled();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ToolTooltip(snapshot.ready ? "Paste the scene and its capture here, without Enter (Ctrl+Shift+S)."
+                                               : "Run a scene first.");
+            }
+        } else {
+            ImGui::TextWrapped("Activity only. Outside agents have no terminal for pasting context.");
+        }
+        ImGui::PopTextWrapPos();
+        const float bodyTop = ImGui::GetCursorScreenPos().y + gap;
         // The body stops a grip's height above the bottom, so no child window covers the resize corner
         const ImVec2 body{width - Scaled(1), std::max(1.0f, origin.y + height - bodyTop - Scaled(GripSize))};
         ImGui::SetCursorScreenPos({origin.x + Scaled(1), bodyTop});

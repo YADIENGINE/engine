@@ -74,6 +74,7 @@ void EditorController::Stop() {
 }
 void EditorController::Pause() {
     if (!_ready) return;
+    _markPause.Clear();
     try {
         Send("pause", {{"paused", !_paused}});
     } catch (const std::exception& error) {
@@ -263,6 +264,7 @@ void EditorController::Playback(double speed, bool step) {
     if (!capabilities.playbackEnabled || (step && !capabilities.Can(EditorCommand::Step)) || !ValidPlaybackSpeed(speed))
         return;
     try {
+        _markPause.Clear();
         Send("playback", {{"speed", speed}, {"step", step}});
     } catch (const std::exception& error) {
         FailScene(error.what());
@@ -277,6 +279,7 @@ void EditorController::CaptureAudio(const std::string& file, double seconds) {
     }
 }
 void EditorController::SetPaused(bool paused) {
+    _markPause.Clear();
     if (!_ready || _profiler.Snapshot().busy || paused == _paused) return;
     try {
         Send("pause", {{"paused", paused}});
@@ -284,9 +287,19 @@ void EditorController::SetPaused(bool paused) {
         FailScene(error.what());
     }
 }
+void EditorController::PauseForMarking() {
+    if (_paused || _markPause.Pending() || !Snapshot().capabilities.Can(EditorCommand::Pause)) return;
+    try {
+        Send("pause", {{"paused", true}});
+        _markPause.Requested(_generation, _request);
+    } catch (const std::exception& error) {
+        FailScene(error.what());
+    }
+}
 void EditorController::Seek(double seconds, bool relative) {
     if (!_ready || _profiler.Snapshot().busy) return;
     try {
+        _markPause.Clear();
         Send("seek", {{"seconds", seconds}, {"relative", relative}});
     } catch (const std::exception& error) {
         FailScene(error.what());
@@ -295,6 +308,7 @@ void EditorController::Seek(double seconds, bool relative) {
 void EditorController::SeekStep(std::uint64_t step, bool relative) {
     if (!_ready || _profiler.Snapshot().busy) return;
     try {
+        _markPause.Clear();
         Send("seek", {{"step", step}, {"relative", relative}});
     } catch (const std::exception& error) {
         FailScene(error.what());
@@ -303,6 +317,7 @@ void EditorController::SeekStep(std::uint64_t step, bool relative) {
 void EditorController::Replay(const std::string& action, const std::string& path) {
     if (!_ready || _profiler.Snapshot().busy) return;
     try {
+        if (action == "load") _markPause.Clear();
         Send("replay", {{"action", action}, {"path", path}});
     } catch (const std::exception& error) {
         FailScene(error.what());
@@ -440,6 +455,7 @@ EditorSnapshot EditorController::Snapshot() const {
                             _project ? &_tuning : nullptr};
     snapshot.inspectedTuning = _inspectedTuning;
     snapshot.notice = _notice;
+    snapshot.pausedForMarking = snapshot.paused && _markPause.Active();
     snapshot.controlEvents = &_controlEvents;
     snapshot.controlEventCount = _controlEventCount;
     snapshot.audioUsage = &_audioUsage;
@@ -514,6 +530,7 @@ void EditorController::StopActive(const std::string& status) {
     _restPhase = EditorPhase::Stopped;
 }
 void EditorController::Invalidate(std::uint64_t generation) {
+    _markPause.Clear();
     _generation = generation;
     _inspection = {};
     _simulationState = nullptr;
@@ -622,11 +639,13 @@ void EditorController::Receive(const WorkerMessage& message) {
         _simulationState = message.data;
     } else if (message.type == "state") {
         _paused = message.data.at("paused").get<bool>();
+        _markPause.Observe(message.generation, message.request, _paused);
         _playbackSpeed = message.data.value("speed", _playbackSpeed);
         _seconds = message.data.value("seconds", _seconds);
         _simulationState = message.data.value("simulation", nlohmann::json());
     } else if (message.type == "synced") {
         _paused = message.data.at("paused").get<bool>();
+        _markPause.Observe(message.generation, message.request, _paused);
         _seconds = message.data.at("seconds").get<double>();
         _simulationState = message.data.value("simulation", nlohmann::json());
         if (message.request == _syncRequest) _sync = {message.request, _seconds, _paused, 0};

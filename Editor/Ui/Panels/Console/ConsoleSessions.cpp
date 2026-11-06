@@ -1,6 +1,7 @@
 #include "Editor/Ui/Panels/Console/ConsoleSessions.h"
 #include <algorithm>
 #include <format>
+#include <utility>
 #include "ToolUi/ToolTheme.h"
 
 namespace {
@@ -24,6 +25,34 @@ std::optional<double> Seconds(const std::optional<std::chrono::steady_clock::tim
     return std::chrono::duration<double>(time->time_since_epoch()).count();
 }
 } // namespace
+
+ConsoleContextTarget SessionContextTarget(std::span<const ConsoleSessionInfo> sessions,
+                                          std::optional<std::uint64_t> id) {
+    if (id)
+        for (const auto& info : sessions)
+            if (info.id == *id && info.agent)
+                return {info.id, info.title,
+                        info.state == SessionState::Exited
+                            ? "Restart the selected agent session before pasting context."
+                            : ""};
+    return {std::nullopt, "No agent terminal", "Choose an agent terminal; outside agents have no input to paste into."};
+}
+ConsoleContextTarget AgentContextTarget(std::span<const ConsoleSessionInfo> sessions, AgentKind kind) {
+    for (const auto& info : sessions)
+        if (info.target && info.agent == kind) return {info.id, info.title, {}};
+    return {std::nullopt, std::string("New ") + AgentKindInfo(kind).sessionName + " session", {}};
+}
+ConsoleContextTarget PasteContextTarget(std::span<const ConsoleSessionInfo> sessions) {
+    const ConsoleSessionInfo* selected = nullptr;
+    for (const auto& info : sessions) {
+        if (info.target && info.agent) return SessionContextTarget(sessions, info.id);
+        if (info.selected) selected = &info;
+    }
+    if (selected)
+        return {selected->id, selected->title,
+                selected->state == SessionState::Exited ? "Restart the selected terminal before pasting context." : ""};
+    return {std::nullopt, "New Shell session", {}};
+}
 
 ConsoleSessions::Session::Session(std::uint64_t sessionId, std::string sessionTitle, std::optional<AgentKind> agentKind)
     : id(sessionId)
@@ -78,16 +107,35 @@ void ConsoleSessions::Revive(std::uint64_t id, const std::string& commandLine) {
     }
     Select(id);
 }
-void ConsoleSessions::Paste(const std::string& text) {
+void ConsoleSessions::Paste(const std::string& text, const std::string& context) {
     if (_sessions.empty()) OpenShell();
-    if (auto* session = Find(_selected)) session->terminal.Paste(text);
+    if (auto* session = Find(_selected)) {
+        const bool running = session->terminal.Running();
+        if (running) session->terminal.Paste(text);
+        if (!context.empty())
+            _contextDeliveries.push_back({context, session->title, false,
+                                          running ? "" : "The terminal is not running. Restart it before pasting."});
+    }
 }
-void ConsoleSessions::SendTo(std::uint64_t id, const std::string& text, bool submit) {
+void ConsoleSessions::SendTo(std::uint64_t id, const std::string& text, bool submit, const std::string& context) {
     auto* session = Find(id);
-    if (!session) return;
+    if (!session) {
+        if (!context.empty())
+            _contextDeliveries.push_back({context, "selected session", false, "The session is no longer available."});
+        return;
+    }
     Select(id);
     session->pendingText += text;
     session->pendingSubmit = session->pendingSubmit || submit;
+    if (!context.empty()) session->pendingContexts.push_back(context);
+}
+std::vector<ConsoleContextDelivery> ConsoleSessions::TakeContextDeliveries() {
+    return std::exchange(_contextDeliveries, {});
+}
+void ConsoleSessions::CompleteContexts(Session& session, const std::string& problem) {
+    for (const auto& context : session.pendingContexts)
+        _contextDeliveries.push_back({context, session.title, session.pendingSubmit, problem});
+    session.pendingContexts.clear();
 }
 void ConsoleSessions::Select(std::uint64_t id) {
     const auto* session = Find(id);
@@ -99,6 +147,7 @@ void ConsoleSessions::Close(std::uint64_t id) {
     const auto found = std::ranges::find(_sessions, id, [](const auto& session) { return session->id; });
     if (found == _sessions.end()) return;
     const auto index = static_cast<std::size_t>(found - _sessions.begin());
+    CompleteContexts(**found, "The session closed before context could be pasted.");
     _sessions.erase(found);
     if (_selected != id) return;
     // The row that moved into its place takes the selection; the one above when it was the last
@@ -119,6 +168,7 @@ void ConsoleSessions::Update(const EditorAgentReport* report) {
                 if (agent) session.agentObserved = true;
                 if (agent != session.agent) {
                     if (!agent && session.agentObserved) {
+                        CompleteContexts(session, "The agent exited before context could be pasted.");
                         session.pendingText.clear();
                         session.pendingSubmit = false;
                     }
@@ -136,11 +186,16 @@ void ConsoleSessions::Update(const EditorAgentReport* report) {
             session.lastOutput = now;
         }
         if (session.pendingText.empty() && !session.pendingSubmit) continue;
+        if (!session.terminal.Running()) {
+            CompleteContexts(session, "The terminal stopped before context could be pasted.");
+            continue;
+        }
         if (!session.agent) continue; // Never submit queued agent context to a shell prompt.
         const bool settled = session.lastOutput && now - *session.lastOutput >= SettleTime;
         if (!session.terminal.Running() || (!settled && now - session.started < SettleLimit)) continue;
         if (!session.pendingText.empty()) session.terminal.Paste(session.pendingText);
         if (session.pendingSubmit) session.terminal.SendKey(TerminalKey::Enter, {});
+        CompleteContexts(session);
         session.pendingText.clear();
         session.pendingSubmit = false;
     }

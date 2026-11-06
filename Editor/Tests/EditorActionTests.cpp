@@ -182,7 +182,7 @@ TEST_CASE("Editor.Actions.DrawerKeysNeedTheDrawer", "[engine-editor]") {
     CHECK(fixture.result.agents.chip == 2u);
     fixture.snapshot.ready = true;
     open = fixture.List(false, true);
-    Find(open, EditorMenu::Agent, "Send scene")->run(); // To the drawer's chosen agent
+    std::ranges::find(open, EditorKey::SendScene, &EditorAction::key)->run(); // To the drawer's chosen agent
     CHECK(fixture.result.agents.sendScene);
     CHECK_FALSE(fixture.result.agent);
 }
