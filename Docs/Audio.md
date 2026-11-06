@@ -9,7 +9,7 @@ The mix is miniaudio's engine, with the engine's own stops on its way: every sou
 [bus](#buses) and the master, and each of those has a gain per ear, a volume with fades and a low-pass filter. It runs on
 the audio thread: fades, loops and streams go on while the main thread is busy, so a long frame or a seek does not break
 a live sound. Public headers include neither miniaudio nor raylib; `Audio/Internals/` is not supported API, and `check`
-keeps the audio library there. Why miniaudio, and what was measured: [D39](Design/README.md#d39-spatial-and-layered-audio).
+keeps the audio library there. Why miniaudio: [D39](Design/README.md#d39-spatial-and-layered-audio).
 
 ## Sound tables
 

@@ -9,7 +9,7 @@ engine's own files, copied to `Assets/Engine` beside every game ([ready-made sou
 folder of that name under `Game/Assets` stops the configure.
 
 `GameSettings::assets` is the relative path list of files in use. Audio catalog paths are added automatically; list a
-custom font path explicitly. Images are not loaded from files: visuals are produced by code ([D1](Design/README.md#d1-asset-kuralı)),
+custom font path explicitly. Images are not loaded from files: visuals are produced by code ([D1](Design/README.md#d1-assets)),
 and textures come from `Surface`.
 
 ```cpp
