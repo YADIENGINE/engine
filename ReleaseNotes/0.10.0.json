@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-07",
+  "changes": [
+    "Core engine changes: one scene type for the game and the editor, Stage for a scene's view side, Pool and handles for things that come and go.",
+    "Editor: scenes open again in projects that name a font."
+  ],
+  "breaking": [
+    {
+      "change": "EditorScene, GameObject, ObjectList, AddObject and ShutdownNoThrow are gone; Scene::Update runs on game time by default.",
+      "migrate": "See Docs/Editor/Development/Migrations.md (D53, D56)."
+    },
+    {
+      "change": "FxStage::Update is split into UpdateReal and Update; ColliderRef and ColliderHit carry layers; Core/Progress moved to Core/Gameplay.",
+      "migrate": "See Docs/Editor/Development/Migrations.md (D54, D55, D56)."
+    }
+  ]
+}
