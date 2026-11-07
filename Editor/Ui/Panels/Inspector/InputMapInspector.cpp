@@ -48,6 +48,11 @@ constexpr std::array<std::pair<ImGuiKey, const char*>, 37> NamedKeys{{
     {ImGuiKey_F11, "F11"},
     {ImGuiKey_F12, "F12"},
 }};
+constexpr std::array<std::pair<ImGuiMouseButton, const char*>, 3> MouseNames{{
+    {ImGuiMouseButton_Left, "MouseLeft"},
+    {ImGuiMouseButton_Right, "MouseRight"},
+    {ImGuiMouseButton_Middle, "MouseMiddle"},
+}};
 constexpr std::array<const char*, 10> DigitNames{"Zero", "One", "Two",   "Three", "Four",
                                                  "Five", "Six", "Seven", "Eight", "Nine"};
 
@@ -182,12 +187,17 @@ void InputMapInspector::Cell(const TuningFileState& file, std::size_t player, st
     if (listening) {
         ImGui::AlignTextToFramePadding();
         ImGui::PushStyleColor(ImGuiCol_Text, ToolToneColor(ToolTone::Accent));
-        ImGui::TextUnformatted("Press a key...");
+        ImGui::TextUnformatted("Press a key or click here...");
         ImGui::PopStyleColor();
-        ToolTooltip("Escape cancels.");
+        // A mouse button binds by clicking the prompt, so a click elsewhere does not bind it by accident.
+        if (ImGui::IsItemHovered())
+            for (const auto& [mouse, name] : MouseNames)
+                if (ImGui::IsMouseClicked(mouse)) _capture->clicked = name;
+        ToolTooltip("Click with a mouse button to bind it. Escape cancels.");
         return;
     }
-    if (ToolIconButton("add", "+", "Add a key: press it next. Escape cancels."))
+    if (ToolIconButton("add", "+",
+                       "Add a key: press it next, or click the prompt with a mouse button. Escape cancels."))
         _capture = Capture{file.source, player, map.buttons[button]};
 }
 
@@ -197,7 +207,8 @@ void InputMapInspector::Listen(const TuningFileState& file, const EditorUiAction
         _capture.reset();
         return;
     }
-    const auto name = PressedKey();
+    auto name = PressedKey();
+    if (name.empty()) name = _capture->clicked;
     if (name.empty()) return;
     const auto& map = *file.input;
     const auto button = std::ranges::find(map.buttons, _capture->button);

@@ -81,6 +81,40 @@ TEST_CASE("Editor.Input.OwnedDragReleaseAndFocus", "[engine-editor]") {
     CHECK_FALSE(router.Clear().mouseReleased);
 }
 
+TEST_CASE("Editor.Input.MouseButtonsFollowThePointerNotKeyboardFocus", "[engine-editor]") {
+    constexpr auto right = static_cast<std::size_t>(InputKey::MouseRight);
+    ViewportInputRouter router;
+    const auto viewport = FitSceneViewport({}, {200.0f, 100.0f}, {400, 200});
+    InputSample down;
+    down.keysPressed[right] = down.keysDown[right] = true;
+    // Over a blocked viewport (an editor panel on top), the press stays the editor's.
+    auto routed = router.Route(down, {50.0f, 50.0f}, viewport, true, true, false, true);
+    CHECK_FALSE(routed.Pressed(InputKey::MouseRight));
+    CHECK_FALSE(router.OwnsPointer());
+    // Over the viewport, it is the scene's even without keyboard focus, and held until released.
+    routed = router.Route(down, {50.0f, 50.0f}, viewport, true, false, true, false);
+    CHECK(routed.Pressed(InputKey::MouseRight));
+    CHECK(routed.Down(InputKey::MouseRight));
+    CHECK_FALSE(routed.mousePressed);
+    CHECK(router.OwnsPointer());
+    InputSample held;
+    held.keysDown[right] = true;
+    routed = router.Route(held, {500.0f, 500.0f}, viewport, true, false, true, true);
+    CHECK(routed.Down(InputKey::MouseRight));
+    CHECK_FALSE(routed.Pressed(InputKey::MouseRight));
+    InputSample up;
+    up.keysReleased[right] = true;
+    routed = router.Route(up, {500.0f, 500.0f}, viewport, true, false, true, true);
+    CHECK(routed.Released(InputKey::MouseRight));
+    CHECK_FALSE(router.OwnsPointer());
+    // The left button's key agrees with the mouse fields.
+    InputSample left;
+    left.mousePressed = left.mouseDown = true;
+    routed = router.Route(left, {50.0f, 50.0f}, viewport, true, true, false, false);
+    CHECK(routed.mousePressed);
+    CHECK(routed.Pressed(InputKey::MouseLeft));
+}
+
 TEST_CASE("Editor.Input.FocusCancellationDrainsHeldDevicesBeforeAcceptingANewPress", "[engine-editor]") {
     ViewportInputRouter router;
     const auto viewport = FitSceneViewport({}, {200.0f, 100.0f}, {400, 200});
@@ -157,6 +191,7 @@ TEST_CASE("Editor.Input.SnapshotsPreserveEdges", "[engine-editor]") {
     down.keysDown[0] = true;
     DeviceInput up;
     up.mouseReleased = true;
+    up.keysReleased[static_cast<std::size_t>(InputKey::MouseRight)] = true;
     up.touches = {{7, std::nullopt}};
     AccumulateViewportInput(state, down);
     AccumulateViewportInput(state, up);
@@ -166,6 +201,7 @@ TEST_CASE("Editor.Input.SnapshotsPreserveEdges", "[engine-editor]") {
     CHECK_FALSE(frame.mouseDown);
     CHECK(frame.keysPressed[0]);
     CHECK_FALSE(frame.keysDown[0]);
+    CHECK(frame.Released(InputKey::MouseRight));
     REQUIRE(frame.pressPoints.size() == 1);
     CHECK(frame.pressPoints.front() == Vec2{20, 30});
     REQUIRE(frame.touches.size() == 1);
@@ -174,12 +210,14 @@ TEST_CASE("Editor.Input.SnapshotsPreserveEdges", "[engine-editor]") {
     const auto next = ConsumeViewportInput(state);
     CHECK_FALSE(next.keysPressed[0]);
     CHECK_FALSE(next.mouseReleased);
+    CHECK_FALSE(next.Released(InputKey::MouseRight));
     CHECK(next.pressPoints.empty());
 }
 
 TEST_CASE("Editor.Input.ProtocolPreservesTouchIdentityAndRejectsAmbiguousContacts", "[engine-editor]") {
     DeviceInput input;
     input.keysDown[static_cast<std::size_t>(InputKey::RightShift)] = true;
+    input.keysReleased[static_cast<std::size_t>(InputKey::MouseMiddle)] = true;
     input.mousePosition = Vec2{100, 120};
     input.mousePress = Vec2{90, 110};
     input.mouseHover = input.mousePosition;
@@ -192,6 +230,7 @@ TEST_CASE("Editor.Input.ProtocolPreservesTouchIdentityAndRejectsAmbiguousContact
     const auto encoded = EncodeWorkerInput(input);
     const auto decoded = DecodeWorkerInput(encoded);
     CHECK(decoded.ShiftDown());
+    CHECK(decoded.Released(InputKey::MouseMiddle));
     CHECK(decoded.mousePress == input.mousePress);
     CHECK(decoded.mouseHover == input.mouseHover);
     CHECK(decoded.mousePosition == input.mousePosition);
@@ -212,6 +251,9 @@ TEST_CASE("Editor.Input.ProtocolPreservesTouchIdentityAndRejectsAmbiguousContact
     CHECK_THROWS(DecodeWorkerInput(invalid));
     invalid = encoded;
     invalid["pressed"].push_back(false);
+    CHECK_THROWS(DecodeWorkerInput(invalid));
+    invalid = encoded;
+    invalid.erase("released");
     CHECK_THROWS(DecodeWorkerInput(invalid));
 }
 

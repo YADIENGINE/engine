@@ -18,6 +18,7 @@ private:
         std::filesystem::path source;
         std::size_t player = 0;
         std::string button;
+        std::string clicked; // A mouse button clicked on the prompt
     };
     void Status(const TuningFileState& file, const EditorSnapshot& snapshot, const EditorUiActions& actions);
     void Cell(const TuningFileState& file, std::size_t player, std::size_t button, const EditorUiActions& actions);

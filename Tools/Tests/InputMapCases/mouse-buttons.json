@@ -1,0 +1,6 @@
+{
+  "buttons": ["Fire", "Aim", "Ping"],
+  "players": [
+    { "Fire": ["MouseLeft", "Space"], "Aim": ["MouseRight"], "Ping": ["MouseMiddle"] }
+  ]
+}

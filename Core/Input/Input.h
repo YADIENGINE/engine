@@ -16,6 +16,7 @@ enum class InputKey {
     Home, End, PageUp, PageDown,
     Minus, Equal, Subtract, Add,
     F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
+    MouseLeft, MouseRight, MouseMiddle, // Mouse buttons, wherever the pointer is; bind them like keys
     Count
 };
 // clang-format on
@@ -32,7 +33,9 @@ struct DeviceInput {
     bool cancelled = false;
     std::array<bool, static_cast<std::size_t>(InputKey::Count)> keysPressed{};
     std::array<bool, static_cast<std::size_t>(InputKey::Count)> keysDown{};
+    std::array<bool, static_cast<std::size_t>(InputKey::Count)> keysReleased{};
     std::optional<Vec2> mousePosition;
+    // The left button; Pressed/Down/Released(InputKey::MouseLeft) report the same, and the other buttons that way.
     bool mousePressed = false;
     bool mouseReleased = false;
     bool mouseDown = false;
@@ -47,5 +50,6 @@ struct DeviceInput {
 
     [[nodiscard]] constexpr bool Pressed(InputKey key) const { return keysPressed[static_cast<std::size_t>(key)]; }
     [[nodiscard]] constexpr bool Down(InputKey key) const { return keysDown[static_cast<std::size_t>(key)]; }
+    [[nodiscard]] constexpr bool Released(InputKey key) const { return keysReleased[static_cast<std::size_t>(key)]; }
     [[nodiscard]] constexpr bool ShiftDown() const { return Down(InputKey::LeftShift) || Down(InputKey::RightShift); }
 };

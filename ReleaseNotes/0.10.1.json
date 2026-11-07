@@ -1,0 +1,9 @@
+{
+  "date": "2026-11-07",
+  "changes": [
+    "More input options: MouseLeft, MouseRight and MouseMiddle are input keys, so an input map binds actions to mouse buttons (\"Aim\": [\"MouseRight\"]).",
+    "DeviceInput reports released keys and buttons: Released(InputKey), next to Pressed and Down.",
+    "Editor: the Inspector binds a mouse button when you click the \"Press a key\" prompt with it."
+  ],
+  "breaking": []
+}

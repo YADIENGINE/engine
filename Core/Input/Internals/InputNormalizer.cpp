@@ -9,6 +9,11 @@ DeviceInput InputNormalizer::Read(const InputSample& sample,
     DeviceInput input;
     input.keysPressed = sample.keysPressed;
     input.keysDown = sample.keysDown;
+    input.keysReleased = sample.keysReleased;
+    constexpr auto left = static_cast<std::size_t>(InputKey::MouseLeft);
+    input.keysPressed[left] = sample.mousePressed;
+    input.keysDown[left] = sample.mouseDown;
+    input.keysReleased[left] = sample.mouseReleased;
     input.mousePosition = mapPoint(sample.mousePosition);
     input.mousePressed = sample.mousePressed;
     input.mouseReleased = sample.mouseReleased;

@@ -42,6 +42,30 @@ TEST_CASE("Engine.InputMap.KeyNamesRoundTrip", "[engine][input-map]") {
     CHECK_FALSE(FindInputKey("Spacebar"));
 }
 
+TEST_CASE("Engine.InputMap.BindsAnActionToMouseRight", "[engine][input-map]") {
+    const auto map =
+        ParseInputMap(R"({"buttons": ["Fire", "Aim"], "players": [{"Fire": ["MouseLeft"], "Aim": ["MouseRight"]}]})");
+    REQUIRE(map.players[0][1] == std::vector<std::string>{"MouseRight"});
+    CHECK(InputKeyName(InputKey::MouseMiddle) == "MouseMiddle");
+    InputBindings bindings(1);
+    for (std::size_t button = 0; button < map.buttons.size(); ++button)
+        for (const auto& name : *map.players[0][button])
+            bindings.Bind(std::span<const InputMapBinding>({InputMapBinding{0, button, *FindInputKey(name)}}));
+    DeviceInput click;
+    click.keysPressed[static_cast<std::size_t>(InputKey::MouseRight)] = true;
+    click.keysDown[static_cast<std::size_t>(InputKey::MouseRight)] = true;
+    auto players = bindings.Read(click);
+    CHECK(players[0].Pressed(1));
+    CHECK(players[0].Held(1));
+    CHECK_FALSE(players[0].Held(0));
+    DeviceInput held;
+    held.keysDown[static_cast<std::size_t>(InputKey::MouseRight)] = true;
+    players = bindings.Read(held);
+    CHECK_FALSE(players[0].Pressed(1));
+    CHECK(players[0].Held(1));
+    CHECK_FALSE(bindings.Read(DeviceInput{})[0].Held(1));
+}
+
 TEST_CASE("Engine.InputMap.PatchReplacesOnePlayersKeys", "[engine][input-map]") {
     const std::string text = "{\"buttons\": [\"Left\", \"Jump\"], \"players\": [{\"Jump\": [\"Space\"]}, {}]}";
     auto patched = PatchInputMapKeys(text, 1, "Left", {"Left", "A"});

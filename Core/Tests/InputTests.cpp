@@ -129,3 +129,33 @@ TEST_CASE("Engine.Input.StationaryMouseDoesNotProduceNavigationHover", "[engine]
     sample.mouseMoved = true;
     CHECK(normalizer.Read(sample, MapPoint).mouseHover == Vec2{25, 35});
 }
+TEST_CASE("Engine.Input.MouseButtonsAreKeys", "[engine][input]") {
+    constexpr auto right = static_cast<std::size_t>(InputKey::MouseRight);
+    InputNormalizer normalizer;
+    InputSample sample;
+    sample.mousePosition = {50, 60};
+    sample.mousePressed = sample.mouseDown = true;
+    sample.keysPressed[right] = sample.keysDown[right] = true;
+    auto input = normalizer.Read(sample, MapPoint);
+    CHECK(input.Pressed(InputKey::MouseLeft));
+    CHECK(input.Down(InputKey::MouseLeft));
+    CHECK(input.mousePressed);
+    CHECK(input.Pressed(InputKey::MouseRight));
+    CHECK(input.Down(InputKey::MouseRight));
+    CHECK_FALSE(input.Down(InputKey::MouseMiddle));
+    sample = {};
+    sample.mouseReleased = true;
+    sample.keysReleased[right] = true;
+    input = normalizer.Read(sample, MapPoint);
+    CHECK(input.Released(InputKey::MouseLeft));
+    CHECK(input.Released(InputKey::MouseRight));
+    CHECK_FALSE(input.Down(InputKey::MouseRight));
+    // A held right button keeps a cancelled snapshot draining, like a held key.
+    normalizer.Cancel();
+    sample = {};
+    sample.keysDown[right] = true;
+    CHECK(normalizer.Read(sample, MapPoint).cancelled);
+    CHECK(normalizer.Read(sample, MapPoint).cancelled);
+    (void)normalizer.Read({}, MapPoint);
+    CHECK_FALSE(normalizer.Read(sample, MapPoint).cancelled);
+}

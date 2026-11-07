@@ -25,8 +25,10 @@ Scenes do not reread devices or raylib input.
 
 ## Physical snapshot and semantic queries
 
-`DeviceInput` carries key pressed/down states, mouse, wheel, and identified touch samples. `ShiftDown()` is computed
-from keys. `mousePosition` is the current position; `mousePress` is an eligible mouse press; `mouseHover` is populated
+`DeviceInput` carries key pressed/down/released states, mouse, wheel, and identified touch samples. `ShiftDown()` is
+computed from keys. The mouse buttons are keys too: `InputKey::MouseLeft`, `MouseRight` and `MouseMiddle` answer
+`Pressed`, `Down` and `Released` wherever the pointer is, so an input map binds them like any key. `mousePressed`,
+`mouseDown` and `mouseReleased` stay as the left button's fields and agree with `MouseLeft`. `mousePosition` is the current position; `mousePress` is an eligible mouse press; `mouseHover` is populated
 only on mouse movement, so a stationary mouse does not steal keyboard selection back. `pressPoints` carries newly
 started contacts; `heldPoints` carries contacts still held. While touch is present and until subsequent synthetic mouse
 events drain, mouse input is not added to these combined lists; `mousePress`/`mouseHover` are suppressed. A finger
@@ -83,11 +85,12 @@ clears the local contact and consumes the cancellation barrier in the same call;
 
 ## Editor transport
 
-Editor protocol v4 carries snapshot keys, mouse fields, combined contact lists, and identified touches; an empty touch
+The editor protocol carries snapshot keys (mouse buttons included), mouse fields, combined contact lists, and identified touches; an empty touch
 position preserves identity outside the canvas. Duplicate touch IDs and capacity overflow are rejected. Worker
 accumulation preserves press/release flags, accumulates `pressPoints`, and takes down/held/touch state from the latest
 snapshot. Cancellation clears old actions and is delivered as a separate barrier before new actions. This transport
-merges snapshots; it is not an ordered log of all physical events. When the protocol or `InputKey` order changes,
+merges snapshots; it is not an ordered log of all physical events. A mouse button reaches the scene when pressed over
+the viewport, whatever has keyboard focus, and stays the scene's until released. When the protocol or `InputKey` order changes,
 increment the version and rebuild editor and worker together. The backend key table is checked against the enum with
 identified rows and `RowsInIdOrder`.
 

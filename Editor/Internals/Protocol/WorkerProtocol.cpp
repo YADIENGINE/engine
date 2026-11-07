@@ -469,6 +469,7 @@ nlohmann::json EncodeWorkerInput(const DeviceInput& input) {
     return {{"cancelled", input.cancelled},
             {"pressed", input.keysPressed},
             {"down", input.keysDown},
+            {"released", input.keysReleased},
             {"mouse", Point(input.mousePosition)},
             {"mousePress", Point(input.mousePress)},
             {"mouseHover", Point(input.mouseHover)},
@@ -485,12 +486,14 @@ DeviceInput DecodeWorkerInput(const nlohmann::json& json) {
     input.cancelled = json.at("cancelled").get<bool>();
     const auto& pressed = json.at("pressed");
     const auto& down = json.at("down");
-    if (!pressed.is_array() || !down.is_array() || pressed.size() != input.keysPressed.size() ||
-        down.size() != input.keysDown.size())
+    const auto& released = json.at("released");
+    if (!pressed.is_array() || !down.is_array() || !released.is_array() || pressed.size() != input.keysPressed.size() ||
+        down.size() != input.keysDown.size() || released.size() != input.keysReleased.size())
         throw std::runtime_error("Input key layout mismatch");
     for (std::size_t i = 0; i < input.keysDown.size(); ++i) {
         input.keysPressed[i] = pressed[i].get<bool>();
         input.keysDown[i] = down[i].get<bool>();
+        input.keysReleased[i] = released[i].get<bool>();
     }
     input.mousePosition = ReadPoint(json.at("mouse"));
     input.mousePress = ReadPoint(json.at("mousePress"));

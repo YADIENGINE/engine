@@ -20,7 +20,9 @@ the keys a scene binds cannot drift apart ([D52](Design/README.md#d52-input-map)
 
 - `buttons`: 1 to 32 PascalCase names; `axes`: up to 8, and the game sets their values (`PlayerInput::SetAxis`).
 - `players`: one object per player; a button may have any number of keys, or none. Key names are those of
-  `enum class InputKey` in [Input.h](../Core/Input/Input.h): `A`, `Zero`, `Up`, `Space`, `LeftShift`, `F1`...
+  `enum class InputKey` in [Input.h](../Core/Input/Input.h): `A`, `Zero`, `Up`, `Space`, `LeftShift`, `F1`... and the
+  mouse buttons `MouseLeft`, `MouseRight`, `MouseMiddle` (`"Aim": ["MouseRight"]`). The Inspector binds a mouse
+  button when you click its "Press a key" prompt with that button.
 - One canonical layout; `python Engine check` reports others and `check --fix` rewrites them.
 
 ## Code

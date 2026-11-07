@@ -38,6 +38,7 @@ def key_names() -> list[str]:
     """`enum class InputKey` in Core/Input/Input.h, in order, without Count."""
     text = INPUT_HEADER.read_text(encoding="utf-8")
     body = re.search(r"enum class InputKey\s*\{(.*?)\}", text, re.S).group(1)
+    body = re.sub(r"//[^\n]*", "", body)
     names = [name.strip() for name in body.split(",") if name.strip()]
     return [name for name in names if name != "Count"]
 

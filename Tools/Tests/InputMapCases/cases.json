@@ -3,6 +3,7 @@
   "cases": [
     { "file": "valid.json", "line": null },
     { "file": "valid-minimal.json", "line": null },
+    { "file": "mouse-buttons.json", "line": null },
     { "file": "unknown-top-key.json", "line": 3 },
     { "file": "missing-players.json", "line": 1 },
     { "file": "buttons-empty.json", "line": 2 },

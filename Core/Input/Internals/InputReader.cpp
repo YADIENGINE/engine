@@ -88,7 +88,11 @@ constexpr std::array InputKeyCodes{KeyCode{InputKey::A, KEY_A},
                                    KeyCode{InputKey::F9, KEY_F9},
                                    KeyCode{InputKey::F10, KEY_F10},
                                    KeyCode{InputKey::F11, KEY_F11},
-                                   KeyCode{InputKey::F12, KEY_F12}};
+                                   KeyCode{InputKey::F12, KEY_F12},
+
+                                   KeyCode{InputKey::MouseLeft, MOUSE_BUTTON_LEFT},
+                                   KeyCode{InputKey::MouseRight, MOUSE_BUTTON_RIGHT},
+                                   KeyCode{InputKey::MouseMiddle, MOUSE_BUTTON_MIDDLE}};
 static_assert(RowsInIdOrder(InputKeyCodes));
 } // namespace
 
@@ -96,8 +100,15 @@ InputSample ReadInputDevices() {
     InputSample sample;
     for (const auto& key : InputKeyCodes) {
         const auto index = static_cast<std::size_t>(key.id);
-        sample.keysPressed[index] = IsKeyPressed(key.code);
-        sample.keysDown[index] = IsKeyDown(key.code);
+        if (key.id >= InputKey::MouseLeft) {
+            sample.keysPressed[index] = IsMouseButtonPressed(key.code);
+            sample.keysDown[index] = IsMouseButtonDown(key.code);
+            sample.keysReleased[index] = IsMouseButtonReleased(key.code);
+        } else {
+            sample.keysPressed[index] = IsKeyPressed(key.code);
+            sample.keysDown[index] = IsKeyDown(key.code);
+            sample.keysReleased[index] = IsKeyReleased(key.code);
+        }
     }
     const Vector2 mouse = GetMousePosition();
     sample.mousePosition = {mouse.x, mouse.y};

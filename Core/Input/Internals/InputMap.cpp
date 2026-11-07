@@ -23,7 +23,8 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(InputKey::Count)
     "Tab", "Backspace", "Delete", "Insert",
     "Home", "End", "PageUp", "PageDown",
     "Minus", "Equal", "Subtract", "Add",
-    "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"};
+    "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+    "MouseLeft", "MouseRight", "MouseMiddle"};
 // clang-format on
 
 [[noreturn]] void Fail(int line, const std::string& text) { throw TuningFormatError(line, text); }

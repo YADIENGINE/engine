@@ -161,3 +161,28 @@ TEST_CASE("Engine.InputBindings.MapsKeysToPlayers", "[engine][input]") {
     CHECK_THROWS(bindings.Bind(2, Button::Fire, InputKey::Space));
     CHECK_THROWS(InputBindings(0));
 }
+TEST_CASE("Engine.InputBindings.MouseRightActionReplaysFromTheTape", "[engine][input][simulation]") {
+    const auto rightClick = [] {
+        DeviceInput input;
+        input.keysPressed[static_cast<std::size_t>(InputKey::MouseRight)] = true;
+        input.keysDown[static_cast<std::size_t>(InputKey::MouseRight)] = true;
+        return input;
+    };
+    CountingSimulation live;
+    SimulationRunner runner(live, Settings(), SimulationStart{.players = 2});
+    InputBindings bindings(2);
+    bindings.Bind(1, Button::Fire, InputKey::MouseRight);
+    for (int step = 0; step < 120; ++step) {
+        runner.Feed(bindings.Read(step % 30 == 5 ? rightClick() : DeviceInput{}));
+        REQUIRE(runner.RunStep());
+    }
+    CHECK(live.fired == 4);
+    // The replay reads no device: the tape holds the action, not the button.
+    CountingSimulation replayed;
+    SimulationRunner replay(replayed, Settings(), SimulationStart{.players = 2});
+    replay.Play(runner.Tape(), AfterTape::Stop);
+    while (replay.RunStep()) {
+    }
+    CHECK(replayed.fired == 4);
+    CHECK(HashState(replayed) == HashState(live));
+}
