@@ -102,7 +102,7 @@ unregistered, without migrating unrelated code.
 
 `SceneValue`: `int64_t`, `double`, `bool`, 8-bit `Color4` (as in tuning files), or option text (`std::string`).
 `SceneParameter` carries type, default, range / options, application time, `group`, and `description`. Numbers must be
-finite and within range, color channels 0..1. Values are rejected, never silently clamped. Groups consisting of
+finite and within range; a color is 8-bit RGBA, each channel 0..255. Values are rejected, never silently clamped. Groups consisting of
 `advanced = true` fields start collapsed; search / Modified filter matches expand them. `applyAction` can name the
 consuming action only for NextAction fields; it must be a registered action. Inspector shows a shared application time
 once per group, differing times in each field's `*` marker / tooltip. This presentation metadata runs no setters or

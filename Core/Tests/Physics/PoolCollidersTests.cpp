@@ -145,3 +145,32 @@ TEST_CASE("Engine.Physics.PoolColliders.RemovingAnItemRemovesItsCollider", "[eng
     for (const ColliderRef& found : world.At({30.0f, 0.0f}, EnemyColliders.Layers()))
         CHECK(EnemyColliders.Of(found) == spawned[3]);
 }
+
+TEST_CASE("Engine.Physics.PoolColliders.ARefusedRemovalLeavesPoolAndWorldTogether", "[engine][physics]") {
+    CollisionWorld world;
+    Pool<Enemy> enemies;
+    const auto a = EnemyColliders.Add(world, enemies, {.at = {0.0f, 0.0f}}, Ball);
+    const auto b = EnemyColliders.Add(world, enemies, {.at = {10.0f, 0.0f}, .hp = 0}, Ball);
+
+    // Inside a loop over the pool the pool refuses; the collider must still be there.
+    for (const Enemy& enemy : enemies) {
+        (void)enemy;
+        CHECK_THROWS_AS(EnemyColliders.Remove(world, enemies, a), std::logic_error);
+        break;
+    }
+    CHECK(enemies.Contains(a));
+    CHECK(world.Contains(enemies.Get(a).collider));
+
+    // A question that throws after another item was already chosen leaves both unchanged.
+    int asked = 0;
+    CHECK_THROWS_AS(EnemyColliders.RemoveIf(world, enemies,
+                                            [&](const Enemy& enemy) {
+                                                if (++asked == 2) throw std::runtime_error("question failed");
+                                                return enemy.hp >= 1;
+                                            }),
+                    std::runtime_error);
+    CHECK(enemies.Count() == 2);
+    CHECK(world.Count() == 2);
+    CHECK(world.Contains(enemies.Get(a).collider));
+    CHECK(world.Contains(enemies.Get(b).collider));
+}

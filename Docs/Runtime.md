@@ -13,7 +13,8 @@ is no object list ([recipe](../AgentDocs/Recipes/SceneMembers.md)). Things that 
 - `Start` once, before the first `Enter`; `Stop` once, at shutdown, when `Start` ran.
 - `Enter` at the start of every visit (each activation, a restart included); `Exit` at its end, after `InputCancelled`.
 - `UpdateReal(realSeconds)` every frame, in a hitstop and a pause too; `Update(seconds)` on the scene's clock
-  (`TimeDomain::Real` or `TimeDomain::Game`), skipped when no time passed; `Draw(Painter&) const` after `Enter`.
+  (`TimeDomain::Game` by default, so hitstop and pause reach it; `TimeDomain::Real` for a screen that must keep
+  moving through them), skipped when no time passed; `Draw(Painter&) const` after `Enter`.
 - `HandleInput` and `InputCancelled` ([below](#input-cancellation)).
 
 `SetScene` queues a change; activation happens between callbacks, before the next scene update. A hook that throws is

@@ -249,7 +249,10 @@ void RecipeCameraScene::HandleInput(const DeviceInput& input) {
     _mouse = MousePoint(input);
     _fire = _fire || input.mousePress.has_value();
 }
-void RecipeCameraScene::InputCancelled() { _moves = {}; }
+void RecipeCameraScene::InputCancelled() {
+    _moves = {};
+    _fire = false; // A press not yet used is dropped too
+}
 std::string RecipeCameraScene::ApplyParameter(const std::string& id, const SceneValue& value) {
     if (id == "split") _view.SetSplit(std::get<bool>(value));
     if (id == "guides") _view.SetGuides(std::get<bool>(value));

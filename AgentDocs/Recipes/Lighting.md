@@ -168,7 +168,10 @@ void RecipeLitScene::HandleInput(const DeviceInput& input) {
     if (input.mousePosition)
         _mouse = {static_cast<float>(input.mousePosition->x), static_cast<float>(input.mousePosition->y)};
 }
-void RecipeLitScene::InputCancelled() { _move = {}; }
+void RecipeLitScene::InputCancelled() {
+    _move = {};
+    _lightning = false; // A press not yet used is dropped too
+}
 
 std::string RecipeLitScene::ApplyParameter(const std::string& id, const SceneValue& value) {
     if (id == "guides") _view.SetGuides(std::get<bool>(value));

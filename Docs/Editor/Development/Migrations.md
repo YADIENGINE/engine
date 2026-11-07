@@ -13,7 +13,16 @@ destructor.
 | `~X() override { ShutdownNoThrow(); }` | No destructor | Delete it. Code that drives a scene itself (a test) calls `Shutdown()` before the scene dies. |
 | `Scene::SetEnabled`, `Scene::Enabled` | Removed | Keep a flag of your own and check it in your hooks. |
 | `Progress/TieredProgress.h`, `Progress/CollectFlights.h` | `Gameplay/TieredProgress.h`, `Gameplay/CollectFlights.h` | Change the include. |
+| `Scene()` ran `Update` on real time | `Scene()` runs it on game time | A screen that must move through hitstop and pause (a menu) passes `TimeDomain::Real`; gameplay scenes need nothing. |
 | `WorkerScene::Open` before the worker scene started | Throws `std::logic_error` | Worker code only: open content once the worker scene runs. |
+
+## Pool and handles (D55)
+
+Things that come and go can live in a `Pool<T>` (`Utilities/Pool.h`) with colliders linked by one `PoolColliders` per
+pool (`Physics/Collision/PoolColliders.h`); moving to it is optional. One change reaches existing code: `ColliderRef`
+and `ColliderHit` carry the collider's `layers` after `owner`, so a positional initializer (`ColliderHit{id, owner,
+point, ...}`) needs the new field; use designated initializers. A collider owner that was an index into a list can
+become a handle (`Handle<T>::Owner`, `FromOwner`).
 
 ## Stage (D54)
 
@@ -49,6 +58,9 @@ services it receives.
 | `WorkerScene::CaptureParameters()` | `WorkerScene::MergeCapture()` | Worker code only. |
 
 ## 0.3.0 — editor scenes (tools contract 2)
+
+History: since D53 there is no separate editor scene type; the catalog opens the game's `Scene`. The rest of this
+section describes the 0.3.0 move and is kept for old projects.
 
 An editor scene is a catalog entry displayed in the viewport. It is distinct from the engine's `Scene`.
 These historical names are recorded here for source and automation migrations. Runtime behavior is unchanged.

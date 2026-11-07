@@ -101,3 +101,15 @@ TEST_CASE("Engine.Scene.RealUpdateRespectsActivationAndReleasesItsDispatchGuardO
     CHECK(log.empty());
     scene.Shutdown();
 }
+
+TEST_CASE("Engine.Scene.UpdateRunsOnGameTimeUnlessTheSceneAsksForRealTime", "[engine][scene][time]") {
+    // A gameplay scene that forgets to name its clock must still stop in a hitstop and a pause.
+    class Plain final : public Scene {};
+    class Menu final : public Scene {
+    public:
+        Menu()
+            : Scene(TimeDomain::Real) {}
+    };
+    CHECK(Plain().Clock() == TimeDomain::Game);
+    CHECK(Menu().Clock() == TimeDomain::Real);
+}

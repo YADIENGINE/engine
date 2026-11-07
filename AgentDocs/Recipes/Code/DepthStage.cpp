@@ -64,7 +64,10 @@ void RecipeStreetScene::HandleInput(const DeviceInput& input) {
     _jumps[0] = _jumps[0] || input.Pressed(InputKey::Space);
     _jumps[1] = _jumps[1] || input.Pressed(InputKey::Enter);
 }
-void RecipeStreetScene::InputCancelled() { _moves = {}; }
+void RecipeStreetScene::InputCancelled() {
+    _moves = {};
+    _jumps = {}; // A press not yet used is dropped too
+}
 
 std::string RecipeStreetScene::ApplyParameter(const std::string& id, const SceneValue& value) {
     if (id == "split") SetSplit(std::get<bool>(value));

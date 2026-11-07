@@ -14,7 +14,9 @@ enum class TimeDomain { Real, Game };
 // The host (Game::Run, the editor's worker) shuts a scene down while it is alive, so a scene needs no destructor.
 class Scene {
 public:
-    explicit Scene(TimeDomain time = TimeDomain::Real);
+    // Update runs on game time by default, so hitstop, slow motion and pause reach it; a screen that must keep moving
+    // through them (a menu over a paused game) asks for TimeDomain::Real. UpdateReal runs on real time either way.
+    explicit Scene(TimeDomain time = TimeDomain::Game);
     virtual ~Scene();
     [[nodiscard]] TimeDomain Clock() const { return _time; }
 

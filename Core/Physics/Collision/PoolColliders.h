@@ -5,6 +5,7 @@
 #include <functional>
 #include <type_traits>
 #include <utility>
+#include <vector>
 #include "Physics/Collision/CollisionMask.h"
 #include "Physics/Collision/CollisionWorld.h"
 #include "Physics/Collision/Pose.h"
@@ -56,7 +57,7 @@ public:
         }
         return handle;
     }
-    // Moves every collider to its item's pose: one call per step makes a forgotten Move impossible. A pose that did
+    // Moves every collider to its item's pose: one call per step leaves no Move to forget. A pose that did
     // not change costs one comparison.
     void Sync(CollisionWorld& world, const Pool<T>& pool) const {
         for (const T& item : pool)
@@ -66,16 +67,23 @@ public:
     template <class Predicate>
         requires std::predicate<Predicate&, const T&>
     std::size_t RemoveIf(CollisionWorld& world, Pool<T>& pool, Predicate&& removes) const {
-        return pool.RemoveIf([&](const T& item) {
+        // Colliders leave only after the pool did: a question that throws (or a running loop) leaves both unchanged.
+        std::vector<ColliderId> leaving;
+        const std::size_t removed = pool.RemoveIf([&](const T& item) {
             if (!std::invoke(removes, item)) return false;
-            if (const ColliderId id = item.*_collider; id != ColliderId{}) world.Remove(id);
+            if (const ColliderId id = item.*_collider; id != ColliderId{}) leaving.push_back(id);
             return true;
         });
+        for (const ColliderId id : leaving)
+            world.Remove(id);
+        return removed;
     }
     // Pool::Remove that also removes the item's collider.
     void Remove(CollisionWorld& world, Pool<T>& pool, Handle<T> handle) const {
-        if (const ColliderId id = pool.Get(handle).*_collider; id != ColliderId{}) world.Remove(id);
+        // The pool first: a stale handle or a running loop throws before the world changes.
+        const ColliderId id = pool.Get(handle).*_collider;
         pool.Remove(handle);
+        if (id != ColliderId{}) world.Remove(id);
     }
 
     // The handle of the item a found collider belongs to, or null when the collider is on none of the pool's layers

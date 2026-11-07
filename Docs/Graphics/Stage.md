@@ -75,7 +75,9 @@ view of a split it is. `DescribeLight` runs once a frame, before the first view,
   game time, `Snap` sets it (each frame, when the weather lives in a simulation). `Atmosphere()` returns it, to replace
   its look.
 - `listeners` (on by default): every frame the stage puts one sound listener on each view, its middle, turned with it, panning
-  fully at its side edge. Turn it off when the game places its own listener, such as a character.
+  fully at its side edge. Turn it off when the game places its own listener, such as a character. The listeners
+  belong to the game's one sound player, so only one stage should set them at a time; a scene without a stage that
+  plays positioned sounds sets its own (`SoundPlayer::SetListener`).
 
 Asking for a part that is off throws `std::logic_error`.
 

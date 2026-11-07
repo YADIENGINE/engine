@@ -17,7 +17,11 @@ public:
 protected:
     void HandleInput(const DeviceInput& input) override;
     void InputCancelled() override;
+    // The menu is built on real time, so it moves while game time stands still.
+    void UpdateReal(float seconds) override;
     void Update(float seconds) override;
+    // Open menu: game time stops, so the rules, effects and hitstops wait.
+    [[nodiscard]] bool GameTimePaused() const override { return _paused; }
     void Draw(Painter& paint) const override;
 
 private:

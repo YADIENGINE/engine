@@ -108,8 +108,8 @@ state.Field("collision", _collision);
 everything it knows came through calls the tape reproduces.
 
 A forgotten `Move` is a bug hashes cannot catch: it replays the same way every time. It shows as a collider left behind its
-owner, in `sim state` beside the game's own position, or on screen with `DrawColliders`. Items in a pool cannot forget it:
-`PoolColliders::Sync` moves them all.
+owner, in `sim state` beside the game's own position, or on screen with `DrawColliders`. Items in a pool need one call per
+step instead: `PoolColliders::Sync` moves them all.
 
 ## Seeing colliders
 

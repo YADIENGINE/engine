@@ -88,7 +88,8 @@ Particle shape drawing is shared by `Fx/Particles/ParticleSystem` and static cat
 Drawing uses [Painter](Graphics/Painter.md). All public headers use the `.h` extension.
 `Fx/` is Painter-only and headless. Raylib is limited to platform and native tool integration.
 
-Only `Backgrounds/Backdrops` and `Ui/Looks` read the theme. Shared shapes take explicit colors/styles and `Painter&` as their first parameter:
+Only `Backgrounds/Backdrops`, `Ui/Looks` and `Stage` (which gives its `FxStage` the theme's effect style when it is
+built) read the theme. Shared shapes take explicit colors/styles and `Painter&` as their first parameter:
 `DrawDiamond`, `RowSlot` (centre of item `i` in a row), `DrawLightning`, `DrawNeonRing`, and `DrawProgressBar`. When a game needs a shape another game could use, it is added here (shape-named, style-parametric)
 rather than in the game.
 

@@ -64,14 +64,19 @@ void PlayScene::HandleInput(const DeviceInput& input) {
     _runner.Feed(_bindings.Read(input));
 }
 
-void PlayScene::InputCancelled() { _runner.CancelInput(); }
+void PlayScene::InputCancelled() {
+    _runner.CancelInput();
+    _ui.CancelInput();
+}
 
-void PlayScene::Update(float seconds) {
+void PlayScene::UpdateReal(float seconds) {
     if (_font) _ui.SetFont(_font);
     _ui.Begin(seconds);
     PauseMenu();
     _ui.End();
-    if (_paused) return;
+}
+
+void PlayScene::Update(float seconds) {
     (void)_runner.Advance(seconds);
     for (const auto& happened : _events.Read(_simulation.Events(), _runner))
         std::visit(Overloaded{[](const CoinTaken&) {}, [&](const PlayerHit&) { _time.Hitstop(HitstopSeconds); },

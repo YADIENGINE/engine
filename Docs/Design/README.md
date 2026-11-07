@@ -812,9 +812,10 @@ D27 stays: the world is an index, the game owns positions.
 6. *A slot whose generation would wrap is retired,* so no old handle ever names a new item.
 7. *One `PoolColliders` per pool, declared beside the item type, owns the collider contract:* the member holding the
    id, where the item stands, the pool's layers. Compile-time data only (member pointers, a capture-free lambda, the
-   mask), so it holds no world, pool or callback (D28). `Add` gives item and collider at once, so owner, layers and pose
-   cannot be wrong; `Sync` moves every collider once per step, so a forgotten `Move` is impossible; `RemoveIf` and
-   `Remove` take the colliders along. Physics sees Utilities, never the other way.
+   mask), so it holds no world, pool or callback (D28). While items and colliders change only through it, `Add`
+   gives item and collider at once with the right owner, layers and pose, one `Sync` per step leaves no `Move` to
+   forget, and `RemoveIf` and `Remove` take the colliders along, the pool first, so a refused or failed removal changes
+   neither. Physics sees Utilities, never the other way.
 8. *A hit leads back through layers:* the owner is the handle (`Owner()` / `FromOwner`), query results now carry
    `layers`, and `Of` gives the handle only when they overlap the pool's layers, because two pools may give equal
    handles.
@@ -847,6 +848,8 @@ simulation and views as value members and calls them from its own hooks; things 
    the hosted scene's shutdown cancels it.
 6. *`Enabled` / `SetEnabled` are gone:* no host or scene used them.
 7. *`Core/Progress` joined `Core/Gameplay`;* `Docs/Architecture.md` places every `Core` folder in a layer.
+8. *`Update` runs on game time by default* (`TimeDomain::Game`): a gameplay scene that forgot to name its clock skipped
+   hitstop, slow motion and pause. A screen that must keep moving through them asks for `TimeDomain::Real`.
 
 Left out: a view-side selectable object for the editor (pick, inspect, move a thing in the viewport), to be designed
 when a real need appears.
