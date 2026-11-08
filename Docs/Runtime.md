@@ -69,10 +69,21 @@ InputCancelled to cancel and drain the old gesture without losing the next new p
 
 The `Game` constructor sets up renderer/asset/font services, activates the theme, and starts loading the audio catalog
 in the background. If persistent options are enabled, they are loaded and applied before `Start()`. `Start()` selects
-the first scene; do not call playback here assuming audio is ready. The loading screen draws the first scene without
-advancing simulation/input; customize presentation through `DrawLoading(paint, seconds, outro)` and
-`LoadingOutroSeconds(loadSeconds)`. Normal scene flow starts after loading. The default entry point reports startup
-exceptions; content hooks define their own error policy.
+the first scene; do not call playback here, audio is not ready yet. The default entry point reports startup exceptions;
+content hooks define their own error policy.
+
+Between `Start()` and the first scene the loading screen runs. A game gets the engine's "Made with" screen: about two
+seconds, longer if the sounds take longer, and any key, mouse button or touch skips it once they are ready. To show
+another one, derive from `LoadingScene`, register it, and call `SetLoadingScene` from `Start()`; `SetScene` is called
+as usual and waits. A game that wants no screen gives an empty `LoadingScene`, which closes when the sounds are ready.
+
+A `LoadingScene` runs on real time and is an ordinary scene otherwise. `Loaded()` turns true when the sounds are ready;
+playing a sound before that throws, so the waiting part is silent, and a closing animation may play sounds or start
+music that carries into the first scene. Override `Finished()` for a closing animation; the engine asks it only after
+`Loaded()`, so a screen cannot close before the sounds are ready. While it runs, the game's own `Update`, `HandleInput`
+and `Draw` do not. The first scene's `Start` and `Enter` always find the sounds ready. If the player closes the window
+during loading, `Game::Stop()` still runs, but the first scene never started. Tools and editor hosts show no screen and
+only wait for the sounds.
 
 ## Input and time selection
 

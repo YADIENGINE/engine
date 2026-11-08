@@ -282,9 +282,11 @@ add_library(EngineHeadless STATIC
     Platform/Internals/UserData.cpp
     Runtime/ProjectSettingsStore.cpp
     Runtime/TimeScale.cpp
+    Runtime/Internals/EngineLoadingScene.cpp
     Runtime/Internals/GameAssetManifest.cpp
     Runtime/Internals/StartupTimer.cpp
     Scene/Internals/SceneManager.cpp
+    Scene/LoadingScene.cpp
     Scene/Scene.cpp
     Scene/SceneParameter.cpp
     Scene/TransitionClock.cpp

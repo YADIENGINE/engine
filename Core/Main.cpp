@@ -16,6 +16,7 @@ int main(int, char*[]) {
     return RunCrashBoundary([] {
         auto game = CreateGame();
         if (!game) throw std::runtime_error("CreateGame returned an empty game");
+        game->UseEngineLoadingScreen();
         game->Run();
         return 0;
     });

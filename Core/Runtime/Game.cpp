@@ -11,13 +11,14 @@
 #include <utility>
 #include <vector>
 #include "Diagnostics/Internals/CrashSession.h"
-#include "Animation/Easing.h"
 #include "Platform/Internals/ApplicationFiles.h"
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Render/Internals/Renderer.h"
 #include "Scene/Internals/SceneManager.h"
 #include "Audio/Internals/AudioSoundOutput.h"
+#include "Scene/LoadingScene.h"
 #include "Scene/Scene.h"
+#include "Runtime/Internals/EngineLoadingScene.h"
 #include "Runtime/Internals/GameAssetManifest.h"
 #include "Runtime/Internals/StartupTimer.h"
 #include "Input/Internals/InputNormalizer.h"
@@ -198,15 +199,6 @@ void Game::Update(float realSeconds) { (void)realSeconds; }
 float Game::FrameSeconds(float realSeconds) { return realSeconds; }
 double Game::DrawSeconds() const { return Window::ClockSeconds(); }
 void Game::Draw(Painter& paint) const { (void)paint; }
-void Game::DrawLoading(Painter& paint, float seconds, float outro) const {
-    (void)paint;
-    (void)seconds;
-    (void)outro;
-}
-float Game::LoadingOutroSeconds(float loadSeconds) const {
-    (void)loadSeconds;
-    return 0.0f;
-}
 void Game::Stop() {}
 
 void Game::SetFpsLimit(int fps) {
@@ -308,6 +300,10 @@ Persistence Game::CreatePersistence(const std::filesystem::path& filename, std::
 
 void Game::RegisterScene(Scene& scene) { _sceneManager->Register(scene); }
 void Game::SetScene(Scene& scene, bool restart) { _sceneManager->Request(scene, restart); }
+void Game::SetLoadingScene(LoadingScene& scene) {
+    if (_loadingOpened) throw std::logic_error("Game::SetLoadingScene: call it no later than Start");
+    _loadingScene = &scene;
+}
 void Game::CancelInput() {
     _input->Cancel();
     if (Scene* scene = _sceneManager->Current()) scene->CancelInput();
@@ -346,26 +342,36 @@ void Game::DrawFpsCounter(Painter& paint) const {
                Fill(FpsCounterBackground));
     paint.Text(label.data(), {FpsCounterX, FpsCounterY}, FittedText(FpsCounterFontSize, FpsCounterText));
 }
+LoadingScene* Game::OpenLoadingScene() {
+    _loadingOpened = true;
+    if (!_loadingScene && _engineLoadingScreen) {
+        _engineLoadingScene = std::make_unique<EngineLoadingScene>(_services.canvas);
+        RegisterScene(*_engineLoadingScene);
+        _loadingScene = _engineLoadingScene.get();
+    }
+    if (_loadingScene) _sceneManager->Show(*_loadingScene);
+    return _loadingScene;
+}
 bool Game::ShowLoading() {
     const StartupTimer timer("Loading screen");
-    const double start = Window::ClockSeconds();
-    std::optional<double> loadedAt;
+    LoadingScene* const scene = OpenLoadingScene();
     while (!_quitRequested && !_renderer->ShouldClose()) {
-        const double now = Window::ClockSeconds();
-        if (!loadedAt && _audio.FinishLoading()) loadedAt = now;
-        float outro = 0.0f;
-        if (loadedAt) {
-            const float outroSeconds = LoadingOutroSeconds(static_cast<float>(*loadedAt - start));
-            const auto since = static_cast<float>(now - *loadedAt);
-            if (since >= outroSeconds) return true;
-            outro = Progress01(since, 0.0f, outroSeconds);
+        const bool loaded = _audio.FinishLoading();
+        if (loaded && scene) scene->MarkLoaded();
+        if (loaded && (!scene || scene->Finished())) return true;
+        _frameSeconds = Window::FrameSeconds();
+        if (scene) {
+            scene->ReadInput(ReadInput());
+            _audio.Update(); // A screen may start sounds once they are ready
+            _sounds.Update(_frameSeconds);
+            scene->TickReal(_frameSeconds);
+            scene->Tick(_frameSeconds);
         }
         {
             const double time = DrawSeconds();
-            auto frame = _renderer->BeginFrame(time, Window::FrameSeconds());
+            auto frame = _renderer->BeginFrame(time, _frameSeconds);
             Painter& paint = frame.Canvas();
-            if (const Scene* scene = _sceneManager->Current()) scene->Render(paint);
-            DrawLoading(paint, static_cast<float>(now - start), outro);
+            if (scene) scene->Render(paint);
             frame.Complete({}, [this](Painter& window) { DrawWindow(window); }, [this] { DrawToolOverlay(); });
         }
         RevealWindow();
@@ -385,11 +391,15 @@ void Game::Run() {
         [&] {
             StartupTimer::Mark("Game constructed");
             {
-                const StartupTimer timer("Start + first scene");
+                const StartupTimer timer("Start");
                 Start();
-                CommitScene();
             }
             const bool loaded = ShowLoading();
+            if (loaded) {
+                const StartupTimer timer("First scene");
+                _sceneManager->Close([this] { _input->Cancel(); }); // The press that skipped the screen stays out of it
+                CommitScene();
+            }
             while (loaded && !_quitRequested && !_renderer->ShouldClose()) {
                 PrepareFrame();
                 if (_quitRequested) break;

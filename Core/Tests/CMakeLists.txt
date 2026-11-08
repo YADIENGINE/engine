@@ -72,6 +72,7 @@ engine_tests(EngineTests
         BackgroundAssetTests.cpp
         PostSettingsTests.cpp
         RenderPipelineTests.cpp
+        LoadingSceneTests.cpp
         SceneManagerTests.cpp
         SceneSafetyTests.cpp
         UiLayoutTests.cpp

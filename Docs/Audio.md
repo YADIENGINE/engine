@@ -209,8 +209,9 @@ starting a worker.
 
 `Game` creates the audio system and calls `BeginLoading`. Do not use effect playback/stop or Load/Unload APIs until
 background loading completes and `FinishLoading()` succeeds. Volume values can be stored during loading and applied on
-handover. File/device loading failures are reported as exceptions. `Game::Start()` may run before audio is ready; normal
-scene update/input starts after loading.
+handover. File/device loading failures are reported as exceptions. `Game::Start()` runs before audio is ready; the first
+scene starts after loading, so its `Start` and `Enter` can play. A [loading screen](Runtime.md#startup-loading-and-error-boundary)
+may play once its `Loaded()` is true.
 
 With your own service, keep the waiting screen active while `FinishLoading()` is false:
 

@@ -69,6 +69,39 @@ TEST_CASE("Engine.SceneManager.CommitsChangesAndRestartsWithoutRepeatingStart", 
     CHECK_NOTHROW(scenes.Shutdown());
 }
 
+TEST_CASE("Engine.SceneManager.ShowKeepsAQueuedRequestForAfterTheLoadingScreen", "[engine][scene]") {
+    std::vector<std::string> log;
+    SceneManager scenes;
+    ManagedScene loading(log, "loading"), first(log, "first");
+    scenes.Register(loading);
+    scenes.Register(first);
+    scenes.Request(first);
+    scenes.Show(loading);
+    CHECK(scenes.Current() == &loading);
+    CHECK(log == std::vector<std::string>{"loading.start", "loading.enter"});
+    log.clear();
+
+    scenes.Close([&] { log.push_back("devices.cancel"); });
+    CHECK(scenes.Current() == nullptr);
+    CHECK(log == std::vector<std::string>{"devices.cancel", "loading.cancel", "loading.exit"});
+    log.clear();
+
+    CHECK(scenes.Commit({}));
+    CHECK(scenes.Current() == &first);
+    CHECK(log == std::vector<std::string>{"first.start", "first.enter"});
+    CHECK_NOTHROW(scenes.Shutdown());
+}
+
+TEST_CASE("Engine.SceneManager.CloseWithNothingCurrentDoesNothingAndShowNeedsARegisteredScene", "[engine][scene]") {
+    std::vector<std::string> log;
+    SceneManager scenes;
+    ManagedScene stranger(log, "stranger");
+    scenes.Close([&] { log.push_back("devices.cancel"); });
+    CHECK(log.empty());
+    CHECK_THROWS_AS(scenes.Show(stranger), std::logic_error);
+    CHECK_NOTHROW(scenes.Shutdown());
+}
+
 TEST_CASE("Engine.SceneManager.LastRequestWinsAndLifecycleRequestsWaitForAnotherCommit", "[engine][scene]") {
     std::vector<std::string> log;
     SceneManager scenes;

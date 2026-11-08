@@ -17,6 +17,7 @@
 #include "Diagnostics/FrameObserver.h"
 #include "Utilities/Geometry/Vec2.h"
 
+class LoadingScene;
 class Painter;
 class Scene;
 class SceneManager;
@@ -32,6 +33,9 @@ class Game {
 public:
     virtual ~Game();
     void Run();
+    // Shows the engine's "Made with" screen while the sounds load, unless the game gave its own (SetLoadingScene). The
+    // game executable's entry point calls this before Run; tools and editor hosts do not.
+    void UseEngineLoadingScreen() { _engineLoadingScreen = true; }
     // Development hosts may borrow frame instrumentation and temporarily override execution without saving options.
     void ObserveFrames(FrameObserver* observer);
     [[nodiscard]] FrameObserver* FrameInstrumentation() const { return _frameObserver; }
@@ -67,7 +71,11 @@ public:
 protected:
     explicit Game(const GameSettings& settings);
     void RegisterScene(Scene& scene);
+    // The first SetScene waits for the loading screen to close, so the scene's Start and Enter can play sounds.
     void SetScene(Scene& scene, bool restart = false);
+    // The screen to show while the sounds load, in place of the engine's. Register it first; call it no later than
+    // Start. A game that wants no screen gives an empty LoadingScene.
+    void SetLoadingScene(LoadingScene& scene);
     // Cancel the current scene's input and resynchronize local devices before accepting another press.
     void CancelInput();
     void RequestQuit() { _quitRequested = true; }
@@ -123,18 +131,15 @@ protected:
     virtual void DrawWindow(Painter& window) const;
     // Tools only: native ImGui (ToolUi) over the finished window, after DrawWindow's drawing.
     virtual void DrawToolOverlay() const;
-    // Loading screen: after Start, the first scene draws without advancing (no input or Tick) while audio loads
-    // in the background; this draws on top. 'seconds' is time since opening; 'outro' is closing progress (0..1).
-    virtual void DrawLoading(Painter& paint, float seconds, float outro) const;
-    // Loading screen closing duration after loading finishes; 'loadSeconds' is the loading duration.
-    [[nodiscard]] virtual float LoadingOutroSeconds(float loadSeconds) const;
     virtual void Stop();
 
 private:
     friend class EngineGodAccessor;
     void CommitScene();
-    // Draws the loading screen until loading and its outro finish; false if the window is closed.
+    // Runs the loading screen until the sounds are ready and it has finished; false if the window is closed. Without a
+    // screen (tools) it only waits for the sounds. The game's own Update, HandleInput and Draw do not run meanwhile.
     bool ShowLoading();
+    [[nodiscard]] LoadingScene* OpenLoadingScene();
     void RevealWindow();
     void Present() const;
     void ApplyOptions();
@@ -166,6 +171,10 @@ private:
     float _frameSeconds = 0.0f;                   // This frame's real duration (Painter::Delta)
     mutable float _frameWorkSeconds = 0.0f;       // Smoothed update + drawing duration (excluding waits)
     std::unique_ptr<SceneManager> _sceneManager;
+    LoadingScene* _loadingScene = nullptr;
+    std::unique_ptr<LoadingScene> _engineLoadingScene; // Only when the game gave none and the entry point asked for it
+    bool _engineLoadingScreen = false;
+    bool _loadingOpened = false;
     bool _quitRequested = false;
     bool _paused = false;
     bool _ran = false;

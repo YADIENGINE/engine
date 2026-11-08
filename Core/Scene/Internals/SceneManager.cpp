@@ -45,18 +45,36 @@ bool SceneManager::Commit(const std::function<void()>& beforeChange) {
     const bool restart = std::exchange(_restart, false);
     if (next->IsShutdown()) throw std::logic_error("Cannot activate a scene after shutdown");
     if (next == _current && !restart) return false;
+    Switch(next, beforeChange);
+    return true;
+}
+
+void SceneManager::Show(Scene& scene) {
+    if (_dispatching) throw std::logic_error("Cannot dispatch scene changes recursively");
+    if (_shutdown) throw std::logic_error("Cannot select scenes during shutdown");
+    if (std::ranges::find(_scenes, &scene) == _scenes.end()) throw std::logic_error("Scene is not registered");
+    if (scene.IsShutdown()) throw std::logic_error("Cannot activate a scene after shutdown");
+    Switch(&scene, {});
+}
+
+void SceneManager::Close(const std::function<void()>& beforeChange) {
+    if (_dispatching) throw std::logic_error("Cannot dispatch scene changes recursively");
+    if (_shutdown || !_current) return;
+    Switch(nullptr, beforeChange);
+}
+
+void SceneManager::Switch(Scene* next, const std::function<void()>& beforeChange) {
     _dispatching = true;
     try {
         if (beforeChange) beforeChange();
         DeactivateCurrent();
         _current = next;
-        _current->Activate();
+        if (_current) _current->Activate();
     } catch (...) {
         _dispatching = false;
         throw;
     }
     _dispatching = false;
-    return true;
 }
 
 void SceneManager::Shutdown() {

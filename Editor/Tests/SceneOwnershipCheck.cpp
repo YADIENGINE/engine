@@ -1,11 +1,13 @@
 // Opt-in check with a real Game (hidden window): scenes need no destructor because Game::Run shuts them down while
 // they are alive, on success and on failure, and a derived game's constructor that throws leaves nothing to undo.
+#include <chrono>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
 #include "Runtime/Game.h"
+#include "Scene/LoadingScene.h"
 #include "Scene/Scene.h"
 
 namespace {
@@ -86,6 +88,64 @@ private:
     int _frames = 0;
 };
 
+// Closes a few updates after the sounds are ready.
+class JournalLoading final : public LoadingScene {
+public:
+    explicit JournalLoading(Journal& journal)
+        : _journal(journal) {}
+    [[nodiscard]] bool Finished() const override { return _updatesLoaded >= 3; }
+
+private:
+    void Start() override { _journal.push_back("loading.start"); }
+    void Enter() override { _journal.push_back("loading.enter"); }
+    void Update(float) override {
+        if (Loaded()) ++_updatesLoaded;
+    }
+    void Exit() override { _journal.push_back("loading.exit"); }
+    void Stop() override { _journal.push_back("loading.stop"); }
+    Journal& _journal;
+    int _updatesLoaded = 0;
+};
+
+// Notes whether sound is ready when its Enter runs.
+class HearingScene final : public Scene {
+public:
+    HearingScene(Journal& journal, const AudioSystem& audio)
+        : _journal(journal)
+        , _audio(audio) {}
+
+private:
+    void Enter() override { _journal.push_back(_audio.SampleRate() > 0 ? "first.enter.ready" : "first.enter.silent"); }
+    void Stop() override { _journal.push_back("first.stop"); }
+    Journal& _journal;
+    const AudioSystem& _audio;
+};
+
+// Selects its first scene in Start like any game, and quits after one frame of it.
+class LoadingGame final : public Game {
+public:
+    LoadingGame(Journal& journal, bool ownScreen)
+        : Game(CheckSettings())
+        , _loading(journal)
+        , _first(journal, Audio())
+        , _ownScreen(ownScreen) {}
+
+private:
+    void Start() override {
+        RegisterScene(_loading);
+        RegisterScene(_first);
+        if (_ownScreen) SetLoadingScene(_loading);
+        SetScene(_first);
+    }
+    void Update(float realSeconds) override {
+        Game::Update(realSeconds);
+        RequestQuit();
+    }
+    JournalLoading _loading;
+    HearingScene _first;
+    bool _ownScreen;
+};
+
 int failures = 0;
 void Expect(bool passed, const std::string& what, const Journal& journal) {
     if (passed) return;
@@ -128,6 +188,33 @@ int main() {
             }
         }
         Expect(thrown && journal == ran, "Game::Run shuts every started scene down before it rethrows", journal);
+    }
+    {
+        Journal journal;
+        LoadingGame game(journal, true);
+        game.Run();
+        const Journal loaded{"loading.start",     "loading.enter", "loading.exit",
+                             "first.enter.ready", "first.stop",    "loading.stop"};
+        Expect(journal == loaded, "a game's loading scene closes before its first scene, which finds sound ready",
+               journal);
+    }
+    {
+        Journal journal;
+        LoadingGame game(journal, false);
+        game.Run();
+        const Journal hosted{"first.enter.ready", "first.stop"};
+        Expect(journal == hosted, "a host that did not ask for a screen shows none and still waits for sound", journal);
+    }
+    {
+        Journal journal;
+        LoadingGame game(journal, false);
+        game.UseEngineLoadingScreen();
+        const auto start = std::chrono::steady_clock::now();
+        game.Run();
+        const std::chrono::duration<double> seconds = std::chrono::steady_clock::now() - start;
+        const Journal hosted{"first.enter.ready", "first.stop"};
+        Expect(journal == hosted && seconds.count() >= 1.9, "the engine's screen runs about two seconds first",
+               journal);
     }
     std::cout << "Scene ownership checks: " << failures << " failures\n";
     return failures == 0 ? 0 : 1;
