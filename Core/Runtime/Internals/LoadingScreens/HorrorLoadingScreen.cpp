@@ -42,12 +42,14 @@ void DrawHorrorLoadingScreen(Painter& paint, const LoadingScreenFrame& frame) {
                 auto text = paint.Transform(Affine2::Translate({tremble, 0.0f}));
                 auto flicker = paint.Opacity(0.94f + static_cast<float>(signal % 7U) * 0.01f);
                 constexpr std::string_view Credit = "MADE WITH";
-                DrawLoadingPixelText(paint, Credit, {160.0f - LoadingPixelTextWidth(Credit, 1.0f) * 0.5f, 62.0f}, 1.0f,
+                DrawLoadingPixelText(paint, Credit,
+                                     {std::floor(160.0f - LoadingPixelTextWidth(Credit, 1.0f) * 0.5f), 62.0f}, 1.0f,
                                      Secondary);
                 DrawLoadingPixelText(paint, Name, {nameLeft, 80.0f}, namePixel, Foreground);
                 constexpr std::string_view Loading = "LOADING";
-                DrawLoadingPixelText(paint, Loading, {160.0f - LoadingPixelTextWidth(Loading, 1.0f) * 0.5f, 143.0f},
-                                     1.0f, Secondary);
+                DrawLoadingPixelText(paint, Loading,
+                                     {std::floor(160.0f - LoadingPixelTextWidth(Loading, 1.0f) * 0.5f), 143.0f}, 1.0f,
+                                     Secondary);
             }
             {
                 // A circulating dash, with a short dim trail, never measures completion.

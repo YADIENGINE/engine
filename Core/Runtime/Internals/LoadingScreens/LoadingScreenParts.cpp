@@ -1,9 +1,7 @@
 #include "Runtime/Internals/LoadingScreens/LoadingScreenParts.h"
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include "Graphics/Paint/Painter.h"
-#include "Runtime/Internals/LoadingScreens/LoadingScreenFrame.h"
 
 namespace {
 // Each row uses its low five bits, with the leftmost pixel in bit four. The last glyph is space.
@@ -36,11 +34,6 @@ constexpr std::array<std::array<std::uint8_t, 7>, 27> PixelLetters{{
     {{31, 1, 2, 4, 8, 16, 31}},     // Z
     {{0, 0, 0, 0, 0, 0, 0}},        // Space
 }};
-
-constexpr float MarkWidth = 96.0f;
-constexpr float MarkHeight = 8.0f;
-constexpr float TrackWidth = 320.0f;
-constexpr float SlideSeconds = 1.1f;
 } // namespace
 
 float LoadingPixelTextWidth(std::string_view text, float pixel, float spacing) {
@@ -93,14 +86,4 @@ std::uint32_t LoadingScreenHash(std::uint32_t seed) {
     seed ^= seed >> 15U;
     seed *= 0x846ca68bU;
     return seed ^ (seed >> 16U);
-}
-
-void DrawLoadingStandIn(Painter& paint, const LoadingScreenFrame& frame, Color4 background, Color4 mark) {
-    const auto width = static_cast<float>(frame.canvas.x);
-    const auto height = static_cast<float>(frame.canvas.y);
-    paint.Rect({0.0f, 0.0f, width, height}, Fill(background));
-    const float slide = std::abs(std::fmod(frame.seconds / SlideSeconds, 2.0f) - 1.0f);
-    const float left = (width - TrackWidth) * 0.5f + slide * (TrackWidth - MarkWidth);
-    paint.Rect({left, (height - MarkHeight) * 0.5f, MarkWidth, MarkHeight}, Fill(mark));
-    paint.Rect({0.0f, 0.0f, width, height}, Fill(WithAlpha(Rgb(0x000000), 1.0f - frame.visibility)));
 }
