@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-08",
+  "changes": [
+    "Games open with a loading screen. Without one of their own they show the engine's Made with screen for about two seconds, and any key, mouse button or touch skips it once the sounds are ready. Game.settings.json picks its look with loadingScreen: Default, Horror, Rpg, SciFi, Arcade or Cozy. A game gives its own with Game::SetLoadingScene.",
+    "A game's first scene now starts after the sounds are ready, so its Start and Enter can play them. If the player closes the window during loading, the first scene never starts.",
+    "Post effects can be limited to one rectangle of the screen with PostSettings::region, for a monitor inside the scene.",
+    "Scenes can hide the system cursor with SceneServices::setCursorVisible, for a custom crosshair. The game restores it when a scene exits.",
+    "Editor: a large scene catalog no longer crashes the worker. The limit is now 16 MiB, and a catalog past it shows a readable error naming the largest asset files.",
+    "Editor: scrolling an agent's terminal no longer flips it between working and done.",
+    "Editor: a Codex approval request now shows as waiting, with the attention pulse.",
+    "Editor terminal: while selecting text, the wheel and dragging past the edge scroll the history and keep the selection.",
+    "Crash records say more: when no full report could be written, emergency.txt holds the exception message and why the crash reporter did not start.",
+    "New projects ignore Engine/ in git, and on a fresh clone the launcher offers to install the engine. Existing projects keep their .gitignore. Connecting Engine as a submodule in a new project now needs git submodule add -f."
+  ],
+  "breaking": [
+    {
+      "change": "Game::DrawLoading and Game::LoadingOutroSeconds are removed.",
+      "migrate": "Derive a screen from LoadingScene and give it with Game::SetLoadingScene; see Docs/Runtime.md."
+    }
+  ]
+}
