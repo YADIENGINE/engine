@@ -599,6 +599,7 @@ void EditorController::Receive(const WorkerMessage& message) {
         _audioUsage = {true, DecodeAudioCatalog(message.data)};
         return;
     }
+    if (message.type == "catalog-failed") throw std::runtime_error(message.data.at("text").get<std::string>());
     if (message.type == "catalog") {
         _catalog = DecodeSceneCatalog(message.data);
         _accepted = RestoreParameters(_catalog);
@@ -819,6 +820,8 @@ void EditorController::ReceiveReplacement(const WorkerMessage& message) {
         if (message.generation == replacement.generation) replacement.tuningUsed = DecodeWorkerTuningUsed(message.data);
     } else if (message.type == "audio") {
         replacement.audio = DecodeAudioCatalog(message.data);
+    } else if (message.type == "catalog-failed") {
+        throw std::runtime_error(message.data.at("text").get<std::string>());
     } else if (message.type == "catalog") {
         replacement.catalog = DecodeSceneCatalog(message.data);
         replacement.accepted = RestoreParameters(*replacement.catalog);

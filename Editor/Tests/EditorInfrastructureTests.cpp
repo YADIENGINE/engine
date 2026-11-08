@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -336,6 +337,75 @@ TEST_CASE("Editor.Protocol.FragmentationAndSessionIsolation", "[engine-editor]")
     const std::array oversized{std::byte{0xff}, std::byte{0xff}, std::byte{0xff}, std::byte{0x7f}};
     WorkerMessageReader bounded("session-a");
     CHECK_THROWS(bounded.Push(oversized));
+}
+
+TEST_CASE("Editor.Protocol.LargeAssetCatalogRoundTrips", "[engine-editor]") {
+    std::vector<SceneDefinition> definitions;
+    for (int i = 0; i < 5000; ++i) {
+        SceneDefinition definition;
+        definition.id = "asset.graphics." + std::to_string(i);
+        definition.name = "Graphic item " + std::to_string(i);
+        definition.description = std::string(256, 'x');
+        definition.asset = SceneAssetInfo{"Graphics/Characters.json", "Characters", std::to_string(i), "Preview"};
+        definitions.push_back(std::move(definition));
+    }
+    const auto catalog = EncodeSceneCatalog(definitions);
+    REQUIRE(catalog.dump().size() > 1024 * 1024);
+    const auto decoded = DecodeSceneCatalog(catalog);
+    REQUIRE(decoded.size() == 5000);
+    CHECK(EncodeSceneCatalog(decoded) == catalog);
+    WorkerMessageReader reader("large-catalog");
+    const auto received = reader.Push(EncodeWorkerMessage({"large-catalog", 0, 0, "catalog", catalog}));
+    REQUIRE(received.size() == 1);
+    CHECK(received.front().type == "catalog");
+    CHECK(EncodeSceneCatalog(DecodeSceneCatalog(received.front().data)) == catalog);
+    CHECK_THROWS(DecodeSceneCatalog({{"entries", nlohmann::json::object()}}));
+}
+
+TEST_CASE("Editor.Protocol.OversizedMessageNamesTypeSizeAndLimit", "[engine-editor]") {
+    WorkerMessage message{"session", 0, 0, "catalog", {{"text", ""}}};
+    const auto envelopeBytes = EncodeWorkerMessage(message).size() - 4;
+    message.data["text"] = std::string(WorkerMaxMessageBytes, 'x');
+    CHECK_THROWS_WITH(EncodeWorkerMessage(message), "Protocol message 'catalog' is " +
+                                                        std::to_string(envelopeBytes + WorkerMaxMessageBytes) +
+                                                        " bytes, limit " + std::to_string(WorkerMaxMessageBytes));
+}
+
+TEST_CASE("Editor.Protocol.TooLargeCatalogNamesFiveLargestAssetFilesInOrder", "[engine-editor]") {
+    std::vector<SceneDefinition> definitions;
+    const auto add = [&](const std::string& file, std::size_t descriptionBytes) {
+        SceneDefinition definition;
+        definition.id = "item." + std::to_string(definitions.size());
+        definition.name = "Item";
+        definition.description = std::string(descriptionBytes, 'x');
+        definition.asset = SceneAssetInfo{file, "Set", "Item", "Preview"};
+        definitions.push_back(std::move(definition));
+    };
+    add("Graphics/A.json", 900);
+    add("Graphics/B.json", 1600);
+    add("Graphics/C.json", 1300);
+    add("Graphics/D.json", 1100);
+    add("Graphics/E.json", 1000);
+    add("Graphics/F.json", 10);
+    add("Graphics/A.json", 900); // Grouped A outranks the largest individual entry (B).
+    SceneDefinition scene;
+    scene.description = std::string(10000, 'x'); // Non-asset entries do not appear in the file ranking.
+    definitions.push_back(std::move(scene));
+    const auto catalog = EncodeSceneCatalog(definitions);
+    const auto catalogBytes = WorkerMaxMessageBytes + 1234;
+    const auto text = SceneCatalogTooLargeText(catalog, catalogBytes);
+    CHECK(text.find(std::to_string(catalogBytes)) != std::string::npos);
+    CHECK(text.find(std::to_string(WorkerMaxMessageBytes)) != std::string::npos);
+    std::size_t previous = 0;
+    for (const auto& file :
+         {"Graphics/A.json", "Graphics/B.json", "Graphics/C.json", "Graphics/D.json", "Graphics/E.json"}) {
+        const auto position = text.find(file);
+        REQUIRE(position != std::string::npos);
+        CHECK(position > previous);
+        CHECK(text.find(file, position + 1) == std::string::npos);
+        previous = position;
+    }
+    CHECK(text.find("Graphics/F.json") == std::string::npos);
 }
 
 TEST_CASE("Editor.Parameters.ValidationAndCompatibleRestore", "[engine-editor]") {

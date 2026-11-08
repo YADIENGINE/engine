@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include "Editor/Internals/Platform/Windows/ControlChannel.h"
 #include "Editor/Internals/Session/GraphicAssetCatalog.h"
 #include "Editor/Internals/Session/SceneAutoRegistration.h"
@@ -122,7 +123,34 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
         }
         channel = std::make_unique<ControlChannel>(session, false);
         channel->Send({{}, 0, 0, "audio", EncodeAudioCatalog(CatalogWithSounds(settings.audio, settings.sounds))});
-        channel->Send({{}, 0, 0, "catalog", EncodeSceneCatalog(registry.Entries())});
+        auto catalog = EncodeSceneCatalog(registry.Entries());
+        const auto catalogBytes = catalog.dump().size();
+        constexpr std::size_t EnvelopeMargin = 1024;
+        if (catalogBytes >= WorkerMaxMessageBytes * 3 / 4)
+            channel->Send({{},
+                           0,
+                           0,
+                           "log",
+                           {{"text", "Scene catalog is " + std::to_string(catalogBytes) + " bytes, limit " +
+                                         std::to_string(WorkerMaxMessageBytes)}}});
+        if (catalogBytes > WorkerMaxMessageBytes - EnvelopeMargin) {
+            // Expected content failure: deliver the diagnosis without entering the crash boundary's exception path.
+            try {
+                channel->Send(
+                    {{}, 0, 0, "catalog-failed", {{"text", SceneCatalogTooLargeText(catalog, catalogBytes)}}});
+                const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+                bool shutdown = false;
+                while (!channel->Closed() && std::chrono::steady_clock::now() < deadline) {
+                    for (const auto& message : channel->Poll())
+                        if (message.type == "shutdown") shutdown = true;
+                    if (shutdown && channel->QueuedBytes() == 0) break;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                }
+            } catch (const std::exception&) { // The editor may close the channel while the diagnosis is being sent.
+            }
+            return 1;
+        }
+        channel->Send({{}, 0, 0, "catalog", std::move(catalog)});
         if (catalogOnly) {
             const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
             while (true) {

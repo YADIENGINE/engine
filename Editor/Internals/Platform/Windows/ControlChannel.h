@@ -13,7 +13,7 @@ public:
     void Send(WorkerMessage message);
     // A state snapshot: drops an unsent message of the same type and generation, then sends like Send.
     void SendLatest(WorkerMessage message);
-    // Best effort (logs): refused once the queue is half full, so required messages keep room.
+    // Best effort (logs): refused at 4 MiB or half the message count, so required messages keep room.
     [[nodiscard]] bool TrySend(WorkerMessage message);
     [[nodiscard]] std::vector<WorkerMessage> Poll();
     [[nodiscard]] bool Closed() const { return _closed; }

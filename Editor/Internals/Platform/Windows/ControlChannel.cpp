@@ -8,7 +8,9 @@
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
 
 namespace {
-constexpr std::size_t MaxQueuedBytes = 8 * WorkerMaxMessageBytes;
+constexpr std::size_t MaxQueuedBytes = 2 * WorkerMaxMessageBytes;
+constexpr std::size_t BestEffortQueuedBytes = 4 * 1024 * 1024;
+constexpr DWORD PipeBufferBytes = 1024 * 1024;
 bool ClosedPipe(DWORD error) {
     return error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED || error == ERROR_NO_DATA;
 }
@@ -23,8 +25,7 @@ ControlChannel::ControlChannel(std::string session, bool server)
     if (server) {
         _pipe.Reset(CreateNamedPipeW(name.c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
                                      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT | PIPE_REJECT_REMOTE_CLIENTS, 1,
-                                     static_cast<DWORD>(WorkerMaxMessageBytes),
-                                     static_cast<DWORD>(WorkerMaxMessageBytes), 0, nullptr));
+                                     PipeBufferBytes, PipeBufferBytes, 0, nullptr));
         if (!_pipe) ThrowWorkerWindowsError("Create scene control channel");
         // In PIPE_NOWAIT mode TRUE means listening, not proof of an established connection.
         const BOOL listening = ConnectNamedPipe(_pipe.Get(), nullptr);
@@ -73,7 +74,7 @@ void ControlChannel::SendLatest(WorkerMessage message) {
 bool ControlChannel::TrySend(WorkerMessage message) {
     if (_closed) return false;
     auto bytes = Encode(message);
-    if (_outgoing.size() >= WorkerMaxQueuedMessages / 2 || _queuedBytes + bytes.size() > MaxQueuedBytes / 2)
+    if (_outgoing.size() >= WorkerMaxQueuedMessages / 2 || _queuedBytes + bytes.size() > BestEffortQueuedBytes)
         return false;
     Enqueue(std::move(bytes), {}, 0);
     return true;

@@ -3,6 +3,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <map>
 #include <set>
 #include <stdexcept>
 #include <type_traits>
@@ -117,7 +118,8 @@ std::vector<std::byte> EncodeWorkerMessage(const WorkerMessage& message) {
             {"request", message.request},       {"type", message.type},       {"data", message.data}}
             .dump();
     if (text.empty() || text.size() > WorkerMaxMessageBytes)
-        throw std::runtime_error("Protocol message exceeds capacity");
+        throw std::runtime_error("Protocol message '" + message.type + "' is " + std::to_string(text.size()) +
+                                 " bytes, limit " + std::to_string(WorkerMaxMessageBytes));
     std::vector<std::byte> result;
     result.reserve(text.size() + 4);
     const auto size = static_cast<std::uint32_t>(text.size());
@@ -359,9 +361,25 @@ nlohmann::json EncodeSceneCatalog(const std::vector<SceneDefinition>& definition
     }
     return {{"entries", entries}};
 }
+std::string SceneCatalogTooLargeText(const nlohmann::json& catalog, std::size_t catalogBytes) {
+    std::map<std::string, std::size_t> bytesByFile;
+    for (const auto& entry : catalog.at("entries"))
+        if (entry.contains("asset"))
+            bytesByFile[entry.at("asset").at("file").get<std::string>()] += entry.dump().size();
+    std::vector<std::pair<std::string, std::size_t>> files(bytesByFile.begin(), bytesByFile.end());
+    std::ranges::sort(files, [](const auto& a, const auto& b) {
+        return a.second != b.second ? a.second > b.second : a.first < b.first;
+    });
+    auto text = "Scene catalog is " + std::to_string(catalogBytes) + " bytes, limit " +
+                std::to_string(WorkerMaxMessageBytes) + " bytes (including the message envelope).";
+    text += "\nLargest asset files by catalog bytes:";
+    for (std::size_t i = 0; i < std::min<std::size_t>(5, files.size()); ++i)
+        text += "\n" + files[i].first + ": " + std::to_string(files[i].second) + " bytes";
+    return text;
+}
 std::vector<SceneDefinition> DecodeSceneCatalog(const nlohmann::json& json) {
     const auto& entries = json.at("entries");
-    if (!entries.is_array() || entries.size() > 2048) throw std::runtime_error("Catalog exceeds capacity");
+    if (!entries.is_array()) throw std::runtime_error("Catalog entries must be an array");
     std::vector<SceneDefinition> result;
     std::set<std::string> identifiers;
     for (const auto& entry : entries) {

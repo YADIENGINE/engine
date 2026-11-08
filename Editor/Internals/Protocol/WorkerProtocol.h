@@ -10,9 +10,9 @@
 #include "Input/Input.h"
 #include "Tuning/TuningFile.h"
 
-inline constexpr std::uint32_t WorkerProtocolVersion = 16;
+inline constexpr std::uint32_t WorkerProtocolVersion = 17;
 inline constexpr std::size_t WorkerMaxInputPoints = 32;
-inline constexpr std::size_t WorkerMaxMessageBytes = 1024 * 1024;
+inline constexpr std::size_t WorkerMaxMessageBytes = 16 * 1024 * 1024;
 inline constexpr std::size_t WorkerMaxQueuedMessages = 256;
 inline constexpr double WorkerMinPlaybackSpeed = 0.1;
 inline constexpr double WorkerMaxPlaybackSpeed = 4.0;
@@ -56,6 +56,8 @@ struct WorkerTuningStatus {
 [[nodiscard]] WorkerOpenState DecodeWorkerOpen(const nlohmann::json& json);
 [[nodiscard]] bool ValidPlaybackSpeed(double speed);
 [[nodiscard]] nlohmann::json EncodeSceneCatalog(const std::vector<SceneDefinition>& definitions);
+// Serialized catalog bytes, with the five largest contributors grouped by their asset file.
+[[nodiscard]] std::string SceneCatalogTooLargeText(const nlohmann::json& catalog, std::size_t catalogBytes);
 [[nodiscard]] std::vector<SceneDefinition> DecodeSceneCatalog(const nlohmann::json& json);
 [[nodiscard]] nlohmann::json EncodeWorkerInput(const DeviceInput& input);
 [[nodiscard]] DeviceInput DecodeWorkerInput(const nlohmann::json& json);

@@ -42,6 +42,62 @@ TEST_CASE("Editor.Channel.UnreadPeerRefusesBestEffortButKeepsRoom", "[engine-edi
         client.SendLatest({{}, 0, 0, "parameters", {{"value", i}}});
     CHECK_NOTHROW(client.Send({{}, 0, 1, "accepted", nlohmann::json::object()}));
 }
+
+TEST_CASE("Editor.Channel.FourMiBMessageSurvivesPartialPipeWritesAndReads", "[engine-editor]") {
+    const auto session = NewWorkerSession();
+    ControlChannel server(session, true);
+    ControlChannel client(session, false);
+    auto* sender = &server;
+    auto* receiver = &client;
+    SECTION("Server to client") {}
+    SECTION("Client to server") {
+        sender = &client;
+        receiver = &server;
+    }
+    // Leave an unaligned prefix in the pipe so filling it also exercises a short native write.
+    sender->Send({{}, 3, 6, "before-catalog", nlohmann::json::object()});
+    CHECK(sender->Poll().empty());
+    REQUIRE(sender->QueuedBytes() == 0);
+    const std::string payload(4 * 1024 * 1024, 'x');
+    sender->Send({{}, 3, 7, "catalog", {{"text", payload}}});
+    sender->Send({{}, 3, 8, "after-catalog", {{"complete", true}}});
+    const auto queued = sender->QueuedBytes();
+    // Fill the 1 MiB pipe without reading it: a partially written message must remain queued.
+    for (int i = 0; i < 128; ++i)
+        CHECK(sender->Poll().empty());
+    CHECK(sender->QueuedBytes() > 0);
+    CHECK(sender->QueuedBytes() < queued);
+    std::vector<WorkerMessage> received;
+    for (int i = 0; i < 256 && received.size() < 3; ++i) {
+        CHECK(sender->Poll().empty());
+        for (auto& message : receiver->Poll())
+            received.push_back(std::move(message));
+    }
+    REQUIRE(received.size() == 3);
+    CHECK(received[0].type == "before-catalog");
+    CHECK(received[1].type == "catalog");
+    CHECK(received[1].generation == 3);
+    CHECK(received[1].request == 7);
+    CHECK(received[1].data.at("text") == payload);
+    CHECK(received[2].type == "after-catalog");
+    CHECK(received[2].request == 8);
+    CHECK(sender->QueuedBytes() == 0);
+}
+
+TEST_CASE("Editor.Channel.BestEffortKeepsFourMiBCeilingAndRoomForMaximumMessage", "[engine-editor]") {
+    const auto session = NewWorkerSession();
+    ControlChannel server(session, true);
+    ControlChannel client(session, false);
+    const WorkerMessage log{{}, 0, 0, "log", {{"text", std::string(1024 * 1024, 'x')}}};
+    for (int i = 0; i < 3; ++i)
+        REQUIRE(client.TrySend(log));
+    CHECK_FALSE(client.TrySend(log)); // Byte back-pressure, well before the message-count threshold.
+    WorkerMessage maximum{session, 0, 0, "catalog", {{"text", ""}}};
+    const auto envelopeBytes = EncodeWorkerMessage(maximum).size() - 4;
+    maximum.data["text"] = std::string(WorkerMaxMessageBytes - envelopeBytes, 'x');
+    CHECK_NOTHROW(client.Send(std::move(maximum)));
+    CHECK_NOTHROW(client.Send({{}, 0, 1, "accepted", nlohmann::json::object()}));
+}
 namespace {
 NativeHandle ConnectClient(const std::string& pipe) {
     const auto name = WorkerWide(pipe);

@@ -65,7 +65,7 @@ Engine supplies Painter Glows (20/100/500 lights, grid/cluster, radius, seed) wi
 Projects add production workloads through their normal scene registry.
 
 Protocol v9 associates profiler messages with generation/capture IDs and carries parameter-only A/B variants. Stale messages are ignored. Ordered
-chunks and expected run/frame counts are validated before making results visible. The existing 1 MiB IPC
+chunks and expected run/frame counts are validated before making results visible. The existing 16 MiB IPC
 message limit remains. Rebuild host and worker together after the protocol/API change.
 
 ## Manual acceptance
