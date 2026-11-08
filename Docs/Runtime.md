@@ -79,6 +79,12 @@ a screen of your own, derive from `LoadingScene`, register it, and call `SetLoad
 the setting, and `SetScene` is called as usual and waits. A game that wants no screen gives an empty `LoadingScene`,
 which closes when the sounds are ready.
 
+| Default | Horror | Rpg |
+| --- | --- | --- |
+| ![Default loading screen](Images/LoadingScreens/Default.png) | ![Horror loading screen](Images/LoadingScreens/Horror.png) | ![Rpg loading screen](Images/LoadingScreens/Rpg.png) |
+| **SciFi** | **Arcade** | **Cozy** |
+| ![SciFi loading screen](Images/LoadingScreens/SciFi.png) | ![Arcade loading screen](Images/LoadingScreens/Arcade.png) | ![Cozy loading screen](Images/LoadingScreens/Cozy.png) |
+
 A `LoadingScene` runs on real time and is an ordinary scene otherwise. `Loaded()` turns true when the sounds are ready;
 playing a sound before that throws, so the waiting part is silent, and a closing animation may play sounds or start
 music that carries into the first scene. Override `Finished()` for a closing animation; the engine asks it only after
