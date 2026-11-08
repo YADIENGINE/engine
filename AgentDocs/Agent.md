@@ -2,6 +2,8 @@ Rules for an agent working on a game built with this engine. Import this file fr
 short on purpose. Paths start at the engine root (`Engine/` in a game); run tools from the project root as
 `python Engine <command>`.
 
+Plans, reports and notes for people or other agents are `.md` files in `Notes/`, not beside code.
+
 ## Reading
 
 - Start from the matching skill below; it holds the usual example. Follow its links before searching.

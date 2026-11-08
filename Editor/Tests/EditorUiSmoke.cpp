@@ -93,6 +93,7 @@ constexpr std::array Stages{
     SmokeStage{"tuning-narrow", SmokeView::Running, 1100, 680, 150, EditorPanel::Inspector},
     SmokeStage{"project-settings", SmokeView::Running, 1600, 1000, 100, EditorPanel::Inspector},
     SmokeStage{"input-map", SmokeView::Running, 1600, 1000, 100, EditorPanel::Inspector},
+    SmokeStage{"notes", SmokeView::Running, 1600, 900, 100, EditorPanel::Notes},
     SmokeStage{"assets", SmokeView::Running, 1600, 900, 100, EditorPanel::Assets},
     SmokeStage{"audio", SmokeView::Running, 1600, 900, 100, EditorPanel::AudioPreview},
     SmokeStage{"agent-strip", SmokeView::AgentStrip},
@@ -298,6 +299,7 @@ AudioWaveform SampleWaveform() {
 // Files for the Assets, Audio Preview and Tuning panels, in a folder of their own.
 class SmokeProject {
 public:
+    [[nodiscard]] const std::filesystem::path& Root() const { return _root; }
     SmokeProject() {
         std::error_code error;
         _root = std::filesystem::temp_directory_path(error) / ("editor-ui-smoke-" + std::to_string(::time(nullptr)));
@@ -307,6 +309,11 @@ public:
              {"Graphics/Enemies/Slime.asset.cpp", "Graphics/Enemies/Dragon.asset.cpp", "Graphics/Player/Hero.asset.cpp",
               "Audio/SE/Hit.wav", "Audio/SE/Pickup.wav", "Audio/SE/Explosion.wav", "Audio/Music/Theme.ogg"})
             WriteFile(AssetsDirectory() / file);
+        WriteFile(_root / "Notes/Plan.md",
+                  "# Project plan\n\nKeep plans, reports and handoffs together.\n\n## Next steps\n\n- Review the "
+                  "current scene.\n- Record the result for the next developer or agent.\n\nThis is a plain Markdown "
+                  "note. Long paragraphs wrap to the panel width so they remain comfortable to read while working "
+                  "beside the Inspector.\n");
         WriteFile(TuningFile(), EnemyTuning);
         WriteFile(_root / "Game" / "Effects" / "Glow.tuning.json",
                   "{\n  \"radius\": { \"value\": 12, \"min\": 0, \"unit\": \"px\" }\n}\n");
@@ -482,6 +489,7 @@ public:
         _preferences.recent = {"sample.fight", "sample.Boss intro", "sample.category.Visuals"};
         _workspace.SetAssetRoots(_project.EngineDirectory(), _project.AssetsDirectory());
         _workspace.SetProjectName("MyProject");
+        _workspace.SetNotesProject(_project.Root());
         _tuning.Open(_project.BuildDirectory());
         // The scene reads Enemy.tuning.json live; its commit had another radius and speed, so both show Modified.
         _tuning.SetUsed({_project.TuningFile()});
@@ -676,6 +684,12 @@ protected:
         if (stage.panel) {
             _preferences.Visible(*stage.panel) = true;
             SelectTab(EditorPanelInfo(*stage.panel).window);
+        }
+        if (std::string_view(stage.name) == "notes") {
+            _preferences.Visible(EditorPanel::Console) = false;
+            _preferences.Visible(EditorPanel::Assets) = true;
+            SelectTab(EditorPanelInfo(EditorPanel::Assets).window);
+            if (_frameIndex == 1) _workspace.OpenNote(_project.Root() / "Notes/Plan.md", _preferences);
         }
         (void)_workspace.Draw(snapshot, _actions, _frame.id != 0 ? image : ViewportImage{}, _preferences, _fontSize);
         if (stage.view == SmokeView::AgentStrip) DrawAgentStrips(snapshot);

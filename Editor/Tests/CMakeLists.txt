@@ -1,5 +1,5 @@
 engine_use_catch2()
-add_executable(EngineEditorTests AssetLibraryTests.cpp QuickOpenTests.cpp AudioPreviewTests.cpp ControlChannelTests.cpp EditorInfrastructureTests.cpp EditorControlTests.cpp EditorUiModelTests.cpp ProfilerEditorTests.cpp
+add_executable(EngineEditorTests NotesTests.cpp AssetLibraryTests.cpp QuickOpenTests.cpp AudioPreviewTests.cpp ControlChannelTests.cpp EditorInfrastructureTests.cpp EditorControlTests.cpp EditorUiModelTests.cpp ProfilerEditorTests.cpp
     EditorCommandTests.cpp GitTests.cpp OneSceneTests.cpp TuningEditorTests.cpp WorkerSimulationTests.cpp
     "${CMAKE_CURRENT_SOURCE_DIR}/../Worker/WorkerScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Tests/Support/TempDirectory.cpp"
@@ -8,7 +8,7 @@ add_executable(EngineEditorTests AssetLibraryTests.cpp QuickOpenTests.cpp AudioP
 target_link_libraries(EngineEditorTests PRIVATE EngineEditorSupport EngineAudio Catch2::Catch2WithMain)
 if(TARGET EngineEditorUi)
     # ImGui-only frames: no window, GPU context, worker or game startup.
-    target_sources(EngineEditorTests PRIVATE EditorActionTests.cpp EditorContextTests.cpp EditorPaletteTests.cpp InspectorUiTests.cpp
+    target_sources(EngineEditorTests PRIVATE NotesUiTests.cpp EditorActionTests.cpp EditorContextTests.cpp EditorPaletteTests.cpp InspectorUiTests.cpp
         WorkspaceUiTests.cpp)
     target_link_libraries(EngineEditorTests PRIVATE EngineEditorUi)
     # Opt-in real-renderer screenshots of the panels; needs a desktop/GPU, so not a CTest (EditorUiSmoke.cpp).

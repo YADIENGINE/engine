@@ -1,5 +1,6 @@
 {
   "tasks": [
+    {"task": "Keep project plans, reports and handoff notes in Notes", "files": ["Tools/ProjectTemplate/Notes/README.md"], "recipe": null, "docs": ["Docs/Editor/Usage.md#project-notes"], "words": ["markdown", "notes", "handoff", "report", "plan"]},
     {"task": "Diagnose a game, worker or native test crash from its local report", "files": ["Docs/Debugging.md"], "recipe": null, "docs": ["Docs/Debugging.md#read-a-report"], "words": ["crash", "exception", "stack", "trace", "dump", "pdb", "violation", "terminate", "abort"]},
     {"task": "Create a game, factory and GameSettings", "files": ["Core/Runtime/Game.h", "Core/Runtime/EntryPoint.h", "Core/Runtime/GameSettings.h"], "recipe": "AgentDocs/Recipes/SceneTransition.md", "docs": ["Docs/ProjectSetup.md#new-project"]},
     {"task": "Configure canvas, window and assets", "files": ["Core/Runtime/GameSettings.h", "Core/Runtime/ProjectSettings.h"], "recipe": null, "docs": ["Docs/ProjectSettings.md#settings", "Docs/AssetsAndPlatforms.md#gamesettings-reference"]},

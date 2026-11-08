@@ -7,8 +7,10 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <utility>
 #include "Editor/Application/EditorPresentation.h"
 #include "Editor/Internals/Session/AssetLibrary.h"
+#include "Editor/Internals/Notes/NoteFiles.h"
 #include "Editor/Internals/Session/AssetNames.h"
 #include "Editor/Internals/Session/AssetNavigation.h"
 
@@ -18,6 +20,12 @@ class AssetsPanel {
 public:
     void SetRoots(const std::filesystem::path& engineDirectory, const std::filesystem::path& assetsDirectory);
     void Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions);
+    void SetNotesProject(const std::filesystem::path& project) {
+        _notes = NoteFiles(project);
+        _nextScan = 0;
+    }
+    [[nodiscard]] std::filesystem::path TakeOpenNote() { return std::exchange(_openNote, {}); }
+    [[nodiscard]] auto TakeNoteRename() { return std::exchange(_noteRename, std::nullopt); }
 
 private:
     enum class TypeFilter { All, Graphic, Sound, Tuning, Code, Font, Other };
@@ -29,7 +37,10 @@ private:
         AssetNameKind kind = AssetNameKind::Folder;
         std::string folder; // Where it goes, under the project's graphics, as `python Engine asset` takes it
         std::filesystem::path folderPath; // The same folder on disk
-        std::array<char, 64> name{};
+        std::array<char, 256> name{};
+        bool notes = false;
+        bool rename = false;
+        std::filesystem::path source;
         bool open = false;
         bool focus = false;
         std::uint64_t request = 0; // The command it waits for; 0 while editing
@@ -50,6 +61,8 @@ private:
     // The node's path as `python Engine asset` takes it; nullopt outside the project's graphics.
     [[nodiscard]] std::optional<std::string> GraphicsRelative(const AssetNode& node) const;
     void CreateItems(const AssetNode& folder);
+    void NoteMenu(const AssetNode& node);
+    void DrawNoteDelete();
     void OpenNameDialog(AssetNameKind kind, const AssetNode& folder);
     void DragSource(const AssetNode& node);
     void DropTarget(const AssetNode& folder, const EditorUiActions& actions) const;
@@ -72,6 +85,12 @@ private:
     void PlayAudio(const AssetNode& node, const EditorSnapshot& snapshot, const EditorUiActions& actions);
     void NextTile();
 
+    NoteFiles _notes;
+    std::filesystem::path _openNote;
+    std::optional<std::pair<std::filesystem::path, std::filesystem::path>> _noteRename;
+    std::filesystem::path _deleteNote;
+    bool _confirmDelete = false;
+    std::string _deleteError;
     std::filesystem::path _engineDirectory;
     std::filesystem::path _assetsDirectory;
     std::vector<AssetNode> _roots;

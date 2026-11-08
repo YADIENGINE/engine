@@ -95,6 +95,7 @@ EditorApplication::EditorApplication(const std::filesystem::path& projectFile)
     if (const auto& project = _controller.Project()) {
         _workspace.SetProjectName(project->name);
         _workspace.SetConsoleDirectory(project->sourceDirectory);
+        _workspace.SetNotesProject(project->sourceDirectory);
         _workspace.SetAssetRoots(project->engineDirectory, project->assetsDirectory);
         const auto background = ImGui::ColorConvertFloat4ToU32(ToolPalette::Content);
         _assetCommands.Configure(project->python, project->engineDirectory, project->sourceDirectory);
@@ -344,6 +345,7 @@ std::uint64_t EditorApplication::QueueAudio(const AudioPreviewRequest& request) 
 }
 void EditorApplication::Stop() {
     if (_stopped) return;
+    _workspace.CloseNotes();
     _workspace.CaptureLayout(_preferences);
     SavePreferences(true);
     SaveLastFrame();

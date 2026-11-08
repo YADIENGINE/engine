@@ -47,6 +47,7 @@ std::vector<AssetNode> ScanFolder(const std::filesystem::path& folder, bool read
             continue;
         }
         const auto extension = Lowered(path.extension().string());
+        if (extension == ".md") continue; // Markdown belongs only to the separate Notes root.
         if (!Has(CodeExtensions, extension)) {
             nodes.push_back({path.stem().string(), path, FileKind(extension), readOnly, {name}, {}});
             continue;

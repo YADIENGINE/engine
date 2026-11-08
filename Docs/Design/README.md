@@ -879,3 +879,16 @@ Decision: an optional `std::function<void(bool visible)>` lets a scene request h
    not leak into the next scene or outlive the scene that hid it.
 
 Left out: locking, confining or warping the pointer.
+
+### D59. Project notes
+Usage: [Editor](../Editor/Usage.md#project-notes).
+
+Decision: a small built-in Markdown text editor keeps plans, reports and handoffs in the project-root `Notes/`
+directory, separate from packaged assets. Assets lists it as a third root; one note opens in a center Notes tab.
+A pure document state owns debounce, reload, conflict and deletion decisions. Thin disk access uses atomic
+replacement, content comparisons, and explicit overwrite/discard/recreate choices so developer and agent edits
+cannot silently replace one another. Edits that cannot be saved at shutdown go to a new recovered copy, so closing
+never overwrites or loses text. The existing Console paste path sends the relative path without submission.
+
+Left out: preview rendering, several open notes, listing notes outside `Notes/`, syntax colouring, line numbers,
+and editing other file types.

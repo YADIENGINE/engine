@@ -34,6 +34,13 @@ class ProjectSetupTests(unittest.TestCase):
         self.assertEqual(json.loads((self.root / "Project.json").read_text(encoding="utf-8"))["name"], "SpaceGame")
         self.assertIn("project(SpaceGame ", (self.root / "CMakeLists.txt").read_text(encoding="utf-8"))
 
+    def test_notes_readme_is_a_plain_template_file(self):
+        self.setup()
+        text = (self.root / "Notes" / "README.md").read_text(encoding="utf-8")
+        self.assertIn("plans", text)
+        self.assertNotIn("AGENTS", text)
+        self.assertNotIn("?", text)
+
     def test_dotfiles_and_empty_folders(self):
         self.setup()
         self.assertTrue((self.root / ".gitignore").is_file())

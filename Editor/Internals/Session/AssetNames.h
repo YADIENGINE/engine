@@ -1,8 +1,12 @@
 #pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 
-enum class AssetNameKind { Folder, Graphic };
+enum class AssetNameKind { Folder, Graphic, Note };
+
+// Whether `name` ends in .md, in any case.
+[[nodiscard]] bool IsNoteName(std::string_view name);
 
 // Why the Assets panel cannot create `name`, as one short sentence; empty when it can. The same rules as
 // `python Engine asset new` / `mkdir`, so the form explains a name before the command would refuse it. `taken`: names

@@ -381,3 +381,27 @@ To add a built-in palette, extend that definition table and add its `ToolColorPa
 `Editor/Ui/Style/EditorPalettePreset.cpp`; the menu and command palette entries follow automatically.
 Color data is independent of style dimensions; a future custom-color editor can supply the same value
 to `ToolUiContext::SetPalette`. Fixed `ToolPalette` constants retain Cabinet for existing tool callers and content backdrops.
+
+## Project notes
+
+Assets has Engine, Game and Notes roots. Notes lists only `.md` files and folders inside the configured project's
+`Notes/` directory, outside game assets and packaging. It is visible even before the folder exists; New note or
+New folder creates it. Right-click inside Notes to create, rename, or delete an item. Delete asks for confirmation
+and sends the item to the Windows Recycle Bin. Existing names and paths outside Notes are refused.
+
+Click a note to open the Notes tab beside Viewport, or show the panel from View. One note is open at a time.
+The plain text area wraps words; it has no syntax colouring, line numbers, or rendered preview. Notes over 2 MiB
+are read-only. Send to agent pastes only its project-relative path, such as `Notes/Plan.md`, through the existing
+Console/agent session path without pressing Enter.
+
+Edits save about a second after typing stops, when leaving the panel, when opening another note, and at shutdown.
+Ctrl+S in Notes saves immediately. Saved/Unsaved and file errors appear above the text. Saving preserves UTF-8,
+the byte-order mark when present, and existing line endings; a sibling temporary file replaces the original atomically.
+The editor checks file contents about once a second. Clean notes reload silently. A changed file with unsaved edits
+pauses autosave: Keep mine (overwrite) saves your text; Use the file (discard mine) loads the disk version.
+Resolve a conflict or a deleted note before switching notes. A deleted note retains its text until Recreate or
+Discard text; it is never recreated automatically. A conflict is never overwritten at shutdown: edits that could not
+be saved go to a new `<name> (recovered).md` beside the note.
+
+While Notes has focus, keys behave as in the Console: Ctrl+P and the playback keys stay off, shortcuts that work
+everywhere (such as Ctrl+J) still work.

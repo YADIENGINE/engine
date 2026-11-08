@@ -17,20 +17,40 @@ std::string GraphicProblem(const std::string& name) {
     return {};
 }
 
-std::string FolderProblem(const std::string& name) {
+std::string FolderProblem(const std::string& name, bool note = false) {
     if (name.find_first_of("/\\:") != std::string::npos) return "One folder name: no / \\ or :";
-    if (name.find('.') != std::string::npos) return "No dots in a folder name";
+    if (name.find_first_of("<>\"|?*") != std::string::npos ||
+        std::ranges::any_of(name, [](unsigned char c) { return c < 32; }))
+        return "Use a valid file name";
+    std::string upper = name;
+    std::ranges::transform(upper, upper.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+    if (upper == "CON" || upper == "PRN" || upper == "AUX" || upper == "NUL" ||
+        (upper.size() == 4 && (upper.starts_with("COM") || upper.starts_with("LPT")) && upper[3] >= '1' &&
+         upper[3] <= '9'))
+        return "That name is reserved by Windows";
+    if ((!note && name.find('.') != std::string::npos) || name.back() == '.')
+        return note ? "No dots at the end of a name" : "No dots in a folder name";
     if (name.front() == ' ' || name.back() == ' ') return "No spaces at the start or end";
     return {};
 }
 } // namespace
 
+bool IsNoteName(std::string_view name) {
+    return name.size() >= 3 && SameWithoutCase(name.substr(name.size() - 3), ".md");
+}
+
 std::string AssetNameProblem(AssetNameKind kind, const std::string& name, const std::vector<std::string>& taken) {
     if (name.empty()) return "Enter a name";
-    if (auto problem = kind == AssetNameKind::Graphic ? GraphicProblem(name) : FolderProblem(name); !problem.empty())
+    std::string checked = name;
+    if (kind == AssetNameKind::Note && IsNoteName(checked)) checked.resize(checked.size() - 3);
+    if (checked.empty()) return "Enter a name";
+    if (auto problem = kind == AssetNameKind::Graphic ? GraphicProblem(checked)
+                                                      : FolderProblem(checked, kind == AssetNameKind::Note);
+        !problem.empty())
         return problem;
     for (const auto& existing : taken)
-        if (SameWithoutCase(existing, name)) return existing + " already exists in this folder";
+        if (SameWithoutCase(existing, kind == AssetNameKind::Note ? checked + ".md" : checked))
+            return existing + " already exists in this folder";
     return {};
 }
 

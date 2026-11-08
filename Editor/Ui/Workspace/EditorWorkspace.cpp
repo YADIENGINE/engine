@@ -205,6 +205,14 @@ void EditorWorkspace::MarkOverlay(const EditorSnapshot& snapshot, float top, Edi
     ImGui::PopStyleVar();
     result.cancelViewportInput = true;
 }
+void EditorWorkspace::OpenNote(const std::filesystem::path& path, EditorPreferences& preferences) {
+    if (_maximized) SetMaximized(false, preferences);
+    (void)_notes.Open(path);
+    preferences.Visible(EditorPanel::Notes) = true;
+    _focusViewport = false;
+    _focusNotes = true;
+    _viewport.ReleaseFocus();
+}
 void EditorWorkspace::ShowConsole(EditorPreferences& preferences) {
     if (_maximized) SetMaximized(false, preferences);
     preferences.Visible(EditorPanel::Console) = true;
@@ -363,6 +371,10 @@ void EditorWorkspace::ToggleBottom(EditorPreferences& preferences, std::optional
     }
 }
 bool EditorWorkspace::Shortcuts(std::span<const EditorAction> list) const {
+    const auto* notes = ImGui::FindWindowByName(EditorPanelInfo(EditorPanel::Notes).window);
+    const auto* focused = ImGui::GetCurrentContext()->NavWindow;
+    const bool inNotes = _notes.Focused() || (notes && focused && focused->RootWindow == notes);
+    const bool ownsKeys = _consoleFocused || inNotes; // Both keep their keystrokes from the narrower shortcuts
     constexpr auto route = ImGuiInputFlags_RouteGlobal;
     const bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
     const bool typing = ImGui::GetIO().WantTextInput;
@@ -372,8 +384,8 @@ bool EditorWorkspace::Shortcuts(std::span<const EditorAction> list) const {
         // Routes are registered every frame, even when a popup or text field holds the key back this time.
         if (binding.scope == EditorKeyScope::AgentsDrawer && !drawer) continue;
         if (!ImGui::Shortcut(binding.chord, route) || popup) continue;
-        if (binding.scope == EditorKeyScope::OutsideConsole && _consoleFocused) continue;
-        if (binding.scope == EditorKeyScope::Playback && (typing || _consoleFocused)) continue;
+        if (binding.scope == EditorKeyScope::OutsideConsole && ownsKeys) continue;
+        if (binding.scope == EditorKeyScope::Playback && (typing || ownsKeys)) continue;
         consumed = true;
         const auto action = std::ranges::find(list, binding.key, &EditorAction::key);
         if (action != list.end() && action->enabled && action->run) action->run();
@@ -739,6 +751,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     result.quit = menu.quit;
     result.returnToProjectList = menu.returnToProjectList;
     if (_maximized) {
+        _notes.Tick(ImGui::GetTime(), false);
         _consoleFocused = false; // No Console while the scene fills the workspace; the drawer's terminal is added below
         ImGui::SetNextWindowPos(workspacePosition);
         ImGui::SetNextWindowSize(workspaceSize);
@@ -753,13 +766,15 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     } else {
         constexpr auto flags = ImGuiWindowFlags_NoCollapse;
         bool viewportDrawn = false;
+        bool notesFocused = false;
+        bool notesDrawn = false;
         bool consoleDrawn = false;
         bool focusedBottomDrawn = false;
         for (const auto& panel : EditorPanels) {
             if (!preferences.Visible(panel.id)) continue;
             const bool focusViewport = _focusViewport && panel.id == EditorPanel::Viewport;
             if (focusViewport || (_focusBottom && *_focusBottom == panel.id) ||
-                (_focusCatalog && panel.id == EditorPanel::Catalog))
+                (_focusCatalog && panel.id == EditorPanel::Catalog) || (_focusNotes && panel.id == EditorPanel::Notes))
                 ImGui::SetNextWindowFocus();
             if (focusViewport) ImGui::SetNextWindowCollapsed(false);
             const bool edgeToEdge = panel.id == EditorPanel::Console || panel.id == EditorPanel::Assets ||
@@ -807,12 +822,28 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                 }
                     consoleDrawn = true;
                     break;
-                case EditorPanel::Assets      : _assets.Draw(snapshot, actions); break;
+                case EditorPanel::Assets:
+                    _assets.Draw(snapshot, actions);
+                    if (const auto path = _assets.TakeOpenNote(); !path.empty()) OpenNote(path, preferences);
+                    if (const auto rename = _assets.TakeNoteRename()) _notes.Renamed(rename->first, rename->second);
+                    break;
+                case EditorPanel::Notes:
+                    if (const auto paste = _notes.Draw(); !paste.empty()) PasteToConsole(paste, preferences);
+                    notesFocused =
+                        !ImGui::GetIO().AppFocusLost && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+                    notesDrawn = true;
+                    break;
                 case EditorPanel::AudioPreview: _audioPreview.Draw(snapshot, actions); break;
                 case EditorPanel::Count       : break;
                 }
             }
             ImGui::End();
+        }
+        _notes.Tick(ImGui::GetTime(), notesFocused);
+        if (_focusNotes) {
+            SelectPanelTab(EditorPanelInfo(EditorPanel::Notes).window);
+            ImGui::SetWindowFocus(EditorPanelInfo(EditorPanel::Notes).window);
+            if (notesDrawn) _focusNotes = false;
         }
         if (_focusBottom) {
             SelectPanelTab(EditorPanelInfo(*_focusBottom).window);
@@ -835,6 +866,11 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     if (preferences.visible != oldVisibility && !menu.layout) {
         preferences.layout = EditorWorkspaceLayout::Custom;
         result.cancelViewportInput = true;
+    }
+    if (_notes.Focused()) {
+        result.cancelViewportInput = true;
+        result.interaction = {};
+        _viewport.ReleaseFocus();
     }
     if (result.interaction.toggleMaximize) {
         _pendingToggle = true;

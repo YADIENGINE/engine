@@ -15,6 +15,8 @@ target_link_libraries(EngineEditorApi PUBLIC EngineHeadless)
 engine_warnings(EngineEditorApi)
 
 add_library(EngineEditorSupport STATIC
+    Internals/Notes/NoteDocument.cpp
+    Internals/Notes/NoteFiles.cpp
     Application/EditorCommandState.cpp
     Internals/Protocol/WorkerProtocol.cpp
     Internals/Protocol/WorkerMessageReader.cpp
@@ -60,6 +62,7 @@ target_link_libraries(EngineEditorSupport PUBLIC EngineEditorApi EngineProfiler 
 engine_warnings(EngineEditorSupport)
 if(WIN32)
     target_sources(EngineEditorSupport PRIVATE
+        Internals/Platform/Windows/NotePlatform.cpp
         Internals/Platform/Windows/BuildLease.cpp
         Internals/Platform/Windows/CapturedProcess.cpp
         Internals/Platform/Windows/ProcessLaunch.cpp
@@ -71,8 +74,10 @@ if(WIN32)
         Internals/Platform/Windows/SharedFrames.cpp
         Internals/Platform/Windows/WindowsText.cpp
     )
-    target_link_libraries(EngineEditorSupport PRIVATE EngineStorage user32)
+    target_link_libraries(EngineEditorSupport PRIVATE EngineStorage user32 shell32 ole32)
     target_compile_definitions(EngineEditorSupport PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+else()
+    target_sources(EngineEditorSupport PRIVATE Internals/Platform/NotePlatform.cpp)
 endif()
 
 set(editor_output "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
@@ -105,6 +110,7 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Widgets/EditorGitBar.cpp
         Ui/Shell/EditorShell.cpp
         Ui/Workspace/EditorWorkspace.cpp
+        Ui/Panels/Notes/NotesPanel.cpp
         Ui/Panels/Assets/AssetsPanel.cpp
         Ui/Panels/Audio/AudioPreviewPanel.cpp
         Ui/Panels/Catalog/CatalogPanel.cpp

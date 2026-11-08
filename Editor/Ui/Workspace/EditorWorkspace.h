@@ -11,6 +11,7 @@
 #include "Editor/Ui/Panels/Git/GitDrawer.h"
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
 #include "Editor/Ui/Panels/Output/OutputPanel.h"
+#include "Editor/Ui/Panels/Notes/NotesPanel.h"
 #include "Editor/Ui/Panels/Viewport/ViewportPanel.h"
 #include "Editor/Ui/Panels/Profiler/ProfilerPanel.h"
 #include "Editor/Ui/Shell/EditorShell.h"
@@ -45,6 +46,13 @@ public:
         _palette.SetAssetRoots(engineDirectory, assetsDirectory);
         _engineDirectory = engineDirectory;
     }
+    void SetNotesProject(const std::filesystem::path& directory) {
+        _notes.SetProject(directory);
+        _assets.SetNotesProject(directory);
+    }
+    void OpenNote(const std::filesystem::path& path, EditorPreferences& preferences);
+    bool FlushNotes() { return _notes.Flush(); }
+    void CloseNotes() { _notes.Shutdown(); }
     // Pastes `text` (no Enter) into the agent session, shown in the Agents drawer, when there is one; else into the
     // Console's selected session, starting a shell if needed.
     void PasteToConsole(const std::string& text, EditorPreferences& preferences, const std::string& context = {});
@@ -104,6 +112,8 @@ private:
     AgentsDrawer _agentsDrawer;
     ConsolePanel _console;
     AssetsPanel _assets;
+    NotesPanel _notes;
+    bool _focusNotes = false;
     AudioPreviewPanel _audioPreview;
     EditorAgentActivity _agentActivity;
     EditorGitBar _gitBar;

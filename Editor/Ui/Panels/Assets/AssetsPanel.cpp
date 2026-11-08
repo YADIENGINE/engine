@@ -305,7 +305,7 @@ void AssetsPanel::Breadcrumbs(const EditorSnapshot& snapshot, const std::vector<
     const float padding = ImGui::GetStyle().FramePadding.x * 2;
     const float separatorWidth = ImGui::CalcTextSize("/").x + ImGui::GetStyle().ItemSpacing.x * 2;
     const auto label = [&](std::size_t index) -> std::string {
-        return index == 0 ? (parts.front()->readOnly ? "Engine (read-only)" : "Project") : parts[index]->name;
+        return index == 0 && parts.front()->readOnly ? "Engine (read-only)" : parts[index]->name;
     };
     const auto navigate = [&](std::size_t index) {
         const auto& node = *parts[index];
@@ -416,17 +416,24 @@ std::optional<std::string> AssetsPanel::GraphicsRelative(const AssetNode& node) 
 }
 
 void AssetsPanel::CreateItems(const AssetNode& folder) {
-    if (folder.kind != AssetKind::Folder || !GraphicsRelative(folder)) return;
+    if (folder.kind != AssetKind::Folder) return;
+    if (_notes.InRoot(folder.path, true)) {
+        if (ImGui::MenuItem(ICON_FA_FILE "  New note")) OpenNameDialog(AssetNameKind::Note, folder);
+        if (ImGui::MenuItem(ICON_FA_FOLDER_PLUS "  New folder")) OpenNameDialog(AssetNameKind::Folder, folder);
+        return;
+    }
+    if (!GraphicsRelative(folder)) return;
     if (ImGui::MenuItem(ICON_FA_FOLDER_PLUS "  New folder")) OpenNameDialog(AssetNameKind::Folder, folder);
     if (ImGui::MenuItem(ICON_FA_IMAGE "  New graphic")) OpenNameDialog(AssetNameKind::Graphic, folder);
 }
 
 void AssetsPanel::OpenNameDialog(AssetNameKind kind, const AssetNode& folder) {
     const auto relative = GraphicsRelative(folder);
-    if (!relative || folder.kind != AssetKind::Folder) return;
+    if ((!relative && !_notes.InRoot(folder.path, true)) || folder.kind != AssetKind::Folder) return;
     _dialog = {};
     _dialog.kind = kind;
-    _dialog.folder = *relative;
+    _dialog.notes = _notes.InRoot(folder.path, true);
+    _dialog.folder = relative.value_or("");
     _dialog.folderPath = folder.path;
     _dialog.open = true;
 }
@@ -473,7 +480,10 @@ void AssetsPanel::DropTarget(const AssetNode& folder, const EditorUiActions& act
 void AssetsPanel::DrawNameDialog(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     const bool graphic = _dialog.kind == AssetNameKind::Graphic;
     // One id for both titles, so the popup opened as either is the one drawn.
-    const char* title = graphic ? "New graphic###asset-name-dialog" : "New folder###asset-name-dialog";
+    const char* title = _dialog.rename                        ? "Rename###asset-name-dialog"
+                        : _dialog.kind == AssetNameKind::Note ? "New note###asset-name-dialog"
+                        : graphic                             ? "New graphic###asset-name-dialog"
+                                                              : "New folder###asset-name-dialog";
     if (_dialog.open) {
         ImGui::OpenPopup(title);
         _dialog.open = false;
@@ -501,10 +511,14 @@ void AssetsPanel::DrawNameDialog(const EditorSnapshot& snapshot, const EditorUiA
     const bool waiting = _dialog.request != 0;
     const float width = DialogWidth * ToolUiScale();
     ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + width);
-    const auto where = (_assetsDirectory.filename() / "Graphics" / _dialog.folder).lexically_normal();
+    const auto where = _dialog.notes
+                           ? std::filesystem::path("Notes") / _dialog.folderPath.lexically_relative(_notes.Root())
+                           : (_assetsDirectory.filename() / "Graphics" / _dialog.folder).lexically_normal();
     ImGui::TextColored(ToolColors().muted, ICON_FA_FOLDER "  In %s", Utf8(where).c_str());
     ImGui::Spacing();
-    ImGui::TextUnformatted(graphic ? "Graphic name" : "Folder name");
+    ImGui::TextUnformatted(_dialog.kind == AssetNameKind::Note ? "Note name (.md)"
+                           : graphic                           ? "Graphic name"
+                                                               : "Folder name");
     if (_dialog.focus && !waiting) {
         ImGui::SetKeyboardFocusHere();
         _dialog.focus = false;
@@ -512,11 +526,17 @@ void AssetsPanel::DrawNameDialog(const EditorSnapshot& snapshot, const EditorUiA
     ImGui::SetNextItemWidth(width);
     ImGui::BeginDisabled(waiting);
     const bool entered =
-        ImGui::InputTextWithHint("##asset-name", graphic ? "PlayerShip" : "Enemies", _dialog.name.data(),
-                                 _dialog.name.size(), ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::InputTextWithHint("##asset-name",
+                                 _dialog.kind == AssetNameKind::Note ? "Plan"
+                                 : graphic                           ? "PlayerShip"
+                                                                     : "Enemies",
+                                 _dialog.name.data(), _dialog.name.size(), ImGuiInputTextFlags_EnterReturnsTrue);
     ImGui::EndDisabled();
     const std::string name = _dialog.name.data();
-    const auto problem = AssetNameProblem(_dialog.kind, name, TakenNames(_dialog));
+    const auto problem = _dialog.notes
+                             ? _notes.NameProblem(_dialog.folderPath, name, _dialog.kind == AssetNameKind::Folder,
+                                                  _dialog.rename ? _dialog.source : std::filesystem::path{})
+                             : AssetNameProblem(_dialog.kind, name, TakenNames(_dialog));
     const bool refused = !_dialog.error.empty() && name == _dialog.submitted;
     if (waiting)
         ImGui::TextColored(ToolColors().muted, ICON_FA_SPINNER "  Creating %s...", name.c_str());
@@ -526,7 +546,11 @@ void AssetsPanel::DrawNameDialog(const EditorSnapshot& snapshot, const EditorUiA
         ImGui::TextColored(ToolToneColor(ToolTone::Warning), ICON_FA_TRIANGLE_EXCLAMATION "  %s", problem.c_str());
     else if (name.empty())
         ImGui::TextColored(ToolColors().muted, "%s",
-                           graphic ? "PascalCase letters and digits, such as PlayerShip." : "Such as Enemies.");
+                           _dialog.kind == AssetNameKind::Note ? "A Markdown note, such as Plan.md."
+                           : graphic                           ? "PascalCase letters and digits, such as PlayerShip."
+                                                               : "Such as Enemies.");
+    else if (_dialog.kind == AssetNameKind::Note)
+        ImGui::TextColored(ToolColors().muted, "Saves a Markdown note inside Notes/.");
     else if (graphic)
         ImGui::TextColored(ToolColors().muted, "Creates %s.h, %s.cpp and %s.asset.cpp.", name.c_str(), name.c_str(),
                            name.c_str());
@@ -536,12 +560,30 @@ void AssetsPanel::DrawNameDialog(const EditorSnapshot& snapshot, const EditorUiA
     ImGui::Spacing();
     const bool canCreate = problem.empty() && !refused && !waiting;
     ImGui::BeginDisabled(!canCreate);
-    const bool create =
-        ToolButton(waiting ? "Creating...###create" : "Create###create", {}, true) || (entered && canCreate);
+    const bool create = ToolButton(waiting          ? "Creating...###create"
+                                   : _dialog.rename ? "Rename###create"
+                                                    : "Create###create",
+                                   {}, true) ||
+                        (entered && canCreate);
     ImGui::EndDisabled();
     ImGui::SameLine();
     const bool cancel = ToolButton("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false);
-    if (create && actions.assetCommand && actions.assetCommandResult) {
+    if (create && _dialog.notes) {
+        _dialog.submitted = name;
+        try {
+            const auto path = _dialog.rename
+                                  ? _notes.Rename(_dialog.source, name)
+                                  : _notes.Create(_dialog.folderPath, name, _dialog.kind == AssetNameKind::Folder);
+            if (_dialog.rename) _noteRename = std::pair{_dialog.source, path};
+            if (_dialog.kind == AssetNameKind::Note && !_dialog.rename) _openNote = path;
+            _created = CreatedItem{path.parent_path(), Utf8(path.filename()), true};
+            Enter({AssetPathKey(path.parent_path()), {}}, snapshot);
+            _nextScan = 0;
+            close = true;
+        } catch (const std::exception& error) {
+            _dialog.error = error.what();
+        }
+    } else if (create && actions.assetCommand && actions.assetCommandResult) {
         _dialog.submitted = name;
         _dialog.error.clear();
         _dialog.request =
@@ -564,8 +606,8 @@ void AssetsPanel::Toolbar(const EditorSnapshot& snapshot, const EditorUiActions&
     if (ToolIconButton("back", ICON_FA_ARROW_LEFT, "Back (Alt+Left)")) GoBack(snapshot, actions);
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::BeginDisabled(!GraphicsRelative(folder));
-    if (ToolIconButton("create", ICON_FA_PLUS, "New folder or graphic here")) ImGui::OpenPopup("create-menu");
+    ImGui::BeginDisabled(!GraphicsRelative(folder) && !_notes.InRoot(folder.path, true));
+    if (ToolIconButton("create", ICON_FA_PLUS, "New item here")) ImGui::OpenPopup("create-menu");
     ImGui::EndDisabled();
     if (ImGui::BeginPopup("create-menu")) {
         CreateItems(folder);
@@ -639,13 +681,16 @@ void AssetsPanel::TreeNode(const AssetNode& node, int depth, const EditorSnapsho
                            : root ? ToolColors().secondary
                                   : KindColor(AssetKind::Folder);
     ImGui::PushID(key.c_str());
-    const std::string label = root ? (node.readOnly ? "Engine (read-only)" : "Project") : node.name;
+    const std::string label = root && node.readOnly ? "Engine (read-only)" : node.name;
     const auto click =
         DrawTreeRow({"##row", label.c_str(), icon, iconColor, depth, expandable, expanded, selected, root});
     ToolTooltip((label + "\n" + Utf8(node.path)).c_str());
     DragSource(node);
     DropTarget(node, actions);
-    AssetMenu(node, {}, actions, [&] { CreateItems(node); });
+    if (_notes.InRoot(node.path, true))
+        NoteMenu(node);
+    else
+        AssetMenu(node, {}, actions, [&] { CreateItems(node); });
     ImGui::PopID();
     if (click == TreeClick::Arrow) {
         if (expanded)
@@ -729,10 +774,11 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
                        : count > 1   ? ICON_FA_LAYER_GROUP
                        : playing     ? ICON_FA_VOLUME_HIGH
                                      : KindIcon(node.kind);
-    const char* kind = inspectTuning ? (node.readOnly ? "Tuning / Code" : "Tuning / Edit")
-                       : playing     ? "Sound / Stop"
-                       : count > 1   ? "Set / Open"
-                                     : KindLabel(node.kind);
+    const char* kind = _notes.InRoot(node.path) && node.kind != AssetKind::Folder ? "Note / Open"
+                       : inspectTuning ? (node.readOnly ? "Tuning / Code" : "Tuning / Edit")
+                       : playing       ? "Sound / Stop"
+                       : count > 1     ? "Set / Open"
+                                       : KindLabel(node.kind);
     std::string status = notBuilt ? "Needs build" : unused ? "Not in catalog" : "";
     if (node.readOnly) status += status.empty() ? "Read-only" : "\nRead-only";
     const bool created = IsCreated(node);
@@ -766,7 +812,9 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
     if (!uses.empty()) tooltip += "\n" + uses;
     ToolTooltip(tooltip.c_str());
     if (pressed) {
-        if (inspectTuning) {
+        if (_notes.InRoot(node.path) && node.kind != AssetKind::Folder) {
+            _openNote = node.path;
+        } else if (inspectTuning) {
             if (node.readOnly && actions.openSource)
                 actions.openSource(Utf8(*tuning), 1);
             else if (!node.readOnly && actions.inspectTuning)
@@ -785,7 +833,10 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
     DragSource(node);
     DropTarget(node, actions);
     ImGui::PushID(key.c_str());
-    AssetMenu(node, {}, actions, [&] { CreateItems(node); });
+    if (_notes.InRoot(node.path, true))
+        NoteMenu(node);
+    else
+        AssetMenu(node, {}, actions, [&] { CreateItems(node); });
     ImGui::PopID();
     NextTile();
 }
@@ -838,6 +889,13 @@ void AssetsPanel::Grid(const EditorSnapshot& snapshot, const EditorUiActions& ac
     for (const auto& node : folder.children)
         NodeTile(node, snapshot, actions, scenes);
     if (!folder.children.empty()) return;
+    if (_notes.InRoot(folder.path, true)) {
+        ToolEmptyState("No notes here yet", "Plans, reports and handoffs for you and your agents.");
+        if (ToolButton(ICON_FA_FILE "  New note", {}, true)) OpenNameDialog(AssetNameKind::Note, folder);
+        ImGui::SameLine();
+        if (ToolButton(ICON_FA_FOLDER_PLUS "  New folder")) OpenNameDialog(AssetNameKind::Folder, folder);
+        return;
+    }
     if (!GraphicsRelative(folder)) {
         ToolEmptyState("Empty folder", folder.readOnly ? "The engine has no assets here yet."
                                                        : "Files copied into this folder are listed here.");
@@ -861,6 +919,7 @@ void AssetsPanel::Footer(bool readOnly) {
 void AssetsPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions) {
     if (ImGui::GetTime() >= _nextScan) {
         _roots = ScanAssetLibrary(_engineDirectory, _assetsDirectory);
+        if (!_notes.Root().empty()) _roots.push_back(_notes.Scan());
         _nextScan = ImGui::GetTime() + ScanSeconds;
     }
     if (_roots.empty()) {
@@ -933,4 +992,50 @@ void AssetsPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions& ac
     EndToolPanel();
     ImGui::PopStyleVar();
     DrawNameDialog(snapshot, actions);
+    DrawNoteDelete();
+}
+
+void AssetsPanel::NoteMenu(const AssetNode& node) {
+    if (!ImGui::BeginPopupContextItem("note-menu")) return;
+    CreateItems(node);
+    if (node.path != _notes.Root()) {
+        if (ImGui::MenuItem("Rename")) {
+            _dialog = {};
+            _dialog.notes = true;
+            _dialog.rename = true;
+            _dialog.source = node.path;
+            _dialog.folderPath = node.path.parent_path();
+            _dialog.kind = node.kind == AssetKind::Folder ? AssetNameKind::Folder : AssetNameKind::Note;
+            const auto name = Utf8(node.path.filename());
+            std::copy_n(name.c_str(), std::min(name.size(), _dialog.name.size() - 1), _dialog.name.data());
+            _dialog.open = true;
+        }
+        if (ImGui::MenuItem("Delete...")) {
+            _deleteNote = node.path;
+            _confirmDelete = true;
+            _deleteError.clear();
+        }
+    }
+    ImGui::EndPopup();
+}
+void AssetsPanel::DrawNoteDelete() {
+    if (_confirmDelete) {
+        ImGui::OpenPopup("Delete note?###note-delete");
+        _confirmDelete = false;
+    }
+    if (!ImGui::BeginPopupModal("Delete note?###note-delete", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
+    ImGui::TextWrapped("Send %s and its contents to the Recycle Bin?", Utf8(_deleteNote.filename()).c_str());
+    if (!_deleteError.empty()) ImGui::TextWrapped("%s", _deleteError.c_str());
+    if (ToolButton("Move to Recycle Bin")) {
+        try {
+            _notes.Recycle(_deleteNote);
+            _nextScan = 0;
+            ImGui::CloseCurrentPopup();
+        } catch (const std::exception& error) {
+            _deleteError = error.what();
+        }
+    }
+    ImGui::SameLine();
+    if (ToolButton("Cancel")) ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
 }
