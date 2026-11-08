@@ -409,6 +409,54 @@ TEST_CASE("Editor.Agent.SessionStateFollowsInputOutputBellsAndNotes", "[engine-e
     CHECK(SessionStateOf(signals) == SessionState::Exited);
 }
 
+TEST_CASE("Editor.Agent.WheelRedrawsPreserveDoneAndKeepRealWorkFlowing", "[engine-editor]") {
+    SessionSignals signals{.now = 100, .lastOutput = 98, .lastInput = 90, .lastWheel = 100};
+    REQUIRE(SessionStateOf(signals) == SessionState::Done);
+    const auto output = [&] {
+        if (SessionOutputCountsAsWork(signals)) signals.lastOutput = signals.now;
+    };
+    output();
+    CHECK(SessionStateOf(signals) == SessionState::Done);
+    signals.now += SessionWheelSeconds;
+    output();
+    CHECK(SessionStateOf(signals) == SessionState::Done);
+    signals.now += 0.01;
+    output();
+    CHECK(SessionStateOf(signals) == SessionState::Working);
+
+    signals.now += 1;
+    signals.lastWheel = signals.now;
+    REQUIRE(SessionStateOf(signals) == SessionState::Working);
+    output();
+    signals.now += 1; // The redraw counted, so work has not gone quiet.
+    CHECK(SessionStateOf(signals) == SessionState::Working);
+}
+
+TEST_CASE("Editor.Agent.WaitingTitleOverridesOutputAndNotesOnlyWhilePresentAndRunning", "[engine-editor]") {
+    CHECK(AgentTitleWaiting(AgentKind::Codex, "Codex: aCtIoN rEqUiReD - approval"));
+    CHECK_FALSE(AgentTitleWaiting(AgentKind::Codex, "Working"));
+    CHECK_FALSE(AgentTitleWaiting(AgentKind::Codex, ""));
+    CHECK_FALSE(AgentTitleWaiting(AgentKind::ClaudeCode, "Action Required"));
+    CHECK_FALSE(AgentTitleWaiting(AgentKind::Custom, "Action Required"));
+    CHECK_FALSE(AgentTitleWaiting(AgentKind::Custom, ""));
+    CHECK(std::string_view(AgentKindInfo(AgentKind::ClaudeCode).waitingTitle).empty());
+    CHECK(std::string_view(AgentKindInfo(AgentKind::Custom).waitingTitle).empty());
+
+    SessionSignals signals{.now = 100, .waitingTitle = true, .lastOutput = 99.5, .lastInput = 90};
+    CHECK(SessionStateOf(signals) == SessionState::Waiting);
+    signals.waitingTitle = false;
+    CHECK(SessionStateOf(signals) == SessionState::Working);
+    signals.waitingTitle = true;
+    signals.note = AgentNote{AgentActivityState::Idle, "Finished"};
+    signals.noteTime = 99.8;
+    CHECK(SessionStateOf(signals) == SessionState::Waiting);
+    signals.waitingTitle = false;
+    CHECK(SessionStateOf(signals) == SessionState::Done);
+    signals.waitingTitle = true;
+    signals.running = false;
+    CHECK(SessionStateOf(signals) == SessionState::Exited);
+}
+
 TEST_CASE("Editor.Control.OneSessionHoldsTheEditorUntilItIsIdle", "[engine-editor]") {
     ControlLease lease;
     CHECK_FALSE(lease.Holder(0.0));

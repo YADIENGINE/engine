@@ -11,6 +11,8 @@ class TerminalSession;
 // terminale gönderilmez.
 // Wheel browses history or scrolls the live application; Shift+wheel forces history browsing.
 // Scrollbar and Shift+PageUp/PageDown browse history; shell input returns to the live screen.
+// During a left selection drag, wheel and dragging past a vertical edge browse only history and extend selection.
+// Edge speed grows with distance and elapsed time; without history, selection stays and no wheel is forwarded.
 class TerminalView {
 public:
     explicit TerminalView(std::vector<ImGuiKeyChord> reserved = {})
@@ -20,6 +22,7 @@ public:
     [[nodiscard]] bool Focused() const { return _focused; }
 
 private:
+    friend struct TerminalUiTestAccess;
     void HandleInput(TerminalSession& session);
     void CopySelection(const TerminalSession& session) const;
     void FollowOutput();
@@ -32,6 +35,7 @@ private:
     int _columns = 0;
     int _scrollOffset = 0;
     float _wheelRemainder = 0;
+    float _selectionScrollRemainder = 0;
     std::int64_t _historyEnd = 0;
     bool _alternateScreen = false;
     bool _focused = false;

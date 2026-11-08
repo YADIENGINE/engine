@@ -20,6 +20,7 @@ struct PseudoConsoleOptions {
 // Windows sahte konsolunda (ConPTY) çalışan bir süreç. Çıktıyı okuyucu thread kuyruğa alır, TakeOutput UI
 // thread'inden boşaltır. Süreç ve başlattığı her şey job object'tedir: nesne yıkılınca hepsi kapanır.
 class PseudoConsole {
+    friend struct TerminalUiTestAccess;
     struct Token {}; // kurucuyu sadece Start çağırabilir
 
 public:

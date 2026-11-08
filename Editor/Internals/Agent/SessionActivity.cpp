@@ -16,6 +16,7 @@ std::string Trimmed(const std::string& text) {
 
 SessionState SessionStateOf(const SessionSignals& signals) {
     if (!signals.running) return SessionState::Exited;
+    if (signals.waitingTitle) return SessionState::Waiting;
     if (NoteCurrent(signals)) {
         if (After(signals.lastBell, signals.noteTime)) return SessionState::Waiting;
         switch (signals.note->state) {
@@ -29,6 +30,10 @@ SessionState SessionStateOf(const SessionSignals& signals) {
     const bool worked = signals.lastOutput && *signals.lastOutput - *signals.lastInput > SessionEchoSeconds;
     if (!worked) return SessionState::Idle;
     return signals.now - *signals.lastOutput < SessionQuietSeconds ? SessionState::Working : SessionState::Done;
+}
+bool SessionOutputCountsAsWork(const SessionSignals& signals) {
+    return !signals.lastWheel || signals.now - *signals.lastWheel > SessionWheelSeconds ||
+           SessionStateOf(signals) == SessionState::Working;
 }
 const char* SessionStateName(SessionState state) {
     switch (state) {

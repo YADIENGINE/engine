@@ -50,6 +50,7 @@ bool TerminalSession::Start(const TerminalStartOptions& options) {
     _exitCode.reset();
     _outputBytes = 0;
     _lastInput.reset();
+    _lastWheel.reset();
     _started = true;
     _screen->Reset();
 
@@ -130,7 +131,7 @@ void TerminalSession::SendFunctionKey(int number, TerminalModifiers modifiers) {
 
 bool TerminalSession::SendWheel(int steps, TerminalPosition position, TerminalModifiers modifiers) {
     if (!Running() || !_screen->SendWheel(steps, position, modifiers)) return false;
-    // Browsing a conversation must not dismiss the agent's waiting-for-input indicator.
+    _lastWheel = std::chrono::steady_clock::now();
     Flush();
     return true;
 }

@@ -14,6 +14,13 @@ std::string AgentCommand(const AgentPreferences& preferences) {
     if (preferences.kind == AgentKind::Custom) return std::string(Trimmed(preferences.customCommand));
     return AgentKindInfo(preferences.kind).command;
 }
+bool AgentTitleWaiting(AgentKind kind, std::string_view title) {
+    const std::string_view waiting = AgentKindInfo(kind).waitingTitle;
+    return !waiting.empty() && std::search(title.begin(), title.end(), waiting.begin(), waiting.end(),
+                                           [](unsigned char a, unsigned char b) {
+                                               return std::tolower(a) == std::tolower(b);
+                                           }) != title.end();
+}
 std::string AgentProgram(std::string_view command) {
     command = Trimmed(command);
     if (command.starts_with('"')) {

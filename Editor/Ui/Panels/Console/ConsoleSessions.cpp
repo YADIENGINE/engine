@@ -183,7 +183,9 @@ void ConsoleSessions::Update(const EditorAgentReport* report) {
         if (session.terminal.TakeBell()) session.lastBell = now;
         if (session.terminal.OutputBytes() != session.outputBytes) {
             session.outputBytes = session.terminal.OutputBytes();
-            session.lastOutput = now;
+            auto signals = Signals(session);
+            signals.now = Seconds(now).value_or(0);
+            if (SessionOutputCountsAsWork(signals)) session.lastOutput = now;
         }
         if (session.pendingText.empty() && !session.pendingSubmit) continue;
         if (!session.terminal.Running()) {
@@ -204,10 +206,12 @@ SessionSignals ConsoleSessions::Signals(const Session& session) const {
     const auto input = session.terminal.LastInput();
     SessionSignals signals{.now = Seconds(std::chrono::steady_clock::now()).value_or(0),
                            .running = session.terminal.Running(),
+                           .waitingTitle = session.agent && AgentTitleWaiting(*session.agent, session.terminal.Title()),
                            .lastOutput = session.lastOutput && *session.lastOutput >= session.started
                                              ? Seconds(session.lastOutput)
                                              : std::nullopt,
                            .lastInput = input && *input >= session.started ? Seconds(input) : std::nullopt,
+                           .lastWheel = Seconds(session.terminal.LastWheel()),
                            .lastBell = Seconds(session.lastBell)};
     if (!_report || !session.agent) return signals;
     if (const auto found = _report->sessions.find(std::to_string(session.id));

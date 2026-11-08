@@ -16,6 +16,7 @@ constexpr float CursorThickness = 2.0f;
 constexpr float DecorationThickness = 1.0f;
 constexpr float FauxBoldOffset = 1.0f; // teknik fontun kalın kesimi yok: metin kaydırılarak iki kez çizilir
 constexpr float WheelLines = 3.0f;
+constexpr float SelectionScrollSpeed = 10.0f; // Rows per second for each cell height beyond an edge
 
 struct KeyBinding {
     ImGuiKey key;
@@ -221,7 +222,8 @@ void TerminalView::Draw(TerminalSession& session) {
     ImGui::InvisibleButton("##terminal", {width, std::max(1.0f, available.y)},
                            ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
     const auto& io = ImGui::GetIO();
-    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) {
+    const bool selecting = ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    if (selecting || ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) {
         _wheelRemainder += io.MouseWheel * WheelLines;
         const int steps = static_cast<int>(_wheelRemainder);
         _wheelRemainder -= static_cast<float>(steps);
@@ -230,7 +232,7 @@ void TerminalView::Draw(TerminalSession& session) {
             const TerminalPosition position{
                 static_cast<int>(std::floor((mouse.y - grid.origin.y) / grid.cellHeight)),
                 static_cast<int>(std::floor((mouse.x - grid.origin.x) / grid.cellWidth))};
-            if (_scrollOffset == 0 && ImGui::IsItemHovered() &&
+            if (!selecting && _scrollOffset == 0 && ImGui::IsItemHovered() &&
                 session.SendWheel(steps, position, ReadTerminalModifiers()))
                 FollowOutput();
             else
@@ -239,10 +241,21 @@ void TerminalView::Draw(TerminalSession& session) {
     } else {
         _wheelRemainder = 0;
     }
+    if (selecting) {
+        const float mouseY = ImGui::GetMousePos().y;
+        const float bottom = grid.origin.y + static_cast<float>(session.Rows()) * grid.cellHeight;
+        const float distance = mouseY < grid.origin.y ? grid.origin.y - mouseY : mouseY > bottom ? bottom - mouseY : 0;
+        if (distance == 0 || session.HistoryRows() == 0) _selectionScrollRemainder = 0;
+        _selectionScrollRemainder += distance / grid.cellHeight * SelectionScrollSpeed * io.DeltaTime;
+        const int steps = static_cast<int>(_selectionScrollRemainder);
+        _selectionScrollRemainder -= static_cast<float>(steps);
+        _scrollOffset = std::clamp(_scrollOffset + steps, 0, session.HistoryRows());
+    } else {
+        _selectionScrollRemainder = 0;
+    }
     if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         _selectionAnchor = _selectionEnd = PositionAt(grid, ImGui::GetMousePos(), session, _scrollOffset);
-    if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left))
-        _selectionEnd = PositionAt(grid, ImGui::GetMousePos(), session, _scrollOffset);
+    if (selecting) _selectionEnd = PositionAt(grid, ImGui::GetMousePos(), session, _scrollOffset);
     _focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
                !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
     if (_focused) {

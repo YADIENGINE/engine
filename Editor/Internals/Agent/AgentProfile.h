@@ -13,16 +13,18 @@ struct AgentKindDefinition {
     AgentKind id;
     const char* key; // Saved in preferences
     const char* name;
-    const char* sessionName; // Console session list label
-    const char* command;     // Started in the project folder; empty for Custom
-    const char* install;     // Where to get it, shown when the command is missing
+    const char* sessionName;  // Console session list label
+    const char* command;      // Started in the project folder; empty for Custom
+    const char* install;      // Where to get it, shown when the command is missing
+    const char* waitingTitle; // Case-insensitive terminal title substring; empty disables title-based waiting
 };
 
 inline constexpr std::array AgentKinds{
     AgentKindDefinition{AgentKind::ClaudeCode, "claude-code", "Claude Code", "Claude", "claude",
-                        "https://claude.com/claude-code"},
-    AgentKindDefinition{AgentKind::Codex, "codex", "Codex", "Codex", "codex", "https://github.com/openai/codex"},
-    AgentKindDefinition{AgentKind::Custom, "custom", "Custom command", "Agent", "", ""}};
+                        "https://claude.com/claude-code", ""},
+    AgentKindDefinition{AgentKind::Codex, "codex", "Codex", "Codex", "codex", "https://github.com/openai/codex",
+                        "Action Required"},
+    AgentKindDefinition{AgentKind::Custom, "custom", "Custom command", "Agent", "", "", ""}};
 
 // Saved for the user, not the project: which agent runs, and whether tools may change the editor (`ctl`).
 struct AgentPreferences {
@@ -41,6 +43,8 @@ struct AgentPreferences {
 }
 // The command the agent session runs; empty when Custom has none.
 [[nodiscard]] std::string AgentCommand(const AgentPreferences& preferences);
+// Only the selected agent's nonempty waiting title may match the current terminal title.
+[[nodiscard]] bool AgentTitleWaiting(AgentKind kind, std::string_view title);
 // The program the command starts (its first word, without quotes), for an "is it installed" check.
 [[nodiscard]] std::string AgentProgram(std::string_view command);
 // The terminal command line: the shell runs the agent and stays open after it exits, so the session never vanishes.

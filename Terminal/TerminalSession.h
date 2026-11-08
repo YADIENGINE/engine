@@ -41,6 +41,7 @@ public:
     void SendCharacter(char32_t character, TerminalModifiers modifiers);
     void SendFunctionKey(int number, TerminalModifiers modifiers); // F1..F12
     // Positive steps scroll up at a zero-based live cell. False means the view should browse local history.
+    // Forwarded wheels update LastWheel, never LastInput: browsing neither starts nor ends agent work.
     bool SendWheel(int steps, TerminalPosition position, TerminalModifiers modifiers);
     void Paste(std::string_view utf8);
 
@@ -68,9 +69,11 @@ public:
     [[nodiscard]] std::uint64_t OutputBytes() const { return _outputBytes; }
     // When keys or pasted text last went to the program since Start (none yet: empty).
     [[nodiscard]] std::optional<std::chrono::steady_clock::time_point> LastInput() const { return _lastInput; }
+    [[nodiscard]] std::optional<std::chrono::steady_clock::time_point> LastWheel() const { return _lastWheel; }
     [[nodiscard]] const TerminalPalette& Palette() const;
 
 private:
+    friend struct TerminalUiTestAccess;
     void Flush();
     void Notice(std::string_view text);
 
@@ -81,6 +84,7 @@ private:
     std::optional<std::chrono::steady_clock::time_point> _exitSeen; // çıkış görüldü, son çıktı boşaltılıyor
     std::uint64_t _outputBytes = 0;
     std::optional<std::chrono::steady_clock::time_point> _lastInput;
+    std::optional<std::chrono::steady_clock::time_point> _lastWheel;
     bool _started = false;
 
 public:

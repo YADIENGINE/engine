@@ -112,7 +112,9 @@ space-separated word in any order, ignoring case; panel result ordering is prese
   clears selection. Wheel, the scrollbar and Shift+PageUp/PageDown browse shell history; typing returns to live output.
   In live applications such as Claude and Codex, wheel input follows the requested mouse protocol; full-screen
   applications without mouse reporting receive cursor keys. Shift+wheel forces local history browsing, and fractional
-  touchpad movement accumulates. Double-click word selection is not yet available.
+  touchpad movement accumulates. While dragging a selection, wheel input browses only local history and extends the
+  selection; dragging above or below the grid scrolls faster farther from the edge. Without history (alternate screen),
+  the wheel preserves the selection and sends nothing. Double-click word selection is not yet available.
 - **Profiler:** Live / Benchmarks / Compare. Opens when a benchmark example is selected; warmup / measurement frames /
   repetition pairs are under Advanced benchmark settings. Glow override is one choice group; highlighting shows the last
   requested value. Compare's Export menu offers JSON and Markdown. Details: [Profiler](Profiler.md).
@@ -276,7 +278,10 @@ editor context; it never calls a model itself. The agent drives the editor back 
   when it rang the terminal bell after your last input (agent CLIs ring it when they ask something), *done* when the
   output went quiet after a request, *idle* before anyone typed into it, *exited* when the program ended. An agent's
   own `python Engine ctl note TEXT --state working|waiting|idle` from that session overrides the guess until you type
-  again; its text, else the terminal title the CLI sets, is what the session shows on hover. Each session's program
+  again. Codex's current terminal title containing "Action Required" (ignoring case) gives waiting priority over output
+  and notes until the title changes; exited still wins. Scrolling does not start or end work: recent wheel redraws do
+  not restart a finished session, and output from ongoing work still counts while scrolling. The note's text, else the
+  terminal title the CLI sets, is what the session shows on hover. Each session's program
   gets `ENGINE_EDITOR_SESSION`, which every `ctl` request sends along. Working shows a clock; waiting shows a pulsing question
   mark in the warning color; done shows a green check. Idle has no state icon, and exited rows are dimmed.
 - **Agents drawer** (a click on the agent strip, Agent → *Show agents*, Ctrl+Shift+A): where you work with agents. It
