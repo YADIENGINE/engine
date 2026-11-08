@@ -35,6 +35,7 @@ struct ProcessCrashState {
     unsigned owners = 0;
     bool installed = false;
     bool exitCleanupRegistered = false;
+    std::array<char, 512> reporterError{};
     std::filesystem::path directory;
 };
 ProcessCrashState crash;
@@ -59,6 +60,11 @@ void RawWrite(HANDLE file, const char* data, DWORD size) noexcept {
     if (!file || file == INVALID_HANDLE_VALUE) return;
     DWORD written = 0;
     (void)WriteFile(file, data, size, &written, nullptr);
+}
+template <std::size_t N> void RawWriteLine(HANDLE file, const std::array<char, N>& text) noexcept {
+    const auto end = std::find(text.begin(), text.end(), '\0');
+    RawWrite(file, text.data(), static_cast<DWORD>(end - text.begin()));
+    RawWrite(file, "\n", 1);
 }
 void EmitReport() noexcept {
     auto& packet = *crash.packet;
@@ -115,8 +121,14 @@ void Submit(DWORD code, EXCEPTION_POINTERS* exception, const char* message) noex
                                packet.thread, static_cast<unsigned long long>(packet.context.Rip));
     if (size > 0) {
         RawWrite(crash.emergency, minimal.data(), static_cast<DWORD>(size));
-        FlushFileBuffers(crash.emergency);
     }
+    if (packet.message[0]) RawWriteLine(crash.emergency, packet.message);
+    if (crash.reporterError[0]) {
+        constexpr std::string_view prefix = "Reporter unavailable: ";
+        RawWrite(crash.emergency, prefix.data(), static_cast<DWORD>(prefix.size()));
+        RawWriteLine(crash.emergency, crash.reporterError);
+    }
+    FlushFileBuffers(crash.emergency);
     if (crash.helper && WaitForSingleObject(crash.helper, 0) == WAIT_TIMEOUT) {
         InterlockedExchange(&packet.state, 2);
         SetEvent(crash.request);
@@ -291,6 +303,7 @@ CrashSession::CrashSession(std::string_view kind, bool playerDialog) noexcept {
     if (crash.owners++ != 0) return;
     crash.reported = 0;
     crash.directory.clear();
+    crash.reporterError[0] = 0;
     if (!crash.exitCleanupRegistered) {
         // Asset-list queries intentionally use std::exit before opening a window; automatic locals do not unwind.
         crash.exitCleanupRegistered = std::atexit([] {
@@ -303,6 +316,7 @@ CrashSession::CrashSession(std::string_view kind, bool playerDialog) noexcept {
     try {
         Install(kind, playerDialog);
     } catch (const std::exception& error) {
+        if (!crash.directory.empty()) Copy(crash.reporterError, std::string_view(error.what()));
         std::fprintf(stderr, "Crash reporting partial: %s\n", error.what());
     }
 }

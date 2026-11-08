@@ -149,17 +149,20 @@ The tools' own tests require no compiler: `python -m unittest discover -s Tools/
 
 ## Git
 
-`new` does not touch git. To keep the game in git and connect Engine as a submodule, run at the project root after
-setup:
+`new` does not touch git. By default, the generated `.gitignore` ignores `Engine/`. On a fresh clone, the launcher
+shows "Engine missing" and offers Replace to install the engine. Existing projects keep their existing `.gitignore`.
+
+To keep the game in git and connect Engine as a submodule, run at the project root after setup. The `-f` is required
+because `Engine/` is ignored:
 
 ```powershell
 git init
-git submodule add <ydarcadeengine-url> Engine   # registers Engine/ if it is already a clone of this URL
+git submodule add -f <url> Engine   # registers Engine/ if it is already a clone of this URL
 git config -f .gitmodules submodule.Engine.branch main
 ```
 
 If Engine came from a ZIP, first remove `Engine/` and obtain it again with `submodule add` above; or commit Engine as a
-plain folder with the game (updates are then copied manually).
+plain folder with the game after removing the `Engine/` line from `.gitignore` (updates are then copied manually).
 
 ## Updating and working on the engine
 

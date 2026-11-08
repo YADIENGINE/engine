@@ -1,3 +1,6 @@
+# Engine (installed by the launcher)
+Engine/
+
 # Build
 build/
 Release/

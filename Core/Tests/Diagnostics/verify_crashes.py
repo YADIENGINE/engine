@@ -80,6 +80,21 @@ def main():
             "ENGINE_CRASH_DIRECTORY": str(root / "fallback"), "ENGINE_CRASH_REPORTER": str(root / "missing.exe")},
             capture_output=True, timeout=15)
         assert result.returncode and list((root / "fallback").glob("*/emergency.txt")), result.stderr
+        destination = root / "fallback-throw"
+        env = os.environ | {"ENGINE_CRASH_DIRECTORY": str(destination),
+                            "ENGINE_CRASH_REPORTER": str(root / "missing.exe")}
+        result = subprocess.run([str(probe), "normal"], env=env, capture_output=True, timeout=15)
+        assert result.returncode == 0, result.stderr
+        assert not list(destination.iterdir()), list(destination.iterdir())
+        result = subprocess.run([str(probe), "throw"], env=env, capture_output=True, timeout=15)
+        emergencies = list(destination.glob("*/emergency.txt"))
+        assert result.returncode != 0 and len(emergencies) == 1, result.stderr
+        emergency = emergencies[0].read_text(encoding="utf-8")
+        assert emergency.startswith("Crash: code="), emergency
+        assert "\ndeliberate probe exception\n" in emergency, emergency
+        assert "\nReporter unavailable: Crash reporter could not start\n" in emergency, emergency
+        assert not list(destination.glob("*/report.json"))
+        print("Missing-helper exception details and clean session: passed")
         blocked = root / "not-a-directory"
         blocked.write_text("blocked")
         result = subprocess.run([str(probe), "access"], env=os.environ | {"ENGINE_CRASH_DIRECTORY": str(blocked)},

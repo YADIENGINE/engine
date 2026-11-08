@@ -1,6 +1,8 @@
 """`new` on a temporary folder; no compiler required."""
 
 import json
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -44,6 +46,14 @@ class ProjectSetupTests(unittest.TestCase):
     def test_no_wrapper_scripts_in_the_project(self):
         self.setup()
         self.assertEqual(list(self.root.glob("*.py")), [])
+
+    @unittest.skipUnless(shutil.which("git"), "Git is required to check ignore rules")
+    def test_generated_gitignore_ignores_engine(self):
+        self.setup()
+        subprocess.run(["git", "init", str(self.root)], check=True, capture_output=True)
+        result = subprocess.run(["git", "check-ignore", "Engine/", "Engine/Core/example.cpp"],
+                                cwd=self.root, check=True, capture_output=True, text=True)
+        self.assertEqual(result.stdout.splitlines(), ["Engine/", "Engine/Core/example.cpp"])
 
     def test_existing_files_are_kept(self):
         (self.root / "CMakeLists.txt").write_text("mine", encoding="utf-8")
