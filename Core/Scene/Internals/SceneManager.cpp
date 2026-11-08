@@ -5,7 +5,8 @@
 #include <utility>
 #include "Scene/Scene.h"
 
-SceneManager::SceneManager() = default;
+SceneManager::SceneManager(std::function<void()> afterExit)
+    : _afterExit(std::move(afterExit)) {}
 // Scene references may already be gone when the application's base Game is destroyed.
 SceneManager::~SceneManager() = default;
 
@@ -24,6 +25,19 @@ void SceneManager::Request(Scene& scene, bool restart) {
     _restart = restart;
 }
 
+void SceneManager::DeactivateCurrent() {
+    if (!_current) return;
+    std::exception_ptr failure;
+    try {
+        _current->Deactivate();
+    } catch (...) {
+        failure = std::current_exception();
+    }
+    // Host cleanup follows Exit even when a lifecycle hook failed, before another Enter or Stop.
+    if (_afterExit) _afterExit();
+    if (failure) std::rethrow_exception(failure);
+}
+
 bool SceneManager::Commit(const std::function<void()>& beforeChange) {
     if (_dispatching) throw std::logic_error("Cannot dispatch scene changes recursively");
     if (_shutdown || !_pending) return false;
@@ -34,7 +48,7 @@ bool SceneManager::Commit(const std::function<void()>& beforeChange) {
     _dispatching = true;
     try {
         if (beforeChange) beforeChange();
-        if (_current) _current->Deactivate();
+        DeactivateCurrent();
         _current = next;
         _current->Activate();
     } catch (...) {
@@ -52,6 +66,13 @@ void SceneManager::Shutdown() {
     _dispatching = true;
     std::exception_ptr failure;
     for (auto scene = _scenes.rbegin(); scene != _scenes.rend(); ++scene) {
+        if (*scene == _current) {
+            try {
+                DeactivateCurrent();
+            } catch (...) {
+                if (!failure) failure = std::current_exception();
+            }
+        }
         try {
             (*scene)->Shutdown();
         } catch (...) {

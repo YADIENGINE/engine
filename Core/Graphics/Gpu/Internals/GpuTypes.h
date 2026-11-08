@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <optional>
 #include "Utilities/Geometry/Float2.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 // GPU resources are addressed by generational handles: a slot index plus the generation the slot had when the
 // resource was created. A destroyed resource's handle never matches a later resource in the same slot.
@@ -71,6 +72,7 @@ struct GpuPassDesc {
 // Uniforms of the post-processing programs; Paint reads only the pass's view size.
 struct PostUniforms {
     Float2 sourceTexel;          // 1 / source texture size
+    FloatRect region{0.0f, 0.0f, 1.0f, 1.0f}; // Compose screen in texture UVs (bottom-left origin)
     float bloomIntensity = 0.0f; // Compose: bloom added on top of the colour
     float bloomSpread = 1.0f;    // Bloom passes: sample offset multiplier
     float vignette = 0.0f;       // Compose: corner darkening 0..1

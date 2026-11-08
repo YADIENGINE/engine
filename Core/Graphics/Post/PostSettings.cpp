@@ -28,6 +28,8 @@ namespace {
 PostSettings Mix(const PostSettings& from, const PostSettings& to, float t) {
     t = std::clamp(t, 0.0f, 1.0f);
     PostSettings mixed;
+    // A region selects a physical screen; it is discrete, like an implicit scanline count.
+    mixed.region = t < 0.5f ? from.region : to.region;
     mixed.bloom.intensity = Between(from.bloom.intensity, to.bloom.intensity, t);
     mixed.bloom.radius =
         Shape(from.bloom.radius, to.bloom.radius, from.bloom.intensity > 0.0f, to.bloom.intensity > 0.0f, t);

@@ -24,4 +24,8 @@ struct SceneServices {
     const FontFace* font = nullptr;
     std::function<void(const std::string&)> log; // A line for the developer: stderr in the game, Output in the editor
     SimulationHost* simulation = nullptr;        // Use it through HostedSimulation; null outside the editor
+    // Optional host cursor visibility, visible by default; may be empty (always in editor-hosted scenes), so check
+    // before calling; the host refuses to hide while the window is unfocused, so call again when input returns
+    // to keep it hidden; the host restores visibility at scene exit; never locks, confines or warps the pointer.
+    std::function<void(bool visible)> setCursorVisible;
 };

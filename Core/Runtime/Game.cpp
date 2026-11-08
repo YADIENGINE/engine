@@ -119,7 +119,8 @@ Game::Game(const GameSettings& settings)
                 _effects,
                 _font ? &*_font : nullptr,
                 [](const std::string& line) { std::cerr << line << '\n'; }}
-    , _sceneManager(std::make_unique<SceneManager>()) {
+    , _sceneManager(std::make_unique<SceneManager>([] { Window::SetCursorVisible(true); })) {
+    _services.setCursorVisible = [](bool visible) { Window::SetCursorVisible(visible); };
     _frameExecution.fpsLimit = settings.project.targetFps;
     _renderer->SetFont(_font ? &*_font : nullptr); // _font, renderer'dan önce yıkılır; o sırada kare çizilmez
     SetTheme(settings.theme);                      // Türeyen oyunun View ve Ui üyeleri kurulurken tema etkin olmalı

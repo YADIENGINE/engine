@@ -35,6 +35,7 @@ SceneServices EditorServices(const SceneServices& game, std::function<void(const
     SceneServices services = game;
     services.log = std::move(log);
     services.simulation = &simulation;
+    services.setCursorVisible = {}; // A hosted scene must not hide the editor's OS cursor.
     return services;
 }
 std::filesystem::path Utf8Path(const std::string& text) {

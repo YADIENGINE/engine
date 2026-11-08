@@ -166,6 +166,12 @@ clock (editor Pause freezes it); `paint.PixelScale()` gives device pixels per un
 
 ### Analog finish
 
+`PostSettings::region` limits the finish to one canvas-space rectangle, for example the face of an in-world monitor:
+`paint.Post().region = {40.0f, 20.0f, 320.0f, 150.0f};`. Empty means the full canvas. The rectangle is clipped to the
+canvas; everything outside passes through unchanged. Effects use coordinates local to the region, while distances
+remain canvas units and `scanlineCount` spans its height. `Mix` selects the first region before halfway and the second
+from halfway onward. Bloom is still gathered across the canvas, so light from outside the region can reach inside it.
+
 More fields of `PostSettings`, each usable alone and free at 0:
 
 | Field | What it does | A place to start |
@@ -176,8 +182,8 @@ More fields of `PostSettings`, each usable alone and free at 0:
 | `wobble` (`amount`, `speed`) | Bends and tilts the image slowly | `amount` 3 is uneasy, 12 is hard to read |
 | `tape` (`band`, `shift`, `speed`) | A tracking band that rolls down the image, and lines that jump sideways | `band` 0.5; `shift` up to 2 keeps text readable |
 
-They all cover what is on the canvas, the HUD too, so readability limits them. Wobble fades out toward the edges, so a HUD
-along them stays still. Grain is weak on bright text. Check small text in the middle of the screen, where the wobble is
+By default they cover what is on the canvas, the HUD too, so readability limits them. Wobble fades out toward the edges,
+so a HUD along them stays still. Grain is weak on bright text. Check small text in the middle of the screen, where the wobble is
 strongest, and text in the corners with vignette and tint together: they multiply.
 
 `Mix(calm, disturbed, amount)` gives the finish between two others, so one number can drive all of it:

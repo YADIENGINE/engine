@@ -1,5 +1,6 @@
 #pragma once
 #include "Utilities/Color4.h"
+#include "Utilities/Geometry/FloatRect.h"
 
 // Bloom: emissive drawing (style emission > 0) glows past its edges. Intensity 0 turns it off.
 struct BloomSettings {
@@ -47,6 +48,9 @@ struct PostSettings {
     GrainSettings grain;
     WobbleSettings wobble;
     TapeSettings tape;
+    // Optional canvas-space screen: effects use its local coordinates and leave everything outside untouched.
+    // Empty keeps the full-canvas finish. Effect distances remain canvas units; scanlineCount spans this region.
+    FloatRect region;
 };
 
 // Between two finishes, 't' clamped to 0..1: paint.Post() = Mix(calm, disturbed, danger). This is also what lets a

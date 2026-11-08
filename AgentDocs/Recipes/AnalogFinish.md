@@ -6,6 +6,9 @@ APIs: Core/Graphics/Post/PostSettings.h, Core/Graphics/Post/RenderQuality.h, Cor
 
 The finish is view code. Set the number from what the simulation already knows; nothing here enters `State`, and a replay is the same with or without it. Don't check `RenderQuality::screenMotion` yourself: the renderer applies it.
 
+For an in-world monitor, set `paint.Post().region` to its canvas-space face after applying the finish. See
+[region coordinates and bloom](../../Docs/Graphics/Painter.md#analog-finish); leave it empty for the full canvas.
+
 <!-- recipe:AnalogFinish-header -->
 ```cpp
 #pragma once

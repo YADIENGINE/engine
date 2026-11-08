@@ -114,10 +114,15 @@ GpuTarget PostChain::Run(GpuTarget canvas, int width, int height, float canvasHe
         _device.PopMarker();
     }
     PostUniforms compose = Texel(width, height);
+    const float canvasWidth = canvasHeight * static_cast<float>(width) / static_cast<float>(height);
+    const FloatRect canvasBounds{0.0f, 0.0f, canvasWidth, canvasHeight};
+    const FloatRect region = settings.region.Empty() ? canvasBounds : settings.region.Intersect(canvasBounds);
+    compose.region = {region.x / canvasWidth, 1.0f - region.Bottom() / canvasHeight,
+                      region.width / canvasWidth, region.height / canvasHeight};
     compose.bloomIntensity = blooms && !_bloom.empty() ? settings.bloom.intensity : 0.0f;
     compose.vignette = std::clamp(settings.vignette, 0.0f, 1.0f);
     compose.scanlines = std::clamp(settings.scanlines, 0.0f, 1.0f);
-    compose.scanlineCount = settings.scanlineCount > 0.0f ? settings.scanlineCount : canvasHeight * 0.5f;
+    compose.scanlineCount = settings.scanlineCount > 0.0f ? settings.scanlineCount : region.height * 0.5f;
     // Aberration is given in canvas units; the shader offsets in source texels.
     compose.aberration = std::max(settings.aberration, 0.0f) * static_cast<float>(height) / canvasHeight;
     compose.fade = std::clamp(settings.fade, 0.0f, 1.0f);

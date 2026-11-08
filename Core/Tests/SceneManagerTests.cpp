@@ -93,6 +93,30 @@ TEST_CASE("Engine.SceneManager.LastRequestWinsAndLifecycleRequestsWaitForAnother
     CHECK_NOTHROW(scenes.Shutdown());
 }
 
+TEST_CASE("Engine.SceneManager.HostCleanupFollowsExitOnChangesAndShutdown", "[engine][scene]") {
+    std::vector<std::string> log;
+    SceneManager scenes([&] { log.push_back("cursor.visible"); });
+    ManagedScene first(log, "first"), second(log, "second");
+    scenes.Register(first);
+    scenes.Register(second);
+    scenes.Request(first);
+    REQUIRE(scenes.Commit({}));
+    log.clear();
+    scenes.Request(first, true);
+    CHECK(scenes.Commit({}));
+    CHECK(log == std::vector<std::string>{"first.cancel", "first.exit", "cursor.visible", "first.enter"});
+    log.clear();
+    scenes.Request(second);
+    CHECK(scenes.Commit({}));
+    CHECK(log ==
+          std::vector<std::string>{"first.cancel", "first.exit", "cursor.visible", "second.start", "second.enter"});
+    log.clear();
+    second.duringExit = [] { throw std::runtime_error("exit failure"); };
+    CHECK_THROWS_WITH(scenes.Shutdown(), "exit failure");
+    CHECK(log ==
+          std::vector<std::string>{"second.cancel", "second.exit", "cursor.visible", "second.stop", "first.stop"});
+}
+
 TEST_CASE("Engine.SceneManager.RejectsInvalidRegistrationAndRecursiveDispatch", "[engine][scene]") {
     std::vector<std::string> log;
     SceneManager scenes;

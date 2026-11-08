@@ -101,6 +101,7 @@ GlDevice::GlDevice() {
         result.id = Link(vertex, fragment, label);
         result.viewSize = glGetUniformLocation(result.id, "uViewSize");
         result.sourceTexel = glGetUniformLocation(result.id, "uSourceTexel");
+        result.region = glGetUniformLocation(result.id, "uRegion");
         result.bloomIntensity = glGetUniformLocation(result.id, "uBloomIntensity");
         result.bloomSpread = glGetUniformLocation(result.id, "uBloomSpread");
         result.vignette = glGetUniformLocation(result.id, "uVignette");
@@ -454,6 +455,9 @@ void GlDevice::DrawFullscreen(const PostUniforms& uniforms) {
         if (location >= 0) glUniform1f(location, value);
     };
     if (program.sourceTexel >= 0) glUniform2f(program.sourceTexel, uniforms.sourceTexel.x, uniforms.sourceTexel.y);
+    if (program.region >= 0)
+        glUniform4f(program.region, uniforms.region.x, uniforms.region.y, uniforms.region.width,
+                    uniforms.region.height);
     set(program.bloomIntensity, uniforms.bloomIntensity);
     set(program.bloomSpread, uniforms.bloomSpread);
     set(program.vignette, uniforms.vignette);

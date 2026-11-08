@@ -13,6 +13,8 @@ public:
     void Show();
     [[nodiscard]] bool ShouldClose() const;
     [[nodiscard]] static bool Focused();
+    // Visibility only: mouse coordinates and unrestricted movement are unchanged.
+    static void SetCursorVisible(bool visible);
     [[nodiscard]] static double ClockSeconds();
     [[nodiscard]] static float FrameSeconds();
     [[nodiscard]] static int FramesPerSecond();

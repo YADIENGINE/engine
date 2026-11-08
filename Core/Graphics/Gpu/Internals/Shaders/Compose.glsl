@@ -4,6 +4,7 @@
 in vec2 vUv;
 uniform sampler2D uTextures[8];
 uniform vec2 uSourceTexel;
+uniform vec4 uRegion; // UV origin and size of the physical screen; outside is passed through unchanged.
 uniform float uBloomIntensity;
 uniform float uVignette;
 uniform float uScanlines;
@@ -49,18 +50,25 @@ vec2 WobbleOffset(vec2 uv) {
 }
 
 void main() {
+    if (any(lessThan(vUv, uRegion.xy)) || any(greaterThanEqual(vUv, uRegion.xy + uRegion.zw))) {
+        oColor = texture(uTextures[0], vUv);
+        return;
+    }
+    vec2 screen = (vUv - uRegion.xy) / uRegion.zw;
+    vec2 lo = uRegion.xy + uSourceTexel * 0.5;
+    vec2 hi = uRegion.xy + uRegion.zw - uSourceTexel * 0.5;
     vec2 uv = vUv;
-    if (uWobble > 0.0) uv += WobbleOffset(vUv);
+    if (uWobble > 0.0) uv += WobbleOffset(screen);
 
     float band = 0.0;
     float tapeLine = 0.0;
     if (uTapeBand > 0.0 || uTapeShift > 0.0) {
-        tapeLine = floor(vUv.y / (uSourceTexel.y * uTapeLine));
+        tapeLine = floor((vUv.y - uRegion.y) / (uSourceTexel.y * uTapeLine));
         vec3 random = Noise(uvec3(uint(tapeLine), uint(uNoiseFrame), 7u));
         // Most lines stay nearly still; a few jump the whole way.
         uv.x += (random.x * 2.0 - 1.0) * random.z * random.z * uTapeShift * uSourceTexel.x;
         if (uTapeBand > 0.0) {
-            float away = abs(vUv.y - uTapeRoll);
+            float away = abs(screen.y - uTapeRoll);
             band = 1.0 - smoothstep(0.0, 0.055, min(away, 1.0 - away));
             uv.x += band * (0.6 + 0.8 * random.y) * uTapePush * uSourceTexel.x;
         }
@@ -68,14 +76,14 @@ void main() {
 
     vec3 color;
     if (uAberration > 0.0) {
-        vec2 shift = (vUv - 0.5) * 2.0 * uAberration * uSourceTexel;
-        color.r = texture(uTextures[0], uv + shift).r;
-        color.g = texture(uTextures[0], uv).g;
-        color.b = texture(uTextures[0], uv - shift).b;
+        vec2 shift = (screen - 0.5) * 2.0 * uAberration * uSourceTexel;
+        color.r = texture(uTextures[0], clamp(uv + shift, lo, hi)).r;
+        color.g = texture(uTextures[0], clamp(uv, lo, hi)).g;
+        color.b = texture(uTextures[0], clamp(uv - shift, lo, hi)).b;
     } else {
-        color = texture(uTextures[0], uv).rgb;
+        color = texture(uTextures[0], clamp(uv, lo, hi)).rgb;
     }
-    if (uBloomIntensity > 0.0) color += texture(uTextures[1], uv).rgb * uBloomIntensity;
+    if (uBloomIntensity > 0.0) color += texture(uTextures[1], clamp(uv, lo, hi)).rgb * uBloomIntensity;
     if (uFade > 0.0) color = mix(color, vec3(Luma(color)), uFade);
     color *= uTint;
     if (band > 0.0) {
@@ -84,11 +92,11 @@ void main() {
         color += band * band * uTapeBand * 0.3 * step(0.84, Noise(dash).x);
     }
     if (uScanlines > 0.0) {
-        float line = 0.5 + 0.5 * cos(vUv.y * uScanlineCount * 6.28318530);
+        float line = 0.5 + 0.5 * cos(screen.y * uScanlineCount * 6.28318530);
         color *= 1.0 - uScanlines * line;
     }
     if (uVignette > 0.0) {
-        float edge = smoothstep(0.35, 0.85, length(vUv - 0.5) * 1.41421356);
+        float edge = smoothstep(0.35, 0.85, length(screen - 0.5) * 1.41421356);
         color *= 1.0 - uVignette * edge;
     }
     if (uGrain > 0.0) {

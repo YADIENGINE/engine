@@ -54,6 +54,7 @@ private:
         unsigned id = 0;
         int viewSize = -1;
         int sourceTexel = -1;
+        int region = -1;
         int bloomIntensity = -1;
         int bloomSpread = -1;
         int vignette = -1;

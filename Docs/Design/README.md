@@ -853,3 +853,29 @@ simulation and views as value members and calls them from its own hooks; things 
 
 Left out: a view-side selectable object for the editor (pick, inspect, move a thing in the viewport), to be designed
 when a real need appears.
+
+### D57. Post-process region
+Usage: [Painter](../Graphics/Painter.md#analog-finish).
+
+Decision: `FloatRect PostSettings::region` selects one canvas-space rectangle, such as an in-world monitor's face.
+
+1. *Empty means the full canvas; clip a nonempty region to the canvas:* existing finishes keep their look and an
+   off-canvas monitor changes no pixels.
+2. *Effect coordinates are local; distances stay in canvas units and scanlines span the region:* the monitor has its
+   own centre and edges without changing the strength of a finish.
+3. *Mix switches regions at halfway:* a physical screen is a discrete choice, not a rectangle to animate between screens.
+4. *Bloom gathered from outside the region can still reach inside it:* the shared bloom chain stays canvas-wide.
+
+Left out: more than one region per frame.
+
+### D58. Cursor visibility
+Usage: `SceneServices::setCursorVisible` in `Core/Scene/SceneServices.h` (also read by `python Engine api`).
+
+Decision: an optional `std::function<void(bool visible)>` lets a scene request host cursor visibility.
+
+1. *Check the callback before calling; it is empty in editor-hosted scenes:* content must retain the editor's cursor.
+2. *The host refuses to hide while unfocused; call again when input returns:* a scene controls its own active input.
+3. *The game host restores visibility just after Exit, including shutdown and a failing Exit:* a hidden cursor must
+   not leak into the next scene or outlive the scene that hid it.
+
+Left out: locking, confining or warping the pointer.

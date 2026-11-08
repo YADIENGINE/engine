@@ -7,7 +7,8 @@ class Scene;
 // Borrows scenes owned by the application. Shutdown must run while those scenes are still alive.
 class SceneManager {
 public:
-    SceneManager();
+    // Optional host cleanup after deactivation, even if Exit throws; also runs before Stop at shutdown.
+    explicit SceneManager(std::function<void()> afterExit = {});
     ~SceneManager();
     void Register(Scene& scene);
     void Request(Scene& scene, bool restart = false);
@@ -18,6 +19,9 @@ public:
     void Shutdown();
 
 private:
+    void DeactivateCurrent();
+
+    std::function<void()> _afterExit;
     std::vector<Scene*> _scenes;
     Scene* _current = nullptr;
     Scene* _pending = nullptr;

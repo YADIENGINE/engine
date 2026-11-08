@@ -112,6 +112,55 @@ TEST_CASE("Engine.PostChain.CanvasUnitsBecomeTexels", "[engine][paint][render]")
     CHECK(composed->post.tintBlue == Approx(0xa0 / 255.0f));
 }
 
+TEST_CASE("Engine.PostChain.ScreenRegionUsesLocalCoordinates", "[engine][paint][render]") {
+    NullDevice device;
+    RenderPipeline pipeline(device, Settings());
+    PostSettings post = Haunted();
+    // Intentionally off-centre: canvas y is top-down, texture y is bottom-up.
+    post.region = {40.0f, 20.0f, 320.0f, 150.0f};
+    const NullCommand* composed = ComposeFrame(device, pipeline, post, 1.0);
+    REQUIRE(composed != nullptr);
+    CHECK(composed->post.region.x == Approx(0.1f));
+    CHECK(composed->post.region.y == Approx(0.15f));
+    CHECK(composed->post.region.width == Approx(0.8f));
+    CHECK(composed->post.region.height == Approx(0.75f));
+    CHECK(composed->post.scanlineCount == Approx(75.0f));
+    CHECK(composed->post.wobble == Approx(16.0f)); // Distances are still canvas units.
+
+    post.region = {};
+    const auto* full = ComposeFrame(device, pipeline, post, 2.0);
+    REQUIRE(full != nullptr);
+    CHECK(full->post.region == FloatRect{0.0f, 0.0f, 1.0f, 1.0f});
+    CHECK(full->post.scanlineCount == Approx(100.0f));
+}
+
+TEST_CASE("Engine.PostChain.OutsideScreenRegionKeepsUniformsFinite", "[engine][paint][render]") {
+    NullDevice device;
+    RenderPipeline pipeline(device, Settings());
+    PostSettings post = Haunted();
+    // No overlap on either axis: every fragment must pass through before the shader's local-UV division.
+    post.region = {500.0f, 300.0f, 80.0f, 40.0f};
+    const auto* composed = ComposeFrame(device, pipeline, post, 1.0);
+    REQUIRE(composed != nullptr);
+    const auto& uniforms = composed->post;
+    CHECK(uniforms.region.Empty());
+    CHECK(std::isfinite(uniforms.region.x));
+    CHECK(std::isfinite(uniforms.region.y));
+    CHECK(std::isfinite(uniforms.region.width));
+    CHECK(std::isfinite(uniforms.region.height));
+    CHECK(std::isfinite(uniforms.scanlineCount));
+    CHECK(uniforms.sourceTexel.x > 0.0f);
+    CHECK(uniforms.sourceTexel.y > 0.0f);
+}
+
+TEST_CASE("Engine.PostSettings.MixPreservesTheSelectedScreen", "[engine][paint]") {
+    PostSettings screen = Haunted();
+    screen.region = {40.0f, 20.0f, 320.0f, 160.0f};
+    CHECK(Mix(screen, screen, 0.5f).region == screen.region);
+    CHECK(Mix({}, screen, 0.0f).region.Empty());
+    CHECK(Mix({}, screen, 1.0f).region == screen.region);
+}
+
 TEST_CASE("Engine.PostChain.ValuesOutOfRangeAreHeldBack", "[engine][paint][render]") {
     NullDevice device;
     RenderPipeline pipeline(device, Settings());

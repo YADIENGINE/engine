@@ -658,6 +658,32 @@ void OldFinishIsUntouched(PixelCheck& check) {
     check.Near("a scanline's light middle", check.ReadTarget(lines, 128, 32).r, 255, 3);
 }
 
+void ScreenRegionLimitsTheFinish(PixelCheck& check) {
+    const auto frame = [&](FloatRect region) {
+        return check.Frame([&](Painter& paint) {
+            paint.Post().region = region;
+            paint.Post().fade = 1.0f;
+            paint.Post().scanlines = 1.0f;
+            paint.Post().scanlineCount = 2.0f;
+            paint.Rect({0.0f, 0.0f, 256.0f, 256.0f}, Fill({255, 0, 0, 255}));
+        });
+    };
+    const GpuTarget monitor = frame({32.0f, 64.0f, 128.0f, 128.0f});
+    check.Near("region leaves the outside colour", check.ReadTarget(monitor, 16, 96).r, 255, 0);
+    check.Near("region leaves the outside green", check.ReadTarget(monitor, 16, 96).g, 0, 0);
+    check.Near("region scanline starts at its own edge", check.ReadTarget(monitor, 96, 64).r, 0, 2);
+    check.Near("region scanline spans its own height", check.ReadTarget(monitor, 96, 96).r, 76, 2);
+    check.Near("region fades its own colour", check.ReadTarget(monitor, 96, 96).g, 76, 2);
+
+    // The clipped region has zero size. Real GLSL must return before dividing by that size.
+    const GpuTarget outside = frame({300.0f, 300.0f, 40.0f, 40.0f});
+    for (const int coordinate : {0, 128, 255}) {
+        const Pixel pixel = check.ReadTarget(outside, coordinate, coordinate);
+        check.Near("off-canvas region passes red through", pixel.r, 255, 0);
+        check.Near("off-canvas region passes green through", pixel.g, 0, 0);
+    }
+}
+
 void FadeDrainsColour(PixelCheck& check) {
     const auto red = [&](float fade) {
         const GpuTarget shown = check.Frame([&](Painter& paint) {
@@ -905,6 +931,7 @@ int main(int argc, char** argv) {
         AWideSoftEdgeHasNoSteps(check);
         FlashesLightTheWorld(check);
         OldFinishIsUntouched(check);
+        ScreenRegionLimitsTheFinish(check);
         FadeDrainsColour(check);
         TintMultiplies(check);
         GrainMovesAndFavoursTheDark(check);

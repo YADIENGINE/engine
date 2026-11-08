@@ -26,6 +26,11 @@ void Window::Show() {
 
 bool Window::ShouldClose() const { return WindowShouldClose(); }
 bool Window::Focused() { return IsWindowFocused(); }
+void Window::SetCursorVisible(bool visible) {
+    if (visible || !Focused()) {
+        if (IsCursorHidden()) ShowCursor();
+    } else if (!IsCursorHidden()) HideCursor();
+}
 double Window::ClockSeconds() { return GetTime(); }
 float Window::FrameSeconds() { return GetFrameTime(); }
 int Window::FramesPerSecond() { return GetFPS(); }
