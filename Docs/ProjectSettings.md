@@ -36,6 +36,7 @@ or with an agent; the file is the only place these values are kept ([D51](Design
 | `background`, `letterbox` | black | Canvas colour, and the colour around it when the window's shape differs |
 | `smoothCanvas` | true | Linear filtering when the canvas is scaled; off keeps pixels sharp |
 | `font` | empty | The font Painter draws with when given none, from `Game/Assets` ([Text](Graphics/Text.md)) |
+| `loadingScreen` | Default | The engine's loading screen: Default, Horror, Rpg, SciFi, Arcade or Cozy ([Runtime](Runtime.md#startup-loading-and-error-boundary)) |
 
 The schema is [ProjectSettings.schema.json](../Core/Runtime/ProjectSettings.schema.json): bounds, notes and groups
 come from it, and the committed [ProjectSettings.h](../Core/Runtime/ProjectSettings.h) is generated from it.

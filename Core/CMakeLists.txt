@@ -284,6 +284,13 @@ add_library(EngineHeadless STATIC
     Runtime/TimeScale.cpp
     Runtime/Internals/EngineLoadingScene.cpp
     Runtime/Internals/GameAssetManifest.cpp
+    Runtime/Internals/LoadingScreens/ArcadeLoadingScreen.cpp
+    Runtime/Internals/LoadingScreens/CozyLoadingScreen.cpp
+    Runtime/Internals/LoadingScreens/DefaultLoadingScreen.cpp
+    Runtime/Internals/LoadingScreens/HorrorLoadingScreen.cpp
+    Runtime/Internals/LoadingScreens/LoadingScreenParts.cpp
+    Runtime/Internals/LoadingScreens/RpgLoadingScreen.cpp
+    Runtime/Internals/LoadingScreens/SciFiLoadingScreen.cpp
     Runtime/Internals/StartupTimer.cpp
     Scene/Internals/SceneManager.cpp
     Scene/LoadingScene.cpp

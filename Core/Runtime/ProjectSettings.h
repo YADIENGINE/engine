@@ -1,6 +1,7 @@
 // Generated from ProjectSettings.schema.json by the engine's settings tools (Tools/tuning/settings.py).
 // Do not edit: change the schema and run `python . check --fix`.
 #pragma once
+#include <array>
 #include <string>
 #include <string_view>
 #include "Utilities/Color4.h"
@@ -9,6 +10,9 @@
 // from these defaults, and the editor edits them under Project > Project settings. A game reads them as
 // GameSettings::project; engine hosts (the editor's worker, tools, tests) may change them in code.
 struct ProjectSettings {
+    enum class LoadingScreen : int { Default, Horror, Rpg, SciFi, Arcade, Cozy };
+    static constexpr std::array<std::string_view, 6> LoadingScreenNames{"Default", "Horror", "Rpg", "SciFi", "Arcade", "Cozy"};
+
     // Identity
     // Window title; also the product name in the exe's details
     std::string title = "Game";
@@ -49,6 +53,10 @@ struct ProjectSettings {
     // Font Painter draws with when given none, from Game/Assets; empty: none
     std::string font = "";
 
+    // Startup
+    // Which of the engine's loading screens opens the game; a scene given with Game::SetLoadingScene replaces it
+    LoadingScreen loadingScreen = ProjectSettings::LoadingScreen::Default;
+
     friend bool operator==(const ProjectSettings&, const ProjectSettings&) = default;
 
     static constexpr std::string_view Schema = R"schema({
@@ -69,7 +77,8 @@ struct ProjectSettings {
   "background": { "type": "color", "value": "#000000", "group": "Canvas", "note": "Canvas colour before anything is drawn" },
   "letterbox": { "type": "color", "value": "#000000", "group": "Canvas", "note": "Colour around the canvas when the window's shape differs" },
   "smoothCanvas": { "value": true, "group": "Canvas", "note": "Smooth scaling; off keeps pixels sharp" },
-  "font": { "type": "path", "value": "", "group": "Text", "note": "Font Painter draws with when given none, from Game/Assets; empty: none" }
+  "font": { "type": "path", "value": "", "group": "Text", "note": "Font Painter draws with when given none, from Game/Assets; empty: none" },
+  "loadingScreen": { "type": "choice", "choices": ["Default", "Horror", "Rpg", "SciFi", "Arcade", "Cozy"], "value": "Default", "group": "Startup", "note": "Which of the engine's loading screens opens the game; a scene given with Game::SetLoadingScene replaces it" }
 })schema";
 
     template <class Visitor>
@@ -92,5 +101,6 @@ struct ProjectSettings {
         visitor.Field("letterbox", letterbox);
         visitor.Field("smoothCanvas", smoothCanvas);
         visitor.Field("font", font);
+        visitor.Choice("loadingScreen", loadingScreen, LoadingScreenNames);
     }
 };

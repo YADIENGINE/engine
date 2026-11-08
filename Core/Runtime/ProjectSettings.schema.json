@@ -16,5 +16,6 @@
   "background": { "type": "color", "value": "#000000", "group": "Canvas", "note": "Canvas colour before anything is drawn" },
   "letterbox": { "type": "color", "value": "#000000", "group": "Canvas", "note": "Colour around the canvas when the window's shape differs" },
   "smoothCanvas": { "value": true, "group": "Canvas", "note": "Smooth scaling; off keeps pixels sharp" },
-  "font": { "type": "path", "value": "", "group": "Text", "note": "Font Painter draws with when given none, from Game/Assets; empty: none" }
+  "font": { "type": "path", "value": "", "group": "Text", "note": "Font Painter draws with when given none, from Game/Assets; empty: none" },
+  "loadingScreen": { "type": "choice", "choices": ["Default", "Horror", "Rpg", "SciFi", "Arcade", "Cozy"], "value": "Default", "group": "Startup", "note": "Which of the engine's loading screens opens the game; a scene given with Game::SetLoadingScene replaces it" }
 }

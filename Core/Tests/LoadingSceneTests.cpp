@@ -4,6 +4,7 @@
 #include "Input/Input.h"
 #include "Runtime/Internals/EngineLoadingScene.h"
 #include "Scene/LoadingScene.h"
+#include "Tests/PaintHarness.h"
 
 namespace {
 constexpr float Step = 0.01f;
@@ -23,7 +24,7 @@ DeviceInput KeyPress(InputKey key) {
 class Screen {
 public:
     Screen()
-        : scene({1280, 720}) {
+        : scene({1280, 720}, ProjectSettings::LoadingScreen::Default) {
         scene.Activate();
     }
     ~Screen() { scene.Shutdown(); }
@@ -47,6 +48,26 @@ TEST_CASE("Engine.LoadingScene.RunsOnRealTimeAndLearnsFromTheHostThatSoundsAreRe
     CHECK(scene.Finished());
     scene.MarkLoaded();
     CHECK(scene.SeesLoaded());
+}
+
+TEST_CASE("Engine.EngineLoadingScene.EveryLookDrawsWithoutAFontInAnyCanvasShape", "[engine][scene]") {
+    for (const Vec2 canvas : {Vec2{1280, 720}, Vec2{720, 1280}, Vec2{320, 320}}) {
+        for (std::size_t look = 0; look < ProjectSettings::LoadingScreenNames.size(); ++look) {
+            CAPTURE(ProjectSettings::LoadingScreenNames[look], canvas.x, canvas.y);
+            EngineLoadingScene scene(canvas, static_cast<ProjectSettings::LoadingScreen>(look));
+            scene.Activate();
+            for (const float seconds : {0.1f, 1.0f, 25.0f}) {
+                scene.Tick(seconds);
+                PaintHarness harness({static_cast<float>(canvas.x), static_cast<float>(canvas.y)}, 1.0f);
+                harness.Begin();
+                REQUIRE_FALSE(harness.paint.HasFont());
+                CHECK_NOTHROW(scene.Render(harness.paint));
+                harness.End();
+                CHECK_FALSE(harness.Draws().empty());
+            }
+            scene.Shutdown();
+        }
+    }
 }
 
 TEST_CASE("Engine.EngineLoadingScene.LastsTwoSecondsWhenTheSoundsAreAlreadyReady", "[engine][scene]") {

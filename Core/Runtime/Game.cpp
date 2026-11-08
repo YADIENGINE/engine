@@ -113,6 +113,7 @@ Game::Game(const GameSettings& settings)
     , _defaultFpsLimit(settings.project.targetFps)
     , _persistentOptions(settings.persistentOptions)
     , _fixedWindow(settings.fixedWindow)
+    , _loadingLook(settings.project.loadingScreen)
     , _services{{settings.project.canvasWidth, settings.project.canvasHeight},
                 _audio,
                 _sounds,
@@ -345,7 +346,7 @@ void Game::DrawFpsCounter(Painter& paint) const {
 LoadingScene* Game::OpenLoadingScene() {
     _loadingOpened = true;
     if (!_loadingScene && _engineLoadingScreen) {
-        _engineLoadingScene = std::make_unique<EngineLoadingScene>(_services.canvas);
+        _engineLoadingScene = std::make_unique<EngineLoadingScene>(_services.canvas, _loadingLook);
         RegisterScene(*_engineLoadingScene);
         _loadingScene = _engineLoadingScene.get();
     }

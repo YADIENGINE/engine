@@ -33,8 +33,8 @@ class Game {
 public:
     virtual ~Game();
     void Run();
-    // Shows the engine's "Made with" screen while the sounds load, unless the game gave its own (SetLoadingScene). The
-    // game executable's entry point calls this before Run; tools and editor hosts do not.
+    // Shows the engine's "Made with" screen (ProjectSettings::loadingScreen) while the sounds load, unless the game gave
+    // its own (SetLoadingScene). The game executable's entry point calls this before Run; tools and editor hosts do not.
     void UseEngineLoadingScreen() { _engineLoadingScreen = true; }
     // Development hosts may borrow frame instrumentation and temporarily override execution without saving options.
     void ObserveFrames(FrameObserver* observer);
@@ -163,6 +163,7 @@ private:
     int _defaultFpsLimit;
     bool _persistentOptions;
     bool _fixedWindow;
+    ProjectSettings::LoadingScreen _loadingLook;
     bool _showFps = false;
     FxQuality _effects;
     std::optional<RenderQuality> _renderOverride; // OverrideRenderQuality (development hosts)

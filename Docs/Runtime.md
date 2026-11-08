@@ -73,9 +73,11 @@ the first scene; do not call playback here, audio is not ready yet. The default 
 content hooks define their own error policy.
 
 Between `Start()` and the first scene the loading screen runs. A game gets the engine's "Made with" screen: about two
-seconds, longer if the sounds take longer, and any key, mouse button or touch skips it once they are ready. To show
-another one, derive from `LoadingScene`, register it, and call `SetLoadingScene` from `Start()`; `SetScene` is called
-as usual and waits. A game that wants no screen gives an empty `LoadingScene`, which closes when the sounds are ready.
+seconds, longer if the sounds take longer, and any key, mouse button or touch skips it once they are ready. Its look is
+the `loadingScreen` [project setting](ProjectSettings.md#settings): Default, Horror, Rpg, SciFi, Arcade or Cozy. To show
+a screen of your own, derive from `LoadingScene`, register it, and call `SetLoadingScene` from `Start()`; it replaces
+the setting, and `SetScene` is called as usual and waits. A game that wants no screen gives an empty `LoadingScene`,
+which closes when the sounds are ready.
 
 A `LoadingScene` runs on real time and is an ordinary scene otherwise. `Loaded()` turns true when the sounds are ready;
 playing a sound before that throws, so the waiting part is silent, and a closing animation may play sounds or start
