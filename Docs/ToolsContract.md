@@ -93,8 +93,14 @@ does not start Python for each project; it reads `Engine/EngineManifest.json` di
 Each version's notes are one file, `ReleaseNotes/<version>.json`; a new version adds its file and leaves the others alone:
 
 ```json
-{ "date": "2026-11-01", "changes": ["..."], "breaking": [ { "change": "...", "migrate": "..." } ] }
+{ "name": "Cats", "summary": "One sentence.", "date": "2026-11-01", "changes": ["..."],
+  "breaking": [ { "change": "...", "migrate": "..." } ] }
 ```
+
+`name` is the version's name, shown as `0.11.1 Cats`; `summary` is one sentence the launcher shows when the version is
+new. Both are required in the newest note; versions before 0.11.1 have none and the launcher calls them Pre-Release.
+Each GitHub release carries `ReleaseNotes.json`, every note of its tag in one list (newest first, each with its
+`version`), so the launcher shows the notes of versions it has not downloaded.
 
 | Field | Meaning |
 | --- | --- |

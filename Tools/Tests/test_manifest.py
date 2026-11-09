@@ -13,7 +13,7 @@ VALID = {
     "version": "1.2.0",
     "repository": "https://example.com/engine.git",
     "notes": [
-        {"version": "1.2.0", "date": "2026-01-02", "changes": ["Added a thing"],
+        {"version": "1.2.0", "name": "Cats", "summary": "Adds a thing.", "date": "2026-01-02", "changes": ["Added a thing"],
          "breaking": [{"change": "Renamed X", "migrate": "Use Y"}]},
         {"version": "1.1.3", "date": "2026-01-01", "changes": ["Fixed a thing"], "breaking": []},
     ],
@@ -72,6 +72,12 @@ class NoteRuleTests(unittest.TestCase):
     def test_every_note_states_its_breaking_changes(self):
         self.assertTrue(self.broken(lambda data: data["notes"][1].pop("breaking")))
         self.assertTrue(self.broken(lambda data: data["notes"][0]["breaking"][0].pop("migrate")))
+
+    def test_the_newest_note_needs_a_name_and_summary_older_ones_may_lack_them(self):
+        self.assertTrue(self.broken(lambda data: data["notes"][0].pop("name")))
+        self.assertTrue(self.broken(lambda data: data["notes"][0].update(summary=" ")))
+        self.assertTrue(self.broken(lambda data: data["notes"][1].update(name=3)))
+        self.assertNotIn("name", VALID["notes"][1])  # And test_valid_manifest_has_no_problems passes
 
     def test_dates_changes_and_repository_are_required(self):
         self.assertTrue(self.broken(lambda data: data["notes"][0].update(date="2 Jan")))

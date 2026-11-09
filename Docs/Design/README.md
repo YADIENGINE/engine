@@ -912,3 +912,17 @@ only queries, so the game still owns positions and calls `Move`.
 
 Left out: pathfinding (a later module uses this one), gravity, slopes and steps as rules, pushing other movers, and
 turning while moving.
+
+### D61. Named versions and readable notes
+Usage: [Tools contract](../ToolsContract.md#manifest).
+
+Decision: from 0.11.1 each release note has a `name` and a one-sentence `summary`, required in the newest note only;
+earlier versions stay unnamed and the launcher calls them Pre-Release. Every engine release carries `ReleaseNotes.json`,
+all notes of its tag, so the launcher reads one file from the newest release to show versions it has not downloaded.
+
+1. *Name and summary live in the note, not the manifest:* the manifest names the product; a version's text belongs
+   with its notes, and old note files stay as they were.
+2. *One notes file on the newest release, not a file per release:* one download covers every version, and releases
+   published before it need no change.
+
+Left out: names for versions before 0.11.1, and notes in the editor.

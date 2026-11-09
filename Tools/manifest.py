@@ -58,7 +58,8 @@ def load_notes(engine_root: Path = ENGINE_ROOT) -> list[dict]:
 
 def note_problems(data: dict, notes: list[dict]) -> list[str]:
     """Manifest'in ve notların kuralları (`notes`: `load_notes` sırasıyla): `version` en yeni notun sürümü, her notta
-    `date` (YYYY-MM-DD), `changes` (metin listesi) ve `breaking` ({change, migrate} listesi; kırıcı yoksa boş)."""
+    `date` (YYYY-MM-DD), `changes` (metin listesi) ve `breaking` ({change, migrate} listesi; kırıcı yoksa boş). En yeni
+    notta `name` (sürümün adı) ve `summary` (tek cümle) de zorunlu; adsız eski sürümler launcher'da Pre-Release olur."""
     problems = []
     if "notes" in data:
         problems.append(f"notes: release notes live in {NOTES_FOLDER}/<version>.json, not in the manifest")
@@ -82,6 +83,12 @@ def note_problems(data: dict, notes: list[dict]) -> list[str]:
         if not isinstance(breaking, list) or not all(
                 isinstance(item, dict) and _strings([item.get("change"), item.get("migrate")]) for item in breaking):
             problems.append(f"{where}: breaking must be a list of {{\"change\", \"migrate\"}} (empty when nothing breaks)")
+        for field in ("name", "summary"):
+            if field in note and not _strings([note[field]]):
+                problems.append(f"{where}: {field} must be a text")
+    for field in ("name", "summary"):
+        if not _strings([notes[0].get(field)]):
+            problems.append(f"{NOTES_FOLDER}/{notes[0].get('version')}.json: the newest note needs a {field}")
     if notes[0].get("version") != data.get("version"):
         problems.append(f"The newest note is {notes[0].get('version')}; it must be the manifest's version "
                         f"{data.get('version')} ({NOTES_FOLDER}/{data.get('version')}.json)")

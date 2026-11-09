@@ -1,0 +1,13 @@
+{
+  "name": "Cats",
+  "summary": "Characters slide along walls with one call, and the editor gets a Notes panel for project Markdown files.",
+  "date": "2026-11-09",
+  "changes": [
+    "MoveAndSlide moves a character, enemy or pushed crate through the collision world: it stops a skin short of walls and slides along them, also along slanted walls and round corners, and never passes through a collider. cornerAssist steps it into a nearby doorway. See Docs/Collision.md#moving-and-sliding and the WalkerSlide recipe.",
+    "CollisionWorld::ShapeOf returns a collider's shape.",
+    "Editor: a Notes panel opens the project's Notes/*.md files beside the Viewport. Assets has a Notes root to create, rename and delete notes; edits save on their own, and a note changed on disk reloads or asks which text to keep.",
+    "Agents are pointed at the engine's tools before they write their own: Agent.md lists what to look for first, and api finds more of the words agents use for a task.",
+    "Release notes give each engine version a name and a one-sentence summary. The launcher shows them, also for versions not downloaded yet."
+  ],
+  "breaking": []
+}
