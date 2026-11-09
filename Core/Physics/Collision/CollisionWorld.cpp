@@ -175,6 +175,7 @@ bool CollisionWorld::Contains(ColliderId id) const {
 }
 std::size_t CollisionWorld::Count() const { return _impl->count; }
 const Pose& CollisionWorld::PoseOf(ColliderId id) const { return _impl->Live(id).pose; }
+const Shape& CollisionWorld::ShapeOf(ColliderId id) const { return _impl->Live(id).shape; }
 void CollisionWorld::ForEach(const std::function<void(const ColliderView&)>& visit) const {
     for (std::uint32_t index = 0; index < _impl->slots.size(); ++index) {
         const Slot& slot = _impl->slots[index];

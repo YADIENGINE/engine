@@ -115,6 +115,7 @@ engine_tests(EnginePhysicsTests
     SOURCES
         Physics/CollisionTests.cpp
         Physics/CollisionWorldTests.cpp
+        Physics/MoveAndSlideTests.cpp
         Physics/PoolCollidersTests.cpp
         Physics/ShapeTests.cpp
     LINKS EnginePhysics
@@ -214,6 +215,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/UiMenu.cpp"
     "${recipeRoot}/UiOptions.cpp"
     "${recipeRoot}/UiSounds.cpp"
+    "${recipeRoot}/WalkerSlide.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/Api/SceneAutoRegistration.cpp"
 )

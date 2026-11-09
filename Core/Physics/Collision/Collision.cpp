@@ -2,6 +2,7 @@
 #include <box2d/collision.h>
 #include <box2d/math_functions.h>
 #include "Physics/Internals/Box2dBridge.h"
+#include "Physics/Internals/NearContact.h"
 
 namespace {
 // Box2D's contact functions come in a fixed order: the polygon first, then the capsule, then the circle.
@@ -100,6 +101,11 @@ float ShapeDistance(const Shape& a, const Pose& poseA, const Shape& b, const Pos
     return DistanceBetween(ProxyOf(a), poseA, ProxyOf(b), poseB).distance;
 }
 std::optional<CollisionContact> ShapeContact(const Shape& a, const Pose& poseA, const Shape& b, const Pose& poseB) {
+    const auto contact = NearContact(a, poseA, b, poseB);
+    if (!contact || contact->separation > 0.0f) return std::nullopt; // Box2D also reports shapes about to touch
+    return CollisionContact{contact->normal, -contact->separation, contact->point};
+}
+std::optional<NearContactResult> NearContact(const Shape& a, const Pose& poseA, const Shape& b, const Pose& poseB) {
     const bool swapped = ContactRank(a) < ContactRank(b);
     const Shape& first = swapped ? b : a;
     const Shape& second = swapped ? a : b;
@@ -109,11 +115,10 @@ std::optional<CollisionContact> ShapeContact(const Shape& a, const Pose& poseA, 
     if (manifold.pointCount == 0) return std::nullopt;
     const b2LocalManifoldPoint* deepest = &manifold.points[0];
     if (manifold.pointCount == 2 && manifold.points[1].separation < deepest->separation) deepest = &manifold.points[1];
-    if (deepest->separation > 0.0f) return std::nullopt; // Box2D also reports shapes that are about to touch
     Float2 normal = FromBox2d(b2RotateVector(frame.q, manifold.normal));
     if (normal == Float2{}) normal = {1.0f, 0.0f}; // Same center: any direction separates them
     if (swapped) normal = -normal;
-    return CollisionContact{normal, -deepest->separation, FromBox2d(b2TransformPoint(frame, deepest->point))};
+    return NearContactResult{normal, deepest->separation, FromBox2d(b2TransformPoint(frame, deepest->point))};
 }
 std::optional<CastHit> CastRay(Float2 from, Float2 to, const Shape& target, const Pose& pose) {
     return Cast(PointProxy(from), Pose{}, to - from, target, pose);

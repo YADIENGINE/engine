@@ -18,6 +18,7 @@ a simulation needs no CMake line. Never include Box2D.
 | What does this laser reach first? | `world.Raycast` |
 | Who touches whom this step? | `world.Pairs(MaskOf(...), MaskOf(...))` |
 | What is under this point? | `world.At` |
+| How do I walk a character along walls, through doorways? | `MoveAndSlide`: `AgentDocs/Recipes/WalkerSlide.md` |
 | How do I push this out of that wall? | `ShapeContact`: move B by `normal * depth` |
 
 Bullets usually need no collider: they only ask, with `Sweep`. Give a collider to what others must find.

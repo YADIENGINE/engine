@@ -24,6 +24,7 @@ The engine already has these; use them instead of game code that does the same.
 | When the code is about to | Use |
 | --- | --- |
 | keep spawned things in a vector or by index while others point at them | `Pool` (+ `PoolColliders`): `AgentDocs/Recipes/Pool.md` |
+| sweep x and y one at a time, with a skin, so a character slides along walls | `MoveAndSlide`: `AgentDocs/Recipes/WalkerSlide.md` |
 | remove and re-add a collider so a query does not find it | the query's `ignore` parameter: `Docs/Collision.md#many-colliders` |
 | check a clip's time for a footstep, a hit frame or a muzzle flash | Animator moments: `AgentDocs/Recipes/Animator.md` |
 | count steps with `age`, `phase` or `++steps` for a sequence of actions | `Timeline`: `AgentDocs/Recipes/Timeline.md` |

@@ -70,6 +70,7 @@ public:
     [[nodiscard]] bool Contains(ColliderId id) const;
     [[nodiscard]] std::size_t Count() const;
     [[nodiscard]] const Pose& PoseOf(ColliderId id) const;
+    [[nodiscard]] const Shape& ShapeOf(ColliderId id) const;
     // Every live collider, in id order.
     void ForEach(const std::function<void(const ColliderView&)>& visit) const;
 

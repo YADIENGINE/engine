@@ -16,6 +16,7 @@ identical hashes when measured, but that is not promised across compilers or CPU
 | `Physics/Collision/Collision.h` | Questions about two shapes, with nothing to set up |
 | `Physics/Collision/CollisionWorld.h` | Many colliders: area, point, ray and sweep queries, overlapping pairs |
 | `Physics/Collision/CollisionMask.h` | `MaskOf`: layers from the game's own enum |
+| `Physics/Collision/MoveAndSlide.h` | `MoveAndSlide`: move a character or crate that stops at walls and slides along them |
 | `Physics/Collision/PoolColliders.h` | `PoolColliders`: how a [pool](Simulation.md#things-that-come-and-go)'s items have colliders, declared once |
 | `Physics/Debug/ColliderDraw.h` | `DrawColliders`: outlines on top of a view |
 
@@ -62,6 +63,32 @@ for (const ColliderPair& pair : world.Pairs(MaskOf(Layer::Player), MaskOf(Layer:
 - **Spans:** a result stays valid until the next query on that world. Copy what must last longer.
 - **Ids:** a removed collider's id stays invalid, even after its slot is used again. Using one throws.
 - **A collider asking about itself:** pass its id as `ignore`, or it finds itself.
+
+## Moving and sliding
+
+A character, an enemy or a pushed crate that the game moves itself stops at walls and slides along them with
+`MoveAndSlide`. It sweeps, stops a skin short of what it meets, and keeps what is left of the move along the surface,
+also along slanted walls and round corners; in a corner it stops. Like `Sweep`, it cannot pass through anything.
+
+```cpp
+constexpr SlideOptions Walking{.mask = MaskOf(Layer::Wall), .cornerAssist = 6.0f};
+
+const SlideResult slide = MoveAndSlide(_world, feetShape, {_feet}, direction * (speed * seconds), Walking);
+_feet = slide.position;
+_world.Move(_feetCollider, {_feet}); // Only a query: the game keeps the position
+```
+
+- **Its own collider:** pass it as `.ignore` when it is on a layer in the mask.
+- **Skin:** the gap kept against walls, 0.05 by default, never below `MinSlideSkin`. A mover that starts inside a wall is
+  pushed out first.
+- **Corner assist:** walking straight at a wall with an opening up to `cornerAssist` units to one side moves the mover
+  sideways into it, at most as far as the move: a doorway that needs no exact aim. Off by default. A round mover already
+  slips past a corner it barely meets.
+- **What it met:** `slide.Hits()` lists the colliders with their normals, which face the mover; `blocked` says something
+  took part of the move away. A platformer is on the ground when a hit's normal points up (negative y).
+- **Turning:** the mover keeps its angle; it does not turn while it moves.
+
+Worked example: [AgentDocs/Recipes/WalkerSlide.md](../AgentDocs/Recipes/WalkerSlide.md).
 
 ## Items in a pool
 
@@ -134,5 +161,5 @@ slower; a project on the prebuilt engine links the optimized library in Debug as
 ## What it does not do
 
 No gravity, no bounce, no forces and no joints. No "contact started" or "contact ended" events; compare `Pairs` between steps
-if a rule needs them. No sliding along walls yet: `ShapeContact` gives what is needed to push a shape out by hand. Box2D's
+if a rule needs them. No pathfinding: `MoveAndSlide` moves along a route, it does not find one. Box2D's
 physics stays in `ThirdParty/Box2D`, unused.

@@ -29,6 +29,7 @@
 #include "AgentDocs/Recipes/Code/TuningValue.h"
 #include "AgentDocs/Recipes/Code/UiSounds.h"
 #include "AgentDocs/Recipes/Code/Weather.h"
+#include "AgentDocs/Recipes/Code/WalkerSlide.h"
 #include "Audio/SoundPlayer.h"
 #include "Graphics/Surface/Surface.h"
 #include "Graphics/Text/FontFace.h"
@@ -853,4 +854,20 @@ TEST_CASE("Engine.Recipes.SpatialSoundFollowsTheState", "[engine][recipes]") {
     CHECK(output.Of(2).volume == 0.0f);  // Wind out
     CHECK(output.Of(3).volume == 0.8f);
     CHECK(output.Of(3).muffle == 0.8f);
+}
+TEST_CASE("Engine.Recipes.WalkerSlideFindsTheDoorway", "[engine][recipes]") {
+    Scenario scenario(RecipeWalkerDefinition(), {.players = 1});
+    const auto& rules = dynamic_cast<const RecipeWalkerSimulation&>(scenario.Sim());
+    scenario.Hold("Down"); // Straight at the wall, 1 unit beside the doorway's edge: corner assist finds it
+    scenario.Run(100);
+    CHECK(rules.Feet().y > 110.0f);
+    CHECK(rules.Feet().x > 154.0f);
+    CHECK(rules.Feet().x < 166.0f);
+    scenario.Release("Down");
+    scenario.Hold("Up"); // Up and right: past the doorway, the feet meet the wall's underside and slide along it
+    scenario.Hold("Right");
+    scenario.Run(90);
+    CHECK(rules.AgainstWall());
+    CHECK(rules.Feet().x > 175.0f);
+    CHECK(rules.Feet().y > 110.0f);
 }

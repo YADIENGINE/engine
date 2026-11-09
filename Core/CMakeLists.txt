@@ -158,6 +158,7 @@ engine_warnings(EngineSimulation)
 add_library(EnginePhysics STATIC
     Physics/Collision/Collision.cpp
     Physics/Collision/CollisionWorld.cpp
+    Physics/Collision/MoveAndSlide.cpp
     Physics/Collision/Shape.cpp
     Physics/Internals/Box2dBridge.cpp
 )

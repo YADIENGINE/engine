@@ -892,3 +892,23 @@ never overwrites or loses text. The existing Console paste path sends the relati
 
 Left out: preview rendering, several open notes, listing notes outside `Notes/`, syntax colouring, line numbers,
 and editing other file types.
+
+### D60. Moving and sliding
+Usage: [Collision](../Collision.md#moving-and-sliding).
+
+Decision: `MoveAndSlide` (`Physics/Collision/MoveAndSlide.h`) is a free function over `CollisionWorld`: sweep, stop a
+skin short, clip what is left of the move against the hit normal, up to four hits; two walls that meet stop it. It
+only queries, so the game still owns positions and calls `Move`.
+
+1. *Built on the world's own `Sweep`, not on Box2D's mover:* nothing can pass through a collider however fast, results
+   stay deterministic, and Box2D names stay private. Box2D's plane solver is a few lines of clipping we write ourselves.
+2. *A start that is touching or inside asks the collider for its contact and leaves along it:* Box2D's cast reports
+   shapes within its slop as overlapping without a normal, so a mover resting on a floor could not move along it.
+   The skin has a floor (`MinSlideSkin`) above that slop.
+3. *Corner assist is an option, off by default:* only a move straight into a wall uses it; it steps sideways towards
+   the nearest opening, at most as far as the move. Round movers already slip past corners they barely meet.
+4. *The result lists the hits with normals:* a platformer reads "on the ground" from an upward normal; the engine adds no
+   grounded state.
+
+Left out: pathfinding (a later module uses this one), gravity, slopes and steps as rules, pushing other movers, and
+turning while moving.
