@@ -16,8 +16,8 @@ They never link the consuming game's core or include its source headers.
 | EngineRecipeTests | `Core/Tests/RecipeTests.cpp` + compiled `AgentDocs/Recipes/Code/` archive | EngineRecipes, EngineHeadless, EnginePersistence | engine + recipes |
 | Engine&lt;Module&gt;Tests | module Tests/*.cpp | module and declared dependencies | module tag |
 | Engine.IncludeBoundaries | `python Engine check` over the source tree ([API boundaries](ApiBoundaries.md)) | none (Python 3.10+) | engine |
-| Engine.Tools | Tools/Tests (Python unittest; command-line contract, [ToolsContract](../ToolsContract.md)) | none (Python 3.10+) | engine |
-| Engine.ThirdPartyNotices | ThirdParty/Tests (Python unittest; notice pins and licenses) | none (Python 3.10+) | engine |
+| Engine.Tools | Tools/Tests (Python unittest; command-line contract, [ToolsContract](../ToolsContract.md)); engine repository only | none (Python 3.10+) | engine |
+| Engine.ThirdPartyNotices | ThirdParty/Tests (Python unittest; notice pins and licenses); engine repository only | none (Python 3.10+) | engine |
 | AudioGeneration.* | Tools/AudioGeneration/Tests (Python unittest, Node) | none (Python 3.10+, NumPy, SciPy; Node for the player) | audio-generation |
 
 `EngineTestSupport` holds game-free helpers: TempDirectory, Diagnostics and GzipInflate.
@@ -36,7 +36,7 @@ python . test --label '^persistence$'
 ```
 
 Inside a game project the project's `python Engine test --label engine` builds the same suite through the game's
-test preset. Raw CMake commands, from a project root that has the engine at `Engine/`:
+test preset, without the two repository-only checks (they need the engine's git checkout and agent tools). Raw CMake commands, from a project root that has the engine at `Engine/`:
 
 ```powershell
 cmake -S Engine -B build/engine-tests -DENGINE_BUILD_TESTS=ON -DENGINE_BUILD_RUNTIME=OFF

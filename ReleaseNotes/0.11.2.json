@@ -1,0 +1,10 @@
+{
+  "name": "Cats",
+  "summary": "A cloned project gets its own engine version back, and engine changes no longer fail on the engine's own developer checks.",
+  "date": "2026-11-09",
+  "changes": [
+    "New projects record their engine in Project.json (\"engine\": {\"version\"}). Engine/ stays out of git, so the launcher installs this version for whoever clones the project. See Docs/ProjectSetup.md.",
+    "A game's tests no longer include Engine.Tools and Engine.ThirdPartyNotices. They check the engine repository itself (git, agent tools), so changing a project's engine in the launcher failed on machines without them."
+  ],
+  "breaking": []
+}

@@ -21,7 +21,7 @@ AGENT = {**CLEAR, "ENGINE_AGENT": "1"}
 PERSON = {**CLEAR, "ENGINE_AGENT": "0"}
 ERROR_LINE = "C:/x/Game.cpp(3,5): error C2065: x: undeclared"
 # A compiler that writes noise, one MSVC error and fails
-FAILING = [sys.executable, "-c", f"print('noise 1'); print('noise 2'); print(r'{ERROR_LINE}'); exit(1)"]
+FAILING = [sys.executable, "-c", f"print('noise 1'); print('noise 2'); print(r'{ERROR_LINE}'); raise SystemExit(1)"]
 SUCCEEDING = [sys.executable, "-c", "print('compiling'); print('linking')"]
 
 
@@ -75,7 +75,7 @@ class RunTests(unittest.TestCase):
         self.assertEqual(self.log.read_text(encoding="utf-8").splitlines().count("linking"), 2)
 
     def test_unrecognized_failure_shows_the_end_of_the_output(self):
-        printed, failed = self.run_command([sys.executable, "-c", "print('odd'); exit(3)"], AGENT)
+        printed, failed = self.run_command([sys.executable, "-c", "print('odd'); raise SystemExit(3)"], AGENT)
         self.assertTrue(failed)
         self.assertIn("odd", printed)
 

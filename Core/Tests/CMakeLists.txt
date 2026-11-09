@@ -250,18 +250,21 @@ else()
     message(STATUS "AudioGeneration tests skipped: Python 3.10+ with numpy and scipy not found")
 endif()
 # Internals/ boundaries (Docs/Contributing/ApiBoundaries.md) over the whole source tree: the game's when Engine is
-# a submodule, Engine's own when built alone. The engine's Python tools and notice checks need no compiler either.
+# a submodule, Engine's own when built alone. The engine's Python tools and notice checks need no compiler either;
+# they check the engine repository itself (git, agent tools, notice pins), so a game's tests leave them out.
 if(Python3_Interpreter_FOUND)
     add_test(NAME "Engine.IncludeBoundaries"
         COMMAND "${Python3_EXECUTABLE}" -B "${engineRoot}" --project "${CMAKE_SOURCE_DIR}" check)
-    add_test(NAME "Engine.Tools"
-        COMMAND "${Python3_EXECUTABLE}" -B -m unittest discover -s Tools/Tests -t .
-        WORKING_DIRECTORY "${engineRoot}")
-    add_test(NAME "Engine.ThirdPartyNotices"
-        COMMAND "${Python3_EXECUTABLE}" -B -m unittest discover -s ThirdParty/Tests
-        WORKING_DIRECTORY "${engineRoot}")
-    set_tests_properties("Engine.IncludeBoundaries" "Engine.Tools" "Engine.ThirdPartyNotices"
-        PROPERTIES LABELS "engine" TIMEOUT 60)
+    set_tests_properties("Engine.IncludeBoundaries" PROPERTIES LABELS "engine" TIMEOUT 60)
+    if(ENGINE_IS_REPOSITORY)
+        add_test(NAME "Engine.Tools"
+            COMMAND "${Python3_EXECUTABLE}" -B -m unittest discover -s Tools/Tests -t .
+            WORKING_DIRECTORY "${engineRoot}")
+        add_test(NAME "Engine.ThirdPartyNotices"
+            COMMAND "${Python3_EXECUTABLE}" -B -m unittest discover -s ThirdParty/Tests
+            WORKING_DIRECTORY "${engineRoot}")
+        set_tests_properties("Engine.Tools" "Engine.ThirdPartyNotices" PROPERTIES LABELS "engine" TIMEOUT 60)
+    endif()
 else()
     message(STATUS "Engine Python checks skipped: Python 3.10+ not found")
 endif()

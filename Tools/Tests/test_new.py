@@ -7,8 +7,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from Tools.commands.new import PLACEHOLDER, default_name, name_error, setup_project, template_files
+from Tools.commands.new import PLACEHOLDER, VERSION_PLACEHOLDER, default_name, name_error, setup_project, template_files
 from Tools.errors import ToolError
+from Tools.manifest import load_manifest
 
 
 class ProjectSetupTests(unittest.TestCase):
@@ -31,7 +32,10 @@ class ProjectSetupTests(unittest.TestCase):
         for relative in expected:
             text = (self.root / relative).read_text(encoding="utf-8")
             self.assertNotIn(PLACEHOLDER, text, relative)
-        self.assertEqual(json.loads((self.root / "Project.json").read_text(encoding="utf-8"))["name"], "SpaceGame")
+            self.assertNotIn(VERSION_PLACEHOLDER, text, relative)
+        project = json.loads((self.root / "Project.json").read_text(encoding="utf-8"))
+        self.assertEqual(project["name"], "SpaceGame")
+        self.assertEqual(project["engine"], {"version": load_manifest().version})  # The launcher restores this one
         self.assertIn("project(SpaceGame ", (self.root / "CMakeLists.txt").read_text(encoding="utf-8"))
 
     def test_notes_readme_is_a_plain_template_file(self):

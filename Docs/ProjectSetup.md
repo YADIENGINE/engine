@@ -115,6 +115,7 @@ from `name`.
 | `editor.worker` | `editor` | `engine_add_editor_worker` target (default `<name>EditorWorker`) |
 | `editor.cacheVariables` | `editor` | project options added to the editor build (such as disabling the game and enabling the worker) |
 | `hooks` | `release` | optional Python file (below) |
+| `engine.version` | launcher | the engine version the project uses; `new` writes it and the launcher keeps it in step. `Engine/` stays out of git, so whoever clones the project gets this version installed instead of a migration |
 | `engine.build` | `build`, `run`, `release`, `editor` | optional; `"source"` always compiles the engine instead of linking the [prebuilt engine](Prebuilt.md) |
 
 `editor` supplies `ENGINE_BUILD_RUNTIME/EDITOR=ON`, `ENGINE_BUILD_TESTS/EDITOR_TESTS=OFF`, and

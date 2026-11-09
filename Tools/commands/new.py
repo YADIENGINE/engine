@@ -10,7 +10,8 @@ Ne yapar (sırayla)
    durur ve yeniden adlandırmayı söyler.
 2. Proje kökünde Project.json varsa proje zaten kurulmuştur; hiçbir şey yapmaz.
 3. Tools/ProjectTemplate/ içindeki her dosyayı aynı göreli yolla proje köküne kopyalar:
-   - Dosyalardaki @PROJECT_NAME@ proje adıyla değişir.
+   - Dosyalardaki @PROJECT_NAME@ proje adıyla, @ENGINE_VERSION@ bu engine'in sürümüyle değişir. Sürüm Project.json
+     "engine": {"version"} alanına girer: Engine/ git'e girmez, launcher projeyi indiren kişiye bu sürümü kurar.
    - "gitignore" / "gitattributes" hedefte ".gitignore" / ".gitattributes" olur; şablonda noktasız durmalarının
      sebebi noktalı olsalar engine reposunun kendi git ayarlarına karışmalarıdır.
    - Hedefte aynı adlı dosya varsa ona dokunmaz, "Kept existing" diye listeler.
@@ -29,12 +30,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..errors import EXIT_OK, ToolError
+from ..manifest import load_manifest
 from ..msvc import NINJA_COMPONENT, visual_studio
 from ..project import PROJECT_FILE
 
 ENGINE_FOLDER = "Engine"  # Projede engine klasörünün zorunlu adı (bkz. adım 1)
 TEMPLATE = Path(__file__).resolve().parents[1] / "ProjectTemplate"
 PLACEHOLDER = "@PROJECT_NAME@"
+VERSION_PLACEHOLDER = "@ENGINE_VERSION@"  # Project.json "engine": {"version"}
 RENAMES = {"gitignore": ".gitignore", "gitattributes": ".gitattributes"}  # şablondaki ad → projedeki ad
 NAME_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,63}")  # Harfle başlar; harf, rakam, '_'; en çok 64 karakter
 FALLBACK_NAME = "MyGame"  # Klasör adından geçerli bir ad çıkmazsa önerilen ad
@@ -102,6 +105,7 @@ def setup_project(engine: Path, root: Path, name: str, dry_run: bool = False) ->
     if (error := name_error(name)) is not None:
         raise ToolError(f"Invalid project name '{name}': {error}")
     result = SetupResult(root)
+    version = load_manifest().version
     for source, relative in template_files():
         destination = root / relative
         if destination.exists():
@@ -111,8 +115,9 @@ def setup_project(engine: Path, root: Path, name: str, dry_run: bool = False) ->
         if dry_run:
             continue
         destination.parent.mkdir(parents=True, exist_ok=True)
-        # Bayt düzeyinde kopya: satır sonları (LF) ve kodlama şablondaki gibi kalır, sadece ad yerleşir.
-        destination.write_bytes(source.read_bytes().replace(PLACEHOLDER.encode(), name.encode()))
+        # Bayt düzeyinde kopya: satır sonları (LF) ve kodlama şablondaki gibi kalır, sadece ad ve sürüm yerleşir.
+        content = source.read_bytes().replace(PLACEHOLDER.encode(), name.encode())
+        destination.write_bytes(content.replace(VERSION_PLACEHOLDER.encode(), version.encode()))
     return result
 
 

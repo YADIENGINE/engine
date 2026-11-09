@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(Engine LANGUAGES C CXX)
+    set(ENGINE_IS_REPOSITORY ON) # Built alone, not as a game's Engine/: the engine's own repository checks run
+else()
+    set(ENGINE_IS_REPOSITORY OFF)
 endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
