@@ -77,10 +77,12 @@ public:
     [[nodiscard]] std::span<const ColliderRef> Overlapping(const Shape& shape, const Pose& pose, CollisionMask mask,
                                                            ColliderId ignore = {}) const;
     [[nodiscard]] std::span<const ColliderRef> At(Float2 point, CollisionMask mask) const;
-    // The nearest collider along a ray; equal distances go to the lower id.
+    // The nearest collider along a ray; equal distances go to the lower id. 'ignore' is the asker's own collider: pass
+    // it instead of removing and re-adding that collider.
     [[nodiscard]] std::optional<ColliderHit> Raycast(Float2 from, Float2 to, CollisionMask mask,
                                                      ColliderId ignore = {}) const;
-    // The nearest collider a moving shape reaches; it cannot pass through one, however fast it goes.
+    // The nearest collider a moving shape reaches; it cannot pass through one, however fast it goes. 'ignore' is the
+    // mover's own collider: pass it instead of removing and re-adding that collider.
     [[nodiscard]] std::optional<ColliderHit> Sweep(const Shape& shape, const Pose& from, Float2 move,
                                                    CollisionMask mask, ColliderId ignore = {}) const;
     // Every overlapping pair with one side in each mask, once, in id order. Bullets against enemies:

@@ -10,8 +10,26 @@ Plans, reports and notes for people or other agents are `.md` files in `Notes/`,
 - Find engine API with `python Engine api NAME` or `python Engine api WORDS` (task routes and declarations, with
   lines); then read only the printed lines. Engine `.cpp` files are not the API.
 - Search only `Game/` or files you name, never all of `Engine/` or the project root.
+- Before writing a list, counter, timer, hit test or other general machinery, ask `python Engine api` with the task's
+  words (`python Engine api enemies that spawn and die`), not only with names you already know.
 - Read files longer than about 200 lines by range.
 - One task per session; when it is done, say what the next session needs and stop.
+- A prompt or plan you write for another agent lists `Engine/AgentDocs/Agent.md` and the matching skills in what to
+  read first, and names the engine tools you found for the task.
+
+## Before writing your own
+
+The engine already has these; use them instead of game code that does the same.
+
+| When the code is about to | Use |
+| --- | --- |
+| keep spawned things in a vector or by index while others point at them | `Pool` (+ `PoolColliders`): `AgentDocs/Recipes/Pool.md` |
+| remove and re-add a collider so a query does not find it | the query's `ignore` parameter: `Docs/Collision.md#many-colliders` |
+| check a clip's time for a footstep, a hit frame or a muzzle flash | Animator moments: `AgentDocs/Recipes/Animator.md` |
+| count steps with `age`, `phase` or `++steps` for a sequence of actions | `Timeline`: `AgentDocs/Recipes/Timeline.md` |
+| keep short-lived drawings with an age, a lifetime and a cap | `Popup`, `FxStage`: `AgentDocs/Recipes/PopupEffects.md`, `AgentDocs/Recipes/FxCues.md` |
+| hit-test a button by hand, or block input under a pause screen or dialog | `UiButton`, `UiLayer`: `AgentDocs/Skills/ui/SKILL.md` |
+| store cells in a flat array, or pick by weight, without repeats or with pity | `Grid<T>`, `WeightedIndex`, `DrawTable`: `AgentDocs/Recipes/Procedural.md` |
 
 ## Tools
 
