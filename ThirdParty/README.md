@@ -23,6 +23,8 @@ building (examples, documentation, tests) are omitted.
 | `kb/` | 2.31 (5474b3c) | https://github.com/JimmyLefevre/kb/archive/5474b3cebe3c5fc52fa2ab35e71e20fe9a3dbec2.tar.gz | `EngineTextShape`: Graphics/Text shaping (private) | Yes |
 | `NotoSansScripts/` | Arabic 2.009, Hebrew 3.000, Thai 2.000 | https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf | Text shaping tests (OFL 1.1) | No |
 | `NotoSans/` | 2.008 | https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSans | Painter starter game/worker font (OFL 1.1) | Starter only |
+| `msf_gif/` | raylib 5.5's copy (`src/external/msf_gif.h`) | https://github.com/notnullnotvoid/msf_gif | Editor: Pixelator GIF export (private) | No |
+| `Oklab/` | 2020 reference code | https://bottosson.github.io/posts/oklab/ | `EngineColor` (`Utilities/Color/Oklab.h`, private); editor lint only | No |
 | `IBMPlex/` | Sans 3.005, Mono 2.004 | https://github.com/IBM/plex/releases (`@ibm/plex-sans@1.1.0`, `@ibm/plex-mono@1.1.0`) | ToolUi fonts (OFL 1.1) | No |
 
 Included parts: raylib `CMakeLists.txt`, `CMakeOptions.txt`, `cmake/`, `src/`, `raylib.pc.in`, license; the full
@@ -33,7 +35,12 @@ miniaudio `miniaudio.h`, `miniaudio.c`, `extras/stb_vorbis.c` and `LICENSE`. ear
 `clipper.triangulation.cpp` is not built (Paint triangulates with earcut). FastNoiseLite `Cpp/FastNoiseLite.h` (kept at the
 folder's root) and `LICENSE`. PFR (the standalone `pfr_non_boost`) `include/` and `LICENSE_1_0.txt`; it is the one library a public
 header includes, and only `Core/Utilities/Reflection.h` may (`check` enforces it). kb `kb_text_shape.h` and `LICENSE`, compiled once in
-`Core/Graphics/Text/Internals/TextShapeLibrary.c`; only `Graphics/Text/Internals` may include it. raylib's own copy of miniaudio, inside
+`Core/Graphics/Text/Internals/TextShapeLibrary.c`; only `Graphics/Text/Internals` may include it. msf_gif `msf_gif.h`
+(MIT or public domain; the license is at the end of the file), compiled once in
+`Editor/Internals/Pixelator/MsfGifLibrary.c` under editor names, because raylib's `rcore.c` compiles its own copy with
+the library's names. Oklab `oklab.h` holds the reference code exactly as published in the post (public domain, or the
+MIT `License.txt` beside it), included only by `Core/Utilities/Color/Internals/Oklab.cpp`; a game that links
+`EngineColor` adds Oklab to the notices. raylib's own copy of miniaudio, inside
 `raudio.c`, is left out of the build by `CMakeLists.txt`, since two copies cannot link; the file itself stays, unmodified.
 
 ## License notice
