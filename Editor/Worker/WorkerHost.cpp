@@ -15,6 +15,7 @@
 #include "Editor/Internals/Session/SceneAutoRegistration.h"
 #include "Editor/Worker/AssetThumbnailGame.h"
 #include "Editor/Worker/AudioReport.h"
+#include "Editor/Worker/PixelLintReport.h"
 #include "Editor/Worker/WorkerGame.h"
 #include "Editor/Worker/GlowBenchmark.h"
 #include "Editor/Worker/LightGallery.h"
@@ -96,6 +97,9 @@ int RunEditorWorker(int argc, char** argv, const std::function<void(SceneRegistr
             else if (argument == "--audio-report" && i + 1 < argc) {
                 // A tool's question; no window, device or editor
                 WriteAudioReport(argv[++i], CatalogWithSounds(settings.audio, settings.sounds));
+                return 0;
+            } else if (argument == "--pixel-lint" && i + 1 < argc) {
+                WritePixelLintReport(argv[++i]); // A tool's question; no window or editor
                 return 0;
             } else if (argument == "--thumbnails" && i + 2 < argc) {
                 thumbnails = argv[++i];

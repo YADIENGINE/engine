@@ -3,11 +3,12 @@
 #include <string>
 #include <vector>
 #include "Graphics/Pixel/PixelCanvas.h"
+#include "Graphics/Pixel/PixelPalette.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Geometry/Vec2.h"
 
 // The Pixelator's copy of a pixel graphic (GraphicAsset::pixels), as the worker sends it in its "pixels" message
-// (Docs/Design/README.md → D64). Plain data, so an editing tool can later change it and send it back.
+// (Docs/Design/README.md → D64, D65). Plain data, so an editing tool can later change it and send it back.
 
 // One distinct sprite: inks and parts, rows top to bottom. An empty sprite has no pixels.
 struct PixelatorImage {
@@ -39,14 +40,30 @@ struct PixelatorItem {
 
 struct PixelatorAsset {
     std::string id;                   // The catalog entry shown
-    std::string error;                // Set when the graphic could not be sampled; nothing else is then
+    std::string error;                // Set when the graphic could not be read; nothing else is then
     std::vector<PixelatorItem> items; // Every item of the set, empty for a single drawing
     std::size_t item = 0;             // Index into items
     std::vector<PixelatorImage> images;
     std::vector<std::vector<Color4>> palettes; // Each with ink 0 (transparent) first, as PixelPalette::Colors()
     std::vector<PixelatorFrame> frames;
-    float window = 0.0f; // Seconds of the graphic's clock that were sampled
-    bool looped = false; // The frames are one cycle that repeats
-    bool capped = false; // The frame, size or time limit ended sampling early
+    bool loops = true;    // The frames repeat (GraphicPixels::loops)
+    bool capped = false;  // Frames past the size limit were left out
+    std::vector<std::string> inkNames;  // By ink number (index 0 unused); shorter or empty when not named
+    std::vector<std::string> partNames; // By part number (index 0: no part)
+    std::vector<InkRamp> ramps;         // The registration's shading ramps, for lint
     bool operator==(const PixelatorAsset&) const = default;
+
+    // An ink's or a part's registered name; empty when it has none.
+    [[nodiscard]] const std::string& InkName(int ink) const { return NameIn(inkNames, ink); }
+    [[nodiscard]] const std::string& PartName(int part) const { return NameIn(partNames, part); }
+
+private:
+    [[nodiscard]] static const std::string& NameIn(const std::vector<std::string>& names, int index) {
+        static const std::string None;
+        return index > 0 && static_cast<std::size_t>(index) < names.size() ? names[static_cast<std::size_t>(index)]
+                                                                           : None;
+    }
 };
+
+// "5", or "5 Steel1" when the ink has a name.
+[[nodiscard]] std::string PixelatorInkLabel(const PixelatorAsset& asset, int ink);

@@ -1,8 +1,10 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "Graphics/Pixel/PixelAnimation.h"
 #include "Graphics/Pixel/PixelCanvas.h"
 #include "Graphics/Pixel/PixelLegend.h"
 #include "Graphics/Pixel/PixelMask.h"
@@ -351,4 +353,29 @@ TEST_CASE("Engine.Pixel.SpriteWithoutAtlasOrWithBadScaleIsRejected", "[engine][p
     h.End();
     CHECK(h.list.Rejected() == 2);
     CHECK(h.Draws().empty());
+}
+
+TEST_CASE("Engine.Pixel.AnimationPicksTheFrameForATime", "[engine][pixel]") {
+    const PixelAnimation walk{{{4, 0.2f}, {5, 0.1f}, {6, 0.2f}}};
+    CHECK(walk.Length() == Catch::Approx(0.5f));
+    CHECK(walk.Loops());
+    CHECK(walk.FrameAt(0.0f) == 0);
+    CHECK(walk.SpriteAt(0.19f) == 4);
+    CHECK(walk.SpriteAt(0.21f) == 5);
+    CHECK(walk.SpriteAt(0.35f) == 6);
+    CHECK(walk.SpriteAt(0.55f) == 4); // Loops
+    CHECK(walk.SpriteAt(-1.0f) == 4);
+
+    const PixelAnimation once({{0, 0.1f}, {1, 0.1f}}, false);
+    CHECK(once.SpriteAt(5.0f) == 1); // Holds its last frame
+
+    const auto even = PixelAnimation::Even(4, 8.0f, 10);
+    REQUIRE(even.Frames().size() == 4);
+    CHECK(even.Frames()[0].sprite == 10);
+    CHECK(even.Frames()[3].seconds == 0.125f);
+    CHECK(even.SpriteAt(0.3f) == 12);
+
+    CHECK_THROWS_AS(PixelAnimation(std::vector<PixelFrame>{}), std::invalid_argument);
+    CHECK_THROWS_AS(PixelAnimation(std::vector<PixelFrame>{{0, 0.0f}}), std::invalid_argument);
+    CHECK_THROWS_AS(PixelAnimation::Even(2, 0.0f), std::invalid_argument);
 }

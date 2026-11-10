@@ -63,8 +63,10 @@ GraphicAsset Make{name}() {{
 
 # --pixel: a pixel sprite drawn on a PixelCanvas, frames made once, its palette, and the editor's Pixelator.
 PIXEL_HEADER = """#pragma once
+#include "Graphics/Pixel/PixelAnimation.h"
 #include "Graphics/Pixel/PixelPalette.h"
 #include "Graphics/Pixel/PixelSprite.h"
+#include "Graphics/Pixel/PixelSpriteSet.h"
 #include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
@@ -74,7 +76,10 @@ struct {name}Look {{
     float flash = 0.0f; // 0..1: the whole sprite moves toward white (a hit)
 }};
 
-// The frame shown at `time` and the palette it is drawn in (also what the editor's Pixelator shows).
+// Its frames as data: the sprites and the animation that plays them (what the editor's Pixelator shows too).
+[[nodiscard]] const PixelSpriteSet& {name}Sprites();
+[[nodiscard]] const PixelAnimation& {name}Animation();
+// The frame shown at `time` and the palette it is drawn in.
 [[nodiscard]] const PixelSprite& {name}Sprite(float time);
 [[nodiscard]] const PixelPalette& {name}Palette();
 // Centred in `box`, standing on its bottom edge, each sprite pixel a whole number of art pixels.
@@ -85,7 +90,6 @@ PIXEL_SOURCE = """#include "{include}.h"
 #include <cmath>
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Pixel/PixelCanvas.h"
-#include "Graphics/Pixel/PixelSpriteSet.h"
 
 namespace {{
 constexpr int Width = 16;
@@ -108,11 +112,14 @@ PixelSprite PaintFrame(std::size_t frame) {{
 }}
 
 const PixelSpriteSet Sprites(Frames, &PaintFrame);
+const PixelAnimation Animation = PixelAnimation::Even(Frames, FramesPerSecond);
 }} // namespace
 
-const PixelSprite& {name}Sprite(float time) {{
-    return Sprites[static_cast<std::size_t>(std::max(0.0f, std::floor(time * FramesPerSecond))) % Frames];
-}}
+const PixelSpriteSet& {name}Sprites() {{ return Sprites; }}
+
+const PixelAnimation& {name}Animation() {{ return Animation; }}
+
+const PixelSprite& {name}Sprite(float time) {{ return Sprites[Animation.SpriteAt(time)]; }}
 
 const PixelPalette& {name}Palette() {{
     static const PixelPalette palette{{Rgb(0x1b1824), Rgb(0x2f4a6b), Rgb(0x4d86a8), Rgb(0x8ccbd9), Rgb(0xf2f0e6)}};
@@ -135,7 +142,9 @@ GraphicAsset Make{name}() {{
     GraphicAsset asset;
     asset.usage = "Draw{name}(paint, box, time);";
     asset.draw = [](Painter& paint, const FloatRect& box, std::size_t, float time) {{ Draw{name}(paint, box, time); }};
-    asset.pixels = [](std::size_t, float time) {{ return GraphicPixels{{{name}Sprite(time), {name}Palette()}}; }};
+    asset.pixels = [](std::size_t) {{
+        return GraphicPixels::Animated({name}Sprites(), {name}Animation(), {name}Palette());
+    }};
     return asset;
 }}
 [[maybe_unused]] const bool Registered = RegisterGraphicAsset(&Make{name});

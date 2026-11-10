@@ -107,7 +107,7 @@ TEST_CASE("Editor.GraphicAsset.PixelGraphicsAreMarkedForThePixelator", "[engine-
     CHECK_FALSE(drawing[0].asset->pixels);
 
     auto pixel = Drawable();
-    pixel.pixels = [](std::size_t, float) { return GraphicPixels{}; };
+    pixel.pixels = [](std::size_t) { return GraphicPixels{}; };
     const auto definitions = GraphicAssetDefinitions(pixel, file, engine);
     CHECK(definitions[0].asset->pixels);
     // The pixels are the Pixelator's: the scene itself offers no view controls in the Inspector.

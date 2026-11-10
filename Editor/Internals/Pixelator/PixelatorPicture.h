@@ -61,7 +61,24 @@ struct PixelatorPictureOptions {
 // The zoom a picture uses: `requested` (1-64) lowered until both sides fit PixelatorPictureMaxSide, or for 0 the
 // largest whose long side stays within PixelatorPictureAutoSide (at least 1).
 [[nodiscard]] int PixelatorPictureZoom(Vec2 sprite, int requested);
+// What a picture shows besides the frame in its view's colours (D65).
+struct PixelatorPictureLayer {
+    const PixelatorImage* image = nullptr;
+    std::vector<Color4> colors; // One per pixel of `image`
+    Vec2 offset;                // Where its top-left corner lands in the frame's pixels
+};
+struct PixelatorPictureExtras {
+    std::vector<PixelatorPictureLayer> under;  // Onion-skin ghosts, drawn first
+    std::optional<std::vector<Color4>> colors; // Replace the view's colours (the Diff view)
+    int repeat = 1;                            // The tile preview: the frame repeated this many times each way
+    std::vector<Vec2> marks;                   // Pixels to ring (lint findings)
+};
+inline constexpr Color4 PixelatorMarkColor{255, 224, 0, 255};
+
 // The sprite zoomed by `options.zoom` (already resolved, 1-64) on its background, with the grids and pivot marker.
 // Throws for an empty sprite or a zoom outside 1-64.
 [[nodiscard]] ViewportPixels ComposePixelatorPicture(const PixelatorImage& image, std::span<const Color4> palette,
-                                                     const PixelatorPictureOptions& options);
+                                                     const PixelatorPictureOptions& options,
+                                                     const PixelatorPictureExtras& extras = {});
+// `picture` in the top-left corner of a `width` x `height` one filled with the composed pictures' surround colour.
+[[nodiscard]] ViewportPixels PadPixelatorPicture(const ViewportPixels& picture, int width, int height);

@@ -122,6 +122,15 @@ set_target_properties(EngineProcedural PROPERTIES POSITION_INDEPENDENT_CODE ON C
 engine_simulation_flags(EngineProcedural)
 engine_warnings(EngineProcedural)
 
+# Perceptual colour (Utilities/Color/Oklab.h) over Ottosson's Oklab reference code, which stays private. Only the editor
+# links it today (the Pixelator's lint); a game that links it adds Oklab to its notices (ThirdParty/README.md).
+add_library(EngineColor STATIC Utilities/Color/Internals/Oklab.cpp)
+target_include_directories(EngineColor PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(EngineColor SYSTEM PRIVATE "${ENGINE_THIRD_PARTY_DIR}/Oklab")
+target_compile_features(EngineColor PUBLIC cxx_std_20)
+set_target_properties(EngineColor PROPERTIES POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
+engine_warnings(EngineColor)
+
 # Field reflection for plain structs (Utilities/Reflection.h): PFR, header only. The one vendored library a public header
 # includes, because poses and State walk a game's own structs inside templates; only Reflection.h names it.
 add_library(EngineReflection INTERFACE)
@@ -257,6 +266,7 @@ add_library(EngineHeadless STATIC
     Graphics/Light/LightOccluders.cpp
     Graphics/Paint/Painter.cpp
     Graphics/Pixel/Internals/PixelAtlas.cpp
+    Graphics/Pixel/PixelAnimation.cpp
     Graphics/Pixel/PixelCanvas.cpp
     Graphics/Pixel/PixelLegend.cpp
     Graphics/Pixel/PixelMask.cpp

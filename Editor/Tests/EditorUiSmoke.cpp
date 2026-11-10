@@ -19,7 +19,7 @@
 #include <thread>
 #include <vector>
 #include "Editor/Host/PixelatorTextures.h"
-#include "Editor/Internals/Pixelator/PixelFrameSampling.h"
+#include "Editor/Internals/Pixelator/PixelatorFrames.h"
 #include "Editor/Internals/Session/TuningWorkspace.h"
 #include "Editor/Ui/Panels/Agents/AgentsDrawer.h"
 #include "Terminal/TerminalSession.h"
@@ -307,8 +307,10 @@ std::shared_ptr<const PixelatorAsset> SamplePixels() {
     };
     const auto open = sprite(false);
     const auto closed = sprite(true);
-    auto asset = SamplePixelFrames(
-        [&](float time) { return GraphicPixels{time - std::floor(time) < 0.8f ? open : closed, palette}; });
+    GraphicPixels pixels;
+    pixels.frames = {{open, 0.8f}, {closed, 0.2f}};
+    pixels.palette = palette;
+    auto asset = PixelatorFramesOf(pixels);
     asset.id = "asset:Graphics/Characters/Owl#Idle";
     asset.items = {{"Idle", "asset:Graphics/Characters/Owl#Idle"}, {"Fly", "asset:Graphics/Characters/Owl#Fly"}};
     return std::make_shared<const PixelatorAsset>(std::move(asset));

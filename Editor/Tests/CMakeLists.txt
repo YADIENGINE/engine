@@ -1,5 +1,5 @@
 engine_use_catch2()
-add_executable(EngineEditorTests NotesTests.cpp AssetLibraryTests.cpp PixelatorTests.cpp QuickOpenTests.cpp AudioPreviewTests.cpp ControlChannelTests.cpp EditorInfrastructureTests.cpp EditorControlTests.cpp EditorUiModelTests.cpp ProfilerEditorTests.cpp
+add_executable(EngineEditorTests NotesTests.cpp AssetLibraryTests.cpp PixelatorTests.cpp PixelatorLintTests.cpp PixelatorViewsTests.cpp QuickOpenTests.cpp AudioPreviewTests.cpp ControlChannelTests.cpp EditorInfrastructureTests.cpp EditorControlTests.cpp EditorUiModelTests.cpp ProfilerEditorTests.cpp
     EditorCommandTests.cpp GitTests.cpp OneSceneTests.cpp TuningEditorTests.cpp WorkerSimulationTests.cpp
     "${CMAKE_CURRENT_SOURCE_DIR}/../Worker/WorkerScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Tests/Support/TempDirectory.cpp"

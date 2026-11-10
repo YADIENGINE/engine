@@ -22,7 +22,12 @@ add_library(EngineEditorSupport STATIC
     Internals/Protocol/WorkerMessageReader.cpp
     Internals/Protocol/EditorControlProtocol.cpp
     Internals/Protocol/PixelatorProtocol.cpp
-    Internals/Pixelator/PixelFrameSampling.cpp
+    Internals/Pixelator/MsfGifLibrary.c
+    Internals/Pixelator/PixelatorDiff.cpp
+    Internals/Pixelator/PixelatorExport.cpp
+    Internals/Pixelator/PixelatorFrames.cpp
+    Internals/Pixelator/PixelatorLayout.cpp
+    Internals/Pixelator/PixelatorLint.cpp
     Internals/Pixelator/PixelatorPicture.cpp
     Internals/Pixelator/PixelatorPlayback.cpp
     Internals/Pixelator/PixelatorView.cpp
@@ -63,7 +68,9 @@ add_library(EngineEditorSupport STATIC
     Internals/Settings/EditorSettingsStore.cpp
     Internals/Settings/EditorTheme.cpp
 )
-target_link_libraries(EngineEditorSupport PUBLIC EngineEditorApi EngineProfiler nlohmann_json::nlohmann_json PRIVATE EngineStorage)
+target_link_libraries(EngineEditorSupport PUBLIC EngineEditorApi EngineProfiler nlohmann_json::nlohmann_json PRIVATE EngineStorage EngineColor)
+# msf_gif (the Pixelator's GIF export) is editor-only; raylib's own copy keeps its names (Internals/Pixelator/MsfGif.h).
+target_include_directories(EngineEditorSupport SYSTEM PRIVATE "${ENGINE_THIRD_PARTY_DIR}/msf_gif")
 engine_warnings(EngineEditorSupport)
 if(WIN32)
     target_sources(EngineEditorSupport PRIVATE
@@ -89,7 +96,7 @@ set(editor_output "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
 if(ENGINE_BUILD_EDITOR)
     add_library(EngineWorkerRuntime STATIC EXCLUDE_FROM_ALL
         Worker/AssetThumbnailGame.cpp Worker/AudioReport.cpp Worker/WorkerScene.cpp Worker/WorkerGame.cpp Worker/WorkerSession.cpp Worker/WorkerHost.cpp
-        Worker/WorkerProfiler.cpp Worker/PixelatorReport.cpp Worker/GlowBenchmark.cpp Worker/LightGallery.cpp Worker/PostGallery.cpp
+        Worker/WorkerProfiler.cpp Worker/PixelatorReport.cpp Worker/PixelLintReport.cpp Worker/GlowBenchmark.cpp Worker/LightGallery.cpp Worker/PostGallery.cpp
         Worker/RenderGallery.cpp)
     target_link_libraries(EngineWorkerRuntime PUBLIC Engine EngineAssets EngineEditorApi EngineEditorSupport EngineProfilerRuntime)
     engine_warnings(EngineWorkerRuntime)

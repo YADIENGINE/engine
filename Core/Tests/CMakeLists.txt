@@ -65,6 +65,7 @@ engine_tests(EngineTests
         LightTests.cpp
         MathTests.cpp
         NoiseFieldTests.cpp
+        OklabTests.cpp
         PaintTests.cpp
         PixelTests.cpp
         PaintGeometryTests.cpp
@@ -88,7 +89,7 @@ engine_tests(EngineTests
         TuningTests.cpp
         UiTransformTests.cpp
         TextShapingTests.cpp
-    LINKS EngineAssets EngineHeadless EngineStorage
+    LINKS EngineAssets EngineHeadless EngineStorage EngineColor
 )
 # The real audio engine on no device (AudioOutput::Offline), which no other test executable links.
 engine_tests(EngineAudioTests

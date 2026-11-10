@@ -1,4 +1,5 @@
 #include "Editor/Internals/Protocol/PixelatorProtocol.h"
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -80,11 +81,13 @@ std::string PixelatorHex(Color4 color) {
 }
 
 nlohmann::json EncodePixelatorAsset(const PixelatorAsset& asset) {
-    nlohmann::json json{{"id", asset.id},
-                        {"item", asset.item},
-                        {"window", asset.window},
-                        {"looped", asset.looped},
-                        {"capped", asset.capped}};
+    nlohmann::json json{{"id", asset.id}, {"item", asset.item}, {"loops", asset.loops}, {"capped", asset.capped}};
+    json["inkNames"] = asset.inkNames;
+    json["partNames"] = asset.partNames;
+    auto ramps = nlohmann::json::array();
+    for (const auto& ramp : asset.ramps)
+        ramps.push_back({ramp.deep, ramp.shade, ramp.base, ramp.lit, ramp.shine});
+    json["ramps"] = std::move(ramps);
     if (!asset.error.empty()) json["error"] = asset.error;
     auto items = nlohmann::json::array();
     for (const auto& item : asset.items)
@@ -117,10 +120,24 @@ PixelatorAsset DecodePixelatorAsset(const nlohmann::json& json) {
     asset.id = json.at("id").get<std::string>();
     if (asset.id.empty()) throw std::runtime_error("Pixel graphic without an id");
     asset.error = json.value("error", std::string());
-    asset.window = json.at("window").get<float>();
-    asset.looped = json.at("looped").get<bool>();
+    asset.loops = json.at("loops").get<bool>();
     asset.capped = json.at("capped").get<bool>();
-    if (!std::isfinite(asset.window) || asset.window < 0.0f) throw std::runtime_error("Invalid pixel sampling window");
+    const auto names = [&](const char* key) {
+        const auto& list = json.at(key);
+        if (!list.is_array() || list.size() > static_cast<std::size_t>(MaxInks))
+            throw std::runtime_error(std::string("Invalid pixel graphic ") + key);
+        return list.get<std::vector<std::string>>();
+    };
+    asset.inkNames = names("inkNames");
+    asset.partNames = names("partNames");
+    const auto& ramps = json.at("ramps");
+    if (!ramps.is_array() || ramps.size() > static_cast<std::size_t>(MaxInks))
+        throw std::runtime_error("Invalid pixel graphic ramps");
+    for (const auto& entry : ramps) {
+        if (!entry.is_array() || entry.size() != 5) throw std::runtime_error("Invalid pixel graphic ramp");
+        const auto ink = [&](std::size_t at) { return static_cast<Ink>(Index(entry[at], MaxInks, "ramp ink")); };
+        asset.ramps.push_back({ink(0), ink(1), ink(2), ink(3), ink(4)});
+    }
     const auto& items = json.at("items");
     if (!items.is_array() || items.size() > MaxItems) throw std::runtime_error("Invalid pixel graphic items");
     for (const auto& item : items)
@@ -169,11 +186,8 @@ PixelatorAsset DecodePixelatorAsset(const nlohmann::json& json) {
 }
 
 nlohmann::json PixelatorSummary(const PixelatorAsset& asset, std::size_t frame) {
-    nlohmann::json json{{"asset", asset.id},
-                        {"frames", asset.frames.size()},
-                        {"window", asset.window},
-                        {"looped", asset.looped},
-                        {"capped", asset.capped}};
+    nlohmann::json json{
+        {"asset", asset.id}, {"frames", asset.frames.size()}, {"loops", asset.loops}, {"capped", asset.capped}};
     if (!asset.items.empty()) {
         json["item"] = asset.items[asset.item].name;
         auto names = nlohmann::json::array();
@@ -194,13 +208,87 @@ nlohmann::json PixelatorSummary(const PixelatorAsset& asset, std::size_t frame) 
         const Color4 color = count.index < static_cast<int>(palette.size())
                                  ? palette[static_cast<std::size_t>(count.index)]
                                  : Color4{0, 0, 0, 0};
-        inks.push_back({{"ink", count.index}, {"color", PixelatorHex(color)}, {"pixels", count.pixels}});
+        nlohmann::json ink{{"ink", count.index}, {"color", PixelatorHex(color)}, {"pixels", count.pixels}};
+        if (const auto& name = asset.InkName(count.index); !name.empty()) ink["name"] = name;
+        inks.push_back(std::move(ink));
     }
     json["inks"] = std::move(inks);
     auto parts = nlohmann::json::array();
-    for (const auto& count : PixelatorPartCounts(image))
-        parts.push_back({{"part", count.index}, {"pixels", count.pixels}});
+    for (const auto& count : PixelatorPartCounts(image)) {
+        nlohmann::json part{{"part", count.index}, {"pixels", count.pixels}};
+        if (const auto& name = asset.PartName(count.index); !name.empty()) part["name"] = name;
+        parts.push_back(std::move(part));
+    }
     json["parts"] = std::move(parts);
+    return json;
+}
+
+nlohmann::json EncodePixelatorFindings(const std::vector<PixelatorFinding>& findings, std::size_t maxPixels) {
+    auto list = nlohmann::json::array();
+    for (const auto& finding : findings) {
+        nlohmann::json entry{{"rule", finding.rule},
+                             {"severity", PixelatorSeverityName(finding.severity)},
+                             {"inks", finding.inks},
+                             {"text", finding.text}};
+        if (!finding.frames.empty()) entry["frames"] = finding.frames;
+        auto pixels = nlohmann::json::array();
+        for (std::size_t index = 0; index < std::min(maxPixels, finding.pixels.size()); ++index)
+            pixels.push_back({finding.pixels[index].x, finding.pixels[index].y});
+        entry["pixels"] = std::move(pixels);
+        if (finding.pixels.size() > maxPixels) entry["morePixels"] = finding.pixels.size() - maxPixels;
+        list.push_back(std::move(entry));
+    }
+    return list;
+}
+
+nlohmann::json PixelatorLintReport(const PixelatorAsset& asset) {
+    nlohmann::json report{{"asset", asset.id}};
+    if (!asset.items.empty()) report["item"] = asset.items[asset.item].name;
+    if (!asset.error.empty()) {
+        report["error"] = asset.error;
+        return report;
+    }
+    const auto findings = LintPixelator(asset);
+    const auto warnings = PixelatorWarnings(findings);
+    report["frames"] = asset.frames.size();
+    report["warnings"] = warnings;
+    report["infos"] = findings.size() - warnings;
+    report["findings"] = EncodePixelatorFindings(findings);
+    return report;
+}
+
+nlohmann::json EncodePixelatorDiff(const PixelatorDiff& diff, std::size_t maxPixels) {
+    nlohmann::json json{{"same", diff.Same()},
+                        {"framesBefore", diff.framesBefore},
+                        {"framesAfter", diff.framesAfter},
+                        {"changedPixels", diff.ChangedPixels()}};
+    auto palette = nlohmann::json::array();
+    for (const auto& change : diff.palette)
+        palette.push_back({{"ink", change.ink},
+                           {"before", change.before.a == 0 ? std::string("none") : PixelatorHex(change.before)},
+                           {"after", change.after.a == 0 ? std::string("none") : PixelatorHex(change.after)}});
+    json["palette"] = std::move(palette);
+    auto frames = nlohmann::json::array();
+    for (const auto& change : diff.frames) {
+        nlohmann::json entry{{"frame", change.frame}, {"changed", change.pixels.size()}, {"partsOnly", change.partsOnly}};
+        if (change.added) entry["added"] = true;
+        if (change.removed) entry["removed"] = true;
+        if (!change.added && !change.removed) {
+            if (!(change.sizeBefore == change.sizeAfter))
+                entry["size"] = {{change.sizeBefore.x, change.sizeBefore.y}, {change.sizeAfter.x, change.sizeAfter.y}};
+            if (!(change.pivotBefore == change.pivotAfter))
+                entry["pivot"] = {{change.pivotBefore.x, change.pivotBefore.y},
+                                  {change.pivotAfter.x, change.pivotAfter.y}};
+            if (change.secondsBefore != change.secondsAfter)
+                entry["seconds"] = {*change.secondsBefore, *change.secondsAfter};
+        }
+        auto pixels = nlohmann::json::array();
+        for (std::size_t index = 0; index < std::min(maxPixels, change.pixels.size()); ++index)
+            pixels.push_back({change.pixels[index].x, change.pixels[index].y});
+        entry["pixels"] = std::move(pixels);
+        frames.push_back(std::move(entry));
+    }
+    json["frames"] = std::move(frames);
     return json;
 }
 

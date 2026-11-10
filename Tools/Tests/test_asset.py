@@ -57,7 +57,7 @@ class AssetCommandTests(unittest.TestCase):
         self.assertIn("const PixelSprite& SlimeSprite(float time);", header)
         self.assertIn("const SlimeLook& look = {}", header)
         registration = (self.root / GRAPHICS / "Enemies/Slime.asset.cpp").read_text(encoding="utf-8")
-        self.assertIn("GraphicPixels{SlimeSprite(time), SlimePalette()}", registration)
+        self.assertIn("GraphicPixels::Animated(SlimeSprites(), SlimeAnimation(), SlimePalette())", registration)
 
     def test_new_rejects_bad_names_paths_and_existing_assets(self):
         for name, folder in (("goblin", ""), ("Gob lin", ""), ("Goblin", "../Outside"), ("Goblin", "C:/x")):

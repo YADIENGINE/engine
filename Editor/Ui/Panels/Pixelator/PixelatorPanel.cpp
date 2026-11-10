@@ -426,12 +426,9 @@ void PixelatorPanel::FrameStrip() {
         ImGui::Text("Frame %zu / %zu  %s", frame + 1, frames.size(), Milliseconds(frames[frame].seconds).c_str());
     ImGui::PopFont();
     ImGui::SameLine();
-    const std::string about = frames.size() == 1 ? "still"
-                              : _asset->looped   ? "loops"
-                                                 : std::format("first {:.1f} s", _asset->window);
-    ImGui::TextColored(ToolColors().secondary, "%s%s", about.c_str(), _asset->capped ? ", cut at the limit" : "");
-    ToolTooltip("Frames come from sampling the graphic's clock 60 times a second for up to 4 s: equal sprites in a "
-                "row make one frame. A cycle that repeats is kept once (loops).");
+    const char* about = frames.size() == 1 ? "still" : _asset->loops ? "loops" : "plays once";
+    ImGui::TextColored(ToolColors().secondary, "%s%s", about, _asset->capped ? ", cut at the size limit" : "");
+    ToolTooltip("The frames the graphic's registration declares (GraphicAsset::pixels), with their durations.");
     if (!several) return;
     ImGui::SameLine();
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
@@ -490,7 +487,7 @@ void PixelatorPanel::Draw(const EditorSnapshot& snapshot, const EditorUiActions&
     if (!_gameScaleChosen && _projectArtPixel > 0) _gameScale = _projectArtPixel;
     if (!_asset) {
         if (snapshot.pixelsPending)
-            ToolEmptyState("Reading pixels", "The scene is sampling the graphic's frames.");
+            ToolEmptyState("Reading pixels", "The scene is reading the graphic's frames.");
         else
             ToolEmptyState("No pixel graphic open",
                            "Open a graphic from Assets whose GraphicAsset has pixels to see its pixels here.");

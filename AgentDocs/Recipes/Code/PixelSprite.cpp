@@ -4,7 +4,6 @@
 #include <cmath>
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Pixel/PixelCanvas.h"
-#include "Graphics/Pixel/PixelSpriteSet.h"
 
 namespace {
 constexpr int Width = 20;
@@ -41,11 +40,14 @@ PixelSprite PaintGuard(std::size_t frame) {
 }
 
 const PixelSpriteSet Sprites(Frames, &PaintGuard);
+const PixelAnimation Breathing = PixelAnimation::Even(Frames, 2.0f); // Two frames a second
 } // namespace
 
-const PixelSprite& GuardSprite(float time) {
-    return Sprites[static_cast<std::size_t>(std::max(0.0f, std::floor(time * 2.0f))) % Frames];
-}
+const PixelSpriteSet& GuardSprites() { return Sprites; }
+
+const PixelAnimation& GuardAnimation() { return Breathing; }
+
+const PixelSprite& GuardSprite(float time) { return Sprites[Breathing.SpriteAt(time)]; }
 
 PixelPalette GuardPalette(GuardKind kind) {
     PixelPalette palette{Rgb(0x14121c), Rgb(0x3a4152), Rgb(0x657088), Rgb(0x9aa6b8), Rgb(0xdfe6ee),

@@ -1,7 +1,7 @@
 #include "Editor/Worker/PixelatorReport.h"
 #include <algorithm>
 #include <exception>
-#include "Editor/Internals/Pixelator/PixelFrameSampling.h"
+#include "Editor/Internals/Pixelator/PixelatorFrames.h"
 #include "Editor/Internals/Session/GraphicAssetCatalog.h"
 
 PixelatorAsset PixelatorReport(const std::string& id) {
@@ -26,15 +26,15 @@ PixelatorAsset PixelatorReport(const std::string& id) {
                     report.items.push_back({asset->items[graphic.item].name, graphic.id});
                 }
         const std::size_t item = found->item;
-        auto sampled = SamplePixelFrames([&](float time) { return asset->pixels(item, time); });
-        sampled.id = report.id;
-        sampled.items = std::move(report.items);
-        sampled.item = report.item;
-        return sampled;
+        auto declared = PixelatorFramesOf(asset->pixels(item));
+        declared.id = report.id;
+        declared.items = std::move(report.items);
+        declared.item = report.item;
+        return declared;
     } catch (const std::exception& error) {
         report.items.clear();
         report.item = 0;
-        report.error = std::string("Sampling the pixels failed: ") + error.what();
+        report.error = std::string("Reading the pixels failed: ") + error.what();
         return report;
     }
 }

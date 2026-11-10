@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <stdexcept>
 #include <vector>
-#include "Editor/Internals/Pixelator/PixelFrameSampling.h"
+#include "Editor/Internals/Pixelator/PixelatorFrames.h"
 #include "Editor/Internals/Pixelator/PixelatorPicture.h"
 #include "Editor/Internals/Pixelator/PixelatorPlayback.h"
 #include "Editor/Internals/Pixelator/PixelatorView.h"
@@ -34,92 +34,84 @@ Color4 PixelOf(const ViewportPixels& image, int x, int y) {
 }
 
 PixelatorAsset Sample(int width, int height) {
-    const auto sprite = Filled(width, height, 2, true);
-    auto asset = SamplePixelFrames([&](float) { return GraphicPixels{sprite, Palette}; });
+    auto asset = PixelatorFramesOf(GraphicPixels::Still(Filled(width, height, 2, true), Palette));
     asset.id = "asset:Graphics/Hero#Idle";
     asset.items = {{"Idle", "asset:Graphics/Hero#Idle"}, {"Run", "asset:Graphics/Hero#Run"}};
     return asset;
 }
+
+PixelSprite MakeFrame(std::size_t index) { return Filled(2, 2, static_cast<Ink>(index + 1)); }
 } // namespace
 
-TEST_CASE("Editor.Pixelator.StillGraphicIsOneFrameOverTheWindow", "[engine-editor]") {
-    const auto sprite = Filled(4, 3, 1);
-    int calls = 0;
-    const auto asset = SamplePixelFrames([&](float) {
-        ++calls;
-        return GraphicPixels{sprite, Palette};
-    });
-    CHECK(calls == 240); // 4 s at 60 Hz
+TEST_CASE("Editor.Pixelator.StillGraphicIsOneFrame", "[engine-editor]") {
+    const auto asset = PixelatorFramesOf(GraphicPixels::Still(Filled(4, 3, 1), Palette));
     REQUIRE(asset.frames.size() == 1);
     REQUIRE(asset.images.size() == 1);
     REQUIRE(asset.palettes.size() == 1);
-    CHECK(asset.frames[0].seconds == Catch::Approx(4.0f).margin(1e-3));
-    CHECK(asset.window == Catch::Approx(4.0f));
-    CHECK_FALSE(asset.looped);
+    CHECK(asset.frames[0].seconds == Catch::Approx(1.0f));
+    CHECK(asset.loops);
     CHECK_FALSE(asset.capped);
     CHECK(asset.images[0].width == 4);
     CHECK(asset.images[0].pivot.y == 3);
     CHECK(asset.palettes[0].size() == 4); // Ink 0 and three colours
+    CHECK(asset.inkNames.empty());
 }
 
-TEST_CASE("Editor.Pixelator.RepeatingAnimationKeepsOneCycle", "[engine-editor]") {
-    const auto a = Filled(2, 2, 1);
-    const auto b = Filled(2, 2, 2);
-    const auto c = Filled(2, 2, 3);
-    // a 0.25 s, b 0.25 s, c 0.5 s, repeating every second
-    const auto asset = SamplePixelFrames([&](float time) {
-        const float phase = time - static_cast<float>(static_cast<int>(time));
-        return GraphicPixels{phase < 0.25f ? a : phase < 0.5f ? b : c, Palette};
-    });
-    REQUIRE(asset.frames.size() == 3);
-    CHECK(asset.looped);
-    CHECK(asset.images.size() == 3);
-    CHECK(asset.frames[0].seconds == Catch::Approx(0.25f).margin(0.02f));
-    CHECK(asset.frames[2].seconds == Catch::Approx(0.5f).margin(0.02f));
+TEST_CASE("Editor.Pixelator.DeclaredFramesKeepTheirDurationsAndOrder", "[engine-editor]") {
+    // The game's own frames: a set played by an animation, exactly as the game draws them.
+    const PixelSpriteSet sprites(3, &MakeFrame);
+    const PixelAnimation walk{{{0, 0.25f}, {1, 0.125f}, {2, 0.5f}, {1, 0.125f}}};
+    auto pixels = GraphicPixels::Animated(sprites, walk, Palette);
+    pixels.inkNames = {"Line", "Skin"};
+    pixels.partNames = {"Body"};
+    pixels.ramps = {{1, 1, 2, 3, 3}};
+    const auto asset = PixelatorFramesOf(pixels);
+    REQUIRE(asset.frames.size() == 4);
+    CHECK(asset.images.size() == 3); // Sprite 1 shows twice, sent once
+    CHECK(asset.frames[0].seconds == 0.25f);
+    CHECK(asset.frames[1].seconds == 0.125f);
+    CHECK(asset.frames[3].image == asset.frames[1].image);
+    CHECK(asset.loops);
+    // Frame by frame the editor shows what the game draws at that time.
+    float time = 0.0f;
+    for (std::size_t frame = 0; frame < asset.frames.size(); ++frame) {
+        CHECK(asset.images[asset.frames[frame].image] ==
+              PixelatorImageOf(sprites[walk.SpriteAt(time + asset.frames[frame].seconds * 0.5f)]));
+        time += asset.frames[frame].seconds;
+    }
+    CHECK(asset.InkName(1) == "Line");
+    CHECK(asset.InkName(2) == "Skin");
+    CHECK(asset.InkName(3).empty());
+    CHECK(asset.PartName(1) == "Body");
+    CHECK(asset.PartName(0).empty());
+    CHECK(PixelatorInkLabel(asset, 2) == "2 Skin");
+    CHECK(PixelatorInkLabel(asset, 3) == "3");
+    REQUIRE(asset.ramps.size() == 1);
+    CHECK(asset.ramps[0].base == 2);
 
-    // A 3 s cycle of six 0.5 s frames shows only 1.33 passes in the 4 s window: still found.
-    std::vector<PixelSprite> six;
-    for (int index = 0; index < 6; ++index)
-        six.push_back(Filled(2, 2, static_cast<Ink>(index + 1)));
-    const auto slow = SamplePixelFrames(
-        [&](float time) { return GraphicPixels{six[static_cast<std::size_t>(time * 2.0f) % 6], Palette}; });
-    CHECK(slow.looped);
-    CHECK(slow.frames.size() == 6);
-    // Without a repeat it stays one pass.
-    const auto once = SamplePixelFrames([&](float time) {
-        return GraphicPixels{six[std::min<std::size_t>(static_cast<std::size_t>(time * 2.0f), 5)], Palette};
-    });
-    CHECK_FALSE(once.looped);
-    CHECK(once.frames.size() == 6);
+    const PixelAnimation once({{0, 0.1f}, {2, 0.1f}}, false);
+    CHECK_FALSE(PixelatorFramesOf(GraphicPixels::Animated(sprites, once, Palette)).loops);
 }
 
-TEST_CASE("Editor.Pixelator.EqualSpritesAndPalettesAreKeptOnce", "[engine-editor]") {
-    // A graphic that makes a new sprite (new id) on every call, flashing its palette for the first half second.
-    const auto asset = SamplePixelFrames(
-        [](float time) {
-            return GraphicPixels{Filled(3, 3, 1), time < 0.5f ? Palette.Mixed({255, 255, 255, 255}, 0.8f) : Palette};
-        },
-        {.window = 1.0f});
+TEST_CASE("Editor.Pixelator.EqualSpritesAreKeptOnceAndSizeIsCapped", "[engine-editor]") {
+    GraphicPixels pixels;
+    pixels.palette = Palette;
+    for (int index = 0; index < 4; ++index) // A new sprite (new id) with the same pixels each time
+        pixels.frames.push_back({Filled(3, 3, 1), 0.1f});
+    auto asset = PixelatorFramesOf(pixels);
     CHECK(asset.images.size() == 1);
-    CHECK(asset.palettes.size() == 2);
-    REQUIRE(asset.frames.size() == 2);
-    CHECK(asset.frames[0].palette != asset.frames[1].palette);
-    CHECK_FALSE(asset.looped);
-}
+    CHECK(asset.frames.size() == 4);
 
-TEST_CASE("Editor.Pixelator.SamplingStopsAtItsLimits", "[engine-editor]") {
-    int calls = 0;
-    const auto everyCall = [&](float) { return GraphicPixels{Filled(1 + calls++ % 50, 2, 1), Palette}; };
-    auto asset = SamplePixelFrames(everyCall, {.maxFrames = 8});
+    pixels.frames.clear();
+    for (int width = 1; width <= 8; ++width)
+        pixels.frames.push_back({Filled(width, 2, 1), 0.1f});
+    asset = PixelatorFramesOf(pixels, 40); // 4 + 8 + 12 + 16 bytes fit
     CHECK(asset.capped);
-    CHECK(asset.frames.size() == 8);
-    CHECK_FALSE(asset.looped);
-    calls = 0;
-    asset = SamplePixelFrames(everyCall, {.maxBytes = 40}); // 2 + 4 + 6 + 8 + 10 + 12 bytes per sprite pair
-    CHECK(asset.capped);
-    CHECK(asset.images.size() < 8);
-    CHECK_THROWS_AS(SamplePixelFrames([](float) -> GraphicPixels { throw std::runtime_error("broken"); }),
-                    std::runtime_error);
+    CHECK(asset.images.size() == 4);
+    CHECK(asset.frames.size() == 4);
+
+    pixels.frames = {{Filled(2, 2, 1), 0.0f}};
+    CHECK_THROWS_AS(PixelatorFramesOf(pixels), std::invalid_argument);
 }
 
 TEST_CASE("Editor.Pixelator.ViewFitsZoomsAroundThePointerAndMapsPixels", "[engine-editor]") {
@@ -233,7 +225,7 @@ TEST_CASE("Editor.Pixelator.MessageRoundTripsAndRejectsBrokenData", "[engine-edi
         const auto asset = Sample(width, 3);
         CHECK(DecodePixelatorAsset(EncodePixelatorAsset(asset)) == asset);
     }
-    auto failed = PixelatorAsset{.id = "asset:Graphics/Rock", .error = "Sampling the pixels failed: no"};
+    auto failed = PixelatorAsset{.id = "asset:Graphics/Rock", .error = "Reading the pixels failed: no"};
     CHECK(DecodePixelatorAsset(EncodePixelatorAsset(failed)) == failed);
 
     auto json = EncodePixelatorAsset(Sample(4, 4));

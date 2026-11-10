@@ -112,6 +112,23 @@ std::vector<SceneDefinition> GraphicAssetDefinitions(const GraphicAsset& asset, 
     return definitions;
 }
 
+GraphicPixels GraphicPixels::Animated(const PixelSpriteSet& sprites, const PixelAnimation& animation,
+                                      PixelPalette palette) {
+    GraphicPixels pixels;
+    pixels.palette = std::move(palette);
+    pixels.loops = animation.Loops();
+    for (const auto& frame : animation.Frames())
+        pixels.frames.push_back({sprites[frame.sprite], frame.seconds});
+    return pixels;
+}
+
+GraphicPixels GraphicPixels::Still(PixelSprite sprite, PixelPalette palette) {
+    GraphicPixels pixels;
+    pixels.palette = std::move(palette);
+    pixels.frames.push_back({std::move(sprite), 1.0f});
+    return pixels;
+}
+
 bool RegisterGraphicAsset(GraphicAsset (*make)(), std::source_location where) {
     Makers().push_back({make, where.file_name()});
     return true;

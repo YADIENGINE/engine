@@ -19,6 +19,7 @@ struct InkRamp {
     Ink base = ClearInk;
     Ink lit = ClearInk;
     Ink shine = ClearInk;
+    bool operator==(const InkRamp&) const = default;
 };
 
 // The colour of every ink. A value: copy it to make a variant (PixelPalette::Mixed for a flash, Set for an enemy's
