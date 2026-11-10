@@ -37,8 +37,9 @@ struct PixelatorExportOptions {
 // Each frame's GIF delay in hundredths of a second: rounded so the total stays the animation's length, at least 2
 // (players show shorter delays as 10).
 [[nodiscard]] std::vector<int> PixelatorGifDelays(const PixelatorAsset& asset);
-// An animated GIF of every frame (msf_gif), looping forever; transparent where the frame is. Throws when it cannot be
-// encoded.
+// An animated GIF of every frame, looping forever; transparent where the frame is. Up to 255 colours (pixel art) every
+// colour stays exact (EncodeIndexedGif); more go through msf_gif, which quantises and dithers. Throws when it cannot
+// be encoded.
 [[nodiscard]] std::vector<std::byte> EncodePixelatorGif(const PixelatorAsset& asset, int scale);
 
 // The graphic's folder name and the file name an export gets: "Knight" and "Idle-frame3.png" (frames count from 1),

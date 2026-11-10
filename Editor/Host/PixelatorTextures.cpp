@@ -1,7 +1,7 @@
 #include "Editor/Host/PixelatorTextures.h"
 
 namespace {
-constexpr std::size_t MaxSlots = 8;
+constexpr std::size_t MaxSlots = 16;
 constexpr int MaxSide = 4096;
 } // namespace
 

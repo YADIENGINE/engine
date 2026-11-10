@@ -466,7 +466,12 @@ EditorSnapshot EditorController::Snapshot() const {
     snapshot.controlEventCount = _controlEventCount;
     snapshot.audioUsage = &_audioUsage;
     snapshot.pixels = _pixels;
-    snapshot.pixelsPending = !_pixelsPending.empty();
+    snapshot.pixelsPending = PixelsPending();
+    snapshot.pixelsPrevious = PreviousPixels();
+    if (_pixels)
+        for (const auto& item : _pixels->items)
+            if (const auto data = PixelsOf(item.id)) snapshot.pixelItems[item.id] = data;
+    if (_project) snapshot.projectDirectory = _project->sourceDirectory;
     snapshot.controlAttempt = _controlAttempt;
     snapshot.noticeAge = std::chrono::duration<double>(std::chrono::steady_clock::now() - _noticeAt).count();
     return snapshot;
@@ -559,7 +564,7 @@ void EditorController::Invalidate(std::uint64_t generation) {
     _lastParameterRequest.clear();
     _displayed = _accepted[_selected];
     _previewing.reset();
-    _pixelsPending.clear(); // That worker will not answer; the pixels already shown stay
+    _pixelsAsked.clear(); // That worker will not answer; the pixels already shown stay
 }
 void EditorController::Send(const std::string& type, nlohmann::json data) {
     if (!_active) throw std::runtime_error("No scene connection");
@@ -696,14 +701,32 @@ void EditorController::RequestPixels() {
     const auto* definition = Selected();
     if (!definition || !definition->asset || !definition->asset->pixels) {
         _pixels.reset();
-        _pixelsPending.clear();
         return;
     }
     // Another graphic's pixels go at once; the same graphic's stay on screen until the new ones arrive.
     const auto base = [](const std::string& id) { return id.substr(0, id.find('#')); };
     if (_pixels && base(_pixels->id) != base(_selected)) _pixels.reset();
-    _pixelsPending = _selected;
+    if (const auto known = _pixelData.find(_selected); !_pixels && known != _pixelData.end())
+        _pixels = known->second.current;
+    // Asked again on every ready: the scene may have been rebuilt.
+    _pixelsAsked.insert(_selected);
     Send("pixels", {{"id", _selected}});
+}
+void EditorController::RequestPixelsOf(const std::string& id) {
+    if (!_active || !_ready || _pixelsAsked.contains(id)) return;
+    if (const auto known = _pixelData.find(id); known != _pixelData.end() && known->second.generation == _generation)
+        return;
+    _pixelsAsked.insert(id);
+    Send("pixels", {{"id", id}});
+}
+std::shared_ptr<const PixelatorAsset> EditorController::PixelsOf(const std::string& id) const {
+    const auto known = _pixelData.find(id);
+    return known == _pixelData.end() ? nullptr : known->second.current;
+}
+std::shared_ptr<const PixelatorAsset> EditorController::PreviousPixels() const {
+    if (!_pixels) return nullptr;
+    const auto known = _pixelData.find(_pixels->id);
+    return known == _pixelData.end() ? nullptr : known->second.previous;
 }
 void EditorController::ReceivePixels(const nlohmann::json& data) {
     PixelatorAsset asset;
@@ -711,13 +734,21 @@ void EditorController::ReceivePixels(const nlohmann::json& data) {
         asset = DecodePixelatorAsset(data);
     } catch (const std::exception& error) {
         asset = {};
-        asset.id = _pixelsPending.empty() ? _selected : _pixelsPending;
+        asset.id = data.is_object() && data.contains("id") && data.at("id").is_string()
+                       ? data.at("id").get<std::string>()
+                       : _selected;
         asset.error = std::string("Unreadable pixel data: ") + error.what();
     }
-    if (asset.id != _pixelsPending) return; // An older request's answer
+    if (!_pixelsAsked.erase(asset.id)) return; // An older worker's answer
     if (!asset.error.empty()) Log("Pixelator: " + asset.error, EditorLogLevel::Warning);
-    _pixels = std::make_shared<const PixelatorAsset>(std::move(asset));
-    _pixelsPending.clear();
+    auto& known = _pixelData[asset.id];
+    auto received = std::make_shared<const PixelatorAsset>(std::move(asset));
+    // The previous data is the last that differed, so opening the graphic again keeps showing what changed.
+    if (known.current && known.current->error.empty() && received->error.empty() && !(*known.current == *received))
+        known.previous = known.current;
+    known.current = received;
+    known.generation = _generation;
+    if (received->id == _selected) _pixels = received;
 }
 void EditorController::ActiveExited(WorkerProcessMode mode, unsigned long code, const std::string& cause) {
     _profiler.Disconnected();

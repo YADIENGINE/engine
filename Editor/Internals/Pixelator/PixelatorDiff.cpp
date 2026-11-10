@@ -80,13 +80,16 @@ PixelatorDiff DiffPixelator(const PixelatorAsset& before, const PixelatorAsset& 
 }
 
 std::vector<Color4> PixelatorDiffColors(const PixelatorImage& image, std::span<const Color4> palette,
-                                        const PixelatorFrameChange* change) {
+                                        const PixelatorFrameChange* change,
+                                        std::span<const PixelatorPaletteChange> recoloured) {
     std::vector<Color4> colors(image.inks.size(), Color4{0, 0, 0, 0});
     for (std::size_t index = 0; index < colors.size(); ++index) {
         const Ink ink = image.inks[index];
         if (ink == ClearInk || ink >= palette.size()) continue;
         colors[index] = palette[ink];
-        colors[index].a = static_cast<std::uint8_t>(colors[index].a * PixelatorDiffDimAlpha / 255);
+        const bool newColour = std::ranges::any_of(
+            recoloured, [&](const PixelatorPaletteChange& entry) { return entry.ink == static_cast<int>(ink); });
+        if (!newColour) colors[index].a = static_cast<std::uint8_t>(colors[index].a * PixelatorDiffDimAlpha / 255);
     }
     if (!change) return colors;
     for (const Vec2 pixel : change->pixels) {

@@ -337,6 +337,53 @@ PixelatorRequest DecodePixelatorRequest(const nlohmann::json& arguments) {
     if (arguments.contains("tiles")) picture.tiles = whole("tiles", 0, 256);
     if (arguments.contains("pivot")) picture.pivot = flag("pivot");
     if (arguments.contains("ink")) picture.focus = static_cast<Ink>(whole("ink", 1, MaxInks - 1));
+    if (arguments.contains("onion")) {
+        const auto& value = arguments.at("onion");
+        const auto count = [&](std::size_t at) {
+            return value[at].is_number_integer() && value[at].get<long long>() >= 0 &&
+                   value[at].get<long long>() <= PixelatorOnionMaxFrames;
+        };
+        if (!value.is_array() || value.size() != 2 || !count(0) || !count(1))
+            throw std::runtime_error(
+                std::format("\"onion\" is [before, after], each 0 to {}", PixelatorOnionMaxFrames));
+        PixelatorOnionOptions onion;
+        onion.before = value[0].get<int>();
+        onion.after = value[1].get<int>();
+        if (arguments.contains("onionTint")) onion.tinted = flag("onionTint");
+        request.onion = onion;
+    } else if (arguments.contains("onionTint")) {
+        throw std::runtime_error("\"onionTint\" needs \"onion\"");
+    }
+    if (arguments.contains("compare")) {
+        const auto& value = arguments.at("compare");
+        if (!value.is_array() || value.size() < 2 || value.size() > static_cast<std::size_t>(PixelatorMaxPanes) ||
+            !std::ranges::all_of(value, [](const nlohmann::json& item) { return item.is_string(); }))
+            throw std::runtime_error(std::format("\"compare\" lists 2 to {} item names", PixelatorMaxPanes));
+        request.compare = value.get<std::vector<std::string>>();
+    }
+    if (arguments.contains("tiled")) request.tiled = flag("tiled");
+    if (arguments.contains("diff")) request.diff = flag("diff");
+    if (arguments.contains("lint")) request.lint = flag("lint");
+    const int views = static_cast<int>(!request.compare.empty()) + static_cast<int>(request.tiled) +
+                      static_cast<int>(request.diff);
+    if (views > 1)
+        throw std::runtime_error("\"compare\", \"tiled\" and \"diff\" are separate views; ask for one");
+    if (request.onion && (!request.compare.empty() || request.tiled || request.diff))
+        throw std::runtime_error("\"onion\" shows on the single-frame view only");
+    if (arguments.contains("export")) {
+        PixelatorExportOptions exported;
+        try {
+            exported.kind = PixelatorExportKindOf(word("export"));
+        } catch (const std::invalid_argument& error) {
+            throw std::runtime_error(std::string("\"export\": ") + error.what());
+        }
+        if (arguments.contains("scale")) exported.scale = whole("scale", 1, PixelatorExportMaxScale);
+        if (arguments.contains("columns")) exported.columns = whole("columns", 0, 64);
+        exported.frame = request.frame;
+        request.exported = exported;
+    } else if (arguments.contains("scale") || arguments.contains("columns")) {
+        throw std::runtime_error("\"scale\" and \"columns\" belong to \"export\"");
+    }
     if (arguments.contains("background")) {
         const auto background = word("background");
         if (background == "checker")

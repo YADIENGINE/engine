@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "Editor/Internals/Pixelator/IndexedGif.h"
 #include "Editor/Internals/Pixelator/PixelatorDiff.h"
 #include "Editor/Internals/Pixelator/PixelatorExport.h"
 #include "Editor/Internals/Pixelator/PixelatorFrames.h"
@@ -13,7 +14,7 @@
 #include "Editor/Internals/Protocol/PixelatorProtocol.h"
 
 // Pixelator V2 (D65) library logic: onion skin, comparison panes, the tile preview, the changes since the last
-// build, export, names and ramps. The panel and `ctl` do not use most of it yet (PIXELATOR.md).
+// build, export, names and ramps, and the control requests for them.
 namespace {
 const PixelPalette Palette{Color4{10, 20, 30, 255}, Color4{200, 100, 50, 255}, Color4{0, 255, 0, 255}};
 
@@ -86,6 +87,93 @@ GifFacts ReadGif(const std::vector<std::byte>& bytes) {
         }
     }
     return facts;
+}
+// Every frame of a GIF that has a global colour table and no local ones, as RGBA (a decoder independent of the
+// writer: LZW with code size growth and clear codes).
+std::vector<std::vector<std::uint8_t>> DecodeGif(const std::vector<std::byte>& bytes) {
+    const auto byte = [&](std::size_t at) {
+        if (at >= bytes.size()) throw std::runtime_error("GIF ends early");
+        return std::to_integer<int>(bytes[at]);
+    };
+    const int width = byte(6) | byte(7) << 8;
+    const int height = byte(8) | byte(9) << 8;
+    const std::size_t tableAt = 13;
+    std::size_t at = tableAt + (3u << ((byte(10) & 7) + 1));
+    int transparent = -1;
+    std::vector<std::vector<std::uint8_t>> frames;
+    while (true) {
+        const int kind = byte(at++);
+        if (kind == 0x3B) break;
+        if (kind == 0x21) {
+            const int label = byte(at++);
+            if (label == 0xF9 && (byte(at + 1) & 1)) transparent = byte(at + 4);
+            while (const int size = byte(at))
+                at += static_cast<std::size_t>(size) + 1;
+            ++at;
+            continue;
+        }
+        if (kind != 0x2C) throw std::runtime_error("Unknown GIF block");
+        at += 9;
+        const int minCodeSize = byte(at++);
+        std::vector<std::uint8_t> data;
+        while (const int size = byte(at)) {
+            for (int index = 1; index <= size; ++index)
+                data.push_back(static_cast<std::uint8_t>(byte(at + static_cast<std::size_t>(index))));
+            at += static_cast<std::size_t>(size) + 1;
+        }
+        ++at;
+        const int clear = 1 << minCodeSize;
+        std::vector<std::vector<std::uint8_t>> table;
+        int codeSize = minCodeSize + 1;
+        const auto reset = [&] {
+            table.clear();
+            for (int code = 0; code < clear + 2; ++code)
+                table.push_back({static_cast<std::uint8_t>(code)});
+            codeSize = minCodeSize + 1;
+        };
+        reset();
+        std::vector<std::uint8_t> indices;
+        std::vector<std::uint8_t> previous;
+        std::size_t bit = 0;
+        while (bit + static_cast<std::size_t>(codeSize) <= data.size() * 8) {
+            int code = 0;
+            for (int index = 0; index < codeSize; ++index, ++bit)
+                code |= (data[bit / 8] >> (bit % 8) & 1) << index;
+            if (code == clear) {
+                reset();
+                previous.clear();
+                continue;
+            }
+            if (code == clear + 1) break;
+            std::vector<std::uint8_t> entry;
+            if (code < static_cast<int>(table.size())) {
+                entry = table[static_cast<std::size_t>(code)];
+            } else {
+                REQUIRE(code == static_cast<int>(table.size()));
+                entry = previous;
+                entry.push_back(previous.front());
+            }
+            indices.insert(indices.end(), entry.begin(), entry.end());
+            if (!previous.empty() && table.size() < 4096) {
+                auto added = previous;
+                added.push_back(entry.front());
+                table.push_back(std::move(added));
+                if (table.size() == (std::size_t{1} << codeSize) && codeSize < 12) ++codeSize;
+            }
+            previous = std::move(entry);
+        }
+        REQUIRE(indices.size() == static_cast<std::size_t>(width * height));
+        std::vector<std::uint8_t> rgba;
+        for (const std::uint8_t index : indices) {
+            const std::size_t color = tableAt + index * 3u;
+            rgba.push_back(static_cast<std::uint8_t>(byte(color)));
+            rgba.push_back(static_cast<std::uint8_t>(byte(color + 1)));
+            rgba.push_back(static_cast<std::uint8_t>(byte(color + 2)));
+            rgba.push_back(index == transparent ? 0 : 255);
+        }
+        frames.push_back(std::move(rgba));
+    }
+    return frames;
 }
 } // namespace
 
@@ -309,6 +397,52 @@ TEST_CASE("Editor.Pixelator.GifKeepsFramesAndTiming", "[engine-editor]") {
     CHECK_THROWS(EncodePixelatorGif(asset, 0));
 }
 
+TEST_CASE("Editor.Pixelator.IndexedGifKeepsEveryColourExact", "[engine-editor]") {
+    // 200 colours over a picture long enough to fill the LZW table several times, and clear pixels.
+    const auto frameOf = [](int seed) {
+        ViewportPixels frame{300, 200};
+        for (int y = 0; y < frame.height; ++y)
+            for (int x = 0; x < frame.width; ++x) {
+                const int color = (x * 7 + y * 13 + seed * 3 + (x * y) % 11) % 200;
+                const bool clear = (x + y + seed) % 17 == 0;
+                frame.rgba.push_back(static_cast<std::byte>(color));
+                frame.rgba.push_back(static_cast<std::byte>(255 - color));
+                frame.rgba.push_back(static_cast<std::byte>(color * 5 % 256));
+                frame.rgba.push_back(static_cast<std::byte>(clear ? 0 : 255));
+            }
+        return frame;
+    };
+    const std::vector frames{frameOf(0), frameOf(1)};
+    const std::vector delays{4, 6};
+    const auto gif = EncodeIndexedGif(frames, delays);
+    REQUIRE(gif);
+    CHECK(ReadGif(*gif).delays == delays);
+    const auto decoded = DecodeGif(*gif);
+    REQUIRE(decoded.size() == 2);
+    for (std::size_t frame = 0; frame < frames.size(); ++frame) {
+        bool same = true;
+        for (std::size_t at = 0; at < decoded[frame].size(); at += 4) {
+            const auto alpha = std::to_integer<int>(frames[frame].rgba[at + 3]);
+            const bool clear = decoded[frame][at + 3] == 0;
+            if (clear != (alpha == 0)) same = false;
+            for (std::size_t channel = 0; channel < 3 && !clear; ++channel)
+                if (decoded[frame][at + channel] != std::to_integer<int>(frames[frame].rgba[at + channel])) same = false;
+        }
+        CHECK(same);
+    }
+
+    // More than 255 colours: another encoder quantises them.
+    ViewportPixels many{16, 17};
+    for (int index = 0; index < many.width * many.height; ++index) {
+        many.rgba.push_back(static_cast<std::byte>(index & 0xff));
+        many.rgba.push_back(static_cast<std::byte>(index >> 8));
+        many.rgba.push_back(std::byte{0});
+        many.rgba.push_back(std::byte{255});
+    }
+    CHECK_FALSE(EncodeIndexedGif(std::vector{many}, std::vector{5}));
+    CHECK_THROWS(EncodeIndexedGif(std::vector{many}, std::vector<int>{}));
+}
+
 TEST_CASE("Editor.Pixelator.NamesAndRampsTravelWithTheGraphic", "[engine-editor]") {
     GraphicPixels pixels = GraphicPixels::Still(Dot(2, 2, 0, 0, {}), Palette);
     pixels.inkNames = {"Line", "Skin"};
@@ -328,4 +462,34 @@ TEST_CASE("Editor.Pixelator.NamesAndRampsTravelWithTheGraphic", "[engine-editor]
     const auto summary = PixelatorSummary(asset, 0);
     CHECK(summary.at("inks")[0].at("name") == "Line");
     CHECK(summary.at("loops") == false);
+}
+
+TEST_CASE("Editor.Pixelator.ControlRequestForTheNewViews", "[engine-editor]") {
+    auto request = DecodePixelatorRequest({{"onion", {2, 1}}, {"onionTint", false}, {"lint", true}});
+    REQUIRE(request.onion);
+    CHECK(request.onion->before == 2);
+    CHECK(request.onion->after == 1);
+    CHECK_FALSE(request.onion->tinted);
+    CHECK(request.lint);
+    request = DecodePixelatorRequest({{"compare", {"Town", "Royal"}}});
+    CHECK(request.compare == std::vector<std::string>{"Town", "Royal"});
+    CHECK(DecodePixelatorRequest({{"tiled", true}}).tiled);
+    CHECK(DecodePixelatorRequest({{"diff", true}}).diff);
+    request = DecodePixelatorRequest({{"export", "grid"}, {"scale", 4}, {"columns", 3}, {"frame", 2}});
+    REQUIRE(request.exported);
+    CHECK(request.exported->kind == PixelatorExportKind::Grid);
+    CHECK(request.exported->scale == 4);
+    CHECK(request.exported->columns == 3);
+    CHECK(request.exported->frame == 2);
+
+    CHECK_THROWS(DecodePixelatorRequest({{"onion", {4, 1}}}));
+    CHECK_THROWS(DecodePixelatorRequest({{"onion", 1}}));
+    CHECK_THROWS(DecodePixelatorRequest({{"onionTint", true}}));
+    CHECK_THROWS(DecodePixelatorRequest({{"compare", {"Town"}}}));
+    CHECK_THROWS(DecodePixelatorRequest({{"compare", {"A", "B", "C", "D", "E"}}}));
+    CHECK_THROWS(DecodePixelatorRequest({{"compare", {"A", "B"}}, {"tiled", true}}));
+    CHECK_THROWS(DecodePixelatorRequest({{"onion", {1, 1}}, {"diff", true}}));
+    CHECK_THROWS(DecodePixelatorRequest({{"export", "webp"}}));
+    CHECK_THROWS(DecodePixelatorRequest({{"export", "gif"}, {"scale", 9}}));
+    CHECK_THROWS(DecodePixelatorRequest({{"scale", 2}}));
 }

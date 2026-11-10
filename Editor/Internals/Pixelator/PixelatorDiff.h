@@ -48,6 +48,8 @@ inline constexpr Color4 PixelatorDiffRemoved{255, 64, 200, 230}; // A pixel the 
 inline constexpr std::uint8_t PixelatorDiffDimAlpha = 56;       // Of unchanged pixels
 
 // The Diff view's colours for a frame of the current build: changed pixels in their colour, pixels that became clear
-// in PixelatorDiffRemoved, unchanged ones dimmed. `change` null: everything dimmed.
+// in PixelatorDiffRemoved, unchanged ones dimmed. Pixels of an ink whose colour changed (`palette`) count as changed.
+// `change` null and no palette change: everything dimmed.
 [[nodiscard]] std::vector<Color4> PixelatorDiffColors(const PixelatorImage& image, std::span<const Color4> palette,
-                                                      const PixelatorFrameChange* change);
+                                                      const PixelatorFrameChange* change,
+                                                      std::span<const PixelatorPaletteChange> recoloured = {});

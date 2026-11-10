@@ -1,10 +1,13 @@
 #pragma once
 #include <nlohmann/json.hpp>
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Editor/Internals/Pixelator/PixelatorAsset.h"
 #include "Editor/Internals/Pixelator/PixelatorDiff.h"
+#include "Editor/Internals/Pixelator/PixelatorExport.h"
+#include "Editor/Internals/Pixelator/PixelatorLayout.h"
 #include "Editor/Internals/Pixelator/PixelatorLint.h"
 #include "Editor/Internals/Pixelator/PixelatorPicture.h"
 
@@ -37,11 +40,19 @@ inline constexpr int PixelatorMaxSide = 4096; // Pixels per sprite side the edit
 [[nodiscard]] nlohmann::json EncodePixelatorDiff(const PixelatorDiff& diff, std::size_t maxPixels = 64);
 
 // What `ctl pixels` asks for: {"view": "color" | "inks" | "parts", "zoom": 1-64, "frame": N, "grid": bool,
-// "tiles": 0-256, "background": "checker" | "dark" | "light", "pivot": bool, "ink": 1-255 (the others dimmed)},
-// every key optional. Throws with a readable message for a value that does not fit.
+// "tiles": 0-256, "background": "checker" | "dark" | "light", "pivot": bool, "ink": 1-255 (the others dimmed),
+// "onion": [before, after] (0-3 each), "onionTint": bool, "compare": [2-4 item names or ids], "tiled": bool,
+// "diff": bool, "lint": bool, "export": "frame" | "strip" | "grid" | "gif", "scale": 1-8, "columns": 0-64}, every key
+// optional; compare, tiled and diff exclude each other. Throws with a readable message for a value that does not fit.
 struct PixelatorRequest {
     PixelatorPictureOptions picture;
     std::size_t frame = 0;
+    std::optional<PixelatorOnionOptions> onion;
+    std::vector<std::string> compare;
+    bool tiled = false;
+    bool diff = false;
+    bool lint = false;
+    std::optional<PixelatorExportOptions> exported;
 };
 [[nodiscard]] PixelatorRequest DecodePixelatorRequest(const nlohmann::json& arguments);
 [[nodiscard]] const char* PixelatorViewName(PixelatorViewMode view);

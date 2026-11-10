@@ -1,6 +1,7 @@
 #pragma once
 #include <chrono>
 #include <map>
+#include <set>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -96,7 +97,15 @@ public:
     // The open pixel graphic as data for the Pixelator (D64), requested whenever such a graphic becomes ready; it
     // stays after the scene stops. Pending: the worker has not answered for the selected graphic yet.
     [[nodiscard]] std::shared_ptr<const PixelatorAsset> Pixels() const { return _pixels; }
-    [[nodiscard]] bool PixelsPending() const { return !_pixelsPending.empty(); }
+    [[nodiscard]] bool PixelsPending() const { return _pixelsAsked.contains(_selected); }
+    // The selected graphic's data from before the last change the worker reported (a Build & Refresh that changed
+    // its pixels); null when it has not changed in this session (D65).
+    [[nodiscard]] std::shared_ptr<const PixelatorAsset> PreviousPixels() const;
+    // Another item's data (comparison), asked of the running scene once per build; null until it arrives.
+    void RequestPixelsOf(const std::string& id);
+    [[nodiscard]] std::shared_ptr<const PixelatorAsset> PixelsOf(const std::string& id) const;
+    // Asked of this build and not answered yet.
+    [[nodiscard]] bool PixelsPendingOf(const std::string& id) const { return _pixelsAsked.contains(id); }
 
 private:
     // The worker that will replace the active one, with what it brings until the swap.
@@ -221,6 +230,14 @@ private:
     std::unique_ptr<TuningBaselines> _baselines; // Committed values; none without a project folder
     std::filesystem::path _inspectedTuning;
     std::optional<std::pair<std::filesystem::path, TuningLocation>> _previewing; // A dragged value not yet written
-    std::shared_ptr<const PixelatorAsset> _pixels;
-    std::string _pixelsPending; // The id asked for; empty when answered
+    // Pixel graphics the worker sent, by catalog id: the latest data, the one before it when it differed, and the
+    // generation (build) it came from.
+    struct PixelData {
+        std::shared_ptr<const PixelatorAsset> current;
+        std::shared_ptr<const PixelatorAsset> previous;
+        std::uint64_t generation = 0;
+    };
+    std::shared_ptr<const PixelatorAsset> _pixels; // The selected graphic's, shown until its next data arrives
+    std::map<std::string, PixelData> _pixelData;
+    std::set<std::string> _pixelsAsked; // Ids asked of the active worker, not answered yet
 };

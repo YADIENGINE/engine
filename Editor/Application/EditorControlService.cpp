@@ -758,20 +758,129 @@ void EditorControlService::Pixels(const nlohmann::json& arguments) {
                   throw std::runtime_error("No pixel graphic is open; open a graphic whose GraphicAsset has pixels: "
                                            "python Engine ctl open asset:Graphics/...");
               if (!pixels->error.empty()) throw std::runtime_error(pixels->error);
+              if (request.exported) {
+                  const auto& project = session.Project();
+                  const auto file = WritePixelatorExport(
+                      project ? project->sourceDirectory : std::filesystem::path(), *pixels, *request.exported,
+                      [this](const ViewportPixels& picture) { return _host.encodePng(picture, {}); });
+                  auto status = StatusOf(session);
+                  status["export"] = WorkerUtf8(file.lexically_normal().wstring());
+                  status["kind"] = PixelatorExportKindName(request.exported->kind);
+                  status["scale"] = request.exported->scale;
+                  status["asset"] = pixels->id;
+                  status["frames"] = pixels->frames.size();
+                  return status;
+              }
+              // Comparison panes: the items asked for, each read from the running scene once per build.
+              std::vector<std::shared_ptr<const PixelatorAsset>> panes;
+              std::vector<std::string> paneNames;
+              bool waiting = false;
+              for (const auto& wanted : request.compare) {
+                  const auto item = std::ranges::find_if(pixels->items, [&](const PixelatorItem& candidate) {
+                      return candidate.name == wanted || candidate.id == wanted;
+                  });
+                  if (item == pixels->items.end()) {
+                      std::string names;
+                      for (const auto& candidate : pixels->items)
+                          names += (names.empty() ? "" : ", ") + candidate.name;
+                      throw std::runtime_error(std::format("{} has no item \"{}\"{}", pixels->id, wanted,
+                                                           names.empty() ? "" : "; its items are " + names));
+                  }
+                  auto data = item->id == pixels->id ? pixels : session.PixelsOf(item->id);
+                  if (item->id != pixels->id) {
+                      session.RequestPixelsOf(item->id);
+                      if (session.PixelsPendingOf(item->id)) waiting = true;
+                  }
+                  if (!data && !waiting && !session.Snapshot().ready)
+                      throw std::runtime_error("Comparing items reads them from the running scene; open the graphic");
+                  if (!data) waiting = true;
+                  panes.push_back(std::move(data));
+                  paneNames.push_back(item->name);
+              }
+              if (waiting) return std::nullopt;
+              for (std::size_t index = 0; index < panes.size(); ++index)
+                  if (!panes[index]->error.empty()) throw std::runtime_error(panes[index]->error);
+
               if (request.frame >= pixels->frames.size())
                   throw std::runtime_error(
                       std::format("\"frame\" must be below {} for {}", pixels->frames.size(), pixels->id));
               const auto& frame = pixels->frames[request.frame];
               const auto& image = pixels->images[frame.image];
+              const auto& palette = pixels->palettes[frame.palette];
               if (image.Empty()) throw std::runtime_error(std::format("Frame {} has no pixels", request.frame));
               auto options = request.picture;
-              options.zoom = PixelatorPictureZoom({image.width, image.height}, options.zoom);
-              const auto picture = ComposePixelatorPicture(image, pixels->palettes[frame.palette], options);
-              auto status =
-                  Saved(WriteCapture(picture, {}, arguments.value("path", std::string()), "pixels"), picture, session);
+              PixelatorPictureExtras extras;
+              nlohmann::json more = nlohmann::json::object();
+              if (request.onion) {
+                  for (const auto& ghost :
+                       PixelatorOnionGhosts(pixels->frames.size(), request.frame, pixels->loops, *request.onion)) {
+                      const auto& shown = pixels->frames[ghost.frame];
+                      const auto& ghostImage = pixels->images[shown.image];
+                      extras.under.push_back({&ghostImage,
+                                              PixelatorGhostColors(ghostImage, pixels->palettes[shown.palette], ghost),
+                                              PixelatorPivotOffset(image, ghostImage)});
+                      more["onion"].push_back({{"frame", ghost.frame}, {"distance", ghost.distance}});
+                  }
+                  if (!more.contains("onion")) more["onion"] = nlohmann::json::array();
+              }
+              if (request.lint) {
+                  const auto findings = LintPixelator(*pixels);
+                  for (const auto& finding : findings)
+                      if (finding.image == frame.image)
+                          extras.marks.insert(extras.marks.end(), finding.pixels.begin(), finding.pixels.end());
+                  more["lint"] = PixelatorLintReport(*pixels);
+              }
+              if (request.diff) {
+                  const auto previous = session.PreviousPixels();
+                  if (!previous)
+                      throw std::runtime_error(std::format(
+                          "No earlier build of {} in this editor session differs from this one: change its code, run "
+                          "python Engine refresh, then ask again",
+                          pixels->id));
+                  const auto diff = DiffPixelator(*previous, *pixels);
+                  extras.colors = PixelatorDiffColors(image, palette, diff.Frame(request.frame), diff.palette);
+                  more["diff"] = EncodePixelatorDiff(diff);
+              }
+              if (request.tiled) extras.repeat = PixelatorTileRepeat;
+              ViewportPixels picture;
+              std::vector<FrameCaptureLabel> labels;
+              if (panes.empty()) {
+                  const int repeat = std::max(1, extras.repeat);
+                  options.zoom = PixelatorPictureZoom({image.width * repeat, image.height * repeat}, options.zoom);
+                  picture = ComposePixelatorPicture(image, palette, options, extras);
+              } else {
+                  // One zoom for every pane, so equal pixels look equal.
+                  Vec2 largest;
+                  for (const auto& pane : panes) {
+                      const auto& shown = pane->frames[request.frame % pane->frames.size()];
+                      largest = {std::max(largest.x, pane->images[shown.image].width),
+                                 std::max(largest.y, pane->images[shown.image].height)};
+                  }
+                  const int count = static_cast<int>(panes.size());
+                  options.zoom = PixelatorPictureZoom({largest.x * count, largest.y}, options.zoom);
+                  std::vector<ViewportPixels> tiles;
+                  int width = 0, height = 0;
+                  for (const auto& pane : panes) {
+                      const auto& shown = pane->frames[request.frame % pane->frames.size()];
+                      tiles.push_back(
+                          ComposePixelatorPicture(pane->images[shown.image], pane->palettes[shown.palette], options));
+                      width = std::max(width, tiles.back().width);
+                      height = std::max(height, tiles.back().height);
+                  }
+                  for (auto& tile : tiles)
+                      tile = PadPixelatorPicture(tile, width, height);
+                  auto grid = ComposeFrameGrid(tiles, paneNames, count);
+                  picture = std::move(grid.image);
+                  labels = std::move(grid.labels);
+                  more["compare"] = paneNames;
+              }
+              auto status = Saved(WriteCapture(picture, labels, arguments.value("path", std::string()), "pixels"),
+                                  picture, session);
               status.update(PixelatorSummary(*pixels, request.frame));
+              status.update(more);
               status["zoom"] = options.zoom;
               status["view"] = PixelatorViewName(options.view);
+              if (request.tiled) status["tiled"] = PixelatorTileRepeat;
               return status;
           });
 }

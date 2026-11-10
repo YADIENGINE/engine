@@ -22,6 +22,7 @@ add_library(EngineEditorSupport STATIC
     Internals/Protocol/WorkerMessageReader.cpp
     Internals/Protocol/EditorControlProtocol.cpp
     Internals/Protocol/PixelatorProtocol.cpp
+    Internals/Pixelator/IndexedGif.cpp
     Internals/Pixelator/MsfGifLibrary.c
     Internals/Pixelator/PixelatorDiff.cpp
     Internals/Pixelator/PixelatorExport.cpp

@@ -355,7 +355,8 @@ bool ToolBeginCombo(const char* label, const char* preview, ImGuiComboFlags flag
     return open;
 }
 void ContinueToolToolbar(const char* label, bool separateGroup) {
-    ContinueToolToolbar(ImGui::CalcTextSize(label).x + ImGui::GetStyle().FramePadding.x * 2, separateGroup);
+    ContinueToolToolbar(ImGui::CalcTextSize(label, nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2,
+                        separateGroup);
 }
 void ContinueToolToolbar(float itemWidth, bool separateGroup) {
     const auto& style = ImGui::GetStyle();

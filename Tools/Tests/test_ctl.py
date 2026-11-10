@@ -60,7 +60,19 @@ class RequestTests(unittest.TestCase):
                           "background": "light", "pivot": False, "ink": 3})
         self.assertTrue(Path(shot["path"]).is_absolute())
         self.assertEqual(request("pixels", "--grid"), {"command": "pixels", "grid": True})
-        for argv in (("pixels", "--view", "pixels"), ("pixels", "--tiles", "12")):
+        self.assertEqual(request("pixels", "--onion"), {"command": "pixels", "onion": [1, 1]})
+        self.assertEqual(request("pixels", "--onion", "2,0", "--no-onion-tint", "--lint"),
+                         {"command": "pixels", "onion": [2, 0], "onionTint": False, "lint": True})
+        self.assertEqual(request("pixels", "--compare", "Idle, Attack,Hurt"),
+                         {"command": "pixels", "compare": ["Idle", "Attack", "Hurt"]})
+        self.assertEqual(request("pixels", "--tiled"), {"command": "pixels", "tiled": True})
+        self.assertEqual(request("pixels", "--diff"), {"command": "pixels", "diff": True})
+        self.assertEqual(request("pixels", "--export", "grid", "--scale", "4", "--columns", "3"),
+                         {"command": "pixels", "export": "grid", "scale": 4, "columns": 3})
+        with self.assertRaises(ToolError):
+            request("pixels", "--onion", "1")
+        for argv in (("pixels", "--view", "pixels"), ("pixels", "--tiles", "12"), ("pixels", "--tiled", "--diff"),
+                     ("pixels", "--export", "webp")):
             with self.subTest(argv=argv), self.assertRaises(SystemExit), patch("sys.stderr", io.StringIO()):
                 request(*argv)
 

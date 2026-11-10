@@ -243,6 +243,13 @@ std::uint64_t EditorApplication::RequestWindow() const {
     _windowWanted = true;
     return _windowSequence + 1;
 }
+std::filesystem::path EditorApplication::ExportPixels(const PixelatorExportOptions& options) const {
+    const auto pixels = _controller.Pixels();
+    if (!pixels) throw std::runtime_error("No pixel graphic is open");
+    const auto& project = _controller.Project();
+    return WritePixelatorExport(project ? project->sourceDirectory : std::filesystem::path(), *pixels, options,
+                                [](const ViewportPixels& picture) { return EncodeFramePng(picture, {}); });
+}
 std::shared_ptr<const ViewportPixels> EditorApplication::Window(std::uint64_t sequence) const {
     return _window && _window->sequence >= sequence ? _window : nullptr;
 }
@@ -448,7 +455,9 @@ void EditorApplication::DrawToolOverlay() const {
         [&](const std::filesystem::path& file) { return _gitImages.Load(file); },
         [&](std::size_t slot, int width, int height, std::span<const Color4> pixels) {
             return _pixelatorTextures.Upload(slot, width, height, pixels);
-        }};
+        },
+        [&](const std::string& id) { commands.emplace_back([this, id] { _controller.RequestPixelsOf(id); }); },
+        [&](const PixelatorExportOptions& options) { return ExportPixels(options); }};
     auto snapshot = _controller.Snapshot();
     snapshot.audio = _audio;
     snapshot.git = _gitSnapshot.get();

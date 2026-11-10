@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 from Tools import cli
-from Tools.commands.asset import make_folder, move_asset, new_graphic, unlisted_graphics
+from Tools.commands.asset import lint_answer, make_folder, move_asset, new_graphic, unlisted_graphics
 from Tools.errors import ToolError
 
 GRAPHICS = Path("Game/Assets/Graphics")
@@ -180,6 +180,20 @@ class AssetCommandTests(unittest.TestCase):
                 code = cli.main(["--project", str(self.root), "asset", "unlisted", *files])
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(output.getvalue()), expected)
+
+
+    def test_lint_answer_totals_and_filters_notes(self):
+        stray = {"rule": "stray-pixel", "severity": "warning", "pixels": [[20, 59]], "inks": [1, 2], "text": "..."}
+        unused = {"rule": "unused-ink", "severity": "info", "pixels": [], "inks": [15], "text": "..."}
+        report = {"reports": [{"asset": "asset:Graphics/Knight#Hurt", "warnings": 1, "infos": 1,
+                               "findings": [stray, unused]},
+                              {"asset": "asset:Graphics/Broken", "error": "No pixels"}], "unknown": []}
+        answer = lint_answer(report, warnings_only=False)
+        self.assertEqual((answer["warnings"], len(answer["reports"][0]["findings"])), (1, 2))
+        self.assertEqual(lint_answer(report, warnings_only=True)["reports"][0]["findings"], [stray])
+        self.assertIn("note", lint_answer({"reports": [], "unknown": []}, warnings_only=False))
+        args = cli.build_parser().parse_args(["asset", "lint", "Graphics/Knight", "--warnings"])
+        self.assertEqual((args.asset_action, args.ids, args.warnings), ("lint", ["Graphics/Knight"], True))
 
 
 if __name__ == "__main__":

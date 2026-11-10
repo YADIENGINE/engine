@@ -3,6 +3,8 @@
 `new` writes a graphic's skeleton, `mkdir` adds a folder, and `move` moves an asset or folder and updates the literal
 `#include "Assets/Graphics/..."` lines across the project. Engine assets are read-only and out of reach here.
 `unlisted` reminds agents about free drawing functions that have no asset registration; it never fails a check.
+`lint` checks pixel graphics for pixel-art flaws (stray pixels, outline doubles and gaps, ramp contrast, unused inks,
+colour count) through the editor worker's `--pixel-lint` mode, without an editor; it needs a built worker.
 """
 
 import argparse
@@ -13,6 +15,7 @@ from pathlib import Path, PurePosixPath
 
 from ..errors import EXIT_FAILED, EXIT_OK, ToolError
 from ..project import Project
+from .audio import ask_worker, editor_recipe
 
 GRAPHICS = Path("Game") / "Assets" / "Graphics"
 INCLUDE_ROOT = "Assets/Graphics"
@@ -163,6 +166,11 @@ def add_parser(commands) -> None:
     action = actions.add_parser("move", help="move an asset or folder and update the includes that name it")
     action.add_argument("source", help="asset (Enemies/Goblin) or folder (Enemies), under Game/Assets/Graphics")
     action.add_argument("destination", help="existing folder under Game/Assets/Graphics; empty for its top")
+    action = actions.add_parser("lint", help="pixel-art lint of pixel graphics as JSON (built worker; no editor)")
+    action.add_argument("ids", nargs="*", metavar="ID",
+                        help="catalog ids such as asset:Graphics/Characters/Knight#Idle or Graphics/Characters/Knight "
+                             "(every item); default: every pixel graphic")
+    action.add_argument("--warnings", action="store_true", help="leave out notes (info findings)")
     action = actions.add_parser("unlisted", help="remind about unregistered free DrawX(Painter& ...) functions; exit 0")
     action.add_argument("files", nargs="*", metavar="FILES", help="changed headers, relative to the project; default: Game/")
 
@@ -335,5 +343,32 @@ def asset(project: Project, args: argparse.Namespace) -> int:
             answer = move_asset(project.root, args.source, args.destination)
         case "unlisted":
             answer = unlisted_graphics(project.root, args.files)
+        case "lint":
+            answer = lint_answer(lint_report(project, args.ids), args.warnings)
+            print(json.dumps(answer, ensure_ascii=False, indent=2), flush=True)
+            failed = answer["unknown"] or any("error" in report for report in answer["reports"])
+            return EXIT_FAILED if failed else EXIT_OK
     print(json.dumps(answer, indent=2))
     return EXIT_OK
+
+
+LINT_FOLDER = "pixel-lint"
+
+
+def lint_report(project: Project, ids: list[str]) -> dict:
+    """The worker's lint answer: {"version", "reports": [...], "unknown": [ids]}."""
+    return ask_worker(project, editor_recipe(project), "--pixel-lint", LINT_FOLDER, {"ids": ids})
+
+
+def lint_answer(report: dict, warnings_only: bool) -> dict:
+    """What `asset lint` prints: every report, totals, and the ids no pixel graphic has."""
+    reports = report.get("reports", [])
+    if warnings_only:
+        reports = [entry | {"findings": [finding for finding in entry.get("findings", [])
+                                         if finding.get("severity") == "warning"]} if "findings" in entry else entry
+                   for entry in reports]
+    answer = {"reports": reports, "warnings": sum(entry.get("warnings", 0) for entry in reports),
+              "unknown": report.get("unknown", [])}
+    if not reports and not answer["unknown"]:
+        answer["note"] = "No pixel graphics: a GraphicAsset registers its pixels for the Pixelator and lint"
+    return answer

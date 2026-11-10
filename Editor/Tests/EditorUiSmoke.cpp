@@ -100,6 +100,12 @@ constexpr std::array Stages{
     SmokeStage{"audio", SmokeView::Running, 1600, 900, 100, EditorPanel::AudioPreview},
     SmokeStage{"pixelator", SmokeView::Running, 1600, 900, 100, EditorPanel::Pixelator},
     SmokeStage{"pixelator-narrow", SmokeView::Running, 1100, 680, 150, EditorPanel::Pixelator},
+    SmokeStage{"pixelator-onion", SmokeView::Running, 1600, 900, 100, EditorPanel::Pixelator},
+    SmokeStage{"pixelator-compare", SmokeView::Running, 1600, 900, 100, EditorPanel::Pixelator},
+    SmokeStage{"pixelator-tiled", SmokeView::Running, 1600, 900, 100, EditorPanel::Pixelator},
+    SmokeStage{"pixelator-changes", SmokeView::Running, 1600, 900, 100, EditorPanel::Pixelator},
+    SmokeStage{"pixelator-lint", SmokeView::Running, 1600, 900, 100, EditorPanel::Pixelator},
+    SmokeStage{"pixelator-lint-narrow", SmokeView::Running, 1100, 680, 150, EditorPanel::Pixelator},
     SmokeStage{"agent-strip", SmokeView::AgentStrip},
     SmokeStage{"agents", SmokeView::Agents},
     SmokeStage{"agents-150", SmokeView::Agents, 1280, 800, 150},
@@ -286,20 +292,22 @@ std::deque<EditorControlEvent> SampleEvents() {
             {now, "Screenshot shot-1230.png", {}, {}, {}, "shot-1230.png"}};
 }
 
-// A made-up 48 x 40 pixel graphic with two items and a two-frame blink, as the worker would send it.
-std::shared_ptr<const PixelatorAsset> SamplePixels() {
+// A made-up 48 x 40 pixel graphic with two items and a two-frame blink, as the worker would send it. `fly`: the
+// other item, in other colours; `earlier`: the build before, with other eyes and beak colour (the Changes view).
+std::shared_ptr<const PixelatorAsset> SamplePixels(bool fly = false, bool earlier = false) {
     const PixelPalette palette{Rgb(0x14161c), Rgb(0x3a4152), Rgb(0x66708a), Rgb(0x9aa5c0),
-                               Rgb(0xe0e6f0), Rgb(0xb5601c), Rgb(0xf0a030)};
-    const auto sprite = [](bool blink) {
+                               Rgb(0xe0e6f0), Rgb(0xb5601c), Rgb(0xf0a030), Rgb(0x6c7892)};
+    const auto sprite = [earlier](bool blink) {
         PixelCanvas canvas(48, 40);
         {
             const auto body = canvas.Part(1);
             canvas.Ellipse(24.0f, 24.0f, 14.0f, 13.0f, {2, 2, 3, 4, 5});
+            canvas.Stamp(20, 28, {"8"}); // A stray pixel, close to its surround: the lint stages
         }
         {
             const auto head = canvas.Part(2);
             canvas.Ellipse(24.0f, 10.0f, 8.0f, 7.0f, {2, 2, 3, 4, 5});
-            canvas.Stamp(20, 9, {blink ? "1...1" : "6...6"});
+            canvas.Stamp(20, 9, {blink ? "1...1" : earlier ? "66.66" : "6...6"});
         }
         canvas.FlatRect(30, 30, 6, 4, 7);
         canvas.Outline(1);
@@ -310,8 +318,13 @@ std::shared_ptr<const PixelatorAsset> SamplePixels() {
     GraphicPixels pixels;
     pixels.frames = {{open, 0.8f}, {closed, 0.2f}};
     pixels.palette = palette;
+    if (fly) pixels.palette = palette.Mixed(Rgb(0x4060c0), 0.35f);
+    if (earlier) pixels.palette.Set(7, Rgb(0xd04020));
+    pixels.inkNames = {"Line", "Feather0", "Feather1", "Feather2", "Feather3", "Eye", "Beak"};
+    pixels.partNames = {"Body", "Head"};
     auto asset = PixelatorFramesOf(pixels);
-    asset.id = "asset:Graphics/Characters/Owl#Idle";
+    asset.id = fly ? "asset:Graphics/Characters/Owl#Fly" : "asset:Graphics/Characters/Owl#Idle";
+    asset.item = fly ? 1 : 0;
     asset.items = {{"Idle", "asset:Graphics/Characters/Owl#Idle"}, {"Fly", "asset:Graphics/Characters/Owl#Fly"}};
     return std::make_shared<const PixelatorAsset>(std::move(asset));
 }
@@ -669,6 +682,17 @@ protected:
         snapshot.audio.position = 0.7f;
         snapshot.audio.waveform = {WaveformState::Ready, _waveform, {}};
         snapshot.pixels = _pixels;
+        if (const std::string_view name = stage.name; name.starts_with("pixelator")) {
+            auto& pixelator = _workspace.Pixelator();
+            pixelator.ShowLayout(name == "pixelator-compare"   ? PixelatorPanel::Layout::Compare
+                                 : name == "pixelator-tiled"   ? PixelatorPanel::Layout::Tiled
+                                 : name == "pixelator-changes" ? PixelatorPanel::Layout::Changes
+                                                               : PixelatorPanel::Layout::Single);
+            pixelator.SetOnion(name == "pixelator-onion");
+            pixelator.ShowLint(name.starts_with("pixelator-lint"));
+            snapshot.pixelItems = {{_pixels->id, _pixels}, {_flyPixels->id, _flyPixels}};
+            if (name == "pixelator-changes") snapshot.pixelsPrevious = _earlierPixels;
+        }
         snapshot.controlEvents = &_events;
         snapshot.controlEventCount = _events.size();
         if (stage.view == SmokeView::Agents || stage.view == SmokeView::AgentStrip) snapshot.agents = &_agentReport;
@@ -819,6 +843,8 @@ private:
     std::shared_ptr<const Profiler::Summary> _summary = SampleSummary();
     std::shared_ptr<const AudioWaveform> _waveform = std::make_shared<AudioWaveform>(SampleWaveform());
     std::shared_ptr<const PixelatorAsset> _pixels = SamplePixels();
+    std::shared_ptr<const PixelatorAsset> _flyPixels = SamplePixels(true);
+    std::shared_ptr<const PixelatorAsset> _earlierPixels = SamplePixels(false, true);
     mutable PixelatorTextures _pixelatorTextures;
     std::deque<EditorControlEvent> _events = SampleEvents();
     Texture2D _frame{};

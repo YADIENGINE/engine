@@ -104,6 +104,24 @@ def add_parser(commands) -> None:
     action.add_argument("--background", choices=("checker", "dark", "light"), help="behind the sprite")
     action.add_argument("--no-pivot", dest="pivot", action="store_false", default=None, help="hide the pivot marker")
     action.add_argument("--ink", type=int, help="show this ink, dim the others")
+    action.add_argument("--onion", nargs="?", const="1,1", metavar="BEFORE,AFTER",
+                        help="onion skin: earlier and later frames faintly under this one, 0-3 each (default 1,1)")
+    action.add_argument("--no-onion-tint", dest="onion_tint", action="store_false", default=None,
+                        help="onion ghosts in their own colours, not reddish (earlier) and bluish (later)")
+    views = action.add_mutually_exclusive_group()
+    views.add_argument("--compare", metavar="ITEM,ITEM[,ITEM,ITEM]",
+                       help="2-4 items of the open graphic side by side at one zoom (names or catalog ids)")
+    views.add_argument("--tiled", action="store_true", default=None, help="the frame repeated 3x3, to see tile seams")
+    views.add_argument("--diff", action="store_true", default=None,
+                       help="what changed since the build before the last refresh: changed pixels bright, the rest "
+                            "dimmed, and the changes as JSON")
+    action.add_argument("--lint", action="store_true", default=None,
+                        help="mark pixel-art lint findings on the picture and list them (python Engine asset lint)")
+    action.add_argument("--export", choices=("frame", "strip", "grid", "gif"),
+                        help="write a file into the project's Exports/<graphic>/ instead of a capture: --frame's "
+                             "frame, all frames in a row or a grid, or an animated GIF; transparent")
+    action.add_argument("--scale", type=int, help="with --export: 1-8 file pixels per sprite pixel (default 1)")
+    action.add_argument("--columns", type=int, help="with --export grid: columns (default: about square)")
     action.add_argument("--out", help="PNG path (default: the build folder's editor-captures/)")
     actions.add_parser("inspect", help="the open scene's inspection values and tables")
     action = actions.add_parser("logs", help="editor, worker and build log entries")
@@ -358,10 +376,26 @@ def request_of(args: argparse.Namespace) -> dict:
 def pixels_request(args: argparse.Namespace) -> dict:
     """`ctl pixels`: only the options given; the editor fills in its defaults."""
     request = {key: getattr(args, key) for key in ("view", "zoom", "frame", "grid", "tiles", "background", "pivot",
-                                                    "ink") if getattr(args, key) is not None}
+                                                    "ink", "tiled", "diff", "lint", "export", "scale", "columns")
+               if getattr(args, key) is not None}
+    if args.onion is not None:
+        request["onion"] = number_pair(args.onion, "--onion")
+    if args.onion_tint is not None:
+        request["onionTint"] = args.onion_tint
+    if args.compare is not None:
+        request["compare"] = [item.strip() for item in args.compare.split(",") if item.strip()]
     if args.out:
         request["path"] = str(Path(args.out).resolve())
     return request
+
+
+def number_pair(text: str, option: str) -> list[int]:
+    """"1,2" -> [1, 2]; the editor checks the ranges."""
+    try:
+        first, second = (int(part) for part in text.split(","))
+    except ValueError:
+        raise ToolError(f"{option} takes two whole numbers like 1,1") from None
+    return [first, second]
 
 
 def capture_path(project: Project, out: str | None) -> str:

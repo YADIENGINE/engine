@@ -5,6 +5,7 @@
 #include <deque>
 #include <filesystem>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -15,6 +16,7 @@
 #include "Editor/Internals/Agent/AgentReport.h"
 #include "Editor/Internals/Git/GitTypes.h"
 #include "Editor/Internals/Pixelator/PixelatorAsset.h"
+#include "Editor/Internals/Pixelator/PixelatorExport.h"
 #include "Editor/Internals/Session/AudioUsage.h"
 #include "Editor/Internals/Session/AudioWaveformCache.h"
 #include "Editor/Internals/Session/ProfilerSession.h"
@@ -128,7 +130,12 @@ struct EditorSnapshot {
     const AudioUsage* audioUsage = nullptr;  // Which sound files the project's audio catalog plays
     std::shared_ptr<const PixelatorAsset> pixels; // The Pixelator's pixel graphic; null when none is open
     bool pixelsPending = false;                   // Asked of the worker, not answered yet
-    std::string notice;                           // Last change made through the control endpoint
+    // The same graphic before the last Build & Refresh that changed it (the Pixelator's Diff view); null: none.
+    std::shared_ptr<const PixelatorAsset> pixelsPrevious;
+    // The open graphic's other items that arrived (comparison), by catalog id.
+    std::map<std::string, std::shared_ptr<const PixelatorAsset>> pixelItems;
+    std::filesystem::path projectDirectory; // The project's root; empty without a project
+    std::string notice;                     // Last change made through the control endpoint
     double noticeAge = 0.0;
     const std::deque<EditorControlEvent>* controlEvents = nullptr; // Oldest first; the latest ones when there were many
     std::size_t controlEventCount = 0;                             // All of this session's, kept or not
@@ -195,4 +202,8 @@ struct EditorUiActions {
     // picks) and returns its GL texture, drawn with nearest filtering and repeating; 0 when it could not be made.
     std::function<std::uint64_t(std::size_t slot, int width, int height, std::span<const Color4> pixels)>
         pixelatorTexture;
+    // Asks the running scene for another item's pixels (the Pixelator's comparison); repeated calls are free.
+    std::function<void(const std::string&)> requestPixels;
+    // Writes an export of the shown pixel graphic into the project's Exports folder; returns the file, or throws.
+    std::function<std::filesystem::path(const PixelatorExportOptions&)> exportPixels;
 };

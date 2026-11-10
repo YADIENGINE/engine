@@ -44,6 +44,8 @@ private:
     // Window captures: requested for the end of the next drawn frame, then kept as the latest.
     [[nodiscard]] std::uint64_t RequestWindow() const;
     [[nodiscard]] std::shared_ptr<const ViewportPixels> Window(std::uint64_t sequence) const;
+    // The Pixelator's Export: the shown pixel graphic into the project's Exports folder (D65).
+    std::filesystem::path ExportPixels(const PixelatorExportOptions& options) const;
     // All GPU/UI resources are owned after the base Game has created its window.
     mutable EditorController _controller;
     std::optional<EditorControlService> _control; // Tools reach this editor through it (`python Engine refresh`)

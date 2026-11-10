@@ -145,21 +145,27 @@ def resolve_sound(text: str, project: Project, assets: Path) -> Path:
 def run_report(project: Project, recipe: dict, files: list[Path], silence_db: float | None = None,
                waveform: dict | None = None) -> dict:
     """Asks the worker; returns its answer ({version, catalog, files, waveform})."""
-    folder = editor_build_dir(project) / REPORT_FOLDER
-    folder.mkdir(parents=True, exist_ok=True)
-    request_file = folder / f"request-{os.getpid()}.json"
-    answer_file = folder / f"answer-{os.getpid()}.json"
-    request = {"out": str(answer_file), "files": [str(file) for file in files]}
+    request = {"files": [str(file) for file in files]}
     if silence_db is not None:
         request["silenceDb"] = silence_db
     if waveform is not None:
         request["waveform"] = waveform
-    request_file.write_text(json.dumps(request), encoding="utf-8")
+    return ask_worker(project, recipe, "--audio-report", REPORT_FOLDER, request)
+
+
+def ask_worker(project: Project, recipe: dict, mode: str, folder_name: str, request: dict) -> dict:
+    """Runs `<worker> <mode> REQUEST.json` (a report mode: no window, no editor) and returns its answer file. The
+    request gets "out", the answer's path; both files live in the editor build's `folder_name` and are removed."""
+    folder = editor_build_dir(project) / folder_name
+    folder.mkdir(parents=True, exist_ok=True)
+    request_file = folder / f"request-{os.getpid()}.json"
+    answer_file = folder / f"answer-{os.getpid()}.json"
+    request_file.write_text(json.dumps({"out": str(answer_file)} | request), encoding="utf-8")
     worker = recipe["worker"]
     try:
-        result = subprocess.run([worker["executable"], *worker.get("arguments", []), "--audio-report",
-                                 str(request_file)], cwd=worker.get("directory") or None, capture_output=True,
-                                text=True, encoding="utf-8", errors="replace", timeout=REPORT_TIMEOUT)
+        result = subprocess.run([worker["executable"], *worker.get("arguments", []), mode, str(request_file)],
+                                cwd=worker.get("directory") or None, capture_output=True, text=True,
+                                encoding="utf-8", errors="replace", timeout=REPORT_TIMEOUT)
         if result.returncode != 0:
             detail = (result.stderr.strip().splitlines() or [f"exit {result.returncode}"])[-1]
             raise ToolError(f"The editor worker could not answer: {detail}", EXIT_FAILED)

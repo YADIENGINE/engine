@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <format>
 #include <stdexcept>
+#include "Editor/Internals/Pixelator/IndexedGif.h"
 #include "Editor/Internals/Pixelator/MsfGif.h"
 #include "Editor/Internals/Pixelator/PixelatorLayout.h"
 #include "Platform/Internals/FileStorage.h"
@@ -147,14 +148,20 @@ std::vector<std::byte> EncodePixelatorGif(const PixelatorAsset& asset, int scale
     const int width = box.size.x * scale;
     const int height = box.size.y * scale;
     (void)Blank(width, height); // Size checks
+    // A palette of at most 255 colours (pixel art) is written exactly; more colours go through msf_gif, which
+    // quantises them to 5-6-5 bits with ordered dithering.
+    std::vector<ViewportPixels> pictures;
+    for (std::size_t frame = 0; frame < asset.frames.size(); ++frame) {
+        pictures.push_back(Blank(width, height));
+        Place(pictures.back(), asset, frame, box, {}, scale);
+    }
+    if (auto exact = EncodeIndexedGif(pictures, delays)) return std::move(*exact);
     MsfGifState state{};
     msf_gif_alpha_threshold = GifAlphaThreshold;
     msf_gif_bgra_flag = 0;
     if (!msf_gif_begin(&state, width, height)) throw std::runtime_error("GIF encoding failed");
-    for (std::size_t frame = 0; frame < asset.frames.size(); ++frame) {
-        auto picture = Blank(width, height);
-        Place(picture, asset, frame, box, {}, scale);
-        if (!msf_gif_frame(&state, reinterpret_cast<std::uint8_t*>(picture.rgba.data()), delays[frame],
+    for (std::size_t frame = 0; frame < pictures.size(); ++frame) {
+        if (!msf_gif_frame(&state, reinterpret_cast<std::uint8_t*>(pictures[frame].rgba.data()), delays[frame],
                            GifMaxBitDepth, width * 4))
             break; // msf_gif_end reports the failure
     }

@@ -54,6 +54,8 @@ public:
     void OpenNote(const std::filesystem::path& path, EditorPreferences& preferences);
     // Shows the Pixelator in front of the Viewport (a pixel graphic was opened); the Viewport stays open behind it.
     void ShowPixelator(EditorPreferences& preferences);
+    // The Pixelator itself, for the UI smoke's stages and tests.
+    [[nodiscard]] PixelatorPanel& Pixelator() { return _pixelator; }
     bool FlushNotes() { return _notes.Flush(); }
     void CloseNotes() { _notes.Shutdown(); }
     // Pastes `text` (no Enter) into the agent session, shown in the Agents drawer, when there is one; else into the
