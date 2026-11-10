@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include "Editor/Internals/Protocol/PixelatorProtocol.h"
 #include "Editor/Internals/Protocol/WorkerProtocol.h"
 #include "Editor/Internals/Session/AssetLibrary.h"
 #include "Editor/Internals/Session/FrameCapture.h"
@@ -579,6 +580,7 @@ std::optional<nlohmann::json> EditorControlService::Run(const EditorControlReque
             {"state", AgentActivityName(note.state)}, {"text", note.text}, {"control", _agentControl}};
     }
     case EditorControlCommand::Release     : return nlohmann::json{{"released", _lease.Release(request.session)}};
+    case EditorControlCommand::Pixels      : Pixels(arguments); return std::nullopt;
     case EditorControlCommand::Audio       : return AudioStatus(controller);
     case EditorControlCommand::AudioControl:
         if (Text(arguments, "action") == "capture") {
@@ -741,6 +743,35 @@ void EditorControlService::WindowShot(const nlohmann::json& arguments) {
               auto status = Saved(WriteCapture(captured, {}, arguments.value("path", std::string()), "window"),
                                   captured, session);
               status["window"] = {window->width, window->height};
+              return status;
+          });
+}
+void EditorControlService::Pixels(const nlohmann::json& arguments) {
+    const auto request = DecodePixelatorRequest(arguments); // Report bad options before waiting
+    if (arguments.contains("path") && Text(arguments, "path").empty())
+        throw std::runtime_error("\"path\" must not be empty");
+    Await("the pixel graphic from the scene", WorkerTimeout,
+          [this, request, arguments](EditorController& session) -> std::optional<nlohmann::json> {
+              if (session.PixelsPending()) return std::nullopt;
+              const auto pixels = session.Pixels();
+              if (!pixels)
+                  throw std::runtime_error("No pixel graphic is open; open a graphic whose GraphicAsset has pixels: "
+                                           "python Engine ctl open asset:Graphics/...");
+              if (!pixels->error.empty()) throw std::runtime_error(pixels->error);
+              if (request.frame >= pixels->frames.size())
+                  throw std::runtime_error(
+                      std::format("\"frame\" must be below {} for {}", pixels->frames.size(), pixels->id));
+              const auto& frame = pixels->frames[request.frame];
+              const auto& image = pixels->images[frame.image];
+              if (image.Empty()) throw std::runtime_error(std::format("Frame {} has no pixels", request.frame));
+              auto options = request.picture;
+              options.zoom = PixelatorPictureZoom({image.width, image.height}, options.zoom);
+              const auto picture = ComposePixelatorPicture(image, pixels->palettes[frame.palette], options);
+              auto status =
+                  Saved(WriteCapture(picture, {}, arguments.value("path", std::string()), "pixels"), picture, session);
+              status.update(PixelatorSummary(*pixels, request.frame));
+              status["zoom"] = options.zoom;
+              status["view"] = PixelatorViewName(options.view);
               return status;
           });
 }

@@ -32,6 +32,7 @@ constexpr std::array CommandRows{
     CommandRow{EditorControlCommand::AudioControl, "audio-control"},
     CommandRow{EditorControlCommand::Replay, "replay"},
     CommandRow{EditorControlCommand::Release, "release"},
+    CommandRow{EditorControlCommand::Pixels, "pixels"},
 };
 static_assert(RowsInIdOrder(CommandRows));
 
@@ -184,12 +185,14 @@ bool ControlCommandChangesEditor(EditorControlCommand command) {
     case EditorControlCommand::Note        :
     case EditorControlCommand::Audio       :
     case EditorControlCommand::Release     :
+    case EditorControlCommand::Pixels      :
     case EditorControlCommand::Count       : return false;
     }
     return false;
 }
 bool ControlCommandCaptures(EditorControlCommand command) {
-    return command == EditorControlCommand::Screenshot || command == EditorControlCommand::Frames;
+    return command == EditorControlCommand::Screenshot || command == EditorControlCommand::Frames ||
+           command == EditorControlCommand::Pixels;
 }
 bool ControlCommandNeedsHold(EditorControlCommand command) {
     return ControlCommandChangesEditor(command) || ControlCommandCaptures(command);
