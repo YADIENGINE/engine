@@ -110,8 +110,7 @@ void DrawGuard(Painter& paint, const FloatRect& box, GuardKind kind, float time,
 ```
 <!-- /recipe -->
 
-Register it with the pixel view, so the Assets panel can show it pixel by pixel (inks, parts, the pixel under the
-mouse):
+Register it with `pixels`, so opening it shows the editor's Pixelator (zoom, inks, parts, frames):
 
 ```cpp
 asset.items = {{"Town", "guard soldier"}, {"Royal", "guard soldier blue"}};
@@ -123,3 +122,8 @@ asset.pixels = [](std::size_t item, float time) {
     return GraphicPixels{GuardSprite(time), GuardPalette(static_cast<GuardKind>(item))};
 };
 ```
+
+To look at the pixels yourself, open it and ask for the Pixelator's picture:
+`python Engine ctl open asset:Graphics/Characters/Guard#Town`, then
+`python Engine ctl pixels --zoom 8` (`--view inks` or `--view parts` shows how it is built, `--frame N` another frame).
+The JSON lists the size, pivot, frame count and each ink's colour and pixel count.

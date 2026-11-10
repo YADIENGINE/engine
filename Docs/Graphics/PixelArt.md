@@ -63,8 +63,25 @@ A sprite has no rotation of its own.
 
 ## In the editor
 
-A graphic asset whose registration sets `GraphicAsset::pixels` gets a pixel view in the Assets panel: **Pixels**
-(zoomed to a whole number of screen pixels per sprite pixel), **Inks** and **Parts** (a colour per ink or part),
-**Drawing** (as the game draws it), a grid, and the pivot. The Inspector shows the size, how many pixels each ink has,
-and the pixel under the mouse. `python Engine asset new X --folder <Folder> --pixel` writes such an asset:
+A graphic asset whose registration sets `GraphicAsset::pixels` opens in the **Pixelator**, a tab beside the Viewport
+that comes to the front when the graphic is opened from Assets (or `ctl open`); the Viewport behind it shows the
+graphic as the game draws it. `python Engine asset new X --folder <Folder> --pixel` writes such an asset:
 [Graphic assets](../Editor/Api.md#graphic-assets).
+
+The editor draws the pixels itself from the sprite data, so zoom and pan are instant at any size:
+
+- **Canvas:** whole-number zoom 1–64× (wheel zooms around the pointer, `+` / `-`), pan with the middle button or
+  Space + drag, **Fit** (`F`) and **1:1** (`1`). Pixels are always the same size.
+- **Views:** **Color** (the palette), **Inks** and **Parts** (a distinct colour per ink or per part). A pixel grid
+  (`G`, from 4× zoom), a tile grid every 8, 16 or 32 pixels, the pivot, and a checker, dark or light background.
+- **Inks:** every ink the frame uses with its colour and pixel count. Hovering one shows only its pixels; clicking it
+  keeps it isolated until clicked again (or Esc).
+- **Frames:** play, pause and step (`,` / `.`) with each frame's duration; an item list switches between a set's items.
+  `pixels` only answers "the sprite at a time", so the editor samples it 60 times a second for 4 s, merges equal
+  samples in a row into frames (up to 64) and keeps one cycle when the frames repeat. Durations are whole 1/60 s
+  steps; a change faster than that, or a cycle much longer than the window, is not seen exactly.
+- **In game:** a small preview at 1×, 2× or 3× on the chosen background.
+- **Status:** the size, zoom and pivot, and under the pointer x, y, ink, colour and part.
+
+Agents see the same with `python Engine ctl pixels [--view inks] [--zoom N] [--frame N] [--tiles 16]`: a PNG and a
+JSON summary (size, pivot, frames, inks with counts) ([Editor automation](../Editor/Automation.md#commands)).

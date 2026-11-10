@@ -942,6 +942,32 @@ The smooth drawing API stays; only features that serve a smooth look alone stop 
 4. *The GPU keeps inks:* sprites go to R8 atlas pages and palettes to rows of one texture; the paint shader looks each
    ink up (`PaintKind::Indexed`). One quad per sprite, so no seams between pixels; corners snap to device pixels.
 5. *Frames are made once* (`PixelSpriteSet`), keyed by a sprite id that copies share.
-6. *The editor shows a sprite's pixels* (`GraphicAsset::pixels`): inks, parts, the pixel under the mouse.
+6. *The editor shows a sprite's pixels* (`GraphicAsset::pixels`): inks, parts, the pixel under the mouse; since D64 in
+   the Pixelator panel.
 
 Left out: rotation of a sprite (RotSprite later), image import, a palette per project, more than 255 inks.
+
+### D64. Pixelator
+Usage: [Pixel art](../Graphics/PixelArt.md#in-the-editor), [Editor automation](../Editor/Automation.md#commands).
+
+Decision: a pixel graphic's pixels are shown by a host panel, the **Pixelator**, a tab beside the Viewport in the
+centre dock. Opening a graphic that registers `GraphicAsset::pixels` (Assets or `ctl open`) brings it forward; the
+Viewport keeps the drawing as the game shows it. The worker-side pixel view (View / Grid parameters, Inspector readouts)
+is gone.
+
+1. *The worker sends data, the editor draws:* on request ("pixels" message, worker protocol 18) the worker answers with
+   the items, the distinct sprites (size, pivot, inks and parts as base64), the palettes and the frames. The editor
+   uploads textures, so zoom (1–64×, whole numbers) and pan are instant and not limited by the worker's canvas.
+2. *Frames are sampled:* `pixels` gives the sprite at a time, so the worker samples 4 s at 60 Hz, merges equal samples
+   in a row into frames (at most 64, 6 MB, 3 s of work) and keeps one cycle when they repeat. An explicit frames API
+   replaces this later.
+3. *Everything is in the panel:* toolbar, ink list with counts (hover shows, click isolates), game-size preview, frame
+   strip and status bar; keys only while it has the keyboard (EditorKeyScope::Pixelator).
+4. *Agents see what the panel sees:* `ctl pixels` composes the same picture on the CPU (view, zoom, frame, grids, ink)
+   and answers with its path and a summary (size, pivot, frames, inks, parts). It is a capture: Visual checks and the
+   hold apply.
+5. *It only looks:* the data model (`PixelatorAsset`) is plain data so editing can follow, but the code stays the
+   source (D1).
+
+Left out: editing, onion skin, palette comparison, export, lint (backlog), and a game-size default from the project's
+art-pixel setting (it waits for project pixel settings).
