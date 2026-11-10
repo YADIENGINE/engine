@@ -256,6 +256,13 @@ add_library(EngineHeadless STATIC
     Graphics/Light/LightLayer.cpp
     Graphics/Light/LightOccluders.cpp
     Graphics/Paint/Painter.cpp
+    Graphics/Pixel/Internals/PixelAtlas.cpp
+    Graphics/Pixel/PixelCanvas.cpp
+    Graphics/Pixel/PixelLegend.cpp
+    Graphics/Pixel/PixelMask.cpp
+    Graphics/Pixel/PixelPalette.cpp
+    Graphics/Pixel/PixelSprite.cpp
+    Graphics/Pixel/PixelSpriteSet.cpp
     Graphics/Paint/PainterText.cpp
     Graphics/Paint/Path.cpp
     Graphics/Post/PostSettings.cpp

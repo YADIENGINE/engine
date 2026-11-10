@@ -100,6 +100,22 @@ TEST_CASE("Editor.GraphicAsset.SingleDrawingAndSetIds", "[engine-editor]") {
     CHECK(many[1].asset->item == "Moon");
 }
 
+TEST_CASE("Editor.GraphicAsset.PixelGraphicsOfferPixelViews", "[engine-editor]") {
+    const std::filesystem::path engine = "C:/Project/Engine";
+    const std::filesystem::path file = "C:/Project/Game/Assets/Graphics/Hero.asset.cpp";
+    CHECK(GraphicAssetDefinitions(Drawable(), file, engine)[0].parameters.empty());
+
+    auto pixel = Drawable();
+    pixel.pixels = [](std::size_t, float) { return GraphicPixels{}; };
+    const auto definitions = GraphicAssetDefinitions(pixel, file, engine);
+    REQUIRE(definitions[0].parameters.size() == 2);
+    const SceneParameter& view = definitions[0].parameters[0];
+    CHECK(view.id == "view");
+    CHECK(view.choices == std::vector<std::string>{"Drawing", "Pixels", "Inks", "Parts"});
+    CHECK(ValidateSceneParameter(view).empty());
+    CHECK(ValidateSceneParameter(definitions[0].parameters[1]).empty());
+}
+
 TEST_CASE("Editor.GraphicAsset.RejectsMisplacedOrIncompleteAssets", "[engine-editor]") {
     const std::filesystem::path engine = "C:/Project/Engine";
     const std::filesystem::path good = "C:/Project/Game/Assets/Graphics/Goblin.asset.cpp";

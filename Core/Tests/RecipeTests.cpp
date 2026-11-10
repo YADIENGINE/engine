@@ -15,6 +15,7 @@
 #include "AgentDocs/Recipes/Code/GameCamera.h"
 #include "AgentDocs/Recipes/Code/Lighting.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
+#include "AgentDocs/Recipes/Code/PixelSprite.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
 #include "AgentDocs/Recipes/Code/PoolTargets.h"
 #include "AgentDocs/Recipes/Code/PopupEffects.h"
@@ -700,6 +701,7 @@ TEST_CASE("Engine.Recipes.ViewsRecordAndCachedLayerInvalidates", "[engine][recip
     DrawRecipeIcons(harness.paint, {200.0f, 100.0f}, 16.0f, Rgb(0xffffff));
     DrawGoblin(harness.paint, {240.0f, 20.0f, 60.0f, 100.0f}, GoblinKind::Forest, 0.5f);
     DrawGoblin(harness.paint, {240.0f, 120.0f, 100.0f, 60.0f}, GoblinKind::Ice, 0.5f);
+    DrawGuard(harness.paint, {300.0f, 20.0f, 60.0f, 90.0f}, GuardKind::Royal, 0.6f, {.hurt = 0.5f});
     stage.Draw(harness.paint, Field{});
     harness.End();
     CHECK_FALSE(harness.Draws().empty());

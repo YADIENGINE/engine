@@ -14,6 +14,8 @@ Example: [Graphic asset](../../Recipes/GraphicAsset.md).
    Variants (color, kind) are `items` in one set, not separate assets. Existing code need not move. The project's own
    agent file takes precedence if it specifies another location.
 2. **Skeleton:** `python Engine asset new X --folder Characters` generates the three files; choose a suitable folder.
+   For pixel art add `--pixel` and follow the [pixel sprite recipe](../../Recipes/PixelSprite.md): shapes with ink
+   ramps, parts, frames made once, palette variants.
 3. **Draw:** implement the drawing in `X.cpp`, fit it to `box`, and take time as a parameter. Give it an `XLook` with
    default values so `DrawX(paint, box, time)` draws it as intended; `X.asset.cpp` passes no colors. Fill `items` for variants,
    supply meaningful `usage` (including the variant via `{item}`), and set `thumbnailTime` when the initial frame is

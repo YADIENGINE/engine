@@ -5,6 +5,7 @@
 #include "Graphics/Paint/Internals/DrawList.h"
 #include "Graphics/Paint/Internals/PaintContext.h"
 #include "Graphics/Paint/Painter.h"
+#include "Graphics/Pixel/Internals/PixelAtlas.h"
 #include "Graphics/Post/PostSettings.h"
 #include "Graphics/Post/RenderQuality.h"
 #include "Graphics/Render/Internals/FrameExecutor.h"
@@ -73,6 +74,7 @@ private:
     GlyphCache _glyphs;
     TextLayoutCache _layouts;
     TextServices _text{_glyphs, _layouts};
+    PixelAtlas _pixels;
     DrawList _list;
     FrameExecutor _executor;
     PaintContext _context;

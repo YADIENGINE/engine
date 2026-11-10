@@ -926,3 +926,22 @@ all notes of its tag, so the launcher reads one file from the newest release to 
    published before it need no change.
 
 Left out: names for versions before 0.11.1, and notes in the editor.
+
+### D62. Pixel kit
+Usage: [Pixel art](../Graphics/PixelArt.md).
+
+Decision: pixel art is the engine's first-class look, still drawn in code (D1). `Core/Graphics/Pixel` holds the kit:
+`PixelPalette`, `InkRamp`, `PixelMask`, `PixelCanvas`, `PixelSprite`, `PixelSpriteSet`; `Painter::Sprite` draws a sprite.
+The smooth drawing API stays; only features that serve a smooth look alone stop being added.
+
+1. *Sprites store inks, not colours:* one sprite shows in any palette (variants, flashes, later light along a ramp)
+   without new pixels. A palette is a value of at most 255 colours; ink 0 is transparent.
+2. *Shapes shaded by the kit, not pixels placed by hand:* code-drawn pixel art holds up when volumes are masks filled
+   with a five-ink ramp lit from one direction; `Stamp` is for details. This is what games had already written.
+3. *Parts are recorded while drawing* (`PixelCanvas::Part`), so a sprite can later break along them.
+4. *The GPU keeps inks:* sprites go to R8 atlas pages and palettes to rows of one texture; the paint shader looks each
+   ink up (`PaintKind::Indexed`). One quad per sprite, so no seams between pixels; corners snap to device pixels.
+5. *Frames are made once* (`PixelSpriteSet`), keyed by a sprite id that copies share.
+6. *The editor shows a sprite's pixels* (`GraphicAsset::pixels`): inks, parts, the pixel under the mouse.
+
+Left out: rotation of a sprite (RotSprite later), image import, a palette per project, more than 255 inks.

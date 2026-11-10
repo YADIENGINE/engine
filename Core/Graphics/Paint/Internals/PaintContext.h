@@ -12,6 +12,7 @@
 class FrameExecutor;
 class RenderResources;
 class GlyphCache;
+class PixelAtlas;
 class TextLayoutCache;
 class Surface;
 
@@ -51,6 +52,7 @@ struct PaintContext {
     FrameExecutor& executor;
     TextServices* text;             // Null: Painter::Text is not available
     const FontFace* font = nullptr; // The game's font (Painter::Font); borrowed, outlives the frames
+    PixelAtlas* pixels = nullptr;   // Null: Painter::Sprite is not available
     PaintFrameInfo frame;
 
     std::vector<PaintScopeRecord> scopes;

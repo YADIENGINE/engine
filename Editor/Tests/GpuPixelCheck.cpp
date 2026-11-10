@@ -18,6 +18,9 @@
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Paint/Path.h"
 #include "Graphics/Render/Internals/PostChain.h"
+#include "Graphics/Pixel/PixelCanvas.h"
+#include "Graphics/Pixel/PixelPalette.h"
+#include "Graphics/Pixel/PixelSprite.h"
 #include "Graphics/Render/Internals/RenderPipeline.h"
 #include "Graphics/Surface/Internals/SurfaceState.h"
 #include "Graphics/Surface/Surface.h"
@@ -901,6 +904,30 @@ void MeasureComposeCost() {
 }
 } // namespace
 
+// Each ink shows its palette colour exactly, with hard edges, and a flash moves every ink toward its colour.
+void SpriteShowsItsPalette(PixelCheck& check) {
+    PixelCanvas canvas(4, 2);
+    canvas.FlatRect(0, 0, 2, 2, 1);
+    canvas.FlatRect(2, 0, 2, 2, 2);
+    const PixelSprite sprite(canvas);
+    const PixelPalette palette{Color4{200, 40, 10, 255}, Color4{0, 100, 250, 255}};
+    const PixelPalette night = palette.Mixed(Black, 0.5f);
+    Surface image({64.0f, 64.0f});
+    check.Frame([&](Painter& paint) {
+        auto into = paint.Target(image, Black);
+        paint.Sprite(sprite, palette, {0.0f, 0.0f}, {.scale = 8.0f});
+        paint.Sprite(sprite, night, {0.0f, 20.0f}, {.scale = 8.0f});
+        paint.Sprite(sprite, palette, {0.0f, 40.0f}, {.scale = 8.0f, .flash = White, .flashAmount = 1.0f});
+    });
+    check.Near("ink 1 is its red", check.Read(image, 4, 4).r, 200, 0);
+    check.Near("ink 2 is its blue", check.Read(image, 20, 4).b, 250, 0);
+    check.Near("the last column of ink 1 is still ink 1", check.Read(image, 15, 15).g, 40, 0);
+    check.Near("the first column of ink 2 is already ink 2", check.Read(image, 16, 0).g, 100, 0);
+    check.Near("ink 0 shows what is behind", check.Read(image, 40, 4).r, 0, 0);
+    check.Near("another palette draws the same sprite", check.Read(image, 4, 24).r, 100, 1);
+    check.Near("a full flash is the flash colour", check.Read(image, 20, 44).r, 255, 0);
+}
+
 int main(int argc, char** argv) {
     SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_HIDDEN);
@@ -938,6 +965,7 @@ int main(int argc, char** argv) {
         WobbleBendsTheMiddleOnly(check);
         TapeBandRollsAndLinesJump(check);
         PlayerSwitchStopsWhatMoves(check);
+        SpriteShowsItsPalette(check);
         failures = check.Failures();
         ReportCost(check);
     }

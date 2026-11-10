@@ -4,6 +4,7 @@
 #include "Graphics/Paint/Internals/DrawList.h"
 #include "Graphics/Paint/Internals/PaintContext.h"
 #include "Graphics/Paint/Painter.h"
+#include "Graphics/Pixel/Internals/PixelAtlas.h"
 #include "Graphics/Render/Internals/FrameExecutor.h"
 #include "Graphics/Render/Internals/RenderResources.h"
 #include "Graphics/Text/Internals/GlyphCache.h"
@@ -16,13 +17,16 @@ struct PaintHarness {
         , scale(scale)
         , context(list, resources, executor, &text)
         , canvas(device.CreateTarget({static_cast<int>(size.x * scale), static_cast<int>(size.y * scale),
-                                      GpuFormat::Rgba8, GpuFilter::Linear, false, nullptr})) {}
+                                      GpuFormat::Rgba8, GpuFilter::Linear, false, nullptr})) {
+        context.pixels = &pixels;
+    }
 
     void Begin(float pixelScale = 0.0f) {
         if (pixelScale > 0.0f) scale = pixelScale;
         device.BeginFrame();
         resources.BeginFrame({scale, scale});
         glyphs.BeginFrame();
+        pixels.BeginFrame();
         list.Reset({canvas, size, {0, 0, static_cast<int>(size.x * scale), static_cast<int>(size.y * scale)}, false},
                    PremultipliedColor{});
         device.ClearCommands();
@@ -50,6 +54,7 @@ struct PaintHarness {
     GlyphCache glyphs{device};
     TextLayoutCache layouts;
     TextServices text{glyphs, layouts};
+    PixelAtlas pixels{device};
     PaintContext context;
     Painter paint{context};
     GpuTarget canvas;

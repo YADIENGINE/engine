@@ -61,6 +61,84 @@ GraphicAsset Make{name}() {{
 }} // namespace
 """
 
+# --pixel: a pixel sprite drawn on a PixelCanvas, frames made once, its palette, and the editor's pixel view.
+PIXEL_HEADER = """#pragma once
+#include "Graphics/Pixel/PixelPalette.h"
+#include "Graphics/Pixel/PixelSprite.h"
+#include "Utilities/Geometry/FloatRect.h"
+
+class Painter;
+
+// How the drawing looks on its own. The Assets panel shows these values; a game changes only what it needs.
+struct {name}Look {{
+    float flash = 0.0f; // 0..1: the whole sprite moves toward white (a hit)
+}};
+
+// The frame shown at `time` and the palette it is drawn in (also what the editor's pixel view shows).
+[[nodiscard]] const PixelSprite& {name}Sprite(float time);
+[[nodiscard]] const PixelPalette& {name}Palette();
+// Centred in `box`, standing on its bottom edge, each sprite pixel a whole number of units.
+void Draw{name}(Painter& paint, const FloatRect& box, float time, const {name}Look& look = {{}});
+"""
+PIXEL_SOURCE = """#include "{include}.h"
+#include <algorithm>
+#include <cmath>
+#include "Graphics/Paint/Painter.h"
+#include "Graphics/Pixel/PixelCanvas.h"
+#include "Graphics/Pixel/PixelSpriteSet.h"
+
+namespace {{
+constexpr int Width = 16;
+constexpr int Height = 16;
+constexpr int Frames = 2;
+constexpr float FramesPerSecond = 2.0f;
+
+// Inks, numbered as the palette lists its colours. A ramp is one material from dark to light.
+enum : Ink {{ Line = 1, Dark, Mid, Light, Shine }};
+constexpr InkRamp Body{{Dark, Dark, Mid, Light, Shine}};
+
+// Draw shapes and let the canvas shade them from the light (top left); Stamp places single pixels.
+PixelSprite PaintFrame(std::size_t frame) {{
+    PixelCanvas c(Width, Height);
+    const float squash = static_cast<float>(frame);
+    c.Ellipse(8.0f, 9.0f + squash * 0.5f, 6.0f + squash * 0.5f, 6.0f - squash * 0.5f, Body);
+    c.Stamp(6, 7, {{"1.1"}});
+    c.Outline(Line);
+    return PixelSprite(c, {{Width / 2, Height}}); // Pivot: the middle of the bottom edge
+}}
+
+const PixelSpriteSet Sprites(Frames, &PaintFrame);
+}} // namespace
+
+const PixelSprite& {name}Sprite(float time) {{
+    return Sprites[static_cast<std::size_t>(std::max(0.0f, std::floor(time * FramesPerSecond))) % Frames];
+}}
+
+const PixelPalette& {name}Palette() {{
+    static const PixelPalette palette{{Rgb(0x1b1824), Rgb(0x2f4a6b), Rgb(0x4d86a8), Rgb(0x8ccbd9), Rgb(0xf2f0e6)}};
+    return palette;
+}}
+
+void Draw{name}(Painter& paint, const FloatRect& box, float time, const {name}Look& look) {{
+    const float fit = std::min(box.width / static_cast<float>(Width), box.height / static_cast<float>(Height));
+    paint.Sprite({name}Sprite(time), {name}Palette(), {{box.Center().x, box.Bottom()}},
+                 {{.scale = std::max(1.0f, std::floor(fit)), .flashAmount = look.flash}});
+}}
+"""
+PIXEL_REGISTRATION = """#include "{include}.h"
+#include "Editor/Api/GraphicAsset.h"
+
+namespace {{
+GraphicAsset Make{name}() {{
+    GraphicAsset asset;
+    asset.usage = "Draw{name}(paint, box, time);";
+    asset.draw = [](Painter& paint, const FloatRect& box, std::size_t, float time) {{ Draw{name}(paint, box, time); }};
+    asset.pixels = [](std::size_t, float time) {{ return GraphicPixels{{{name}Sprite(time), {name}Palette()}}; }};
+    return asset;
+}}
+[[maybe_unused]] const bool Registered = RegisterGraphicAsset(&Make{name});
+}} // namespace
+"""
 
 def add_parser(commands) -> None:
     command = commands.add_parser("asset", help="create, move and find unlisted project graphics")
@@ -68,6 +146,8 @@ def add_parser(commands) -> None:
     action = actions.add_parser("new", help="a graphic's skeleton: X.h, X.cpp and X.asset.cpp")
     action.add_argument("name", help="PascalCase name; also names the draw function")
     action.add_argument("--folder", default="", help="folder under Game/Assets/Graphics")
+    action.add_argument("--pixel", action="store_true",
+                        help="a pixel sprite: PixelCanvas frames, a palette and the editor's pixel view")
     actions.add_parser("mkdir", help="a folder under Game/Assets/Graphics").add_argument("folder")
     action = actions.add_parser("move", help="move an asset or folder and update the includes that name it")
     action.add_argument("source", help="asset (Enemies/Goblin) or folder (Enemies), under Game/Assets/Graphics")
@@ -84,15 +164,15 @@ def relative_folder(text: str) -> PurePosixPath:
     return path
 
 
-def new_graphic(root: Path, name: str, folder: str) -> dict:
+def new_graphic(root: Path, name: str, folder: str, pixel: bool = False) -> dict:
     if not NAME.fullmatch(name):
         raise ToolError(f"Asset names are PascalCase letters and digits: {name}", EXIT_FAILED)
     relative = relative_folder(folder)
     target = root / GRAPHICS / relative
     files = {
-        target / f"{name}.h": HEADER,
-        target / f"{name}.cpp": SOURCE,
-        target / f"{name}.asset.cpp": REGISTRATION,
+        target / f"{name}.h": PIXEL_HEADER if pixel else HEADER,
+        target / f"{name}.cpp": PIXEL_SOURCE if pixel else SOURCE,
+        target / f"{name}.asset.cpp": PIXEL_REGISTRATION if pixel else REGISTRATION,
     }
     existing = [path for path in files if path.exists()]
     if existing:
@@ -237,7 +317,7 @@ def move_asset(root: Path, source: str, destination: str) -> dict:
 def asset(project: Project, args: argparse.Namespace) -> int:
     match args.asset_action:
         case "new":
-            answer = new_graphic(project.root, args.name, args.folder)
+            answer = new_graphic(project.root, args.name, args.folder, args.pixel)
         case "mkdir":
             answer = make_folder(project.root, args.folder)
         case "move":

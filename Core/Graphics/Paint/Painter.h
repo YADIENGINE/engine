@@ -17,6 +17,8 @@ class FontFace;
 class Painter;
 struct CameraView;
 class Path;
+class PixelPalette;
+class PixelSprite;
 class Surface;
 class TextBlock;
 struct TextStyle;
@@ -119,6 +121,10 @@ public:
     void ImagePolygon(const Surface& surface, std::span<const Float2> points, std::span<const Float2> sources,
                       Color4 tint = {255, 255, 255, 255}, float emission = 0.0f);
     void NineSlice(const TextureRef& texture, const FloatRect& dest, const NineSliceStyle& style);
+    // A pixel sprite in 'palette' (each ink its colour; ink 0 and inks the palette lacks show nothing), its pivot at
+    // 'at'. Without rotation in the current transform its corners land on whole device pixels, so a sprite never
+    // blurs or seams. No rotation of its own. A sprite larger than the atlas page (2048 pixels a side) is rejected.
+    void Sprite(const PixelSprite& sprite, const PixelPalette& palette, Float2 at, const SpriteStyle& style = {});
 
     // --- Text --------------------------------------------------------------------------------------------------
     // 'position' is the top of the first line; horizontally the line's left end, centre or right end (style.align).

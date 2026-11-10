@@ -88,6 +88,17 @@ struct ImageStyle {
     float emission = 0.0f;
 };
 
+// Drawing a pixel sprite (Painter::Sprite). Each sprite pixel covers 'scale' units on both axes; whole numbers keep
+// every pixel the same size.
+struct SpriteStyle {
+    float scale = 1.0f;
+    bool flipX = false; // Mirrored around the pivot: a sprite facing right faces left
+    Color4 flash{255, 255, 255, 255}; // Every ink moves toward this colour by 'flashAmount' (0..1): a hit flash
+    float flashAmount = 0.0f;
+    Color4 tint{255, 255, 255, 255}; // Multiplies the palette's colours
+    float emission = 0.0f;
+};
+
 // Nine-slice borders in texture pixels; the destination keeps them at 'scale' times their size.
 struct NineSliceStyle {
     float left = 0.0f;

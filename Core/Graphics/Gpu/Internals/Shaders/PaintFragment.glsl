@@ -26,6 +26,7 @@ const uint KindGlow = 10u;
 const uint KindComposite = 11u;
 const uint KindLight = 12u;
 const uint KindBlur = 13u;
+const uint KindIndexed = 14u;
 
 const uint ModeFill = 0u;
 const uint ModeStroke = 1u;
@@ -115,6 +116,11 @@ void main() {
         texel = SampleSlot(slot, vLocal);
     } else if (kind == KindBlur) {
         texel = BlurSlot(slot, vLocal, vStyle);
+    } else if (kind == KindIndexed) {
+        // The ink at this texel, then its colour in the palette row (nearest on both textures).
+        float ink = floor(SampleSlot(slot, vLocal).r * 255.0 + 0.5);
+        texel = SampleSlot(uint(vShape.x + 0.5), vec2((ink + 0.5) / 256.0, vShape.y));
+        texel.rgb = mix(texel.rgb, vColor2.rgb * texel.a, clamp(vStyle.x, 0.0, 1.0));
     } else if (kind == KindGlyph) {
         texel = vec4(SampleSlot(slot, vLocal).r);
     } else if (kind == KindGlyphHalo) {

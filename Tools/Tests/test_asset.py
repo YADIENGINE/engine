@@ -45,6 +45,20 @@ class AssetCommandTests(unittest.TestCase):
         self.assertIn("Fill(look.color)", (self.root / GRAPHICS / "Enemies/Goblin.cpp").read_text(encoding="utf-8"))
         self.assertIn("DrawGoblin(paint, box, time);", registration)
 
+    def test_new_pixel_writes_a_sprite_skeleton_with_the_pixel_view(self):
+        args = cli.build_parser().parse_args(["asset", "new", "Slime", "--pixel"])
+        self.assertTrue(args.pixel)
+        new_graphic(self.root, "Slime", "Enemies", pixel=True)
+        source = (self.root / GRAPHICS / "Enemies/Slime.cpp").read_text(encoding="utf-8")
+        self.assertIn("PixelCanvas c(Width, Height);", source)
+        self.assertIn("const PixelSpriteSet Sprites(Frames, &PaintFrame);", source)
+        self.assertIn("paint.Sprite(SlimeSprite(time), SlimePalette()", source)
+        header = (self.root / GRAPHICS / "Enemies/Slime.h").read_text(encoding="utf-8")
+        self.assertIn("const PixelSprite& SlimeSprite(float time);", header)
+        self.assertIn("const SlimeLook& look = {}", header)
+        registration = (self.root / GRAPHICS / "Enemies/Slime.asset.cpp").read_text(encoding="utf-8")
+        self.assertIn("GraphicPixels{SlimeSprite(time), SlimePalette()}", registration)
+
     def test_new_rejects_bad_names_paths_and_existing_assets(self):
         for name, folder in (("goblin", ""), ("Gob lin", ""), ("Goblin", "../Outside"), ("Goblin", "C:/x")):
             with self.subTest(name=name, folder=folder), self.assertRaises(ToolError):

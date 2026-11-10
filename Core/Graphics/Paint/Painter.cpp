@@ -12,6 +12,9 @@
 #include "Graphics/Render/Internals/RenderResources.h"
 #include "Graphics/Surface/Internals/SurfaceState.h"
 #include "Graphics/Surface/Internals/TextureRefAccess.h"
+#include "Graphics/Pixel/Internals/PixelAtlas.h"
+#include "Graphics/Pixel/PixelPalette.h"
+#include "Graphics/Pixel/PixelSprite.h"
 #include "Graphics/Surface/Surface.h"
 #include "Utilities/Math/Scalar.h"
 
@@ -700,6 +703,75 @@ void Painter::NineSlice(const TextureRef& texture, const FloatRect& dest, const 
             AddImageQuad(_context, Affine2::Translate(part.Center()), part.Size() * 0.5f, uv, flip, tint, 0, textures);
         }
     }
+}
+
+void Painter::Sprite(const PixelSprite& sprite, const PixelPalette& palette, Float2 at, const SpriteStyle& style) {
+    DrawList& list = _context.list;
+    if (sprite.Empty()) return;
+    if (!_context.pixels) {
+        list.Reject("Painter::Sprite needs the renderer's pixel atlas");
+        return;
+    }
+    if (!Finite(at) || !Finite(style.scale)) return;
+    if (!ValidWidth(list, style.scale, "Sprite scale must not be negative") || style.scale == 0.0f) return;
+    PixelAtlas& atlas = *_context.pixels;
+    if (sprite.Width() > atlas.PageSize() || sprite.Height() > atlas.PageSize()) {
+        list.Reject("Sprite larger than a pixel atlas page");
+        return;
+    }
+    const PixelAtlas::Placed& placed = atlas.Sprite(sprite);
+    const PixelAtlas::Row row = atlas.Palette(palette);
+
+    // Local rectangle around the pivot; flipped sprites mirror around it.
+    const auto width = static_cast<float>(sprite.Width());
+    const auto height = static_cast<float>(sprite.Height());
+    const Float2 pivot = ToFloat2(sprite.Pivot());
+    const float left = style.flipX ? (pivot.x - width) * style.scale : -pivot.x * style.scale;
+    const float top = -pivot.y * style.scale;
+    const float right = left + width * style.scale;
+    const float bottom = top + height * style.scale;
+    const Affine2& transform = list.State().transform;
+    std::array<Float2, 4> corners{};
+    if (transform.b == 0.0f && transform.c == 0.0f) {
+        // Axis-aligned: snap both corners to whole device pixels of the target.
+        const Float2 scale = list.CurrentTarget().PixelScale();
+        const auto snap = [&](Float2 point) {
+            const Float2 device = transform.Apply(point);
+            return Float2{std::round(device.x * scale.x) / scale.x, std::round(device.y * scale.y) / scale.y};
+        };
+        const Float2 a = snap({at.x + left, at.y + top});
+        const Float2 c = snap({at.x + right, at.y + bottom});
+        if (a.x == c.x || a.y == c.y) return;
+        corners = {a, Float2{c.x, a.y}, c, Float2{a.x, c.y}};
+    } else {
+        corners = {transform.Apply({at.x + left, at.y + top}), transform.Apply({at.x + right, at.y + top}),
+                   transform.Apply({at.x + right, at.y + bottom}), transform.Apply({at.x + left, at.y + bottom})};
+    }
+    const FloatRect& uv = placed.uv;
+    const float u0 = style.flipX ? uv.Right() : uv.x;
+    const float u1 = style.flipX ? uv.x : uv.Right();
+    const std::array<Float2, 4> coords{Float2{u0, uv.y}, Float2{u1, uv.y}, Float2{u1, uv.Bottom()},
+                                       Float2{u0, uv.Bottom()}};
+    const PaintColor tint = list.Shade(style.tint);
+    const PaintColor flash = list.Shade(Color4{style.flash.r, style.flash.g, style.flash.b, 255});
+    std::array<PaintVertex, 4> vertices{};
+    for (std::size_t i = 0; i < vertices.size(); ++i) {
+        PaintVertex& vertex = vertices[i];
+        vertex.x = corners[i].x;
+        vertex.y = corners[i].y;
+        vertex.u = coords[i].x;
+        vertex.v = coords[i].y;
+        vertex.shape0 = 1.0f; // Palette: textures[1] (DrawList maps it to its batch slot)
+        vertex.shape1 = row.v;
+        vertex.style0 = std::clamp(style.flashAmount, 0.0f, 1.0f);
+        vertex.color = tint;
+        vertex.color2 = flash;
+        vertex.kind = PaintKind::Indexed;
+        vertex.slot = 0; // Inks: textures[0]
+        vertex.emission = EmissionByte(style.emission);
+    }
+    const std::array textures{placed.page, row.texture};
+    list.AddQuad(vertices, textures);
 }
 
 // --- Scopes ---

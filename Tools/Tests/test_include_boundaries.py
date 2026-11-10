@@ -176,6 +176,19 @@ class BoundaryTests(unittest.TestCase):
         self.write("Engine/Core/Graphics/Paint/Painter.cpp", '#include "Graphics/Light/LightLayer.h"\n')
         self.assertIn("Core/Graphics/Paint includes", self.check()[0])
 
+    def test_the_pixel_kit_stands_on_utilities_and_only_its_atlas_reaches_the_gpu(self):
+        self.write("Engine/Core/Graphics/Pixel/PixelCanvas.cpp", '#include "Graphics/Pixel/PixelCanvas.h"\n'
+                   '#include "Utilities/Color4.h"\n')
+        self.write("Engine/Core/Graphics/Pixel/Internals/PixelAtlas.cpp",
+                   '#include "Graphics/Gpu/Internals/GpuDevice.h"\n#include "Graphics/Text/Internals/AtlasPacker.h"\n'
+                   '#include "Graphics/Pixel/PixelSprite.h"\n')
+        self.write("Engine/Core/Graphics/Paint/Painter.cpp", '#include "Graphics/Pixel/PixelSprite.h"\n')
+        self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Graphics/Pixel/PixelCanvas.cpp", '#include "Graphics/Paint/Painter.h"\n')
+        self.assertIn("Core/Graphics/Pixel includes", self.check()[0])
+        self.write("Engine/Core/Graphics/Pixel/PixelCanvas.cpp", '#include "Graphics/Gpu/Internals/GpuDevice.h"\n')
+        self.assertIn("Core/Graphics/Pixel includes", self.check()[0])
+
     def test_a_stage_assembles_view_systems_and_never_reaches_a_simulation(self):
         self.write("Engine/Core/Stage/Stage.cpp", '#include "Stage/Stage.h"\n#include "Camera/Debug/CameraGuides.h"\n'
                    '#include "Fx/FxStage.h"\n#include "Graphics/Light/LightLayer.h"\n#include "Weather/Weather.h"\n'

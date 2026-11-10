@@ -4,6 +4,8 @@
 #include <source_location>
 #include <string>
 #include <vector>
+#include "Graphics/Pixel/PixelPalette.h"
+#include "Graphics/Pixel/PixelSprite.h"
 #include "Utilities/Geometry/FloatRect.h"
 
 class Painter;
@@ -13,6 +15,12 @@ struct GraphicItem {
     std::string tags; // Extra search words
 };
 
+// One item of a pixel-art graphic as data: what GraphicAsset::pixels returns.
+struct GraphicPixels {
+    PixelSprite sprite;
+    PixelPalette palette;
+};
+
 // A ready-made graphic for the editor's Assets panel. Every graphic is a set; a single drawing leaves `items` empty
 // and takes its name from the file. Keep registration in `X.asset.cpp` under an `Assets/Graphics` folder: only the
 // editor worker compiles those files, so games never carry the catalog.
@@ -20,6 +28,10 @@ struct GraphicAsset {
     std::vector<GraphicItem> items;
     // Draws one item fitted to `box`; `item` indexes `items` (0 for a single drawing). `time` is the scene's clock.
     std::function<void(Painter& paint, const FloatRect& box, std::size_t item, float time)> draw;
+    // For pixel art: the sprite and palette an item shows at `time`. The preview then offers Pixels, Inks and Parts
+    // views (whole-number zoom, a grid, the pivot, and the pixel under the mouse in the Inspector). Optional: `draw`
+    // still makes the thumbnail and the Drawing view.
+    std::function<GraphicPixels(std::size_t item, float time)> pixels;
     // The moment the thumbnail shows, for a graphic that starts empty or looks best mid-animation.
     float thumbnailTime = 0.0f;
     // The line "Copy usage" copies; `{item}` becomes the item's name.

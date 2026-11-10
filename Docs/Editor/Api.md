@@ -85,6 +85,10 @@ GraphicAsset MakeGoblin() {
 } // namespace
 ```
 
+For pixel art, `python Engine asset new X --folder <Folder> --pixel` writes a sprite skeleton whose registration also
+sets `pixels` (the sprite and palette an item shows): the preview then offers Pixels, Inks and Parts views and the
+pixel under the mouse ([Pixel art](../Graphics/PixelArt.md#in-the-editor)).
+
 Fill `items` for a set: each item gets its own tile and catalog entry, and `{item}` in `usage` becomes its name. Ids are
 `asset:Graphics/Folder/Name[#Item]`; `ctl find` and `ctl open` reach them like scenes. `python Engine asset new NAME`
 writes a skeleton. The asset provides its own viewport preview; no separate work scene is needed for a standalone

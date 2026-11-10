@@ -66,6 +66,7 @@ engine_tests(EngineTests
         MathTests.cpp
         NoiseFieldTests.cpp
         PaintTests.cpp
+        PixelTests.cpp
         PaintGeometryTests.cpp
         PaintTextTests.cpp
         PaintWidgetTests.cpp
@@ -197,6 +198,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/AnalogFinish.cpp"
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"
+    "${recipeRoot}/PixelSprite.cpp"
     "${recipeRoot}/PoolTargets.cpp"
     "${recipeRoot}/PopupEffects.cpp"
     "${recipeRoot}/ProceduralLevel.cpp"

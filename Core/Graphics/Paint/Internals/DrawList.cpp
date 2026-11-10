@@ -188,7 +188,7 @@ void DrawList::Add(std::span<PaintVertex> vertices, std::span<const std::uint32_
     for (PaintVertex& vertex : vertices) {
         if (!textures.empty()) {
             vertex.slot = mapped(vertex.slot);
-            if (vertex.kind == PaintKind::Composite)
+            if (vertex.kind == PaintKind::Composite || vertex.kind == PaintKind::Indexed)
                 vertex.shape0 = static_cast<float>(mapped(static_cast<std::size_t>(vertex.shape0)));
         }
         _vertices.push_back(vertex);

@@ -19,9 +19,11 @@ RenderPipeline::RenderPipeline(GpuDevice& device, const RenderPipelineSettings& 
     , _settings(settings)
     , _resources(device)
     , _glyphs(device)
+    , _pixels(device)
     , _executor(device)
     , _context(_list, _resources, _executor, &_text)
     , _post(device) {
+    _context.pixels = &_pixels;
     if (!(settings.canvasSize.x > 0.0f) || !(settings.canvasSize.y > 0.0f))
         throw std::invalid_argument("RenderPipeline: the canvas needs a positive size");
 }
@@ -111,6 +113,7 @@ Painter& RenderPipeline::BeginFrame(Vec2 windowSize, double time, float delta) {
                        static_cast<float>(_canvasHeight) / _settings.canvasSize.y};
     _resources.BeginFrame(scale);
     _glyphs.BeginFrame();
+    _pixels.BeginFrame();
     _executor.ResetCounters();
     BeginRecording({_canvas, _settings.canvasSize, {0, 0, _canvasWidth, _canvasHeight}, _canvasEmission},
                    Premultiply(_settings.background));
