@@ -63,7 +63,11 @@ STAGE_RULE = re.compile(
 PIXEL_RULE = re.compile(r'''^\s*#\s*include\s*"(?!Utilities/|Graphics/Pixel/)[^"]*"''')
 PIXEL_INTERNALS_RULE = re.compile(
     r'''^\s*#\s*include\s*"(?!Utilities/|Graphics/Pixel/|Graphics/Gpu/|Graphics/Text/Internals/AtlasPacker\.h)[^"]*"''')
-PAINT_LIGHT_RULE = re.compile(r'''^\s*#\s*include\s*"Graphics/Light/[^"]*"''')
+PAINT_LIGHT_RULE = re.compile(r'''^\s*#\s*include\s*"Graphics/(?:Light|PixelView)/[^"]*"''')
+# A pixel view stands on Painter as light does: a surface, the camera's view, and Painter never knows it
+# (Docs/Graphics/PixelArt.md).
+PIXEL_VIEW_RULE = re.compile(
+    r'''^\s*#\s*include\s*"(?!Utilities/|Camera/CameraView\.h|Graphics/(?:PixelView|Paint|Surface)/)[^"]*"''')
 # The audio library stays behind Core/Audio/Internals, so that public audio headers read the same whatever plays them, and
 # no audio code touches raylib. What a public audio header includes stays low enough for a tool to use it (Docs/Audio.md).
 AUDIO_LIBRARY_INCLUDE = re.compile(r'''^\s*#\s*include\s*[<"](?:[^>"/]*/)*(?:miniaudio\.h|stb_vorbis\.c)[>"]''')
@@ -134,6 +138,7 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
         paint = source.is_relative_to(engine_root / CORE / "Graphics" / "Paint")
         pixel = source.is_relative_to(engine_root / CORE / "Graphics" / "Pixel")
         pixel_internal = source.is_relative_to(engine_root / CORE / "Graphics" / "Pixel" / "Internals")
+        pixel_view = source.is_relative_to(engine_root / CORE / "Graphics" / "PixelView")
         atmosphere = source.is_relative_to(engine_root / CORE / "Graphics" / "Atmosphere")
         weather = source.is_relative_to(engine_root / CORE / "Weather")
         stage = source.is_relative_to(engine_root / CORE / "Stage")
@@ -182,10 +187,14 @@ def violations(project_root: Path, engine_root: Path = ENGINE_ROOT) -> list[str]
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Graphics/Pixel includes "{line.strip()}"; the pixel kit stands on'
                              ' Utilities (its Internals also on Graphics/Gpu and the atlas packer)')
+            if pixel_view and PIXEL_VIEW_RULE.match(line):
+                where = source.relative_to(project_root).as_posix()
+                found.append(f'{where}:{number}: Core/Graphics/PixelView includes "{line.strip()}"; only Utilities,'
+                             ' the camera\'s view and Graphics/Paint or Surface')
             if paint and PAINT_LIGHT_RULE.match(line):
                 where = source.relative_to(project_root).as_posix()
-                found.append(f'{where}:{number}: Core/Graphics/Paint includes "{line.strip()}"; lighting stands on'
-                             ' Painter, not the other way')
+                found.append(f'{where}:{number}: Core/Graphics/Paint includes "{line.strip()}"; lighting and pixel'
+                             ' views stand on Painter, not the other way')
             if ui_layer and ui_layer[1].match(line):
                 where = source.relative_to(project_root).as_posix()
                 found.append(f'{where}:{number}: Core/Ui/{ui_layer[0]} includes "{line.strip()}"; {ui_layer[2]}')

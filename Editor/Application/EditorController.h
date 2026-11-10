@@ -172,6 +172,7 @@ private:
     SceneParameters _displayed;
     SceneInspection _inspection;
     Vec2 _canvas{1280, 720};
+    int _artPixel = 0; // The scene's project: above 0, a pixel project
     std::map<std::uint64_t, std::string> _pendingParameters;
     std::map<std::string, std::uint64_t> _lastParameterRequest;
     std::string _selected;

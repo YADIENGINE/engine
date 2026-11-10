@@ -21,7 +21,8 @@ struct RenderPipelineSettings {
     Float2 canvasSize{1280.0f, 720.0f}; // Logical canvas (drawing coordinates)
     Color4 background{0, 0, 0, 255};    // Canvas clear colour
     Color4 letterbox{0, 0, 0, 255};     // Window area around the canvas
-    bool smoothCanvas = true;           // Linear filtering when the canvas is scaled to the window
+    int artPixel = 0;                   // Canvas units per art pixel (Painter::ArtPixel); 0: a smooth project
+    bool pixelUi = false;               // A pixel project's Stage pixelates its HUD too (Painter::PixelUi)
     PostSettings post;                  // The game's post-processing defaults
 };
 
@@ -29,7 +30,8 @@ struct RenderPipelineSettings {
 //   BeginFrame -> draw with the canvas Painter -> FinishCanvas (executes, post-processes) ->
 //   BeginWindow -> draw window overlays -> FlushWindow -> (native tool overlays) -> EndFrame.
 // The canvas keeps its logical size; it is rasterized at the window's pixel size (up to MaxRenderHeight), and
-// presented letterboxed.
+// presented letterboxed. A pixel project (artPixel above 0) always rasterizes it at the window's size, larger or
+// smaller, so its pixel views land on whole window pixels and nothing filters them.
 class RenderPipeline {
 public:
     RenderPipeline(GpuDevice& device, const RenderPipelineSettings& settings);
@@ -50,7 +52,8 @@ public:
     void SetPostDefaults(const PostSettings& post) { _settings.post = post; }
     // The game's font for Painter::Font (null: none); borrowed, must outlive the pipeline's frames.
     void SetFont(const FontFace* font) { _context.font = font; }
-    // Upper limit for the canvas texture's height in pixels (0: the window's); never below the logical height.
+    // Upper limit for the canvas texture's height in pixels (0: the window's); never below the logical height. A pixel
+    // project ignores it: its world is drawn at the art pixels' resolution anyway.
     void SetMaxRenderHeight(int height) { _maxRenderHeight = std::max(0, height); }
     // Window pixel -> canvas point; nullopt in the letterbox.
     [[nodiscard]] std::optional<Vec2> ToCanvas(Vec2 windowPoint, Vec2 windowSize) const;

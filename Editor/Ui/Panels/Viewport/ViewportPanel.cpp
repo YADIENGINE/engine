@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <string>
 #include "Editor/Internals/Session/ViewportMark.h"
 #include "Editor/Ui/Style/EditorTheme.h"
@@ -254,10 +255,11 @@ EditorViewportInteraction ViewportPanel::Draw(const EditorSnapshot& snapshot, co
         bounds.y = std::clamp(bounds.y, 0, snapshot.canvas.y - 1);
         bounds.width = std::clamp(bounds.width, 1, snapshot.canvas.x - bounds.x);
         bounds.height = std::clamp(bounds.height, 1, snapshot.canvas.y - bounds.y);
-        const float scale = (_mode == 2 ? 1.0f
-                                        : std::min(available.x / static_cast<float>(bounds.width),
-                                                   available.y / static_cast<float>(bounds.height))) *
-                            _zoom;
+        float fit =
+            std::min(available.x / static_cast<float>(bounds.width), available.y / static_cast<float>(bounds.height));
+        // A pixel project's frames grow by whole steps, so every art pixel keeps the same size.
+        if (snapshot.artPixel > 0 && fit >= 1.0f) fit = std::floor(fit);
+        const float scale = (_mode == 2 ? 1.0f : fit) * _zoom;
         _shownScale = scale;
         ImGui::InvisibleButton("viewport-image", available,
                                ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonMiddle);

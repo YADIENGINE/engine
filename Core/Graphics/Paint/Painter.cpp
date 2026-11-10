@@ -170,14 +170,19 @@ void DrawBox(PaintContext& context, PaintKind kind, const FloatRect& rect, float
     DrawShape(context, shape, style);
 }
 
-// Line width and anti-aliasing fringe in target units for tessellated geometry.
+// Tessellated geometry in target units: one device pixel (the thinnest line, curve tolerance), the anti-aliasing fringe
+// (a pixel, or almost nothing in a hard target) and the drawing scale.
 struct TargetScale {
-    float aa = 1.0f;
+    float pixel = 1.0f;
+    float fringe = 1.0f;
     float scale = 1.0f; // Target units per drawing unit
+    bool hard = false;
 };
 TargetScale Measure(const DrawList& list) {
-    const Float2 pixels = list.CurrentTarget().PixelScale();
-    return {1.0f / std::max(std::min(pixels.x, pixels.y), 1e-6f), list.State().transform.UniformScale()};
+    const PaintTarget& target = list.CurrentTarget();
+    const Float2 pixels = target.PixelScale();
+    const float pixel = 1.0f / std::max(std::min(pixels.x, pixels.y), 1e-6f);
+    return {pixel, target.hard ? pixel * HardFringe : pixel, list.State().transform.UniformScale(), target.hard};
 }
 
 void TransformPoints(PaintContext& context, std::span<const Float2> points) {
@@ -221,8 +226,8 @@ void StrokeTargetPoints(PaintContext& context, std::span<const Float2> points, b
     if (!ValidWidth(context.list, style.width, "Line width must not be negative")) return;
     if (style.width <= 0.0f || style.color.a == 0) return;
     const TargetScale scale = Measure(context.list);
-    const StrokeParams params{style.width * scale.scale, style.cap, style.join, std::max(style.miterLimit, 1.0f),
-                              scale.aa};
+    const StrokeParams params{style.width * scale.scale,        style.cap,   style.join,
+                              std::max(style.miterLimit, 1.0f), scale.pixel, scale.hard};
     StrokePolyline(context.mesh, points, closed, params, context.list.Shade(style.color));
     SubmitMesh(context, EmissionByte(style.emission));
 }
@@ -258,7 +263,7 @@ void ShadeTargetShape(PaintContext& context, const TargetShape& shape, const Sha
     const auto area = [&]() -> const ShapeArea& {
         if (!resolved) {
             context.area.Set(shape.points, polygon ? std::span(&whole, 1) : shape.contours, shape.rule,
-                             scale.aa / AreaStepsPerPixel);
+                             scale.pixel / AreaStepsPerPixel);
             context.area.Get(context.regions);
             resolved = true;
         }
@@ -266,7 +271,7 @@ void ShadeTargetShape(PaintContext& context, const TargetShape& shape, const Sha
     };
     if (const auto glow = EffectiveGlow(list, style.glow, context.frame.quality)) {
         const float width = glow->radius * scale.scale;
-        area().Band(width, StrokeJoin::Round, 1.0f, RoundPixels * scale.aa, context.band);
+        area().Band(width, StrokeJoin::Round, 1.0f, RoundPixels * scale.pixel, context.band);
         FadeRegions(context.mesh, context.band, context.regions, width, list.Shade(glow->color, true, glow->strength));
         SubmitMesh(context, emission);
     }
@@ -275,10 +280,10 @@ void ShadeTargetShape(PaintContext& context, const TargetShape& shape, const Sha
         const PaintColor color = gradient ? PaintColor{255, 255, 255, 255} : list.Shade(style.fill);
         const std::size_t first = context.mesh.vertices.size();
         if (polygon) {
-            FillPolygon(context.mesh, shape.points, color, scale.aa);
+            FillPolygon(context.mesh, shape.points, color, scale.fringe);
         } else {
             area();
-            FillRegions(context.mesh, context.regions, color, scale.aa);
+            FillRegions(context.mesh, context.regions, color, scale.fringe);
         }
         if (gradient) {
             const Affine2 toLocal = Affine2::Translate(-gradientCenter) * list.State().transform.Inverse();
@@ -299,16 +304,16 @@ void ShadeTargetShape(PaintContext& context, const TargetShape& shape, const Sha
         return;
     }
     // Inside or outside: the band between the edge and the stroke's width, filled. A stroke thinner than a pixel is
-    // a pixel wide and fainter, as lines are.
+    // a pixel wide and fainter (unless hard), as lines are.
     float width = stroke.width * scale.scale;
     Color4 color = stroke.color;
-    if (width < scale.aa) {
-        color = ScaleAlpha(color, width / scale.aa);
-        width = scale.aa;
+    if (width < scale.pixel) {
+        if (!scale.hard) color = ScaleAlpha(color, width / scale.pixel);
+        width = scale.pixel;
     }
     area().Band(stroke.align == StrokeAlign::Outside ? width : -width, stroke.join, LineStyle{}.miterLimit,
-                RoundPixels * scale.aa, context.band);
-    FillRegions(context.mesh, context.band, list.Shade(color), scale.aa);
+                RoundPixels * scale.pixel, context.band);
+    FillRegions(context.mesh, context.band, list.Shade(color), scale.fringe);
     SubmitMesh(context, emission);
 }
 
@@ -722,25 +727,22 @@ void Painter::Sprite(const PixelSprite& sprite, const PixelPalette& palette, Flo
     const PixelAtlas::Placed& placed = atlas.Sprite(sprite);
     const PixelAtlas::Row row = atlas.Palette(palette);
 
-    // Local rectangle around the pivot; flipped sprites mirror around it.
+    // Local rectangle around the pivot; flipped sprites mirror around it. A sprite pixel covers 'scale' art pixels.
+    const float unit = style.scale * ArtPixel();
     const auto width = static_cast<float>(sprite.Width());
     const auto height = static_cast<float>(sprite.Height());
     const Float2 pivot = ToFloat2(sprite.Pivot());
-    const float left = style.flipX ? (pivot.x - width) * style.scale : -pivot.x * style.scale;
-    const float top = -pivot.y * style.scale;
-    const float right = left + width * style.scale;
-    const float bottom = top + height * style.scale;
+    const float left = style.flipX ? (pivot.x - width) * unit : -pivot.x * unit;
+    const float top = -pivot.y * unit;
+    const float right = left + width * unit;
+    const float bottom = top + height * unit;
     const Affine2& transform = list.State().transform;
     std::array<Float2, 4> corners{};
     if (transform.b == 0.0f && transform.c == 0.0f) {
         // Axis-aligned: snap both corners to whole device pixels of the target.
-        const Float2 scale = list.CurrentTarget().PixelScale();
-        const auto snap = [&](Float2 point) {
-            const Float2 device = transform.Apply(point);
-            return Float2{std::round(device.x * scale.x) / scale.x, std::round(device.y * scale.y) / scale.y};
-        };
-        const Float2 a = snap({at.x + left, at.y + top});
-        const Float2 c = snap({at.x + right, at.y + bottom});
+        const PaintTarget& target = list.CurrentTarget();
+        const Float2 a = target.Snap(transform.Apply({at.x + left, at.y + top}));
+        const Float2 c = target.Snap(transform.Apply({at.x + right, at.y + bottom}));
         if (a.x == c.x || a.y == c.y) return;
         corners = {a, Float2{c.x, a.y}, c, Float2{a.x, c.y}};
     } else {
@@ -793,8 +795,7 @@ FloatRect ClipFor(DrawList& list, const FloatRect& rect, std::string_view caller
         FloatRect::FromCorners(transform.Apply(rect.Position()), transform.Apply({rect.Right(), rect.Bottom()}))
             .Union(FloatRect::FromCorners(transform.Apply({rect.Right(), rect.y}),
                                           transform.Apply({rect.x, rect.Bottom()})));
-    const FloatRect bounds{0.0f, 0.0f, list.CurrentTarget().size.x, list.CurrentTarget().size.y};
-    const FloatRect current = list.State().clip.value_or(bounds);
+    const FloatRect current = list.State().clip.value_or(list.CurrentTarget().Area());
     return current.Intersect(Drawable(rect) ? mapped : FloatRect{});
 }
 } // namespace
@@ -834,7 +835,7 @@ PaintScope Painter::Blending(Blend blend) {
 PaintScope Painter::Group(const GroupStyle& style) {
     DrawList& list = _context.list;
     const PaintTarget parent = list.CurrentTarget();
-    const PaintTarget image = _context.resources.AcquireTransient(parent.size, parent.viewport, parent.emission);
+    const PaintTarget image = _context.resources.AcquireTransient(parent);
     const std::uint32_t depth = list.PushScope(ScopeKind::Group);
     list.BeginTarget(image, Transparent, false);
     _context.scopes.push_back({depth, nullptr, image.target, parent, style});
@@ -842,8 +843,19 @@ PaintScope Painter::Group(const GroupStyle& style) {
 }
 
 PaintScope Painter::Target(Surface& surface, std::optional<Color4> clear) {
+    return Target(surface, FloatRect{0.0f, 0.0f, surface.Size().x, surface.Size().y}, clear);
+}
+
+PaintScope Painter::Target(Surface& surface, const FloatRect& area, std::optional<Color4> clear) {
     DrawList& list = _context.list;
-    const PaintTarget target = _context.resources.Prepare(surface);
+    PaintTarget target = _context.resources.Prepare(surface, list.CurrentTarget().resolution);
+    if (Drawable(area)) {
+        target.origin = area.Position();
+        target.size = area.Size();
+        if (target.hard) target.resolution = target.PixelScale();
+    } else {
+        list.Reject("Painter::Target needs an area with a positive size");
+    }
     const std::uint32_t depth = list.PushScope(ScopeKind::Target);
     list.BeginTarget(target, clear ? std::optional{Premultiply(*clear)} : std::nullopt, true);
     _context.scopes.push_back({depth, &surface, {}, {}, {}});
@@ -882,7 +894,7 @@ void Painter::EndScope(std::uint32_t depth) {
     const Float2 size = record->parent.size;
     const PaintColor faded = list.Shade(WithAlpha(White, record->group.opacity));
     const FloatRect uv{0.0f, 0.0f, 1.0f, 1.0f};
-    const Affine2 frame = Affine2::Translate(size * 0.5f);
+    const Affine2 frame = Affine2::Translate(record->parent.origin + size * 0.5f);
     const std::uint8_t emission = EmissionByte(record->group.emission);
     const GpuTexture color = context.resources.Attachment(record->transient, 0);
     if (record->parent.emission) {
@@ -909,12 +921,24 @@ float Painter::PixelScale() const { return _context.list.PixelScale(); }
 
 const Affine2& Painter::CurrentTransform() const { return _context.list.State().transform; }
 
-FloatRect Painter::Bounds() const {
-    const Float2 size = _context.list.CurrentTarget().size;
-    return {0.0f, 0.0f, size.x, size.y};
+FloatRect Painter::Bounds() const { return _context.list.CurrentTarget().Area(); }
+
+Float2 Painter::TargetPixels() const {
+    const PixelRect& viewport = _context.list.CurrentTarget().viewport;
+    return {static_cast<float>(viewport.width), static_cast<float>(viewport.height)};
 }
 
-bool Painter::Stale(const Surface& surface) const { return _context.resources.Stale(surface); }
+bool Painter::HardEdges() const { return _context.list.CurrentTarget().hard; }
+
+float Painter::ArtPixel() const { return _context.artPixel > 0 ? static_cast<float>(_context.artPixel) : 1.0f; }
+
+bool Painter::PixelWorld() const { return _context.artPixel > 0; }
+
+bool Painter::PixelUi() const { return _context.artPixel > 0 && _context.pixelUi; }
+
+bool Painter::Stale(const Surface& surface) const {
+    return _context.resources.Stale(surface, _context.list.CurrentTarget().resolution);
+}
 
 PostSettings& Painter::Post() { return _context.frame.post; }
 

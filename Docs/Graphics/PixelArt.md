@@ -1,10 +1,12 @@
 # Pixel art
 
 The engine's first-class look is pixel art drawn in code. A sprite is drawn once on a small grid of **inks**, frozen
-into a `PixelSprite`, and shown with `Painter::Sprite` in any **palette**. Headers: `Core/Graphics/Pixel/`.
-Example: [Pixel sprite recipe](../../AgentDocs/Recipes/PixelSprite.md).
+into a `PixelSprite`, and shown with `Painter::Sprite` in any **palette**. A pixel project draws its world into small
+images whose pixel is one **art pixel**, enlarged to the window by a whole number. Headers: `Core/Graphics/Pixel/`
+(the kit) and `Core/Graphics/PixelView/` (the pixel world). Examples:
+[Pixel sprite recipe](../../AgentDocs/Recipes/PixelSprite.md), [Pixel world recipe](../../AgentDocs/Recipes/PixelWorld.md).
 
-"Pixel art" does not mean a low resolution: a sprite pixel can cover one screen pixel or several (`SpriteStyle::scale`).
+"Pixel art" does not mean a low resolution: an art pixel covers `artPixel` canvas units, and so several window pixels.
 
 ## Inks and palettes
 
@@ -53,13 +55,59 @@ Painting a canvas costs more than drawing a sprite, so make each frame once: `Pi
 sprite `i` the first time it is asked for. Number poses × frames however the game likes.
 
 ```cpp
-paint.Sprite(sprite, palette, feet, {.scale = 3.0f, .flipX = facingLeft, .flash = White, .flashAmount = hurt});
+paint.Sprite(sprite, palette, feet, {.flipX = facingLeft, .flash = White, .flashAmount = hurt});
 ```
 
-Each sprite pixel covers `scale` units on both axes; whole numbers keep every pixel the same size. Without rotation in
-the current transform the sprite's corners land on whole device pixels, so it never blurs and has no seams between
-pixels. The renderer uploads a sprite the first time it is drawn (an atlas of inks) and each palette revision once.
-A sprite has no rotation of its own.
+Each sprite pixel covers `scale` art pixels (`paint.ArtPixel()` canvas units each) on both axes; the default 1 makes a
+sprite pixel one art pixel, and whole numbers keep every pixel the same size. In a smooth project an art pixel is one
+canvas unit. Without rotation in the current transform the sprite's corners land on whole device pixels, so it never
+blurs and has no seams between pixels. The renderer uploads a sprite the first time it is drawn (an atlas of inks) and
+each palette revision once. A sprite has no rotation of its own.
+
+## The pixel world
+
+A project is a pixel project when `Game/Game.settings.json` sets `artPixel`, the canvas units one art pixel covers; new
+projects use 3 (art 426×240 on the 1280×720 canvas). The canvas stays the coordinate system of logic, UI and the camera:
+only how the world is drawn changes. `artPixel` 0 is a smooth project.
+
+A `PixelView` draws one camera view's world into a pixel image and presents it:
+
+```cpp
+{
+    auto into = _pixels.Begin(paint, _camera.View()); // Canvas coordinates inside, hard edges
+    auto world = paint.Camera(_pixels.Shown());
+    DrawWorld(paint);
+}
+_pixels.Present(paint);
+```
+
+- One pixel of the image is one art pixel, at every zoom: a sprite at scale 1 fills exactly one, and zoom never
+  resamples it.
+- The image is presented with nearest filtering at a whole number of window pixels per art pixel,
+  `round(window pixels per canvas unit × artPixel × zoom)`, at least 1. That number comes from the real window, so a
+  canvas scaled by a fraction (1366×768) still gets even pixels. The zoom shown is the one that number gives: zoom moves
+  in steps, and a zoom below one window pixel per art pixel is the game's level of detail, not the view's.
+- The camera moves smoothly: its target snaps to the art grid inside the image and the rest moves the whole image by
+  window pixels (whole art pixels when an art pixel is one window pixel). The image is two pixels larger than the view for
+  that.
+- `Shown()` is the view actually drawn (zoom on its step, target on the grid); draw the world through it.
+  `Layout().ToWorld(mouse)` turns a canvas point into the world exactly as shown, for picking.
+- `Image()` is the pixel surface itself, for a presentation of one's own: an in-world monitor, a warped feed.
+
+A [Stage](Stage.md#in-a-pixel-project) does all of this for each of its views in a pixel project. The HUD stays sharp on
+the canvas by default (text in 720p units); `pixelUi` puts the stage's overlay and HUD into one more pixel view of the
+whole canvas.
+
+A pixel project always draws the canvas at the window's size and presents it with nearest filtering; the player's
+render-height limit does not apply. The editor's viewport shows its frames with sharp pixels, enlarged by whole steps.
+
+## Hard edges
+
+Inside a pixel view or a pixel surface (`SurfaceOptions::pixels`) drawing has hard edges: circles, polygons, borders,
+lines and text cover a pixel fully or not at all, so nothing blends with what is behind it and no in-between colours
+appear at edges. A line thinner than a pixel is one pixel wide at full colour. Glows, lights and gradients stay smooth.
+Surfaces opened inside a pixel view (a `LightLayer`'s image) take its resolution; a light layer by default has one light
+value per art pixel there.
 
 ## In the editor
 

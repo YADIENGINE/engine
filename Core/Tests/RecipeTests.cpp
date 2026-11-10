@@ -16,6 +16,7 @@
 #include "AgentDocs/Recipes/Code/Lighting.h"
 #include "AgentDocs/Recipes/Code/GraphicAsset.h"
 #include "AgentDocs/Recipes/Code/PixelSprite.h"
+#include "AgentDocs/Recipes/Code/PixelWorld.h"
 #include "AgentDocs/Recipes/Code/IconShape.h"
 #include "AgentDocs/Recipes/Code/PoolTargets.h"
 #include "AgentDocs/Recipes/Code/PopupEffects.h"
@@ -254,6 +255,29 @@ TEST_CASE("Engine.Recipes.LightingDarkensTheWorldBeforeTheSign", "[engine][recip
     REQUIRE(pipelines.size() >= 4);
     CHECK(std::ranges::count_if(pipelines, [](const NullCommand* p) { return p->blend == GpuBlend::Multiply; }) == 1);
     CHECK(pipelines.back()->blend == GpuBlend::Premultiplied);
+}
+
+TEST_CASE("Engine.Recipes.PixelWorldDrawsInArtPixelsAndPicksAsShown", "[engine][recipes][pixel]") {
+    PaintHarness h({1280.0f, 720.0f}, 1.5f);
+    h.context.artPixel = 3; // A pixel project, as Game.settings.json "artPixel": 3 makes it
+    TestSceneServices services;
+    RecipePixelWorld world(services.services);
+    for (int frame = 0; frame < 3; ++frame) {
+        world.UpdateReal(1.0f / 60.0f);
+        world.Update(1.0f / 60.0f, {1.0f, 0.5f}, {640.0f, 360.0f});
+        h.Begin();
+        world.Draw(h.paint);
+        h.End();
+        CHECK(h.list.Rejected() == 0);
+    }
+    // The world went into a pixel image (one pixel per art pixel), the HUD onto the canvas.
+    const auto passes = h.device.CommandsOf(NullCommandType::BeginPass);
+    REQUIRE(passes.size() == 3);
+    CHECK(passes[1]->pass.viewport.width == static_cast<int>(std::ceil(1920.0f / 5.0f)) + 2);
+    // The middle of the screen shows the floor around the walker, which has barely moved: tile 0, 0.
+    REQUIRE(world.Picked().has_value());
+    CHECK(world.Picked()->x == 0);
+    CHECK(world.Picked()->y == 0);
 }
 
 TEST_CASE("Engine.Recipes.WeatherTurnsIntoAStormAndLightningDraws", "[engine][recipes]") {

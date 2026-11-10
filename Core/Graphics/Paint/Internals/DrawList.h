@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -21,8 +22,19 @@ struct PaintTarget {
     Float2 size;           // Logical size (paint coordinates)
     PixelRect viewport;    // Device pixels the logical size maps to
     bool emission = false; // Has a bloom attachment
+    Float2 origin{};       // Logical point at the viewport's top-left corner
+    bool hard = false;     // Pixel art: no anti-aliasing (PaintHard on every vertex, almost no fringe)
+    Float2 resolution{};   // Device pixels per unit of the surfaces drawn from it; zero: the canvas's
     [[nodiscard]] Float2 PixelScale() const {
         return {static_cast<float>(viewport.width) / size.x, static_cast<float>(viewport.height) / size.y};
+    }
+    // The logical rectangle the target covers.
+    [[nodiscard]] FloatRect Area() const { return {origin.x, origin.y, size.x, size.y}; }
+    // 'point' (logical) moved to the nearest corner of a device pixel.
+    [[nodiscard]] Float2 Snap(Float2 point) const {
+        const Float2 scale = PixelScale();
+        return {origin.x + std::round((point.x - origin.x) * scale.x) / scale.x,
+                origin.y + std::round((point.y - origin.y) * scale.y) / scale.y};
     }
 };
 

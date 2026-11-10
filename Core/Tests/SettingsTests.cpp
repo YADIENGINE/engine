@@ -47,12 +47,15 @@ TEST_CASE("Engine.Settings.SharedCasesMatchTheGenerator", "[engine][settings]") 
 }
 
 TEST_CASE("Engine.Settings.ValuesFileFillsTheStruct", "[engine][settings]") {
-    const auto settings = ReadProjectSettings(R"({ "title": "Café", "canvasWidth": 640, "smoothCanvas": false,
-        "background": "#10203040", "font": "Fonts/A.ttf" })");
+    const auto settings = ReadProjectSettings(R"({ "title": "Café", "canvasWidth": 640, "artPixel": 3,
+        "pixelUi": true, "background": "#10203040", "font": "Fonts/A.ttf" })");
     CHECK(settings.title == "Caf\xC3\xA9");
     CHECK(settings.canvasWidth == 640);
     CHECK(settings.canvasHeight == ProjectSettings{}.canvasHeight); // The default
-    CHECK_FALSE(settings.smoothCanvas);
+    CHECK(settings.artPixel == 3);
+    CHECK(settings.pixelUi);
+    CHECK(ProjectSettings{}.artPixel == 0); // A smooth project unless the file says otherwise
+    CHECK_FALSE(ProjectSettings{}.pixelUi);
     CHECK(settings.background == Color4{0x10, 0x20, 0x30, 0x40});
     CHECK(settings.font == "Fonts/A.ttf");
     CHECK(ReadProjectSettings("{}") == ProjectSettings{});

@@ -10,6 +10,7 @@
 #include "Graphics/Atmosphere/Atmosphere.h"
 #include "Graphics/Light/LightLayer.h"
 #include "Graphics/Light/LightOccluders.h"
+#include "Graphics/PixelView/PixelView.h"
 #include "Stage/StageSettings.h"
 #include "Stage/StageView.h"
 #include "Weather/Weather.h"
@@ -87,8 +88,16 @@ public:
 
     // The frame. For each view: background, floor, ground effects, atmosphere behind, world, air, atmosphere in front,
     // light, glow, world effects and guides. Then once over the canvas: the effects' overlay and the HUD. Call it
-    // outside paint.Camera and paint.Transform.
+    // outside paint.Camera and paint.Transform. In a pixel project each view's passes draw into its own PixelView
+    // (hard pixel edges, canvas coordinates), presented on the canvas; the HUD stays sharp unless the project sets
+    // pixelUi (StageSettings::pixelWorld turns both off).
     void Draw(Painter& paint, const StageView& view) const;
+    // What view 'index' showed in the last Draw: the camera's view with the effects' shake, and in a pixel project its
+    // zoom and target as the PixelView drew them (StagePass::view). Before the first Draw, the camera's view. Throws
+    // std::out_of_range for a view the stage does not have.
+    [[nodiscard]] CameraView Shown(std::size_t index = 0) const;
+    // A canvas point (the mouse) in the world of view 'index' as the last Draw showed it.
+    [[nodiscard]] Float2 ToWorld(Float2 canvas, std::size_t index = 0) const;
 
 private:
     struct Air {
@@ -103,6 +112,8 @@ private:
     void Listen();
     void DrawView(Painter& paint, const StageView& view, const CameraView& base, const std::optional<FloatRect>& limits,
                   std::size_t index, const Camera2D* camera) const;
+    void DrawPasses(Painter& paint, const StageView& view, const StagePass& pass, const Camera2D* camera) const;
+    [[nodiscard]] std::size_t ViewCount() const;
 
     SoundPlayer& _sounds;
     const FxQuality& _effects;
@@ -115,6 +126,15 @@ private:
     std::optional<Lighting> _light;
     std::vector<CameraView> _given;
     StageGuides _guides;
+    bool _pixelWorld;
+    // Each view as the last Draw showed it; in a pixel project its PixelView too, and one for a pixelated HUD.
+    struct ShownView {
+        CameraView view;
+        bool pixels = false; // Drawn through _pixels at the same index
+    };
+    mutable std::vector<ShownView> _shown;
+    mutable std::vector<PixelView> _pixels;
+    mutable PixelView _hud;
 
 public:
     Stage(const Stage&) = delete;

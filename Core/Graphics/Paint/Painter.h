@@ -63,8 +63,10 @@ struct GroupStyle {
 };
 
 // Records drawing for one frame (or one offscreen surface). Coordinates are logical canvas units (y down), angles
-// radians clockwise. Every shape is anti-aliased and positioned with sub-pixel precision; nothing is drawn until the
-// frame ends, but the order of calls is always kept. Degenerate input (zero size, NaN position) draws nothing.
+// radians clockwise. Every shape is anti-aliased and positioned with sub-pixel precision, except in a hard-edged target
+// (a PixelView or a pixel surface, HardEdges()), where shapes, lines and text cover whole pixels or none, as pixel art
+// does (glows, lights and gradients stay smooth there). Nothing is drawn until the frame ends, but the order of calls
+// is always kept. Degenerate input (zero size, NaN position) draws nothing.
 // Programmer errors (negative widths, mismatched spans, a clip under rotation, scopes ended out of order) throw in
 // Debug builds (invalid_argument at the call, logic_error for scopes at the frame's end); Release builds skip the
 // drawing and count it (RenderStats::paintErrors).
@@ -122,7 +124,8 @@ public:
                       Color4 tint = {255, 255, 255, 255}, float emission = 0.0f);
     void NineSlice(const TextureRef& texture, const FloatRect& dest, const NineSliceStyle& style);
     // A pixel sprite in 'palette' (each ink its colour; ink 0 and inks the palette lacks show nothing), its pivot at
-    // 'at'. Without rotation in the current transform its corners land on whole device pixels, so a sprite never
+    // 'at'. Each sprite pixel covers style.scale art pixels (ArtPixel() units each), so at scale 1 it is one pixel of
+    // a PixelView. Without rotation in the current transform its corners land on whole device pixels, so a sprite never
     // blurs or seams. No rotation of its own. A sprite larger than the atlas page (2048 pixels a side) is rejected.
     void Sprite(const PixelSprite& sprite, const PixelPalette& palette, Float2 at, const SpriteStyle& style = {});
 
@@ -160,6 +163,10 @@ public:
     // Following drawing goes into 'surface' (fresh state: no transform, clip or opacity); cleared first unless
     // 'clear' is empty.
     PaintScope Target(Surface& surface, std::optional<Color4> clear = Color4{0, 0, 0, 0});
+    // The same, with 'area' (logical units) filling the surface's image: following drawing is in those coordinates,
+    // so part of the canvas or the world can be drawn straight into a surface of any size (PixelView does). An empty
+    // area is invalid_argument.
+    PaintScope Target(Surface& surface, const FloatRect& area, std::optional<Color4> clear = Color4{0, 0, 0, 0});
     // Names the following GPU work in captures and the profiler. 'name' must outlive the frame (a literal).
     PaintScope Marker(std::string_view name);
 
@@ -174,6 +181,17 @@ public:
     [[nodiscard]] float PixelScale() const;
     // Logical rectangle of the current target (the canvas or a surface) in target coordinates.
     [[nodiscard]] FloatRect Bounds() const;
+    // Size of the current target's image in device pixels.
+    [[nodiscard]] Float2 TargetPixels() const;
+    // True when the current target draws hard pixel edges (inside a PixelView or a pixel surface).
+    [[nodiscard]] bool HardEdges() const;
+    // Canvas units per art pixel: the project's artPixel (Game.settings.json), 1 in a smooth project. A sprite pixel at
+    // scale 1 covers this much, and a PixelView makes it one pixel of its image.
+    [[nodiscard]] float ArtPixel() const;
+    // True in a pixel project (artPixel above 0): a Stage draws each view's world through a PixelView.
+    [[nodiscard]] bool PixelWorld() const;
+    // True when a pixel project pixelates its HUD too (pixelUi): a Stage draws its overlay and HUD through a PixelView.
+    [[nodiscard]] bool PixelUi() const;
     // True when 'surface' has no up-to-date image for the current resolution and must be drawn again.
     [[nodiscard]] bool Stale(const Surface& surface) const;
     // This frame's post-processing (starts as the game's defaults every frame).

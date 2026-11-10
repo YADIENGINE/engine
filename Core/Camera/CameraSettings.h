@@ -38,7 +38,8 @@ struct CameraSettings {
     // The world the camera may show (Godot's limits, Cinemachine's confiner). On an axis where the view is larger than
     // the limits, they are centred. None: anywhere.
     std::optional<FloatRect> limits;
-    // Moves the world by whole canvas units only: crisp code-drawn lines on a slowly moving camera.
+    // Moves the world by whole canvas units only: crisp code-drawn lines on a slowly moving camera. A pixel view
+    // (Docs/Graphics/PixelArt.md) snaps to the art grid itself and needs none of it.
     bool pixelSnap = false;
 };
 

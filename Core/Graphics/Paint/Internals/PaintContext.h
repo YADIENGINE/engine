@@ -53,6 +53,8 @@ struct PaintContext {
     TextServices* text;             // Null: Painter::Text is not available
     const FontFace* font = nullptr; // The game's font (Painter::Font); borrowed, outlives the frames
     PixelAtlas* pixels = nullptr;   // Null: Painter::Sprite is not available
+    int artPixel = 0;               // The project's artPixel: canvas units per art pixel; 0: a smooth project
+    bool pixelUi = false;           // The project's pixelUi: a Stage pixelates its HUD too
     PaintFrameInfo frame;
 
     std::vector<PaintScopeRecord> scopes;

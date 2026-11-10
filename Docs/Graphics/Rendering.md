@@ -6,7 +6,9 @@ platform services; it does not draw game content.
 The project settings' `canvasWidth` / `canvasHeight` ([Project settings](../ProjectSettings.md)) select logical
 coordinates (default 1280×720). Larger windows rasterize
 the canvas at window resolution; smaller windows downscale the logical image. Aspect ratio is preserved and
-the remaining window area uses `letterbox`. `smoothCanvas` selects linear filtering when presenting the canvas.
+the remaining window area uses `letterbox`. A pixel project (`artPixel` above 0) always rasterizes the canvas at the
+window's size, ignores the player's render-height limit and presents it with nearest filtering; its world is drawn
+through pixel views ([Pixel art](PixelArt.md#the-pixel-world)).
 
 The runtime owns the frame. Scenes implement `Draw(Painter&)`; views receive the same Painter from their owner.
 Window, renderer and GPU implementation headers are private. `CanvasReady` borrows the completed canvas for
@@ -15,8 +17,11 @@ presentation; `DrawToolOverlay()` (tools only) renders native ToolUi on top afte
 
 ## Surfaces and scopes
 
-`Surface` is an offscreen image with a logical size and renderer-managed pixel resolution. Draw inside
-`auto target = paint.Target(surface)` and display it with `paint.Image(surface, destination)`.
+`Surface` is an offscreen image with a logical size and renderer-managed pixel resolution: the resolution of the
+target it is drawn from (the canvas's, or a pixel view's inside one). Draw inside
+`auto target = paint.Target(surface)` and display it with `paint.Image(surface, destination)`;
+`paint.Target(surface, area)` makes a logical rectangle fill the image instead. `SurfaceOptions::pixels` makes a pixel
+surface: its size is in pixels, it is nearest filtered and drawing in it has hard edges.
 `paint.Stale(surface)` detects when cached content must be redrawn. Surface owners must be destroyed before
 the renderer. Use `paint.ImagePolygon` for convex textured fragments and `paint.Group` for whole-group opacity.
 

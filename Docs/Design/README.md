@@ -945,3 +945,34 @@ The smooth drawing API stays; only features that serve a smooth look alone stop 
 6. *The editor shows a sprite's pixels* (`GraphicAsset::pixels`): inks, parts, the pixel under the mouse.
 
 Left out: rotation of a sprite (RotSprite later), image import, a palette per project, more than 255 inks.
+
+### D63. Pixel world
+Usage: [Pixel art](../Graphics/PixelArt.md#the-pixel-world).
+
+Decision: a pixel project draws its world into pixel images whose pixel is one art pixel, presented at a whole number
+of window pixels each. The canvas stays the coordinate system of logic, UI and the camera.
+
+1. *Art pixel in canvas units:* `artPixel` (project setting; 0 is a smooth project, new projects 3) is how many canvas
+   units an art pixel covers, so the UI kit keeps its 720p units. `smoothCanvas` is gone: a pixel project presents the
+   canvas with nearest filtering, a smooth one linearly. `SpriteStyle::scale` counts art pixels (`Painter::ArtPixel`).
+2. *A pixel view per camera view* (`Core/Graphics/PixelView`, on Painter like light): the image is
+   `ceil(view / k) + 2` pixels, `k = max(1, round(window pixels per unit × artPixel × zoom))` from the real window, so a
+   fractional canvas scale still gives even pixels. Inside, world to image is always `1 / artPixel`: zoom moves in
+   steps of `k` and never resamples a sprite; far zoom is the game's level of detail. The camera's target snaps to the art
+   grid and the rest moves the image by window pixels. Drawing inside stays in canvas coordinates; `Shown()` and
+   `Layout().ToWorld` give what was shown, for picking.
+3. *Hard edges in pixel targets:* a pixel surface (`SurfaceOptions::pixels`: size in pixels, nearest) and a pixel view
+   mark their target hard. Tessellation keeps a fringe of `HardFringe` (1e-3) pixel, a hairline stays one pixel at full
+   colour, and DrawList sets `PaintHard` (0x80) so the shader thresholds distance shapes, strokes and glyphs. Glows,
+   lights and gradients stay smooth until the palette lock.
+4. *Targets carry their logical origin and resolution:* `Painter::Target(surface, area)` maps any rectangle onto a
+   surface; a surface opened inside a target takes that target's resolution (the canvas's at the root), so a
+   `LightLayer` inside a pixel view has one value per art pixel by default (`resolution` 0 is automatic).
+5. *Stage:* in a pixel project each view's passes draw into its pixel view; the overlay and HUD stay sharp unless
+   `pixelUi`, which gives them one more pixel view of the canvas. `StageSettings::pixelWorld` opts out; `Stage::Shown`
+   and `Stage::ToWorld` serve picking.
+6. *Nothing blurs the pixel world:* a pixel project rasterizes the canvas at the window's size, larger or smaller, and
+   ignores the render-height limit; the editor shows its frames with nearest filtering at whole zoom steps.
+
+Left out: pixel views below one window pixel per art pixel, palette lock and pixel effects (phase 3), rotation that
+keeps pixels clean.

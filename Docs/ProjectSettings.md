@@ -12,7 +12,7 @@ or with an agent; the file is the only place these values are kept ([D51](Design
   "icon": "Game/Distribution/Icon.ico",
   "canvasWidth": 640,
   "canvasHeight": 360,
-  "smoothCanvas": false,
+  "artPixel": 3,
   "font": "Fonts/MyFont.ttf"
 }
 ```
@@ -34,7 +34,8 @@ or with an agent; the file is the only place these values are kept ([D51](Design
 | `targetFps` | 60 | Frame rate limit until the player chooses one; 0 is unlimited |
 | `canvasWidth`, `canvasHeight` | 1280, 720 | The logical size the game draws at ([Rendering](Graphics/Rendering.md)) |
 | `background`, `letterbox` | black | Canvas colour, and the colour around it when the window's shape differs |
-| `smoothCanvas` | true | Linear filtering when the canvas is scaled; off keeps pixels sharp |
+| `artPixel` | 0 | Canvas units per art pixel: the world is drawn in pixels this big; 0 is a smooth project. New projects use 3 ([Pixel art](Graphics/PixelArt.md#the-pixel-world)) |
+| `pixelUi` | false | In a pixel project, a Stage pixelates its HUD too; off keeps it sharp |
 | `font` | empty | The font Painter draws with when given none, from `Game/Assets` ([Text](Graphics/Text.md)) |
 | `loadingScreen` | Default | The engine's loading screen: Default, Horror, Rpg, SciFi, Arcade or Cozy ([Runtime](Runtime.md#startup-loading-and-error-boundary)) |
 

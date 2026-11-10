@@ -17,10 +17,15 @@ bool ViewportDisplay::Upload(int width, int height, std::span<const std::byte> p
             _image = {};
             return false;
         }
-        SetTextureFilter(_texture, TEXTURE_FILTER_BILINEAR);
+        SetTextureFilter(_texture, _sharp ? TEXTURE_FILTER_POINT : TEXTURE_FILTER_BILINEAR);
     } else
         UpdateTexture(_texture, pixels.data());
     _image = {static_cast<std::uint64_t>(_texture.id), width, height, generation, sequence, transferMs};
     return true;
 }
 ViewportImage ViewportDisplay::Image() const { return _image; }
+void ViewportDisplay::SetSharp(bool sharp) {
+    if (sharp == _sharp) return;
+    _sharp = sharp;
+    if (_texture.id) SetTextureFilter(_texture, _sharp ? TEXTURE_FILTER_POINT : TEXTURE_FILTER_BILINEAR);
+}

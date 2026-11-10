@@ -21,9 +21,12 @@
 #include "Graphics/Pixel/PixelCanvas.h"
 #include "Graphics/Pixel/PixelPalette.h"
 #include "Graphics/Pixel/PixelSprite.h"
+#include "Graphics/PixelView/PixelView.h"
 #include "Graphics/Render/Internals/RenderPipeline.h"
 #include "Graphics/Surface/Internals/SurfaceState.h"
 #include "Graphics/Surface/Surface.h"
+#include "Graphics/Text/FontFace.h"
+#include "Graphics/Text/TextStyle.h"
 #include "Utilities/Math/Scalar.h"
 
 namespace {
@@ -81,7 +84,26 @@ public:
         if (!passed) ++_failures;
     }
 
+    // Every pixel of a target, rows from the top, RGBA.
+    [[nodiscard]] std::vector<Pixel> ReadAll(GpuTarget handle) {
+        const GpuNativeTarget target = _device.Native(handle);
+        std::vector<unsigned char> bytes(static_cast<std::size_t>(target.width) * target.height * 4);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, target.framebuffer);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        glReadPixels(0, 0, target.width, target.height, GL_RGBA, GL_UNSIGNED_BYTE, bytes.data());
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        std::vector<Pixel> pixels(static_cast<std::size_t>(target.width) * target.height);
+        for (int y = 0; y < target.height; ++y)
+            for (int x = 0; x < target.width; ++x) {
+                const std::size_t from = (static_cast<std::size_t>(target.height - 1 - y) * target.width + x) * 4;
+                pixels[static_cast<std::size_t>(y) * target.width + x] = {bytes[from], bytes[from + 1], bytes[from + 2],
+                                                                          bytes[from + 3]};
+            }
+        return pixels;
+    }
+
     void SetQuality(const RenderQuality& quality) { _pipeline.SetQuality(quality); }
+    [[nodiscard]] GlDevice& Device() { return _device; }
 
     [[nodiscard]] int Failures() const { return _failures; }
 
@@ -928,6 +950,82 @@ void SpriteShowsItsPalette(PixelCheck& check) {
     check.Near("a full flash is the flash colour", check.Read(image, 20, 44).r, 255, 0);
 }
 
+// In a pixel surface shapes, strokes and text cover a pixel fully or not at all: no blended edge pixels.
+void PixelSurfacesHaveHardEdges(PixelCheck& check) {
+    const FontFace font = FontFace::FromFile(ENGINE_TEST_FONT);
+    const auto partlyCovered = [&](const Surface& image) {
+        int partial = 0;
+        for (const Pixel& pixel : check.ReadAll(SurfaceAccess::Of(image).target))
+            if (pixel.a != 0 && pixel.a != 255) ++partial;
+        return partial;
+    };
+    Surface image({96.0f, 64.0f}, {.pixels = true});
+    Surface smooth({96.0f, 64.0f}); // The same drawing anti-aliased, to show the check can see blended pixels
+    const auto draw = [&](Painter& paint, Surface& surface) {
+        auto into = paint.Target(surface, std::nullopt);
+        paint.Circle({16.3f, 16.6f}, 11.4f, Fill(White));
+        paint.Polygon(std::array{Float2{34.2f, 3.1f}, Float2{60.7f, 9.9f}, Float2{41.5f, 29.3f}}, Fill(White));
+        paint.RoundRect({66.4f, 4.2f, 24.0f, 20.5f}, 5.3f, {.stroke = {1.6f, White}});
+        paint.Line({4.0f, 36.0f}, {50.0f, 61.0f}, {.width = 0.4f, .color = White});
+        paint.Polyline(std::array{Float2{4.0f, 60.0f}, Float2{30.0f, 40.0f}, Float2{60.0f, 58.0f}},
+                       {.width = 2.3f, .color = White, .join = StrokeJoin::Round});
+        paint.Text(font, "Pixel", {58.0f, 36.0f}, {.size = 14.0f, .color = White});
+    };
+    check.Frame([&](Painter& paint) {
+        draw(paint, image);
+        draw(paint, smooth);
+    });
+    check.Above("an anti-aliased surface has partly covered pixels", partlyCovered(smooth), 50);
+    int partial = 0;
+    int covered = 0;
+    for (const Pixel& pixel : check.ReadAll(SurfaceAccess::Of(image).target)) {
+        if (pixel.a != 0 && pixel.a != 255) ++partial;
+        if (pixel.a == 255) ++covered;
+    }
+    check.Near("a pixel surface has no partly covered pixels", partial, 0, 0);
+    check.Above("and the shapes are there", covered, 800);
+}
+
+// A pixel view on a canvas scaled by a fraction still gives every art pixel the same whole number of window pixels.
+void PixelViewPixelsAreEvenAtAFractionalScale(PixelCheck& check) {
+    constexpr Vec2 Window{256, 144};
+    RenderPipeline pipeline(check.Device(), {.canvasSize = {240.0f, 135.0f}, .artPixel = 3});
+    PixelView view;
+    Painter& paint = pipeline.BeginFrame(Window, 0.0, 0.0f); // 1.0667 window pixels per unit: 3.2 per art pixel
+    {
+        const CameraView camera{.offset = {120.0f, 67.5f}, .target = {1.3f, 0.0f}};
+        auto into = view.Begin(paint, camera, Black);
+        auto world = paint.Camera(view.Shown());
+        for (int column = -60; column < 60; column += 2) // Art pixel columns, every other one white
+            paint.Rect({static_cast<float>(column) * 3.0f, -30.0f, 3.0f, 60.0f}, Fill(White));
+    }
+    view.Present(paint);
+    const GpuTarget shown = pipeline.FinishCanvas();
+    const std::vector<Pixel> pixels = check.ReadAll(shown);
+    (void)pipeline.BeginWindow();
+    check.Near("the art pixel is a whole number of window pixels", view.Layout().scale, 3, 0);
+    // One row through the middle: every run of one colour away from the edges is exactly 'scale' pixels long.
+    const int y = Window.y / 2;
+    std::vector<int> runs;
+    int run = 1;
+    for (int x = 1; x < Window.x; ++x) {
+        const bool same = (pixels[static_cast<std::size_t>(y) * Window.x + x].r > 127) ==
+                          (pixels[static_cast<std::size_t>(y) * Window.x + x - 1].r > 127);
+        if (same) {
+            ++run;
+        } else {
+            runs.push_back(run);
+            run = 1;
+        }
+    }
+    int uneven = 0;
+    for (std::size_t i = 1; i < runs.size(); ++i) // The first run may be cut by the canvas edge
+        if (runs[i] != 3) ++uneven;
+    pipeline.EndFrame();
+    check.Above("columns across the row", static_cast<int>(runs.size()), 70);
+    check.Near("art pixels of uneven width", uneven, 0, 0);
+}
+
 int main(int argc, char** argv) {
     SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_HIDDEN);
@@ -966,6 +1064,8 @@ int main(int argc, char** argv) {
         TapeBandRollsAndLinesJump(check);
         PlayerSwitchStopsWhatMoves(check);
         SpriteShowsItsPalette(check);
+        PixelSurfacesHaveHardEdges(check);
+        PixelViewPixelsAreEvenAtAFractionalScale(check);
         failures = check.Failures();
         ReportCost(check);
     }

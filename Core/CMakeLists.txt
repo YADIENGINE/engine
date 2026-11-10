@@ -263,6 +263,7 @@ add_library(EngineHeadless STATIC
     Graphics/Pixel/PixelPalette.cpp
     Graphics/Pixel/PixelSprite.cpp
     Graphics/Pixel/PixelSpriteSet.cpp
+    Graphics/PixelView/PixelView.cpp
     Graphics/Paint/PainterText.cpp
     Graphics/Paint/Path.cpp
     Graphics/Post/PostSettings.cpp

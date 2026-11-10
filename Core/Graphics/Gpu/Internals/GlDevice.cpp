@@ -100,6 +100,7 @@ GlDevice::GlDevice() {
         Program result;
         result.id = Link(vertex, fragment, label);
         result.viewSize = glGetUniformLocation(result.id, "uViewSize");
+        result.viewOrigin = glGetUniformLocation(result.id, "uViewOrigin");
         result.sourceTexel = glGetUniformLocation(result.id, "uSourceTexel");
         result.region = glGetUniformLocation(result.id, "uRegion");
         result.bloomIntensity = glGetUniformLocation(result.id, "uBloomIntensity");
@@ -377,7 +378,7 @@ void GlDevice::BeginPass(const GpuPassDesc& pass) {
             glClearBufferfv(GL_COLOR, 1, None.data());
         }
     }
-    _program.reset(); // View size uniform is per pass
+    _program.reset(); // View uniforms are per pass
     _scissor.reset();
     ++_counters.passes;
 }
@@ -405,6 +406,7 @@ void GlDevice::SetPipeline(GpuProgram program, GpuBlend blend) {
         glUseProgram(selected.id);
         glBindVertexArray(program == GpuProgram::Paint ? _paintLayout : _emptyLayout);
         if (selected.viewSize >= 0) glUniform2f(selected.viewSize, _pass.viewSize.x, _pass.viewSize.y);
+        if (selected.viewOrigin >= 0) glUniform2f(selected.viewOrigin, _pass.viewOrigin.x, _pass.viewOrigin.y);
         _program = program;
         ++_counters.pipelineChanges;
     }

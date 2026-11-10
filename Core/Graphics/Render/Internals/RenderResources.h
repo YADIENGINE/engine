@@ -9,8 +9,9 @@
 
 class Surface;
 
-// GPU memory behind Painter: surfaces (allocated at the canvas resolution), the pool of temporary group images and
-// deferred destruction. Owned by the renderer; lives as long as its device.
+// GPU memory behind Painter: surfaces (allocated at the resolution of the target they are drawn from, the canvas's by
+// default), the pool of temporary group images and deferred destruction. Owned by the renderer; lives as long as its
+// device.
 class RenderResources {
 public:
     explicit RenderResources(GpuDevice& device);
@@ -23,14 +24,16 @@ public:
     void EndFrame();
     [[nodiscard]] Float2 CanvasPixelScale() const { return _scale; }
 
-    // The surface's target at the current resolution, (re)allocating it when needed (the image is then lost).
-    [[nodiscard]] PaintTarget Prepare(Surface& surface);
+    // The surface's target at 'resolution' device pixels per unit (zero: the canvas's; a pixel surface ignores it),
+    // (re)allocating it when needed (the image is then lost).
+    [[nodiscard]] PaintTarget Prepare(Surface& surface, Float2 resolution = {});
     void MarkDrawn(Surface& surface);
-    [[nodiscard]] bool Stale(const Surface& surface) const;
+    [[nodiscard]] bool Stale(const Surface& surface, Float2 resolution = {}) const;
 
-    // A cleared-before-use image of the given size for a group; returned to the pool at EndFrame. Within a frame
-    // an image is reused only after the group using it was composited (execution is in recording order).
-    [[nodiscard]] PaintTarget AcquireTransient(Float2 size, PixelRect viewport, bool emission);
+    // A cleared-before-use image for a group drawn over 'parent': the same logical area, pixels and edges. Returned to
+    // the pool at EndFrame. Within a frame an image is reused only after the group using it was composited (execution
+    // is in recording order).
+    [[nodiscard]] PaintTarget AcquireTransient(const PaintTarget& parent);
     void ReleaseTransient(GpuTarget target);
     [[nodiscard]] GpuTexture Attachment(GpuTarget target, int attachment) const;
 
@@ -47,7 +50,7 @@ private:
         bool used = false; // Acquired since the last EndFrame
         int idleFrames = 0;
     };
-    [[nodiscard]] Float2 PixelSize(Float2 size) const;
+    [[nodiscard]] Float2 PixelSize(const Surface& surface, Float2 resolution) const;
     void DestroyRetired();
 
     GpuDevice& _device;

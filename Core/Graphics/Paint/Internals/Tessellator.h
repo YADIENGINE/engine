@@ -11,7 +11,10 @@
 class Path;
 
 // Triangles built on the CPU (PaintKind::Solid). Anti-aliasing is a fringe 'aa' wide (one device pixel in the
-// output's units) whose outer vertices are transparent; the edge sits in the middle of the fringe.
+// output's units) whose outer vertices are transparent; the edge sits in the middle of the fringe. A hard-edged target
+// (pixel art) uses a fringe HardFringe times as wide: the edge stays where it is, and pixels are covered or not.
+inline constexpr float HardFringe = 1e-3f;
+
 struct MeshBuffer {
     std::vector<PaintVertex> vertices;
     std::vector<std::uint32_t> indices;
@@ -55,10 +58,12 @@ struct StrokeParams {
     StrokeCap cap = StrokeCap::Butt;
     StrokeJoin join = StrokeJoin::Miter;
     float miterLimit = 4.0f;
-    float aa = 1.0f;
+    float aa = 1.0f;   // One device pixel: the thinnest line, and how closely round parts follow a circle
+    bool hard = false; // Pixel art: almost no fringe, and a line thinner than a pixel keeps its full colour
 };
 
-// Appends a stroked polyline. Lines thinner than 'aa' are drawn 'aa' wide with proportionally less alpha.
+// Appends a stroked polyline. Lines thinner than 'aa' are drawn 'aa' wide with proportionally less alpha (with full
+// alpha when hard).
 void StrokePolyline(MeshBuffer& out, std::span<const Float2> points, bool closed, const StrokeParams& params,
                     PaintColor color);
 // Appends a filled polygon (either winding). A self-intersecting outline gets a reasonable fill, not an exact one.

@@ -73,7 +73,8 @@ RenderPipelineSettings PipelineSettings(const GameSettings& settings) {
     return {{static_cast<float>(project.canvasWidth), static_cast<float>(project.canvasHeight)},
             project.background,
             project.letterbox,
-            project.smoothCanvas,
+            project.artPixel,
+            project.pixelUi,
             settings.post};
 }
 

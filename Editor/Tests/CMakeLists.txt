@@ -20,6 +20,8 @@ if(TARGET EngineEditorUi)
     target_link_libraries(EngineGpuPixelCheck PRIVATE Engine raylib)
     target_include_directories(EngineGpuPixelCheck PRIVATE "${ENGINE_THIRD_PARTY_DIR}/raylib/src")
     engine_warnings(EngineGpuPixelCheck)
+    target_compile_definitions(EngineGpuPixelCheck PRIVATE
+        ENGINE_TEST_FONT="${ENGINE_THIRD_PARTY_DIR}/NotoSans/NotoSans-Regular.ttf")
     # Opt-in check with a real Game and a hidden window: Game::Run shuts scenes down while they are alive.
     add_executable(EngineSceneOwnershipCheck EXCLUDE_FROM_ALL SceneOwnershipCheck.cpp)
     target_link_libraries(EngineSceneOwnershipCheck PRIVATE Engine)

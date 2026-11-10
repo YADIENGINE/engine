@@ -20,6 +20,6 @@ enum GuardPart : PixelPart { GuardHelmet = 1, GuardBody, GuardSpear };
 
 [[nodiscard]] const PixelSprite& GuardSprite(float time);
 [[nodiscard]] PixelPalette GuardPalette(GuardKind kind);
-// Centred in `box`, feet on its bottom edge, each sprite pixel a whole number of units.
+// Centred in `box`, feet on its bottom edge, each sprite pixel a whole number of art pixels.
 void DrawGuard(Painter& paint, const FloatRect& box, GuardKind kind, float time, const GuardLook& look = {});
 // [/recipe]

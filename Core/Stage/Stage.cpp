@@ -27,7 +27,8 @@ Stage::Stage(const SceneServices& services, const StageSettings& settings)
     , _world(settings.camera.limits)
     , _listeners(settings.listeners)
     , _cameras(CanvasOf(services), settings.camera)
-    , _fx(settings.camera.limits.value_or(CanvasOf(services)), CanvasOf(services), CurrentTheme().fx) {
+    , _fx(settings.camera.limits.value_or(CanvasOf(services)), CanvasOf(services), CurrentTheme().fx)
+    , _pixelWorld(settings.pixelWorld) {
     _fx.SetQuality(_applied);
     _fx.SetTime(&services.time);
     if (settings.atmosphere) _air.emplace(::Atmosphere(*settings.atmosphere), SecondsTween<::Weather>{});
@@ -102,13 +103,53 @@ void Stage::Draw(Painter& paint, const StageView& view) const {
         for (std::size_t index = 0; index < _given.size(); ++index)
             DrawView(paint, view, _given[index], _world, index, nullptr);
     }
-    _fx.DrawOverlay(paint);
-    view.DrawHud(paint);
+    if (!(_pixelWorld && paint.PixelUi())) {
+        _fx.DrawOverlay(paint);
+        view.DrawHud(paint);
+        return;
+    }
+    {
+        auto into = _hud.Begin(paint, CameraView{});
+        _fx.DrawOverlay(paint);
+        view.DrawHud(paint);
+    }
+    _hud.Present(paint);
+}
+
+std::size_t Stage::ViewCount() const { return _given.empty() ? _cameras.Count() : _given.size(); }
+
+CameraView Stage::Shown(std::size_t index) const {
+    if (index >= ViewCount()) throw std::out_of_range("Stage::Shown: no such view");
+    if (index < _shown.size()) return _shown[index].view;
+    return _given.empty() ? _cameras[index].View() : _given[index];
+}
+
+Float2 Stage::ToWorld(Float2 canvas, std::size_t index) const {
+    const CameraView shown = Shown(index);
+    if (index < _shown.size() && _shown[index].pixels) return _pixels[index].Layout().ToWorld(canvas);
+    return shown.ToWorld(canvas);
 }
 
 void Stage::DrawView(Painter& paint, const StageView& view, const CameraView& base,
                      const std::optional<FloatRect>& limits, std::size_t index, const Camera2D* camera) const {
-    const StagePass pass{.view = _fx.WorldCamera(paint, base, limits), .camera = index};
+    const CameraView seen = _fx.WorldCamera(paint, base, limits);
+    if (_shown.size() <= index) _shown.resize(index + 1);
+    if (!(_pixelWorld && paint.PixelWorld())) {
+        _shown[index] = {seen, false};
+        DrawPasses(paint, view, {.view = seen, .camera = index}, camera);
+        return;
+    }
+    if (_pixels.size() <= index) _pixels.resize(index + 1);
+    const PixelView& pixels = _pixels[index];
+    {
+        auto into = _pixels[index].Begin(paint, seen);
+        DrawPasses(paint, view, {.view = pixels.Shown(), .camera = index}, camera);
+    }
+    pixels.Present(paint);
+    _shown[index] = {pixels.Shown(), true};
+}
+
+void Stage::DrawPasses(Painter& paint, const StageView& view, const StagePass& pass, const Camera2D* camera) const {
     view.DrawBackground(paint, pass);
     {
         auto world = paint.Camera(pass.view);

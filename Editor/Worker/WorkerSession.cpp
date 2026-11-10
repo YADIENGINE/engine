@@ -51,6 +51,7 @@ WorkerSession::WorkerSession(Game& game, const GameSettings& settings, const Sce
     , _registry(registry)
     , _channel(channel)
     , _canvas{settings.project.canvasWidth, settings.project.canvasHeight}
+    , _artPixel(settings.project.artPixel)
     , _frames(session, false)
     , _actions(std::move(actions))
     , _scene(EditorServices(
@@ -427,6 +428,7 @@ void WorkerSession::CanvasReady(const Texture2D& texture) const {
                         {"paused", _paused},
                         {"speed", _speed},
                         {"canvas", nlohmann::json::array({_canvas.x, _canvas.y})},
+                        {"artPixel", _artPixel},
                         {"simulation", _simulation.State()}}});
         _readyPending = false;
     }

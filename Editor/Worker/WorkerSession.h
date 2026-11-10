@@ -67,6 +67,7 @@ private:
     const SceneRegistry& _registry;
     ControlChannel& _channel;
     Vec2 _canvas;
+    int _artPixel = 0; // The project's: a pixel project's frames are shown with sharp pixels
     mutable SharedFrames _frames;
     WorkerSessionActions _actions;
     WorkerSimulation _simulation;

@@ -36,6 +36,7 @@ const uint FlagGradientRadial = 8u;
 const uint FlagCapRound = 16u;
 const uint FlagCapSquare = 32u;
 const uint FlagCoverage = 64u;
+const uint FlagHard = 128u;
 
 // GLSL 3.30 only indexes sampler arrays with constants. textureLod: no derivatives needed in branches.
 vec4 SampleSlot(uint slot, vec2 uv) {
@@ -108,6 +109,7 @@ void main() {
     float emission = float(vMeta.z) / 255.0;
     uint flags = vMeta.w;
     uint mode = flags & 3u;
+    bool hard = (flags & FlagHard) != 0u; // Pixel art target: a pixel is covered or not
 
     vec4 texel = vec4(1.0);
     float distance = 0.0;
@@ -122,7 +124,8 @@ void main() {
         texel = SampleSlot(uint(vShape.x + 0.5), vec2((ink + 0.5) / 256.0, vShape.y));
         texel.rgb = mix(texel.rgb, vColor2.rgb * texel.a, clamp(vStyle.x, 0.0, 1.0));
     } else if (kind == KindGlyph) {
-        texel = vec4(SampleSlot(slot, vLocal).r);
+        float glyph = SampleSlot(slot, vLocal).r;
+        texel = vec4(hard ? step(0.5, glyph) : glyph);
     } else if (kind == KindGlyphHalo) {
         distance = (128.0 - SampleSlot(slot, vLocal).r * 255.0) / vShape.x; // Distance pixels, positive outside
         shaped = true;
@@ -164,11 +167,16 @@ void main() {
         }
     } else if (shaped) {
         if (mode == ModeFill) {
-            coverage = clamp(0.5 - distance / pixel, 0.0, 1.0);
+            coverage = hard ? (distance < 0.0 ? 1.0 : 0.0) : clamp(0.5 - distance / pixel, 0.0, 1.0);
         } else if (mode == ModeStroke) {
             float bandHalf = vStyle.x;
-            float band = abs(distance - vStyle.y) - bandHalf;
-            coverage = clamp(0.5 - band / pixel, 0.0, 1.0) * clamp(2.0 * bandHalf / pixel, 0.0, 1.0);
+            if (hard) {
+                // At least a pixel wide, as a hairline is elsewhere, and never faded.
+                coverage = abs(distance - vStyle.y) < max(bandHalf, 0.5 * pixel) ? 1.0 : 0.0;
+            } else {
+                float band = abs(distance - vStyle.y) - bandHalf;
+                coverage = clamp(0.5 - band / pixel, 0.0, 1.0) * clamp(2.0 * bandHalf / pixel, 0.0, 1.0);
+            }
         } else {
             float t = clamp(max(distance, 0.0) / max(vStyle.x, 1e-5), 0.0, 1.0);
             coverage = (1.0 - t) * (1.0 - t);

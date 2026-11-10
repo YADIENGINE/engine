@@ -24,6 +24,8 @@ RenderPipeline::RenderPipeline(GpuDevice& device, const RenderPipelineSettings& 
     , _context(_list, _resources, _executor, &_text)
     , _post(device) {
     _context.pixels = &_pixels;
+    _context.artPixel = std::max(settings.artPixel, 0);
+    _context.pixelUi = settings.pixelUi;
     if (!(settings.canvasSize.x > 0.0f) || !(settings.canvasSize.y > 0.0f))
         throw std::invalid_argument("RenderPipeline: the canvas needs a positive size");
 }
@@ -58,24 +60,24 @@ void RenderPipeline::PrepareCanvas(Vec2 windowSize, bool emission) {
     const auto logicalHeight = static_cast<int>(std::lround(logical.y));
     int width = logicalWidth;
     int height = logicalHeight;
+    const bool pixels = _settings.artPixel > 0;
     if (windowSize.x > 0 && windowSize.y > 0) {
         const FloatRect dest = Letterbox(windowSize);
         // Upscaled: rasterize at the window's resolution. Downscaled: draw at the logical size and filter down, so
-        // thin lines survive.
-        if (dest.width > logical.x) {
+        // thin lines survive; a pixel project draws at the window's size there too, so pixels stay whole.
+        if (dest.width > logical.x || (pixels && dest.width >= 1.0f && dest.height >= 1.0f)) {
             width = static_cast<int>(dest.width);
             height = static_cast<int>(dest.height);
         }
     }
-    if (_maxRenderHeight > 0 && height > std::max(_maxRenderHeight, logicalHeight)) {
+    if (!pixels && _maxRenderHeight > 0 && height > std::max(_maxRenderHeight, logicalHeight)) {
         height = std::max(_maxRenderHeight, logicalHeight);
         width = static_cast<int>(std::lround(static_cast<float>(height) * logical.x / logical.y));
     }
     if (_canvas.Valid() && width == _canvasWidth && height == _canvasHeight && emission == _canvasEmission) return;
     if (_canvas.Valid()) _device.DestroyTarget(_canvas);
-    _canvas =
-        _device.CreateTarget({width, height, GpuFormat::Rgba8,
-                              _settings.smoothCanvas ? GpuFilter::Linear : GpuFilter::Nearest, emission, "Canvas"});
+    _canvas = _device.CreateTarget(
+        {width, height, GpuFormat::Rgba8, pixels ? GpuFilter::Nearest : GpuFilter::Linear, emission, "Canvas"});
     _canvasWidth = width;
     _canvasHeight = height;
     _canvasEmission = emission;

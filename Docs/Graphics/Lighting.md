@@ -163,8 +163,9 @@ drawn before, walls and characters included.
 ## Cost and resolution
 
 Each `Draw` is one extra pass and one full-target image; each light is one quad, or a fan when something stops it, all in one
-draw call. `LightLayerOptions::resolution` (default 0.5) sizes the light image against the target: lights are soft, so half is
-rarely visible, and it costs a quarter of the pixels.
+draw call. `LightLayerOptions::resolution` sizes the light image against the target. By default (0) it is half the target,
+since lights are soft, half is rarely visible and it costs a quarter of the pixels; inside a pixel view it is the view's own
+resolution, one light value per art pixel ([Pixel art](PixelArt.md#the-pixel-world)).
 
 A shadowed light costs CPU, growing with the square of the edges within its reach, and edges out of reach cost almost nothing.
 Measured on one desktop in an optimized build, with walls placed at random: about 10 µs per light at 25 edges, 40 µs at 50, 160

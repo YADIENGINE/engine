@@ -66,10 +66,11 @@ struct GpuPassDesc {
     GpuTarget target{};                      // Null: the window's back buffer
     PixelRect viewport;                      // Within the target, device pixels
     Float2 viewSize;                         // Logical size the viewport covers (paint coordinates)
+    Float2 viewOrigin;                       // Logical point at the viewport's top-left corner
     std::optional<PremultipliedColor> clear; // Clears the whole viewport (all attachments) when set
 };
 
-// Uniforms of the post-processing programs; Paint reads only the pass's view size.
+// Uniforms of the post-processing programs; Paint reads only the pass's view size and origin.
 struct PostUniforms {
     Float2 sourceTexel;          // 1 / source texture size
     FloatRect region{0.0f, 0.0f, 1.0f, 1.0f}; // Compose screen in texture UVs (bottom-left origin)

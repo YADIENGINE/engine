@@ -46,8 +46,10 @@ struct ProjectSettings {
     Color4 background = Color4{0, 0, 0, 255};
     // Colour around the canvas when the window's shape differs
     Color4 letterbox = Color4{0, 0, 0, 255};
-    // Smooth scaling; off keeps pixels sharp
-    bool smoothCanvas = true;
+    // Canvas units per art pixel: the world is drawn in pixels this big; 0: a smooth project
+    int artPixel = 0;
+    // In a pixel project, the HUD is pixelated too; off keeps it sharp
+    bool pixelUi = false;
 
     // Text
     // Font Painter draws with when given none, from Game/Assets; empty: none
@@ -76,7 +78,8 @@ struct ProjectSettings {
   "canvasHeight": { "type": "int", "value": 720, "min": 1, "max": 8192, "unit": "px", "group": "Canvas" },
   "background": { "type": "color", "value": "#000000", "group": "Canvas", "note": "Canvas colour before anything is drawn" },
   "letterbox": { "type": "color", "value": "#000000", "group": "Canvas", "note": "Colour around the canvas when the window's shape differs" },
-  "smoothCanvas": { "value": true, "group": "Canvas", "note": "Smooth scaling; off keeps pixels sharp" },
+  "artPixel": { "type": "int", "value": 0, "min": 0, "max": 64, "group": "Canvas", "note": "Canvas units per art pixel: the world is drawn in pixels this big; 0: a smooth project" },
+  "pixelUi": { "value": false, "group": "Canvas", "note": "In a pixel project, the HUD is pixelated too; off keeps it sharp" },
   "font": { "type": "path", "value": "", "group": "Text", "note": "Font Painter draws with when given none, from Game/Assets; empty: none" },
   "loadingScreen": { "type": "choice", "choices": ["Default", "Horror", "Rpg", "SciFi", "Arcade", "Cozy"], "value": "Default", "group": "Startup", "note": "Which of the engine's loading screens opens the game; a scene given with Game::SetLoadingScene replaces it" }
 })schema";
@@ -99,7 +102,8 @@ struct ProjectSettings {
         visitor.Field("canvasHeight", canvasHeight);
         visitor.Field("background", background);
         visitor.Field("letterbox", letterbox);
-        visitor.Field("smoothCanvas", smoothCanvas);
+        visitor.Field("artPixel", artPixel);
+        visitor.Field("pixelUi", pixelUi);
         visitor.Field("font", font);
         visitor.Choice("loadingScreen", loadingScreen, LoadingScreenNames);
     }

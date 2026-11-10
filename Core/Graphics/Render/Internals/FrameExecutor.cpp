@@ -18,6 +18,7 @@ void FrameExecutor::Begin(const PaintTarget& target, std::optional<Premultiplied
     pass.target = target.target;
     pass.viewport = target.viewport;
     pass.viewSize = target.size;
+    pass.viewOrigin = target.origin;
     pass.clear = clear;
     _device.BeginPass(pass);
     _passOpen = true;

@@ -74,6 +74,10 @@ so a self-intersecting outline gets a reasonable fill rather than one decided by
 
 Lines thinner than one pixel fade instead of becoming thinner. Zero sizes or NaN positions do not draw.
 
+In a hard-edged target (a pixel view or a pixel surface, `paint.HardEdges()`) nothing is anti-aliased: shapes, borders,
+lines and text cover a pixel fully or not at all, and a line thinner than a pixel is one pixel wide at full colour. Glows,
+lights and gradients stay smooth there ([Pixel art](PixelArt.md#hard-edges)).
+
 Programmer errors (negative widths or radii, mismatched spans, a clip under a rotating transform, scopes ended out
 of order) throw in Debug builds: `invalid_argument` at the call, `logic_error` for scopes when the frame ends. Release
 builds never throw for them: the call draws nothing (a rotated clip uses its bounding box), the frame goes on,
@@ -83,8 +87,10 @@ invalid arguments the same way with `paint.Reject("...")`. The game's own build 
 
 ## Images and surfaces
 
-`Surface` is an offscreen drawing target: its size is logical, its resolution follows the canvas. Draw into it with
-`paint.Target(surface)`, draw it with `paint.Image(surface, dest, style)`. Content is lost on scale changes; to draw
+`Surface` is an offscreen drawing target: its size is logical, its resolution follows the target it is drawn from (the
+canvas, or a pixel view inside one). Draw into it with `paint.Target(surface)`, or `paint.Target(surface, area)` to make a
+logical rectangle fill it; draw it with `paint.Image(surface, dest, style)`. A pixel surface
+(`SurfaceOptions::pixels`) has exactly its size in pixels, nearest filtering and hard edges. Content is lost on scale changes; to draw
 expensive, static content once:
 
 ```cpp
@@ -162,7 +168,8 @@ bloom, the canvas retains the bloom layer starting with the next frame.
 
 `paint.Quality()` is the player's choice (`GlowQuality`, `BloomQuality`, `backgroundEffects`, `screenMotion`). Painter applies halos and
 bloom itself; callers read it only to skip purely decorative work. `paint.Time()` / `paint.Delta()` are the presentation
-clock (editor Pause freezes it); `paint.PixelScale()` gives device pixels per unit.
+clock (editor Pause freezes it); `paint.PixelScale()` gives device pixels per unit, `paint.TargetPixels()` the current
+target's size in device pixels, and `paint.ArtPixel()` the project's canvas units per art pixel.
 
 ### Analog finish
 

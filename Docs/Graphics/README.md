@@ -9,7 +9,7 @@ renderer frame. The game's scenes/Views own actual production drawing.
 | --- | --- |
 | **Drawing API: shapes, text, surfaces, scopes, post-process** | [Painter](Painter.md) |
 | Canvas, surfaces, cameras, and clipping | [Rendering](Rendering.md) |
-| Pixel art: inks, palettes, shaded shapes, sprites | [Pixel art](PixelArt.md) |
+| Pixel art: inks, palettes, sprites, the pixel world, hard edges | [Pixel art](PixelArt.md) |
 | Fonts, measurement, and text layout | [Text](Text.md) |
 | Themes and backgrounds | [Themes](ThemesAndUi.md) |
 | Menus and widgets | [UI](../Ui.md) |

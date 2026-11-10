@@ -11,10 +11,13 @@ public:
     [[nodiscard]] bool Upload(int width, int height, std::span<const std::byte> pixels, std::uint64_t generation,
                               std::uint64_t sequence, double transferMs);
     [[nodiscard]] ViewportImage Image() const;
+    // Nearest filtering for a pixel project's frames (sharp pixels), linear otherwise.
+    void SetSharp(bool sharp);
 
 private:
     Texture2D _texture{};
     ViewportImage _image;
+    bool _sharp = false;
 
 public:
     ViewportDisplay(const ViewportDisplay&) = delete;

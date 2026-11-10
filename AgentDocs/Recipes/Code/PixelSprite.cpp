@@ -59,7 +59,9 @@ PixelPalette GuardPalette(GuardKind kind) {
 }
 
 void DrawGuard(Painter& paint, const FloatRect& box, GuardKind kind, float time, const GuardLook& look) {
-    const float fit = std::min(box.width / static_cast<float>(Width), box.height / static_cast<float>(Height));
+    // Art pixels per sprite pixel (Painter::ArtPixel units each): as many whole ones as fit.
+    const float fit =
+        std::min(box.width / static_cast<float>(Width), box.height / static_cast<float>(Height)) / paint.ArtPixel();
     if (fit < 1.0f) return;
     static const PixelPalette Town = GuardPalette(GuardKind::Town);
     static const PixelPalette Royal = GuardPalette(GuardKind::Royal);

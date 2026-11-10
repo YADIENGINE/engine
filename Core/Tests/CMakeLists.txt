@@ -109,7 +109,7 @@ target_compile_definitions(EngineTests PRIVATE
     ENGINE_TEST_SCRIPT_FONTS="${ENGINE_THIRD_PARTY_DIR}/NotoSansScripts")
 
 # A stage borrows the scene's services, whose audio is the real engine on no device (AudioOutput::Offline).
-engine_tests(EngineStageTests SOURCES StageTests.cpp LINKS EngineAudio)
+engine_tests(EngineStageTests SOURCES StageTests.cpp PixelViewTests.cpp LINKS EngineAudio)
 
 # Links only the physics target, so collision code that reaches drawing or audio fails to build here.
 engine_tests(EnginePhysicsTests
@@ -199,6 +199,7 @@ add_library(EngineRecipes STATIC
     "${recipeRoot}/GraphicAsset.cpp"
     "${recipeRoot}/IconShape.cpp"
     "${recipeRoot}/PixelSprite.cpp"
+    "${recipeRoot}/PixelWorld.cpp"
     "${recipeRoot}/PoolTargets.cpp"
     "${recipeRoot}/PopupEffects.cpp"
     "${recipeRoot}/ProceduralLevel.cpp"

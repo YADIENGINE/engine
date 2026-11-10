@@ -17,4 +17,7 @@ struct StageSettings {
     // The views are the ears: every frame the sound player gets one listener per view (SoundPlayer::SetListeners), so
     // a sound right of a view's middle is heard on the right. Off for a game that places its own listener, a character.
     bool listeners = true;
+    // In a pixel project (Painter::PixelWorld) each view's world is drawn into a PixelView, and with pixelUi the
+    // effects' overlay and the HUD into one more. Off draws everything straight onto the canvas.
+    bool pixelWorld = true;
 };

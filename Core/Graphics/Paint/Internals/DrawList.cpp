@@ -120,10 +120,11 @@ std::optional<PixelRect> DrawList::Scissor() const {
     const PaintTarget& target = CurrentTarget();
     const Float2 scale = target.PixelScale();
     const PixelRect& view = target.viewport;
-    const int left = std::clamp(static_cast<int>(std::floor(clip->x * scale.x)), 0, view.width);
-    const int top = std::clamp(static_cast<int>(std::floor(clip->y * scale.y)), 0, view.height);
-    const int right = std::clamp(static_cast<int>(std::ceil(clip->Right() * scale.x)), left, view.width);
-    const int bottom = std::clamp(static_cast<int>(std::ceil(clip->Bottom() * scale.y)), top, view.height);
+    const Float2 origin = target.origin;
+    const int left = std::clamp(static_cast<int>(std::floor((clip->x - origin.x) * scale.x)), 0, view.width);
+    const int top = std::clamp(static_cast<int>(std::floor((clip->y - origin.y) * scale.y)), 0, view.height);
+    const int right = std::clamp(static_cast<int>(std::ceil((clip->Right() - origin.x) * scale.x)), left, view.width);
+    const int bottom = std::clamp(static_cast<int>(std::ceil((clip->Bottom() - origin.y) * scale.y)), top, view.height);
     return PixelRect{view.x + left, view.y + top, right - left, bottom - top};
 }
 
@@ -185,7 +186,9 @@ void DrawList::Add(std::span<PaintVertex> vertices, std::span<const std::uint32_
     DrawBatch& batch = BatchFor(textures, slots);
     const auto base = static_cast<std::uint32_t>(_vertices.size());
     const auto mapped = [&](std::size_t index) { return slots[std::min(index, textures.size() - 1)]; };
+    const std::uint8_t hard = CurrentTarget().hard ? PaintHard : std::uint8_t{0};
     for (PaintVertex& vertex : vertices) {
+        vertex.flags |= hard;
         if (!textures.empty()) {
             vertex.slot = mapped(vertex.slot);
             if (vertex.kind == PaintKind::Composite || vertex.kind == PaintKind::Indexed)

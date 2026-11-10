@@ -1,18 +1,22 @@
 #include "Graphics/Surface/Surface.h"
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include "Graphics/Surface/Internals/SurfaceState.h"
 #include "Graphics/Surface/Internals/TextureRefAccess.h"
 
 namespace {
-void Validate(Float2 size) {
-    if (!(size.x > 0.0f) || !(size.y > 0.0f)) throw std::invalid_argument("Surface needs a positive size");
+Float2 Validated(Float2 size, const SurfaceOptions& options) {
+    if (!(size.x > 0.0f) || !(size.y > 0.0f) || !std::isfinite(size.x) || !std::isfinite(size.y))
+        throw std::invalid_argument("Surface needs a positive size");
+    if (!options.pixels) return size;
+    return {std::max(1.0f, std::ceil(size.x - 1e-3f)), std::max(1.0f, std::ceil(size.y - 1e-3f))};
 }
 } // namespace
 
 Surface::Surface(Float2 size, SurfaceOptions options)
     : _state(std::make_unique<State>()) {
-    Validate(size);
-    _state->size = size;
+    _state->size = Validated(size, options);
     _state->options = options;
 }
 
@@ -30,7 +34,7 @@ Surface& Surface::operator=(Surface&& other) noexcept {
 }
 
 void Surface::Resize(Float2 size) {
-    Validate(size);
+    size = Validated(size, _state->options);
     if (size == _state->size) return;
     _state->Release();
     _state->size = size;

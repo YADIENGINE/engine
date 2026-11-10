@@ -45,9 +45,9 @@ class ValuesTests(unittest.TestCase):
         text = '{"canvasWidth": 6.4e2, "title":"A"}'
         with self.assertRaises(TuningError):  # An int is written as an integer
             settings.canonical_values(text, settings.read_schema())
-        text = '{"canvasWidth": 640, "smoothCanvas": false, "title":"A"}'
+        text = '{"canvasWidth": 640, "pixelUi": true, "artPixel": 3, "title":"A"}'
         self.assertEqual(settings.canonical_values(text, settings.read_schema()),
-                         '{\n  "title": "A",\n  "canvasWidth": 640,\n  "smoothCanvas": false\n}\n')
+                         '{\n  "title": "A",\n  "canvasWidth": 640,\n  "artPixel": 3,\n  "pixelUi": true\n}\n')
         self.assertEqual(settings.canonical_values("{ }", settings.read_schema()), "{}\n")
 
 

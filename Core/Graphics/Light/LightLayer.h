@@ -21,8 +21,10 @@ struct LightFrame {
 };
 
 struct LightLayerOptions {
-    float resolution = 0.5f; // Size of the light image against the target, 0.25..1. Lower is cheaper and softer.
-    float softness = 8.0f;   // How far a shadow's edge spreads to each side, in world units; 0: hard edges
+    // Size of the light image against the target, 0.25..1. Lower is cheaper and softer. 0: one light value per pixel
+    // in a pixel view (Painter::HardEdges), half the target elsewhere.
+    float resolution = 0.0f;
+    float softness = 8.0f; // How far a shadow's edge spreads to each side, in world units; 0: hard edges
 };
 
 // Darkens what was drawn so far to 'ambient plus the lights'. Light can only reveal what is there: it never brightens a
@@ -41,7 +43,7 @@ public:
 private:
     void Soften(Painter& paint, Float2 size, float spread) const;
 
-    float _resolution;
+    float _resolution; // 0: automatic
     float _softness;
     mutable Surface _image;     // Holds nothing between frames; only its size and GPU memory are kept
     mutable Surface _softening; // The same, for frames with shadows; it takes no memory before the first

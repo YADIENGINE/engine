@@ -8,15 +8,17 @@
 
 namespace {
 constexpr float LowestResolution = 0.25f;
-constexpr float DefaultResolution = 0.5f;
+constexpr float SmoothResolution = 0.5f; // The automatic resolution outside pixel views
 constexpr float DefaultSoftness = 8.0f;
 constexpr float SmallestSpread = 1.0f;  // In the image's units: less leaves the steps of its pixels
 constexpr float LargestSpread = 24.0f;  // In the image's units
 constexpr float OnePassPixels = 8.0f;   // A wider spread, in device pixels, shows the blur's samples
 constexpr float SecondPassShare = 0.3f; // A second pass this wide hides them
 
+// 0 stays automatic.
 float ValidResolution(float resolution) {
-    return std::isfinite(resolution) ? std::clamp(resolution, LowestResolution, 1.0f) : DefaultResolution;
+    if (!std::isfinite(resolution) || resolution == 0.0f) return 0.0f;
+    return std::clamp(resolution, LowestResolution, 1.0f);
 }
 
 float ValidSoftness(float softness) { return std::isfinite(softness) ? std::max(softness, 0.0f) : DefaultSoftness; }
@@ -40,11 +42,12 @@ void LightLayer::Draw(Painter& paint, const LightFrame& frame, const CameraView&
                          AddChannel(frame.ambient.b, frame.flashes.ambient.b), 255};
     if (ambient.r == 255 && ambient.g == 255 && ambient.b == 255) return; // Nothing to darken, and light adds nothing
     const FloatRect bounds = paint.Bounds();
-    _image.Resize(bounds.Size() * _resolution);
+    const float resolution = _resolution > 0.0f ? _resolution : paint.HardEdges() ? 1.0f : SmoothResolution;
+    _image.Resize(bounds.Size() * resolution);
     bool shadowed = false;
     {
         auto into = paint.Target(_image, ambient);
-        auto scale = paint.Transform(Affine2::Scale(_resolution));
+        auto scale = paint.Transform(Affine2::Scale(resolution) * Affine2::Translate(-bounds.Position()));
         auto camera = paint.Camera(view);
         const auto draw = [&](const LightSource& light) {
             _blocking.clear();
@@ -64,7 +67,7 @@ void LightLayer::Draw(Painter& paint, const LightFrame& frame, const CameraView&
             draw(light);
     }
     // Only a shadow has an edge to soften: a light's own falloff is smooth at any size.
-    if (shadowed && _softness > 0.0f) Soften(paint, bounds.Size() * _resolution, _softness * view.zoom * _resolution);
+    if (shadowed && _softness > 0.0f) Soften(paint, bounds.Size() * resolution, _softness * view.zoom * resolution);
     std::optional<PaintScope> clip;
     if (!view.viewport.Empty()) clip.emplace(paint.Clip(view.viewport));
     auto multiply = paint.Blending(Blend::Multiply);

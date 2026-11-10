@@ -176,6 +176,17 @@ class BoundaryTests(unittest.TestCase):
         self.write("Engine/Core/Graphics/Paint/Painter.cpp", '#include "Graphics/Light/LightLayer.h"\n')
         self.assertIn("Core/Graphics/Paint includes", self.check()[0])
 
+    def test_a_pixel_view_stands_on_paint_and_paint_does_not_know_it(self):
+        self.write("Engine/Core/Graphics/PixelView/PixelView.cpp", '#include "Graphics/PixelView/PixelView.h"\n'
+                   '#include "Graphics/Paint/Painter.h"\n#include "Graphics/Surface/Surface.h"\n'
+                   '#include "Camera/CameraView.h"\n#include "Utilities/Color4.h"\n')
+        self.assertEqual(self.check(), [])
+        self.write("Engine/Core/Graphics/PixelView/PixelView.cpp", '#include "Graphics/Light/LightLayer.h"\n')
+        self.assertIn("Core/Graphics/PixelView includes", self.check()[0])
+        self.write("Engine/Core/Graphics/PixelView/PixelView.cpp", '#include "Graphics/Paint/Painter.h"\n')
+        self.write("Engine/Core/Graphics/Paint/Painter.cpp", '#include "Graphics/PixelView/PixelView.h"\n')
+        self.assertIn("Core/Graphics/Paint includes", self.check()[0])
+
     def test_the_pixel_kit_stands_on_utilities_and_only_its_atlas_reaches_the_gpu(self):
         self.write("Engine/Core/Graphics/Pixel/PixelCanvas.cpp", '#include "Graphics/Pixel/PixelCanvas.h"\n'
                    '#include "Utilities/Color4.h"\n')

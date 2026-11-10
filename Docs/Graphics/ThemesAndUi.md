@@ -41,8 +41,8 @@ canvas texture (render resolution).
 grid, vignette, scanline alpha). Each drawing call receives `Painter&` first. `Graphics/Backgrounds/Backdrops.h` (under `Assets/`) draws theme
 roles (`DrawBackdropGrid(paint, BackdropRole::Menu, area)`) and `DrawScanlineOverlay(paint, area, alpha)`; a non-theme
 background passes its own style. Grid/scanline color, spacing and thickness are explicit; nonpositive spacing is invalid
-and nonpositive thickness/size disables drawing. Views determine layer order. `GameSettings::smoothCanvas` defaults to
-true; `letterbox` defaults to opaque black. Font glyphs rasterize at their on-screen size on demand.
+and nonpositive thickness/size disables drawing. Views determine layer order. The project's `letterbox` defaults to
+opaque black. Font glyphs rasterize at their on-screen size on demand.
 
 ### Ready-made scenes
 

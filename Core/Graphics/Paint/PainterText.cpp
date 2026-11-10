@@ -46,10 +46,8 @@ void EmitGlyph(DrawList& list, Float2 topLeft, Float2 size, const CachedGlyph& g
                                        Float2{uv.x, uv.Bottom()}};
     Float2 shift;
     if (snap) {
-        const Float2 scale = list.CurrentTarget().PixelScale();
         const Float2 corner = transform.Apply(topLeft);
-        shift = {std::round(corner.x * scale.x) / scale.x - corner.x,
-                 std::round(corner.y * scale.y) / scale.y - corner.y};
+        shift = list.CurrentTarget().Snap(corner) - corner;
     }
     std::array<PaintVertex, 4> corners{};
     for (std::size_t i = 0; i < corners.size(); ++i) {

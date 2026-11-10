@@ -133,6 +133,7 @@ struct EditorSnapshot {
     // Agents' notes, tool lines and who holds the editor (EditorControlService); null without a control endpoint.
     const EditorAgentReport* agents = nullptr;
     bool pausedForMarking = false; // Confirmed pause requested by Mark, never inferred from a gesture.
+    int artPixel = 0; // The scene's project: above 0 its frames show with sharp pixels, at whole zooms when larger
 };
 
 enum class AudioPreviewAction { Play, Pause, Resume, Stop, Seek, Volume, Loop };

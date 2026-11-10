@@ -1,4 +1,5 @@
 {
   "title": "@PROJECT_NAME@",
-  "applicationId": "@PROJECT_NAME@"
+  "applicationId": "@PROJECT_NAME@",
+  "artPixel": 3
 }

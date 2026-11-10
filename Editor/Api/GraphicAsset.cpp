@@ -180,10 +180,11 @@ protected:
                            Fill(light ? CheckerLight : CheckerDark));
             }
         const Float2 pivot = ToFloat2(sprite.Pivot()) * unit;
+        const SpriteStyle style{.scale = unit / paint.ArtPixel()}; // 'unit' canvas units per sprite pixel
         if (_view == PreviewView::Pixels) {
-            paint.Sprite(sprite, shown.pixels.palette, area.Position() + pivot, {.scale = unit});
+            paint.Sprite(sprite, shown.pixels.palette, area.Position() + pivot, style);
         } else if (_view == PreviewView::Inks) {
-            paint.Sprite(sprite, _indexPalette, area.Position() + pivot, {.scale = unit});
+            paint.Sprite(sprite, _indexPalette, area.Position() + pivot, style);
         } else {
             if (_partsOf != sprite.Id()) {
                 PixelCanvas parts(sprite.Width(), sprite.Height());
@@ -194,7 +195,7 @@ protected:
                 _parts = PixelSprite(parts, sprite.Pivot());
                 _partsOf = sprite.Id();
             }
-            paint.Sprite(_parts, _indexPalette, area.Position() + pivot, {.scale = unit});
+            paint.Sprite(_parts, _indexPalette, area.Position() + pivot, style);
         }
         if (_grid && shown.zoom >= GridFromZoom) {
             const LineStyle line{.width = 1.0f / device, .color = GridColor};

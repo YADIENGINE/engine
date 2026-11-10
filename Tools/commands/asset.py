@@ -77,7 +77,7 @@ struct {name}Look {{
 // The frame shown at `time` and the palette it is drawn in (also what the editor's pixel view shows).
 [[nodiscard]] const PixelSprite& {name}Sprite(float time);
 [[nodiscard]] const PixelPalette& {name}Palette();
-// Centred in `box`, standing on its bottom edge, each sprite pixel a whole number of units.
+// Centred in `box`, standing on its bottom edge, each sprite pixel a whole number of art pixels.
 void Draw{name}(Painter& paint, const FloatRect& box, float time, const {name}Look& look = {{}});
 """
 PIXEL_SOURCE = """#include "{include}.h"
@@ -120,7 +120,9 @@ const PixelPalette& {name}Palette() {{
 }}
 
 void Draw{name}(Painter& paint, const FloatRect& box, float time, const {name}Look& look) {{
-    const float fit = std::min(box.width / static_cast<float>(Width), box.height / static_cast<float>(Height));
+    // Art pixels per sprite pixel: as many whole ones as fit, at least one.
+    const float fit = std::min(box.width / static_cast<float>(Width), box.height / static_cast<float>(Height)) /
+                      paint.ArtPixel();
     paint.Sprite({name}Sprite(time), {name}Palette(), {{box.Center().x, box.Bottom()}},
                  {{.scale = std::max(1.0f, std::floor(fit)), .flashAmount = look.flash}});
 }}

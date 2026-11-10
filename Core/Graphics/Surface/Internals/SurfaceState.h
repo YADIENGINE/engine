@@ -22,7 +22,7 @@ struct Surface::State {
     GpuTexture emission;
     int pixelWidth = 0;
     int pixelHeight = 0;
-    Float2 allocatedScale; // Canvas pixel scale the target was allocated for
+    Float2 allocatedScale; // Device pixels per unit of its image
     bool drawn = false;    // Holds a complete image for the current allocation
 
     void Release() {

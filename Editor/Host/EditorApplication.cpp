@@ -356,7 +356,9 @@ void EditorApplication::Stop() {
 }
 void EditorApplication::DrawToolOverlay() const {
     if (auto frame = _controller.TakeFrame()) {
-        const bool timed = _controller.Snapshot().profiler.liveEnabled;
+        const auto snapshot = _controller.Snapshot();
+        const bool timed = snapshot.profiler.liveEnabled;
+        _display.SetSharp(snapshot.artPixel > 0);
         const auto transferStarted = timed ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         if (!_display.Upload(frame->width, frame->height, frame->rgba, _controller.Generation(), frame->sequence,
                              (WorkerTimestamp() - frame->capturedAt) * 1000))

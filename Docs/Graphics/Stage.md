@@ -64,6 +64,19 @@ Then once over the canvas: the effects' overlay (flash, vignette, banners), then
 `StagePass::view` is what that view shows this frame, the effects' shake and shot included; `StagePass::camera` says which
 view of a split it is. `DescribeLight` runs once a frame, before the first view, and the same light shows in every view.
 
+## In a pixel project
+
+In a pixel project (`artPixel` above 0) each view's passes, background to guides, draw into that view's own
+[pixel view](PixelArt.md#the-pixel-world): an image whose pixel is one art pixel, with hard edges, presented on the canvas
+at a whole number of window pixels per art pixel. Nothing changes for the scene: the passes still draw in canvas
+coordinates and `StagePass::view` is the view to draw through, now with its zoom on whole steps and its target on the art
+grid. The light layer's image has one value per art pixel there. The overlay and `DrawHud` stay sharp on the canvas;
+with the project's `pixelUi` they go into one more pixel view of the whole canvas. `StageSettings::pixelWorld = false`
+draws everything straight onto the canvas instead.
+
+`Shown(index)` is the view a view showed in the last frame, and `ToWorld(mouse, index)` turns a canvas point into the
+world exactly as it was shown, for picking.
+
 ## Optional parts
 
 `StageSettings` switches them on; a scene without them pays nothing.

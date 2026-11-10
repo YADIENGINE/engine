@@ -41,6 +41,9 @@ inline constexpr std::uint8_t PaintGradientRadial = 0x08; // Fill: colour -> col
 inline constexpr std::uint8_t PaintCapRound = 0x10;       // Segment / Arc: round ends (else flat)
 inline constexpr std::uint8_t PaintCapSquare = 0x20;      // Segment: ends extended by half the width
 inline constexpr std::uint8_t PaintCoverage = 0x40;       // Tessellated gradient: AA coverage in shape3
+// Set by DrawList in a hard-edged target (pixel art): distance shapes, strokes and glyphs cover a pixel fully or not
+// at all. Halos, glows, lights and gradients stay smooth.
+inline constexpr std::uint8_t PaintHard = 0x80;
 
 struct PaintColor {
     std::uint8_t r = 0;

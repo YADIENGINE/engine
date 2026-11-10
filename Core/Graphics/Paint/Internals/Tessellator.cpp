@@ -232,13 +232,14 @@ void StrokePolyline(MeshBuffer& out, std::span<const Float2> input, bool closed,
     if (count < 2 || !(params.width > 0.0f) || !(params.aa > 0.0f)) return;
     if (count < 3) closed = false;
     float width = params.width;
-    if (width < params.aa) { // Hairline: one fringe wide, fainter
-        color = Scaled(color, width / params.aa);
+    if (width < params.aa) { // Hairline: one pixel wide, fainter unless hard
+        if (!params.hard) color = Scaled(color, width / params.aa);
         width = params.aa;
     }
+    const float fringe = params.hard ? params.aa * HardFringe : params.aa;
     const float halfWidth = width * 0.5f;
-    const float core = std::max(halfWidth - params.aa * 0.5f, 0.0f);
-    const float outer = halfWidth + params.aa * 0.5f;
+    const float core = std::max(halfWidth - fringe * 0.5f, 0.0f);
+    const float outer = halfWidth + fringe * 0.5f;
     const std::size_t segments = closed ? count : count - 1;
     std::vector<Float2>& directions = out.directions;
     directions.resize(segments);
@@ -251,7 +252,7 @@ void StrokePolyline(MeshBuffer& out, std::span<const Float2> input, bool closed,
     }
 
     Ribbon ribbon(out, core, outer, color);
-    const float fringe = params.aa * 0.5f;
+    const float endFringe = fringe * 0.5f;
     if (!closed) {
         const Float2 start = points[0];
         const Float2 direction = directions[0];
@@ -261,8 +262,8 @@ void StrokePolyline(MeshBuffer& out, std::span<const Float2> input, bool closed,
             ribbon.Add({start, normal, -normal});
         } else {
             const Float2 end = params.cap == StrokeCap::Square ? start - direction * halfWidth : start;
-            ribbon.Add({end - direction * fringe, normal, -normal, true});
-            ribbon.Add({end + direction * fringe, normal, -normal});
+            ribbon.Add({end - direction * endFringe, normal, -normal, true});
+            ribbon.Add({end + direction * endFringe, normal, -normal});
         }
     }
     const std::size_t firstJoint = closed ? 0 : 1;
@@ -284,8 +285,8 @@ void StrokePolyline(MeshBuffer& out, std::span<const Float2> input, bool closed,
         RoundCap(out, end, direction, core, outer, params.aa, color);
     } else {
         const Float2 tip = params.cap == StrokeCap::Square ? end + direction * halfWidth : end;
-        ribbon.Add({tip - direction * fringe, normal, -normal});
-        ribbon.Add({tip + direction * fringe, normal, -normal, true});
+        ribbon.Add({tip - direction * endFringe, normal, -normal});
+        ribbon.Add({tip + direction * endFringe, normal, -normal, true});
     }
 }
 

@@ -458,6 +458,7 @@ EditorSnapshot EditorController::Snapshot() const {
                             benchmarkCancelPending,
                             _project ? &_tuning : nullptr};
     snapshot.inspectedTuning = _inspectedTuning;
+    snapshot.artPixel = _artPixel;
     snapshot.notice = _notice;
     snapshot.pausedForMarking = snapshot.paused && _markPause.Active();
     snapshot.controlEvents = &_controlEvents;
@@ -669,6 +670,7 @@ void EditorController::Receive(const WorkerMessage& message) {
 void EditorController::ApplyReady(const WorkerMessage& message) {
     const auto& canvas = message.data.at("canvas");
     _canvas = {canvas.at(0).get<int>(), canvas.at(1).get<int>()};
+    _artPixel = std::max(message.data.value("artPixel", 0), 0);
     if (_canvas.x <= 0 || _canvas.y <= 0 || _canvas.x > WorkerMaxFrameWidth || _canvas.y > WorkerMaxFrameHeight)
         throw std::runtime_error("Invalid logical canvas dimensions");
     _accepted[_selected] = DecodeSceneParameters(message.data.at("parameters"));
