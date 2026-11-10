@@ -28,9 +28,11 @@ struct GraphicAsset {
     std::vector<GraphicItem> items;
     // Draws one item fitted to `box`; `item` indexes `items` (0 for a single drawing). `time` is the scene's clock.
     std::function<void(Painter& paint, const FloatRect& box, std::size_t item, float time)> draw;
-    // For pixel art: the sprite and palette an item shows at `time`. The preview then offers Pixels, Inks and Parts
-    // views (whole-number zoom, a grid, the pivot, and the pixel under the mouse in the Inspector). Optional: `draw`
-    // still makes the thumbnail and the Drawing view.
+    // For pixel art: the sprite and palette an item shows at `time`. Opening the graphic then brings the editor's
+    // Pixelator panel forward (Docs/Graphics/PixelArt.md#in-the-editor): zoom, Color / Inks / Parts views, grids, the
+    // pivot, the inks it uses and its frames, which the editor finds by sampling `time` from 0 to 4 s (keep it a pure
+    // function of item and time). `python Engine ctl pixels` shows agents the same. Optional: `draw` still makes the
+    // thumbnail and what the Viewport shows.
     std::function<GraphicPixels(std::size_t item, float time)> pixels;
     // The moment the thumbnail shows, for a graphic that starts empty or looks best mid-animation.
     float thumbnailTime = 0.0f;

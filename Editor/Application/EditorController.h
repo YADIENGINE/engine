@@ -93,6 +93,10 @@ public:
     // The frame not yet shown, once; LatestFrame keeps the last received one of the active generation.
     [[nodiscard]] std::shared_ptr<const ViewportPixels> TakeFrame();
     [[nodiscard]] std::shared_ptr<const ViewportPixels> LatestFrame() const { return _latestFrame; }
+    // The open pixel graphic as data for the Pixelator (D64), requested whenever such a graphic becomes ready; it
+    // stays after the scene stops. Pending: the worker has not answered for the selected graphic yet.
+    [[nodiscard]] std::shared_ptr<const PixelatorAsset> Pixels() const { return _pixels; }
+    [[nodiscard]] bool PixelsPending() const { return !_pixelsPending.empty(); }
 
 private:
     // The worker that will replace the active one, with what it brings until the swap.
@@ -132,6 +136,8 @@ private:
     void TickActive();
     void Receive(const WorkerMessage& message);
     void ApplyReady(const WorkerMessage& message);
+    void RequestPixels();
+    void ReceivePixels(const nlohmann::json& data);
     void ActiveExited(WorkerProcessMode mode, unsigned long code, const std::string& cause);
     // Worker'ın tuning raporu: panelin durumu ve Output (ilk başarılı okuma hariç).
     void ReceiveTuning(const WorkerTuningStatus& status);
@@ -214,4 +220,6 @@ private:
     std::unique_ptr<TuningBaselines> _baselines; // Committed values; none without a project folder
     std::filesystem::path _inspectedTuning;
     std::optional<std::pair<std::filesystem::path, TuningLocation>> _previewing; // A dragged value not yet written
+    std::shared_ptr<const PixelatorAsset> _pixels;
+    std::string _pixelsPending; // The id asked for; empty when answered
 };

@@ -7,6 +7,7 @@
 #include <imgui_internal.h>
 #include <memory>
 #include <limits>
+#include <span>
 #include "Editor/Ui/Panels/Agents/AgentsDrawer.h"
 #include "Editor/Ui/Panels/Assets/AssetsPanel.h"
 #include "Editor/Ui/Panels/Console/ConsolePanel.h"
@@ -1238,4 +1239,74 @@ TEST_CASE("Editor.Assets.SearchFiltersBreadcrumbsAndTileActions", "[engine-edito
     (void)frame();
     CHECK(frame().find("Read-only") != std::string::npos);
     CHECK(commands == 0);
+}
+
+TEST_CASE("Editor.Workspace.PixelatorComesForwardAndOwnsItsKeys", "[engine-editor]") {
+    const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(ImGui::CreateContext(),
+                                                                                  ImGui::DestroyContext);
+    auto& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+    io.DisplaySize = {1366, 768};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    io.Fonts->AddFontDefaultVector();
+    unsigned char* pixels = nullptr;
+    int width = 0, height = 0;
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    io.Fonts->SetTexID(ImTextureID{1});
+    ApplyToolTheme();
+    const std::vector<SceneDefinition> catalog;
+    const SceneParameters parameters;
+    const EditorDiagnostics diagnostics;
+    const std::string status;
+    EditorSnapshot snapshot{catalog, nullptr, parameters, {}, diagnostics, {}, EditorPhase::Stopped, status};
+    auto asset = std::make_shared<PixelatorAsset>();
+    asset->id = "asset:Graphics/Hero#Idle";
+    asset->items = {{"Idle", "asset:Graphics/Hero#Idle"}, {"Run", "asset:Graphics/Hero#Run"}};
+    asset->images.push_back({2, 2, {1, 2}, {1, 0, 2, 1}, {0, 0, 1, 1}});
+    asset->palettes.push_back({{0, 0, 0, 0}, {255, 0, 0, 255}, {0, 0, 255, 255}});
+    asset->frames = {{0, 0, 0.5f}, {0, 0, 0.5f}};
+    snapshot.pixels = asset;
+    EditorPreferences preferences;
+    EditorWorkspace workspace;
+    EditorUiActions actions;
+    int uploads = 0;
+    actions.pixelatorTexture = [&](std::size_t, int, int, std::span<const Color4>) {
+        ++uploads;
+        return std::uint64_t{7};
+    };
+    int fontSize = 100;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        const auto result = workspace.Draw(snapshot, actions, {}, preferences, fontSize);
+        ImGui::Render();
+        return result;
+    };
+    const auto press = [&](ImGuiKey key) {
+        io.AddKeyEvent(key, true);
+        const bool consumed = frame().cancelViewportInput;
+        io.AddKeyEvent(key, false);
+        (void)frame();
+        return consumed;
+    };
+    (void)frame();
+    (void)frame();
+    CHECK_FALSE(preferences.Visible(EditorPanel::Pixelator));
+    CHECK_FALSE(press(ImGuiKey_G)); // No Pixelator: the key is the scene's
+    workspace.ShowPixelator(preferences);
+    for (int index = 0; index < 4; ++index)
+        (void)frame();
+    CHECK(preferences.Visible(EditorPanel::Pixelator));
+    CHECK(preferences.Visible(EditorPanel::Viewport)); // Behind it, in the same dock
+    const auto* pixelator = ImGui::FindWindowByName(EditorPanelInfo(EditorPanel::Pixelator).window);
+    const auto* viewport = ImGui::FindWindowByName(EditorPanelInfo(EditorPanel::Viewport).window);
+    REQUIRE(pixelator);
+    REQUIRE(viewport);
+    CHECK(pixelator->DockTabIsVisible);
+    CHECK(pixelator->DockId == viewport->DockId);
+    CHECK(uploads >= 3); // View, game-size and checker textures
+    CHECK(press(ImGuiKey_G));
+    CHECK(press(ImGuiKey_F));
+    CHECK(press(ImGuiKey_Period));
 }

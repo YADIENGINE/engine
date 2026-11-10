@@ -213,6 +213,13 @@ void EditorWorkspace::OpenNote(const std::filesystem::path& path, EditorPreferen
     _focusNotes = true;
     _viewport.ReleaseFocus();
 }
+void EditorWorkspace::ShowPixelator(EditorPreferences& preferences) {
+    if (_maximized) SetMaximized(false, preferences);
+    preferences.Visible(EditorPanel::Pixelator) = true;
+    _focusViewport = false;
+    _focusPixelator = true;
+    _viewport.ReleaseFocus();
+}
 void EditorWorkspace::ShowConsole(EditorPreferences& preferences) {
     if (_maximized) SetMaximized(false, preferences);
     preferences.Visible(EditorPanel::Console) = true;
@@ -383,6 +390,7 @@ bool EditorWorkspace::Shortcuts(std::span<const EditorAction> list) const {
     for (const auto& binding : EditorKeyBindings()) {
         // Routes are registered every frame, even when a popup or text field holds the key back this time.
         if (binding.scope == EditorKeyScope::AgentsDrawer && !drawer) continue;
+        if (binding.scope == EditorKeyScope::Pixelator && (!_pixelatorFocused || typing || popup)) continue;
         if (!ImGui::Shortcut(binding.chord, route) || popup) continue;
         if (binding.scope == EditorKeyScope::OutsideConsole && ownsKeys) continue;
         if (binding.scope == EditorKeyScope::Playback && (typing || ownsKeys)) continue;
@@ -667,6 +675,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                                       .maximized = _maximized,
                                       .offerProjectList = _offerProjectList,
                                       .agentsDrawerOpen = _agentsDrawer.IsOpen(),
+                                      .pixelatorFocused = _pixelatorFocused,
                                       .engineDirectory = _engineDirectory,
                                       .agentContextTarget = agentTarget.title,
                                       .sceneContextTarget = sceneTarget.title,
@@ -753,6 +762,7 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
     if (_maximized) {
         _notes.Tick(ImGui::GetTime(), false);
         _consoleFocused = false; // No Console while the scene fills the workspace; the drawer's terminal is added below
+        _pixelatorFocused = false;
         ImGui::SetNextWindowPos(workspacePosition);
         ImGui::SetNextWindowSize(workspaceSize);
         constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
@@ -768,27 +778,33 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
         bool viewportDrawn = false;
         bool notesFocused = false;
         bool notesDrawn = false;
+        bool pixelatorDrawn = false;
+        bool pixelatorFocused = false;
         bool consoleDrawn = false;
         bool focusedBottomDrawn = false;
         for (const auto& panel : EditorPanels) {
             if (!preferences.Visible(panel.id)) continue;
             const bool focusViewport = _focusViewport && panel.id == EditorPanel::Viewport;
             if (focusViewport || (_focusBottom && *_focusBottom == panel.id) ||
-                (_focusCatalog && panel.id == EditorPanel::Catalog) || (_focusNotes && panel.id == EditorPanel::Notes))
+                (_focusCatalog && panel.id == EditorPanel::Catalog) ||
+                (_focusNotes && panel.id == EditorPanel::Notes) ||
+                (_focusPixelator && panel.id == EditorPanel::Pixelator))
                 ImGui::SetNextWindowFocus();
             if (focusViewport) ImGui::SetNextWindowCollapsed(false);
             const bool edgeToEdge = panel.id == EditorPanel::Console || panel.id == EditorPanel::Assets ||
-                                    panel.id == EditorPanel::AudioPreview;
+                                    panel.id == EditorPanel::AudioPreview || panel.id == EditorPanel::Pixelator;
             if (edgeToEdge) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, headerPadding);
             // The game sits on a neutral well: a tinted frame would change how its colors read.
             if (panel.id == EditorPanel::Viewport) ImGui::PushStyleColor(ImGuiCol_WindowBg, ToolColors().content);
-            const bool drawPanel =
-                ImGui::Begin(panel.window, &preferences.Visible(panel.id),
-                             flags | (panel.id == EditorPanel::Viewport || panel.id == EditorPanel::Inspector ||
-                                              panel.id == EditorPanel::Assets || panel.id == EditorPanel::AudioPreview
-                                          ? ImGuiWindowFlags_NoScrollbar
-                                          : 0));
+            ImGuiWindowFlags panelFlags = flags;
+            if (panel.id == EditorPanel::Viewport || panel.id == EditorPanel::Inspector ||
+                panel.id == EditorPanel::Assets || panel.id == EditorPanel::AudioPreview)
+                panelFlags |= ImGuiWindowFlags_NoScrollbar;
+            // The wheel zooms the Pixelator's canvas.
+            if (panel.id == EditorPanel::Pixelator)
+                panelFlags |= ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+            const bool drawPanel = ImGui::Begin(panel.window, &preferences.Visible(panel.id), panelFlags);
             if (panel.id == EditorPanel::Viewport) ImGui::PopStyleColor();
             ImGui::PopStyleVar(); // Panel contents keep their regular control spacing.
             if (edgeToEdge) ImGui::PopStyleVar();
@@ -834,12 +850,23 @@ EditorWorkspaceResult EditorWorkspace::Draw(const EditorSnapshot& snapshot, cons
                     notesDrawn = true;
                     break;
                 case EditorPanel::AudioPreview: _audioPreview.Draw(snapshot, actions); break;
-                case EditorPanel::Count       : break;
+                case EditorPanel::Pixelator:
+                    _pixelator.Draw(snapshot, actions, menu.pixelator);
+                    pixelatorFocused = _pixelator.Focused();
+                    pixelatorDrawn = true;
+                    break;
+                case EditorPanel::Count: break;
                 }
             }
             ImGui::End();
         }
         _notes.Tick(ImGui::GetTime(), notesFocused);
+        _pixelatorFocused = pixelatorFocused;
+        if (_focusPixelator) {
+            SelectPanelTab(EditorPanelInfo(EditorPanel::Pixelator).window);
+            ImGui::SetWindowFocus(EditorPanelInfo(EditorPanel::Pixelator).window);
+            if (pixelatorDrawn) _focusPixelator = false;
+        }
         if (_focusNotes) {
             SelectPanelTab(EditorPanelInfo(EditorPanel::Notes).window);
             ImGui::SetWindowFocus(EditorPanelInfo(EditorPanel::Notes).window);

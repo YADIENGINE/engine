@@ -8,7 +8,9 @@
 #include <span>
 #include <utility>
 #include <stdexcept>
+#include "Editor/Internals/Protocol/PixelatorProtocol.h"
 #include "Editor/Internals/Viewport/ViewportInputRouter.h"
+#include "Editor/Worker/PixelatorReport.h"
 #include "Runtime/Game.h"
 #include "Tuning/TuningLive.h"
 #include "Diagnostics/Internals/CrashSession.h"
@@ -306,6 +308,8 @@ void WorkerSession::Command(const WorkerMessage& message) {
         _speed = static_cast<float>(speed);
         _step = _paused && message.data.value("step", false);
         Reply(message, "state", PlaybackState());
+    } else if (message.type == "pixels") { // The Pixelator panel's data (D64); sampling takes this frame
+        Reply(message, "pixels", EncodePixelatorAsset(PixelatorReport(message.data.at("id").get<std::string>())));
     } else if (message.type == "seek") {
         StartSeek(message);
     } else if (message.type == "replay") {

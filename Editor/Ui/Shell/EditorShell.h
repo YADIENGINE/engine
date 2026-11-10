@@ -22,6 +22,15 @@ struct EditorAgentsKeys {
     bool sendScene = false;          // Ctrl+Shift+S while the drawer is open: to the chosen agent
 };
 
+// The Pixelator's keys pressed this frame; they work only while the Pixelator has the keyboard.
+struct EditorPixelatorKeys {
+    bool fit = false;    // F
+    bool actual = false; // 1: one screen pixel per sprite pixel
+    int zoom = 0;        // + / -: steps along the zoom ladder
+    bool grid = false;   // G
+    int frame = 0;       // , / .: the previous or next frame
+};
+
 struct EditorShellResult {
     bool quit = false;
     bool returnToProjectList = false;
@@ -38,6 +47,7 @@ struct EditorShellResult {
     std::optional<EditorWorkspaceLayout> layout;
     std::optional<EditorAgentRequest> agent;
     EditorAgentsKeys agents;
+    EditorPixelatorKeys pixelator;
     EditorGitBarResult git;
 };
 

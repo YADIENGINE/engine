@@ -12,6 +12,7 @@
 #include "Editor/Ui/Panels/Inspector/InspectorPanel.h"
 #include "Editor/Ui/Panels/Output/OutputPanel.h"
 #include "Editor/Ui/Panels/Notes/NotesPanel.h"
+#include "Editor/Ui/Panels/Pixelator/PixelatorPanel.h"
 #include "Editor/Ui/Panels/Viewport/ViewportPanel.h"
 #include "Editor/Ui/Panels/Profiler/ProfilerPanel.h"
 #include "Editor/Ui/Shell/EditorShell.h"
@@ -51,6 +52,8 @@ public:
         _assets.SetNotesProject(directory);
     }
     void OpenNote(const std::filesystem::path& path, EditorPreferences& preferences);
+    // Shows the Pixelator in front of the Viewport (a pixel graphic was opened); the Viewport stays open behind it.
+    void ShowPixelator(EditorPreferences& preferences);
     bool FlushNotes() { return _notes.Flush(); }
     void CloseNotes() { _notes.Shutdown(); }
     // Pastes `text` (no Enter) into the agent session, shown in the Agents drawer, when there is one; else into the
@@ -115,6 +118,9 @@ private:
     NotesPanel _notes;
     bool _focusNotes = false;
     AudioPreviewPanel _audioPreview;
+    PixelatorPanel _pixelator;
+    bool _focusPixelator = false;
+    bool _pixelatorFocused = false; // The Pixelator had the keyboard last frame: its keys work
     EditorAgentActivity _agentActivity;
     EditorGitBar _gitBar;
     GitDrawer _gitDrawer;

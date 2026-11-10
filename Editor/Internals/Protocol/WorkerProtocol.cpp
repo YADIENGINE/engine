@@ -358,6 +358,7 @@ nlohmann::json EncodeSceneCatalog(const std::vector<SceneDefinition>& definition
                                        {"set", definition.asset->set},
                                        {"item", definition.asset->item},
                                        {"usage", definition.asset->usage}};
+        if (definition.asset && definition.asset->pixels) entries.back()["asset"]["pixels"] = true;
     }
     return {{"entries", entries}};
 }
@@ -393,9 +394,9 @@ std::vector<SceneDefinition> DecodeSceneCatalog(const nlohmann::json& json) {
             throw std::runtime_error("Invalid catalog identifier");
         if (entry.contains("asset")) {
             const auto& asset = entry.at("asset");
-            definition.asset =
-                SceneAssetInfo{asset.at("file").get<std::string>(), asset.at("set").get<std::string>(),
-                               asset.at("item").get<std::string>(), asset.at("usage").get<std::string>()};
+            definition.asset = SceneAssetInfo{asset.at("file").get<std::string>(), asset.at("set").get<std::string>(),
+                                              asset.at("item").get<std::string>(), asset.at("usage").get<std::string>(),
+                                              asset.value("pixels", false)};
         }
         if (entry.contains("benchmark")) {
             const auto& benchmark = entry.at("benchmark");

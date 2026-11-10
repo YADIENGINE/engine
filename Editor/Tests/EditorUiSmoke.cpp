@@ -18,6 +18,8 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include "Editor/Host/PixelatorTextures.h"
+#include "Editor/Internals/Pixelator/PixelFrameSampling.h"
 #include "Editor/Internals/Session/TuningWorkspace.h"
 #include "Editor/Ui/Panels/Agents/AgentsDrawer.h"
 #include "Terminal/TerminalSession.h"
@@ -96,6 +98,8 @@ constexpr std::array Stages{
     SmokeStage{"notes", SmokeView::Running, 1600, 900, 100, EditorPanel::Notes},
     SmokeStage{"assets", SmokeView::Running, 1600, 900, 100, EditorPanel::Assets},
     SmokeStage{"audio", SmokeView::Running, 1600, 900, 100, EditorPanel::AudioPreview},
+    SmokeStage{"pixelator", SmokeView::Running, 1600, 900, 100, EditorPanel::Pixelator},
+    SmokeStage{"pixelator-narrow", SmokeView::Running, 1100, 680, 150, EditorPanel::Pixelator},
     SmokeStage{"agent-strip", SmokeView::AgentStrip},
     SmokeStage{"agents", SmokeView::Agents},
     SmokeStage{"agents-150", SmokeView::Agents, 1280, 800, 150},
@@ -280,6 +284,34 @@ std::deque<EditorControlEvent> SampleEvents() {
             {now, "level: 4 \xE2\x86\x92 7", "sample.fight", "level", SceneValue{std::int64_t{4}}, {}},
             {now, "Trying the fight at a higher level", {}, {}, {}, {}},
             {now, "Screenshot shot-1230.png", {}, {}, {}, "shot-1230.png"}};
+}
+
+// A made-up 48 x 40 pixel graphic with two items and a two-frame blink, as the worker would send it.
+std::shared_ptr<const PixelatorAsset> SamplePixels() {
+    const PixelPalette palette{Rgb(0x14161c), Rgb(0x3a4152), Rgb(0x66708a), Rgb(0x9aa5c0),
+                               Rgb(0xe0e6f0), Rgb(0xb5601c), Rgb(0xf0a030)};
+    const auto sprite = [](bool blink) {
+        PixelCanvas canvas(48, 40);
+        {
+            const auto body = canvas.Part(1);
+            canvas.Ellipse(24.0f, 24.0f, 14.0f, 13.0f, {2, 2, 3, 4, 5});
+        }
+        {
+            const auto head = canvas.Part(2);
+            canvas.Ellipse(24.0f, 10.0f, 8.0f, 7.0f, {2, 2, 3, 4, 5});
+            canvas.Stamp(20, 9, {blink ? "1...1" : "6...6"});
+        }
+        canvas.FlatRect(30, 30, 6, 4, 7);
+        canvas.Outline(1);
+        return PixelSprite(canvas, {24, 40});
+    };
+    const auto open = sprite(false);
+    const auto closed = sprite(true);
+    auto asset = SamplePixelFrames(
+        [&](float time) { return GraphicPixels{time - std::floor(time) < 0.8f ? open : closed, palette}; });
+    asset.id = "asset:Graphics/Characters/Owl#Idle";
+    asset.items = {{"Idle", "asset:Graphics/Characters/Owl#Idle"}, {"Fly", "asset:Graphics/Characters/Owl#Fly"}};
+    return std::make_shared<const PixelatorAsset>(std::move(asset));
 }
 
 AudioWaveform SampleWaveform() {
@@ -507,6 +539,9 @@ public:
         };
         _before = picture({95, 109, 87, 255}, {58, 69, 55, 255});
         _after = picture({244, 175, 101, 255}, {92, 63, 34, 255});
+        _actions.pixelatorTexture = [this](std::size_t slot, int width, int height, std::span<const Color4> pixels) {
+            return _pixelatorTextures.Upload(slot, width, height, pixels);
+        };
         _actions.gitImage = [this](const std::filesystem::path& file) {
             const auto& texture = file == "before.png" ? _before : _after;
             return EditorGitImage{texture.id, texture.width, texture.height};
@@ -631,6 +666,7 @@ protected:
         snapshot.audio.length = _waveform->seconds;
         snapshot.audio.position = 0.7f;
         snapshot.audio.waveform = {WaveformState::Ready, _waveform, {}};
+        snapshot.pixels = _pixels;
         snapshot.controlEvents = &_events;
         snapshot.controlEventCount = _events.size();
         if (stage.view == SmokeView::Agents || stage.view == SmokeView::AgentStrip) snapshot.agents = &_agentReport;
@@ -780,6 +816,8 @@ private:
     std::shared_ptr<const Profiler::Capture> _capture = SampleCapture();
     std::shared_ptr<const Profiler::Summary> _summary = SampleSummary();
     std::shared_ptr<const AudioWaveform> _waveform = std::make_shared<AudioWaveform>(SampleWaveform());
+    std::shared_ptr<const PixelatorAsset> _pixels = SamplePixels();
+    mutable PixelatorTextures _pixelatorTextures;
     std::deque<EditorControlEvent> _events = SampleEvents();
     Texture2D _frame{};
     Texture2D _before{};

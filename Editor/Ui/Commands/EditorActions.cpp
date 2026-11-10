@@ -35,7 +35,16 @@ constexpr std::array KeyBindings{
     EditorKeyBinding{EditorKey::Agent6, ImGuiMod_Ctrl | ImGuiKey_6, "Ctrl+6", EditorKeyScope::AgentsDrawer, ""},
     EditorKeyBinding{EditorKey::Agent7, ImGuiMod_Ctrl | ImGuiKey_7, "Ctrl+7", EditorKeyScope::AgentsDrawer, ""},
     EditorKeyBinding{EditorKey::Agent8, ImGuiMod_Ctrl | ImGuiKey_8, "Ctrl+8", EditorKeyScope::AgentsDrawer, ""},
-    EditorKeyBinding{EditorKey::Agent9, ImGuiMod_Ctrl | ImGuiKey_9, "Ctrl+9", EditorKeyScope::AgentsDrawer, ""}};
+    EditorKeyBinding{EditorKey::Agent9, ImGuiMod_Ctrl | ImGuiKey_9, "Ctrl+9", EditorKeyScope::AgentsDrawer, ""},
+    EditorKeyBinding{EditorKey::PixelatorFit, ImGuiKey_F, "F", EditorKeyScope::Pixelator, "Fit the sprite"},
+    EditorKeyBinding{EditorKey::PixelatorActual, ImGuiKey_1, "1", EditorKeyScope::Pixelator, "Zoom 1:1"},
+    EditorKeyBinding{EditorKey::PixelatorZoomIn, ImGuiKey_Equal, "+", EditorKeyScope::Pixelator, "Zoom in"},
+    EditorKeyBinding{EditorKey::PixelatorZoomIn, ImGuiKey_KeypadAdd, "+", EditorKeyScope::Pixelator, ""},
+    EditorKeyBinding{EditorKey::PixelatorZoomOut, ImGuiKey_Minus, "-", EditorKeyScope::Pixelator, "Zoom out"},
+    EditorKeyBinding{EditorKey::PixelatorZoomOut, ImGuiKey_KeypadSubtract, "-", EditorKeyScope::Pixelator, ""},
+    EditorKeyBinding{EditorKey::PixelatorGrid, ImGuiKey_G, "G", EditorKeyScope::Pixelator, "Pixel grid on / off"},
+    EditorKeyBinding{EditorKey::PixelatorPrevious, ImGuiKey_Comma, ",", EditorKeyScope::Pixelator, "Previous frame"},
+    EditorKeyBinding{EditorKey::PixelatorNext, ImGuiKey_Period, ".", EditorKeyScope::Pixelator, "Next frame"}};
 // clang-format on
 EditorKey CommandKey(EditorCommand command, const EditorSnapshot& snapshot) {
     if (command == EditorPrimaryCommand(snapshot)) return EditorKey::Primary;
@@ -404,6 +413,29 @@ void AgentActions(const EditorActionContext& context, std::vector<EditorAction>&
                   [&result, index] { result.agents.chip = index; });
 }
 
+// The Pixelator's keys: keys only, while it has the keyboard.
+void PixelatorActions(const EditorActionContext& context, std::vector<EditorAction>& list) {
+    auto& keys = context.result.pixelator;
+    const auto key = [&](const char* label, EditorKey which, std::function<void()> run) {
+        list.push_back({.menu = EditorMenu::View,
+                        .section = "pixelator",
+                        .label = label,
+                        .key = which,
+                        .enabled = context.pixelatorFocused,
+                        .reason = context.pixelatorFocused ? "" : "The Pixelator does not have the keyboard.",
+                        .palette = false,
+                        .inMenu = false,
+                        .run = std::move(run)});
+    };
+    key("Fit the sprite", EditorKey::PixelatorFit, [&keys] { keys.fit = true; });
+    key("Zoom 1:1", EditorKey::PixelatorActual, [&keys] { keys.actual = true; });
+    key("Zoom in", EditorKey::PixelatorZoomIn, [&keys] { ++keys.zoom; });
+    key("Zoom out", EditorKey::PixelatorZoomOut, [&keys] { --keys.zoom; });
+    key("Pixel grid", EditorKey::PixelatorGrid, [&keys] { keys.grid = !keys.grid; });
+    key("Previous frame", EditorKey::PixelatorPrevious, [&keys] { --keys.frame; });
+    key("Next frame", EditorKey::PixelatorNext, [&keys] { ++keys.frame; });
+}
+
 void HelpActions(const EditorActionContext& context, std::vector<EditorAction>& list) {
     auto& result = context.result;
     list.push_back({.menu = EditorMenu::Help, .section = "help", .label = "Keyboard shortcuts", .run = [&result] {
@@ -447,6 +479,7 @@ std::vector<EditorAction> EditorActionList(const EditorActionContext& context) {
     BuildActions(context, list);
     GitActions(context, list);
     AgentActions(context, list);
+    PixelatorActions(context, list);
     HelpActions(context, list);
     for (auto& action : list)
         if (const auto* binding = EditorKeyInfo(action.key)) action.shortcut = binding->text;

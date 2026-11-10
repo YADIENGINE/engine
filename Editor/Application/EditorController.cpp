@@ -9,6 +9,7 @@
 #include <thread>
 #include <utility>
 #include "Editor/Application/EditorCommandState.h"
+#include "Editor/Internals/Protocol/PixelatorProtocol.h"
 #include "Editor/Internals/Platform/Windows/WindowsText.h"
 
 namespace {
@@ -463,6 +464,8 @@ EditorSnapshot EditorController::Snapshot() const {
     snapshot.controlEvents = &_controlEvents;
     snapshot.controlEventCount = _controlEventCount;
     snapshot.audioUsage = &_audioUsage;
+    snapshot.pixels = _pixels;
+    snapshot.pixelsPending = !_pixelsPending.empty();
     snapshot.controlAttempt = _controlAttempt;
     snapshot.noticeAge = std::chrono::duration<double>(std::chrono::steady_clock::now() - _noticeAt).count();
     return snapshot;
@@ -555,6 +558,7 @@ void EditorController::Invalidate(std::uint64_t generation) {
     _lastParameterRequest.clear();
     _displayed = _accepted[_selected];
     _previewing.reset();
+    _pixelsPending.clear(); // That worker will not answer; the pixels already shown stay
 }
 void EditorController::Send(const std::string& type, nlohmann::json data) {
     if (!_active) throw std::runtime_error("No scene connection");
@@ -630,6 +634,8 @@ void EditorController::Receive(const WorkerMessage& message) {
         }
     } else if (message.type == "inspection") {
         _inspection = DecodeSceneInspection(message.data);
+    } else if (message.type == "pixels") {
+        ReceivePixels(message.data);
     } else if (message.type == "metrics") {
         const double capture = message.data.at("captureMs").get<double>();
         const double publish = message.data.at("publishMs").get<double>();
@@ -682,6 +688,34 @@ void EditorController::ApplyReady(const WorkerMessage& message) {
     _status = "Scene ready";
     if (_recordOpen) _openedScene = _selected;
     _recordOpen = false;
+    RequestPixels();
+}
+void EditorController::RequestPixels() {
+    const auto* definition = Selected();
+    if (!definition || !definition->asset || !definition->asset->pixels) {
+        _pixels.reset();
+        _pixelsPending.clear();
+        return;
+    }
+    // Another graphic's pixels go at once; the same graphic's stay on screen until the new ones arrive.
+    const auto base = [](const std::string& id) { return id.substr(0, id.find('#')); };
+    if (_pixels && base(_pixels->id) != base(_selected)) _pixels.reset();
+    _pixelsPending = _selected;
+    Send("pixels", {{"id", _selected}});
+}
+void EditorController::ReceivePixels(const nlohmann::json& data) {
+    PixelatorAsset asset;
+    try {
+        asset = DecodePixelatorAsset(data);
+    } catch (const std::exception& error) {
+        asset = {};
+        asset.id = _pixelsPending.empty() ? _selected : _pixelsPending;
+        asset.error = std::string("Unreadable pixel data: ") + error.what();
+    }
+    if (asset.id != _pixelsPending) return; // An older request's answer
+    if (!asset.error.empty()) Log("Pixelator: " + asset.error, EditorLogLevel::Warning);
+    _pixels = std::make_shared<const PixelatorAsset>(std::move(asset));
+    _pixelsPending.clear();
 }
 void EditorController::ActiveExited(WorkerProcessMode mode, unsigned long code, const std::string& cause) {
     _profiler.Disconnected();
