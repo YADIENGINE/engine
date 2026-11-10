@@ -20,6 +20,7 @@
 #include <vector>
 #include "Editor/Host/PixelatorTextures.h"
 #include "Editor/Internals/Pixelator/PixelatorFrames.h"
+#include "Editor/Internals/Session/GraphicAssetCatalog.h"
 #include "Editor/Internals/Session/TuningWorkspace.h"
 #include "Editor/Ui/Panels/Agents/AgentsDrawer.h"
 #include "Terminal/TerminalSession.h"
@@ -97,6 +98,7 @@ constexpr std::array Stages{
     SmokeStage{"input-map", SmokeView::Running, 1600, 1000, 100, EditorPanel::Inspector},
     SmokeStage{"notes", SmokeView::Running, 1600, 900, 100, EditorPanel::Notes},
     SmokeStage{"assets", SmokeView::Running, 1600, 900, 100, EditorPanel::Assets},
+    SmokeStage{"assets-pixel", SmokeView::Running, 1280, 1040, 75, EditorPanel::Assets},
     SmokeStage{"audio", SmokeView::Running, 1600, 900, 100, EditorPanel::AudioPreview},
     SmokeStage{"pixelator", SmokeView::Running, 1600, 900, 100, EditorPanel::Pixelator},
     SmokeStage{"pixelator-narrow", SmokeView::Running, 1100, 680, 150, EditorPanel::Pixelator},
@@ -352,9 +354,9 @@ public:
         _root = std::filesystem::temp_directory_path(error) / ("editor-ui-smoke-" + std::to_string(::time(nullptr)));
         WriteFile(EngineDirectory() / "Assets" / "Graphics" / "Icons" / "Icons.asset.cpp");
         WriteFile(EngineDirectory() / "Assets" / "Graphics" / "Backdrops" / "Stars.asset.cpp");
-        for (const char* file :
-             {"Graphics/Enemies/Slime.asset.cpp", "Graphics/Enemies/Dragon.asset.cpp", "Graphics/Player/Hero.asset.cpp",
-              "Audio/SE/Hit.wav", "Audio/SE/Pickup.wav", "Audio/SE/Explosion.wav", "Audio/Music/Theme.ogg"})
+        for (const char* file : {"Graphics/Enemies/Slime.asset.cpp", "Graphics/Enemies/Dragon.asset.cpp",
+                                 "Graphics/Enemies/Bat.asset.cpp", "Graphics/Player/Hero.asset.cpp", "Audio/SE/Hit.wav",
+                                 "Audio/SE/Pickup.wav", "Audio/SE/Explosion.wav", "Audio/Music/Theme.ogg"})
             WriteFile(AssetsDirectory() / file);
         WriteFile(_root / "Notes/Plan.md",
                   "# Project plan\n\nKeep plans, reports and handoffs together.\n\n## Next steps\n\n- Review the "
@@ -476,6 +478,19 @@ std::vector<SceneDefinition> SampleCatalog() {
         scene.category = "Fights";
         catalog.push_back(scene);
     }
+    // Graphics in the Assets panel's Enemies and Player folders: pixel ones open in the Pixelator.
+    const auto graphic = [&](const char* file, const char* set, const char* item, bool pixels) {
+        SceneDefinition scene;
+        scene.id = std::format("asset:Graphics/{}{}{}", set, *item ? "#" : "", item);
+        scene.name = *item ? std::format("{} / {}", set, item) : set;
+        scene.category = "Assets";
+        scene.asset = SceneAssetInfo{file, set, item, std::format("Draw{}(paint, box);", set), pixels};
+        catalog.push_back(scene);
+    };
+    graphic("Graphics/Enemies/Slime.asset.cpp", "Slime", "", true);
+    graphic("Graphics/Enemies/Dragon.asset.cpp", "Dragon", "", false);
+    graphic("Graphics/Enemies/Bat.asset.cpp", "Bat", "Fly", true);
+    graphic("Graphics/Enemies/Bat.asset.cpp", "Bat", "Rest", true);
     for (const char* category : {"Visuals", "Interface", "Mechanics", "Profiler", "World"}) {
         SceneDefinition scene;
         scene.id = std::string("sample.category.") + category;
@@ -535,6 +550,8 @@ public:
         _preferences.Visible(EditorPanel::Console) = true;
         _preferences.recent = {"sample.fight", "sample.Boss intro", "sample.category.Visuals"};
         _workspace.SetAssetRoots(_project.EngineDirectory(), _project.AssetsDirectory());
+        for (auto& scene : _catalog) // The sample graphics' files, as the Assets panel keys them
+            if (scene.asset) scene.asset->file = AssetPathKey(_project.AssetsDirectory() / scene.asset->file);
         _workspace.SetProjectName("MyProject");
         _workspace.SetNotesProject(_project.Root());
         _tuning.Open(_project.BuildDirectory());
@@ -682,6 +699,8 @@ protected:
         snapshot.audio.position = 0.7f;
         snapshot.audio.waveform = {WaveformState::Ready, _waveform, {}};
         snapshot.pixels = _pixels;
+        if (std::string_view(stage.name) == "assets-pixel")
+            _workspace.Assets().ShowFolder(AssetPathKey(_project.AssetsDirectory() / "Graphics" / "Enemies"));
         if (const std::string_view name = stage.name; name.starts_with("pixelator")) {
             auto& pixelator = _workspace.Pixelator();
             pixelator.ShowLayout(name == "pixelator-compare"   ? PixelatorPanel::Layout::Compare

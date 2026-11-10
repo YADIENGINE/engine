@@ -20,6 +20,11 @@ class AssetsPanel {
 public:
     void SetRoots(const std::filesystem::path& engineDirectory, const std::filesystem::path& assetsDirectory);
     void Draw(const EditorSnapshot& snapshot, const EditorUiActions& actions);
+    // For the UI smoke: the folder a developer would reach by clicking (an AssetPathKey).
+    void ShowFolder(const std::string& folder) {
+        _navigation.Go({folder, {}}, {});
+        _revealFolder = true;
+    }
     void SetNotesProject(const std::filesystem::path& project) {
         _notes = NoteFiles(project);
         _nextScan = 0;

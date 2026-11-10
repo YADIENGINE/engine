@@ -117,7 +117,8 @@ value per art pixel there.
 
 A graphic asset whose registration sets `GraphicAsset::pixels` opens in the **Pixelator**, a tab beside the Viewport
 that comes to the front when the graphic is opened from Assets (or `ctl open`); the Viewport behind it shows the
-graphic as the game draws it. `python Engine asset new X --folder <Folder> --pixel` writes such an asset:
+graphic as the game draws it. In Assets such graphics carry a pixel-grid chip in their tile's corner and the caption
+"Pixel art / Open" ("Pixel set / Open" for a set), so they are told apart from graphics that open only in the Viewport. `python Engine asset new X --folder <Folder> --pixel` writes such an asset:
 [Graphic assets](../Editor/Api.md#graphic-assets).
 
 The editor draws the pixels itself from the sprite data, so zoom and pan are instant at any size:

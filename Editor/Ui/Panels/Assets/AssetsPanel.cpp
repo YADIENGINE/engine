@@ -85,7 +85,16 @@ struct TileLook {
     std::uint64_t thumbnail = 0; // Replaces the icon when there is one
     const char* kind = "";
     std::string status;
+    bool pixel = false; // A pixel graphic: it opens in the Pixelator, so its tile says so with a corner chip
 };
+
+// Pixel graphics (GraphicAsset::pixels) open in the Pixelator instead of only the Viewport.
+constexpr const char* PixelIcon = ICON_FA_CHESS_BOARD;
+constexpr const char* PixelKind = "Pixel art / Open";
+constexpr const char* PixelSetKind = "Pixel set / Open";
+constexpr const char* PixelClick =
+    "\nClick: open in the Pixelator (pixels zoomed, inks, frames); the Viewport shows it "
+    "as the game draws it";
 
 bool DrawTile(const TileLook& look, float size) {
     const float scale = ToolUiScale();
@@ -116,6 +125,15 @@ bool DrawTile(const TileLook& look, float size) {
         draw->AddText(ImGui::GetFont(), iconSize,
                       {start.x + (side - iconExtent.x) * 0.5f, start.y + (side - iconExtent.y) * 0.5f},
                       ImGui::GetColorU32(iconColor), look.icon);
+    }
+    if (look.pixel) {
+        // Bottom left of the picture, where the item count (top right) never is.
+        const auto extent = ImGui::CalcTextSize(PixelIcon);
+        const ImVec2 chipStart{start.x + pad, start.y + side - pad - extent.y - pad};
+        draw->AddRectFilled(chipStart, {chipStart.x + extent.x + pad * 2, start.y + side - pad},
+                            ImGui::GetColorU32(EditorInfoColor()), radius);
+        draw->AddText({chipStart.x + pad, chipStart.y + pad * 0.5f}, ImGui::GetColorU32(ToolColors().window),
+                      PixelIcon);
     }
     if (look.count > 1) {
         const auto text = std::to_string(look.count);
@@ -722,14 +740,16 @@ void AssetsPanel::SceneTile(const SceneDefinition& scene, const std::string& lab
     const bool selected = snapshot.selected && snapshot.selected->id == scene.id;
     const bool enabled = !snapshot.busy || (selected && snapshot.capabilities.Can(EditorCommand::Open));
     ImGui::BeginDisabled(!enabled);
-    const bool pressed =
-        DrawTile({scene.id.c_str(), label.c_str(), KindIcon(AssetKind::Graphic), KindColor(AssetKind::Graphic),
-                  selected, false, 0, actions.assetThumbnail ? actions.assetThumbnail(scene.id) : 0, "Graphic / Open",
-                  node.readOnly ? "Read-only" : ""},
-                 _tileSize);
+    const bool pixel = scene.asset && scene.asset->pixels;
+    const bool pressed = DrawTile({scene.id.c_str(), label.c_str(), pixel ? PixelIcon : KindIcon(AssetKind::Graphic),
+                                   KindColor(AssetKind::Graphic), selected, false, 0,
+                                   actions.assetThumbnail ? actions.assetThumbnail(scene.id) : 0,
+                                   pixel ? PixelKind : "Graphic / Open", node.readOnly ? "Read-only" : "", pixel},
+                                  _tileSize);
     ImGui::EndDisabled();
     if (pressed) Open(scene, snapshot, actions);
-    auto tooltip = scene.name + "\nClick: open scene\n" + Utf8(node.path);
+    auto tooltip =
+        scene.name + (pixel ? std::string(PixelClick) : std::string("\nClick: open scene")) + "\n" + Utf8(node.path);
     if (node.readOnly) tooltip += "\nRead-only: engine assets cannot be moved or created here.";
     if (!scene.description.empty()) tooltip += "\n" + scene.description;
     ToolTooltip(tooltip.c_str());
@@ -770,6 +790,11 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
         catalogKnown ? AssetPathOf(node.path, _engineDirectory, _assetsDirectory) : std::filesystem::path();
     const auto uses = catalogKnown ? AudioUseLabels(AudioUsesOf(*snapshot.audioUsage, asset)) : std::string();
     const bool unused = catalogKnown && uses.empty() && !node.readOnly;
+    // A set of pixel graphics: its items open in the Pixelator.
+    const bool pixelSet =
+        !inspectTuning && count > 1 && std::ranges::any_of(found->second, [](const SceneDefinition* scene) {
+            return scene->asset && scene->asset->pixels;
+        });
     const char* icon = inspectTuning ? ICON_FA_SLIDERS
                        : count > 1   ? ICON_FA_LAYER_GROUP
                        : playing     ? ICON_FA_VOLUME_HIGH
@@ -777,6 +802,7 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
     const char* kind = _notes.InRoot(node.path) && node.kind != AssetKind::Folder ? "Note / Open"
                        : inspectTuning ? (node.readOnly ? "Tuning / Code" : "Tuning / Edit")
                        : playing       ? "Sound / Stop"
+                       : pixelSet      ? PixelSetKind
                        : count > 1     ? "Set / Open"
                                        : KindLabel(node.kind);
     std::string status = notBuilt ? "Needs build" : unused ? "Not in catalog" : "";
@@ -786,7 +812,7 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
         {key.c_str(), node.name.c_str(), icon, inspectTuning ? ToolColors().accent : KindColor(node.kind),
          previewed || created, notBuilt || unused, inspectTuning ? 0 : count,
          !inspectTuning && count > 1 && actions.assetThumbnail ? actions.assetThumbnail(found->second.front()->id) : 0,
-         kind, status},
+         kind, status, pixelSet},
         _tileSize);
     if (created && _created->scroll) {
         ImGui::ScrollToItem(ImGuiScrollFlags_KeepVisibleCenterY);
@@ -797,6 +823,8 @@ void AssetsPanel::NodeTile(const AssetNode& node, const EditorSnapshot& snapshot
     if (inspectTuning)
         tooltip +=
             node.readOnly ? "\nClick: view tuning source in the code editor" : "\nClick: edit tuning in Inspector";
+    else if (pixelSet)
+        tooltip += "\nClick: open the set; its pixel graphics open in the Pixelator";
     else if (node.kind == AssetKind::Folder || count > 1)
         tooltip += "\nClick: open folder or set";
     else if (sound)

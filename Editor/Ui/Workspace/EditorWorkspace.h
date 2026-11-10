@@ -56,6 +56,7 @@ public:
     void ShowPixelator(EditorPreferences& preferences);
     // The Pixelator itself, for the UI smoke's stages and tests.
     [[nodiscard]] PixelatorPanel& Pixelator() { return _pixelator; }
+    [[nodiscard]] AssetsPanel& Assets() { return _assets; }
     bool FlushNotes() { return _notes.Flush(); }
     void CloseNotes() { _notes.Shutdown(); }
     // Pastes `text` (no Enter) into the agent session, shown in the Agents drawer, when there is one; else into the
