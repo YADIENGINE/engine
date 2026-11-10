@@ -1,0 +1,16 @@
+{
+  "name": "Cats",
+  "summary": "The engine draws pixel art: ink sprites with palettes, a pixel world at whole-pixel scale, and the Pixelator panel to look at them.",
+  "date": "2026-11-10",
+  "changes": [
+    "Pixel kit: ink sprites, palettes and shaded shapes drawn from code (D62). See Docs/Graphics/PixelArt.md.",
+    "Pixel world: the artPixel project setting draws the world on an art-pixel grid with hard edges at any window size; pixelUi pixelates the HUD too (D63).",
+    "Pixelator panel and ctl pixels: frames, inks, lint, onion skin, tiling, diff and PNG/GIF export for pixel graphics (D64, D65)."
+  ],
+  "breaking": [
+    {
+      "change": "The smoothCanvas project setting is gone; artPixel decides between a smooth and a pixel project.",
+      "migrate": "See Docs/Editor/Development/Migrations.md (D63)."
+    }
+  ]
+}

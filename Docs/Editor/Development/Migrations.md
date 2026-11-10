@@ -1,5 +1,11 @@
 # Cumulative migration notes
 
+## Pixel world (D63)
+
+| Old | New | How to migrate |
+| --- | --- | --- |
+| `"smoothCanvas": false` in `Game.settings.json` | `"artPixel"` (canvas units per art pixel) | A pixel game sets `artPixel` (3 or 4 is typical); a smooth game deletes the line. See Docs/Graphics/PixelArt.md. |
+
 ## Scenes without an object list (D56)
 
 A scene keeps its parts as value members and calls them from its own hooks; the host shuts it down, so it needs no
