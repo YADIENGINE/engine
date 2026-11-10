@@ -174,7 +174,13 @@ void EditorApplication::Update(float realSeconds) {
         ConfigureFrameExecution(*_beforeBenchmark);
         _beforeBenchmark.reset();
     }
-    if (auto opened = _controller.TakeOpenedScene()) _preferences.Opened(*opened);
+    if (auto opened = _controller.TakeOpenedScene()) {
+        _preferences.Opened(*opened);
+        // A pixel graphic opened from Assets or `ctl open`: its pixels come forward, the drawing stays behind (D64).
+        const auto& catalog = _controller.Snapshot().catalog;
+        const auto entry = std::ranges::find(catalog, *opened, &SceneDefinition::id);
+        if (entry != catalog.end() && entry->asset && entry->asset->pixels) _workspace.ShowPixelator(_preferences);
+    }
     if (_windowMark) { // Captured at the end of a frame drawn without the marking layer
         if (!_windowMarkSequence)
             _windowMarkSequence = RequestWindow();
@@ -439,7 +445,10 @@ void EditorApplication::DrawToolOverlay() const {
         [&](const GitRequest& request) {
             if (_git) _git->Request(request);
         },
-        [&](const std::filesystem::path& file) { return _gitImages.Load(file); }};
+        [&](const std::filesystem::path& file) { return _gitImages.Load(file); },
+        [&](std::size_t slot, int width, int height, std::span<const Color4> pixels) {
+            return _pixelatorTextures.Upload(slot, width, height, pixels);
+        }};
     auto snapshot = _controller.Snapshot();
     snapshot.audio = _audio;
     snapshot.git = _gitSnapshot.get();

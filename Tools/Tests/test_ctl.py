@@ -51,6 +51,19 @@ class RequestTests(unittest.TestCase):
         self.assertEqual(shot["crop"], [0, 0, 800, 450])
         self.assertEqual(request("screenshot", "--window"), {"command": "screenshot", "window": True})
 
+    def test_pixels_options(self):
+        self.assertEqual(request("pixels"), {"command": "pixels"})
+        shot = request("pixels", "--view", "inks", "--zoom", "8", "--frame", "2", "--no-grid", "--tiles", "16",
+                       "--background", "light", "--no-pivot", "--ink", "3", "--out", "knight.png")
+        self.assertEqual({key: value for key, value in shot.items() if key != "path"},
+                         {"command": "pixels", "view": "inks", "zoom": 8, "frame": 2, "grid": False, "tiles": 16,
+                          "background": "light", "pivot": False, "ink": 3})
+        self.assertTrue(Path(shot["path"]).is_absolute())
+        self.assertEqual(request("pixels", "--grid"), {"command": "pixels", "grid": True})
+        for argv in (("pixels", "--view", "pixels"), ("pixels", "--tiles", "12")):
+            with self.subTest(argv=argv), self.assertRaises(SystemExit), patch("sys.stderr", io.StringIO()):
+                request(*argv)
+
     def test_simulation_steps(self):
         self.assertEqual(request("step"), {"command": "step", "frames": 1})
         self.assertEqual(request("step", "5"), {"command": "step", "frames": 5})

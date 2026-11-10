@@ -60,7 +60,7 @@ void EndHelpPopup() {
 bool KeyboardShortcuts(bool open, std::span<const EditorAction> list) {
     if (!BeginHelpPopup(ShortcutsPopup, open, 620.0f, 600.0f)) return false;
     ImGui::TextWrapped("Shortcuts available throughout the editor. Agent navigation shortcuts apply while the "
-                       "Agents drawer is open.");
+                       "Agents drawer is open; the Pixelator's while it has the keyboard.");
     ImGui::BeginChild("shortcut-list", {0, -ImGui::GetFrameHeightWithSpacing()});
     for (int index = 0; index < static_cast<int>(EditorMenu::Count); ++index) {
         const auto menu = static_cast<EditorMenu>(index);
@@ -72,9 +72,11 @@ bool KeyboardShortcuts(bool open, std::span<const EditorAction> list) {
             if (shortcut(action)) ShortcutRow(action.label.c_str(), action.shortcut);
         ImGui::EndTable();
     }
-    if (BeginShortcutTable("Agents drawer")) {
+    for (const auto& [title, scope] : {std::pair{"Agents drawer", EditorKeyScope::AgentsDrawer},
+                                       std::pair{"Pixelator", EditorKeyScope::Pixelator}}) {
+        if (!BeginShortcutTable(title)) continue;
         for (const auto& binding : EditorKeyBindings())
-            if (binding.name && *binding.name) ShortcutRow(binding.name, binding.text);
+            if (binding.scope == scope && binding.name && *binding.name) ShortcutRow(binding.name, binding.text);
         ImGui::EndTable();
     }
     ImGui::EndChild();

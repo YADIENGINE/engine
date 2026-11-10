@@ -81,8 +81,9 @@ space-separated word in any order, ignoring case; panel result ordering is prese
   client; the status bar shows the error count until the next build either way, and a click on it opens Problems. While
   building, the status bar shows Ninja's count and the time so far ("Building 12/48 · 14 s").
 - **Assets:** the asset library: back and search across the top, a folder tree on the left (sets are rows too), a tile
-  grid on the right, and tile size at the bottom (or Ctrl+wheel). A click on a graphic opens it in the Viewport; a click
-  on a folder or set enters it. Back (Alt+Left) undoes the last move or opened graphic, in order. A click on a sound
+  grid on the right, and tile size at the bottom (or Ctrl+wheel). A click on a graphic opens it in the Viewport (a pixel
+  graphic also brings the Pixelator to the front); a click on a folder or set enters it. Back (Alt+Left) undoes the
+  last move or opened graphic, in order. A click on a sound
   loads it into Audio Preview and plays it; a second click on the playing sound stops it. Once a worker has reported
   the project's audio catalog, a sound the catalog does not list is dimmed, and the tooltip names the catalog entries
   that play it. Right-click for Copy usage, Copy path, Open code and
@@ -106,6 +107,12 @@ space-separated word in any order, ignoring case; panel result ordering is prese
   in the background). Click or drag on the waveform to seek. Below it: previous sound in the folder, play/pause (Space),
   stop, next sound, loop and volume. It plays in the editor process from the source file, so a new sound needs no Build
   & Refresh, and it leaves the viewport and running scene alone.
+- **Pixelator:** a pixel graphic's pixels (`GraphicAsset::pixels`), a tab beside the Viewport that comes forward when such
+  a graphic is opened. The editor draws them from the sprite data: whole-number zoom (wheel, `+` / `-`, Fit `F`, 1:1
+  `1`), pan with the middle button or Space + drag, Color / Inks / Parts views, pixel grid (`G`), tile grid, pivot and
+  background in its toolbar; the inks with their counts (hover shows one ink's pixels, a click isolates it) and a game-size
+  preview at the side; the item list, frames (`,` / `.`) and what is under the pointer at the bottom. Its keys work while
+  it has the keyboard. Details: [Pixel art](../Graphics/PixelArt.md#in-the-editor).
 - **Console:** a real PowerShell session at the project root, with the sessions in a named list at the right that can be
   resized. Drag to select visible text and copy with Ctrl+C /
   Ctrl+Shift+C or right-click Copy. Without selection, Ctrl+C interrupts the running program; Ctrl+V pastes, Escape

@@ -10,7 +10,7 @@
 #include "Input/Input.h"
 #include "Tuning/TuningFile.h"
 
-inline constexpr std::uint32_t WorkerProtocolVersion = 17;
+inline constexpr std::uint32_t WorkerProtocolVersion = 18;
 inline constexpr std::size_t WorkerMaxInputPoints = 32;
 inline constexpr std::size_t WorkerMaxMessageBytes = 16 * 1024 * 1024;
 inline constexpr std::size_t WorkerMaxQueuedMessages = 256;

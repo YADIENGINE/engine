@@ -5,13 +5,16 @@
 #include <deque>
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <set>
+#include <span>
 #include <string>
 #include "Editor/Api/SceneRegistry.h"
 #include "Editor/Internals/Diagnostics/EditorDiagnostics.h"
 #include "Editor/Internals/Agent/AgentReport.h"
 #include "Editor/Internals/Git/GitTypes.h"
+#include "Editor/Internals/Pixelator/PixelatorAsset.h"
 #include "Editor/Internals/Session/AudioUsage.h"
 #include "Editor/Internals/Session/AudioWaveformCache.h"
 #include "Editor/Internals/Session/ProfilerSession.h"
@@ -123,7 +126,9 @@ struct EditorSnapshot {
     std::filesystem::path inspectedTuning;   // The tuning file the Inspector shows instead of the scene; empty: none
     AudioPreviewState audio;                 // The Audio Preview panel's sound; set by the host
     const AudioUsage* audioUsage = nullptr;  // Which sound files the project's audio catalog plays
-    std::string notice;                      // Last change made through the control endpoint
+    std::shared_ptr<const PixelatorAsset> pixels; // The Pixelator's pixel graphic; null when none is open
+    bool pixelsPending = false;                   // Asked of the worker, not answered yet
+    std::string notice;                           // Last change made through the control endpoint
     double noticeAge = 0.0;
     const std::deque<EditorControlEvent>* controlEvents = nullptr; // Oldest first; the latest ones when there were many
     std::size_t controlEventCount = 0;                             // All of this session's, kept or not
@@ -186,4 +191,8 @@ struct EditorUiActions {
     std::function<void(const std::string&, int)> openSource;
     std::function<void(const GitRequest&)> git;
     std::function<EditorGitImage(const std::filesystem::path&)> gitImage;
+    // The Pixelator's pictures: uploads RGBA pixels (rows top to bottom) into texture `slot` (a small number the panel
+    // picks) and returns its GL texture, drawn with nearest filtering and repeating; 0 when it could not be made.
+    std::function<std::uint64_t(std::size_t slot, int width, int height, std::span<const Color4> pixels)>
+        pixelatorTexture;
 };

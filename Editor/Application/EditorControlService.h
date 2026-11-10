@@ -111,6 +111,8 @@ private:
     void AudioControl(const nlohmann::json& arguments);
     // The whole editor window after its next frame (no scene needed).
     void WindowShot(const nlohmann::json& arguments);
+    // The Pixelator's picture of the open pixel graphic (D64): a PNG and a summary; waits for the worker's data.
+    void Pixels(const nlohmann::json& arguments);
     // Seeks to evenly spaced times one after another and answers with one labelled grid image.
     void Frames(const nlohmann::json& arguments, EditorController& controller);
     [[nodiscard]] static nlohmann::json Saved(const std::filesystem::path& file, const ViewportPixels& image,

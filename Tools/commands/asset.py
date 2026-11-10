@@ -61,7 +61,7 @@ GraphicAsset Make{name}() {{
 }} // namespace
 """
 
-# --pixel: a pixel sprite drawn on a PixelCanvas, frames made once, its palette, and the editor's pixel view.
+# --pixel: a pixel sprite drawn on a PixelCanvas, frames made once, its palette, and the editor's Pixelator.
 PIXEL_HEADER = """#pragma once
 #include "Graphics/Pixel/PixelPalette.h"
 #include "Graphics/Pixel/PixelSprite.h"
@@ -74,7 +74,7 @@ struct {name}Look {{
     float flash = 0.0f; // 0..1: the whole sprite moves toward white (a hit)
 }};
 
-// The frame shown at `time` and the palette it is drawn in (also what the editor's pixel view shows).
+// The frame shown at `time` and the palette it is drawn in (also what the editor's Pixelator shows).
 [[nodiscard]] const PixelSprite& {name}Sprite(float time);
 [[nodiscard]] const PixelPalette& {name}Palette();
 // Centred in `box`, standing on its bottom edge, each sprite pixel a whole number of art pixels.
@@ -149,7 +149,7 @@ def add_parser(commands) -> None:
     action.add_argument("name", help="PascalCase name; also names the draw function")
     action.add_argument("--folder", default="", help="folder under Game/Assets/Graphics")
     action.add_argument("--pixel", action="store_true",
-                        help="a pixel sprite: PixelCanvas frames, a palette and the editor's pixel view")
+                        help="a pixel sprite: PixelCanvas frames, a palette and the editor's Pixelator")
     actions.add_parser("mkdir", help="a folder under Game/Assets/Graphics").add_argument("folder")
     action = actions.add_parser("move", help="move an asset or folder and update the includes that name it")
     action.add_argument("source", help="asset (Enemies/Goblin) or folder (Enemies), under Game/Assets/Graphics")

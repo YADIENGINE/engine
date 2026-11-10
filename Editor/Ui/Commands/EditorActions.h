@@ -14,13 +14,14 @@ enum class EditorActionCheck { None, Toggle, Radio };
 
 // clang-format off
 // Every editor shortcut. One key runs at most one action of EditorActionList.
-enum class EditorKey { None, QuickOpen, CommandPalette, Console, BottomTool, Agents, SendScene, NewAgent, GitChanges, Primary, Pause, Step, Reset, Build, NextAgent, PreviousAgent, AgentView, Agent1, Agent2, Agent3, Agent4, Agent5, Agent6, Agent7, Agent8, Agent9 };
+enum class EditorKey { None, QuickOpen, CommandPalette, Console, BottomTool, Agents, SendScene, NewAgent, GitChanges, Primary, Pause, Step, Reset, Build, NextAgent, PreviousAgent, AgentView, Agent1, Agent2, Agent3, Agent4, Agent5, Agent6, Agent7, Agent8, Agent9, PixelatorFit, PixelatorActual, PixelatorZoomIn, PixelatorZoomOut, PixelatorGrid, PixelatorPrevious, PixelatorNext };
 // clang-format on
 // When a key works; never while a popup is open.
 // Everywhere: also while typing or while the Console's terminal has the keyboard (it leaves these keys to the editor).
 // OutsideConsole: not while the Console has the keyboard. Playback: neither while typing nor in the Console.
 // AgentsDrawer: only while the Agents drawer is open; closed, the key stays free for whatever has the keyboard.
-enum class EditorKeyScope { Everywhere, OutsideConsole, Playback, AgentsDrawer };
+// Pixelator: only while the Pixelator panel has the keyboard and nothing is typed.
+enum class EditorKeyScope { Everywhere, OutsideConsole, Playback, AgentsDrawer, Pixelator };
 
 struct EditorKeyBinding {
     EditorKey key;
@@ -69,6 +70,7 @@ struct EditorActionContext {
     bool maximized = false;
     bool offerProjectList = false; // Only when a launcher started this editor (Docs/ToolsContract.md)
     bool agentsDrawerOpen = false;
+    bool pixelatorFocused = false;
     std::filesystem::path engineDirectory; // Help → Editor guide opens its Docs/ copy when present
     std::string agentContextTarget = "New agent session";
     std::string sceneContextTarget = "New agent session";

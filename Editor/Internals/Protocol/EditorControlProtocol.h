@@ -42,6 +42,7 @@ enum class EditorControlCommand {
     AudioControl, // Plays, pauses, stops, seeks or changes the Audio Preview sound ("action")
     Replay,       // Loads or saves the open simulation's replay ("action", "path")
     Release,      // Gives up the requesting session's hold on the editor (ControlLease)
+    Pixels,       // The Pixelator's picture of the open pixel graphic, as a PNG, with a summary (D64)
     Count
 };
 

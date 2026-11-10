@@ -1,5 +1,5 @@
 engine_use_catch2()
-add_executable(EngineEditorTests NotesTests.cpp AssetLibraryTests.cpp QuickOpenTests.cpp AudioPreviewTests.cpp ControlChannelTests.cpp EditorInfrastructureTests.cpp EditorControlTests.cpp EditorUiModelTests.cpp ProfilerEditorTests.cpp
+add_executable(EngineEditorTests NotesTests.cpp AssetLibraryTests.cpp PixelatorTests.cpp QuickOpenTests.cpp AudioPreviewTests.cpp ControlChannelTests.cpp EditorInfrastructureTests.cpp EditorControlTests.cpp EditorUiModelTests.cpp ProfilerEditorTests.cpp
     EditorCommandTests.cpp GitTests.cpp OneSceneTests.cpp TuningEditorTests.cpp WorkerSimulationTests.cpp
     "${CMAKE_CURRENT_SOURCE_DIR}/../Worker/WorkerScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Tests/Support/TempDirectory.cpp"
@@ -12,7 +12,8 @@ if(TARGET EngineEditorUi)
         WorkspaceUiTests.cpp)
     target_link_libraries(EngineEditorTests PRIVATE EngineEditorUi)
     # Opt-in real-renderer screenshots of the panels; needs a desktop/GPU, so not a CTest (EditorUiSmoke.cpp).
-    add_executable(EngineEditorUiSmoke EXCLUDE_FROM_ALL EditorUiSmoke.cpp)
+    add_executable(EngineEditorUiSmoke EXCLUDE_FROM_ALL EditorUiSmoke.cpp
+        "${CMAKE_CURRENT_SOURCE_DIR}/../Host/PixelatorTextures.cpp")
     target_link_libraries(EngineEditorUiSmoke PRIVATE EngineEditorUi Engine raylib)
     engine_warnings(EngineEditorUiSmoke)
     # Opt-in checks of what the GPU really draws: shaders and GL state the NullDevice cannot see (GpuPixelCheck.cpp).

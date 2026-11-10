@@ -3,7 +3,7 @@
 
 // Preferences save panels by their key (EditorPanelDefinition::key), so the order here is free to change.
 // clang-format off
-enum class EditorPanel { Catalog, Viewport, Inspector, Output, Profiler, Console, Assets, AudioPreview, Notes, Count };
+enum class EditorPanel { Catalog, Viewport, Inspector, Output, Profiler, Console, Assets, AudioPreview, Notes, Pixelator, Count };
 // clang-format on
 enum class EditorDockGroup { Left, Center, Right, Bottom };
 // Saved as numbers: new layouts go last. Agent: the scene beside a tall Console for an agent session.
@@ -35,7 +35,8 @@ inline constexpr std::array EditorPanels{
                           EditorDockGroup::Bottom},
     EditorPanelDefinition{EditorPanel::AudioPreview, "audio-preview", "Audio Preview",
                           "Audio Preview###editor.audio-preview", false, EditorDockGroup::Bottom},
-    EditorPanelDefinition{EditorPanel::Notes, "notes", "Notes", "Notes###editor.notes", false,
+    EditorPanelDefinition{EditorPanel::Notes, "notes", "Notes", "Notes###editor.notes", false, EditorDockGroup::Center},
+    EditorPanelDefinition{EditorPanel::Pixelator, "pixelator", "Pixelator", "Pixelator###editor.pixelator", false,
                           EditorDockGroup::Center}};
 
 // Alt dock'un panelleri (Ctrl+J son kullanılan paneli bağımsız açıp kapatır).

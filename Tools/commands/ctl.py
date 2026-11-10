@@ -36,6 +36,7 @@ WORKFLOW = """typical use:
   python Engine ctl open ID --set k=v --action start --screenshot --scale 0.5
   python Engine ctl frames --from 0 --to 2      an animation as one grid image
   python Engine ctl audio play Audio/hit.ogg    play a sound for the developer in Audio Preview
+  python Engine ctl pixels --view inks --zoom 8 the open pixel graphic zoomed, with its inks and pivot
 answers are one JSON object on stdout; exit 2 means no editor is open (Docs/Editor/Automation.md)"""
 
 
@@ -91,6 +92,19 @@ def add_parser(commands) -> None:
     action.add_argument("--out", help="PNG path (default: the build folder's editor-captures/)")
     action.add_argument("--scale", type=float, help="tile scale (default: the grid fits about 1600 px across)")
     action.add_argument("--crop", type=float, nargs=4, metavar=("X", "Y", "W", "H"), help="canvas-space area")
+    action = actions.add_parser("pixels", help="the open pixel graphic as the Pixelator shows it: a zoomed PNG and its "
+                                "size, pivot, frames and inks")
+    action.add_argument("--view", choices=("color", "inks", "parts"), help="colours, a colour per ink or per part")
+    action.add_argument("--zoom", type=int, help="screen pixels per sprite pixel, 1-64 (default: about 1024 px "
+                        "across)")
+    action.add_argument("--frame", type=int, help="frame index from 0 (default 0); the answer gives the count")
+    action.add_argument("--grid", action=argparse.BooleanOptionalAction, default=None,
+                        help="pixel grid (default: from 4x zoom)")
+    action.add_argument("--tiles", type=int, choices=(0, 8, 16, 32), help="tile grid every N pixels")
+    action.add_argument("--background", choices=("checker", "dark", "light"), help="behind the sprite")
+    action.add_argument("--no-pivot", dest="pivot", action="store_false", default=None, help="hide the pivot marker")
+    action.add_argument("--ink", type=int, help="show this ink, dim the others")
+    action.add_argument("--out", help="PNG path (default: the build folder's editor-captures/)")
     actions.add_parser("inspect", help="the open scene's inspection values and tables")
     action = actions.add_parser("logs", help="editor, worker and build log entries")
     action.add_argument("--since", type=int, default=0, help="only entries after this sequence number")
@@ -330,12 +344,23 @@ def request_of(args: argparse.Namespace) -> dict:
                 request["scale"] = args.scale
             if args.crop:
                 request["crop"] = args.crop
+        case "pixels":
+            request.update(pixels_request(args))
         case "logs":
             request.update(since=args.since, limit=args.limit, level=args.level)
         case "audio":
             request.update(audio_request(args))
         case "note":
             request.update(text=" ".join(args.text), state=args.state)
+    return request
+
+
+def pixels_request(args: argparse.Namespace) -> dict:
+    """`ctl pixels`: only the options given; the editor fills in its defaults."""
+    request = {key: getattr(args, key) for key in ("view", "zoom", "frame", "grid", "tiles", "background", "pivot",
+                                                    "ink") if getattr(args, key) is not None}
+    if args.out:
+        request["path"] = str(Path(args.out).resolve())
     return request
 
 

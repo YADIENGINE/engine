@@ -21,6 +21,11 @@ add_library(EngineEditorSupport STATIC
     Internals/Protocol/WorkerProtocol.cpp
     Internals/Protocol/WorkerMessageReader.cpp
     Internals/Protocol/EditorControlProtocol.cpp
+    Internals/Protocol/PixelatorProtocol.cpp
+    Internals/Pixelator/PixelFrameSampling.cpp
+    Internals/Pixelator/PixelatorPicture.cpp
+    Internals/Pixelator/PixelatorPlayback.cpp
+    Internals/Pixelator/PixelatorView.cpp
     Internals/Session/AssetLibrary.cpp
     Internals/Session/AssetNames.cpp
     Internals/Session/AssetNavigation.cpp
@@ -84,7 +89,7 @@ set(editor_output "${CMAKE_BINARY_DIR}/Editor/$<CONFIG>")
 if(ENGINE_BUILD_EDITOR)
     add_library(EngineWorkerRuntime STATIC EXCLUDE_FROM_ALL
         Worker/AssetThumbnailGame.cpp Worker/AudioReport.cpp Worker/WorkerScene.cpp Worker/WorkerGame.cpp Worker/WorkerSession.cpp Worker/WorkerHost.cpp
-        Worker/WorkerProfiler.cpp Worker/GlowBenchmark.cpp Worker/LightGallery.cpp Worker/PostGallery.cpp
+        Worker/WorkerProfiler.cpp Worker/PixelatorReport.cpp Worker/GlowBenchmark.cpp Worker/LightGallery.cpp Worker/PostGallery.cpp
         Worker/RenderGallery.cpp)
     target_link_libraries(EngineWorkerRuntime PUBLIC Engine EngineAssets EngineEditorApi EngineEditorSupport EngineProfilerRuntime)
     engine_warnings(EngineWorkerRuntime)
@@ -113,6 +118,7 @@ if(ENGINE_BUILD_EDITOR)
         Ui/Panels/Notes/NotesPanel.cpp
         Ui/Panels/Assets/AssetsPanel.cpp
         Ui/Panels/Audio/AudioPreviewPanel.cpp
+        Ui/Panels/Pixelator/PixelatorPanel.cpp
         Ui/Panels/Catalog/CatalogPanel.cpp
         Ui/Panels/Viewport/ViewportPanel.cpp
         Ui/Panels/Inspector/InputMapInspector.cpp
@@ -145,7 +151,7 @@ if(ENGINE_BUILD_EDITOR)
     endif()
     file(CONFIGURE OUTPUT "${editor_brand_dir}/EngineEditor.rc" CONTENT "GLFW_ICON ICON \"${editor_brand_dir}/Icon.ico\"\n")
 
-    add_executable(EngineEditor WIN32 Host/Main.cpp Host/AssetCommandRunner.cpp Host/AssetThumbnailStore.cpp Host/EditorApplication.cpp Host/FramePng.cpp Host/GitImages.cpp Host/ViewportDisplay.cpp
+    add_executable(EngineEditor WIN32 Host/Main.cpp Host/AssetCommandRunner.cpp Host/AssetThumbnailStore.cpp Host/EditorApplication.cpp Host/FramePng.cpp Host/GitImages.cpp Host/PixelatorTextures.cpp Host/ViewportDisplay.cpp
         Host/ProjectListLauncher.cpp Application/EditorController.cpp Application/EditorProfilerCommands.cpp
         Application/EditorControlService.cpp Application/WorkerBuild.cpp Application/WorkerProcess.cpp
         "${editor_brand_dir}/EngineEditor.rc")

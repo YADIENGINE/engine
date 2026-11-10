@@ -32,6 +32,7 @@ open it, read screenshots / frame grids, fix obvious defects and leave it open.
 | `replay save FILE` | Writes the open simulation's tape; status |
 | `screenshot [--window] [--out PATH] [--scale S] [--crop X Y W H]` | Writes the current frame as PNG; status + `path`, `width`, `height`. Crop is in canvas units, applied before scaling (0.05–4). `--window`: the whole editor window instead (panels included, no scene needed; crop in window pixels; also `window` size) |
 | `frames --from A --to B [--count N] [--columns C] [--steps] [--out PATH] [--scale S] [--crop X Y W H]` | One grid PNG of N frames between A and B seconds, or simulation steps with `--steps` (pauses there); status + `path`, `frames` (times), `columns` ([Animation](#screenshots)) |
+| `pixels [--view color\|inks\|parts] [--zoom N] [--frame N] [--grid\|--no-grid] [--tiles 0\|8\|16\|32] [--background checker\|dark\|light] [--no-pivot] [--ink N] [--out PATH]` | The open pixel graphic (`GraphicAsset::pixels`) as the [Pixelator](../Graphics/PixelArt.md#in-the-editor) shows it, written as PNG: zoom 1–64 (default: about 1024 px across), pixel grid (default from 4×), tile grid, pivot marker, `--ink` dims the other inks. Status + `path`, `width`, `height`, `zoom`, `view`, `asset`, `item` and `items` (sets), `size`, `pivot`, `frame`, `frames` (count), `seconds` (that frame's duration), `window`, `looped`, `capped`, `inks` (ink, color, pixels) and `parts` (part, pixels). Waits for the worker's pixel data after an `open`; exit 1 when no pixel graphic is open or the frame does not exist |
 | `inspect` | Status + `inspection` (readout values, tables, focus, disabled controls) |
 | `logs [--since N] [--limit N] [--level L]` | `entries` (sequence, level, source, text) after N, newest `limit` (100, max 1000) at or above L; `last` sequence |
 | `note [WORD...] [--state working\|waiting\|idle] [--hook] [--tool-stdin]` | Reports what the agent is doing (default `working`); `--hook`: see Agent hooks below. Run from a Console session, it sets that session's state and hover text until the developer types into it again. `state`, `text` (up to 200 bytes), `control` |
@@ -75,10 +76,10 @@ ignored).
 **Agent control:** the developer can turn off Agent → Agent control ([Agent workspace](Usage.md#agent-workspace)).
 While it is off, `status` reports `"control": false` and commands that change the editor (`open`, `set`, `action`,
 `pause`, `play`, `step`, `speed`, `reset`, `seek`, `replay`, `frames`, `refresh`, and `audio` with an action) are refused;
-`status`, `list`, `find`, `describe`, `screenshot`, `inspect`, `logs`, `note` and plain `audio` still answer.
+`status`, `list`, `find`, `describe`, `screenshot`, `pixels`, `inspect`, `logs`, `note` and plain `audio` still answer.
 
 **Visual checks:** Agent → Visual checks (on by default) decides whether tools may capture images. While it is off,
-`status` reports `"visualChecks": false`, `screenshot` and `frames` are refused with a message telling the agent to
+`status` reports `"visualChecks": false`, `screenshot`, `frames` and `pixels` are refused with a message telling the agent to
 leave the look to the developer, and `open --screenshot` opens the scene and puts that message under `screenshot`
 instead of failing. Images are the most expensive thing an agent reads, and judging a look is the developer's call.
 
@@ -132,8 +133,8 @@ lets one session at a time change or capture it.
   session's program; `ctl` and `refresh` send it as `session`). Every client outside the Console counts as one session:
   run parallel agents in Console sessions.
 - **The hold:** a command that changes or captures the editor (`open`, `set`, `action`, playback, `seek`, `replay`,
-  `screenshot`, `frames`, `refresh`, `audio` with an action) takes the hold for its session. Another session's such
-  command is refused with exit 1 and names the holder, while the holder's command is being answered and for 60 s after
+  `screenshot`, `frames`, `pixels`, `refresh`, `audio` with an action) takes the hold for its session. Another
+  session's such command is refused with exit 1 and names the holder, while the holder's command is being answered and for 60 s after
   its last one. Then anyone may take it. `ctl release` frees it at once; a Console session that closes or exits frees it
   too. Commands that only look (`status`, `list`, `find`, `describe`, `inspect`, `logs`, plain `audio`) and `note`
   always answer; `status` shows the hold under `hold`.
@@ -148,7 +149,7 @@ Design record: `Docs/Design/README.md` → D43 (engine repository).
 
 ## Screenshots
 
-Default location: `<editor build directory>/editor-captures/<kind>-<time>.png` (`shot`, `frames`, `mark`); only the
+Default location: `<editor build directory>/editor-captures/<kind>-<time>.png` (`shot`, `frames`, `pixels`, `mark`); only the
 newest 50 are kept there (`--out` files are never pruned). A full 1600×900 canvas is large for an agent's context;
 prefer `--scale 0.5` or `--crop` on the area of interest. Visual output is for looking, not for asserting in tests
 ([Testing](../Contributing/Testing.md)).
@@ -156,6 +157,10 @@ prefer `--scale 0.5` or `--crop` on the area of interest. Visual output is for l
 **Animation:** `ctl frames --from A --to B [--count N]` seeks to N evenly spaced times (2–16, default 9) and writes one
 grid image, each tile labelled with its playback time; the answer lists the times. Without `--scale` the grid fits about
 1600 px across, so a whole animation costs about one screenshot. `--crop` and `--columns` work as for screenshots.
+
+**Pixels:** a screenshot shows a pixel graphic at the scene's size; `ctl pixels` shows its pixels zoomed with a grid,
+and `--view inks` / `parts` or `--ink N` show how it is built. The JSON alone (size, pivot, inks and counts) often
+answers the question without reading the image.
 
 ## Marking: the developer points at something
 

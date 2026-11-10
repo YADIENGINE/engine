@@ -27,6 +27,7 @@ struct SceneAssetInfo {
     std::string set;
     std::string item; // Empty for a single drawing
     std::string usage;
+    bool pixels = false; // A pixel graphic (GraphicAsset::pixels): opening it brings the Pixelator panel forward
     bool operator==(const SceneAssetInfo&) const = default;
 };
 struct SceneDefinition {
