@@ -13,8 +13,10 @@ not pixels. The recipe's include below points to its compiled test copy.
 <!-- recipe:PixelSprite-header -->
 ```cpp
 #pragma once
+#include "Graphics/Pixel/PixelAnimation.h"
 #include "Graphics/Pixel/PixelPalette.h"
 #include "Graphics/Pixel/PixelSprite.h"
+#include "Graphics/Pixel/PixelSpriteSet.h"
 #include "Utilities/Color4.h"
 #include "Utilities/Geometry/FloatRect.h"
 
@@ -31,6 +33,9 @@ struct GuardLook {
 // What a guard's pixels belong to, so it can break along them later.
 enum GuardPart : PixelPart { GuardHelmet = 1, GuardBody, GuardSpear };
 
+// Its frames as data: the sprites and the animation that plays them (the game and the editor read the same).
+[[nodiscard]] const PixelSpriteSet& GuardSprites();
+[[nodiscard]] const PixelAnimation& GuardAnimation();
 [[nodiscard]] const PixelSprite& GuardSprite(float time);
 [[nodiscard]] PixelPalette GuardPalette(GuardKind kind);
 // Centred in `box`, feet on its bottom edge, each sprite pixel a whole number of art pixels.
@@ -45,7 +50,6 @@ void DrawGuard(Painter& paint, const FloatRect& box, GuardKind kind, float time,
 #include <cmath>
 #include "Graphics/Paint/Painter.h"
 #include "Graphics/Pixel/PixelCanvas.h"
-#include "Graphics/Pixel/PixelSpriteSet.h"
 
 namespace {
 constexpr int Width = 20;
@@ -82,11 +86,14 @@ PixelSprite PaintGuard(std::size_t frame) {
 }
 
 const PixelSpriteSet Sprites(Frames, &PaintGuard);
+const PixelAnimation Breathing = PixelAnimation::Even(Frames, 2.0f); // Two frames a second
 } // namespace
 
-const PixelSprite& GuardSprite(float time) {
-    return Sprites[static_cast<std::size_t>(std::max(0.0f, std::floor(time * 2.0f))) % Frames];
-}
+const PixelSpriteSet& GuardSprites() { return Sprites; }
+
+const PixelAnimation& GuardAnimation() { return Breathing; }
+
+const PixelSprite& GuardSprite(float time) { return Sprites[Breathing.SpriteAt(time)]; }
 
 PixelPalette GuardPalette(GuardKind kind) {
     PixelPalette palette{Rgb(0x14121c), Rgb(0x3a4152), Rgb(0x657088), Rgb(0x9aa6b8), Rgb(0xdfe6ee),
@@ -112,7 +119,8 @@ void DrawGuard(Painter& paint, const FloatRect& box, GuardKind kind, float time,
 ```
 <!-- /recipe -->
 
-Register it with `pixels`, so opening it shows the editor's Pixelator (zoom, inks, parts, frames):
+Register it with `pixels`, so opening it shows the editor's Pixelator (zoom, inks, parts, frames). It hands over the
+same sprites and animation the game plays, so the editor shows exactly the game's frames and durations:
 
 ```cpp
 asset.items = {{"Town", "guard soldier"}, {"Royal", "guard soldier blue"}};
@@ -120,8 +128,8 @@ asset.usage = "DrawGuard(paint, box, GuardKind::{item}, time);";
 asset.draw = [](Painter& paint, const FloatRect& box, std::size_t item, float time) {
     DrawGuard(paint, box, static_cast<GuardKind>(item), time);
 };
-asset.pixels = [](std::size_t item, float time) {
-    return GraphicPixels{GuardSprite(time), GuardPalette(static_cast<GuardKind>(item))};
+asset.pixels = [](std::size_t item) {
+    return GraphicPixels::Animated(GuardSprites(), GuardAnimation(), GuardPalette(static_cast<GuardKind>(item)));
 };
 ```
 

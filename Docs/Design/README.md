@@ -989,9 +989,7 @@ is gone.
 1. *The worker sends data, the editor draws:* on request ("pixels" message, worker protocol 18) the worker answers with
    the items, the distinct sprites (size, pivot, inks and parts as base64), the palettes and the frames. The editor
    uploads textures, so zoom (1–64×, whole numbers) and pan are instant and not limited by the worker's canvas.
-2. *Frames are sampled:* `pixels` gives the sprite at a time, so the worker samples 4 s at 60 Hz, merges equal samples
-   in a row into frames (at most 64, 6 MB, 3 s of work) and keeps one cycle when they repeat. An explicit frames API
-   replaces this later.
+2. *Frames are declared* (since D65): the registration hands over every frame with its duration.
 3. *Everything is in the panel:* toolbar, ink list with counts (hover shows, click isolates), game-size preview, frame
    strip and status bar; keys only while it has the keyboard (EditorKeyScope::Pixelator).
 4. *Agents see what the panel sees:* `ctl pixels` composes the same picture on the CPU (view, zoom, frame, grids, ink)
@@ -1003,3 +1001,19 @@ is gone.
 The game-size preview starts at the project's `artPixel` (D63).
 
 Left out: editing, onion skin, palette comparison, export, lint (backlog).
+
+### D65. Pixelator V2: declared frames
+Usage: [Pixel art](../Graphics/PixelArt.md#in-the-editor).
+
+Decision: a pixel graphic declares its frames; the editor no longer samples a clock.
+
+1. *One source for game and editor:* `PixelAnimation` (Core/Graphics/Pixel) lists sprite indices with durations and
+   picks the sprite for a time; `GraphicAsset::pixels(item)` returns `GraphicPixels` (frames with seconds, palette,
+   loops), made with `GraphicPixels::Animated(set, animation, palette)` or `Still`. `pixels(item, time)` and frame
+   sampling are gone (worker protocol 19).
+2. *Optional registration data, editor only:* ink and part names and the shading ramps travel with the frames; `ctl
+   pixels` reports the names.
+3. *Library first:* lint (`PixelatorLint`, Oklab lightness through `Utilities/Color/Oklab.h`, a worker
+   `--pixel-lint` report), the changes between two builds, onion skin, comparison and tile layout, and PNG / GIF export
+   (msf_gif, renamed at include beside raylib's copy) are tested editor code; the panel, `ctl` and `asset lint` do not
+   offer them yet.

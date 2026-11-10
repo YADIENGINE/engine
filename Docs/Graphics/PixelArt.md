@@ -58,6 +58,10 @@ sprite `i` the first time it is asked for. Number poses × frames however the ga
 paint.Sprite(sprite, palette, feet, {.flipX = facingLeft, .flash = White, .flashAmount = hurt});
 ```
 
+**Animations.** A `PixelAnimation` lists which sprite shows for how long (`PixelAnimation::Even(count, fps)` for even
+frames); `SpriteAt(time)` picks the sprite for a clock, looping or holding the last frame. The editor reads the same
+list, so what it shows never drifts from what the game plays.
+
 Each sprite pixel covers `scale` art pixels (`paint.ArtPixel()` canvas units each) on both axes; the default 1 makes a
 sprite pixel one art pixel, and whole numbers keep every pixel the same size. In a smooth project an art pixel is one
 canvas unit. Without rotation in the current transform the sprite's corners land on whole device pixels, so it never
@@ -125,9 +129,9 @@ The editor draws the pixels itself from the sprite data, so zoom and pan are ins
 - **Inks:** every ink the frame uses with its colour and pixel count. Hovering one shows only its pixels; clicking it
   keeps it isolated until clicked again (or Esc).
 - **Frames:** play, pause and step (`,` / `.`) with each frame's duration; an item list switches between a set's items.
-  `pixels` only answers "the sprite at a time", so the editor samples it 60 times a second for 4 s, merges equal
-  samples in a row into frames (up to 64) and keeps one cycle when the frames repeat. Durations are whole 1/60 s
-  steps; a change faster than that, or a cycle much longer than the window, is not seen exactly.
+  The frames are the ones the registration declares, so they are exactly the game's: keep a graphic's frames as a
+  `PixelSpriteSet` played by a `PixelAnimation` (sprite and seconds per frame), draw with `animation.SpriteAt(time)`,
+  and register `GraphicPixels::Animated(sprites, animation, palette)` (`GraphicPixels::Still` for one sprite).
 - **In game:** a small preview at a whole number of screen pixels per sprite pixel on the chosen background; a pixel
   project starts at its `artPixel`.
 - **Status:** the size, zoom and pivot, and under the pointer x, y, ink, colour and part.
