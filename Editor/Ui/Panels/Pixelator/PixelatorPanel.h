@@ -47,7 +47,7 @@ private:
     bool _grid = true;
     bool _pivot = true;
     int _tiles = 0;
-    // Hub: once project settings name the art pixel (pixel phase 2), start at that scale instead of 2.
+    // To do: start at the project's art pixel size once project settings name one (D64, left out).
     int _gameScale = 2;
     std::optional<Ink> _isolated; // Clicked in the palette
     std::optional<Ink> _hoverInk; // Under the pointer in the palette, this frame
