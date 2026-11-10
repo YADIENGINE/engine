@@ -146,7 +146,9 @@ GraphicAsset Make{name}() {{
     asset.usage = "Draw{name}(paint, box, time);";
     asset.draw = [](Painter& paint, const FloatRect& box, std::size_t, float time) {{ Draw{name}(paint, box, time); }};
     asset.pixels = [](std::size_t) {{
-        return GraphicPixels::Animated({name}Sprites(), {name}Animation(), {name}Palette());
+        auto pixels = GraphicPixels::Animated({name}Sprites(), {name}Animation(), {name}Palette());
+        pixels.inkNames = {{"Line", "Dark", "Mid", "Light", "Shine"}}; // Inks 1, 2, ...: the Pixelator and lint say them
+        return pixels;
     }};
     return asset;
 }}

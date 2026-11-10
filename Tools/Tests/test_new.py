@@ -59,12 +59,12 @@ class ProjectSetupTests(unittest.TestCase):
         self.assertEqual(list(self.root.glob("*.py")), [])
 
     @unittest.skipUnless(shutil.which("git"), "Git is required to check ignore rules")
-    def test_generated_gitignore_ignores_engine(self):
+    def test_generated_gitignore_ignores_engine_and_exports(self):
         self.setup()
         subprocess.run(["git", "init", str(self.root)], check=True, capture_output=True)
-        result = subprocess.run(["git", "check-ignore", "Engine/", "Engine/Core/example.cpp"],
+        result = subprocess.run(["git", "check-ignore", "Engine/", "Engine/Core/example.cpp", "Exports/Hero/Idle.gif"],
                                 cwd=self.root, check=True, capture_output=True, text=True)
-        self.assertEqual(result.stdout.splitlines(), ["Engine/", "Engine/Core/example.cpp"])
+        self.assertEqual(result.stdout.splitlines(), ["Engine/", "Engine/Core/example.cpp", "Exports/Hero/Idle.gif"])
 
     def test_existing_files_are_kept(self):
         (self.root / "CMakeLists.txt").write_text("mine", encoding="utf-8")

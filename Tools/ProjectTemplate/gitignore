@@ -6,6 +6,9 @@ build/
 Release/
 __pycache__/
 
+# Pixelator exports (PNG sheets and GIFs made from the code-drawn sprites)
+Exports/
+
 # IDE
 .vs/
 .vscode/

@@ -49,6 +49,8 @@ class AssetCommandTests(unittest.TestCase):
         args = cli.build_parser().parse_args(["asset", "new", "Slime", "--pixel"])
         self.assertTrue(args.pixel)
         new_graphic(self.root, "Slime", "Enemies", pixel=True)
+        registration = (self.root / "Game/Assets/Graphics/Enemies/Slime.asset.cpp").read_text(encoding="utf-8")
+        self.assertIn('pixels.inkNames = {"Line", "Dark", "Mid", "Light", "Shine"};', registration)
         source = (self.root / GRAPHICS / "Enemies/Slime.cpp").read_text(encoding="utf-8")
         self.assertIn("PixelCanvas c(Width, Height);", source)
         self.assertIn("const PixelSpriteSet Sprites(Frames, &PaintFrame);", source)

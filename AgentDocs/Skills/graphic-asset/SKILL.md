@@ -26,8 +26,9 @@ Example: [Graphic asset](../../Recipes/GraphicAsset.md).
 5. **Preview:** `python Engine ctl find NAME`, then open the returned asset ID, for example
    `python Engine ctl open asset:Graphics/Characters/X --screenshot --scale 0.5`. Read the image; use `ctl frames` for
    motion. A pixel graphic (`pixels` registered) opens in the Pixelator: `python Engine ctl pixels --zoom 8` shows its
-   pixels zoomed (`--view inks|parts`, `--frame N`) and lists size, pivot, frames and inks. If the answer says visual
-   checks are off, leave the asset open and ask the developer to look. The asset is its own viewport preview: no separate work scene is needed. A work scene is for a model,
+   pixels zoomed (`--view inks|parts`, `--frame N`, `--diff` after a refresh) and lists size, pivot, frames and inks.
+   Then `python Engine asset lint asset:Graphics/Characters/X` (no editor needed): fix its warnings in the drawing
+   code. If the answer says visual checks are off, leave the asset open and ask the developer to look. The asset is its own viewport preview: no separate work scene is needed. A work scene is for a model,
    scene or interaction that the asset alone cannot show.
 6. **Use:** game code includes `#include "Assets/Graphics/Characters/X.h"` and calls the draw function directly.
 7. **Finish:** run `python Engine asset unlisted <files>` with the files you changed. Register every listed drawing

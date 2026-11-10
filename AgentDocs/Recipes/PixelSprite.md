@@ -120,7 +120,8 @@ void DrawGuard(Painter& paint, const FloatRect& box, GuardKind kind, float time,
 <!-- /recipe -->
 
 Register it with `pixels`, so opening it shows the editor's Pixelator (zoom, inks, parts, frames). It hands over the
-same sprites and animation the game plays, so the editor shows exactly the game's frames and durations:
+same sprites and animation the game plays, so the editor shows exactly the game's frames and durations. Ink and part
+names are optional; the Pixelator, lint and `ctl pixels` say them instead of bare numbers:
 
 ```cpp
 asset.items = {{"Town", "guard soldier"}, {"Royal", "guard soldier blue"}};
@@ -129,9 +130,17 @@ asset.draw = [](Painter& paint, const FloatRect& box, std::size_t item, float ti
     DrawGuard(paint, box, static_cast<GuardKind>(item), time);
 };
 asset.pixels = [](std::size_t item) {
-    return GraphicPixels::Animated(GuardSprites(), GuardAnimation(), GuardPalette(static_cast<GuardKind>(item)));
+    auto pixels =
+        GraphicPixels::Animated(GuardSprites(), GuardAnimation(), GuardPalette(static_cast<GuardKind>(item)));
+    pixels.inkNames = {"Line", "Steel0", "Steel1", "Steel2", "Steel3", "Cloth0", "Cloth1", "Cloth2", "Skin", "Wood"};
+    pixels.partNames = {"Helmet", "Body", "Spear"};
+    return pixels;
 };
 ```
+
+After drawing or changing it, check it: `python Engine asset lint asset:Graphics/Characters/Guard` (no editor
+needed) lists stray pixels, outline doubles and gaps, ramp tones too close to tell apart, unused inks and too many
+colours, each with its pixels and frames. Fix warnings in the drawing code; notes (info) are judgement calls.
 
 To look at the pixels yourself, open it and ask for the Pixelator's picture:
 `python Engine ctl open asset:Graphics/Characters/Guard#Town`, then

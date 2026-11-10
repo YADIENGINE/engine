@@ -126,8 +126,20 @@ The editor draws the pixels itself from the sprite data, so zoom and pan are ins
   Space + drag, **Fit** (`F`) and **1:1** (`1`). Pixels are always the same size.
 - **Views:** **Color** (the palette), **Inks** and **Parts** (a distinct colour per ink or per part). A pixel grid
   (`G`, from 4× zoom), a tile grid every 8, 16 or 32 pixels, the pivot, and a checker, dark or light background.
-- **Inks:** every ink the frame uses with its colour and pixel count. Hovering one shows only its pixels; clicking it
-  keeps it isolated until clicked again (or Esc).
+- **Inks:** every ink the frame uses with its colour, name (`GraphicPixels::inkNames`) and pixel count. Hovering one
+  shows only its pixels; clicking it keeps it isolated until clicked again (or Esc). Part names (`partNames`) show in
+  the Parts list and the status bar.
+- **Layouts:** **Frame** (one frame), **Compare** (2–4 items side by side, for palette variants; zoom, pan, pointer and
+  ink isolation stay in step), **Tile 3x3** (the frame repeated, to see whether its edges meet) and **Changes** (after a
+  Build & Refresh that changed the graphic: changed pixels and recoloured inks bright, the rest dimmed; **Before**
+  shows the earlier build).
+- **Onion skin:** the layers button shows earlier frames reddish and later ones bluish under the current frame, aligned
+  on their pivots; right-click it for 1–3 frames each way, opacity and tint. Off by default.
+- **Lint:** the badge counts warnings; clicking it lists the findings (stray pixels, outline doubles and gaps, ramp
+  tones too close in Oklab lightness, unused inks, too many colours) and rings their pixels on the canvas.
+- **Export:** one frame, every frame in a row or a grid as PNG, or a looping GIF, 1–8× on a transparent background,
+  into the project's `Exports/<Graphic>/` folder (ignored by git in new projects); **Open folder** shows it. A GIF
+  keeps every palette colour exactly.
 - **Frames:** play, pause and step (`,` / `.`) with each frame's duration; an item list switches between a set's items.
   The frames are the ones the registration declares, so they are exactly the game's: keep a graphic's frames as a
   `PixelSpriteSet` played by a `PixelAnimation` (sprite and seconds per frame), draw with `animation.SpriteAt(time)`,
@@ -138,3 +150,6 @@ The editor draws the pixels itself from the sprite data, so zoom and pan are ins
 
 Agents see the same with `python Engine ctl pixels [--view inks] [--zoom N] [--frame N] [--tiles 16]`: a PNG and a
 JSON summary (size, pivot, frames, inks with counts) ([Editor automation](../Editor/Automation.md#commands)).
+`--onion`, `--compare Idle,Hurt`, `--tiled`, `--diff`, `--lint` and `--export strip|grid|frame|gif` match the panel.
+`python Engine asset lint [ID...]` lints without an editor (it needs a built worker) and prints JSON
+([Tools contract](../ToolsContract.md#commands)).

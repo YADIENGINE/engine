@@ -1000,9 +1000,9 @@ is gone.
 
 The game-size preview starts at the project's `artPixel` (D63).
 
-Left out: editing, onion skin, palette comparison, export, lint (backlog).
+Left out: editing (see D65).
 
-### D65. Pixelator V2: declared frames
+### D65. Pixelator V2: declared frames, views, lint and export
 Usage: [Pixel art](../Graphics/PixelArt.md#in-the-editor).
 
 Decision: a pixel graphic declares its frames; the editor no longer samples a clock.
@@ -1013,7 +1013,14 @@ Decision: a pixel graphic declares its frames; the editor no longer samples a cl
    sampling are gone (worker protocol 19).
 2. *Optional registration data, editor only:* ink and part names and the shading ramps travel with the frames; `ctl
    pixels` reports the names.
-3. *Library first:* lint (`PixelatorLint`, Oklab lightness through `Utilities/Color/Oklab.h`, a worker
-   `--pixel-lint` report), the changes between two builds, onion skin, comparison and tile layout, and PNG / GIF export
-   (msf_gif, renamed at include beside raylib's copy) are tested editor code; the panel, `ctl` and `asset lint` do not
-   offer them yet.
+3. *Library first, then three faces:* lint (`PixelatorLint`, Oklab lightness through `Utilities/Color/Oklab.h`), the
+   changes between two builds, onion skin, comparison and tile layout, and PNG / GIF export are tested editor code that
+   the panel, `ctl pixels` (`--onion`, `--compare`, `--tiled`, `--diff`, `--lint`, `--export`) and `asset lint` (the
+   worker's `--pixel-lint` report, no editor) share. The controller keeps, per item, the latest data and the last one
+   that differed, so Changes survives reopening; comparison asks the running scene for other items once per build.
+4. *Exports are files beside the project:* `Exports/<Graphic>/`, ignored by git in new projects. GIFs of at most 255
+   colours are written as indexed GIFs, every colour exact (msf_gif quantises to 5-6-5 bits with ordered dither: a
+   14-colour sprite became 49 colours, none exact); larger palettes still go through msf_gif, renamed at include beside
+   raylib's copy.
+
+Left out: editing (V3; the code stays the source, D1), syncing playback with the scene clock, pixel provenance.
